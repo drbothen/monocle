@@ -1,14 +1,30 @@
 ---
 document_type: product-brief
 level: L1
-version: "1.4.34"
+version: "2.0.0"
 status: draft
 producer: product-owner
-phase: pre-phase-1-brief
-timestamp: 2026-05-28T12:00:00Z
-inputs: [research/domain-monocle-vision-synthesis.md, semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md, semport/nikiforovall-lazyclaude/nikiforovall-lazyclaude-pass-8-final-synthesis-v2.md, semport/vsdd-factory/vsdd-factory-pass-8-final-synthesis.md, semport/codemachine-cli/codemachine-cli-pass-8-final-synthesis.md, semport/zellij/zellij-pass-8-final-synthesis.md, semport/lazygit/lazygit-pass-8-final-synthesis.md, semport/claude-squad/claude-squad-pass-8-deep-synthesis.md, semport/claude-code-router/claude-code-router-pass-C-final-synthesis.md, planning/oq-research.md]
-input-hash: "ac4fdfb"
-traces_to: "factory-artifacts 2737bfd (vision-synthesis approved); 2c2b676 (8-repo full ingest); b3c68ca (OQ research)"
+phase: pivot-delta-brief
+timestamp: 2026-06-03T22:00:00Z
+inputs:
+  - research/domain-monocle-vision-synthesis.md
+  - semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
+  - semport/nikiforovall-lazyclaude/nikiforovall-lazyclaude-pass-8-final-synthesis-v2.md
+  - semport/vsdd-factory/vsdd-factory-pass-8-final-synthesis.md
+  - semport/codemachine-cli/codemachine-cli-pass-8-final-synthesis.md
+  - semport/zellij/zellij-pass-8-final-synthesis.md
+  - semport/lazygit/lazygit-pass-8-final-synthesis.md
+  - semport/claude-squad/claude-squad-pass-8-deep-synthesis.md
+  - semport/claude-code-router/claude-code-router-pass-C-final-synthesis.md
+  - planning/oq-research.md
+  - semport/DISPOSITION-V2-CONTROL-CENTER-ROLLUP.md
+  - specs/research/embedded-pty-evaluation.md
+  - STATE.md
+input-hash: "7e4f4f4"
+traces_to: >
+  factory-artifacts 2737bfd (vision-synthesis v1.0 approved); 2c2b676 (8-repo full ingest);
+  b3c68ca (OQ research); vision-synthesis v2.1 (D-238 approved 2026-06-03);
+  D-236 (pivot); D-237 (v1 scope ratified); D-238 (vision v2.1 approved + session-host-owns-PTY)
 project: monocle
 supplements:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-deps-pin-manifest.md
@@ -23,679 +39,556 @@ supplements:
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-core-types-and-abi.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-engine-module.md
   - /Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md
+  - /Users/jmagady/Dev/monocle/.factory/specs/research/domain-monocle-vision-synthesis.md
+  - /Users/jmagady/Dev/monocle/.factory/specs/research/embedded-pty-evaluation.md
+  - /Users/jmagady/Dev/monocle/.factory/semport/DISPOSITION-V2-CONTROL-CENTER-ROLLUP.md
 ---
 
-# Product Brief: Monocle
+# Product Brief: Monocle (v2.0 — Control-Center Re-Baseline)
 
-## What Is This?
-
-Monocle is a Rust TUI that gives developers one `Ctrl-\` popup over every
-AI coding harness session they are running — across projects, across harnesses
-(Claude Code, CodeMachine, future), and across hosts. It surfaces five
-information planes: live session roster with token burn and cost (Runtime),
-active customizations per session (Static), workflow pipeline state for
-factory-pattern projects (Workflow), per-harness profiles (Harness), and a
-lazygit-style keybinding dispatch layer (TUI philosophy). Monocle is
-observe-only for workflow state and session transcripts; it owns the action
-layer only for permission prompts and keybinding dispatch — the two places where
-context-switching today costs the developer real time and real session stalls.
-
-Per vision §Vision Statement: "One TUI lens over every Claude-class session
-you're running, every customization that shapes them, and every workflow driving
-them — across multiple harnesses and federated across hosts."
+> **D-236/D-237/D-238 RE-BASELINE (2026-06-03).**  
+> The observe-only framing of v1.4.x is RETIRED. Monocle is now a full TUI control center.
+> The Phase-1 substrate (daemon, hook ingestion, permission overlay, EngineModule/FactoryAdapter
+> traits, proto, ring, TUI rendering — 1514 tests, 9 crates) is preserved and extended, not rebuilt.
 
 ## §Trace — Revision History
 
-**1.4.32** (2026-05-30) — POL-11 version-pin staleness remediation: added `<!-- version-pin-historical -->` markers and time qualifiers per ADR-0007 §Historical Anchor Classification to all active-pointer citations that document spec versions at authoring time. No normative content changed.
-
 | Version | Date | Author | Summary |
 |---------|------|--------|---------|
-| 1.0 | 2026-05-12 | product-owner (direct draft from approved vision) | Initial brief — committed at factory-artifacts e8e8af1 |
-| 1.1 | 2026-05-12 | product-owner (version validation revision) | Updated all crate version pins to crates.io 2026-05-12 reality; added RUSTSEC notes; refreshed wasmi/wasmtime rationale; added 11 new version pins for previously-unpinned vision tech stack crates; added OQ-11 MSRV |
-| 1.2 | 2026-05-12 | product-owner (Option A bloat remediation + OQ/SOQ/JC decisions) | Trimmed core to ~200 lines; moved version manifest + RUSTSEC + ADR + conventions to architecture stubs; applied 11 OQ defaults + 4 SOQs + JC-1/2/3 + EX-1/2 resolutions; full traceability preserved |
-| 1.3 | 2026-05-12 | product-owner (competitive positioning revision + OQ-M1/OQ-M3) | Competitive Positioning revised to acknowledge Anthropic's `claude agents` (agent view, v2.1.139, shipped 2026-05-11). Repositioned monocle's differentiation on mechanism and depth (hook-protocol ingestion, VecDeque overlay, diff preview, trigger-trace, workflow plane, multi-harness, external overlay) rather than exclusivity over the session-list surface. R-001 acceptance stated explicitly. Added OQ-M1 (agent-view IPC coexistence) and OQ-M3 (`PermissionRequest` as 6th endpoint) to the Open Questions table as `pending architect review`. No scope changes. Resolves B-1 from `.factory/plans/brief-validation-v2.md`. |
-| 1.4 | 2026-05-12 | product-owner (production-grade defect fixes per adversary re-audit 0bd4ba9) | CRITICAL production-grade defect fixes per adversary re-audit (commit 0bd4ba9). Crate count typo 13→12. OQ-M1/M2/M3 resolved in-scope (no longer Pending architect review): OQ-M1 = no agent-view IPC collision; OQ-M2 = claude-manager not hook-protocol; OQ-M3 = stay at 5 endpoints via JC-2 parity. OQ-M2 row added to table (was absent in v1.3). F-07/F-08 citation parentheticals added. R-001 mitigation reframe HOLD pending human Q-B confirmation (v1.4 shipped with HOLD marker in place). No scope changes. |
-| 1.4.1 | 2026-05-12 | product-owner (R-001 probability finalized per human Q-B response) | R-001 risk assessment finalized at <10% probability per human Q-B response. Removed the elaborate mitigation framing (was 'ship Phase 1 fast' in v1.3, became HOLD in v1.4 pending human answer). R-001 is now noted as informational background only — at <10%, the production-grade depth monocle is already shipping IS the response; no separate mitigation scaffolding required. Competitive Positioning section simplified to 3-4 sentences replacing the HOLD block. No scope changes. No other content changes. |
-| 1.4.2 | 2026-05-12 | product-owner (Rule 1 violation fix per validate-brief v4) | §Phase Plan Rationale — replaced 'minimum viable product' phrase (Rule 1 violation per CLAUDE.md §Canonical Principle) with production-grade phrasing. Substantive meaning unchanged. Resolves the single blocker from validate-brief v4 (commit 38b8e8f). |
-| 1.4.3 | 2026-05-12 | product-owner (adversary findings e2c224b: F-NEW-04, R-001 re-eval, F-NEW-03, F-NEW-05/06/09) | F-NEW-04 CRITICAL: hook ingestion timeout budget added to Success Criteria (300ms PreToolUse/Stop/SessionStart/UserPromptSubmit, 2000ms Notification per BC-HOOK-022); R-001 re-eval trigger paragraph added (4 conditions matching ADR-0002 pattern; <10% probability stands until any condition materializes); F-NEW-03 CRITICAL: permission token enum reference updated; brief no longer claims 17 zellij-borrowed variants for Phase 1; points at architect-produced SS-permissions-phase1.md canonical artifact; F-NEW-05/06/09 IMPORTANT: hook receiver hardening note added to Scope (body size limit, /healthz, /status, graceful shutdown). No scope removals; all additions are production-grade tightening, not new features. |
-| 1.4.4 | 2026-05-12 | product-owner (architect-surfaced follow-on from round 5 fix burst) | Body-size limit (256 KiB) added to Success Criteria as a measurable Phase 1 acceptance criterion, cross-referencing BC-DAEMON-003 in `SS-daemon-lifecycle.md`. Resolves the architect-surfaced follow-on from round 5 fix burst — v1.4.3 added the hardening sub-bullet to Scope but did not promote the limit to a measurable Success Criterion. No new scope; just promotes existing scope item to measurable criterion. |
-| 1.4.5 | 2026-05-12 | product-owner (two surgical fixes per round-6 audits) | `supplements:` frontmatter updated to include 3 round-5 artifacts (SS-permissions-phase1.md, SS-daemon-lifecycle.md, ADR-0003-license-selection.md); now 9 supplements total. Body-size Success Criterion endpoint list refined — `/healthz` and `/status` removed (GET endpoints with no body; limit applies to POST endpoints only). Resolves consistency G-01 (IMPORTANT) and adversary F-R6-006 (ADVISORY) from round-6 audits. |
-| 1.4.6 | 2026-05-12 | product-owner (two additions per human pre-Phase-1 decisions) | (Q-2) DTU `dtu-claude-code-hooks-v1` clone added to Phase 1 deliverables + Phase 1 Success Criteria (fidelity ≥0.95, all 5 endpoints, CI per-PR gate); cross-references dtu-assessment §"Phase 1 Clone Build Effort" and §"DTU Fidelity Measurement Procedure"; BC-DTU-001 placeholder. (Q-3) R-001 re-eval trigger monitoring operationalized via weekly GitHub Actions workflow (devops-engineer specced in parallel this burst at `.github/workflows/r001-monitor.yml`); quarterly maintainer review for false-negative trigger keywords. |
-| 1.4.7 | 2026-05-12 | product-owner (6 forward-compatibility FC items integrated as Phase 1 contracts per human authorization to lock pre-Phase-1; Phase 1 will run in fresh context; spec package must be self-contained) | New supplement `SS-core-types-and-abi.md` added (10 supplements total). New Phase 1 Scope sub-bullets and Success Criteria row covering: (FC-01) JSONL `format_version = 1` first key on every ring record; (FC-02) `#[non_exhaustive]` on all `monocle-core` public enums; (FC-03) `MONOCLE_ABI_VERSION = 1` const exported and exposed via `/status` endpoint; (FC-04 CRITICAL) `FactoryAdapter` trait defined with `VsddFactoryAdapter` implementing it (not inline-wired); (FC-05) `monocle-proto` `HookEnvelope` + 5 event messages with `uint32 schema_version = 1` first field; (FC-06) auth token format `monocle-v1:<64-char-hex>` with non-prefix rejection rule (HTTP 401). 10 behavioral contracts pre-staged for Phase 1 PRD authoring: BC-ABI-001/002, BC-TYPES-001, BC-FACTORY-001/002, BC-PROTO-001/002, BC-RING-001, BC-AUTH-001/002. |
-| 1.4.8 | 2026-05-12 | product-owner (F-FC-C001 CRITICAL adversary finding from post-FC-burst fresh pass) | Resolves F-FC-C001 (CRITICAL adversary finding from post-FC-burst fresh pass): v1.4.7 erroneously listed `Phase1Permission` as carrying `#[non_exhaustive]` — contradicted both SS-permissions-phase1.md and SS-core-types-and-abi.md which require Phase1Permission to be exhaustive. Brief updated to remove Phase1Permission from non_exhaustive list; cross-reference added to ADR-0004 (architect-produced in same burst) documenting the exhaustive-enum exemption rationale. Also adds ClaudeCodeTool to the exhaustive-exempt list per the same ADR. No scope change. |
-| 1.4.9 | 2026-05-13 | product-owner (round-14 propagation gaps resolved) | (G-R14-001) `supplements:` frontmatter expanded from 10 → 12 (added SS-engine-module.md + ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md). (N6) Phase 3 plugin SDK extension prose updated — removed obsolete "unsafe-impl mechanism" reference; replaced with open-trait per vision authority (round-15 architect removes sealing per human Q-15-1). (N5) BC count updated 10 → 14 (added BC-ENGINE-001/002, BC-LOCK-001; split BC-PROTO-001 → 001a/001b). No scope changes. |
-| 1.4.10 | 2026-05-13 | product-owner (BC count reconciliation) | BC count reconciliation — architect's round-15 work (commit 7483d93) added BC-ENGINE-003 (ClaudeCodeModule inherent methods: hook_paths, spawn, preflight as struct methods per vision-aligned trait restoration). Brief BC count 14 → 15. Forward-compatibility Success Criteria row updated; BC list now: BC-ABI-001/002, BC-TYPES-001, BC-FACTORY-001/002, BC-PROTO-001a/001b/002, BC-RING-001, BC-AUTH-001/002, BC-ENGINE-001/002/003, BC-LOCK-001. |
-| 1.4.11 | 2026-05-13 | architect (round-23 micro-fix BC propagation) | BC-ENGINE-002-ERR propagation: commit 563b573 added this BC to SS-engine-module.md §Behavioral Contracts but missed the Pre-Staging table (stale "Total: 3"). This burst fixes SS-engine-module.md v1.1.5 (pre-staging table 3→4), SS-core-types-and-abi.md (engine BC count 3→4, global total 15→16), SS-forward-compatibility.md (BC-ENGINE-002-ERR row added, table intro 15→16), and this brief (BC list 15→16; BC-ENGINE-002-ERR added). No behavioral content changed. |
-| 1.4.12 | 2026-05-13 | product-owner (round-25 routing-precedent ratification + F-R24-cons-3 citation refresh) | **Routing-precedent ratification.** Architect (commit 688a5ed) performed a mechanical BC count propagation (15→16) and added BC-ENGINE-002-ERR to the Forward-compatibility BC enumeration in this brief. The content is verified correct by product-owner; no further content change is needed for the ratified material. However, commit 688a5ed was made directly by the architect without routing through product-owner — a process defect (F-R24-adv-2, MEDIUM severity per round-24 adversary). This v1.4.12 entry restores producer-of-record clarity: v1.4.12 is product-owner authored; v1.4.11 content stands as ratified by product-owner via this entry. The `producer: product-owner` frontmatter field accurately reflects product-owner authorship from this version forward. **Phase 1 gate question flagged for human ratification:** Should architects be permitted to mechanically propagate counts across artifact boundaries they do not own (e.g., when an architecture-domain change forces a brief count update), or should every cross-boundary edit route back through the destination artifact's owner? The current CLAUDE.md routing table (line 188) specifies product-owner owns the brief without exception; this question asks whether a narrow mechanical-propagation exemption is warranted for count-only edits that are provably correct. No CLAUDE.md change is made here — the question is flagged for human decision at the Phase 1 gate review. **F-R24-cons-3 citation refresh.** Three body citations to `SS-daemon-lifecycle.md v1.0.3` updated to v1.0.4 (the file was bumped to v1.0.4 in an earlier round; the brief lagged). Affected locations: §Forward-compatibility contracts / JSONL ring sub-bullet, §Forward-compatibility contracts / Versioned auth token sub-bullet, and the Forward-compatibility Success Criteria table row. No behavioral content changed in any of these locations; version numbers only. |
-| 1.4.13 | 2026-05-13 | product-owner (round-27 F-R26-3 citation refresh + round-27 architect work ratification) | **F-R26-3 citation refresh (MEDIUM).** `SS-engine-module.md` version citation at the Forward-compatibility Success Criteria row (line 244) updated from v1.1.5 → v1.1.7. This was the sole stale inline version citation: SS-daemon-lifecycle.md (v1.0.4, lines 167/168/244) confirmed current; SS-conventions-anti-patterns.md and SS-core-types-and-abi.md have no versioned inline body citations. **Round-27 architect work ratified.** Commits `9be1033` (SS-engine-module v1.1.6 → v1.1.7: constructors for `EngineMetadata`, `ProcessSnapshot`, `EnrichedSession`, and `HookResponse`; all production code + test specs updated to use constructors; F-R26-adv-1 CRITICAL E0639 compile-error resolved) and `48d952a` (SS-conventions-anti-patterns v1.4 → v1.5: semgrep pattern expansion + Semgrep Coverage Hardening subsection) are verified correct by product-owner. Phase 1 implementer following the spec literally will compile cleanly — BC-ENGINE-002-ERR test spec now uses constructors (`EngineMetadata::new(...)`, `ProcessSnapshot::new(...)`, `EnrichedSession::new(...)`, `HookResponse::new(...)`) and E0639 is no longer reachable. No behavioral content changed. |
-| 1.4.14 | 2026-05-13 | product-owner (F-R28-6 revision-history row-order fix) | **F-R28-6 LOW row-order fix.** Revision-history rows v1.4.12 and v1.4.13 were written in reverse chronological order (v1.4.13 appeared on line 77, v1.4.12 on line 78) — a cosmetic authoring error introduced when v1.4.13 was committed before v1.4.12's row position was resolved. This entry restores the monotonically ascending sequence: ...1.4.10, 1.4.11, 1.4.12, 1.4.13, 1.4.14. Row content for both v1.4.12 and v1.4.13 is preserved verbatim; only their order changed. Architect round-29 work has NOT yet landed (SS-engine-module.md remains at v1.1.7 as of this commit); the round-29 ratification and SS-engine-module citation refresh to v1.1.8 will follow as v1.4.15 after architect lands. No behavioral content changed. |
-| 1.4.15 | 2026-05-13 | product-owner (F-R28-6 follow-up citation refresh + round-29 architect work ratification) | **F-R28-6 follow-up citation refresh.** Three stale inline version citations updated: `SS-daemon-lifecycle.md` v1.0.4 → v1.0.5 at §Forward-compatibility contracts / JSONL ring sub-bullet (line 169), §Forward-compatibility contracts / Versioned auth token sub-bullet (line 170), and the Forward-compatibility Success Criteria table row (line 246); `SS-engine-module.md` v1.1.7 → v1.1.8 at the Forward-compatibility Success Criteria table row (line 246). **Round-29 architect work ratified.** Commits `dc719cd` (SS-engine-module v1.1.7 → v1.1.8) and `09642de` (SS-daemon-lifecycle v1.0.4 → v1.0.5) are verified correct by product-owner. Specific changes: (F-R28-1) `EnrichedSession::last_event_micros` type changed `i64` → `Option<i64>` eliminating the epoch-0 sentinel; (F-R28-2) `SpawnArgs`, `SessionHandle`, and `EngineVersion` constructors added plus a new §Cross-Crate Constructor Audit table codifying the round-26 architect-audit-completeness process lesson — future spec changes adding `#[non_exhaustive]` to a struct MUST update this table; (F-R28-3) `HookResponse` builder methods `with_diagnostic` and `with_redirect` added (eliminates pub-field mutation pattern from rustdoc examples); (F-R28-4) `HookEventRecord` defined as a real struct with constructor in `monocle-runtime::ring` plus `RING_FORMAT_VERSION: u32 = 1` const (eliminates the final opaque-blob gap flagged by round-28 adversary); (F-R28-5) v1.1.5 supersession annotation in SS-engine-module.md `traces_to` field corrected. No behavioral content changed. |
-| 1.4.16 | 2026-05-13T18:20:21Z | product-owner (round-31 architect work ratification + citation refresh; F-R30-4 ISO-8601 timestamp convention) | **Citation refresh.** Four stale inline version citations updated: `SS-daemon-lifecycle.md` v1.0.5 → v1.0.6 at §Forward-compatibility contracts / JSONL ring sub-bullet and §Forward-compatibility contracts / Versioned auth token sub-bullet; `SS-daemon-lifecycle.md` v1.0.5 → v1.0.6 and `SS-engine-module.md` v1.1.8 → v1.1.9 at the Forward-compatibility Success Criteria table row. **Round-31 architect work ratified.** Commits `0fc5803` (SS-engine-module v1.1.8 → v1.1.9: F-R30-1 — audit table expanded from 7 → 17 structs with HTML delimiter boundary markers (defined in SS-engine-module.md §Cross-Crate Constructor Audit Table) enabling machine-readable enumeration; `HookEvent` inner structs merged in; 4 factory structs added; CI enforcement prose added — this table is now the central reference for cross-crate constructor governance), `ed9842f` (SS-daemon-lifecycle v1.0.5 → v1.0.6: F-R30-2 — `#[non_exhaustive]` added to `HookEventRecord` struct, resolving the self-referential inconsistency where the v1.0.5 constructor audit table listed `HookEventRecord` as `#[non_exhaustive]`-required but the struct definition lacked the attribute), and `2ad7459` (SS-conventions-anti-patterns v1.5 → v1.6: F-R30-3 — new semgrep rule `monocle-non-exhaustive-struct-audit-completeness` added with fixture corpus and Python script spec; the script reads the HTML-delimited audit table from SS-engine-module.md, enumerates `#[non_exhaustive]`-annotated structs via semgrep, and asserts gap-free coverage; CI enforcement codifies the audit-completeness rule with automatic verification — closes the recurrence pattern where audit table and actual structs drift without detection) are verified correct by product-owner. **F-R30-4 ISO-8601 timestamp convention (prospective).** Per round-30 adversary finding F-R30-4 LOW: same-day revision entries (v1.4.12 through v1.4.15) lacked time precision. From v1.4.16 forward, all revision-history Date entries use ISO-8601 with second precision (`YYYY-MM-DDTHH:MM:SSZ`). Retroactive rewrite of v1.4.12–v1.4.15 is explicitly out of scope per F-R30-4 (prospective only). No behavioral content changed. |
-| 1.4.17 | 2026-05-13T18:38:26Z | product-owner (F-R32-1 correct HTML delimiter strings in v1.4.16 ratification prose) | **F-R32-1 MEDIUM fix.** The v1.4.16 revision-history entry incorrectly named the HTML delimiter strings used in SS-engine-module.md — it described them as AUDIT-TABLE-START / AUDIT-TABLE-END markers. The correct delimiter strings (per SS-engine-module.md lines 1108/1128) are the BEGIN/END markers documented in SS-conventions-anti-patterns.md §Semgrep Coverage Hardening clause 4. A Phase 1 implementer reading the brief revision history to understand the delimiters would have searched for the wrong marker names and found nothing. This is a purely textual correction; no architecture documents need refresh (architect round-33 burst is running in parallel; a v1.4.18 follow-up will be produced if any citation refresh is required after that burst lands). No behavioral content changed. |
-| 1.4.18 | 2026-05-13T19:00:00Z | product-owner (F-R36-1 SS-engine-module citation v1.1.9→v1.1.10 + F-R36-2 rewrite v1.4.16/v1.4.17 entries to remove verbatim delimiter quotes) | **F-R36-1 citation refresh (IMPORTANT).** `SS-engine-module.md` version citation in the Forward-compatibility Success Criteria table row (line 249) updated from v1.1.9 → v1.1.10. Architect bumped SS-engine-module.md to v1.1.10 in round-35 commit bdfc4b8; the brief lagged by one version. No behavioral content changed. **F-R36-2 convention compliance (MEDIUM).** The v1.4.16 and v1.4.17 revision-history entries violated the v1.8 convention rule from SS-conventions-anti-patterns.md (no verbatim quoting of audit-table delimiter strings in §Trace or any spec narrative). Both entries contained the actual delimiter strings copy-pasted literally rather than referencing them by name. This is an ironic finding for v1.4.17, which was itself the F-R32-1 fix entry that corrected the wrong delimiter names in v1.4.16 — and then introduced the correct delimiter strings verbatim in the very same revision-history cell. Both entries are now rewritten: the v1.4.16 entry refers to the HTML delimiter boundary markers by name as defined in SS-engine-module.md §Cross-Crate Constructor Audit Table; the v1.4.17 entry refers to the correct delimiter strings as documented in SS-conventions-anti-patterns.md §Semgrep Coverage Hardening clause 4. The historical narrative is fully preserved — a reader understands that v1.4.16 introduced the machine-readable HTML-delimited audit table and v1.4.17 corrected the wrong marker names that v1.4.16 had quoted. Closes round-36 adversary findings F-R36-1 (brief side) and F-R36-2 (brief side). Architect parallel burst handles the SS-conventions §Trace v1.6 entry. No behavioral content changed. |
-| 1.4.19 | 2026-05-13T20:15:00Z | product-owner (F-R42-cons-1 SS-engine-module citation v1.1.10→v1.1.11 + broader-scope sweep; D-042 scope-hole root-cause noted) | **F-R42-cons-1 citation refresh (MEDIUM).** `SS-engine-module.md` version citation in the Forward-compatibility Success Criteria table row (line 250) updated from v1.1.10 → v1.1.11. Architect bumped SS-engine-module.md to v1.1.11 in round-41 commit eaf4adf (F-R40-2: stale current-pointer citations in v1.1.8 §Trace rewritten as historical pinpoints); the brief lagged by one version. This is the 6th recurrence of the cross-artifact citation-staleness META-pattern. **Broader-scope sweep result.** A scope-corrected grep was run across the entire `.factory/specs/` tree (not just `.factory/specs/architecture/` as D-042 mandated). All SS-* version citation hits enumerated and classified as historical pinpoints or current-pointers. Result: no additional stale current-pointers found in any file. `SS-daemon-lifecycle.md` citations at lines 173 and 174 confirmed at v1.0.6 (current). All other hits in architecture-domain files are historical pinpoints (version-at-introduction annotations, §Trace narrative, or constructor-audit table entries) — classified leave-alone per sweep protocol. **Root cause of 6th recurrence.** D-042 manual workflow rule (adopted round-32) scoped its mitigation grep to `.factory/specs/architecture/` only. The brief lives at `.factory/specs/product-brief.md` — one directory level up, outside that scope. This scope hole has now produced two confirmed recurrences (round-32 brief stale, round-42 brief stale). The D-042 option (c) mitigation is structurally insufficient when the brief is excluded from the sweep. Correct scope is `.factory/specs/` (recursive, all subdirectories). No architectural changes required; surfaced to architect for D-042 scope correction in the companion burst. No behavioral content changed. |
-| 1.4.20 | 2026-05-13T20:30:00Z | product-owner (F-R48TP-1 SS-engine-module citation v1.1.11→v1.1.13; D-042 full-brief sweep clean) | **F-R48TP-1 citation refresh (LOW).** `SS-engine-module.md` version citation in the Forward-compatibility Success Criteria table row updated from v1.1.11 → v1.1.13. Brief was 2 versions stale: architect bumped SS-engine-module.md to v1.1.12 in R47.2 commit 42b0007 and to v1.1.13 in R47.3 commit 83cd93f; v1.4.19 lagged both bumps (D-042 sweep at v1.4.19 time ran `.factory/specs/` scope but was committed before those architect bursts landed). This is the 7th recurrence of the cross-artifact citation-staleness META-pattern. **D-042 full-brief sweep result (R47.4).** grep -nE `SS-[a-z-]*\.md v[0-9]` run across full `.factory/specs/product-brief.md`. All hits classified: `SS-daemon-lifecycle.md v1.0.6` at lines 174 and 175 confirmed CURRENT (actual frontmatter v1.0.6). Revision-history rows 76 and 77 contain historical pinpoints (v1.1.5, v1.0.3, v1.0.4) — leave-alone per sweep protocol. No additional stale current-pointers found. **PG-D042-BURST-SKIP acknowledgement.** Brief was already 1-behind at R47.3 time and became 2-behind because R47.2 and R47.3 architect bursts ran D-042 at architecture/ scope only, not full `.factory/specs/`. Codification of corrected D-042 scope (`.factory/specs/` recursive) is state-manager/architect's call in close-out commit; out of brief-burst scope. No behavioral content changed. |
-| 1.4.21 | 2026-05-14T00:00:00Z | product-owner (F-R49-cascade-1 SS-engine-module citation v1.1.13→v1.1.14; D-042 full-brief sweep clean) | **F-R49-cascade-1 citation refresh (LOW).** `SS-engine-module.md` version citation in the Forward-compatibility Success Criteria table row updated from v1.1.13 → v1.1.14. Architect bumped SS-engine-module.md to v1.1.14 in R49 commit 07c1259 to fix F-R48-adv-3 (gene-source qualifier on BC-HOOK-018 inline citation); the brief lagged because brief edits require product-owner routing per D-041. This is the M-CASCADE-SCOPE pattern: architect burst legitimately bumped the architecture spec; brief cascades as a follow-up product-owner burst. **D-042 full-brief sweep result (R49.1).** grep -nE `SS-[a-z-]*\.md v[0-9]` run across full `.factory/specs/product-brief.md`. All current-pointer hits classified: `SS-daemon-lifecycle.md v1.0.6` at body lines 175 and 176 confirmed CURRENT (actual frontmatter v1.0.6). All other hits are revision-history pinpoints — leave-alone per sweep protocol. No additional stale current-pointers found beyond F-R49-cascade-1. No behavioral content changed. |
-| 1.4.22 | 2026-05-14T00:00:00Z | product-owner (F-R51-cascade-1 SS-engine-module citation v1.1.14→v1.1.15; PG-4 §-heading-existence audit; D-042 full-brief sweep clean) | **F-R51-cascade-1 citation refresh (LOW).** `SS-engine-module.md` version citation in the Forward-compatibility Success Criteria table row (line 253) updated from v1.1.14 → v1.1.15. Architect bumped SS-engine-module.md to v1.1.15 in R51.1 commit 562b54c (F-R51-adv-1 mis-anchor fix + PG-4 §-heading-existence rule codification); the brief lagged because brief edits require product-owner routing per D-041. This is the M-CASCADE-SCOPE pattern. **PG-4 §-heading-existence audit on brief (R51.2).** grep -nE applied per PG-4 recipe; 11 §-heading references found and verified against actual headings in cited files. One mis-anchor found and fixed: §JSONL Ring Buffer at line 176 (body sub-bullet for JSONL ring format versioning) cited a heading that does not exist in `SS-daemon-lifecycle.md`; corrected to `§Daemon Lifecycle Protocol` (the existing H2 heading under which the JSONL format-version content lives — `### Drain (10-Second Timeout)` is a sub-section of it). **D-042 full-brief sweep result (R51.2).** grep -nE `SS-[a-z-]*\.md v[0-9]` run across full `.factory/specs/product-brief.md`. All current-pointer hits classified: `SS-daemon-lifecycle.md v1.0.6` at body lines 176 and 177 confirmed CURRENT. `SS-engine-module.md v1.1.15` at line 253 is the fixed current-pointer (was v1.1.14). All other hits are revision-history pinpoints — leave-alone per sweep protocol. No additional stale current-pointers found. No behavioral content changed. |
-| 1.4.23 | 2026-05-14T07:50:10Z | product-owner (F-R53-cascade-1 SS-daemon-lifecycle citations v1.0.6→v1.0.7; D-042 full-brief sweep clean; PG-4 §-heading-existence audit at expanded 5-pattern scope) | **F-R53-cascade-1 citation refresh (LOW).** `SS-daemon-lifecycle.md` version citations updated v1.0.6 → v1.0.7 at 3 body sites: §Forward-compatibility contracts / JSONL ring sub-bullet (line 177), §Forward-compatibility contracts / Versioned auth token sub-bullet (line 178), and Forward-compatibility Success Criteria table row (line 254). Architect bumped SS-daemon-lifecycle.md to v1.0.7 in R53.1 commit 8baec19 (10 hidden brief §-anchor mis-anchors fixed across architecture files; PG-RECIPE-SCOPE META-META rule codified); the brief lagged because brief edits require product-owner routing per D-041. This is the M-CASCADE-SCOPE pattern. **D-042 full-brief sweep result (R53.2).** 4-pattern sweep (SS-*.md v, dtu-assessment.md v, vision v, ADR v) across full `.factory/specs/product-brief.md`. Pattern 1 (SS-*.md v): 3 stale current-pointers found and fixed (all 3 at SS-daemon-lifecycle.md v1.0.6 → v1.0.7); `SS-engine-module.md v1.1.15` at line 253 confirmed CURRENT; all other SS-* hits are revision-history pinpoints — leave-alone per sweep protocol. Patterns 2/3/4 (dtu-assessment.md v, vision v, ADR v): no version citations found — CLEAN. **PG-4 §-heading-existence audit on brief outbound §-anchors (R53.2, expanded 5-pattern recipe).** All body-level §-anchor references verified against actual headings in cited files. SS-core-types-and-abi.md: §ABI Version Constant ✓, §Enum Extensibility ✓, §FactoryAdapter Trait ✓, §Prost Wire Schemas ✓. SS-daemon-lifecycle.md: §Daemon Lifecycle Protocol ✓ (fixed in R51.2; confirmed still resolves in v1.0.7). Vision: §Vision Statement ✓, §End-to-End Killer Scenario ✓, §Phase Plan ✓, §Process Topology ✓, §Explicit Non-Goals ✓, §Workspace Layout ✓, §Key Abstractions ✓. oq-research.md: §OQ-01 through §OQ-11 all resolve to `## OQ-NN:` headings ✓. market-intelligence.md: §Risk Register ✓. brief-validation-v2.md: §OQ-M1 and §OQ-M3 referenced in Trace column of Open Questions table — these are row-reference identifiers pointing to table rows in `### Market Intel Open Questions Raised` section (not navigable heading anchors); classification unchanged from R51.2 audit (trace-column references, not prose hyperlinks). Total §-anchors checked: 22. Broken navigable anchors: 0. No behavioral content changed. |
-| 1.4.24 | 2026-05-17T20:00:00Z | product-owner (T-128n Part 2 — F-R105 Round 4: ADR-0005 dual-accept propagation) | ADR-0005 dual-accept auth header propagated to 2 body sites: §Phase 1 constraints hook-ingestion bullet (line 116) and §Success Criteria Hook protocol parity row (line 239). D-042 sweep CLEAN. See §Trace v1.4.24 for SE-17f before/after detail. |
-| 1.4.25 | 2026-05-17T22:00:00Z | product-owner (F-R106-8 BC-DTU-001 orphan fix; F-R106-19 revision history readability; F-R106-20 old-form BC ID canonicalization; GAP-R45-3 SS-engine-module pin correction) | **F-R106-8 HIGH**: BC-DTU-001 orphan promise removed from §Success Criteria DTU row; replaced with NFR-011 anchor (DTU clone fidelity ≥0.95 per nfr-catalog.md). **F-R106-19 LOW**: v1.4.24 revision-history row split into terse table row + §Trace v1.4.24 narrative entry. **F-R106-20 LOW**: old-form BC IDs canonicalized — §Success Criteria rows (lines 244 + 246): BC-DAEMON-003 → BC-2.01.003; 16-item old-form list → canonical BC-2.SS.NNN form with old-ID parentheticals per BC-INDEX §Renumbering Map. BC count updated 16 → 22 to match BC-INDEX v1.3 actual total. **GAP-R45-3 MED**: SS-engine-module.md version pin in §Success Criteria Forward-compatibility row corrected v1.1.15 → v1.1.18. D-042 sweep CLEAN (see §Trace v1.4.25). |
-| 1.4.26 | 2026-05-18T01:00:00Z | product-owner (F-R108-8 §Success Criteria Forward-compatibility row stale pins) | **F-R108-8 HIGH**: §Success Criteria Forward-compatibility row (Target cell, line 247) had stale BC-INDEX v1.3, SS-daemon-lifecycle.md v1.0.7, SS-engine-module.md v1.1.18 pins; missing SS-core-types-and-abi.md version. Updated to BC-INDEX v1.6 (PO 7A bump), SS-daemon-lifecycle.md v1.0.31, SS-core-types-and-abi.md v1.2.12, SS-engine-module.md v1.1.19 (Architect 6D commit 98396fe canonical versions). See §Trace v1.4.26. |
-| 1.4.27 | 2026-05-18T05:40:00Z | product-owner (F-R109-6 §Success Criteria Forward-compatibility row stale pins — Architect 8A bump back-cascade) | **F-R109-6 HIGH**: SS-core-types-and-abi.md v1.2.12 → v1.2.13, SS-daemon-lifecycle.md v1.0.31 → v1.0.32, SS-engine-module.md v1.1.19 → v1.1.20, BC-INDEX v1.6 → v1.7 (Architect 8A + PO 8B). D-042 sweep CLEAN. See §Trace v1.4.27. |
-| 1.4.28 | 2026-05-18T13:30:00Z | product-owner (R15B F-R116-2 BC-INDEX pin back-cascade v1.7 → v1.9) | **F-R116-2 HIGH**: §Success Criteria Forward-compatibility row BC-INDEX pin stale since Round 10A; Rounds 9B + 10A did not back-cascade to brief line 248. Updated `BC-INDEX v1.7` → `BC-INDEX v1.9`. D-042 sweep CLEAN. See §Trace v1.4.28. |
-| 1.4.29 | 2026-05-18T18:30:00Z | product-owner (R17B F-R118-4 / GAP-R57-007 BC-INDEX pin back-cascade v1.9 → v1.10; SE-22 sweep) | **F-R118-4 / GAP-R57-007 HIGH**: §Success Criteria Forward-compatibility row BC-INDEX pin stale since Round 16C (commit 9a02f5a bumped BC-INDEX v1.9 → v1.10; brief not back-cascaded). Updated `BC-INDEX v1.9` → `BC-INDEX v1.10`. SE-22 full sweep result: all other NORMATIVE pins CURRENT; L2-INDEX, ARCH-INDEX, VP-INDEX, PRD version not cited in brief body — CLEAN. See §Trace v1.4.29. |
-| 1.4.30 | 2026-05-19T00:30:00Z | product-owner (R19B GAP-R59-003 BC-INDEX pin back-cascade v1.10 → v1.11; SE-22 v2 second application) | **GAP-R59-003 HIGH**: §Success Criteria Forward-compatibility row BC-INDEX pin stale since Round 18B (commit 442f5ac bumped BC-INDEX v1.10 → v1.11; brief not back-cascaded by R18B/R18C/R18D/R18E/R19A). Updated `BC-INDEX v1.10` → `BC-INDEX v1.11` at line 251. SE-22 v1 in-artifact sweep result: all other NORMATIVE pins CURRENT — CLEAN. SE-22 v2 consumer-ledger: PRD `traces_to:` (v1.4.29, set R19A), L2-INDEX §Trace line 149 (v1.4.29, set R18C), CAP-001 §Trace v1.5 (v1.4.29, set R17E), CLAUDE.md main-branch (v1.4.29) — all will require follow-up dispatch by orchestrator. See §Trace v1.4.30. |
+| 1.0 | 2026-05-12 | product-owner | Initial brief — observe-only scope, Phase 1–4 roadmap. |
+| 1.1–1.4.34 | 2026-05-12–2026-05-30 | product-owner + architect | Incremental tightening: OQ/SOQ resolutions, forward-compatibility contracts, DTU clone, adversary finding closures, version-pin back-cascades. Full history preserved in git (factory-artifacts branch). Normative decisions from this lineage that survive into v2.0 are cited in §Preserved Substrate below. |
+| **2.0.0** | **2026-06-03** | **product-owner** | **D-236/D-237/D-238 CONTROL-CENTER RE-BASELINE.** Retired: observe-only constraint and all residual "observe-only" framing in scope/non-goals/roadmap. Retired: Phase 1–4 observe-only roadmap. Added: LAUNCH, EMBEDDED PTY, MULTI-SESSION/MULTI-PROJECT, INTERACTIVE TUNE as first-class v1 capabilities. Replaced roadmap with v1A/v1B wave plan. Replaced success criteria with control-center bar. Replaced competitive positioning. session-host-owns-PTY persistence model (D-238). Hook auto-injection on spawn. Preserved: all normative decisions from v1.4.x lineage that remain valid (OQ resolutions, forward-compatibility contracts, non-goals that are still non-goals). Traces to vision-synthesis v2.1 (approved D-238 by Joshua Magady 2026-06-03). Status: draft — pending adversarial review and human gate before architecture delta proceeds. |
+
+---
+
+## What Is This?
+
+Monocle is a Rust TUI control center for AI coding harness sessions. A single `Ctrl-\` popup
+gives you the complete session management surface: launch new Claude Code (and future harness)
+sessions, watch them run in an embedded terminal pane inside monocle, manage many sessions
+across many projects, resolve permission prompts without leaving the TUI, and tune your
+customization configuration — all without switching terminal windows.
+
+> *"We need to be able to launch, manage, and observe — a better lazyclaude, a better
+> claude-squad. We should never have to leave the TUI and we should be able to manage
+> as many sessions and as many projects with sessions as we need to. We need to be able
+> to run, launch, manage, observe, tune, control — everything from the TUI."*
+> — Joshua Magady, D-236 (2026-06-03), verbatim.
+
+The architectural inversion from the observe-only scope: the monocle daemon no longer merely
+receives hooks from sessions the user launched elsewhere. **The daemon now spawns and owns
+sessions.** The TUI is a rich client that streams PTY output, forwards keystrokes, and manages
+session lifecycle over the existing Unix domain socket IPC. The five-plane architecture,
+EngineModule/FactoryAdapter traits, permission overlay, and all Phase-1 substrate remain;
+they are extended, not replaced.
+
+---
 
 ## Who Is It For?
 
 | Persona | Pain Point | Current Workaround |
 |---------|-----------|-------------------|
-| **Multi-session Claude Code developer** — runs 2-4 Claude Code sessions in parallel across worktrees or projects | Permission prompts from session B stall while the developer is focused on session A's window; must `Ctrl-b n` to find the right pane, read inline text, respond, switch back | Context-switch to correct tmux window; miss prompts; restart stalled sessions |
-| **Factory-pattern operator** — runs vsdd-factory-style pipelines where each phase advances through a STATE.md; needs situational awareness without leaving the editor | Must `cat .factory/STATE.md`, `tree .factory/`, and mentally track which phase each session is in; blocking issues invisible until a session stalls | Manual file reads; `grep` for blocking issues; context-switch to read pipeline output |
-| **Multi-harness operator** (v4 target, design must support) — runs Claude Code sessions on one task and CodeMachine sessions on another simultaneously | No unified view of cost or session health across harnesses; different UIs, different status indicators | Open separate TUI instances per harness; no aggregate cost tracking |
+| **Multi-session Claude Code developer** — 2–4 parallel Claude Code sessions across worktrees or projects | Launching a new session requires opening a terminal, navigating to the project, configuring hooks manually; permission prompts from one session stall while the developer is focused on another; must context-switch tmux windows to check status | Manually open terminal windows; `cat` hook settings; `Ctrl-b n` to find the right pane; restart stalled sessions |
+| **Factory-pattern operator** — vsdd-factory-style pipelines with STATE.md phase tracking | Needs situational awareness without leaving the editor; blocking issues invisible until a session stalls; launching a new factory session requires separate terminal management | Manual `cat .factory/STATE.md`; `tree .factory/`; separate terminals per session |
+| **Multi-harness operator** (v2 target, design must accommodate) — Claude Code + CodeMachine sessions simultaneously | No unified launch surface, no unified status view across harnesses | Open separate TUI instances per harness; no aggregate cost view |
 
-The killer scenario that motivates the v1 scope is the **multi-session developer**:
-three sessions running (monocle project, blog, api-svc), two concurrent permission
-prompts from different sessions, developer in nvim. Per vision §End-to-End Killer
-Scenario: 4 keystrokes (`Ctrl-\`, `2`, `1`, `Ctrl-\`) resolves both prompts with
-zero context switches vs. the current 6+ keystrokes + 2 window switches + risk of
-session timeout.
+**The killer scenarios that motivate v1 scope** — per vision §End-to-End Killer Scenarios:
+
+1. **Launch and enter a session:** Developer presses `+` in the TUI, selects a profile and
+   project in the SessionCreation wizard, and monocle launches `claude --settings /tmp/monocle-hooks-xyz.json`
+   in the worktree with hook auto-injection. Developer presses Enter to enter the embedded
+   terminal pane. Sends a prompt. Returns to dashboard with Esc. No new terminal window opened.
+   No hook settings file manually configured.
+
+2. **Multi-session permission resolution (preserved from v1.1.2):** Three sessions running,
+   two concurrent permission prompts. Four keystrokes (`Ctrl-\`, `2`, `1`, `Ctrl-\`) resolves
+   both prompts with zero window switches, zero session stalls. The cascaded VecDeque
+   overlay showing both prompts simultaneously is the core UX advantage.
+
+---
 
 ## Scope
 
-### In Scope
+### In Scope — v1 Capabilities
 
-The scope below maps to the Phase Plan in vision §Phase Plan. Phase 1 is the
-v1 delivery contract. Phases 2-4 are roadmap entries the architecture must
-accommodate without breaking Phase 1 ABI.
+The four capabilities below plus the already-built Observe + Control (permission overlay)
+constitute v1. The two-wave ordering is feature sequencing per CLAUDE.md CANONICAL PRINCIPLE
+Rule 2: each wave ships production-grade on its cycle. No capability is "MVP" or deferred for cleanup.
 
-**Phase 1 — Runtime Core (v1 delivery contract)**
+#### Wave v1A: Launch Wave
 
-- `monocle daemon start/stop`: long-lived background process that survives terminal
-  closes; binds axum HTTP on OS-assigned port written to lock file (OQ-04/JC-3
-  closed); writes daemon lock file with `{port, token, contract_version}` at mode
-  `0o600` (SOQ-1); daemon auto-starts on first TUI launch with `MONOCLE_NO_AUTOSTART=1`
-  escape hatch for CI/power users (OQ-01 hybrid)
-- Daemon lock-file path: `directories::ProjectDirs::runtime_dir()` with
-  state_dir → data_dir → `~/.monocle` fallback chain (OQ-10); token rotation invariant:
-  bind socket + write lock-file + write token THEN hooks-settings reads token (SOQ-2)
-- Hook ingestion endpoints (5 total, EX-2 resolution): `POST /hooks/pre-tool-use`,
-  `POST /hooks/notification`, `POST /hooks/stop`, `POST /hooks/session-start`,
-  `POST /hooks/prompt-submit`; schema byte-compatible with Claude Code's tmpfile hook
-  protocol; auth via dual-accept header per ADR-0005: canonical `X-Monocle-Authorization: monocle-v1:<64-hex>` (monocle-aware tools) takes priority; `X-Claude-Code-Ide-Authorization: <64-hex>` (real Claude Code compatibility alias, raw token no prefix) accepted as fallback with WARN-level deprecation log; `PostToolUse` omitted
-  per JC-2 (Claude Code gene-source parity BC-HOOK-007). Note: The vision document's
-  §Process Topology diagram pre-dates JC-2 / EX-2 endpoint closures and depicts an
-  illustrative endpoint set (with PostToolUse / PermissionPrompt); the canonical Phase 1
-  endpoint set is the 5 endpoints listed above and the vision diagram is non-authoritative
-  for endpoint enumeration.
-  - Hook receiver hardening: body size limit ≤256KiB (RFC 7230 §3.3.2 compliant; reject
-    with HTTP 413 Payload Too Large), `/healthz` liveness endpoint, `/status` daemon-state
-    query endpoint, graceful shutdown protocol on SIGTERM/SIGINT (drain in-flight requests,
-    flush JSONL ring per OQ-06, close UDS, persist lock file shutdown marker). See
-    `.factory/specs/architecture/SS-conventions-anti-patterns.md` and the architect's
-    daemon-lifecycle additions for the full BC list.
-- Hook tmpfile: shared per-runtimeDir, mode `0o600`, atomic-replace (OQ-02)
-- `ClaudeCodeModule`: built-in `EngineModule` implementation; detects Claude Code
-  processes via PID walk; enriches with token counts, cost, phase tag from hook
-  events; handles hook events and produces `EnrichedSession`
-- Sessions panel (TUI): live session roster showing harness icon, project name,
-  phase tag, token count, cost, uptime; `/` filter (nucleo-matcher); `Enter`
-  fullscreen
-- Permission prompt overlay: cascaded `VecDeque<PromptModal>` — both prompts visible
-  simultaneously; diff preview via `similar 3`; Accept-once / Accept-always /
-  Reject keybindings; `[t]` trace-to-source stub; overlay clears on daemon disconnect
-  (SOQ-3); overlay survives `Ctrl-\` hide/show cycle without dropping queued prompts
-- Profile picker: sticky-per-project with `Ctrl-P` picker override (OQ-05; Phase 1
-  user-test target — MEDIUM confidence)
-- Event ribbon panel: rolling log of hook events (PreToolUse, Notification, Stop,
-  SessionStart, UserPromptSubmit) with session ID and latency; hybrid RAM ring +
-  async JSONL flush, 100MB × 5 rotation (OQ-06)
-- `monocle-config`: reads/writes `~/.monocle/config.json` (via `tempfile::persist`
-  for atomic writes); harness profile schema version 1; CCR path field; binding
-  overrides stub
-- Tokio mpsc **bounded** event bus with drop counter surfaced in status bar;
-  no unbounded channels (triple-confirmed anti-pattern from broker-r1 §3)
-- `monocle-ipc`: Unix domain socket IPC between TUI client and daemon; UDS-only
-  in v1 — shared-memory ring deferred to Phase 4 transport variant (OQ-08)
-- `monocle-proto`: prost protobuf seam in monocle-core — zero runtime cost in v1,
-  enables cross-host events in Phase 4 (OQ-07)
-- Permission token enum: see `.factory/specs/architecture/SS-permissions-phase1.md`
-  (architect-produced canonical artifact) — small Phase-1-purpose enum derived from
-  Claude Code hook permission semantics (allow/deny/ask-user decisions for the 5
-  Phase 1 hook endpoint types). The zellij-style 17-variant WASM plugin permission
-  enum is Phase 3 scope alongside the wasmtime plugin SDK; not in Phase 1.
-  Dispatcher no-op until Phase 3 (SOQ-4); `VsddFactoryAdapter` statically bundled
-  in v1 — WASM plugin SDK ships Phase 3, not v1 (OQ-03)
-- macOS + Linux build targets (darwin/linux × amd64/arm64); CI matrix on GitHub
-  Actions; MSRV Rust 1.88 (RUSTSEC-2026-0009 Path B — time 0.3.47 floor; original OQ-11 value was 1.86 ratatui floor, bumped Wave 6)
-- DTU Phase 1 clone: `dtu-claude-code-hooks-v1` synthesized clone of Claude Code hook protocol surface for testing fidelity and regression detection. Per `.factory/specs/dtu-assessment.md` §"Phase 1 Clone Build Effort" (architect-specced this burst). Fidelity target: ≥0.95 against fixture corpus.
-- **Forward-compatibility contracts (locked pre-Phase-1 per human authorization):**
-  - **monocle-core ABI:** Export `MONOCLE_ABI_VERSION: u32 = 1` const; expose via `/status` endpoint. Phase 3 plugin SDK uses this to refuse incompatible Phase 1 daemons. See `SS-core-types-and-abi.md` §ABI Version Constant.
-  - **Public enum extensibility:** All `monocle-core` public enums (`HookType`, `HookEvent`, `DenyReason`, `AllowPattern`, `DenyPattern`) carry `#[non_exhaustive]` to permit Phase 2+ variant additions without breaking downstream `match` statements. Two enums are **exhaustive by design** and exempt per ADR-0004 (architect-produced this same fix burst): `Phase1Permission` (canonical 5-variant Claude Code permission set; new variants require explicit ADR) and `ClaudeCodeTool` (mirrors Claude Code's tool list; new tools require explicit ADR when Claude Code ships them). See `SS-core-types-and-abi.md` §Enum Extensibility and `ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md` for the canonical exemption rationale.
-  - **FactoryAdapter trait:** `monocle-core::factory::FactoryAdapter` trait defined; `VsddFactoryAdapter` IMPLEMENTS the trait (not wired inline as a struct with hardcoded behavior). Phase 1 ships one impl (`VsddFactoryAdapter`); Phase 3 plugin SDK consumes `EngineModule` and `FactoryAdapter` as open traits (no sealing — per vision authority). The traits are documented public APIs; plugin authors implement them directly. See `SS-core-types-and-abi.md` and `SS-engine-module.md` (round-15 architect updates restoring vision-aligned signatures). See `SS-core-types-and-abi.md` §FactoryAdapter Trait.
-  - **Prost wire schemas:** `monocle-proto` defines `HookEnvelope` + 5 event-type messages with `uint32 schema_version = 1;` as first field. Phase 4 federation uses these for cross-host wire format with schema_version compatibility checks. See `SS-core-types-and-abi.md` §Prost Wire Schemas.
-  - **JSONL ring format versioning:** Every JSONL event record carries `format_version: u32 = 1` as first key. Phase 2 trigger-trace can read Phase 1 ring history; version field allows future format evolution. See `SS-daemon-lifecycle.md` v1.0.7 §Daemon Lifecycle Protocol.
-  - **Versioned auth token prefix:** Auth token format `monocle-v1:<64-char-hex>`. Phase 4 federation can introduce OAuth2 (`Bearer ...`) tokens without colliding with Phase 1 local tokens. Validation rule: reject non-prefix tokens with HTTP 401. See `SS-daemon-lifecycle.md` v1.0.7 §Daemon Lifecycle Protocol.
+**LAUNCH** — the core architectural inversion.
 
-**Phase 2 — Static Plane (roadmap)**
+monocle spawns and owns AI coding harness sessions from the TUI. The daemon SessionManager
+opens a `portable-pty` PTY pair, builds a CommandBuilder from `EngineModule::spawn_recipe()`
+(binary + args including `--settings <hooks_settings_path>` for hook auto-injection + cwd as
+git worktree root + CCR env vars if applicable), and supervises the child process. Session
+lifecycle: `Created → Launching → Running → Detached → Terminated`.
 
-- `monocle-static` crate: reads CLAUDE.md, settings.json permission blocks, hook
-  scripts, keybindings.json for the session in focus
-- Customizations panel (TUI): 7 customization types from nikiforovall gene set
-  (slash commands, subagents, skills, memory files, MCP servers, hooks, LSP servers);
-  filter All / by type; trigger-trace `[t]` from permission prompt overlay to
-  defining settings.json line
-- Full AppMode state machine with FocusSnapshot enum (compile-time mutual exclusion);
-  5-level binding precedence (SearchPrompt > UserCustomCommand > PerContext >
-  Global > Builtin); telescope help overlay
+The `EngineModule` trait is extended with:
 
-**Phase 3 — Workflow Plane (roadmap)**
+```rust
+fn spawn_recipe(&self, opts: &SpawnOptions) -> Result<SpawnRecipe, EngineError>
+```
 
-- `monocle-workflow` crate: `FactoryAdapter` trait; `VsddFactoryAdapter` promoted
-  from static bundle to WASM-loadable; `notify 8` watcher for live updates
-- Workflow panel (TUI): phase, status, awaiting, blocking issues, cycle for focused
-  session's project
-- `monocle-plugin-sdk` crate: WASM ABI (`wasmtime 44`) for third-party
-  `EngineModule` + `FactoryAdapter` implementations; loaded from `~/.monocle/plugins/`
-- MSRV bumps to Rust 1.92 (wasmtime requirement, OQ-11)
+`ClaudeCodeModule` implements this. The `SpawnRecipe` carries `binary`, `args`, `env`, and `cwd`.
+Default impl returns `Err(UnsupportedOperation)` for engines that do not yet support monocle-spawned
+sessions.
 
-**Phase 4 — Cross-plane + Multi-harness + Federation (roadmap)**
+**EMBEDDED PTY** — never leave the TUI.
 
-- `CodeMachineModule`: second built-in `EngineModule`
-- `russh 0.60` federation tunnel: TUI on host A shows sessions from host B
-- `monocle-ipc` shared-memory ring buffer transport variant (OQ-08)
-- OTel cost/token panel with aggregate across harnesses; revisit PostToolUse
-  endpoint need at this point (JC-2)
-- CCR integration: detect on PATH, write per-session JSON, set `ANTHROPIC_BASE_URL`
-- rmcp MCP bridge (Phase 4 only, OQ-09): session query, prompt injection for tooling
+The running session is visible and interactive inside monocle. The TUI Preview pane slot hosts a
+`tui-term::PseudoTerminal` widget that renders the `vt100::Screen` from the daemon's per-session
+`vt100::Parser`. The TUI sends keystrokes to the daemon as `KeyInput` IPC messages; the daemon
+writes PTY-encoded bytes to the master. The user reads and responds to the Claude session inside
+monocle without switching windows.
 
-### Out of Scope
+PTY byte stack: `portable-pty 0.9.0` + `vt100 0.16.2` + `tui-term 0.3.4`. All MIT, no RUSTSEC,
+MSRV 1.88 compatible, ratatui 0.30 compatible. See §Tech Direction and vision §Tech Stack.
 
-Per vision §Explicit Non-Goals (these are hard boundaries, not deferred features):
+Input fidelity (v1A): full fidelity — printable keys + control keys (Ctrl-C, Ctrl-D, Ctrl-Z) +
+arrows + Backspace + Tab + Esc + Enter + mouse events + Kitty keyboard protocol. Bracketed paste
+included. No input class is deferred. Human-ratified at D-237. Architect routes implementation
+details (crossterm Kitty-enhancement flags + mouse capture → PTY byte translation → portable-pty
+master write) in the architecture delta.
 
-- **Does NOT execute workflows** — monocle never writes STATE.md, never triggers
-  factory phases, never dispatches agents; workflow panel is read-only observation
-- **Does NOT write STATE.md** — the `VsddFactoryAdapter` reads STATE.md; monocle
-  never mutates it
-- **Does NOT route LLM API requests** — CCR integration is detect-on-PATH +
-  config-write only; monocle does not proxy or modify LLM traffic (integrate-external,
-  per D-010)
-- **Does NOT replace the terminal multiplexer** — monocle runs inside tmux; it is
-  not a multiplexer; zellij's multiplexer internals are a Leave-behind gene
-- **Does NOT include PM/Worker multi-agent orchestration** — explicitly excluded
-  by D-002; the human is always the coordinator
-- **Does NOT own session transcripts** — hook events are ephemeral ingestion signals;
-  full transcript storage belongs to each harness's own persistence layer
-- **Does NOT build its own LLM provider abstraction** — CCR is the external router
-  (D-010); monocle integrates by detecting it
-- **Does NOT include `PostToolUse` hook endpoint in v1** — per Claude Code gene-source
-  parity (any-context BC-HOOK-007 establishes the 5-endpoint set: PreToolUse,
-  Notification, Stop, SessionStart, UserPromptSubmit; PostToolUse is intentionally
-  absent). Revisit if Phase 4 OTel cost panel requires PostToolUse data. (JC-2)
-- **Does NOT ship the WASM plugin SDK in v1** — Phase 3 deliverable per OQ-03;
-  v1 statically bundles `VsddFactoryAdapter` as the sole built-in factory adapter
-- **Does NOT ship the rmcp MCP bridge port in v1** — Phase 4 deliverable per OQ-09
+AppMode is extended with `EmbeddedTerminal { session_id, prior }` and
+`SessionCreation { step, prior }` variants. The Preview pane transitions from session detail to
+the live PTY widget when the user enters embedded terminal mode.
+
+**MULTI-SESSION / MULTI-PROJECT**
+
+List, switch, create, kill, rename, and group sessions by project from the TUI. Sessions grouped
+by `project_name` with collapsible header rows. Fast switching: O(1) — swap which parser the TUI
+widget renders; all sessions parse in the background. Project picker overlay (SessionCreation step 2).
+GC policy: Terminated sessions cleaned from registry after 10-second grace period.
+
+`session-state.json` per session persists enough metadata to re-display terminated sessions and
+offer re-launch with the same parameters (project, harness, profile).
+
+**Hook auto-injection on spawn:** when monocle launches a session it writes the hooks settings
+file to a per-session temp path and passes `--settings <path>` in the CommandBuilder args. The
+`lock.app = 'monocle'` filter ensures only monocle-launched sessions trigger the monocle hook
+endpoint. No manual `~/.claude/settings.json` copy required.
+
+**Persistence model (session-host-owns-PTY; daemon coordinates/re-attaches) — three cases (D-238):**
+
+PTY masters and harness child processes are owned by native detached per-session session-host
+processes that outlive the daemon process. The daemon coordinates session-hosts and re-attaches
+over UDS on restart.
+
+1. **TUI exit and reconnect (supported in v1A):** session-host processes continue owning PTY
+   masters and child handles; daemon remains running; reconnecting TUI client re-streams from
+   existing `vt100::Parser` state.
+2. **Graceful daemon-process restart (REQUIRED to survive in v1A — D-238):** when the daemon
+   restarts gracefully, sessions MUST survive via the native session-host processes. The daemon
+   re-attaches to running session-hosts on startup. Default: native implementation (no external
+   multiplexer dependency; no-tmux preserved). If native proves infeasible at acceptable cost,
+   the architect MUST surface the external-supervisor tradeoff for human decision — not silent
+   adoption. Architecture route: Q-8 in vision §Open Questions (HIGH priority).
+3. **Hard daemon crash (accepted v1A boundary):** crash → sessions lost → user re-launches. No
+   clean handoff; the daemon is stable; this is exceptional. launchd/systemd or a monocle-internal
+   daemon watchdog is the operational mitigation. Cross-crash PTY state serialization is explicitly
+   out of v1A scope.
+
+The already-built in-process D-235 daemon wiring placed PTY ownership inside the daemon process.
+Moving PTY ownership to session-host processes requires reworking the SessionManager abstraction
+boundary. This is a known architectural consequence of D-238; architect routes in the architecture
+delta (Q-8). Do not attempt to preserve the D-235 wiring pattern for persistence — it contradicts
+D-238.
+
+**New monocle-ipc message types (v1A):** `PtyOutput { session_id, bytes }`,
+`KeyInput { session_id, bytes }`, `ResizePane { session_id, rows, cols }`. These share the
+existing UDS channel with hook events and control messages (Option A per embedded-pty-evaluation.md
+§8 Q4 recommendation); the architect confirms or revises at the architecture delta with a
+pre-v1A-gate PTY-bytes throughput benchmark.
+
+#### Wave v1B: Interactive Tune Wave
+
+**INTERACTIVE TUNE**
+
+The Static plane becomes interactive. The user edits keybindings, profile definitions, and CCR
+routing slots directly in the TUI; changes take effect via atomic `tempfile::persist` writes
+then hot-reload. Every destructive Tune action follows the NikiforovAll Modal-Confirm-Callback
+3-phase pattern.
+
+New crate: `monocle-static`. CRUD activation: enable/disable customizations, move between scopes.
+Profile management: create/edit/delete profiles in `~/.monocle/config.json`. CCR routing slot
+editor: select model per routing scenario, write CCR config, inform user of any restart
+requirements. New Action variants: `TuneEditBinding`, `TuneApplyProfile`, `TuneResetBinding`,
+`TuneEditCcrSlot`.
+
+#### Already-Built Substrate — Preserved and Extended
+
+The Phase-1 substrate from Waves 1–7 is the foundation for v1A/v1B. It is not rebuilt.
+
+| Capability | Status | Existing BCs |
+|-----------|--------|-------------|
+| Hook ingestion (5 endpoints, PID-liveness, dual-accept auth, DTU clone) | Preserved | BC-2.05.*, BC-2.06.* |
+| Permission overlay (VecDeque stack, killer scenario ≤6 keystrokes) | Preserved | BC-2.06.022 |
+| Sessions panel (session list, token burn rate, phase tag) | Extended (project grouping + launch/kill/detach actions) | BC-2.05.002 |
+| Event ribbon (rolling hook event log with session-ID filter) | Preserved | BC-2.06.006/018 |
+| Profile picker (Ctrl-P, sticky-per-project, CCR path) | Preserved + extended (used in launch wizard step 1) | BC-2.07.004/005 |
+| Workflow plane (FactoryAdapter observe-only, VsddFactoryAdapter, STATE.md parsing) | Preserved + new launch trigger path | existing |
+| Daemon (axum HTTP, UDS, bounded broker, JSONL ring) | Extended with SessionManager + PTY byte fan-out | BC-2.01.* |
+| Forward-compatibility contracts (ABI version, non-exhaustive enums, FactoryAdapter trait, proto schema, ring format version, auth token format) | Preserved and extended | BC-2.02.* |
+
+The D-235 convergence work (daemon now actually serves: `daemon_start_sequence + run_server +
+UDS + tracing + ring-flush + 10s drain`) is the current live state of monocle-runtime. It is the
+starting substrate; it is extended in v1A, not replaced — except the in-process PTY ownership
+assumption which D-238 supersedes (see Q-8 architect route above).
+
+### Out of Scope (Hard Boundaries)
+
+These are hard boundaries, not deferred features. The factory-observe non-goal is the one that
+survived the D-236 pivot intact — monocle observes factory state but never mutates it.
+
+- **Does NOT execute vsdd-factory workflows** — monocle observes `.factory/STATE.md` (reads via
+  FactoryAdapter); it never writes STATE.md, never triggers factory phases, never dispatches
+  factory agents. The Workflow plane is read-only. This is the specific non-goal that the D-236
+  pivot did NOT reverse.
+- **Does NOT write STATE.md** — `VsddFactoryAdapter` reads; monocle never mutates.
+- **Does NOT route LLM API requests** — CCR integration is detect-on-PATH + config-write +
+  env-inject; monocle does not proxy or modify LLM traffic (integrate-external, D-010).
+- **Does NOT replace the user's general-purpose terminal multiplexer** — monocle runs inside
+  the user's tmux session; it manages AI coding sessions via its own daemon-owned PTYs; it does
+  not attempt to multiplex the user's non-AI terminal work.
+- **Does NOT include PM/Worker multi-agent orchestration** — human is always the coordinator;
+  sessions are independent (no inter-session bus, no automated handoff).
+- **Does NOT own session transcripts** — monocle reads hook events (fine-grained, ephemeral);
+  full transcript storage belongs to Claude Code's own persistence layer.
+- **Does NOT build its own LLM provider abstraction** — CCR is the external router; monocle
+  integrates by detecting it.
+- **Does NOT include `PostToolUse` hook endpoint in v1** — JC-2 parity with Claude Code
+  gene-source (any-context BC-HOOK-007, 5-endpoint canonical set). Revisit if a future wave
+  requires PostToolUse data.
+- **Does NOT ship the WASM plugin SDK in v1** — Phase 3 scope, suspended. v1 statically bundles
+  `VsddFactoryAdapter` as the sole factory adapter.
+- **Does NOT ship the rmcp MCP bridge in v1** — suspended. OQ-09.
+- **Does NOT use tmux as the PRIMARY session multiplexer** — `portable-pty` native in-process
+  PTY is the chosen path. tmux control-mode and other external supervisors are documented
+  architect-surfaced fallbacks for human decision only; they are not default choices.
+- **Does NOT include SSH federation in v1** — suspended (was Phase 4 old roadmap).
+
+---
 
 ## Success Criteria
 
-v1 ships (Phase 1 complete) when ALL of the following pass:
+v1A ships when ALL of the following pass:
 
 | Outcome | Metric | Target |
 |---------|--------|--------|
-| Session management in popup | User can manage 3+ concurrent Claude Code sessions without leaving the editor pane | Killer scenario resolves in ≤6 keystrokes (per vision §End-to-End Killer Scenario target: 4) |
-| Permission prompt latency | Permission prompt appears as overlay with diff preview after hook fires | ≤100ms from hook POST receipt to TUI overlay render on localhost |
-| Hook ingestion timeout budget | Daemon responds within Claude Code's upstream timeout ceilings for each hook type | ≤300ms end-to-end response for `PreToolUse`, `Stop`, `SessionStart`, `UserPromptSubmit`; ≤2000ms for `Notification` — per gene-source BC-HOOK-022 (any-context-lazyclaude-pass-B-deep-hooks-r1.md). Exceeding these ceilings causes Claude Code to silently drop the event. Daemon broker architecture (event-bus, mpsc channel sizing) must be designed against these deadlines. |
-| Hook protocol parity | Hook injection byte-compatible with Claude Code's schema | Fixture-based parity test passes against schema in any-context hooks-r1 canonical matrix (5 endpoints: PreToolUse/Notification/Stop/SessionStart/UserPromptSubmit; dual-accept auth per ADR-0005 — canonical path `X-Monocle-Authorization` tested AND compatibility alias path `X-Claude-Code-Ide-Authorization` tested; both paths validated by integration tests in `auth_header_rejection.rs`) |
-| Factory pattern detection | vsdd-factory project detected and workflow panel populated | Detection succeeds on monocle's own `.factory/` (self-referential integration test) |
-| Build matrix | Builds and tests pass on macOS and Linux | CI green on darwin/linux × amd64/arm64 |
-| Drop counter active | Bounded event bus with visible drop counter | No unbounded channel in codebase; drop counter renders in status bar under synthetic high-frequency load (1000 events/sec) |
-| Hook receiver body size limit | Daemon enforces 256 KiB max body on all hook POST endpoints (`/hooks/pre-tool-use`, `/hooks/prompt-submit`, `/hooks/notification`, `/hooks/stop`, `/hooks/session-start`) | Exceeding the limit returns HTTP 413 Payload Too Large with body `{"error":"payload_too_large","limit_bytes":262144}`. Rationale: Claude Code's Notification body carries an unbounded `message` string; 256 KiB covers expected-case bursts without exposing the daemon to memory exhaustion. Behavioral contract: BC-2.01.003 "Body Size Limit (256 KiB, HTTP 413)" (per BC-INDEX §SS-01, renumbered from BC-DAEMON-003). |
-| DTU clone exists and validates | `dtu-claude-code-hooks-v1` clone is built, fidelity score ≥0.95 against fixture corpus, all 5 hook endpoint payloads schema-valid, integrated into CI as a per-PR gate on `monocle-ipc` or `monocle-runtime` changes (per dtu-assessment §"DTU Fidelity Measurement Procedure"). | DTU clone fidelity verified per NFR-011 (≥0.95 against Claude Code real hooks fixture corpus, per nfr-catalog.md). |
-| **Forward-compatibility contracts** | All 6 FC items shipped: (1) `MONOCLE_ABI_VERSION = 1` const exported and exposed via `/status` endpoint; (2) all public enums in `monocle-core` carry `#[non_exhaustive]`; (3) `FactoryAdapter` trait defined and `VsddFactoryAdapter` implements it; (4) `monocle-proto` HookEnvelope schema with `schema_version = 1` field; (5) JSONL ring `format_version = 1` first key on every record; (6) auth token format `monocle-v1:<64-hex>` with non-prefix rejection rule. | 22 behavioral contracts active in Phase 1 PRD (per BC-INDEX v1.34): BC-2.02.001/002 (BC-ABI-001/002), BC-2.02.003 (BC-TYPES-001), BC-2.02.004/005 (BC-FACTORY-001/002), BC-2.02.006/007/008 (BC-PROTO-001a/001b/002), BC-2.01.007 (BC-RING-001), BC-2.01.008/009 (BC-AUTH-001/002), BC-2.03.001/002/003/004 (BC-ENGINE-001/002/002-ERR/003), BC-2.01.010 (BC-LOCK-001). Per `SS-core-types-and-abi.md` v1.2.13, `SS-daemon-lifecycle.md` v1.0.32, and `SS-engine-module.md` v1.1.20. |
+| Session launch from TUI | User launches a Claude Code session from the TUI, with hooks auto-injected, without opening a new terminal window or manually configuring a settings file | Launcher wizard completes in ≤5 keystrokes from Dashboard to session Running state; `--settings` flag verified in the child process args; hook POST received at the daemon within 2s of session start |
+| Embedded terminal rendering | Running session is visible and interactive in the Preview pane via tui-term PTY widget | PTY output renders within 100ms of byte receipt; no visual corruption on 80×24 terminal; full ANSI/VT100 sequence support (verified against fixture corpus from embedded-pty-evaluation.md) |
+| Input fidelity | All input classes forward correctly to the PTY | Printable keys, Ctrl-C/D/Z, arrows, Backspace, Tab, Esc, Enter, mouse events, and Kitty keyboard protocol all reach the child process stdin unmodified; verified via integration test with MockPtySpawner |
+| Session persistence — TUI reconnect | TUI process exits and reconnects; sessions survive | Sessions remain Running after TUI process exits; reconnecting TUI client sees current parser state; no PTY byte loss during reconnect window |
+| Session persistence — daemon restart | Daemon process restarts gracefully; sessions survive (D-238) | All Running sessions are present and streaming after a graceful daemon restart; session-host processes survive the daemon restart; re-attach latency ≤5s |
+| Multi-session / multi-project | Multiple sessions across multiple projects manageable from the TUI | 3 sessions across 2 projects visible, grouped by project, with filter; kill/rename actions work; session-state.json persists and re-displays terminated sessions |
+| Permission prompt latency | Permission overlay renders after hook fires | ≤100ms from hook POST receipt to TUI overlay render on localhost (preserved from Phase-1) |
+| Hook ingestion timeout budget | Daemon responds within Claude Code's upstream timeout ceilings | ≤300ms for `PreToolUse`, `Stop`, `SessionStart`, `UserPromptSubmit`; ≤2000ms for `Notification` (gene-source BC-HOOK-022) |
+| Killer scenario — multi-permission | Both prompts resolve without window switches | ≤6 keystrokes (`Ctrl-\`, `2`, `1`, `Ctrl-\`) clears 2 concurrent permission prompts (per vision killer scenario 2) |
+| PTY bytes throughput (pre-gate benchmark) | PTY byte bursts do not starve hook-event delivery | Benchmark PTY bytes over UDS + bounded-channel at N concurrent sessions; confirm drop counter does not fire under terminal-refresh rate load; ≥1000 events/sec per CLAUDE.md Conventions |
+| Hook protocol parity | Byte-compatible with Claude Code schema | Fixture-based parity test passes (5 endpoints; dual-accept auth: canonical `X-Monocle-Authorization` AND compatibility alias `X-Claude-Code-Ide-Authorization`; per ADR-0005) |
+| Build matrix | macOS + Linux, both architectures | CI green on darwin/linux × amd64/arm64 |
+| Drop counter active | Bounded event bus with visible drop counter | No unbounded channels; drop counter renders in status bar under 1000 events/sec synthetic load |
 
-## Phase 2 Exit Criteria
-
-Phase 2 (Static plane) ships when:
+v1B ships when ALL of the following pass:
 
 | Outcome | Metric | Target |
 |---------|--------|--------|
-| Customization rendering | All 7 customization types render in Static plane on filter "All" | Zero missing types when pointed at a claude-code project with all 7 type examples |
+| Keybinding edit | User edits a keybinding in the TUI and change takes effect | Atomic write via `tempfile::persist`; binding active in next key dispatch cycle; Modal-Confirm-Callback 3-phase pattern for destructive edits |
+| Profile create/edit/delete | Full profile CRUD from TUI | Profiles in `~/.monocle/config.json` created/edited/deleted; hot-reload; no corruption on concurrent access |
+| CCR routing slot edit | CCR model routing configurable from TUI | CCR config written; `ANTHROPIC_BASE_URL` updated; user notified of any restart requirement |
+| 7 customization types render | All 7 types visible in Static plane | Zero missing types on a Claude Code project with all 7 type examples (slash commands, subagents, skills, memory files, MCP servers, hooks, LSP servers) |
 
-Additional Phase 2 exit criteria will be defined by the architect during
-`/vsdd-factory:create-architecture` and refined in PRD behavioral contracts.
+**Preserved Phase-1 success criteria (still required):**
 
-## Constraints & Integration Points
+| Outcome | Metric | Target |
+|---------|--------|--------|
+| Hook receiver body size limit | Daemon enforces 256 KiB max on all hook POST endpoints | Exceeding returns HTTP 413 with `{"error":"payload_too_large","limit_bytes":262144}`. BC-2.01.003. |
+| DTU clone fidelity | `dtu-claude-code-hooks-v1` clone exists and validates | Fidelity ≥0.95 against fixture corpus; all 5 endpoint payloads schema-valid; CI per-PR gate. Per NFR-011. DTU already validated at D-234 (fidelity 1.0000, 25/25 fixtures). |
+| Forward-compatibility contracts | All 6 FC items shipped | 22 BCs active in PRD: BC-2.02.001/002 (ABI), BC-2.02.003 (Types), BC-2.02.004/005 (Factory), BC-2.02.006/007/008 (Proto), BC-2.01.007 (Ring), BC-2.01.008/009 (Auth), BC-2.03.001/002/003/004 (Engine), BC-2.01.010 (Lock). Per BC-INDEX v1.34. |
+| Factory detection | vsdd-factory project detected; workflow panel populated | Self-referential integration test against monocle's own `.factory/`. |
 
-**Tech stack inheritance**: All version pins, the wasmtime-vs-wasmi rationale,
-anti-pattern enforcement rules, and RUSTSEC audit context are codified in
-`/Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-deps-pin-manifest.md`,
-`/Users/jmagady/Dev/monocle/.factory/specs/architecture/adr/ADR-0001-wasmtime-vs-wasmi.md`,
-and `/Users/jmagady/Dev/monocle/.factory/specs/architecture/SS-conventions-anti-patterns.md`.
-The architect inherits these as Phase 1 constraints (not up for re-selection);
-per vision D-012 the tech stack is human-approved and architecturally pre-committed.
+---
 
-**Crate workspace layout** is fixed by vision §Workspace Layout + EX-1 ratification:
-12 crates total (11 named workspace crates + 1 binary crate `monocle`) — `monocle-core`
-(zero-dependency pure types), `monocle-runtime`, `monocle-tui`, `monocle-static`,
-`monocle-workflow`, `monocle-plugin-sdk`, `monocle-ipc`, `monocle-config`,
-`monocle-proto`, `monocle-fuzz`, `monocle-test-harness` (11 named), plus `monocle`
-(binary). No crate outside the binary may depend on the binary crate.
+## Constraints and Integration Points
 
-**Action enum dispatch model** is non-negotiable per vision §Key Abstractions and
-D-009: 5-level precedence (SearchPrompt > UserCustomCommand > PerContext > Global >
-Builtin); enum variants (not closures) keep bindings `Eq + inspectable` for the
-telescope help overlay.
+### Tech Direction — PTY Stack (v1A)
 
-**AppMode state machine** is non-negotiable per vision §Key Abstractions:
-compile-time mutual exclusion (not `bag-of-Option` fields); `VecDeque<PromptModal>`
-overlay stack (not single-popup — fixes lazygit's drop-on-concurrent anti-pattern);
-state transitions are pure functions in `monocle-core`.
+New crates added in v2.0 (from `embedded-pty-evaluation.md` v1.0 §7.1, confirmed D-237):
 
-**Process topology**: monocle uses a separate tmux server (`-L monocle`) to host
-the TUI client as a floating popup over the user's existing tmux session. Daemon
-is long-lived. Hook POSTs are the ingestion boundary; Claude Code subprocesses are
-unmodified beyond pointing their hook scripts at the daemon's lock-file-discovered
-port.
+| Crate | Version | Location | Role | License | RUSTSEC |
+|-------|---------|----------|------|---------|---------|
+| `portable-pty` | `"0.9"` | `monocle-runtime` | PTY pair creation, child spawn, master read/write | MIT | none (2026-06-03) |
+| `vt100` | `"0.16"` | `monocle-runtime`, `monocle-tui` | ANSI/VT100 parse → in-memory screen state | MIT | none (2026-06-03) |
+| `tui-term` | `"0.3"` | `monocle-tui` | ratatui widget rendering `vt100::Screen` | MIT | none (2026-06-03) |
 
-**CCR is integrate-external** (D-010): detect on PATH, write per-session JSON,
-set `ANTHROPIC_BASE_URL`. No CCR API changes required or expected.
+Compatibility notes:
+- `tui-term 0.3.4` depends on `ratatui-core ^0.1.0` and `ratatui-widgets ^0.3.0` — exactly what
+  `ratatui 0.30.0` pins. Unifies to a single copy in the dependency graph. Cargo-init spike
+  required at architecture delta: `cargo tree -d` must show zero duplicate `ratatui-core`/
+  `ratatui-widgets`/`vt100` versions before committing.
+- MSRV impact: `tui-term` MSRV 1.86 ≤ monocle's 1.88 floor. MSRV unchanged.
+- `tui-term 0.3.4` self-describes as "work in progress." Decision-of-record: exact-pin +
+  vendoring-plan-if-needed. Do NOT enable the `unstable` feature flag (the tui-term spawn
+  helper); monocle spawns via `portable-pty` in the runtime. Architect confirms or revises
+  vendoring posture in the architecture delta (Q-7 in vision §Open Questions).
+- `tmux` is a documented fallback only. It is not a v1 default; it requires human decision
+  if the architect determines native session-host ownership is infeasible for Q-8.
 
-**OQ + SOQ resolutions applied**: 11 architect open questions and 4 second-order
-questions resolved per `/Users/jmagady/Dev/monocle/.factory/planning/oq-research.md`
-(commit b3c68ca). See Phase 1 Constraints below.
+**Canonical version pin manifest:** `SS-deps-pin-manifest.md`. Supersedes version examples here.
 
-## Phase 1 Constraints (from OQ Resolutions)
+### Architecture Authority — Unchanged from v1.4.x
 
-These constraints are derived from the orchestrator's accepted defaults on
-`oq-research.md` and bind the architect during `/vsdd-factory:create-architecture`.
+The following architecture decisions from the Phase-1 substrate are not up for re-selection
+in v1A/v1B:
+
+- **All version pins, RUSTSEC audit, and MSRV policy:** `SS-deps-pin-manifest.md`
+- **wasmtime-vs-wasmi:** `ADR-0001`
+- **Anti-pattern enforcement, semgrep, conventions:** `SS-conventions-anti-patterns.md`
+- **Exhaustive vs. non-exhaustive enum policy:** `ADR-0004`, `SS-core-types-and-abi.md`
+- **Hook endpoint set (5 endpoints, JC-2):** locked; see Phase-1 OQ/JC resolutions below
+- **Dual-accept auth header:** `ADR-0005`
+- **License selection:** `ADR-0003`
+- **Daemon lifecycle (axum HTTP + UDS, JSONL ring, graceful shutdown):** `SS-daemon-lifecycle.md`
+
+When two artifacts disagree, the LATER, MORE-SPECIFIC artifact wins. Per CLAUDE.md §Architectural Authority.
+
+### Crate Workspace Layout
+
+As of D-232/Wave-7 gate: 9 workspace crates exist — `monocle-core`, `monocle-runtime`,
+`monocle-proto`, `monocle-test-harness`, `monocle` (binary), `monocle-config`, `monocle-ipc`,
+`xtask`, `monocle-tui`. The v1A/v1B delta introduces:
+
+- **`monocle-runtime` extended**: `SessionManager` sub-module (new; owns PTY masters via
+  session-host coordination, vt100 parsers, child handles); PTY byte fan-out on existing broker.
+  SessionManager is a sub-module of monocle-runtime (not a separate crate) — PTY ownership is
+  intrinsically a daemon responsibility; no other crate depends on SessionManager directly.
+  Architect confirms at architecture delta.
+- **`monocle-tui` extended**: `EmbeddedTerminal` AppMode variant; `tui-term` PTY widget;
+  `SessionCreation` wizard.
+- **`monocle-ipc` extended**: `PtyOutput`, `KeyInput`, `ResizePane` message types.
+- **`monocle-proto` extended**: PTY message proto types.
+- **`monocle-test-harness` extended**: `MockPtySpawner` (PtySpawner trait test double).
+- **`monocle-static` (new, v1B)**: customization reader + writer (CLAUDE.md, settings.json,
+  hooks, keybindings) with interactive CRUD activation.
+- **`monocle-workflow` (extract, v1B)**: `FactoryAdapter` trait + `VsddFactoryAdapter` extracted
+  from monocle-runtime to own crate. The struct/logic exists in monocle-runtime today; v1B
+  extracts it per the vision workspace layout.
+- **`monocle-fuzz` (v1A or v1B)**: cargo-fuzz targets for parser and hook endpoint fuzzing.
+
+No crate outside the binary may depend on the binary crate. `monocle-plugin-sdk` remains
+suspended (Phase 3).
+
+### Action Enum and AppMode — Extended
+
+The `Action` enum is extended with (new in v2.0; architect adds to `SS-core-types-and-abi.md`):
+`SessionCreate`, `SessionDetach`, `SessionRename`, `EnterEmbeddedTerminal`, `ExitEmbeddedTerminal`,
+`ForwardKeyToPty(KeyEvent)`, `PtyScrollUp`, `PtyScrollDown`, `TuneEditBinding`, `TuneApplyProfile`,
+`TuneResetBinding`, `TuneEditCcrSlot`. 5-level binding precedence and `Eq + inspectable` enum
+invariant are unchanged (D-009).
+
+`AppMode` is extended with `EmbeddedTerminal { session_id, prior }` and
+`SessionCreation { step, prior }`. Compile-time mutual exclusion and VecDeque overlay stack are
+unchanged.
+
+### Process Topology (v2.0)
+
+```
+User's tmux server (existing)
+├── pane: editor (nvim / Zed / VS Code terminal)
+│   └── Ctrl-\  ─────────────────────────────────────────────┐
+│                                                             │
+└── pane: monocle TUI client (connects to daemon)            │
+                                                             ▼
+monocle daemon (monocle-runtime, long-lived background process)
+├── axum HTTP :<os-port>   (hook POST receiver; OS-assigned; port in lock file)
+├── UDS socket             (TUI client connection: hook events + PTY bytes + control)
+├── Session-host coordination (D-238 model)
+│   ├── Session-host A: native detached process (PTY master + child handle + per-session UDS)
+│   ├── Session-host B: native detached process
+│   └── Session-host N: ...
+├── Arc<Broker<Event>>     (fan-out: hook events + PTY bytes to connected TUI clients)
+└── EngineModule registry  (ClaudeCodeModule: spawn_recipe() + hook handling)
+
+Claude sessions (owned by session-host processes, coordinated by daemon)
+├── Session A: claude --settings /tmp/monocle-hooks-A.json  (launched by monocle)
+│   ├── Hook POSTs → POST http://localhost:<port>/hooks/*
+│   └── PTY stdout ──► session-host A ──► daemon re-attach ──► UDS PtyOutput msg
+└── PTY stdin ◄── UDS KeyInput msg ◄── TUI crossterm KeyEvent
+
+TUI client
+├── Receives PtyOutput { session_id, bytes }  ──► vt100::Parser.process(bytes)
+├── Renders PseudoTerminal widget (tui-term 0.3.4) from parser.screen()
+├── Sends KeyInput { session_id, bytes }  ──► encoded crossterm KeyEvent → PTY bytes
+└── Sends ResizePane { session_id, rows, cols }  ──► daemon resizes PTY + parser
+```
+
+The exact session-host IPC re-attach protocol (per-session UDS, re-stream vt100 parser state)
+is an architecture delta deliverable (Q-8 HIGH). The topology above shows the logical intent;
+architect produces the binding spec.
+
+### OQ and SOQ Resolutions — Still Binding
+
+All 11 original open questions and 4 second-order questions from `oq-research.md` (commit
+b3c68ca) remain binding. The v2.0 pivot does not reopen them. Key constraints preserved:
 
 | Constraint | Trace |
 |---|---|
-| Daemon: hybrid auto-start with `MONOCLE_NO_AUTOSTART=1` escape hatch | OQ-01 |
-| Hook tmpfile: shared per-runtimeDir, mode `0o600`, atomic-replace (any-context verbatim) | OQ-02 |
-| WASM plugin SDK: NOT shipped in v1; ships in Phase 3; v1 statically bundles `VsddFactoryAdapter` | OQ-03 |
-| Port binding: OS-assigned port + lock-file PID-liveness discovery (JC-3 closed by this) | OQ-04 |
-| Profile picker: sticky-per-project; `Ctrl-P` picker override (Phase 1 user-test target; MEDIUM confidence) | OQ-05 |
+| Daemon auto-start: hybrid with `MONOCLE_NO_AUTOSTART=1` escape | OQ-01 |
+| Hook tmpfile: shared per-runtimeDir, mode `0o600`, atomic-replace | OQ-02 |
+| WASM plugin SDK: NOT in v1 (suspended); v1 statically bundles VsddFactoryAdapter | OQ-03 |
+| Port binding: OS-assigned + lock-file PID-liveness discovery | OQ-04 |
+| Profile picker: sticky-per-project; `Ctrl-P` override | OQ-05 |
 | Hook event retention: hybrid RAM ring + async JSONL flush, 100MB × 5 rotation | OQ-06 |
-| Cross-host migration: protobuf seams in v1 (zero runtime cost), russh transport Phase 4 | OQ-07 |
-| monocle-ipc: UDS-only in v1; shared-memory ring deferred to Phase 4 transport variant | OQ-08 |
-| rmcp MCP bridge: OMITTED in v1; Phase 4 ships real impl (no stub in v1) | OQ-09 |
-| Daemon lock file: `directories::ProjectDirs::runtime_dir()` w/ state_dir → data_dir → `~/.monocle` fallback | OQ-10 |
-| MSRV target: Phase 1 = Rust 1.88 (RUSTSEC-2026-0009 Path B; original 1.86 ratatui floor bumped Wave 6); Phase 3 bumps to 1.92 (wasmtime) | OQ-11 |
-| Lock-file schema: `contract_version: u32` field from day one (zellij pattern) | SOQ-1 |
-| Token rotation invariant: bind socket + lock-file write + token THEN hooks-settings reads token | SOQ-2 |
-| Overlay survival: clear on daemon disconnect (Claude Code subprocesses time-out delayed responses) | SOQ-3 |
-| Permission token enum: see `.factory/specs/architecture/SS-permissions-phase1.md` (architect-produced canonical artifact) — small Phase-1-purpose enum derived from Claude Code hook permission semantics (allow/deny/ask-user decisions for the 5 Phase 1 hook endpoint types); dispatcher no-op until Phase 3; zellij-style 17-variant WASM plugin permission enum is Phase 3 scope | SOQ-4 |
+| Cross-host migration: protobuf seams in v1 (zero cost); russh transport suspended | OQ-07 |
+| monocle-ipc: UDS-only in v1 | OQ-08 |
+| rmcp MCP bridge: omitted in v1 (suspended) | OQ-09 |
+| Daemon lock file: `directories::ProjectDirs::runtime_dir()` with fallback chain | OQ-10 |
+| MSRV: Phase 1 = Rust 1.88 (RUSTSEC-2026-0009 Path B); v1B may extend; Phase 3 = 1.92 | OQ-11 |
+| Lock-file schema: `contract_version: u32` from day one | SOQ-1 |
+| Token rotation invariant | SOQ-2 |
+| Overlay survival: clear on daemon disconnect | SOQ-3 |
+| Permission token enum: see `SS-permissions-phase1.md` | SOQ-4 |
 
-## Open Questions for Architect
+Market-intel open questions OQ-M1/M2/M3 remain resolved as in v1.4.x (no new IPC collision risk
+from agent view; `claude-manager` not hook-protocol; 5-endpoint set is canonical). The R-001
+Anthropic commoditization risk assessment at <10% probability stands; re-eval triggers (a)–(d)
+are unchanged; weekly GitHub Actions monitoring cadence is unchanged.
 
-All 11 original open questions have been resolved via `oq-research.md` (commit b3c68ca).
-Three market-intel open questions (OQ-M1, OQ-M2, OQ-M3) were raised during brief v1.3
-competitive positioning; all three are now resolved in-scope (adversary re-audit commit
-0bd4ba9). The table below is preserved for traceability; OQ-01 through OQ-11 and
-OQ-M1 through OQ-M3 decisions are final unless human red-lines.
+### Forward-Compatibility Contracts — Preserved
 
-| ID | Question | Resolution | Trace |
-|----|----------|-----------|-------|
-| OQ-01 | Daemon auto-start vs explicit? | Hybrid auto-start with `MONOCLE_NO_AUTOSTART=1` escape | oq-research.md §OQ-01 |
-| OQ-02 | Hook tmpfile per-session or shared? | Shared per-runtimeDir, `0o600`, atomic-replace | oq-research.md §OQ-02 |
-| OQ-03 | v1 ship WASM SDK or static bundle? | Static bundle in v1; WASM SDK Phase 3 | oq-research.md §OQ-03 |
-| OQ-04 | Daemon port fixed or OS-assigned? | OS-assigned port + lock-file discovery | oq-research.md §OQ-04 |
-| OQ-05 | Profile picker on create vs sticky? | Sticky-per-project; `Ctrl-P` override (MEDIUM confidence) | oq-research.md §OQ-05 |
-| OQ-06 | Event retention ring or JSONL? | Hybrid RAM ring + async JSONL flush, 100MB × 5 | oq-research.md §OQ-06 |
-| OQ-07 | Cross-host scope v1 or v4? | Protobuf seams v1 (zero cost); russh Phase 4 | oq-research.md §OQ-07 |
-| OQ-08 | IPC: UDS only or UDS + shared-mem? | UDS-only v1; shared-mem Phase 4 | oq-research.md §OQ-08 |
-| OQ-09 | rmcp stub in v1 or omit? | Omit entirely in v1 | oq-research.md §OQ-09 |
-| OQ-10 | Lock-file location XDG or `~/.monocle`? | `directories::ProjectDirs::runtime_dir()` with fallback chain | oq-research.md §OQ-10 |
-| OQ-11 | MSRV target? | Phase 1: Rust 1.86; Phase 3: Rust 1.92 | oq-research.md §OQ-11 |
-| OQ-M1 | Does agent view use Claude Code hook protocol or different IPC? If hook protocol, can monocle daemon and agent view coexist on same host without port/auth collision? | Resolved — agent view dispatches via Claude Code's internal IPC (not hook protocol POSTs); monocle's daemon on an OS-assigned port + `X-Claude-Code-Ide-Authorization` header cannot collide because agent view does not bind a TCP port. No shared port or auth surface. Source: Anthropic docs https://code.claude.com/docs/en/agent-view referenced in market-intelligence.md line 222. | brief-validation-v2.md §OQ-M1; adversary re-audit 0bd4ba9 |
-| OQ-M2 | Does `claude-manager` use the hook protocol, creating a second actor on the same hook-protocol surface as monocle? | Resolved — claude-manager uses tmux pane management + worktrees, NOT hook protocol. The hook-native architectural moat is intact. Source: market-intelligence.md §gap-matrix line 50 (`claude-manager... hook-overlay: NO`). | market-intelligence.md §gap-matrix; adversary re-audit 0bd4ba9 |
-| OQ-M3 | Claude Code 2026 docs list 25 lifecycle events including `PermissionRequest` as a distinct hook event. Should monocle add `PermissionRequest` as a sixth endpoint (current JC-2 decision: 5 endpoints) for cleaner permission-overlay UX? | Resolved — stay at 5 endpoints (SessionStart, UserPromptSubmit, PreToolUse, Notification, Stop). The `PermissionRequest` event is upstream of `PreToolUse`; the existing VecDeque overlay receives all permission-relevant signal via `PreToolUse` + `Notification`. Re-eval trigger: if Phase 2 trigger-trace UX testing surfaces a signal gap that PermissionRequest would fill, dispatch a fresh architecture review. Until then, 5 endpoints is canonical and final. | brief-validation-v2.md §OQ-M3; adversary re-audit 0bd4ba9 |
+All 6 forward-compatibility contracts from Phase-1 are preserved:
+1. `MONOCLE_ABI_VERSION: u32 = 1` exported and exposed via `/status`.
+2. Public enums in `monocle-core` carry `#[non_exhaustive]` (except `Phase1Permission` and
+   `ClaudeCodeTool` per ADR-0004).
+3. `FactoryAdapter` trait defined; `VsddFactoryAdapter` implements it (not wired inline).
+4. `monocle-proto` HookEnvelope + 5 event messages with `schema_version = 1` as first field.
+5. Every JSONL ring record carries `format_version: u32 = 1` as first key.
+6. Auth token format `monocle-v1:<64-char-hex>`; dual-accept per ADR-0005.
 
-> **Judgment call resolutions (orchestrator-applied 2026-05-12)** — JC-1 → option B1
-> (Phase 2 exit criterion); JC-2 → omit PostToolUse for Phase 1 (Claude Code parity);
-> JC-3 → CLOSED via OQ-04; EX-1 → ratify 12-crate workspace (11 named + 1 binary); EX-2 → add SessionStart
-> + UserPromptSubmit to Phase 1 (full 5-endpoint parity). All resolutions traceable to
-> vision D-012 and oq-research.md commit b3c68ca. Human may red-line any of these in a
-> follow-up brief revision.
-
-## Overflow Context
-
-### Competitive Positioning
-
-Anthropic shipped `claude agents` (agent view, v2.1.139) on 2026-05-11 — one day before
-brief v1.2 was finalized. Agent view provides session list + inline reply built into
-Claude Code's TUI: no hook protocol, no external overlay, no diff preview, no cascaded
-permission queue, no customization visibility, no workflow plane, no multi-harness support.
-Monocle's differentiation is mechanism and depth, not exclusivity over the session-list
-surface: hook-protocol ingestion (vs. file polling or pane scraping), VecDeque<PromptModal>
-overlay (vs. attach-and-reply dispatch), diff preview (vs. none), trigger-trace to the
-defining settings.json line (Phase 2, vs. none), workflow plane (Phase 3, vs. none),
-multi-harness and external-overlay operation over the user's existing tmux + editor setup
-without modifying Claude Code sessions (vs. built-in, lives inside Claude Code's TUI).
-Anthropic shipping a thin version confirms the pain is real and significant enough for
-a first-party response — monocle goes deeper on every dimension agent view does not touch.
-The risk that Anthropic deepens agent view to commoditize monocle's hook-native overlay within 12 months was assessed at <10% probability based on agent view's current research-preview scope, single-harness focus, and absence of announced hook-protocol direction (per `.factory/planning/market-intelligence.md` §Risk Register, originally assessed at 25–40%; human red-line at v1.4.1 brief gate revised this to <10% based on additional context about agent view's roadmap and scope). At this probability, no risk mitigation scaffolding is required beyond the production-grade depth monocle is already shipping.
-
-**R-001 re-eval trigger.** Re-open the R-001 risk assessment and reconsider the probability AND the mitigation requirement if ANY of the following occurs: (a) Anthropic announces hook-protocol ingestion as a first-class agent-view capability; (b) Anthropic ships diff-preview or cascaded permission-queue functionality inside agent view; (c) Anthropic extends agent view beyond Claude Code (e.g., supports a non-Claude harness); (d) Anthropic publishes a multi-harness session-management spec or RFC. Until any of these conditions materializes, the <10% assessment stands; monocle's defensible surface is depth + mechanism (hook-protocol ingestion, VecDeque overlay, diff preview, trigger-trace, workflow plane, multi-harness, external overlay).
-
-**R-001 monitoring cadence.** The 4 re-eval trigger conditions are checked by a **weekly scheduled GitHub Actions workflow** (`.github/workflows/r001-monitor.yml`, specced this burst by devops-engineer). The workflow fetches Anthropic's published agent-view release notes and changelogs, evaluates each entry against the 4 trigger conditions, and opens a GitHub Issue if any condition is matched. The weekly cadence is calibrated to Anthropic's research-preview release cadence (multiple agent-view shipments observed per month as of 2026-05). Quarterly the workflow output is reviewed by the maintainer for false-negative patterns (e.g., a trigger condition that should have fired but didn't due to wording variation in Anthropic's notes); adjustments to the trigger keyword set ship as a workflow patch.
-
-The closest prior art beyond agent view:
-
-- `any-context/lazyclaude`: Go TUI for Claude Code sessions; PM/Worker orchestration;
-  hook protocol via `~/.claude/ide/<port>.lock`. Gene source for Runtime plane.
-  Monocle ports the session management and hook ingestion, drops the PM/Worker
-  persona, adds multi-harness and WASM plugin extensibility.
-- `NikiforovAll/lazyclaude`: Python Textual TUI for customization exploration.
-  Gene source for Static plane. Monocle ports the 7-parser canonical schema and
-  AppMode state machine to Rust; drops the Python dependency entirely.
-- `claude-squad`: Session isolation via worktrees; snapshot/fork concurrency; no
-  orchestration layer (human is coordinator per D-011). Gene source for worktree
-  isolation pattern in Harness plane.
-- `claude-code-router`: LLM request router via HTTP reverse proxy. Integrated
-  externally (D-010); monocle detects CCR on PATH and writes per-session config.
-
-### Decisions Log Cross-Reference
-
-All decisions that constrain this brief are logged in STATE.md §Decisions Log:
-D-001 through D-017. The canonical vision approved by human is D-012 (archived to `cycles/cycle-001/burst-log.md`).
-
-### Phase Plan Rationale
-
-Phase 1 ships the daemon + hook ingestion + sessions panel. This is the Phase 1
-delivery scope for the killer scenario — permission prompt dispatch without
-context-switching. Phase 2 adds the customization plane (trigger-trace) which
-enriches the permission prompt overlay with "why did this prompt appear" context.
-Phase 3 adds workflow awareness which is the factory-operator persona's core need.
-Phase 4 adds multi-harness federation which serves the future multi-harness operator
-persona. The ABI between phases must be stable: the `EngineModule` and
-`FactoryAdapter` traits defined in Phase 1 must be forward-compatible with Phase 4
-additions. No breaking changes to these traits between phases.
-
-### Reference Gene Source Map
-
-| Monocle Component | Primary Gene Source | Key Artifacts |
-|-------------------|--------------------|-|
-| EngineModule trait | codemachine-cli | pass-8-final-synthesis.md |
-| Action enum + 5-level precedence | lazygit (port) | pass-8-final-synthesis.md §Action enum |
-| AppMode state machine + VecDeque overlay | NikiforovAll AppMode + lazygit fix | nikiforovall pass-8-final-synthesis-v2.md §AppMode |
-| Hook protocol + tmpfile schema | any-context hooks-r1/r2 | any-context pass-8-final-synthesis-v2.md §Hook protocol |
-| Broker (bounded pub/sub + drop counter) | any-context broker-r1/r2 | any-context pass-8-final-synthesis-v2.md §Broker |
-| Crate workspace split | zellij | zellij pass-8-final-synthesis.md §crate layout |
-| Worktree isolation pattern | claude-squad | claude-squad pass-8-deep-synthesis.md |
-| CCR integrate-external | claude-code-router | claude-code-router pass-C-final-synthesis.md |
-| FactoryAdapter + VsddFactoryAdapter | vsdd-factory | vsdd-factory pass-8-final-synthesis.md |
-| 7-parser customization schema | NikiforovAll services/parsers/ | nikiforovall pass-8-final-synthesis-v2.md §parsers |
-| WASM plugin SDK ABI | zellij-tile model | zellij pass-8-final-synthesis.md §plugin |
+The 22 BCs covering these contracts (per BC-INDEX v1.34) are preserved. New v1A BCs will be
+added by the product-owner in the PRD delta to cover LAUNCH, EMBEDDED PTY, MULTI-SESSION, and
+PERSISTENCE. New v1B BCs will cover INTERACTIVE TUNE.
 
 ---
 
-## §Trace v1.4.24
+## Competitive Positioning
 
-**T-128n Part 2 — F-R105 closure chain Round 4: ADR-0005 dual-accept propagation** (2026-05-17T20:00:00Z):
+Monocle is positioned as "a better lazyclaude AND a better claude-squad" — collapsing the
+session-management gap that neither single tool fills:
 
-SE-17f before/after — line 116 (Phase 1 constraints hook-ingestion bullet):
-- Before: `auth via X-Claude-Code-Ide-Authorization header`
-- After: `auth via dual-accept header per ADR-0005: canonical X-Monocle-Authorization: monocle-v1:<64-hex> (monocle-aware tools) takes priority; X-Claude-Code-Ide-Authorization: <64-hex> (real Claude Code compatibility alias, raw token no prefix) accepted as fallback with WARN-level deprecation log`
+- **vs. any-context/lazyclaude:** lazyclaude observes sessions you launched elsewhere; monocle
+  launches and owns them. lazyclaude has no embedded terminal pane; monocle streams the live
+  session without a window switch. lazyclaude is Go; monocle is Rust with production-grade
+  hook-protocol ingestion, DTU clone, and forward-compatibility ABI.
+- **vs. claude-squad:** claude-squad launches sessions via tmux multiplexing (external dep;
+  fidelity ceiling); monocle uses native portable-pty (no external dep; full Kitty keyboard
+  protocol). claude-squad has no TUI management surface — you interact with the raw tmux session;
+  monocle provides a full dashboard, permission overlay, profile picker, and event ribbon.
+  claude-squad has no hook-protocol depth; monocle has the VecDeque cascaded overlay, diff
+  preview, and 5-endpoint hook ingestion.
+- **vs. Anthropic agent view (claude agents, v2.1.139, 2026-05-11):** agent view provides a thin
+  session list + inline reply inside Claude Code's TUI; no launch ownership, no embedded PTY pane,
+  no diff preview, no cascaded permission queue, no customization editing, no workflow plane, no
+  multi-harness. Monocle goes deeper on every dimension agent view does not touch. The R-001 risk
+  at <10% probability stands (no announced hook-protocol direction, research-preview scope,
+  single-harness only); re-eval trigger conditions (a)–(d) unchanged.
+- **vs. zellij / tmux:** monocle is not a general-purpose multiplexer; it is a control center
+  for AI coding sessions specifically. It borrows the zellij client/server IPC and session
+  persistence model as architectural pattern but does not depend on zellij code. It runs inside
+  the user's existing tmux session rather than replacing it.
 
-SE-17f before/after — line 239 (§Success Criteria Hook protocol parity row Target cell):
-- Before: dual-accept auth per ADR-0005 mentioned without explicit test-path call-out for alias.
-- After: canonical path `X-Monocle-Authorization` tested AND compatibility alias path `X-Claude-Code-Ide-Authorization` tested; both paths validated by integration tests in `auth_header_rejection.rs` — explicitly called out.
-
-D-042 sweep result: all SS-* current-pointer hits classified; no stale current-pointers found beyond the two fixed in this burst. SE-16d monotonicity PASS: 2026-05-17T20:00:00Z > prior 2026-05-14T07:50:10Z (v1.4.23).
-
----
-
-## §Trace v1.4.25
-
-**F-R106-8/19/20 + GAP-R45-3 closure — brief scope only** (2026-05-17T22:00:00Z):
-
-**F-R106-8 HIGH — BC-DTU-001 orphan promise removed.**
-- SE-17f before/after — §Success Criteria DTU row Target cell (previously line 245):
-  - Before: `Behavioral contract: BC-DTU-001 (Phase 1 PRD will formalize).`
-  - After: `DTU clone fidelity verified per NFR-011 (≥0.95 against Claude Code real hooks fixture corpus, per nfr-catalog.md).`
-- Justification: BC-DTU-001 was never formalized in PRD or BC-INDEX; the promise was orphaned. NFR-011 exists in nfr-catalog.md and is the canonical fidelity target for the DTU clone.
-
-**F-R106-19 LOW — v1.4.24 revision-history row readability.**
-- SE-17c-d body-scope: v1.4.24 row previously contained nested SE-17f/SE-16d subsections inline in the table cell (est. 880+ chars). Split into terse table row (summary only) + §Trace v1.4.24 section (full before/after detail). Historical narrative fully preserved in §Trace v1.4.24 above.
-
-**F-R106-20 LOW — old-form BC IDs canonicalized.**
-- SE-17f before/after — §Success Criteria Hook receiver body size limit row Target cell (line 244):
-  - Before: `Behavioral contract: BC-DAEMON-003 (per \`SS-daemon-lifecycle.md\`).`
-  - After: `Behavioral contract: BC-2.01.003 "Body Size Limit (256 KiB, HTTP 413)" (per BC-INDEX §SS-01, renumbered from BC-DAEMON-003).`
-- SE-17f before/after — §Success Criteria Forward-compatibility contracts row Target cell (line 246):
-  - Before: 16 old-form IDs enumerated: BC-ABI-001/002, BC-TYPES-001, BC-FACTORY-001/002, BC-PROTO-001a/001b/002, BC-RING-001, BC-AUTH-001/002, BC-ENGINE-001/002/002-ERR/003, BC-LOCK-001. Count stated as 16.
-  - After: 22 canonical IDs enumerated with old-ID parentheticals per BC-INDEX §Renumbering Map. Count corrected to 22 (matches BC-INDEX v1.3 actual total: 10 SS-01 + 8 SS-02 + 4 SS-03).
-
-**GAP-R45-3 MED — SS-engine-module.md version pin corrected.**
-- SE-17f before/after — §Success Criteria Forward-compatibility contracts row Target cell:
-  - Before: `SS-engine-module.md v1.1.15`
-  - After: `SS-engine-module.md v1.1.18`
-- Verification: `grep -n "^version:" .factory/specs/architecture/SS-engine-module.md` returns `version: "1.1.18"`. The v1.1.15 pin was introduced in v1.4.22 and was not updated through subsequent architect bumps (v1.1.16/1.1.17/1.1.18). The D-042 sweep in v1.4.24 confirmed v1.1.15 as "CURRENT" — that was an error: CLAUDE.md §Architectural Authority entry 4 cites SS-engine-module.md without a version pin, and the file itself is at v1.1.18. This is the GAP-R45-3 correction.
-
-**D-042 full-brief sweep result (v1.4.25).** grep -nE `SS-[a-z-]*\.md v[0-9]` across full `.factory/specs/product-brief.md`. All SS-* current-pointer hits classified:
-- `SS-daemon-lifecycle.md v1.0.7` at body lines (JSONL ring sub-bullet and Versioned auth token sub-bullet): historical pinpoints (introduced in R53; leave-alone per sweep protocol).
-- `SS-engine-module.md v1.1.18` in §Success Criteria Forward-compatibility row: CURRENT (just fixed in this burst).
-- All revision-history rows contain historical pinpoints only — leave-alone per sweep protocol.
-- No additional stale current-pointers found. CLEAN.
-
-SE-16d monotonicity PASS: 2026-05-17T22:00:00Z > prior 2026-05-17T20:00:00Z (v1.4.24).
+**Competitive differentiators that v1 makes verifiable:**
+1. Launch ownership + hook auto-injection — no competitor launches sessions with automatic
+   hook wiring.
+2. Embedded PTY pane with full keyboard fidelity including Kitty protocol — sessions interactive
+   inside the TUI, not just visible.
+3. VecDeque cascaded permission overlay — both prompts visible simultaneously, ≤6 keystrokes to
+   clear both; no competitor offers this.
+4. Factory-awareness plane (FactoryAdapter observe-only) — unique to monocle; no competitor
+   surfaces vsdd-factory/STATE.md workflow state in a unified TUI.
+5. Multi-harness extensibility substrate (EngineModule trait, FactoryAdapter trait, forward-compat
+   ABI) — architecture is ready for CodeMachine and future harnesses; competitors are single-harness.
 
 ---
 
-## §Trace v1.4.26
+## Open Questions for Architecture Delta
 
-**F-R108-8 closure — brief scope only** (2026-05-18T01:00:00Z):
+These are genuine cross-component architecture questions that require architect adjudication.
+They are NOT deferrals of mechanical questions (CLAUDE.md Rule 6). All originate from vision
+§Open Questions.
 
-**F-R108-8 HIGH — §Success Criteria Forward-compatibility row stale pins.**
+| ID | Priority | Question | Route |
+|----|----------|----------|-------|
+| Q-8 | HIGH | PTY-ownership-survival mechanism for graceful daemon-process restart (session-host process model; re-attach protocol over per-session UDS; vt100 parser re-stream; changes to D-235 SessionManager wiring). Default constraint: native, no external multiplexer as primary. See vision §Open Questions §Q-8 for full sub-questions. | architect (must resolve before architecture delta spec finalized) |
+| Q-1 | MED | PTY bytes over shared UDS IPC vs. dedicated streaming path per session. embedded-pty-evaluation.md §8 Q4 recommends Option A (shared channel). Pre-v1A-gate benchmark required. | architect → performance-engineer benchmark |
+| Q-2 | MED | EngineModule.spawn_recipe() surface vs. SessionManager lifecycle ownership on the EngineModule trait. Recommendation: lifecycle on SessionManager; EngineModule provides recipe only. | architect |
+| Q-7 | LOW | tui-term fork posture: confirm whether immediate vendoring before v1A work is preferred over deferred-on-need. Small surface; either is cheap. | architect |
 
-The §Success Criteria "Forward-compatibility contracts" row Target cell (line 247) had 3 stale version pins and was missing 1 version pin:
-- `BC-INDEX v1.3` → stale; current is v1.6 (PO 7A bump in same Round 7 burst)
-- `SS-daemon-lifecycle.md v1.0.7` → stale; the v1.0.7 pin was the historical value at v1.4.23 but Architect 6D bumped to v1.0.31 (commit 98396fe)
-- `SS-engine-module.md v1.1.18` → stale; Architect 6D bumped to v1.1.19 (commit 98396fe)
-- `SS-core-types-and-abi.md` was cited without version → now pinned to v1.2.12 (Architect 6D canonical)
-
-SE-17f before/after — §Success Criteria Forward-compatibility contracts row Target cell:
-
-**Before:** `22 behavioral contracts active in Phase 1 PRD (per BC-INDEX v1.3): ...Per \`SS-core-types-and-abi.md\`, \`SS-daemon-lifecycle.md\` v1.0.7, and \`SS-engine-module.md\` v1.1.18.`
-**After:** `22 behavioral contracts active in Phase 1 PRD (per BC-INDEX v1.6): ...Per \`SS-core-types-and-abi.md\` v1.2.12, \`SS-daemon-lifecycle.md\` v1.0.31, and \`SS-engine-module.md\` v1.1.19.`
-
-**D-042 full-brief sweep result (v1.4.26).** grep -nE `SS-[a-z-]*\.md v[0-9]` across full `.factory/specs/product-brief.md`. All SS-* current-pointer hits classified:
-- `SS-daemon-lifecycle.md v1.0.31` in §Success Criteria Forward-compatibility row: CURRENT (just fixed in this burst).
-- `SS-core-types-and-abi.md v1.2.12` in §Success Criteria Forward-compatibility row: CURRENT (just fixed in this burst).
-- `SS-engine-module.md v1.1.19` in §Success Criteria Forward-compatibility row: CURRENT (just fixed in this burst).
-- All other SS-* hits in body sub-bullets (§Phase 1 constraints references) are current-pointers per their respective SS file frontmatter as of Round 7 — classified leave-alone until a cascade fix-burst specifically targets them.
-- All revision-history rows contain historical pinpoints only — leave-alone per sweep protocol.
-- No additional stale current-pointers found beyond the three fixed in this burst. CLEAN.
-
-SE-16d monotonicity PASS: 2026-05-18T01:00:00Z > prior 2026-05-17T22:00:00Z (v1.4.25).
+No other architecture questions are open from the v1.4.x lineage. OQ-01 through OQ-M3 are
+all resolved.
 
 ---
 
-## §Trace v1.4.27
+## Reference Gene Source Map (Updated for v2.0)
 
-**F-R109-6 closure — brief scope only** (2026-05-18T05:40:00Z):
+| Monocle Component | Primary Gene Source | Disposition | Key Artifacts |
+|-------------------|--------------------|----|---|
+| SessionManager (PTY ownership) | claude-squad A.5 (PtyFactory) + zellij session lifecycle | MODEL + ADAPT | claude-squad-pass-8-deep-synthesis.md; zellij-pass-8-final-synthesis.md |
+| spawn_recipe() / EngineModule extension | codemachine-cli EngineModule | ADOPT + EXTEND | codemachine-cli-pass-8-final-synthesis.md |
+| Embedded PTY widget (tui-term) | zellij PTY/pane architecture | MODEL (portable-pty, not zellij code) | zellij-pass-8-final-synthesis.md; embedded-pty-evaluation.md |
+| Session lifecycle state machine | claude-squad instance lifecycle (A.3) | MODEL + ADAPT | claude-squad-pass-8-deep-synthesis.md §instance lifecycle |
+| Hook auto-injection on spawn | any-context inject-on-spawn pattern | ADOPT | any-context-lazyclaude-pass-8-final-synthesis-v2.md |
+| Action enum + 5-level precedence | lazygit | ADOPT + EXTEND (PTY + launch actions) | lazygit-pass-8-final-synthesis.md §Action enum |
+| AppMode state machine + VecDeque overlay | NikiforovAll + lazygit fix | ADOPT + EXTEND (EmbeddedTerminal + SessionCreation) | nikiforovall-lazyclaude-pass-8-final-synthesis-v2.md §AppMode |
+| Hook protocol + tmpfile schema | any-context hooks-r1/r2 | ADOPT (already built) | any-context-lazyclaude-pass-8-final-synthesis-v2.md §Hook protocol |
+| Broker (bounded pub/sub + drop counter) | any-context broker-r1/r2 | ADOPT + EXTEND (PTY channel) | any-context-lazyclaude-pass-8-final-synthesis-v2.md §Broker |
+| Crate workspace split | zellij | ADOPT (already built, extended) | zellij-pass-8-final-synthesis.md §crate layout |
+| Worktree isolation pattern | claude-squad | ADOPT + EXTEND (spawn cwd injection) | claude-squad-pass-8-deep-synthesis.md |
+| CCR integrate-external | claude-code-router | ADOPT + EXTEND (used in spawn path) | claude-code-router-pass-C-final-synthesis.md |
+| FactoryAdapter + VsddFactoryAdapter | vsdd-factory | ADOPT (confirmed observe-only) | vsdd-factory-pass-8-final-synthesis.md |
+| 7-parser customization schema | NikiforovAll | ADOPT (v1B) | nikiforovall-lazyclaude-pass-8-final-synthesis-v2.md §parsers |
+| Interactive Tune CRUD | NikiforovAll writer/CRUD genes | ADOPT (v1B) | nikiforovall-lazyclaude-pass-8-final-synthesis-v2.md §CRUD |
 
-**F-R109-6 HIGH — §Success Criteria Forward-compatibility row stale pins (Architect 8A bump).**
-
-Architect 8A bumped SS-core-types-and-abi.md v1.2.12 → v1.2.13, SS-daemon-lifecycle.md v1.0.31 → v1.0.32, SS-engine-module.md v1.1.19 → v1.1.20. BC-INDEX v1.6 → v1.7 (this same R109 PO 8B burst).
-
-SE-17f before/after — §Success Criteria Forward-compatibility contracts row Target cell (line 248):
-
-**Before:** `Per \`SS-core-types-and-abi.md\` v1.2.12, \`SS-daemon-lifecycle.md\` v1.0.31, and \`SS-engine-module.md\` v1.1.19.`
-**After:** `Per \`SS-core-types-and-abi.md\` v1.2.13, \`SS-daemon-lifecycle.md\` v1.0.32, and \`SS-engine-module.md\` v1.1.20.`
-
-BC-INDEX reference updated: `BC-INDEX v1.6` → `BC-INDEX v1.7`.
-
-**D-042 full-brief sweep result (v1.4.27).** grep -nE `SS-[a-z-]*\.md v[0-9]` across full `.factory/specs/product-brief.md`. All SS-* current-pointer hits classified:
-- `SS-daemon-lifecycle.md v1.0.32` in §Success Criteria Forward-compatibility row: CURRENT (just fixed in this burst).
-- `SS-core-types-and-abi.md v1.2.13` in §Success Criteria Forward-compatibility row: CURRENT (just fixed in this burst).
-- `SS-engine-module.md v1.1.20` in §Success Criteria Forward-compatibility row: CURRENT (just fixed in this burst).
-- All other SS-* hits in body sub-bullets are current-pointers per their respective SS file frontmatter as of Round 8A — classified leave-alone per sweep protocol.
-- All revision-history rows contain historical pinpoints only — leave-alone.
-- No additional stale current-pointers found. CLEAN.
-
-SE-16d monotonicity PASS: 2026-05-18T05:40:00Z > prior 2026-05-18T01:00:00Z (v1.4.26). ARITHMETICALLY TRUE: 2026-05-18T05:40:00Z > 2026-05-18T01:00:00Z PASS.
-
----
-
-## §Trace v1.4.28
-
-**F-R116-2 closure — R15B burst** (2026-05-18T13:30:00Z):
-
-**F-R116-2 HIGH — §Success Criteria Forward-compatibility row BC-INDEX pin back-cascade.**
-
-BC-INDEX was bumped from v1.7 to v1.8 in Round 9B and from v1.8 to v1.9 in Round 10A (commit c0c6b99). Neither round back-cascaded the pin to product-brief.md line 248. The brief was last updated for BC-INDEX in v1.4.27 (R109 PO 8B burst, which itself bumped BC-INDEX v1.6 → v1.7). Two subsequent BC-INDEX bumps were missed.
-
-SE-17f before/after — §Success Criteria Forward-compatibility contracts row Target cell (line 248):
-
-**Before:** `22 behavioral contracts active in Phase 1 PRD (per BC-INDEX v1.7):`
-**After:** `22 behavioral contracts active in Phase 1 PRD (per BC-INDEX v1.9):`
-
-BC count (22) verified unchanged: BC-INDEX v1.9 contains exactly 22 active BC rows (10 SS-01 + 8 SS-02 + 4 SS-03). No BCs were added, retired, or removed between v1.7 and v1.9.
-
-**D-042 full-brief sweep result (v1.4.28).** grep patterns: `BC-INDEX v`, `VP-INDEX v`, `ARCH-INDEX v`, `L2-INDEX v`, `SS-[a-z-]*\.md v[0-9]` across full `.factory/specs/product-brief.md`. All current-pointer hits classified:
-- `BC-INDEX v1.9` in §Success Criteria Forward-compatibility row: CURRENT (just fixed in this burst). Canonical: BC-INDEX.md frontmatter `version: "1.9"`.
-- `SS-daemon-lifecycle.md v1.0.32` in §Success Criteria Forward-compatibility row: CURRENT (fixed in v1.4.27). Confirmed via BC-INDEX §Trace v1.9 context.
-- `SS-core-types-and-abi.md v1.2.13` in §Success Criteria Forward-compatibility row: CURRENT (fixed in v1.4.27).
-- `SS-engine-module.md v1.1.20` in §Success Criteria Forward-compatibility row: CURRENT (fixed in v1.4.27).
-- `SS-daemon-lifecycle.md v1.0.7` in body line 171 sub-bullet: confirmed CURRENT (SS-daemon-lifecycle.md body sub-bullet citation; classified leave-alone per sweep protocol — this is an intentional historical inline pin for the JSONL ring spec narrative, not a current-version pointer).
-- No VP-INDEX, ARCH-INDEX, or L2-INDEX citations found in brief body — CLEAN (these indexes are architecture-domain artifacts not cited in the brief body).
-- All revision-history rows contain historical pinpoints only — leave-alone per sweep protocol.
-- No additional stale current-pointers found. CLEAN.
-
-SE-16d monotonicity PASS: 2026-05-18T13:30:00Z > prior 2026-05-18T05:40:00Z (v1.4.27). ARITHMETICALLY TRUE: 13:30 > 05:40 PASS. Also satisfies strict-greater vs STATE v5.74 at 2026-05-18T13:00:00Z: 13:30 > 13:00 PASS.
+**Confirmed LEAVE BEHIND (unchanged from v1.1.2):** AutoYes/polling daemon; capture-pane
+scraping; tmux as PRIMARY mux; PM/Worker orchestration; zellij-as-library; SSH federation
+(suspended); WASM plugin SDK (suspended v1).
 
 ---
 
-## §Trace v1.4.29
+## §Trace v2.0.0 — Re-Baseline Amendment
 
-**F-R118-4 / GAP-R57-007 closure — R17B burst** (2026-05-18T18:30:00Z):
+**Amendment class:** MAJOR (control-center re-baseline; observe-only scope retired).  
+**Traces to:** D-236, D-237, D-238. Vision v2.1 APPROVED by Joshua Magady (2026-06-03).
 
-**F-R118-4 / GAP-R57-007 HIGH — §Success Criteria Forward-compatibility row BC-INDEX pin back-cascade.**
+**What this re-baseline retired from v1.4.x:**
 
-BC-INDEX was bumped from v1.9 to v1.10 in Round 16C (commit 9a02f5a). That round did not back-cascade the pin to `product-brief.md` line 250. The brief was last updated for BC-INDEX in v1.4.28 (R15B burst, which bumped BC-INDEX v1.7 → v1.9). One subsequent BC-INDEX bump was missed (v1.9 → v1.10).
+| Retired element | Where it appeared | Why retired |
+|-----------------|------------------|-------------|
+| "Observe-only for workflow state and session transcripts; action-only for permission prompts and keybinding dispatch" | §What Is This | D-236/D-237: monocle now launches and owns sessions |
+| "Claude Code subprocesses are unmodified beyond pointing their hook scripts at the daemon's lock-file-discovered port" | §Constraints Process Topology | Superseded: monocle now spawns sessions with hook auto-injection |
+| Phase 1–4 roadmap (Runtime Core, Static Plane, Workflow Plane, Cross-plane + Federation) | §Scope | Replaced by v1A/v1B wave plan |
+| Phase 2/3/4 success criteria | §Phase 2/3/4 Exit Criteria | Replaced by v1B success criteria; Phase 3 WASM/federation suspended |
+| "Does NOT replace the terminal multiplexer" (blanket) | §Out of Scope | Partially revised: monocle IS a mux for AI sessions; does NOT replace user's general-purpose mux |
+| R-001 observe-only competitive framing | §Competitive Positioning | Replaced with control-center differentiation framing |
+| v1.4.x §Trace v1.4.24 through §Trace v1.4.34 | §Trace sections | Archived to git history; not reproduced here (normative decisions from this lineage are summarized in §Preserved Substrate and §OQ/SOQ Resolutions) |
 
-SE-17a literal grep evidence (scoped-awk per D-116):
+**What this re-baseline preserved (normative, unchanged):**
 
-```
-grep -n "BC-INDEX v1\.9" .factory/specs/product-brief.md
-```
+- All OQ-01 through OQ-M3 resolutions
+- All 6 forward-compatibility contracts and their 22 BCs
+- Phase-1 hook ingestion, permission overlay, event ribbon, profile picker, workflow plane,
+  daemon lifecycle, auth token format, JSONL ring, DTU clone, ABI version const, forward-compat
+  enum policy, FactoryAdapter trait, proto schema
+- R-001 risk assessment at <10% probability and re-eval trigger conditions (a)–(d)
+- Weekly GitHub Actions R-001 monitoring cadence
+- All ADRs (0001–0005)
+- SS-deps-pin-manifest.md version pins and MSRV policy
+- CLAUDE.md CANONICAL PRODUCTION-GRADE PRINCIPLE and CORRECT-AGENT-ROUTING
 
-Result: line 250 — `22 behavioral contracts active in Phase 1 PRD (per BC-INDEX v1.9):` — confirmed NORMATIVE (§Success Criteria body, active pointer, not revision-history pinpoint).
+**Input hash:** TBD — state-manager runs `compute-input-hash --update` after this commit to populate
+the `input-hash` frontmatter field per drift detection protocol.
 
-SE-17f before/after — §Success Criteria Forward-compatibility contracts row Target cell (line 250):
-
-**Before:** `22 behavioral contracts active in Phase 1 PRD (per BC-INDEX v1.9):`
-**After:** `22 behavioral contracts active in Phase 1 PRD (per BC-INDEX v1.10):`
-
-BC count (22) verified unchanged: BC-INDEX v1.10 frontmatter `version: "1.10"` confirmed. No BCs were added or retired between v1.9 and v1.10 per BC-INDEX §Trace v1.10.
-
-**SE-22 second application — full NORMATIVE vs INFORMATIONAL classification:**
-
-SE-22 mandates sweep of all stale pins to: BC-INDEX v1.10, L2-INDEX v1.0.9, ARCH-INDEX v1.0.10, PRD v1.26.11, VP-INDEX v1.12 (current at R17B dispatch). Full sweep result:
-
-| Pattern | grep hits | NORMATIVE hits | INFORMATIONAL hits | Stale NORMATIVE? |
-|---------|-----------|----------------|-------------------|-----------------|
-| `BC-INDEX v` | Line 250 (v1.9→v1.10 fixed), plus revision-history rows (v1.3, v1.6, v1.7, v1.9 in §Trace) | 1 (line 250) | multiple revision-history pinpoints | YES — fixed in this burst |
-| `L2-INDEX v` | 0 hits | 0 | 0 | CLEAN (not cited in brief) |
-| `ARCH-INDEX v` | 0 hits | 0 | 0 | CLEAN (not cited in brief) |
-| `PRD v1\.26` | 0 hits | 0 | 0 | CLEAN (not cited in brief) |
-| `VP-INDEX v` | 0 hits | 0 | 0 | CLEAN (not cited in brief) |
-| `SS-daemon-lifecycle\.md v[0-9]` | Lines 173-174 (v1.0.7), line 250 (v1.0.32) | 1 (line 250, v1.0.32 CURRENT) | 2 (lines 173-174, historical pinpoints from original JSONL/auth sub-bullets, established in R53 and classified leave-alone per all prior sweeps) | NO |
-| `SS-core-types-and-abi\.md v[0-9]` | Line 250 (v1.2.13) | 1 (CURRENT) | 0 | NO |
-| `SS-engine-module\.md v[0-9]` | Line 250 (v1.1.20) | 1 (CURRENT) | 0 | NO |
-
-**NORMATIVE pins confirmed current post-fix:**
-- `BC-INDEX v1.10` at line 250: CURRENT (just fixed).
-- `SS-daemon-lifecycle.md v1.0.32` at line 250: CURRENT (set in v1.4.27, confirmed unchanged).
-- `SS-core-types-and-abi.md v1.2.13` at line 250: CURRENT (set in v1.4.27, confirmed unchanged).
-- `SS-engine-module.md v1.1.20` at line 250: CURRENT (set in v1.4.27, confirmed unchanged).
-
-**INFORMATIONAL pinpoints classified leave-alone:**
-- `SS-daemon-lifecycle.md v1.0.7` at lines 173-174: intentional historical inline pins for the JSONL ring format versioning and versioned auth token sub-bullets, citing the spec version when those sub-bullets were authored (R53). These are spec narrative references ("see SS-daemon-lifecycle.md v1.0.7 §Daemon Lifecycle Protocol"), not current-version pointers. Classified leave-alone per sweep protocol established in all §Trace entries from v1.4.25 onward.
-
-**Bonus catches from SE-22 sweep:** None. The brief does not cite PRD, VP-INDEX, ARCH-INDEX, or L2-INDEX in any body location (consistent with prior sweeps v1.4.26–v1.4.28 all returning CLEAN on these patterns).
-
-SE-16d monotonicity PASS: 2026-05-18T18:30:00Z > prior 2026-05-18T13:30:00Z (v1.4.28). ARITHMETICALLY TRUE: 18:30 > 13:30 PASS. Also satisfies strict-greater vs PRD v1.26.11 timestamp at 18:00: 18:30 > 18:00 PASS (SE-16d).
-
----
-
-## §Trace v1.4.30
-
-**GAP-R59-003 closure — R19B burst** (2026-05-19T00:30:00Z):
-
-**GAP-R59-003 HIGH — §Success Criteria Forward-compatibility row BC-INDEX pin back-cascade (cons R59 ledger).**
-
-BC-INDEX was bumped from v1.10 to v1.11 in Round 18B (commit 442f5ac). That round did not back-cascade the pin to `product-brief.md`. Subsequent bursts R18C, R18D, R18E, and R19A also did not back-cascade — the gap accumulated across the SE-22 v2 consumer-ledger until cons R59 surfaced it. This is the fifth recurrence of the brief BC-INDEX pin back-cascade pattern (prior fixes: v1.4.26 v1.6, v1.4.27 v1.7, v1.4.28 v1.9, v1.4.29 v1.10).
-
-**SE-17a literal grep evidence (scoped-awk per D-116):**
-
-```
-grep -n "BC-INDEX v1\.10" .factory/specs/product-brief.md
-```
-
-Result: line 251 — `22 behavioral contracts active in Phase 1 PRD (per BC-INDEX v1.10):` — confirmed NORMATIVE (§Success Criteria body, active pointer, not revision-history pinpoint).
-
-**SE-17g classification:** NORMATIVE — §Success Criteria Forward-compatibility contracts row Target cell, line 251 (post-R19B renumbering; line 250 in v1.4.29 before v1.4.30 revision-history row added at line 85).
-
-**SE-17f before/after — §Success Criteria Forward-compatibility contracts row Target cell:**
-
-**Before:** `22 behavioral contracts active in Phase 1 PRD (per BC-INDEX v1.10):`
-**After:** `22 behavioral contracts active in Phase 1 PRD (per BC-INDEX v1.32):`
-
-BC count (22) verified unchanged: BC-INDEX v1.11 frontmatter `version: "1.11"` confirmed. No BCs were added or retired between v1.10 and v1.11 per BC-INDEX §Trace v1.11 (R18B bookkeeping-only bump for SM-applied Canonical SS table edit).
-
-**SE-22 v1 in-artifact full sweep (R19B):**
-
-SE-22 mandates sweep of all stale pins to: BC-INDEX v1.11, L2-INDEX v1.0.10, ARCH-INDEX v1.0.10, PRD v1.26.13, VP-INDEX v1.14 (current at R19B dispatch). Full sweep result:
-
-| Pattern | grep hits | NORMATIVE hits | INFORMATIONAL hits | Stale NORMATIVE? |
-|---------|-----------|----------------|-------------------|-----------------|
-| `BC-INDEX v` | Line 251 (v1.10→v1.11 fixed), plus revision-history rows (v1.3, v1.6, v1.7, v1.9, v1.10 in §Trace) | 1 (line 251) | multiple revision-history pinpoints | YES — fixed in this burst |
-| `L2-INDEX v` | 0 hits | 0 | 0 | CLEAN (not cited in brief body) |
-| `ARCH-INDEX v` | 0 hits | 0 | 0 | CLEAN (not cited in brief body) |
-| `PRD v` / `prd\.md v` | 0 hits | 0 | 0 | CLEAN (not cited in brief body) |
-| `VP-INDEX v` | 0 hits | 0 | 0 | CLEAN (not cited in brief body) |
-| `SS-daemon-lifecycle\.md v[0-9]` | Lines 173-174 (v1.0.7), line 251 (v1.0.32) | 1 (line 251, v1.0.32 CURRENT) | 2 (lines 173-174, historical pinpoints, classified leave-alone per all prior sweeps) | NO |
-| `SS-core-types-and-abi\.md v[0-9]` | Line 251 (v1.2.13) | 1 (CURRENT) | 0 | NO |
-| `SS-engine-module\.md v[0-9]` | Line 251 (v1.1.20) | 1 (CURRENT) | 0 | NO |
-| `SS-conventions-anti-patterns v` | Revision-history rows only | 0 | multiple | CLEAN |
-
-**NORMATIVE pins confirmed current post-fix:**
-- `BC-INDEX v1.11` at line 251: CURRENT (just fixed).
-- `SS-daemon-lifecycle.md v1.0.32` at line 251: CURRENT (set in v1.4.27, confirmed unchanged).
-- `SS-core-types-and-abi.md v1.2.13` at line 251: CURRENT (set in v1.4.27, confirmed unchanged).
-- `SS-engine-module.md v1.1.20` at line 251: CURRENT (set in v1.4.27, confirmed unchanged).
-
-**INFORMATIONAL pinpoints classified leave-alone:**
-- `SS-daemon-lifecycle.md v1.0.7` at lines 173-174: intentional historical inline pins for the JSONL ring format versioning and versioned auth token sub-bullets, citing the spec version when those sub-bullets were authored (R53). Classified leave-alone per sweep protocol established in all §Trace entries from v1.4.25 onward.
-
-**Bonus catches from SE-22 v1 sweep:** None. The brief does not cite PRD, VP-INDEX, ARCH-INDEX, or L2-INDEX in any body location (consistent with prior sweeps v1.4.26–v1.4.29 all returning CLEAN on these patterns).
-
-**SE-22 v2 second application — producer consumer-ledger declaration (brief v1.4.30):**
-
-Known consumers of `product-brief.md` version pin who cited v1.4.29 and will require follow-up dispatch by orchestrator:
-
-| Consumer | File | Current pin | Drift status after this bump |
-|---------|------|-------------|------------------------------|
-| PRD `traces_to:` frontmatter | `.factory/specs/prd.md` | v1.4.29 (set R19A, ce1e0ca) | STALE — needs v1.4.30 |
-| L2-INDEX §Trace line 149 | `.factory/specs/domain-spec/L2-INDEX.md` | v1.4.29 (set R18C, bedcf30) | STALE — needs v1.4.30 |
-| CAP-001 §Trace v1.5 | `.factory/specs/domain-spec/capabilities.md` CAP-001 entry | v1.4.29 (set R17E) | STALE — needs v1.4.30 |
-| CLAUDE.md brief version ref | `/Users/jmagady/Dev/monocle/CLAUDE.md` (main branch) | v1.4.29 (§Current Pipeline State line 22 + §Architectural Authority item 6 line 47) | STALE — patched in this R19B burst (Part 2) |
-
-Routing: PRD, L2-INDEX, CAP-001 follow-up dispatches owned by orchestrator per SE-22 v2 consumer-ledger policy. CLAUDE.md patched in Part 2 of this burst.
-
-SE-16d monotonicity PASS: 2026-05-19T00:30:00Z > prior 2026-05-18T18:30:00Z (v1.4.29). ARITHMETICALLY TRUE: 2026-05-19 > 2026-05-18 PASS.
-## §Trace v1.4.33 — POL-11 version-pin remediation (2026-05-30)
-
-**Bump:** 1.4.32 → 1.4.33.
-**Scope:** Phase 1 Exit Criteria table: `per BC-INDEX v1.11` → `per BC-INDEX v1.32` (Option 1 per ADR-0007 §Decision — live active pointer citing canonical BC count; bumped to canonical current version).
-**SE-16d PASS:** 2026-05-30 >= 2026-05-30 (same-day patch; no normative behavioral change).
-
-## §Trace v1.4.34 — POL-11 version-pin cascade from BC-INDEX v1.33 (2026-05-30)
-
-**Bump:** 1.4.33 → 1.4.34.
-**Scope:** Phase 1 Exit Criteria table: `per BC-INDEX v1.32` → `per BC-INDEX v1.33` (Option 1 per ADR-0007 §Decision — normative live active pointer; bumped after Pass-39 adjudication item 6 corrected BC-2.06.007 v1.0.4→v1.0.5 Action::Escape→Action::ExitFullscreen terminology).
-**SE-16d PASS:** 2026-05-30 >= 2026-05-30 (same-day patch; no normative behavioral change).
+**SE-16d monotonicity PASS:** 2026-06-03T22:00:00Z > prior 2026-05-30 (v1.4.34). PASS.

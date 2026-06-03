@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.87"
+version: "6.88"
 status: active
 producer: state-manager
-timestamp: 2026-06-03T22:30:00Z
+timestamp: 2026-06-03T23:00:00Z
 phase: PIVOT-delta-in-progress
-current_step: "D-238: Vision v2.1 APPROVED (Joshua Magady). domain-monocle-vision-synthesis.md v2.1 is the canonical basis for control-center re-baselined-v1. Key gate addition: DAEMON-OWNS-PTY renamed to session-host-owns-PTY; daemon-restart SURVIVAL is CASE 2 (was 'lost', now 'survive'); PTY masters owned by detached per-session session-host processes (abduco/dtach-style), daemon re-attaches over UDS. Q-8 HIGH (PTY-ownership-survival mechanism) added. D-235 daemon wiring likely needs rework. Architect input-doc reconciliation required. NEXT: brief delta (product-owner revises product-brief.md) → architecture delta (Q-8 HIGH + D-235 rework + input-doc reconciliation) → story decomposition."
+current_step: "D-238 delta: product-brief.md v2.0.0 COMMITTED (control-center re-baseline, status draft; validate-brief verdict VALID; input-hash 7e4f4f4). NEXT = architecture delta (architect): resolve open questions Q-1 (PTY-over-UDS), Q-2 (EngineModule/SessionManager surface), Q-7 (tui-term fork posture), Q-8 (HIGH — native session-host persistence feasibility; if infeasible, surface external-supervisor tradeoff for human decision); design SessionManager/session-host/embedded-PTY subsystem; scope D-235 in-process daemon-wiring rework; reconcile stale narrow-keyboard-scope in DISPOSITION-V2 rollup + embedded-pty-evaluation. Then story decomposition."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE. D-224: Wave-6 GATE PASSED (develop @ 2a51a91). D-225: STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to wave-7-READY; points 177→169/195 reconciled to sprint-state. D-226: S-027 DELIVERED (PR #32 @ 3787ebd) — Wave 7: 1/4 done. D-227: S-031 DELIVERED (PR #33 @ 8451486). D-228: S-028 DELIVERED (PR #34 @ 682e5e5) — Wave 7: 3/4 done. develop @ 682e5e5. D-229: Zero-context resume checkpoint — S-029 human-authorized 2026-06-02. develop @ 1158e24. D-230: S-029 DELIVERED (PR #35 @ 48463fb) — Wave 7 COMPLETE (4/4). 32/33 done (192/195 pts). develop @ 48463fb. D-231: Wave-7-gate prerequisite sweep complete — SS-ipc v1.11.0, BC-2.06.021 v1.0.7, BC-INDEX v1.34, STORY-INDEX v5.30, citation atomicity propagation. POL-11/POL-12 PASS. S-027/S-028 story frontmatter status fixed. D-232: Wave-7 gate PASSED — Phase 3 COMPLETE. 1514 tests, 0 failures. F-W7G3-MED-001 fixed (PR #37 @ 6811103). HS-EXP-008 score 1.0. DTU SKIP (DTU-CLONE-STORY added as Phase 4 prereq). sprint-state v1.38. D-233: Phase-3→4 consistency cleanup — EVAL-INDEX v1.9, STORY-INDEX v5.31, BC-HOOK-034 v1.0.2 (typo fix), sprint-state v1.39. 28 story-file status fields corrected. Input-hash refresh (113→0+17 bookkeeping-residual). POL-11/POL-12 PASS. All MED/LOW audit findings RESOLVED. D-234: DTU clone false-negative corrected — S-DTU-001 (cargo binary dtu-claude-code-hooks-v1) validated fidelity 1.0000 (25/25 fixtures). Gate-2 DTU-VALIDATION corrected from SKIP to PASS. DTU-CLONE-STORY closed (RESOLVED-FALSE-PREMISE). Phase 4 UNBLOCKED. dtu_clones_built updated. PROC-DTU-VALIDATE-LOCATION process gap added. D-235: Daemon-wiring convergence — monocle-runtime binary now serves (main() wires daemon_start_sequence + run_server + UDS + tracing + ring-flush + 10s drain). SS-daemon-wiring-impl v1.3.0. SS-deps-pin-manifest v1.2.1. ARCH-INDEX v1.0.26. STORY-INDEX v5.32. sprint-state v1.40. S-DAEMON-WIRE-FIX-001 Wave-8 anchor. Resolved: ADV-W5GATE-HIGH-001, ADV-W3GATE-MED-002/004, ADV-W4GATE-MED-002, S-005-main-wiring, F-DW-HIGH-001. POL-11/POL-12 PASS. D-236: PRODUCT-VISION PIVOT — observe-only RETIRED; monocle → full TUI control center. Phases 4-7 SUSPENDED. D-237: Human ratified re-baselined-v1 control-center vision scope (4 capabilities: Launch, Embedded PTY, Multi-session/multi-project, Interactive Tune + already-built Observe+Control). DAEMON-OWNS-PTY locus. Hook auto-injection v1. embedded-pty-evaluation.md v1.0: primary = portable-pty 0.9.0 + vt100 0.16.2 + tui-term 0.3.4. NEXT: gene-source disposition → revised vision-synthesis → human gate. D-238: Vision approval gate PASSED. domain-monocle-vision-synthesis.md APPROVED at v2.1 by Joshua Magady as the canonical basis for the control-center re-baselined-v1 brief→architecture→story delta. HUMAN ESCALATION folded in at the gate: v1A persistence now REQUIRES that a graceful daemon-PROCESS restart SURVIVES (CASE 2 changed from 'lost' to 'survive'). Persistence principle renamed DAEMON-OWNS-PTY → 'session-host-owns-PTY; daemon coordinates/re-attaches': PTY masters + harness child processes owned by native detached per-session session-host processes (abduco/dtach-style) that outlive the daemon process; daemon re-attaches over UDS on restart. NO-TMUX preserved as default; external supervisor is architect-surfaced fallback only (requires human decision, not silent adoption). CASE 1 (TUI restart survives) and CASE 3 (hard crash → lost, re-launch) unchanged. New HIGH-priority architect question Q-8 (PTY-ownership-survival mechanism) added; NOTE: the already-built D-235 in-process daemon wiring will likely need rework to move PTY ownership out of the daemon process. Remaining architect-only open questions: Q-1 (PTY bytes over UDS), Q-2 (EngineModule/SessionManager surface), Q-7 (tui-term fork posture), plus PTY-throughput benchmark — all resolved during architecture delta. Architect must also reconcile the stale narrow keyboard scope in DISPOSITION-V2 rollup + embedded-pty-evaluation (superseded by full-fidelity ratification). NEXT: brief delta (product-owner) → architecture delta (architect) → story decomposition (story-writer)."
-awaiting: "Brief delta in progress (product-owner revises product-brief.md from observe-only to control-center re-baselined v1). Then architecture delta (architect handles Q-8 HIGH PTY-ownership-survival + D-235 daemon-wiring rework + DISPOSITION-V2/embedded-pty-evaluation input-doc reconciliation), then story decomposition. Vision v2.1 is the approved canonical basis (domain-monocle-vision-synthesis.md, status:approved, D-238)."
+awaiting: "Architecture delta (architect): Q-1 PTY-over-UDS, Q-2 EngineModule/SessionManager surface, Q-7 tui-term fork posture, Q-8 HIGH native session-host persistence feasibility (if infeasible → surface external-supervisor tradeoff for human decision); design SessionManager/session-host/embedded-PTY subsystem; scope D-235 in-process daemon-wiring rework; reconcile stale narrow-keyboard-scope in DISPOSITION-V2 rollup + embedded-pty-evaluation. Then story decomposition. product-brief.md v2.0.0 committed (draft; awaiting adversarial + human gate during/after architecture delta)."
 durable_task_register:
   outstanding:
     - id: "DTU-CLONE-STORY"
@@ -399,8 +399,8 @@ durable_task_register:
     - "TALLY-GUARD (D-225): STATE running-tally must re-sum sprint-state per-story; summary.points_complete is a cache. Hand-increment drift produced +8 pts error + premature Phase-3-COMPLETE. L-W6-GATE-003."
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v6.87 (D-238) — 2026-06-03
-  PIVOT: monocle → full TUI control center — VISION v2.1 APPROVED — DELTA IN PROGRESS
+  ZERO-CONTEXT RESUME CHECKPOINT v6.88 (D-238-delta) — 2026-06-03
+  PIVOT: monocle → full TUI control center — VISION v2.1 APPROVED — BRIEF COMMITTED
   ============================================================================
 
   YOUR FIRST 3 COMMANDS (RUN IN ORDER — BEFORE ANYTHING ELSE):
@@ -410,16 +410,16 @@ next_session_resume_protocol: |
   2. Read /Users/jmagady/Dev/monocle/CLAUDE.md — production-grade-default + correct-agent-routing
      override ALL agent defaults.
 
-  3. Read this STATE.md fully — especially §Trace v6.87 (D-238), durable_task_register,
+  3. Read this STATE.md fully — especially §Trace v6.88 (D-238-delta), durable_task_register,
      and PIVOT-CONTROL-CENTER entry.
 
-  CRITICAL ORIENTATION — D-238 VISION APPROVED:
+  CRITICAL ORIENTATION — D-238-delta: BRIEF COMMITTED, ARCHITECTURE DELTA NEXT:
 
-  Vision v2.1 APPROVED by Joshua Magady (D-238). domain-monocle-vision-synthesis.md
-  v2.1 is the canonical basis. Key gate addition: persistence principle renamed to
-  'session-host-owns-PTY; daemon coordinates/re-attaches'. CASE 2 (daemon-PROCESS restart)
-  now REQUIRED to SURVIVE. Q-8 HIGH (PTY-ownership-survival mechanism) is a NEW
-  architect-required question. D-235 in-process daemon wiring LIKELY NEEDS REWORK.
+  product-brief.md v2.0.0 committed to factory-artifacts (draft; input-hash 7e4f4f4).
+  validate-brief verdict VALID (planning/brief-validation.md v6.0).
+  Vision v2.1 APPROVED (D-238). Persistence = 'session-host-owns-PTY; daemon re-attaches'.
+  CASE 2 (daemon-PROCESS restart) REQUIRED to SURVIVE. Q-8 HIGH open for architect.
+  D-235 in-process daemon wiring LIKELY NEEDS REWORK.
 
   DO NOT run vsdd-factory:phase-4-holdout-evaluation.
   DO NOT resume adversarial refinement (Phase 5), formal hardening (Phase 6), or
@@ -427,8 +427,7 @@ next_session_resume_protocol: |
 
   WHAT THE NEW SESSION MUST DO:
 
-  Step 1: Brief delta — product-owner revises product-brief.md from observe-only to
-          control-center re-baselined v1 using vision-synthesis v2.1 as canonical basis.
+  Step 1 (DONE): Brief delta — product-brief.md v2.0.0 committed. validate-brief VALID.
   Step 2: Architecture delta — architect handles:
           - Q-8 HIGH: PTY-ownership-survival mechanism (abduco/dtach-style session-host
             processes vs in-process daemon ownership; likely reworks D-235 wiring)
@@ -448,23 +447,25 @@ next_session_resume_protocol: |
   - TUI rendering (ratatui + crossterm, sessions panel, event ribbon, profile picker, status bar).
   - 1514 passing tests. 9 workspace crates on develop.
 
-  PIPELINE STATE (as of 2026-06-03 D-238):
+  PIPELINE STATE (as of 2026-06-03 D-238-delta):
 
   Phase 3 TDD Implementation COMPLETE (D-232). All 7 waves delivered and gated.
   D-235: Daemon-wiring CONVERGED (feat/daemon-wire-serve merged as PR #39 @ fcd42f0).
   develop: check git log -1 for live HEAD.
   factory-artifacts: run git -C .factory log -1 --format='%h %s' for live HEAD.
   32/33 stories done (192/195 pts, 98%). Phase 4-7 SUSPENDED per D-236 pivot.
-  Vision v2.1 APPROVED (D-238). Delta (brief→architecture→stories) in progress.
+  Vision v2.1 APPROVED (D-238). product-brief.md v2.0.0 COMMITTED (draft, D-238-delta).
+  NEXT: architecture delta (Q-8 HIGH + SessionManager/session-host + D-235 rework).
   Factory worktree: /Users/jmagady/Dev/monocle/.factory/ (orphan branch factory-artifacts)
 
-  KEY ARTIFACTS FOR VISION REVISION:
+  KEY ARTIFACTS FOR ARCHITECTURE DELTA:
 
   - /Users/jmagady/Dev/monocle/NEXT-SESSION-PIVOT.md — pivot handoff (read FIRST)
-  - .factory/specs/research/domain-monocle-vision-synthesis.md — ORIGINAL vision to revise
-  - .factory/specs/product-brief.md — Phase 1-4 plan (observe-only; to be updated)
+  - .factory/specs/product-brief.md v2.0.0 — control-center re-baseline (COMMITTED, draft)
+  - .factory/specs/research/domain-monocle-vision-synthesis.md v2.1 — APPROVED canonical basis
   - .factory/specs/architecture/SS-engine-module.md — EngineModule trait (extend with launch/lifecycle)
-  - .factory/semport/ — gene sources: claude-squad + zellij (re-study these first)
+  - .factory/specs/research/embedded-pty-evaluation.md — embedded PTY research (input for architect)
+  - .factory/semport/DISPOSITION-V2-CONTROL-CENTER-ROLLUP.md — gene disposition (stale keyboard scope — reconcile)
   - .factory/STATE.md durable_task_register entry PIVOT-CONTROL-CENTER
 
   WAVE-8 BACKLOG (valid, subordinate to pivot):
@@ -500,15 +501,15 @@ current_cycle: cycle-001
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4. D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). |
 | 3 TDD Implementation | COMPLETE — Wave-7 GATE PASSED (D-232) | 2026-06-03 | Wave 1+2+3 DONE (83 pts). Wave 4 GATE PASSED (D-175). Wave 5 GATE PASSED (D-182). Wave 6 GATE PASSED (D-224) @ 2a51a91. Wave 7 GATE PASSED (D-232): S-027 (D-226), S-031 (D-227), S-028 (D-228), S-029 (D-230). F-W7G3-MED-001 fixed PR #37 @ 6811103. 1514 tests, 0 failures. HS-EXP-008 score 1.0. 32/33 done (192/195 pts). develop @ 6811103. NEXT: Phase 3→4 transition gate → Phase 4. |
 | 4-7 | SUSPENDED — vision pivot D-236 | — | Old observe-only scope retired. Do NOT run phase-4-holdout-evaluation until vision revision complete. |
-| PIVOT | DELTA-IN-PROGRESS (D-238) | 2026-06-03 | Vision v2.1 APPROVED (D-238). session-host-owns-PTY. Q-8 HIGH. D-235 rework likely. NEXT: brief delta → architecture delta → story decomposition. |
+| PIVOT | DELTA-IN-PROGRESS (D-238-delta) | 2026-06-03 | Vision v2.1 APPROVED (D-238). product-brief.md v2.0.0 committed (draft, D-238-delta). session-host-owns-PTY. Q-8 HIGH. D-235 rework likely. NEXT: architecture delta → story decomposition. |
 
-develop @ fcd42f04 (NEXT-SESSION-PIVOT.md + CLAUDE.md D-236 banner). Phase 3 COMPLETE (D-232). 32/33 stories done, 192/195 pts (98%). D-236: PRODUCT-VISION PIVOT — monocle becomes full TUI control center. D-238: Vision v2.1 APPROVED. session-host-owns-PTY. Q-8 HIGH. VSDD Phases 4-7 (old scope) SUSPENDED. NEXT: brief delta (product-owner) → architecture delta (architect, Q-8+D-235 rework) → story decomposition.
+develop @ fcd42f04 (NEXT-SESSION-PIVOT.md + CLAUDE.md D-236 banner). Phase 3 COMPLETE (D-232). 32/33 stories done, 192/195 pts (98%). D-236: PRODUCT-VISION PIVOT — monocle becomes full TUI control center. D-238: Vision v2.1 APPROVED. D-238-delta: product-brief.md v2.0.0 COMMITTED (draft). session-host-owns-PTY. Q-8 HIGH. VSDD Phases 4-7 (old scope) SUSPENDED. NEXT: architecture delta (architect, Q-8+D-235 rework+SessionManager) → story decomposition.
 
 ## Blocking Issues
 
 None. All durable_task_register items non-blocking.
 
-## Decisions Log (recent — D-222 through D-231)
+## Decisions Log (recent — D-222 through D-238-delta)
 
 D-047 through D-221 archived at: `cycles/cycle-001/decisions-archive.md`, `cycles/cycle-001/burst-log.md`, and earlier §Trace entries.
 
@@ -531,6 +532,7 @@ D-047 through D-221 archived at: `cycles/cycle-001/decisions-archive.md`, `cycle
 | D-236 | PRODUCT-VISION PIVOT — monocle becomes a full TUI control center (launch/manage/observe/tune/control; multi-session, multi-project; never leave the TUI). "A better lazyclaude AND a better claude-squad." Observe-only / no-orchestration principle from vision-synthesis v1.1.2 (approved 2026-05-11) RETIRED — specifically reverses: "inherit PM/Worker orchestration — rejected" and "execute workflows — rejected — observe-only." Phase-1 substrate (daemon-now-serves, hook ingestion, permission overlay, EngineModule/FactoryAdapter, proto, ring, TUI rendering) is BUILT and REUSABLE. VSDD Phases 4-7 (old observe-only scope) SUSPENDED. Next session: facilitate vision revision (NEXT-SESSION-PIVOT.md is the seed), redo gene-source disposition (claude-squad + zellij first), then delta brief→architecture→stories. Handoff canonical: /Users/jmagady/Dev/monocle/NEXT-SESSION-PIVOT.md. S-032 + S-DAEMON-WIRE-FIX-001 (Wave 8) and all non-blocking durable_task items remain valid but subordinate to pivot. STATE v6.84→v6.85. | 2026-06-03 | human+state-manager |
 | D-237 | Human ratified the re-baselined-v1 control-center vision scope (following D-236 pivot). DECISIONS: (1) Re-baselined v1 (not additive Phase-1.5) — control-center IS the real v1; Phase-1 substrate preserved and extended. (2) v1 capability scope = ALL FOUR: Launch (monocle spawns and OWNS harness sessions from the TUI), Embedded PTY pane (running session visible/interactive INSIDE monocle via tui-term), Multi-session/multi-project management (list/switch/create/kill/rename, grouped by project), Interactive Tune (Static plane becomes interactive: edit/apply bindings, profiles, CCR model routing) — plus the already-built Observe + Control (permission overlay). (3) Cross-restart session PERSISTENCE is a HARD v1 requirement (sessions survive monocle/daemon restart; detach/reattach) — constrains architecture toward DAEMON-OWNS-PTY locus (daemon owns PTYs; PTY bytes traverse existing UDS IPC). Architect to formalize via ADR. (4) Hook auto-injection on spawn is v1 (launch ownership carries hook-wiring ownership; removes today's manual settings.json copy step). EMBEDDED-PTY RESEARCH (.factory/specs/research/embedded-pty-evaluation.md v1.0): primary recommendation = native in-process PTY (portable-pty 0.9.0 + vt100 0.16.2 + tui-term 0.3.4); ratatui 0.30 compatibility verified at manifest level (tui-term 0.3.4 shares ratatui-core ^0.1.0 / ratatui-widgets ^0.3.0); MIT, no RUSTSEC, does NOT raise Phase-1 MSRV floor 1.88; runner-up = tmux control-mode (claude-squad style, external dep + fidelity ceiling); zellij = architecture-model-only. Architect-routed open questions deferred to architecture delta: PTY-vs-tmux ADR, trait-vs-SessionManager component, PTY-over-IPC throughput benchmark, EngineModule lifecycle extension. NEXT: gene-source disposition pass (claude-squad + zellij first) → revised vision-synthesis doc → human vision gate → delta brief → architecture → stories. STATE v6.85→v6.86. | 2026-06-03 | human+state-manager |
 | D-238 | Vision approval gate PASSED. domain-monocle-vision-synthesis.md APPROVED at v2.1 by Joshua Magady as the canonical basis for the control-center re-baselined-v1 brief→architecture→story delta. HUMAN ESCALATION folded in at the gate: v1A persistence now REQUIRES that a graceful daemon-PROCESS restart SURVIVES (CASE 2 changed from 'lost' to 'survive'). Persistence principle renamed DAEMON-OWNS-PTY → 'session-host-owns-PTY; daemon coordinates/re-attaches': PTY masters + harness child processes owned by native detached per-session session-host processes (abduco/dtach-style) that outlive the daemon process; daemon re-attaches over UDS on restart. NO-TMUX preserved as default; external supervisor is architect-surfaced fallback only (requires human decision, not silent adoption). CASE 1 (TUI restart survives) and CASE 3 (hard crash → lost, re-launch) unchanged. New HIGH-priority architect question Q-8 (PTY-ownership-survival mechanism) added; NOTE: the already-built D-235 in-process daemon wiring will likely need rework to move PTY ownership out of the daemon process. Remaining architect-only open questions: Q-1 (PTY bytes over UDS), Q-2 (EngineModule/SessionManager surface), Q-7 (tui-term fork posture), plus PTY-throughput benchmark — all resolved during architecture delta. Architect must also reconcile the stale narrow keyboard scope in DISPOSITION-V2 rollup + embedded-pty-evaluation (superseded by full-fidelity ratification). NEXT: brief delta (product-owner) → architecture delta (architect) → story decomposition (story-writer). STATE v6.86→v6.87. | 2026-06-03 | human+state-manager |
+| D-238-delta | product-brief.md v2.0.0 COMMITTED to factory-artifacts (control-center re-baseline, status draft; validate-brief v6.0 verdict VALID). input-hash 7e4f4f4 written. planning/brief-validation.md v6.0 (input-hash 1659922) committed alongside. Draft-commit: spec package goes through adversarial + human gate during/after architecture delta. Part of the D-238 delta progression (no new heavyweight D-number). STATE v6.87→v6.88. | 2026-06-03 | state-manager |
 
 ## Key Tech Stack (D-229 canonical)
 
@@ -543,7 +545,7 @@ MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44).
 **SS-deps-pin-manifest v1.2.1** | **SS-daemon-wiring-impl v1.3.0** (NEW)
 **BC-2.05.004 v1.1.0** | **BC-2.06.006 v1.1.0** | **BC-2.06.015 v1.0.7** | **BC-2.06.016 v1.1.0** | **BC-2.06.018 v1.1.0**
 **BC-2.06.019 v1.1.0** | **BC-2.06.020 v1.1.0** | **BC-2.06.021 v1.0.7** | **BC-2.06.023 v1.5.1** | **BC-2.06.024 v1.1.0**
-**BC-2.07.004 v1.0.2** | **BC-2.07.005 v1.3.1** | **BC-HOOK-034 v1.0.2** | **S-026 v1.11** | **S-027 v1.10** | **product-brief v1.4.34**
+**BC-2.07.004 v1.0.2** | **BC-2.07.005 v1.3.1** | **BC-HOOK-034 v1.0.2** | **S-026 v1.11** | **S-027 v1.10** | **product-brief v2.0.0 (draft)**
 **EVAL-INDEX v1.9** | **STORY-INDEX v5.32** | **sprint-state v1.40** (32/33 done, 192/195 pts; wave-7 gate PASSED D-232). **S-029 v1.3**. 62 codified disciplines. D-235: Daemon-wiring CONVERGED. D-233: Phase-3→4 consistency cleanup COMPLETE.
 9 workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask, monocle-tui (S-025).
 
@@ -561,7 +563,15 @@ MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44).
 | Resolved blocking issues | `cycles/cycle-001/blocking-issues-resolved.md` |
 | CODIFY-001 sweep protocol reference (Categories 1-11) | `cycles/cycle-001/burst-log.md` (D-207 archive) |
 
-## §Trace v6.87 (D-238 — vision v2.1 approved; delta in progress)
+## §Trace v6.88 (D-238-delta — product-brief.md v2.0.0 committed; architecture delta next)
+
+**D-238-delta (2026-06-03):** product-brief.md v2.0.0 COMMITTED to factory-artifacts
+(control-center re-baseline, status draft). validate-brief verdict VALID (planning/brief-validation.md
+v6.0). input-hash written: 7e4f4f4 (product-brief.md), 1659922 (brief-validation.md).
+Draft-commit — spec package goes through adversarial + human gate during/after architecture
+delta. Part of the D-238 delta progression. NEXT: architecture delta (architect) →
+Q-1/Q-2/Q-7/Q-8 HIGH + SessionManager/session-host/embedded-PTY subsystem design +
+D-235 rework scope + input-doc reconciliation → story decomposition. v6.87→v6.88.
 
 **D-238 (2026-06-03):** Vision approval gate PASSED. domain-monocle-vision-synthesis.md
 APPROVED at v2.1 by Joshua Magady as the canonical basis for the control-center
