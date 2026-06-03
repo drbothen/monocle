@@ -7,7 +7,7 @@ producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/SS-daemon-wiring-v2-delta.md]
-input-hash: "4ed1720"
+input-hash: "ded317c"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-08
@@ -121,7 +121,7 @@ seconds for the typical case of up to 8 sessions.
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — re-discovery on daemon restart is explicitly named in CAP-008; this BC defines the complete re-discovery algorithm including the ordering guarantee |
 | Architecture Module | monocle-runtime (SessionManager `rediscover_sessions()`; `daemon_start_sequence` step 8b) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v1.0.1 §Daemon startup: session re-discovery; SS-daemon-wiring-v2-delta.md v1.0.1 §daemon_start_sequence() — session re-discovery step (step 8b placement and insertion invariant) |
+| Architecture Source | SS-session-manager.md v1.2.0 §Daemon startup: session re-discovery; SS-daemon-wiring-v2-delta.md v1.1.0 §daemon_start_sequence() — session re-discovery step (step 8b placement and insertion invariant) |
 | Test Name | test_BC_2_08_004_rediscovery_completes_before_uds_bind |
 
 ## Related BCs

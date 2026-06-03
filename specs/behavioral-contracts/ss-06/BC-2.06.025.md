@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-tui.md, architecture/SS-session-manager.md]
-input-hash: "02d89c9"
+input-hash: "8dfb673"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -47,9 +47,12 @@ pane.
    - Sessions are sorted by `project_root` (alphabetical by project path).
    - Each unique `project_root` has a header row showing the project's basename
      (e.g., `monocle` for `/home/user/Dev/monocle`).
-   - Under each header, session rows show: harness icon (`[M]` for monocle-launched,
-     `[E]` for externally-detected), `display_name`, `SessionState` indicator
-     (`Running`, `Launching`, `Detached`, `Terminated`).
+   - Under each header, session rows show: harness icon (`[M]` for monocle-launched
+     `spawned_by_monocle: Some(true)`, `[E]` for externally-detected `Some(false)`,
+     `[?]` for pre-v1A forward-compat sessions where `spawned_by_monocle: None` — the
+     `None` case occurs for sessions discovered from sidecars written before this field
+     existed; `[?]` indicates "origin unknown, treat as external"), `display_name`,
+     `SessionState` indicator (`Running`, `Launching`, `Detached`, `Terminated`).
 2. Fast session switching:
    - Arrow keys navigate sessions within the list (including across project groups).
    - Enter on a `Running` session: AppMode transitions to `EmbeddedTerminal { session_id }`.
@@ -64,8 +67,9 @@ pane.
    - `r`: rename focused session (inline edit or modal).
    - `D`: detach focused session (`DetachSession` IPC sent).
 4. Monocle-launched sessions show a `[M]` badge. Externally-detected sessions show `[E]`.
-   This reflects the `spawned_by_monocle: Some(true)` / `Some(false)` field on
-   `EnrichedSession` per SS-engine-module-v2-delta.md.
+   Sessions with `spawned_by_monocle: None` (pre-v1A forward-compat or legacy sidecars) show `[?]`.
+   This tri-state reflects the `spawned_by_monocle: Option<bool>` field on `EnrichedSession`
+   per SS-engine-module-v2-delta.md: `Some(true)` → `[M]`, `Some(false)` → `[E]`, `None` → `[?]`.
 
 ## Invariants
 
@@ -86,8 +90,9 @@ pane.
 | EC-290 | No sessions in list | Sessions panel shows "No sessions. Press 'n' to create one." |
 | EC-291 | All sessions from same project_root | Single project group with all sessions as children |
 | EC-292 | `project_root` is an empty string (edge case in session registry) | Grouped under `"<unknown>"` project header |
-| EC-293 | `k` key on a `Launching` session | KillSession IPC sent; session transitions to Killed/Terminated; session-host handles Kill command |
+| EC-293 | `k` key on a `Launching` session | KillSession IPC sent; session-host handles Kill; session transitions to Terminated |
 | EC-294 | Rename with empty string | `RenameSession` with empty `new_name` → `ServerToClient::Error`; inline editor shows error indicator |
+| EC-295 | `spawned_by_monocle: None` (pre-v1A forward-compat session — sidecar has no `spawned_by_monocle` field) | Session row renders `[?]` badge; treated as "external" for lifecycle purposes (Kill/Detach/Rename all available); NOT treated as monocle-launched for hook injection purposes |
 
 ## Canonical Test Vectors
 
@@ -96,7 +101,7 @@ pane.
 | 3 sessions; 2 same project, 1 different | 2 project headers; 3 session rows | happy-path |
 | Arrow key navigation; Enter on Running session | AppMode → EmbeddedTerminal | happy-path |
 | Press `n` | AppMode → SessionCreation (wizard) | happy-path |
-| Press `k` on running session | KillSession IPC sent; session → Killed; list updates | happy-path |
+| Press `k` on running session | KillSession IPC sent; session → Terminated (on confirmation); list updates | happy-path |
 
 ## Verification Properties
 
@@ -105,6 +110,7 @@ pane.
 | VP-TBD | Project group headers rendered correctly for sessions with distinct project_roots | unit |
 | VP-TBD | O(1) session switch: arrow key changes focused session; no IPC sent | unit |
 | VP-TBD | `n` → SessionCreation; `k` → KillSession IPC; `D` → DetachSession IPC | unit |
+| VP-TBD | `spawned_by_monocle: None` session renders `[?]` badge (not blank, not `[M]`, not `[E]`) | unit |
 
 ## Traceability
 
@@ -113,7 +119,7 @@ pane.
 | L2 Capability | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability traceability §SS-06 |
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability traceability — this BC extends the sessions panel capability in CAP-006 with multi-session, multi-project grouping, and lifecycle actions |
 | Architecture Module | monocle-tui (sessions panel renderer, session list grouping logic, lifecycle keybindings) per ARCH-INDEX Subsystem Registry SS-06 |
-| Architecture Source | SS-session-manager.md v1.0.1 §SessionManager §Public API (session_list()); SS-embedded-pty.md v1.0.2 §Fast switching; SS-engine-module-v2-delta.md v1.0.1 §ProcessSnapshot.spawned_by_monocle field |
+| Architecture Source | SS-session-manager.md v1.2.0 §SessionManager §Public API (session_list()); SS-embedded-pty.md v1.1.0 §Fast switching; SS-engine-module-v2-delta.md v1.0.1 §ProcessSnapshot.spawned_by_monocle field |
 | Cross-Ref | BC-2.05.010 (KillSession/DetachSession/RenameSession IPC variants triggered from sessions panel); BC-2.09.008 (SessionCreation wizard and EmbeddedTerminal enter) |
 | Test Name | test_BC_2_06_025_multi_session_grouped_by_project |
 
@@ -134,6 +140,16 @@ S-TBD — Implement multi-session grouped sessions panel with lifecycle actions 
 ## VP Anchors
 
 VP-TBD — Sessions panel multi-session render tests (filled after VP creation)
+
+## §Trace v1.1.0
+
+**Adversarial pass-1 fix O5 — specify `spawned_by_monocle: None` render** (2026-06-03):
+- PC-1 extended: added `[?]` badge for `spawned_by_monocle: None` (pre-v1A forward-compat
+  sessions). The tri-state `Option<bool>` field now has a fully specified render for all three
+  values: `Some(true)` → `[M]`, `Some(false)` → `[E]`, `None` → `[?]`.
+- PC-4 extended: added `None` → `[?]` to the monocle/external badge specification.
+- EC-295 added: edge case documents the `None` session behavior and lifecycle treatment.
+- VP table: added unit test VP for `[?]` badge render.
 
 ## §Trace v1.0.0
 

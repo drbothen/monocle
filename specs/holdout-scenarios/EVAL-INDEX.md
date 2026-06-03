@@ -1,10 +1,10 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.10"
+version: "1.11"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-03T12:00:00Z
+timestamp: 2026-06-03T14:00:00Z
 phase: 2
 visibility: holdout-evaluator-only
 inputs:
@@ -19,7 +19,7 @@ inputs:
   - {path: .factory/stories/S-027-overlay-rendering-status-bar.md, version: "1.10"}
   - {path: .factory/stories/S-029-killer-scenario-test.md, version: "1.3"}
   - {path: .factory/stories/S-030-config-crate-foundation.md, version: "1.1"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.35"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.36"}
 traces_to: .factory/stories/STORY-INDEX.md
 input-hash: "[pending]"
 ---
@@ -53,7 +53,7 @@ input-hash: "[pending]"
 | HS-EXP-011 | Session Survives Graceful Daemon Restart — PTY Stream Re-Attached, SessionEntry Visible | 8 | S-TBD-session-manager | must-pass |
 | HS-EXP-012 | Re-Discovery Completes Before UDS Bind — No TUI Connection Accepted During Discovery Window | 8 | S-TBD-session-manager | must-pass |
 | HS-EXP-013 | Permission Badge+Bell While in EmbeddedTerminal — SUG-3 Guarantee: Prompt Never Silently Queued | 8 | S-TBD-embedded-pty | must-pass |
-| HS-EXP-014 | Hook Auto-Injection Under Concurrent Spawns — No hooks-settings.json Clobber | 8 | S-TBD-session-manager | must-pass |
+| HS-EXP-014 | Hook Auto-Injection Under Concurrent Spawns — Shared hooks-settings.json Not Clobbered; All Sessions Get Correct `--settings` Arg | 8 | S-TBD-session-manager | must-pass |
 | HS-EXP-015 | Full-Fidelity Keyboard Forwarding — Kitty + SGR Mouse + Bracketed Paste Reach PTY stdin | 8 | S-TBD-embedded-pty | must-pass |
 
 ---
@@ -91,7 +91,7 @@ input-hash: "[pending]"
 | HS-EXP-011 | BC-2.08.002, BC-2.08.004, BC-2.05.006 | Session-host survives daemon restart; re-discovery + IPC reconnect integration |
 | HS-EXP-012 | BC-2.08.004 | UDS bind blocked until re-discovery complete (startup ordering/race window) |
 | HS-EXP-013 | BC-2.09.009, BC-2.06.008 | SUG-3: permission badge+bell within one render tick while in EmbeddedTerminal |
-| HS-EXP-014 | BC-2.08.006, BC-2.08.001 | Hook auto-injection with per-session hooks file under concurrent spawns (no clobber) |
+| HS-EXP-014 | BC-2.08.006, BC-2.08.001, BC-HOOK-010 | Hook auto-injection with shared hooks-settings.json under concurrent spawns (shared-file model per BC-HOOK-010; no clobber because spawns read-only the shared file) |
 | HS-EXP-015 | BC-2.09.002, BC-2.09.003, BC-2.09.004, BC-2.09.005 | Full-fidelity keyboard forwarding: all v1A input classes (Kitty + SGR + bracketed paste) |
 
 ---
@@ -161,6 +161,20 @@ Phase 4 holdout evaluation MUST evaluate ALL holdout scenarios:
 **Scope:** `traces_to:` field: `STORY-INDEX.md v4.7` → `STORY-INDEX.md v5.20` (Option 1 per ADR-0007 §Decision; EVAL-INDEX is an active INDEX document; its traces_to must reflect canonical current STORY-INDEX version).
 **SE-16d PASS:** 2026-05-30 >= 2026-05-30 (patch; no normative behavioral change).
 
+## §Trace v1.11 — Adversarial pass-1 PO-owned fixes: holdout scenario data-model reconciliation (2026-06-03T14:00:00Z)
+
+**Bump:** 1.10 → 1.11.
+**Scope:** Four holdout scenarios corrected per adversarial pass-1 PO-owned findings.
+
+- HS-EXP-011: C4 fix — flat sidecar path `<runtime_dir>/session-<id>.json` (NOT nested `runtime_dir/sessions/<id>/session-state.json`); field corrected to `state: "Running"` (NOT `status: Reconnected`). The `Reconnected` state does not exist; re-discovered sessions are `Running`. Setup, Steps 6+9, Expected Outcome, Satisfaction Criteria all corrected.
+- HS-EXP-012: C4 fix — flat sidecar path in Setup + Satisfaction Criteria. Re-discovery scans `runtime_dir/session-*.json` (flat glob, not nested directory).
+- HS-EXP-013: O3 fix — Step 8 keybinding pinned to `Esc` per BC-2.09.009 PC-5 exact semantics (Esc → prior → Overlay); removed ambiguous "or a dedicated key" wording.
+- HS-EXP-014: C1 reconciliation — title updated to reflect shared-file model; Part C (per-session hooks branch) removed; Steps revised to validate single shared `<runtime_dir>/hooks-settings.json` not modified by spawns; BC-HOOK-010 added to source_bcs.
+
+Scenario Index table: HS-EXP-014 title updated. BC Coverage Traceability: HS-EXP-014 cross-refs updated. BC-INDEX input pin: 1.35 → 1.36.
+
+**SE-16d PASS:** 2026-06-03T14:00:00Z > 2026-06-03T12:00:00Z (v1.10). PASS.
+
 ## §Trace v1.10 — D-241 control-center v1A: 5 new holdout scenarios HS-EXP-011..HS-EXP-015 (2026-06-03T12:00:00Z)
 
 **Bump:** 1.9 → 1.10.
@@ -170,7 +184,7 @@ New scenarios:
 - HS-EXP-011 (BC-2.08.002/004/05.006): session survives graceful daemon restart; PTY re-attached; SessionEntry visible after reconnect. Tests the integration timing property between BC-2.08.002 (session persistence) and BC-2.08.004 (UDS bind blocked until re-discovery) and BC-2.05.006 (TUI reconnect).
 - HS-EXP-012 (BC-2.08.004): re-discovery completes before UDS bind; concurrent TUI connect attempts during discovery window all fail. Tests the race-window ordering property (startup sequencing invariant).
 - HS-EXP-013 (BC-2.09.009/2.06.008): permission badge+bell within one render tick while in EmbeddedTerminal (SUG-3 guarantee). Tests the concurrent PTY output + permission prompt surface property that no AC captures in isolation.
-- HS-EXP-014 (BC-2.08.006/001): hook auto-injection under 5 concurrent spawns; no hooks-settings.json clobber. Tests the concurrent write race condition for the per-runtime-dir hook injection file.
+- HS-EXP-014 (BC-2.08.006/001/BC-HOOK-010): hook auto-injection under 5 concurrent spawns; shared hooks-settings.json not clobbered. Tests the shared-file model invariant under concurrent load (v1.10 description had per-session path model — superseded by C1 reconciliation in v1.11).
 - HS-EXP-015 (BC-2.09.002/003/004/005): all v1A input classes (printable, control, arrows, Kitty CSI u, SGR mouse, bracketed paste) forwarded correctly in a single running EmbeddedTerminal session with adversarial 100-keystroke flood.
 
 Scenario Index table updated: 10 → 15 scenarios. Wave Coverage Summary updated to include Wave 8. BC Coverage Traceability table updated with 5 new rows. Combined total: 24 → 29 holdout scenarios. BC-INDEX input pin updated: "1.34" → "1.35".

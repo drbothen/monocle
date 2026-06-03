@@ -7,7 +7,7 @@ producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md]
-input-hash: "cc4aaa1"
+input-hash: "2d6731a"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-09
@@ -110,7 +110,7 @@ viewport offset to the PTY widget renderer. Scrollback capacity is configurable 
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — scrollback is part of the embedded PTY widget capability; it enables users to review previous output without leaving EmbeddedTerminal mode |
 | Architecture Module | monocle-tui (`App::pty_scroll_offset`, `pty_parsers`, PtyScrollUp/Down action handlers) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.0.2 §Scrollback navigation; §Parser ownership in TUI |
+| Architecture Source | SS-embedded-pty.md v1.1.0 §Scrollback navigation; §Parser ownership in TUI |
 | Test Name | test_BC_2_09_007_scrollback_1000_default_configurable |
 
 ## Related BCs

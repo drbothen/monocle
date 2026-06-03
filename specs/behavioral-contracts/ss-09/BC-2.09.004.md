@@ -7,7 +7,7 @@ producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md]
-input-hash: "cc4aaa1"
+input-hash: "2d6731a"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-09
@@ -104,7 +104,7 @@ the enhancement flags silently no-op and standard VT sequences are used as fallb
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — Kitty keyboard protocol is explicitly named in CAP-009; this BC defines the CSI u encoding for Kitty-enhanced key events |
 | Architecture Module | monocle-core (`encode_kitty_key()`, `is_kitty_enhanced_key()` pure functions); monocle-tui (PushKeyboardEnhancementFlags setup, PopKeyboardEnhancementFlags cleanup) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.0.2 §Crossterm setup (keyboard enhancement flags); §Translation function (Kitty branch) |
+| Architecture Source | SS-embedded-pty.md v1.1.0 §Crossterm setup (keyboard enhancement flags); §Translation function (Kitty branch) |
 | Test Name | test_BC_2_09_004_kitty_protocol_csi_u_sequences |
 
 ## Related BCs

@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-ipc.md, architecture/SS-daemon-wiring-v2-delta.md, architecture/adr/ADR-0010-pty-bytes-over-shared-uds-ipc.md]
-input-hash: "f46d499"
+input-hash: "578d164"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-05
@@ -64,18 +64,27 @@ channel fills, a drop counter is incremented and logged.
 1. PTY bytes are forwarded verbatim — no truncation, no excerpt bounding. Unlike
    `HookEventReceived` which truncates POST bodies to 256 bytes, `PtyOutput` carries
    raw terminal bytes that MUST be preserved in full (vt100 sequences would be corrupted
-   by truncation).
+   by truncation). **No silent drops permitted for PTY bytes** (C3 fix: production-grade
+   principle violation to silently drop a mid-CSI byte).
 2. Fan-out is to ALL TUI clients, not just the client currently displaying the session.
    This supports future multi-TUI scenarios and ensures background sessions can be
    monitored by connecting a second TUI instance.
-3. The channel capacity of 1024 per ADR-0010 provides a sliding window of ~1024 PTY
-   read()s at the session-host level. At typical terminal output rates this is sufficient
-   for smooth rendering; drop counter increments indicate extreme output bursts or a
-   slow consumer (session-host's drop counter, NOT the daemon broker drop counter from
-   BC-2.04.011).
-4. `Event::PtyOutput` is a new event type in the broker. It does NOT increment the hook
-   event drop counter (BC-2.04.011). The session-host's own PTY channel drop counter is
-   a separate metric at a different layer.
+3. The session-host's PTY reader channel (capacity 1024) uses `.send().await` (backpressure),
+   NOT `.try_send()` (drop). Backpressure propagates from the TUI render rate up through
+   the daemon broker → session-host proxy → session-host async event loop → PTY reader
+   `spawn_blocking` thread. The `pty_drop_counter` counts channel sender errors (receiver
+   gone), not overflow drops. Under normal backpressure, PTY bytes are never dropped.
+4. **Forced parser-reset protocol on ANY PTY drop:** If a PTY byte is ever dropped (sender
+   error, OOM, other extreme condition), the session-host sends `HostToDaemon::PtyReset`.
+   The daemon propagates `ServerToClient::PtyReset { session_id }` to all TUI clients.
+   Each TUI client resets `pty_parsers[session_id]` and re-fetches `ScrollbackDump` (re-attach).
+5. **TUI-surfaced PtyReset indicator:** On `PtyReset` receipt, the TUI status bar MUST
+   display `[PTY reset — <session_id truncated>]` for 5 seconds. Silent terminal corruption
+   is never acceptable.
+6. `Event::PtyOutput` is a new event type in the broker. It does NOT increment the hook
+   event drop counter (BC-2.04.011). The session-host's own `pty_drop_counter` is a
+   separate metric. The broker MUST give hook events priority over PtyOutput in its fan-out
+   `tokio::select!` (biased or dual-channel) per ADR-0010 §Head-of-line blocking mitigation.
 
 ## Edge Cases
 
@@ -109,7 +118,7 @@ channel fills, a drop counter is incremented and logged.
 | L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — PtyOutput fan-out extends the session/event/prompt push capability of CAP-005 with real-time PTY byte streaming, which is transported over the same shared UDS per ADR-0010 |
 | Architecture Module | monocle-ipc (`ServerToClient::PtyOutput` variant); monocle-runtime (session-host proxy task, broker fan-out) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-daemon-wiring-v2-delta.md v1.0.1 §broker fan-out — PtyOutput messages; ADR-0010 §pty-bytes-over-shared-uds-ipc; SS-session-manager.md v1.0.1 §PTY reader thread |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.1.0 §broker fan-out — PtyOutput messages; ADR-0010 §pty-bytes-over-shared-uds-ipc; SS-session-manager.md v1.2.0 §PTY reader thread |
 | Cross-Ref | BC-2.05.004 (fan-out semantics for slow-client disconnect); BC-2.04.011 (hook event drop counter — separate from PTY channel drop counter) |
 | Test Name | test_BC_2_05_009_pty_output_fan_out_bounded_channel |
 
@@ -130,6 +139,17 @@ S-TBD — Implement PtyOutput broker fan-out and session-host PTY reader bounded
 ## VP Anchors
 
 VP-TBD — PtyOutput fan-out integration tests (filled after VP creation)
+
+## §Trace v1.1.0
+
+**C3 architectural resolution — no-silent-drop + backpressure + PtyReset protocol** (2026-06-03):
+- Invariant 1 strengthened: no silent drops permitted for PTY bytes.
+- Invariant 3 revised: `.send().await` backpressure replaces `.try_send()` drop model.
+  `pty_drop_counter` now counts sender errors (extreme conditions only), not normal overflow.
+- Invariant 4 added: forced parser-reset protocol on any drop (PtyReset message chain).
+- Invariant 5 added: TUI-surfaced PtyReset indicator (5-second status bar message).
+- Invariant 6 updated: broker hook-event priority over PtyOutput added per ADR-0010.
+- Architecture Source updated to reference SS-session-manager.md v1.2.0.
 
 ## §Trace v1.0.0
 

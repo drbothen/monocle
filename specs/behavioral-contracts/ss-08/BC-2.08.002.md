@@ -7,7 +7,7 @@ producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/adr/ADR-0009-native-session-host-process-model.md]
-input-hash: "91d1826"
+input-hash: "61ff3dc"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-08
@@ -108,7 +108,7 @@ client can connect.
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC defines the persistence property: sessions survive daemon restart, which is the primary differentiator of the detached session-host model (ADR-0009) |
 | L2 Domain Invariants | DI-001 (hook event durability — session survival ensures hook events from in-progress sessions continue to flow after daemon restart, because the session-host continues running; this supports DI-001 continuity) |
 | Architecture Module | monocle-runtime (SessionManager, `rediscover_sessions()`); monocle-session-host (setsid startup step) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v1.0.1 §Daemon startup: session re-discovery; SS-session-manager.md §monocle-session-host binary §startup sequence step 2; ADR-0009 §native-detached-session-host |
+| Architecture Source | SS-session-manager.md v1.2.0 §Daemon startup: session re-discovery; SS-session-manager.md §monocle-session-host binary §startup sequence step 2; ADR-0009 §native-detached-session-host |
 | Test Name | test_BC_2_08_002_session_survives_daemon_graceful_restart |
 
 ## Related BCs

@@ -20,7 +20,8 @@ timestamp: 2026-06-03T12:00:00Z
 
 A running monocle daemon with one connected TUI client. One active session is alive: `session_id = S1`,
 associated `monocle-session-host` process is alive (verified via PID liveness check). The session has
-a `session-state.json` sidecar in `runtime_dir/sessions/S1/session-state.json` with `status: Running`.
+a `session-state.json` sidecar at the flat path `<runtime_dir>/session-S1.json` (canonical flat layout
+per SS-session-manager.md — NOT nested under `runtime_dir/sessions/S1/`) with `state: "Running"`.
 A `ratatui::TestBackend` is connected to the TUI for frame inspection.
 
 ## Steps
@@ -39,15 +40,17 @@ A `ratatui::TestBackend` is connected to the TUI for frame inspection.
 5. Start a new daemon instance. The new daemon must NOT bind its UDS socket until re-discovery
    completes (BC-2.08.004 postcondition PC-3: UDS bind blocked until re-discovery complete).
 
-6. The new daemon performs re-discovery: scans `runtime_dir/sessions/*/session-state.json`, finds S1,
-   verifies PID liveness, and adds S1 back to `SessionRegistry` with `status: Reconnected`.
+6. The new daemon performs re-discovery: scans `runtime_dir/session-*.json` (flat glob per SS-session-manager.md
+   §re-discovery algorithm), finds `session-S1.json`, verifies PID liveness, and adds S1 back to
+   `SessionRegistry` with `state: "Running"` (re-discovered sessions resume `Running` state;
+   there is no `Reconnected` state in the SessionState enum).
 
 7. Re-discovery must complete within 5 seconds of daemon start (BC-2.08.004 PC-1 timing SLA).
 
 8. The new daemon binds UDS after re-discovery. TUI reconnects (BC-2.05.006) and receives a new
    `InitialState` push that includes S1 in the session list.
 
-9. TUI sessions panel renders S1 as alive (status `Reconnected` or `Running`). The panel must
+9. TUI sessions panel renders S1 as alive with `state: Running`. The panel must
    show S1 without requiring any user action.
 
 ## Expected Outcome
@@ -57,17 +60,18 @@ A `ratatui::TestBackend` is connected to the TUI for frame inspection.
 - Step 5: the new daemon does NOT accept IPC connections before re-discovery finishes. If the TUI
   tries to reconnect early, it receives connection-refused or sees the socket does not yet exist.
 - Step 7: re-discovery completes within 5 seconds (measured from new daemon process start to UDS bind).
-- Step 9: TUI shows S1 as a live session after reconnect. The sessions panel is not empty.
+- Step 9: TUI shows S1 as `Running` after reconnect. The sessions panel is not empty.
 
 ## Satisfaction Criteria
 
-PASS: S1's session-host process is alive throughout the daemon restart cycle; re-discovery adds S1
-to the new daemon's registry within 5 seconds; UDS bind occurs only after re-discovery; TUI shows S1
-after reconnect.
+PASS: S1's session-host process is alive throughout the daemon restart cycle; re-discovery scans the flat
+`runtime_dir/session-*.json` glob and adds S1 to the new daemon's registry within 5 seconds with
+`state: Running`; UDS bind occurs only after re-discovery; TUI shows S1 as `Running` after reconnect.
 
 FAIL: session-host process dies when daemon receives SIGTERM; re-discovery takes >5 seconds; UDS
 socket becomes available before re-discovery completes (race window open); TUI shows an empty sessions
-panel after reconnect because S1 was not re-discovered.
+panel after reconnect because S1 was not re-discovered; sidecar state is `Reconnected` (non-existent
+state) or uses nested path `runtime_dir/sessions/S1/session-state.json` (wrong path).
 
 **NOT in any story AC:** The story implementing BC-2.08.002 will have ACs verifying the session-host
 survives daemon shutdown. The story implementing BC-2.08.004 will have ACs for the re-discovery

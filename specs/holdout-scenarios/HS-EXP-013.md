@@ -45,8 +45,10 @@ connected via UDS.
 
 7. Observe: the badge count increments (e.g., `[!2 prompts]`). A second bell is emitted.
 
-8. Press the designated "switch to overlay" keybinding (expected: `Esc` or a dedicated key per
-   the EmbeddedTerminal keybinding map). TUI transitions to `AppMode::Overlay`.
+8. Press `Esc` in `AppMode::EmbeddedTerminal` (the canonical exit keybinding per BC-2.09.009
+   PC-5a: `Esc → AppMode transitions to prior`). Because `overlay_stack` is non-empty, per
+   BC-2.09.009 PC-5b the mode immediately transitions from `prior` to
+   `AppMode::Overlay { prior: Dashboard }`. TUI transitions to `AppMode::Overlay`.
 
 9. Verify: `overlay_stack.len() == 2`; P1 and P2 are both present; the overlay renders the
    most recently added prompt (or the front of the stack per BC-2.06.009 rotation semantics).

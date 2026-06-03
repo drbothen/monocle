@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "daemon-wiring-v2-delta"
 subsystem: SS-04
-version: "1.0.1"
+version: "1.1.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -66,23 +66,59 @@ pub struct DaemonState {
 - Step 8: Write lock file (SOQ-2 write point)
 - Step 9: Generate hooks-settings.json (BC-2.04.010)
 - Step 10: Create UDS socket (bind `<runtime_dir>/monocle.sock`)
+- Step 13: Signal startup complete (foreground caller polls for lock file)
+
+**C2 — Dual readiness signals: lock file vs UDS socket.**
+
+These are two DISTINCT readiness signals with different semantics:
+
+- **Lock file (step 8):** SOQ-2 write point. The foreground `daemon start` caller polls for
+  the lock file to confirm "daemon process is alive and has bound the HTTP port." This is the
+  existing startup-complete signal (step 13 description in SS-daemon-wiring.md). Session
+  re-discovery has NOT yet completed at the moment the lock file is written — it runs at step 8b.
+- **UDS socket (step 10):** TUI-ready write point. A TUI client can connect to the UDS socket
+  and receive a valid `InitialState` push only after the UDS socket file exists. Since step 8b
+  (re-discovery) precedes step 10 (UDS bind), the `InitialState` push always includes all
+  re-discovered sessions.
+
+**The foreground caller contract (step 13) is correct as written:** it polls for the lock
+file (step 8), which appears BEFORE re-discovery (step 8b) and BEFORE UDS bind (step 10).
+This means the foreground `daemon start` exits successfully while re-discovery may still
+be in progress. This is intentional and safe: the foreground caller does not connect to
+the UDS socket; it only checks the lock file. TUI clients that subsequently connect to the
+UDS socket will see all re-discovered sessions because the UDS socket is not bound until
+step 10, which comes after step 8b.
+
+**There is NO race for TUI clients.** A TUI client that attempts to connect to the UDS
+socket before the socket is created will receive ENOENT (file not found) or ECONNREFUSED,
+and will retry per the auto-start polling contract in SS-daemon-wiring.md §Auto-Start
+Decision Sequence step 4. The UDS socket bind (step 10) is the re-discovery-complete
+signal for TUI clients; the lock file (step 8) is the startup-alive signal for the
+foreground caller. These two signals are intentionally separate.
 
 **Add step 8b between existing step 8 (write lock file) and step 9 (generate hooks-settings.json):**
 
 ```
 Step 8b (NEW): Session re-discovery
-  - Instantiate SessionManager
+  - Instantiate SessionManager with runtime_dir
   - Call session_manager.rediscover_sessions()
-  - Log re-discovered sessions count
-  - If re-discovery fails (corrupt sidecars), log WARN and continue with empty registry
-    (do NOT abort startup — a clean start is better than no start)
+    - Runs parallel attach probes (tokio::join_all) for all sidecars
+    - Each probe applies SO_PEERCRED cross-check before accepting session
+  - Log re-discovered sessions count (found_alive, found_dead)
+  - If re-discovery fails (corrupt sidecars, runtime_dir unreadable): log WARN/ERROR
+    and continue with empty registry (do NOT abort startup — a clean start is better
+    than no start; TUI will show no pre-existing sessions)
+  - Re-discovery MUST return before step 9 begins
 ```
 
-**Insertion invariant:** Step 8b MUST complete before step 10 (UDS socket bind). The UDS
-bind at step 10 is the point at which TUI clients can connect; session re-discovery must
-finish before any client can connect to ensure the initial state push contains all
-re-discovered sessions. Steps 9 (hooks-settings.json) and 10 (UDS bind) retain their
-existing order and positions; step 8b is inserted before both.
+**Insertion invariant:** Step 8b MUST complete before step 9 (hooks-settings.json) and
+before step 10 (UDS socket bind). The UDS bind at step 10 is the point at which TUI
+clients can connect; session re-discovery must finish before any client can connect to
+ensure the initial state push contains all re-discovered sessions. The lock file (step 8)
+is written BEFORE step 8b begins, so the foreground caller can observe "daemon alive"
+while re-discovery is still running — this is correct (see §Dual readiness signals above).
+Steps 9 (hooks-settings.json) and 10 (UDS bind) retain their existing order and positions;
+step 8b is inserted before both.
 
 **Integration test:** `test_daemon_start_sequence_with_session_rediscovery` — verifies that
 a pre-existing session sidecar is discovered and the session appears in the initial state push
@@ -192,6 +228,18 @@ If no in-process SessionManager stub exists in D-235 (i.e., the stub was skeleta
 implementer creates `SessionManager` from scratch per SS-08.
 
 ---
+
+## §Trace v1.1.0
+
+**C2 — lock-file vs UDS readiness signal separation** (2026-06-03):
+- Clarified that the foreground `daemon start` caller's lock-file poll (step 13) fires at
+  step 8, BEFORE re-discovery (step 8b). This is correct and intentional: the foreground
+  caller does not connect to the UDS socket; only TUI clients do. TUI clients cannot connect
+  until step 10 (UDS bind), which follows step 8b (re-discovery). No race exists.
+- Added §Dual readiness signals explaining the two-signal architecture explicitly.
+- Step 8b description updated to include SO_PEERCRED cross-check and hooks-settings.json
+  shared-file model from SS-session-manager.md v1.2.0 C1 decision.
+- SS-daemon-wiring.md step 13 is confirmed correct as-is; no change required there.
 
 ## §Trace v1.0.1
 

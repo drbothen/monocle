@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "embedded-pty"
 subsystem: SS-09
-version: "1.0.2"
+version: "1.1.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -86,14 +86,13 @@ pub enum SessionCreationStep {
      happens to exit embedded mode. The status-bar badge + bell is the minimum visibility
      guarantee.
 
-  **BC requirement flag (for product-owner):** The exact pre-emption vs badge-only behavior
-  for permission prompts during `EmbeddedTerminal` mode requires a product decision and a
-  BC. Architect recommendation: badge-only for v1A (status bar badge + bell on any incoming
-  permission prompt while in embedded mode); full pre-emption (overlay replaces embedded
-  terminal) as a v1B enhancement. This decision requires human ratification because it
-  involves a UX tradeoff between session-focus interruption and permission visibility — the
-  production-grade minimum (badge + bell) is unambiguous and does not require ratification.
-  The pre-emption enhancement does require explicit product sign-off.
+  **BC requirement — RESOLVED (O1):** BC-2.09.009 (authored by product-owner, v1.0.0,
+  2026-06-03T23:30:00Z) encodes the production-grade minimum: status-bar badge (`[N pending
+  permission(s)]`) + audible bell (`\x07`) once per new prompt while in `EmbeddedTerminal`
+  or `SessionCreation` mode. Full pre-emption (overlay replacing embedded terminal without
+  requiring Esc) is v1B scope requiring human sign-off per BC-2.09.009 Invariant 4.
+  This placeholder is now resolved; no further product-owner action needed for v1A badge-only
+  behavior.
 
 - `SessionCreation` is mutually exclusive with `Overlay` (the session creation wizard blocks
   permission overlays; pending overlays are visible via status-bar badge while in wizard mode,
@@ -136,9 +135,25 @@ struct App {
     /// All sessions parse in the background — the focused session's parser is rendered.
     pty_parsers: HashMap<String, vt100::Parser>,
 
-    /// Scrollback viewport offset for the focused session (in rows from bottom).
-    pty_scroll_offset: usize,
+    /// Per-session scrollback viewport offset (rows from bottom, 0 = live tail).
+    /// I7 fix: was a single usize shared across all sessions (incorrect; focus switch showed
+    /// wrong session's scrollback position). Now per-session keyed by session_id.
+    pty_scroll_offsets: HashMap<String, usize>,
 }
+
+/// Scrollback offset invariants (I7):
+/// - `pty_scroll_offsets[session_id]` is initialized to 0 (live tail) when a session is added.
+/// - `PtyScrollUp` action increments `pty_scroll_offsets[focused_session_id]` (bounded by
+///   scrollback row count in `pty_parsers[id].screen().scrollback_len()`).
+/// - `PtyScrollDown` action decrements (floor 0).
+/// - On `ResizePane` IPC (pane area changed): `pty_scroll_offsets[session_id]` is reset to
+///   0 (live tail). Rationale: a resize reflows content; the old offset is meaningless against
+///   the new layout; snapping to live tail is the least-surprising behavior (matches most
+///   terminal emulators).
+/// - On focus switch (arrow key in sessions panel): the new focused session's scroll offset
+///   is read from its own entry in `pty_scroll_offsets` — the offset is preserved from the
+///   last time that session was focused. O(1) switch cost unchanged.
+/// - On `StateChanged::Terminated` for a session: `pty_scroll_offsets.remove(session_id)`.
 ```
 
 Parser initialization: when the TUI receives `SessionListUpdate` with a new session, a fresh
@@ -189,12 +204,17 @@ When `AppMode::EmbeddedTerminal` is active, crossterm `KeyEvent` values are inte
 the Action dispatch layer before the standard keybinding lookup. They are translated to
 terminal byte sequences and sent as `ClientToServer::KeyInput { session_id, bytes }`.
 
-**Crossterm setup (in `monocle-tui/src/event_loop.rs`):**
+**Crossterm setup (in `monocle-tui/src/event_loop.rs`) — I3 fix:**
+
+Keyboard enhancement (Kitty) flags and the global `EnableMouseCapture` are scoped separately
+to avoid stealing mouse selection/copy from monocle's own panels.
 
 ```rust
-// Enable keyboard enhancement (Kitty protocol) and mouse capture on TUI start.
-// These are terminal capabilities; they must be enabled on the raw terminal
-// before entering the ratatui render loop.
+// TUI STARTUP — global keyboard enhancement only; NO global mouse capture.
+// Kitty enhancement flags give enhanced key events. Mouse capture is NOT enabled globally
+// because it would intercept mouse selection and copy operations in monocle's own panels
+// (sessions panel, event ribbon, etc.), stealing them from the terminal emulator's native
+// text selection capability. Mouse capture is deferred to EmbeddedTerminal entry.
 crossterm::execute!(
     stdout(),
     crossterm::event::PushKeyboardEnhancementFlags(
@@ -203,18 +223,52 @@ crossterm::execute!(
         KeyboardEnhancementFlags::REPORT_EVENT_TYPES |
         KeyboardEnhancementFlags::REPORT_ASSOCIATED_TEXT,
     ),
-    crossterm::event::EnableMouseCapture,
+    crossterm::event::EnableBracketedPaste,
 )?;
 
-// On exit, pop enhancement flags and disable mouse capture:
+// TUI EXIT — pop enhancement flags and paste; no mouse disable needed (never globally enabled).
 crossterm::execute!(
     stdout(),
     crossterm::event::PopKeyboardEnhancementFlags,
+    crossterm::event::DisableBracketedPaste,
+)?;
+```
+
+**EmbeddedTerminal ENTRY (in App::enter_embedded_terminal()):**
+```rust
+// Enable mouse capture scoped to EmbeddedTerminal mode only.
+// Also enable SGR extended mouse reporting (1006) for full coordinate range.
+crossterm::execute!(
+    stdout(),
+    crossterm::event::EnableMouseCapture,
+)?;
+// Write SGR mouse mode (1006) escape to terminal:
+print!("\x1b[?1006h");
+```
+
+**EmbeddedTerminal EXIT (in App::exit_embedded_terminal()):**
+```rust
+// Disable SGR mouse mode (1006), then disable mouse capture.
+// Order is critical: disable SGR first (restores normal mouse protocol), then
+// DisableMouseCapture (stops reporting entirely). Asymmetric-but-correct: we only
+// call DisableMouseCapture if we called EnableMouseCapture (scoped to EmbeddedTerminal).
+print!("\x1b[?1006l");
+crossterm::execute!(
+    stdout(),
     crossterm::event::DisableMouseCapture,
 )?;
 ```
 
-**Note:** Kitty keyboard enhancement flags are enabled globally on TUI startup (not just in
+**I3 UX tradeoff requiring human sign-off:**
+If any monocle panel (not EmbeddedTerminal) needs mouse event routing in future (e.g.,
+clickable session rows), the above design requires adding per-panel mouse enable/disable
+scaffolding. The alternative (global EnableMouseCapture at startup) makes panels clickable
+but steals terminal text selection. The current v1A design (scoped to EmbeddedTerminal only)
+is the production-grade choice for a TUI that does not yet have click targets in its own
+panels. If a future story requires mouse clicks in monocle panels, the product-owner must
+approve enabling global mouse capture and documenting the text-selection tradeoff.
+
+**Note:** Kitty keyboard enhancement flags REMAIN enabled globally on TUI startup (not just in
 EmbeddedTerminal mode). This ensures enhanced key events are available immediately when the
 user enters embedded terminal mode. They are disabled on TUI exit via the cleanup sequence.
 
@@ -280,17 +334,120 @@ pub fn key_event_to_pty_bytes(event: KeyEvent) -> Option<Vec<u8>> {
             Some(encode_kitty_key(event.code, mods, event.kind))
         }
 
+        // Alt/Meta + printable char: ESC prefix (standard xterm Alt encoding).
+        // This covers the common Alt+letter combos (Alt+F for forward-word in readline, etc.).
+        KeyCode::Char(c) if mods == KeyModifiers::ALT => {
+            let mut bytes = vec![b'\x1b'];
+            bytes.extend_from_slice(c.to_string().as_bytes());
+            Some(bytes)
+        }
+
+        // Shift+Tab → back-tab sequence (used by shells, vim, etc. to reverse-complete).
+        KeyCode::BackTab => Some(b"\x1b[Z".to_vec()),
+
+        // Shift+Tab is also reported as KeyCode::Tab with KeyModifiers::SHIFT on some terminals.
+        KeyCode::Tab if mods == KeyModifiers::SHIFT => Some(b"\x1b[Z".to_vec()),
+
+        // Modified arrows (Ctrl+Arrow, Shift+Arrow) — non-Kitty fallback path.
+        // Standard xterm modifier encoding: CSI 1 ; <modifier+1> <arrow>.
+        // Modifier value: Shift=2, Alt=3, Ctrl=5, Shift+Ctrl=6, Alt+Ctrl=7, etc.
+        // These are the standard VT sequences for terminals that do NOT support Kitty protocol.
+        KeyCode::Up if mods == KeyModifiers::CONTROL    => Some(b"\x1b[1;5A".to_vec()),
+        KeyCode::Down if mods == KeyModifiers::CONTROL  => Some(b"\x1b[1;5B".to_vec()),
+        KeyCode::Right if mods == KeyModifiers::CONTROL => Some(b"\x1b[1;5C".to_vec()),
+        KeyCode::Left if mods == KeyModifiers::CONTROL  => Some(b"\x1b[1;5D".to_vec()),
+        KeyCode::Up if mods == KeyModifiers::SHIFT      => Some(b"\x1b[1;2A".to_vec()),
+        KeyCode::Down if mods == KeyModifiers::SHIFT    => Some(b"\x1b[1;2B".to_vec()),
+        KeyCode::Right if mods == KeyModifiers::SHIFT   => Some(b"\x1b[1;2C".to_vec()),
+        KeyCode::Left if mods == KeyModifiers::SHIFT    => Some(b"\x1b[1;2D".to_vec()),
+
+        // Kitty keyboard protocol: modified key encoding.
+        // When Kitty enhancement flags are enabled, crossterm reports modifier
+        // combinations using KeyboardEnhancementFlags. The terminal (in Kitty-enhanced
+        // mode) expects CSI u sequences for modified keys.
+        // Reference: https://sw.kovidgoyal.net/kitty/keyboard-protocol/
+        _ if is_kitty_enhanced_key(event.code, mods) => {
+            Some(encode_kitty_key(event.code, mods, event.kind))
+        }
+
         // Mouse events are handled separately via crossterm::event::MouseEvent.
         _ => None,
     }
 }
 
-/// Encode a mouse event to the terminal byte sequence appropriate for the PTY.
-/// monocle enables SGR mouse mode (1006) when entering EmbeddedTerminal.
-pub fn mouse_event_to_pty_bytes(event: MouseEvent, screen_offset: Rect) -> Option<Vec<u8>> {
-    // SGR mouse mode: CSI < Ps ; Px ; Py M/m
-    // ...implementation details...
-    todo!()
+/// Encode a mouse event to the terminal byte sequence in SGR 1006 encoding.
+/// Called only when AppMode::EmbeddedTerminal is active (SGR mode enabled at entry).
+///
+/// `pane_area`: the Rect of the PTY widget in TUI coordinates (used to:
+///   1. Clip events outside the pane (return None).
+///   2. Convert terminal-local coordinates to pane-relative 1-indexed PTY coordinates.
+///
+/// Parameter name: `pane_area` (NOT `screen_offset` — reconciled with BC-2.09.003
+/// which uses `screen_offset: Rect`; both refer to the PTY widget's Rect; `pane_area`
+/// is more precise and is the canonical name in this spec; BC-2.09.003 will be updated
+/// by product-owner to use `pane_area`).
+pub fn mouse_event_to_pty_bytes(
+    event: MouseEvent,
+    pane_area: Rect,
+) -> Option<Vec<u8>> {
+    use crossterm::event::{MouseButton, MouseEventKind};
+
+    // Clip: event outside pane area is not forwarded.
+    let col = event.column;
+    let row = event.row;
+    if col < pane_area.x
+        || col >= pane_area.x + pane_area.width
+        || row < pane_area.y
+        || row >= pane_area.y + pane_area.height
+    {
+        return None;
+    }
+
+    // Convert to 1-indexed PTY coordinates (origin = pane top-left).
+    let px = (col - pane_area.x + 1) as u32;
+    let py = (row - pane_area.y + 1) as u32;
+
+    // SGR mouse mode (1006): CSI < Ps ; Px ; Py M (press) / m (release)
+    // Ps (button) encoding:
+    //   0 = left press, 1 = middle press, 2 = right press
+    //   64 = scroll up, 65 = scroll down
+    //   32 = motion (button held)
+    //   Release uses the same Ps as press but 'm' terminator.
+    let (ps, terminator) = match event.kind {
+        MouseEventKind::Down(btn) => {
+            let ps = match btn {
+                MouseButton::Left   => 0u32,
+                MouseButton::Middle => 1u32,
+                MouseButton::Right  => 2u32,
+            };
+            (ps, b'M')
+        }
+        MouseEventKind::Up(btn) => {
+            let ps = match btn {
+                MouseButton::Left   => 0u32,
+                MouseButton::Middle => 1u32,
+                MouseButton::Right  => 2u32,
+            };
+            (ps, b'm')
+        }
+        MouseEventKind::ScrollUp   => (64u32, b'M'),
+        MouseEventKind::ScrollDown => (65u32, b'M'),
+        MouseEventKind::Moved      => (32u32, b'M'),
+        // Horizontal scroll: encode as left (66) / right (67) per xterm convention.
+        MouseEventKind::ScrollLeft  => (66u32, b'M'),
+        MouseEventKind::ScrollRight => (67u32, b'M'),
+    };
+
+    // Add modifier bits to Ps per SGR standard:
+    // Shift adds 4, Meta/Alt adds 8, Ctrl adds 16.
+    let mods = event.modifiers;
+    let mut ps_final = ps;
+    if mods.contains(crossterm::event::KeyModifiers::SHIFT) { ps_final |= 4; }
+    if mods.contains(crossterm::event::KeyModifiers::ALT)   { ps_final |= 8; }
+    if mods.contains(crossterm::event::KeyModifiers::CONTROL) { ps_final |= 16; }
+
+    let seq = format!("\x1b[<{};{};{}{}", ps_final, px, py, terminator as char);
+    Some(seq.into_bytes())
 }
 ```
 
@@ -308,17 +465,24 @@ to the daemon, which sends `SessionStateChanged` to the TUI, which exits
 
 ### Mouse support (SGR mode)
 
-When entering `AppMode::EmbeddedTerminal`, in addition to the global Kitty enhancement flags
-already active, monocle enables SGR extended mouse reporting:
+When entering `AppMode::EmbeddedTerminal`, monocle enables mouse capture AND SGR 1006
+extended mouse reporting (I3 fix — scoped to EmbeddedTerminal entry/exit, not global):
 
 ```rust
+// EmbeddedTerminal ENTRY:
 crossterm::execute!(stdout(), crossterm::event::EnableMouseCapture)?;
-// Additionally write the SGR mouse mode escape sequence to the terminal:
-// ESC [ ? 1006 h
+print!("\x1b[?1006h");  // SGR mouse mode
+
+// EmbeddedTerminal EXIT:
+print!("\x1b[?1006l");  // Disable SGR mouse mode first
+crossterm::execute!(stdout(), crossterm::event::DisableMouseCapture)?;
 ```
 
+The entry `EnableMouseCapture` and exit `DisableMouseCapture` are symmetric. SGR `h` and `l`
+are symmetric. The global TUI startup does NOT call `EnableMouseCapture` (I3 fix).
+
 Mouse events received by crossterm in `AppMode::EmbeddedTerminal` are translated to SGR
-sequences via `mouse_event_to_pty_bytes()` and sent as `KeyInput` IPC messages.
+sequences via `mouse_event_to_pty_bytes(event, pane_area)` and sent as `KeyInput` IPC messages.
 
 ### Bracketed paste
 
@@ -340,8 +504,23 @@ retains the scrollback buffer; the TUI passes a scrollback viewport to the widge
 
 `vt100::Parser::new(rows, cols, scrollback_rows)` — the third argument is the scrollback
 line count. Default: 1000 rows. Maximum: configurable via `~/.monocle/config.json` key
-`pty_scrollback_rows`; cap at 10000 (memory bound: 10000 × 80 × ~4 bytes/cell ≈ 3.2 MB
-per session; for 8 sessions ≈ 25 MB total).
+`pty_scrollback_rows`; cap at 10000.
+
+**O4 — Scrollback memory bound (includes per-cell styled-attribute size):**
+
+The `vt100` crate stores each cell as `(char, fg_color, bg_color, attrs_bitmask)`. The
+in-memory size of a single vt100 cell is NOT just a char (1 byte) — it includes color and
+attribute storage. Based on the vt100 0.16.x source (`Cell` struct): approximately
+`1 (char) + 4 (fg color enum) + 4 (bg color enum) + 1 (attrs bitmask) + padding ≈ 16 bytes`
+per cell on 64-bit systems.
+
+Memory budget (styled cells, not just string bytes):
+- 10000 rows × 80 cols × 16 bytes/cell = **12.8 MB per session** (live screen + scrollback).
+- For 8 sessions: **102 MB** — acceptable on a workstation with ≥ 8 GB RAM.
+- The cap at 10000 rows is thus justified by this bound, not the "string bytes" calculation
+  that was previously cited (which severely underestimated real memory use).
+- Default 1000 rows × 80 cols × 16 bytes/cell = 1.28 MB per session; 8 sessions ≈ 10 MB.
+  The default is safe for all target hardware.
 
 ---
 
@@ -423,6 +602,36 @@ Mitigation: integration tests use a PTY fixture corpus from `embedded-pty-evalua
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.1.0
+
+**Adversarial Pass 1 resolution — I1/I3/I7/O1/O2/O4** (2026-06-03):
+
+- **I1 (Keyboard table incomplete):** `mouse_event_to_pty_bytes()` `todo!()` replaced with
+  full SGR-1006 implementation. Added Alt/Meta (`\x1b` + char prefix), Shift+Tab (`\x1b[Z`
+  via `BackTab` and `Tab+SHIFT`), modified arrows (`\x1b[1;5A` etc. for Ctrl+Arrow,
+  `\x1b[1;2A` etc. for Shift+Arrow) on the non-Kitty fallback path. `pane_area` parameter
+  name canonicalized (was `screen_offset` in the todo stub — product-owner must update
+  BC-2.09.003 parameter name from `screen_offset` to `pane_area` to match).
+- **I3 (Global mouse capture scope):** `EnableMouseCapture` / `DisableMouseCapture` moved
+  from global TUI startup/exit to `EmbeddedTerminal` entry/exit. Symmetric enter/exit
+  lifecycle for both `EnableMouseCapture` + SGR `h/l`. Global TUI startup now enables
+  Kitty keyboard flags and bracketed paste only. I3 UX tradeoff documented: if a future
+  story requires mouse clicks in monocle panels, product-owner/human must approve enabling
+  global mouse capture with awareness of text-selection tradeoff.
+- **I7 (Per-session scroll offset):** `pty_scroll_offset: usize` replaced with
+  `pty_scroll_offsets: HashMap<String, usize>`. Invariants: resets to 0 on resize; preserves
+  per-session on focus switch; removed on session GC.
+- **O1 (BC requirement flag resolved):** Placeholder marked resolved; cites BC-2.09.009
+  v1.0.0. Pre-emption is v1B per Invariant 4 of BC-2.09.009.
+- **O2 (tui-term WIP risk):** See ADR-0011 §Q-7 Resolution — WIP risk explicitly documented;
+  exact-pin on tui-term 0.3.4; deferred vendoring on need. Human risk-acceptance required
+  is noted in ADR-0011 (see ADR-0011 §Trace v1.1.0 note below). No change to this spec;
+  ADR-0011 carries the disclosure.
+- **O4 (Scrollback memory bound with styled-cell overhead):** `vt100::Cell` size revised to
+  ~16 bytes (char + fg/bg color enum + attrs + padding). Memory bound: 10000 × 80 × 16 =
+  12.8 MB/session; 8 sessions ≈ 102 MB. Default (1000 rows) ≈ 1.28 MB/session. Cap at
+  10000 rows justified by this bound.
 
 ## §Trace v1.0.2
 

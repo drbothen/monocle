@@ -1,26 +1,27 @@
 ---
 scenario_id: HS-EXP-014
-title: "Hook Auto-Injection Under Concurrent Spawns — No hooks-settings.json Clobber; Each Session Gets Correct `--settings` Arg"
+title: "Hook Auto-Injection Under Concurrent Spawns — Shared hooks-settings.json Not Clobbered; All Sessions Get Correct `--settings` Arg"
 wave: 8
 stories_tested: [S-TBD-session-manager]
-source_bcs: [BC-2.08.006, BC-2.08.001]
+source_bcs: [BC-2.08.006, BC-2.08.001, BC-HOOK-010]
 severity: must-pass
 visibility: holdout-evaluator-only
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T12:00:00Z
 ---
 
-# HS-EXP-014: Hook Auto-Injection Under Concurrent Spawns — No hooks-settings.json Clobber; Each Session Gets Correct `--settings` Arg
+# HS-EXP-014: Hook Auto-Injection Under Concurrent Spawns — Shared hooks-settings.json Not Clobbered; All Sessions Get Correct `--settings` Arg
 
 **Wave:** 8
-**Source BC:** BC-2.08.006 (postconditions PC-1, PC-2), BC-2.08.001 (PC-1, PC-3)
+**Source BC:** BC-2.08.006 (postconditions PC-1, PC-2), BC-2.08.001 (PC-1, PC-3), BC-HOOK-010 (PC-1, PC-3)
 **Stories Tested:** S-TBD-session-manager
 
 ## Setup
 
 A running daemon with a `MockSessionHostSpawner` that records spawn calls. The `runtime_dir`
-is a `tempfile::TempDir`. The `hooks-settings.json` file is the shared per-runtime-dir hook
-injection file (per BC-HOOK-010: per-runtimeDir, not per-session).
+is a `tempfile::TempDir`. The daemon has already written the shared `<runtime_dir>/hooks-settings.json`
+at startup (per BC-HOOK-010: a single shared file per runtimeDir, written once at daemon start, NOT
+per-session). All sessions spawned in this test share this single file.
 
 ## Steps
 
@@ -28,61 +29,67 @@ injection file (per BC-HOOK-010: per-runtimeDir, not per-session).
 
 1. Call `SessionManager::spawn_session(recipe_A, harness_A, profile_A)` for session S1.
 2. Verify within 2 seconds: `MockSessionHostSpawner` was called with args that include
-   `--settings <path_to_hooks-settings.json>` where the path resolves to
-   `runtime_dir/hooks-settings.json`.
-3. Verify: `session-state.json` for S1 was written and contains the `hook_settings_path` field
-   pointing to the same `hooks-settings.json`.
+   `--settings <runtime_dir>/hooks-settings.json` (the single shared file path).
+3. Verify: `session-state.json` for S1 was written at flat path `<runtime_dir>/session-<S1-uuid>.json`
+   and contains the `hook_settings_path` field pointing to `<runtime_dir>/hooks-settings.json`.
+4. Verify: NO per-session hooks file was created (i.e., no `runtime_dir/session-<S1-uuid>-hooks.json`
+   or similar; only the shared `hooks-settings.json` exists).
 
-### Part B: Concurrent spawns — no clobber
+### Part B: Concurrent spawns — shared file survives unchanged
 
-4. Launch 5 concurrent `spawn_session()` calls in parallel tokio tasks:
+5. Launch 5 concurrent `spawn_session()` calls in parallel tokio tasks:
    - S2 through S6, each with a distinct `harness_id` and `profile_id`.
    - All 5 calls issued simultaneously via `tokio::join!`.
 
-5. Wait for all 5 calls to complete (within 2 seconds each per BC-2.08.001 PC-1).
+6. Wait for all 5 calls to complete (within 2 seconds each per BC-2.08.001 PC-1).
 
-6. Verify: `hooks-settings.json` exists at `runtime_dir/hooks-settings.json` and is valid JSON
-   (not a torn write or zero-byte file).
+7. Verify: `hooks-settings.json` exists at `runtime_dir/hooks-settings.json` and is valid JSON
+   (not a torn write or zero-byte file). Content must be byte-for-byte identical to what the
+   daemon wrote at startup — no concurrent spawn modified it.
 
-7. Verify: all 5 `MockSessionHostSpawner` calls each received `--settings runtime_dir/hooks-settings.json`.
-   No spawn call received a different path or an absent `--settings` arg.
+8. Verify: all 5 `MockSessionHostSpawner` calls each received `--settings <runtime_dir>/hooks-settings.json`
+   (the SAME shared path). No spawn call received a different path, a per-session path, or an
+   absent `--settings` arg.
 
-8. Verify: each session S2..S6 has a `session-state.json` sidecar written successfully.
-   No sidecar is missing or zero-byte.
+9. Verify: each session S2..S6 has a `session-state.json` sidecar written successfully at its
+   flat path `<runtime_dir>/session-<uuid>.json`. No sidecar is missing or zero-byte.
 
-### Part C: Per-hooks-file sessions (if per-session hook paths are supported)
-
-9. If the implementation uses per-session hook file paths (e.g., `runtime_dir/sessions/S1/hooks-settings.json`),
-   verify: no two sessions share the same file path; each session's `--settings` arg points to its
-   own file; concurrent writes to different files do not race.
+10. Verify: NO per-session hooks files were created alongside the sidecars. The only hooks
+    file in runtime_dir is the shared `hooks-settings.json`.
 
 ## Expected Outcome
 
-- Part A: `--settings` arg is present and correct for the sequential spawn.
-- Part B: `hooks-settings.json` is intact (valid JSON, non-zero size) after 5 concurrent spawns.
-  No file corruption from concurrent writes. All 5 sessions received the correct `--settings` arg.
-- Part B: Atomic write invariant — if the implementation uses `tempfile::persist` for the
-  hooks-settings.json, there is no window where a spawn reads a partially-written file.
+- Part A: `--settings <runtime_dir>/hooks-settings.json` arg is present and correct for the
+  sequential spawn. No per-session hooks file is created.
+- Part B: `hooks-settings.json` content is unchanged after 5 concurrent spawns (spawns do NOT
+  write to it; the file is written once at daemon startup). All 5 sessions received the shared
+  `--settings <runtime_dir>/hooks-settings.json` arg. No per-session hooks files exist.
+- Part B: Concurrent-safety via read-only access during spawn — because spawns only READ the
+  shared file path (they do not write it), there is no concurrent-write race condition to check
+  for. The production-grade concern is that no spawn accidentally writes a different file or
+  omits the `--settings` arg entirely.
 
 ## Adversarial Probe
 
 Set the tokio runtime to 2 threads (reducing scheduling non-determinism) and repeat the 5-concurrent-
-spawn test 10 times. All 10 runs must produce the same result: valid JSON, correct `--settings` arg
-for all sessions.
+spawn test 10 times. All 10 runs must produce the same result: `hooks-settings.json` unchanged from
+daemon-startup content; correct `--settings <runtime_dir>/hooks-settings.json` arg for all sessions;
+no per-session hooks files in runtime_dir.
 
 ## Satisfaction Criteria
 
-PASS: All concurrent spawns complete within 2 seconds; `hooks-settings.json` is valid JSON after
-all spawns; every spawn received the correct `--settings` arg; no session-state.json sidecar is
-missing or corrupt.
+PASS: All concurrent spawns complete within 2 seconds; `hooks-settings.json` content is unchanged
+from daemon-startup content after all spawns; every spawn received `--settings <runtime_dir>/hooks-settings.json`;
+no per-session hooks files exist in runtime_dir; no session-state.json sidecar is missing or corrupt.
 
-FAIL: `hooks-settings.json` is empty, truncated, or invalid JSON after concurrent spawns; any spawn
-call is missing the `--settings` arg; any `session-state.json` sidecar is zero-byte or absent;
-any spawn takes >2 seconds.
+FAIL: `hooks-settings.json` is empty, truncated, or modified from its daemon-startup content after
+concurrent spawns (indicates spawns erroneously wrote to it); any spawn call is missing the `--settings`
+arg or points to a per-session path; any `session-state.json` sidecar is zero-byte or absent;
+any spawn takes >2 seconds; any per-session hooks file created (violates BC-HOOK-010 PC-3).
 
 **NOT in any story AC:** The story implementing BC-2.08.006 will have ACs for the `--settings` arg
-presence in a single spawn. This holdout tests the **concurrent spawn race condition**: does
-`hooks-settings.json` survive 5 simultaneous spawn calls with no torn writes? And does each session's
-`--settings` arg point to the correct file? The concurrent mutation of the shared per-runtime-dir
-hooks-settings.json (or per-session files if that model is used) is an implementation-level race
-that cannot be validated by any single AC in the implementing story.
+presence in a single spawn. This holdout tests the **shared-file model invariant under concurrent load**:
+does the shared `hooks-settings.json` remain unmodified after 5 simultaneous spawns? And do all
+sessions consistently reference the same shared path? The BC-HOOK-010 guarantee (no per-session files)
+and the BC-2.08.006 invariant (spawn does not write hooks file) must hold simultaneously under
+concurrency — this cannot be validated by any single AC in the implementing story.

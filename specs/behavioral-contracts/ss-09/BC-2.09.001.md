@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md, architecture/adr/ADR-0011-pty-stack-native-portable-pty-vt100-tui-term.md]
-input-hash: "36255cf"
+input-hash: "e3f3366"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-09
@@ -64,12 +64,24 @@ TUI's IPC socket. This timing budget covers: IPC framing decode → `vt100::Pars
    that are not currently focused. This enables O(1) session switching without re-fetching
    scrollback.
 3. The TUI's mpsc channel for IPC events is bounded (capacity 64 per SS-embedded-pty.md
-   §PTY Widget Pipeline). If the channel is full, the IPC reader blocks briefly. A slow
-   render loop that cannot keep up will cause backpressure on the IPC channel. This is
-   acceptable because it naturally throttles PTY output (the session-host's PTY reader also
-   has a bounded channel).
-4. `SCROLLBACK_ROWS` default is 1000 rows. `vt100::Parser::new(rows, cols, scrollback_rows)`
-   is initialized with this default unless overridden by config.
+   §PTY Widget Pipeline). The IPC reader uses `.send().await` (backpressure), NOT `.try_send()`
+   (drop). A slow render loop applies backpressure up to the daemon broker and ultimately
+   to the session-host's PTY reader. This is the correct behavior — no PTY bytes are dropped.
+4. `SCROLLBACK_ROWS` default is 1000 rows (maximum 10000, configurable).
+   `vt100::Parser::new(rows, cols, scrollback_rows)` is initialized with this default unless
+   overridden by config. Memory per parser: ~16 bytes/cell × cols × (visible_rows + scrollback_rows).
+   Default: 16 × 80 × 1024 ≈ 1.3 MB/session; 8 sessions ≈ 10.4 MB. Cap at 10000 rows
+   yields ~12.8 MB/session at 80 cols. See SS-embedded-pty.md §O4 for full bound analysis.
+5. **ScrollbackDump receipt — parser reset protocol (C5):** When `ServerToClient::ScrollbackDump`
+   arrives for a session, the TUI MUST:
+   a. Reset the parser: `pty_parsers[session_id] = vt100::Parser::new(pty_rows, pty_cols, SCROLLBACK_ROWS)`.
+   b. Reconstruct the screen from the `Vec<Vec<SerializedCell>>` styled-cell data WITHOUT
+      re-parsing raw PTY bytes (see SS-session-manager.md §Screen-state transfer).
+   c. After reconstruction, subsequent `PtyOutput` events are applied to the clean parser.
+   The old behavior (forwarding raw bytes into an existing live parser) would double-apply
+   content already in the parser's screen model — causing visual artifacts.
+6. Scroll offsets are per-session (I7). `pty_scroll_offsets[session_id]` is consulted at
+   render time, not a shared `pty_scroll_offset` field.
 
 ## Edge Cases
 
@@ -103,7 +115,7 @@ TUI's IPC socket. This timing budget covers: IPC framing decode → `vt100::Pars
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — this BC defines the PTY byte pipeline performance contract: IPC → vt100 → tui-term within 100ms, which is the core of CAP-009's embedded PTY widget capability |
 | Architecture Module | monocle-tui (App::on_pty_output, pty_parsers, PseudoTerminal widget) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.0.2 §PTY Widget Pipeline; §Parser ownership in TUI; ADR-0011 §PTY stack selection |
+| Architecture Source | SS-embedded-pty.md v1.1.0 §PTY Widget Pipeline; §Parser ownership in TUI; §O4 memory bound; §I7 per-session scroll offset; SS-session-manager.md v1.2.0 §Screen-state transfer (C5); ADR-0011 §PTY stack selection |
 | Test Name | test_BC_2_09_001_pty_output_renders_within_100ms |
 
 ## Related BCs
@@ -124,6 +136,17 @@ S-TBD — Implement TUI PTY widget (vt100 parser, PseudoTerminal render, PtyOutp
 ## VP Anchors
 
 VP-TBD — PTY output render latency tests (filled after VP creation)
+
+## §Trace v1.1.0
+
+**C5/O4/I7 — ScrollbackDump parser reset, memory bound, per-session scroll offset** (2026-06-03):
+- Invariant 3: backpressure model clarified (`.send().await`; no drop on IPC channel).
+- Invariant 4: memory bound revised to include per-cell styled-attribute size (~16 bytes/cell).
+  10000-row cap yields ~12.8 MB/session. Default yields ~1.3 MB/session.
+- Invariant 5 (new): `ScrollbackDump` receipt → parser reset protocol. Receiving styled-cell
+  data requires resetting the parser before applying; prevents double-counting live state.
+- Invariant 6 (new): per-session scroll offset (I7 fix from SS-embedded-pty.md).
+- Architecture Source updated to SS-session-manager.md v1.2.0 and SS-embedded-pty.md v1.1.0.
 
 ## §Trace v1.0.0
 

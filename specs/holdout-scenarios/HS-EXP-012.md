@@ -19,9 +19,11 @@ timestamp: 2026-06-03T12:00:00Z
 ## Setup
 
 A `tempfile::TempDir` as runtime_dir. Three alive session-host processes pre-existing: `S1`, `S2`,
-`S3`. Their `session-state.json` sidecars are in place with `status: Running` and valid PIDs. A
-mock TUI client will attempt to connect to the UDS socket during the daemon startup sequence to
-probe whether the socket appears before or after re-discovery finishes.
+`S3`. Their `session-state.json` sidecars are at flat paths `<runtime_dir>/session-S1.json`,
+`<runtime_dir>/session-S2.json`, `<runtime_dir>/session-S3.json` (canonical flat layout per
+SS-session-manager.md — NOT nested under `runtime_dir/sessions/<id>/`) with `state: "Running"`
+and valid PIDs. A mock TUI client will attempt to connect to the UDS socket during the daemon
+startup sequence to probe whether the socket appears before or after re-discovery finishes.
 
 ## Steps
 
@@ -32,8 +34,8 @@ probe whether the socket appears before or after re-discovery finishes.
 2. Simultaneously, instrument the daemon's re-discovery function to record the timestamp when
    re-discovery completes (all three sessions scanned and registered) as `T_rediscovery_done`.
 
-3. The daemon performs re-discovery of S1, S2, S3. During re-discovery the daemon MUST NOT bind
-   the UDS socket.
+3. The daemon performs re-discovery by scanning `runtime_dir/session-*.json` (flat glob). During
+   re-discovery the daemon MUST NOT bind the UDS socket.
 
 4. After re-discovery finishes, the daemon binds the UDS socket.
 
@@ -57,12 +59,13 @@ that 100ms window.
 ## Satisfaction Criteria
 
 PASS: `T_socket_available >= T_rediscovery_done` in all trials; `InitialState` delivered to TUI
-with all 3 sessions immediately; adversarial 100ms sleep probe shows all TUI connect attempts during
-the sleep fail.
+with all 3 sessions immediately (each with `state: Running`); adversarial 100ms sleep probe shows
+all TUI connect attempts during the sleep fail; sidecars are at flat paths `runtime_dir/session-*.json`.
 
 FAIL: TUI successfully connects before `T_rediscovery_done`; `InitialState` delivered with fewer
 than 3 sessions (TUI receives a partial or empty initial state); adversarial probe shows at least
-one TUI connect succeeds during the re-discovery window.
+one TUI connect succeeds during the re-discovery window; sidecar paths use nested directory structure;
+sidecar field is `status` instead of `state`.
 
 **NOT in any story AC:** The implementing story's AC for BC-2.08.004 will verify that re-discovery
 completes within 5 seconds and that the registry contains all alive sessions. This holdout adds a

@@ -6,14 +6,14 @@ title: "PTY Bytes Shared on Existing UDS IPC Channel (Option A)"
 status: accepted
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
-version: "1.0.0"
+version: "1.1.0"
 timestamp: 2026-06-03T23:00:00Z
 inputs:
   - research/domain-monocle-vision-synthesis.md
   - specs/product-brief.md
   - specs/research/embedded-pty-evaluation.md
   - specs/architecture/SS-ipc.md
-input-hash: "7e4f4f4"
+input-hash: "13e1215"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---
@@ -69,18 +69,44 @@ as `ClientToServer` variants over the same connection.
 at 4 MiB per session, which is well within normal operating conditions. Terminal applications
 rarely exceed 10–50 KiB/s of text output at human-legible speeds.
 
-**Pre-v1A gate benchmark deliverable:** Before the v1A launch gate, the performance-engineer
-MUST benchmark PTY byte delivery at terminal-refresh rates across N concurrent sessions on
-the shared UDS channel, confirming that:
-1. The drop counter does NOT fire under normal terminal refresh load (target: 0 drops at
-   session count ≤ 8 at 60Hz display refresh).
-2. Hook event delivery latency does not exceed 50ms during concurrent PTY streaming.
-3. The `≥ 1000 events/sec` CLAUDE.md convention is satisfied end-to-end.
+**Benchmark gate — BEFORE THE v1A STORY WAVE BEGINS (C3 clarification):**
 
-If the benchmark reveals that Option A is insufficient (drop counter fires consistently, or
-hook latency exceeds 50ms under realistic load), the architect must be re-engaged to evaluate
-Option B before v1A ships. This is a pre-gate verification deliverable, not an open design
-question.
+The performance-engineer MUST benchmark PTY byte delivery on the shared UDS channel
+BEFORE implementation of the v1A story wave begins (i.e., before implementing SS-08/SS-09
+stories). This is not a "before v1A launch" gate — it is a pre-implementation gate that
+must unblock the story wave or force Option B before any PTY implementation work starts.
+
+Benchmark targets:
+1. The `pty_drop_counter` (session-host → daemon channel) does NOT fire under normal
+   terminal refresh load (target: 0 drops at session count ≤ 8 at 60Hz display refresh
+   with `.send().await` backpressure design per SS-session-manager.md §PTY reader thread).
+2. Hook event delivery latency does not exceed 50ms during concurrent PTY streaming of
+   8 sessions at 60Hz refresh rate.
+3. The `≥ 1000 events/sec` CLAUDE.md convention is satisfied end-to-end (hook events
+   + PTY bytes share the channel; combined throughput must not starve hook delivery).
+
+**Head-of-line blocking analysis (C3 / I8):** The shared UDS carries both hook events
+(small JSON, latency-critical) and PTY bytes (potentially large, throughput-oriented).
+With the `.send().await` backpressure design, a slow TUI consumer could apply back-pressure
+up to the PTY reader, slowing PTY output — which is the correct behavior (harness TUI
+stalls). However, PTY bytes and hook events share the same broker fan-out and the same
+per-client UDS write path. A burst of large PTY byte messages could starve small hook
+event messages on the same `tokio::select!` arm.
+
+**Head-of-line blocking mitigation in the broker:**
+The broker's `tokio::select!` MUST interleave hook events and PTY output fairly. If the
+broker receives both `Event::HookEventReceived` and `Event::PtyOutput` simultaneously,
+hook events MUST be given priority (they are latency-critical for the PreToolUse 300ms
+budget). Implementation: the broker `tokio::select!` uses `biased;` with hook events
+polled first, or uses two separate channels (one per event class) with `select!` giving
+hook events a priority weight. The benchmark must confirm this priority is effective.
+
+**If the benchmark reveals that Option A is insufficient** (pty_drop_counter fires
+consistently under test load, or hook latency exceeds 50ms), the architect MUST be
+re-engaged to evaluate Option B (dedicated per-session streaming path) BEFORE v1A
+implementation begins. This finding must not be deferred to post-implementation.
+
+Route to: `vsdd-factory:performance-engineer` for benchmark design and execution.
 
 ## Consequences
 
@@ -151,6 +177,16 @@ the forward-compatibility model (BC-2.02.003).
 - Extends: SS-ipc.md §Message Types (new variants documented in SS-05 delta).
 - Requires: SS-08 Session Manager (session-host proxy that posts to per-session PTY channel).
 - Pre-gate benchmark deliverable: routes to `vsdd-factory:performance-engineer`.
+
+## §Trace v1.1.0
+
+**C3/I8 — benchmark gate timing + head-of-line analysis** (2026-06-03):
+- Benchmark gate moved from "before v1A launch" to "BEFORE v1A story wave begins" —
+  it must unblock implementation (or force Option B) before any SS-08/SS-09 work starts.
+- Head-of-line blocking analysis added: broker MUST prioritize hook events over PTY bytes
+  via `biased;` or dual-channel design. Benchmark must confirm priority effectiveness.
+- PTY reader redesigned in SS-session-manager.md to use `.send().await` (backpressure);
+  `pty_drop_counter` is now a separate metric from the hook-event drop counter (BC-2.04.011).
 
 ## §Trace v1.0.0
 

@@ -6,7 +6,7 @@ title: "PTY Stack: Native portable-pty + vt100 + tui-term (Q-7 tui-term posture)
 status: accepted
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
-version: "1.0.0"
+version: "1.1.0"
 timestamp: 2026-06-03T23:00:00Z
 inputs:
   - research/embedded-pty-evaluation.md
@@ -104,6 +104,24 @@ requires a PR with:
 2. `cargo tree -d` confirming zero duplicate `ratatui-core`/`ratatui-widgets`/`vt100` versions.
 3. Full test suite green (including PTY rendering integration tests added in v1A).
 
+**O2 — tui-term WIP risk: explicit human risk-acceptance required.**
+
+tui-term 0.3.4 self-describes as "work in progress." This ADR accepts that risk under the
+deferred-vendoring-on-need strategy and the exact-pin contract. However, production-grade
+principle requires that this risk be surface explicitly to the human product owner for sign-off
+before the v1A story wave begins:
+
+> **Risk statement:** tui-term 0.3.x is self-labeled WIP. The specific monocle usage
+> (`PseudoTerminal::new(parser.screen()).render(...)`) has been stable across 0.3.2–0.3.4.
+> If tui-term's rendering has an unfound defect in an edge case (e.g., complex ANSI sequences,
+> double-width chars, alternate screen handling), the primary mitigation is our test suite —
+> we do not own the renderer. Fallback: vendor tui-term at the v1A implementation point and
+> patch defects locally.
+>
+> **Human action:** Acknowledge this risk before v1A story wave begins. If accepted,
+> sign off with comment in NEXT-SESSION-PIVOT.md or equivalent durable checkpoint.
+> If not accepted, direct architect to vendor tui-term immediately as a pre-wave task.
+
 **Cargo-init spike required before v1A implementation begins:**
 Run `cargo tree -d` in the workspace after adding the three crates. Confirm:
 - Single resolved version of `ratatui-core` (must be `^0.1.0`).
@@ -137,6 +155,14 @@ review gate on each upgrade upgrade compensates for the WIP status.
 - Extends: SS-deps-pin-manifest.md (adds three crates to Phase 1 Pin Manifest; see SS-deps-pin-manifest delta in this architecture delta batch).
 - Requires: SS-09 Session Host (uses `portable-pty` + `vt100`).
 - Requires: SS-08 Embedded PTY (uses `tui-term` + `vt100` in monocle-tui).
+
+## §Trace v1.1.0
+
+**O2 — tui-term WIP risk: human risk-acceptance requirement added** (2026-06-03):
+- The existing "WIP" label acceptance was documented but not surfaced as a human action item.
+  Adversarial Pass 1 finding O2 requires the risk be explicitly presented to the human
+  before the v1A story wave begins. Added §O2 risk statement + human action block.
+  The architectural decision (deferred vendoring) is unchanged; only the disclosure is new.
 
 ## §Trace v1.0.0
 

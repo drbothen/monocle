@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md]
-input-hash: "cc4aaa1"
+input-hash: "2d6731a"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-09
@@ -45,7 +45,7 @@ scroll (wheel), and motion events. This enables mouse-driven Claude Code TUI fea
 ## Postconditions
 
 1. When a `crossterm::event::Event::Mouse(event)` is received in `AppMode::EmbeddedTerminal`,
-   `mouse_event_to_pty_bytes(event, screen_offset)` is called.
+   `mouse_event_to_pty_bytes(event, pane_area: Rect)` is called.
 2. The function returns `Some(bytes)` encoding the event in SGR mouse mode:
    `CSI < Ps ; Px ; Py M` (press) or `CSI < Ps ; Px ; Py m` (release).
    - `Ps` encodes button number: 0 = left, 1 = middle, 2 = right; 64 = scroll up; 65 = scroll down.
@@ -64,7 +64,7 @@ scroll (wheel), and motion events. This enables mouse-driven Claude Code TUI fea
    the normal mouse mode — `crossterm::execute!(stdout(), DisableMouseCapture)` is NOT called
    on EmbeddedTerminal exit; the global mouse capture remains active but the SGR extension
    is disabled by writing `ESC [ ? 1006 l`).
-2. `mouse_event_to_pty_bytes()` is a PURE function — no I/O or state mutation.
+2. `mouse_event_to_pty_bytes(event, pane_area: Rect)` is a PURE function — no I/O or state mutation.
 3. Mouse motion events (`MouseEventKind::Moved`) are forwarded only if button 1/2/3 tracking
    is active (i.e., the harness's TUI has requested motion reporting). monocle always forwards
    motion events in EmbeddedTerminal mode to maximize compatibility.
@@ -103,7 +103,7 @@ scroll (wheel), and motion events. This enables mouse-driven Claude Code TUI fea
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — mouse forwarding is explicitly named in CAP-009 ("mouse") as part of the full-fidelity keyboard forwarding capability |
 | Architecture Module | monocle-core (`mouse_event_to_pty_bytes()` pure function); monocle-tui (EmbeddedTerminal event handler, SGR mode write) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.0.2 §Mouse support (SGR mode) |
+| Architecture Source | SS-embedded-pty.md v1.1.0 §Mouse support (SGR mode) |
 | Test Name | test_BC_2_09_003_mouse_events_sgr_encoded |
 
 ## Related BCs
@@ -121,6 +121,16 @@ S-TBD — Implement mouse_event_to_pty_bytes() and SGR mode entry (filled by sto
 ## VP Anchors
 
 VP-TBD — Mouse event SGR encoding unit tests (filled after VP creation)
+
+## §Trace v1.1.0
+
+**Adversarial pass-1 fix — parameter rename screen_offset → pane_area: Rect** (2026-06-03):
+- PC-1: renamed `mouse_event_to_pty_bytes(event, screen_offset)` to
+  `mouse_event_to_pty_bytes(event, pane_area: Rect)`. This is a naming-alignment fix with
+  SS-embedded-pty v1.1.0 which uses `pane_area: Rect` as the second parameter. No semantic
+  change — the `Rect` type carries x/y origin and width/height, replacing the simpler
+  `screen_offset` tuple. Boundary detection (EC-221, PC-5) uses the same `Rect` bounds logic.
+- Invariant 2: parameter name updated for consistency.
 
 ## §Trace v1.0.0
 

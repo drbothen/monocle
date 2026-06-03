@@ -7,7 +7,7 @@ producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md]
-input-hash: "cc4aaa1"
+input-hash: "2d6731a"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-09
@@ -105,7 +105,7 @@ the parser must reflect the new size within 2 render ticks of the first dimensio
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — resize propagation is a core PTY widget capability that ensures the harness child renders at the correct dimensions in the embedded terminal pane |
 | Architecture Module | monocle-tui (resize detection, debounce, ResizePane send); monocle-runtime (SessionManager resize_session); monocle-session-host (PTY resize) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.0.2 §Pane area and resize (detection logic, debounce, SIGWINCH) |
+| Architecture Source | SS-embedded-pty.md v1.1.0 §Pane area and resize (detection logic, debounce, SIGWINCH) |
 | Test Name | test_BC_2_09_006_pty_and_parser_resized_within_2_render_ticks |
 
 ## Related BCs

@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.35"
+version: "1.36"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-03T12:00:00Z
+timestamp: 2026-06-03T14:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
-input-hash: "f29eadb"
+input-hash: "cad5ab9"
 traces_to: prd.md
 ---
 
@@ -1167,6 +1167,33 @@ BC-2.06.021 v1.0.6 → v1.0.7:
 BC-INDEX H1 title unchanged: "Status Bar: Keybinding Hint Line". No BC retirements or removals.
 
 SE-16d monotonicity: v1.34 timestamp 2026-06-03T00:00:00Z > v1.33 timestamp 2026-05-30T00:00:00Z. PASS.
+
+## §Trace v1.36
+
+**Adversarial pass-1 PO-owned fixes — BC/holdout content reconciliation** (2026-06-03T14:00:00Z):
+
+BC body corrections (no H1 title changes; all BC IDs stable):
+- BC-2.08.006 v1.0.0 → v1.1.0: C1 HOOK-MODEL reconciliation — Invariant 3 replaced with
+  shared `<runtime_dir>/hooks-settings.json` model per BC-HOOK-010. EC-182 corrected.
+- BC-2.08.001 v1.0.0 → v1.1.0: Description: removed "Created → Launching" (SessionState::Created
+  retired by architect). EC-151: orphan cleanup changed from DaemonToHost::Kill to SIGTERM-on-pid
+  (UDS may not be bound at failure point).
+- BC-2.08.003 v1.0.0 → v1.1.0: SessionState::Killed removed. Kill path is
+  Running → Terminated directly. PCs, Invariants, ECs, test vectors updated.
+- BC-2.09.003 v1.0.0 → v1.1.0: PC-1 parameter renamed `screen_offset` → `pane_area: Rect`
+  per SS-embedded-pty v1.1.0 naming.
+- BC-2.06.025 v1.0.0 → v1.1.0: O5 fix — `spawned_by_monocle: None` render specified as `[?]`.
+  EC-295 added. VP table updated.
+
+Holdout scenario corrections:
+- HS-EXP-011: flat sidecar path `runtime_dir/session-<id>.json` + `state: Running`
+  (removed nested path + `status: Reconnected` — neither exists in canonical model).
+- HS-EXP-012: flat sidecar path in Setup + Satisfaction Criteria.
+- HS-EXP-014: C1 reconciliation — Part C (per-session hooks branch) removed; Steps/Outcome/
+  Satisfaction updated to shared-file model; BC-HOOK-010 added to source_bcs.
+- HS-EXP-013: Step 8 keybinding pinned to BC-2.09.009 PC-5 exact semantics (Esc → prior → Overlay).
+
+SE-16d monotonicity: v1.36 timestamp 2026-06-03T14:00:00Z > v1.35 timestamp 2026-06-03T12:00:00Z. PASS.
 
 ## §Trace v1.35
 

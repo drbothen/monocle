@@ -124,14 +124,14 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "1.0.1"
-  last_bump_commit: "[D-240 consistency-convergence 2026-06-03 — IMP-2 session_id:String canonical, IMP-5 InvalidPath error variant]"
+  current_version: "1.2.0"
+  last_bump_commit: "[Adversarial Pass 1 resolution 2026-06-03 — C1 hook-model shared-file, C3 PTY backpressure+PtyReset, C5 styled-cell ScrollbackDump, I4 prune Created/Killed states, I5 SO_PEERCRED, I6 pre-socket-bind SIGTERM, I7 per-session scroll offset]"
   last_bump_date: "2026-06-03"
 
 SS-embedded-pty:
   path: specs/architecture/SS-embedded-pty.md
-  current_version: "1.0.2"
-  last_bump_commit: "[D-240 consistency-convergence 2026-06-03 — SUG-3 permission badge+bell during EmbeddedTerminal/SessionCreation, no silent suppression]"
+  current_version: "1.1.0"
+  last_bump_commit: "[Adversarial Pass 1 resolution 2026-06-03 — I1 mouse_event_to_pty_bytes impl + Alt/Meta/Shift+Tab/modified arrows, I3 scoped mouse capture EmbeddedTerminal entry/exit, I7 per-session pty_scroll_offsets, O1 BC requirement flag resolved, O4 styled-cell memory bound]"
   last_bump_date: "2026-06-03"
 
 SS-engine-module-v2-delta:
@@ -142,8 +142,8 @@ SS-engine-module-v2-delta:
 
 SS-daemon-wiring-v2-delta:
   path: specs/architecture/SS-daemon-wiring-v2-delta.md
-  current_version: "1.0.1"
-  last_bump_commit: "[D-240 consistency-convergence 2026-06-03 — IMP-3 daemon-wiring step 8b placement fix]"
+  current_version: "1.1.0"
+  last_bump_commit: "[Adversarial Pass 1 resolution 2026-06-03 — C2 dual-readiness-signal separation: lock-file (step 8) vs UDS bind (step 10), foreground-caller vs TUI-client contract]"
   last_bump_date: "2026-06-03"
 
 SS-deps-pin-manifest-v2-delta:
@@ -182,14 +182,14 @@ ADR-0009:
 
 ADR-0010:
   path: specs/architecture/adr/ADR-0010-pty-bytes-over-shared-uds-ipc.md
-  current_version: "1.0.0"
-  last_bump_commit: "[D-239 control-center architecture delta 2026-06-03 — PTY bytes over shared UDS IPC ADR]"
+  current_version: "1.1.0"
+  last_bump_commit: "[Adversarial Pass 1 resolution 2026-06-03 — C3/I8 benchmark gate moved to pre-wave-begin; head-of-line blocking mitigation (broker biased select); pty_drop_counter separate from hook event drop counter]"
   last_bump_date: "2026-06-03"
 
 ADR-0011:
   path: specs/architecture/adr/ADR-0011-pty-stack-native-portable-pty-vt100-tui-term.md
-  current_version: "1.0.0"
-  last_bump_commit: "[D-239 control-center architecture delta 2026-06-03 — native PTY stack ADR]"
+  current_version: "1.1.0"
+  last_bump_commit: "[Adversarial Pass 1 resolution 2026-06-03 — O2 tui-term WIP risk: human risk-acceptance required before v1A story wave]"
   last_bump_date: "2026-06-03"
 
 # ───────────────────────────────────────────────────────────────────────────────
@@ -199,13 +199,13 @@ ADR-0011:
 ARCH-INDEX:
   path: specs/architecture/ARCH-INDEX.md
   current_version: "1.0.28"
-  last_bump_commit: "[D-240 consistency-convergence 2026-06-03 — SUG-4 token estimates, version rows updated for SS-session-manager v1.0.1/SS-embedded-pty v1.0.2/SS-engine-module-v2-delta v1.0.1/SS-daemon-wiring-v2-delta v1.0.1]"
+  last_bump_commit: "[D-240 consistency-convergence 2026-06-03 — SUG-4 token estimates, version rows updated for SS-session-manager/SS-embedded-pty/SS-engine-module-v2-delta/SS-daemon-wiring-v2-delta (at D-240 authoring time)]"
   last_bump_date: "2026-06-03"
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.35"
-  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — 23 new BCs (SS-08/SS-09/SS-03/SS-05/SS-06), 113→136 BCs]"
+  current_version: "1.36"
+  last_bump_commit: "[D-242 adversarial pass-1 convergence-fix 2026-06-03 — C1 shared-hooks model, 13 BC/spec bumps]"
   last_bump_date: "2026-06-03"
 
 STORY-INDEX:
@@ -228,8 +228,8 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.10"
-  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — 5 new holdout scenarios HS-EXP-011..015, 24→29 scenarios]"
+  current_version: "1.11"
+  last_bump_commit: "[D-242 adversarial pass-1 convergence-fix 2026-06-03 — HS-EXP-014 shared-file model patched, O3/O5 holdout fixes]"
   last_bump_date: "2026-06-03"
 
 nfr-catalog:
@@ -725,8 +725,8 @@ BC-2.03.008:
 
 BC-2.05.009:
   path: specs/behavioral-contracts/ss-05/BC-2.05.009.md
-  current_version: "1.0.0"
-  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-05 BC: SessionCreation wizard flow]"
+  current_version: "1.1.0"
+  last_bump_commit: "[Adversarial Pass 1 resolution 2026-06-03 — C3 backpressure model (.send().await), PtyReset protocol, TUI-surfaced reset indicator, broker hook-event priority]"
   last_bump_date: "2026-06-03"
 
 BC-2.05.010:
@@ -779,14 +779,14 @@ BC-2.08.006:
 
 BC-2.08.007:
   path: specs/behavioral-contracts/ss-08/BC-2.08.007.md
-  current_version: "1.0.0"
-  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-08 SessionManager BC: session GC / orphan reaping]"
+  current_version: "1.1.0"
+  last_bump_commit: "[Adversarial Pass 1 resolution 2026-06-03 — C5 ScrollbackDump Vec<Vec<SerializedCell>> (styled cells, not Vec<String>); I5 SO_PEERCRED check on attach]"
   last_bump_date: "2026-06-03"
 
 BC-2.09.001:
   path: specs/behavioral-contracts/ss-09/BC-2.09.001.md
-  current_version: "1.0.0"
-  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-09 EmbeddedPTY BC: PTY attach]"
+  current_version: "1.1.0"
+  last_bump_commit: "[Adversarial Pass 1 resolution 2026-06-03 — C5 parser reset on ScrollbackDump; O4 styled-cell memory bound; I7 per-session scroll offset]"
   last_bump_date: "2026-06-03"
 
 BC-2.09.002:
