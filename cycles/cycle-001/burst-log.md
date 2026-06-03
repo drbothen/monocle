@@ -2511,3 +2511,39 @@ The following entries were removed from STATE.md durable_task_register during D-
 
 **Full detail for all archived entries** is preserved in the active STATE.md durable_task_register or in prior §Trace entries in this burst-log.
 
+
+### §Trace v6.75 (D-226 — S-027 DELIVERED; Wave-7 1/4 done)
+
+**D-226 (2026-06-01):** S-027 DELIVERED — PR #32 @ 3787ebd squash-merged to develop.
+Overlay rendering + diff preview (similar 3) + two-row status bar + [t] trace-to-source stub (BC-2.06.015, human-authorized scope addition).
+18-pass adversarial convergence (5 BLOCKER + 6 MAJOR + [t]-stub MAJOR + drops:N coexistence MAJOR resolved).
+BC version bumps: BC-2.06.015 v1.0.7, BC-2.06.016 v1.1.0, BC-2.06.019 v1.1.0, BC-2.06.020 v1.1.0, BC-2.06.021 v1.0.6.
+Wave 7: 1/4 done. S-029 UNBLOCKED. 29/33 stories done (177/195 pts). sprint-state v1.35. STORY-INDEX v5.26. v6.74→v6.75.
+
+**D-225 (2026-05-31):** STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains).
+Corrected to phase-3-wave-7-READY. Points 177→169/195 (sprint-state per-story re-sum). L-W6-GATE-003. v6.73→v6.74.
+
+**D-224 (2026-05-31):** Wave-6 GATE PASSED — develop @ 2a51a91 (PR #31 squash-merged). 5/6 gates green.
+CRITICAL F-WAVE6-GATE-CRIT-001 fixed: offline stuck TUI — reconnect_from_offline() + 4 offline-break arms.
+Tests PASS | DTU PASS (mean 1.000) | Adversarial PASS (post-remediation) | Demo Evidence PASS | Holdout PASS (mean 0.97) | Mutation SKIPPED.
+L-W6-GATE-001/002. v6.72→v6.73.
+
+Phase 3 IN PROGRESS — Waves 1-6 PASSED (D-164/D-166/D-167/D-175/D-182/D-224). Wave 7 IN PROGRESS (D-226).
+29/33 stories done (177/195 pts). After wave-7 gate → Phase 4.
+
+### §Trace v6.77 (D-228 — S-028 DELIVERED; Wave-7 3/4 done)
+
+**D-228 (2026-06-01):** S-028 DELIVERED — PR #34 @ 682e5e5 squash-merged to develop.
+Sessions Panel Nucleo Filter + Event Ribbon Rolling Log.
+BCs: BC-2.05.002 (TUI connection idempotency), BC-2.05.004 v1.1.0 (TUI HookEventReceived consumer + timestamp_micros field), BC-2.06.006 v1.1.0 (nucleo fuzzy filter), BC-2.06.018 v1.1.0 (event ribbon rolling log).
+10-pass adversarial convergence + S-031 integration-merge (develop fast-forward @ 8451486) + 3-cycle PR review.
+Human-authorized scope expansion: timestamp_micros added to HookEventReceived IPC struct (daemon emit deferred to S-032) + EnrichedSession.display_name.
+BC bumps: BC-2.05.004 v1.1.0, BC-2.06.006 v1.1.0, BC-2.06.018 v1.1.0. SS-ipc v1.10.0.
+Process lessons captured: PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP, PROCESS-GAP-TMP-COMMIT-MSG-MIXUP, PROCESS-GAP-PRMANAGER-EARLY-RETURN.
+Wave 7: 3/4 done. S-029 SOLE remaining (UNBLOCKED). 31/33 done (187/195 pts). sprint-state v1.36. STORY-INDEX v5.28. v6.76→v6.77.
+
+**D-227 (2026-06-01):** S-031 DELIVERED — PR #33 @ 8451486 squash-merged to develop.
+Profile Picker: sticky-per-project selection + Ctrl-P override + CCR path in status bar.
+BCs: BC-2.07.004 (sticky-per-project), BC-2.07.005 (Ctrl-P override).
+9-pass adversarial convergence (3 consecutive CLEAN).
+Wave 7: 2/4 done. 30/33 done (182/195 pts). v6.75→v6.76.

@@ -145,3 +145,17 @@ User decisions (Q-series): Q-A1 vision v1.1.2; Q-B R-001 <10%; Q-license MIT/Apa
 | D-190 | S-025 Pass 14 NITPICK_ONLY — DarkGray baseline branch missing render+color test. Counter HOLDS 0/3. Fix dispatched. | 2026-05-28 | state-manager |
 | D-191 | S-025 Pass 15 NITPICK_ONLY-CLEAN — zero findings. Counter ADVANCES 0/3 → 1/3. Pattern decay confirmed. | 2026-05-28 | state-manager |
 | D-192 | S-025 Pass 16 MED — ADR-0006 audit-table compliance gap (App + EventBusHookEvent + EngineModuleRegistry + BackoffState) + false-green CI script + 4 op_ref violations + vendored copy drift. 5-round fix sequence. SS-engine-module v1.1.22→v1.1.25. ADR-0006 v1.0→v1.2. Counter RESET 1/3 → 0/3. | 2026-05-28 | state-manager |
+
+## Decisions (D-215 through D-221) — Archived from STATE.md v6.78 on 2026-06-02
+
+S-025 convergence pass decisions D-193 through D-214 are in `cycles/cycle-001/burst-log.md` (narrative form).
+
+| ID | Decision | Date | Made By |
+|----|----------|------|---------|
+| D-215 | S-025 Pass 36 CLEAN — counter 0/3→1/3 (ends 15-consecutive 1/3→2/3 failure run). L-W6-S025-018. STATE v6.63→v6.64. | 2026-05-30 | state-manager |
+| D-216 | S-025 Pass 37 CLEAN — counter 1/3→2/3. F-S025-ADV37-DEFER-001 out-of-perimeter (wave-gate anchor). STATE v6.64→v6.65. | 2026-05-30 | state-manager |
+| D-217 | S-025 Pass 38 RESET 2/3→0/3 — in-perimeter CONTENT defect: Esc/q quit key stale prose + zero test coverage. CLOSED: story-writer 8c7d693 + implementer 884401e. L-W6-S025-019. STATE v6.65→v6.66. | 2026-05-30 | state-manager |
+| D-218 | S-025 Pass 39 HOLD — partial-fix regression Esc-semantics over-claim. 3-TRACK: PO 645c994 (BC-2.06.007 v1.0.5) + implementer 74585ea + story-writer 4d0fce1 (S-025 v1.14; STORY-INDEX v5.24). L-W6-S025-020. STATE v6.66→v6.67. | 2026-05-31 | state-manager |
+| D-219 | S-025 Pass 40 CLEAN — counter 0/3→1/3. All 10 ACs re-derived from source. STATE v6.67→v6.68. | 2026-05-31 | state-manager |
+| D-220 | S-025 Pass 41 CLEAN — counter 1/3→2/3. STATE v6.68→v6.69. | 2026-05-31 | state-manager |
+| D-221 | S-025 Pass 42 CLEAN — counter 2/3→3/3 = FORMALLY CONVERGED. L-W6-S025-021. STATE v6.69→v6.70. | 2026-05-31 | state-manager |
