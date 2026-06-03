@@ -1,37 +1,127 @@
 ---
 document_type: vision-synthesis
 level: ops
-version: "1.1.3"
-status: approved
-producer: orchestrator
+version: "2.0"
+status: draft
+producer: product-owner
 phase: pre-phase-0-vision
-timestamp: 2026-05-17T16:30:00Z
-inputs: [semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md, semport/nikiforovall-lazyclaude/nikiforovall-lazyclaude-pass-8-final-synthesis-v2.md, semport/vsdd-factory/vsdd-factory-pass-8-final-synthesis.md, semport/codemachine-cli/codemachine-cli-pass-8-final-synthesis.md, semport/zellij/zellij-pass-8-final-synthesis.md, semport/lazygit/lazygit-pass-8-final-synthesis.md, semport/claude-squad/claude-squad-pass-8-deep-synthesis.md, semport/claude-code-router/claude-code-router-pass-C-final-synthesis.md, product-brief.md, architecture/SS-deps-pin-manifest.md, planning/oq-research.md]
-input-hash: "203ad76"
-traces_to: "v1.0 commit 2c2b676 (8-repo full-protocol ingest); JC-2/EX-2 closures via oq-research.md; SS-deps-pin-manifest.md as canonical pin source; adversary re-audit 0bd4ba9 vision-re-versioning recommendation"
+timestamp: 2026-06-03T18:00:00Z
+inputs:
+  - semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
+  - semport/nikiforovall-lazyclaude/nikiforovall-lazyclaude-pass-8-final-synthesis-v2.md
+  - semport/vsdd-factory/vsdd-factory-pass-8-final-synthesis.md
+  - semport/codemachine-cli/codemachine-cli-pass-8-final-synthesis.md
+  - semport/zellij/zellij-pass-8-final-synthesis.md
+  - semport/lazygit/lazygit-pass-8-final-synthesis.md
+  - semport/claude-squad/claude-squad-pass-8-deep-synthesis.md
+  - semport/claude-code-router/claude-code-router-pass-C-final-synthesis.md
+  - product-brief.md
+  - architecture/SS-deps-pin-manifest.md
+  - planning/oq-research.md
+  - NEXT-SESSION-PIVOT.md
+  - semport/DISPOSITION-V2-CONTROL-CENTER-ROLLUP.md
+  - specs/research/embedded-pty-evaluation.md
+input-hash: "020ce73"
+traces_to: >
+  v1.0 commit 2c2b676 (8-repo full-protocol ingest); JC-2/EX-2 closures via
+  oq-research.md; SS-deps-pin-manifest.md as canonical pin source; adversary
+  re-audit 0bd4ba9 vision-re-versioning recommendation;
+  D-236 product-vision pivot (2026-06-03) human-directed;
+  D-237 human ratification of re-baselined v1 control-center scope (2026-06-03);
+  DISPOSITION-V2-CONTROL-CENTER-ROLLUP.md v1.0;
+  embedded-pty-evaluation.md v1.0
 project: monocle
-approved_by: human
-approved_at: 2026-05-12T00:00:00Z
+approved_by: PENDING (draft — human approval gate required before architecture delta)
+approved_at: ~
 approved_at_v1_0: 2026-05-11T20:30:00Z
+approved_at_v1_1: 2026-05-12T00:00:00Z
 ---
 
-# Monocle Vision Synthesis (v1.1.2, approved 2026-05-12)
+# Monocle Vision Synthesis (v2.0 — D-236/D-237 Control-Center Pivot)
+
+## Amendment History
+
+| Version | Date | Author | Summary |
+|---------|------|--------|---------|
+| 1.0 | 2026-05-11 | orchestrator | Initial observe-only vision. Human-approved ("I agree with this fully"). |
+| 1.1 | 2026-05-12 | business-analyst | JC/EX/OQ-M closures; version-pin updates to SS-deps-pin-manifest.md. Re-approved by human 2026-05-12. |
+| 1.1.1 | 2026-05-12 | business-analyst | Surgical frontmatter and §Tech Stack pointer fixes. |
+| 1.1.2 | 2026-05-12 | business-analyst | Surgical path fix — `/hooks/prompt-submit` wire correction. |
+| **2.0** | **2026-06-03** | **product-owner** | **D-236/D-237 CONTROL-CENTER PIVOT.** Retired: observe-only constraint; all specific "rejected" non-goals that blocked launching/orchestration. Added: LAUNCH, EMBEDDED PTY, MULTI-SESSION/MULTI-PROJECT, INTERACTIVE TUNE as first-class v1 capabilities. DAEMON-OWNS-PTY persistence model. Hook auto-injection on spawn. v1A/v1B wave ordering. See §Retired Constraints and §v1 Capability Set. Status: draft — pending human approval gate before architecture delta proceeds. Reconciled to human-ratified decisions 2026-06-03: full keyboard fidelity (mouse + Kitty keyboard protocol) IN v1A; Q-3/Q-5/Q-6 in §Open Questions converted to RESOLVED; wave-split adjudication note at §Wave Plan updated to reflect human ratification. Applied spec-review patch (SR-001..SR-005, SR-007): keyboard scope supersession pointer added; stale softener sentence replaced with affirmation; Q-4 merged into Q-1 benchmark gate; persistence model three-case disambiguation; workspace legend exists-today vs. aspirational; tui-term Q-7 softened to confirm-posture framing. |
+
+**What D-236/D-237 retired (precise list):**
+- The vision statement phrase "Observe-only for state, action-only via overlays"
+- The Non-Goal "Does NOT execute workflows — monocle is observe-only"
+- The Non-Goal "Does NOT replace the terminal multiplexer" (partially: monocle IS a mux for AI sessions; does not replace the user's terminal mux — see §Non-Goals)
+- The Provenance statement "execute workflows (rejected — observe-only)"
+- The Provenance statement "inherit PM/Worker orchestration (rejected by user direction)" — these were correct for the original scope but are reversed for the control-center inversion: monocle now SPAWNS and OWNS sessions
+- All residual "observe-only" qualifiers in the Five Planes descriptions
+- Phase Plan Phases 2-4 (the old roadmap) — superseded by the re-baselined v1 wave plan
+
+**What D-236/D-237 preserved (unchanged from v1.1.2):**
+- The five-plane architecture (updated descriptions only)
+- EngineModule + FactoryAdapter traits (extended, not replaced)
+- The killer scenario (4-keystroke permission resolution) — now amplified by launch ownership
+- The lazygit interaction philosophy (5-level binding precedence, VecDeque popup stack, Action enum)
+- The 5-endpoint hook protocol and DTU clone (dtu-claude-code-hooks-v1)
+- AppMode state machine (extended with new variants)
+- All Phase-1 substrate (daemon, hook ingestion, permission overlay, TUI rendering, profile picker)
+- CCR integration (detect-on-PATH + config-write; now also used in spawn path)
+- Gene-source LEAVE-BEHIND verdicts for: PM/Worker orchestration, capture-pane scraping, zellij-as-library, inter-session bus, SSH federation (Phase 4 suspended)
+
+---
 
 ## Vision Statement
 
-One TUI lens over every Claude-class session you're running, every customization that shapes them, and every workflow driving them — across multiple harnesses and federated across hosts. Observe-only for state, action-only via overlays. You never leave your editor.
+One TUI control center for every Claude-class session you need to run — launch it, watch it, talk to it, tune it, and resolve its permission prompts without ever leaving the TUI. Many sessions, many projects, fully managed from a single `Ctrl-\` popup.
 
-Today, a developer running three Claude Code sessions across two projects faces a fragmentation problem that no single tool solves. Sessions live in tmux windows you must context-switch between to check status. Customizations (CLAUDE.md files, settings.json permission lists, hook scripts, keybindings) are scattered across project trees and `~/.claude/` — you `cat` them to read them and lose track of which one is active for which session. Workflows (vsdd-factory STATE.md files, sprint-state.yaml, wave-gate status) sit in `.factory/` directories you `tree` to discover, with no unified view of what is blocking. Permission prompts demand you be in the right tmux window at exactly the right moment or the session stalls. Monocle collapses all of this into one `Ctrl-\` popup: a five-plane dashboard that never disrupts your editor focus, never forks a new terminal window, and never requires you to remember where anything lives.
+> *"We need to be able to launch, manage, and observe — a better lazyclaude, a better
+> claude-squad. We should never have to leave the TUI and we should be able to manage
+> as many sessions and as many projects with sessions as we need to. We need to be able
+> to run, launch, manage, observe, tune, control — everything from the TUI."*
+> — Human direction, D-236 (2026-06-03), verbatim.
+
+Today, a developer running three Claude Code sessions across two projects faces a fragmentation problem that no single tool solves. Sessions live in tmux windows you must context-switch between to check status. Customizations (CLAUDE.md files, settings.json permission lists, hook scripts, keybindings) are scattered across project trees and `~/.claude/` — you `cat` them to read them and lose track of which one is active for which session. Workflows (vsdd-factory STATE.md files, sprint-state.yaml, wave-gate status) sit in `.factory/` directories you `tree` to discover, with no unified view of what is blocking. Permission prompts demand you be in the right tmux window at exactly the right moment or the session stalls. **You cannot even launch a new Claude session from inside the tool that monitors all of them.**
+
+Monocle collapses all of this into one `Ctrl-\` popup: a five-plane control center that never disrupts your editor focus, never forks a new terminal window, and never requires you to remember where anything lives. You spawn sessions from here. You watch them run inside the same panel. You resolve permissions here. You tune your configuration here. You never leave.
+
+The architectural inversion from v1.1.2: monocle's daemon no longer merely *receives* hooks from sessions you launched elsewhere. **The daemon now spawns and owns sessions.** The TUI is a rich client that streams PTY output, forwards keystrokes, and manages session lifecycle over the existing UDS IPC. This is the core of the change.
+
+---
+
+## Retired Constraints (D-236 — explicit reversals)
+
+The following constraints appeared in v1.1.2 and are **explicitly retired** as of this version. They were correct for the observe-only scope; the control-center pivot reverses them.
+
+| Retired constraint | Where it appeared in v1.1.2 | Why reversed |
+|-------------------|-----------------------------|--------------|
+| "Observe-only for state, action-only via overlays" | Vision Statement, Five Planes | The fundamental inversion: monocle now LAUNCHES and OWNS sessions, not just observes them |
+| "inherit PM/Worker orchestration — rejected" | §Provenance | The pivot is not PM/Worker orchestration; it is direct session spawning. The human is still the coordinator. Monocle spawns sessions on demand; it does not orchestrate multi-agent pipelines. This was not a reversal of the "human is coordinator" principle — it was a reversal of the "cannot spawn" constraint. |
+| "execute workflows — rejected — observe-only" | §Provenance | monocle still does NOT execute vsdd-factory workflows or dispatch factory agents. The reversal is: monocle can spawn AI harness sessions (user-initiated). Factory adapter remains observe-only (reads STATE.md, never mutates it). |
+| "Does NOT execute workflows — monocle is observe-only for factory/workflow state" | §Non-Goals | Retired as a blanket statement. The specific non-goal (never mutate STATE.md, never dispatch factory agents) is preserved but the "observe-only" label is retired. |
+| "Does NOT replace the terminal multiplexer" | §Non-Goals | Partially revised: monocle IS a multiplexer for AI coding sessions (manages multiple PTYs). It still does NOT replace the user's general-purpose terminal multiplexer (tmux/zellij for non-monocle work). |
+
+**Confirming what the pivot does NOT reverse:**
+- PM/Worker inter-session orchestration — still out of scope; the human is always the coordinator
+- vsdd-factory workflow dispatch — still out of scope; FactoryAdapter is still read-only
+- LLM API routing / CCR proxy — monocle detects CCR and injects config; does not proxy traffic
+- Full-transcript storage — belongs to Claude Code's own persistence layer
+- LLM provider abstraction — CCR is the external router
+- zellij-as-library — architecture model only; not a code dependency
+
+---
 
 ## Five Planes
 
-| Plane | Source genes | What it does |
-|-------|-------------|--------------|
-| Runtime | any-context/lazyclaude + zellij | Multi-harness session roster: lists all live Claude Code / CodeMachine / future-harness sessions, shows token burn rate, cost, wall-time, phase tag. Rust IPC via Unix domain socket + axum HTTP. WASM plugin SDK (zellij-tile model) for third-party session integrations. |
-| Static | NikiforovAll/lazyclaude | Customization explorer: reads CLAUDE.md files, settings.json permission blocks, hook scripts, keybindings.json. Shows which customizations are active for the focused session. Trigger-trace from popup to the defining file — jump to the line that granted or denied a tool. |
-| Workflow | vsdd-factory | Factory-awareness (observe-only): detects `.factory/STATE.md` + `document_type: pipeline-state` discriminator; surfaces phase, wave, blocking issues, and convergence trajectory for the focused session's project. Multi-repo signal: `.factory-project/`. First concrete adapter: VsddFactoryAdapter. Third-party adapters via WASM plugin (same SDK as runtime plane). |
-| Harness | codemachine-cli + claude-squad + claude-code-router | EngineModule abstraction: each harness (Claude Code, CodeMachine, future) registers a profile in `~/.monocle/config.json`. Worktree-isolation pattern (claude-squad gene). CCR integration: detect on PATH, write per-session JSON, set `ANTHROPIC_BASE_URL` — integrate-external, not build-in. |
-| TUI philosophy | lazygit | The canonical lazy* signature: context-aware Action enum dispatch, 5-level binding precedence (search-prompt > user-custom-commands > per-context > global > builtin), telescope help overlay, modal cascade with VecDeque stack, compile-time AppMode state machine replacing bag-of-Option fields. |
+| Plane | Source genes | What it does (v2.0 — control-center model) |
+|-------|-------------|---------------------------------------------|
+| Runtime | any-context/lazyclaude + zellij + claude-squad | **Session lifecycle center**: spawn, attach, detach, kill, and rename harness sessions from the TUI. One PTY per session, daemon-owned. Streams terminal output into the embedded PTY pane. Shows live session roster: token burn rate, cost, wall-time, phase tag. Rust IPC via Unix domain socket (PTY bytes + hook events + control messages) + axum HTTP (hook ingestion). WASM plugin SDK (zellij-tile model) deferred to Phase 3 (suspended). |
+| Static | NikiforovAll/lazyclaude | **Interactive customization center** (v1B Tune wave): reads AND edits CLAUDE.md files, settings.json permission blocks, hook scripts, keybindings.json. Shows which customizations are active for the focused session. Edit bindings in-place, apply profiles, manage CCR routing slots — interactive, not just browse. Trigger-trace from popup to the defining file — jump to the line that granted or denied a tool. |
+| Workflow | vsdd-factory | Factory-awareness (observe-only, unchanged): detects `.factory/STATE.md` + `document_type: pipeline-state` discriminator; surfaces phase, wave, blocking issues, and convergence trajectory for the focused session's project. Pre-populated from session launch `project_root` (new trigger path). Multi-repo signal: `.factory-project/`. First concrete adapter: VsddFactoryAdapter. Third-party adapters via WASM plugin (Phase 3, suspended). |
+| Harness | codemachine-cli + claude-squad + claude-code-router | EngineModule abstraction: each harness (Claude Code, CodeMachine, future) registers a profile and implements `spawn_recipe()` — the binary, args, and env needed to launch a session. worktree-per-session isolation (claude-squad gene). CCR integration: detect on PATH, write per-session JSON, set `ANTHROPIC_BASE_URL` — integrate-external, not build-in. Hook auto-injection on spawn: `--settings <hooks_settings_path>` in the launch args; no manual copy required. |
+| TUI philosophy | lazygit | The lazygit control-center signature: context-aware Action enum dispatch, 5-level binding precedence (search-prompt > user-custom-commands > per-context > global > builtin), telescope help overlay, modal cascade with VecDeque stack, compile-time AppMode state machine. The Preview pane slot hosts the embedded PTY widget (tui-term) in EmbeddedTerminal mode. Single `Ctrl-\` popup; the user lives and acts inside it. |
+
+---
 
 ## Process Topology
 
@@ -42,58 +132,87 @@ User's tmux server (existing)
 │                                                              │
 └── pane: monocle TUI client (connects to daemon)             │
                                                               ▼
-monocle tmux server  (-L monocle socket, separate from user's)
-└── session: monocle-daemon  (long-lived background process)
-    ├── axum HTTP  :<os-port>  (hook POST receiver; OS-assigned per OQ-04; port written to lock file)
-    ├── rmcp MCP   :<os-port>  (optional MCP bridge for future tooling; Phase 4 only per OQ-09)
-    ├── russh      :<os-port>  (SSH tunnel for federated multi-host; Phase 4)
-    ├── Arc<Broker<Event>>  (fan-out to all connected TUI clients)
-    └── EngineModule registry  (per-harness adapters)
+monocle daemon (monocle-runtime, long-lived background process)
+├── axum HTTP :<os-port>   (hook POST receiver; OS-assigned; port in lock file)
+├── UDS socket             (TUI client connection: hook events + PTY bytes + control)
+├── SessionManager         (new in v2.0: owns PTY masters, child handles, vt100 parsers)
+│   ├── Session A: (portable-pty master, vt100::Parser, child handle, session-state.json)
+│   ├── Session B: (portable-pty master, vt100::Parser, child handle, session-state.json)
+│   └── Session N: ...
+├── Arc<Broker<Event>>     (fan-out: hook events + PTY bytes to all connected TUI clients)
+└── EngineModule registry  (ClaudeCodeModule: spawn_recipe() + hook handling)
 
-Claude Code subprocesses  (one per session)
-├── SessionStart hook      ──► POST http://localhost:<port>/hooks/session-start
-├── UserPromptSubmit hook  ──► POST http://localhost:<port>/hooks/prompt-submit
-├── PreToolUse hook        ──► POST http://localhost:<port>/hooks/pre-tool-use
-├── Notification hook      ──► POST http://localhost:<port>/hooks/notification
-└── Stop hook              ──► POST http://localhost:<port>/hooks/stop
+Claude sessions (owned by daemon SessionManager)
+├── Session A: claude --settings /tmp/monocle-hooks-A.json  (launched by monocle)
+│   ├── SessionStart hook      ──► POST http://localhost:<port>/hooks/session-start
+│   ├── UserPromptSubmit hook  ──► POST http://localhost:<port>/hooks/prompt-submit
+│   ├── PreToolUse hook        ──► POST http://localhost:<port>/hooks/pre-tool-use
+│   ├── Notification hook      ──► POST http://localhost:<port>/hooks/notification
+│   └── Stop hook              ──► POST http://localhost:<port>/hooks/stop
+├── PTY stdout/stderr ──► blocking reader thread ──► bounded mpsc ──► UDS PtyOutput msg
+└── PTY stdin  ◄── UDS KeyInput msg ◄── TUI crossterm KeyEvent
 
-Broker fans events to:
-├── TUI client A (local)
-├── TUI client B (another terminal tab)
-└── TUI client C (remote host, via russh tunnel)
+TUI client
+├── Receives PtyOutput { session_id, bytes }  ──► vt100::Parser.process(bytes)
+├── Renders PseudoTerminal widget (tui-term 0.3.4) from parser.screen()
+├── Sends KeyInput { session_id, bytes }  ──► encoded crossterm KeyEvent → PTY bytes
+└── Sends ResizePane { session_id, rows, cols }  ──► daemon resizes PTY + parser
 ```
 
-The daemon is started once (`monocle daemon start`) and survives terminal closes. TUI clients connect and disconnect freely. The hook POST endpoints are the ingestion boundary — Claude Code subprocesses are unmodified; they simply fire their existing hook scripts that POST to the daemon.
+**The architectural inversion:** in v1.1.2, the daemon received hooks from sessions the user launched elsewhere. In v2.0, the daemon spawns sessions (via SessionManager + EngineModule.spawn_recipe()) and owns their PTYs. The TUI is a client that streams PTY output and forwards keystrokes. Hook events continue to arrive via HTTP and are fan-out as before.
 
-The canonical Phase 1 hook set is 5 endpoints, locked by JC-2 (`PostToolUse` omitted to preserve gene-source parity per any-context BC-HOOK-007 canonical matrix) and EX-2 (`SessionStart` and `UserPromptSubmit` added per architect extension). Note that the daemon port is OS-assigned at startup (OQ-04 resolution), not fixed at 2748 as the v1.0 diagram implied; the lock file written at `runtime_dir/monocle.lock` carries the actual port for hook-script consumption. `PermissionRequest` was considered as a 6th endpoint (OQ-M3) and resolved "stay at 5" — the `PreToolUse` + `Notification` pair captures all permission-relevant signal; revisit if Phase 2 trigger-trace UX surfaces a signal gap.
+**Persistence model (DAEMON-OWNS-PTY) — three cases:**
+
+1. **TUI exit and reconnect (supported in v1A):** Sessions survive a monocle TUI process exit. The daemon continues owning PTY masters; child Claude processes keep running; a reconnecting TUI client re-streams from the existing per-session `vt100::Parser` state. This is the primary DAEMON-OWNS-PTY survival path.
+
+2. **Graceful daemon-process restart (NOT supported in v1A — later-wave feature):** In v1A, a daemon process restart drops all PTY masters and owned child processes. Native `portable-pty` does not support PTY-state serialization and cross-process PTY-master handoff; that capability is a deferred later-wave feature alongside cross-crash serialization. The `DaemonRestart` action in v1A therefore means: gracefully signal the daemon to stop (sessions terminate), restart, and the user re-launches sessions. If a future wave implements in-place daemon restart without dropping PTYs, it will require explicit PTY-fd serialization work.
+
+3. **Daemon crash (accepted v1A boundary):** Hard crash → in-flight sessions lost → user re-launches. The daemon is stable; crash is exceptional; launchd/systemd or a monocle-internal daemon watchdog provides the operational mitigation.
+
+`session-state.json` persists enough metadata to re-display terminated sessions and offer re-launch with the same parameters (project, harness, profile). Cross-crash PTY state serialization is a deferred later-wave feature.
+
+The canonical Phase 1 hook set is 5 endpoints (unchanged from v1.1.2, locked by JC-2). Hook auto-injection: when monocle launches a session, it passes `--settings <hooks_settings_path>` to the `claude` binary — no manual `settings.json` copy required. The `lock.app = 'monocle'` filter in the hook JS ensures only monocle-launched sessions trigger the monocle hook endpoint.
+
+---
 
 ## Workspace Layout
+
+Legend: **[EXISTS]** = crate present in the current 9-crate workspace (as of D-232/Wave-7 gate). **[v1A]** / **[v1B]** = introduced by that wave. **[Phase-3]** = deferred/suspended.
 
 ```
 monocle/
 ├── Cargo.toml                    # workspace manifest
+├── xtask/                        # [EXISTS] cargo xtask build-time helpers (currently omitted from crates/ layout; lives at workspace root)
 └── crates/
-    ├── monocle-core/             # pure types: Event, Action, EngineMetadata, AppMode; no I/O
-    ├── monocle-runtime/          # async daemon: axum server, broker, EngineModule registry, russh
-    ├── monocle-tui/              # ratatui renderer: panels, overlays, keybinding dispatch
-    ├── monocle-static/           # customization reader: CLAUDE.md, settings.json, hooks, keybindings
-    ├── monocle-workflow/         # factory-awareness: STATE.md parser, FactoryAdapter trait, VsddFactoryAdapter
-    ├── monocle-plugin-sdk/       # WASM plugin ABI: EngineModule + FactoryAdapter for third-party plugins
-    ├── monocle-ipc/              # Unix domain socket + shared-memory ring buffer (zero-copy event stream)
-    ├── monocle-config/           # ~/.monocle/config.json: harness profiles, binding overrides, CCR path
-    ├── monocle-proto/            # prost-generated protobuf types for cross-host federation wire format
-    ├── monocle-fuzz/             # cargo-fuzz targets for parser and hook endpoint fuzzing
-    ├── monocle-test-harness/     # integration test scaffolding: fake Claude Code subprocess, fake hooks
-    └── monocle/                  # binary crate: clap CLI, daemon entrypoint, TUI entrypoint
+    ├── monocle-core/             # [EXISTS] pure types: Event, Action, EngineMetadata, AppMode, SessionState; no I/O
+    ├── monocle-runtime/          # [EXISTS] async daemon: axum server, broker, EngineModule registry;
+    │                             #   SessionManager sub-module [v1A NEW]: PTY ownership, spawn/kill/detach
+    ├── monocle-tui/              # [EXISTS] ratatui renderer: panels, overlays, keybinding dispatch;
+    │                             #   EmbeddedTerminal mode [v1A NEW]: tui-term PTY widget
+    ├── monocle-ipc/              # [EXISTS] Unix domain socket + shared-memory ring buffer;
+    │                             #   extended with PtyOutput/KeyInput/ResizePane message types [v1A]
+    ├── monocle-config/           # [EXISTS] ~/.monocle/config.json: harness profiles, binding overrides, CCR path
+    ├── monocle-proto/            # [EXISTS] prost-generated protobuf types; extended with PTY message types [v1A]
+    ├── monocle-test-harness/     # [EXISTS] integration test scaffolding: fake Claude Code subprocess, fake hooks;
+    │                             #   MockPtySpawner [v1A NEW]: PtySpawner trait test double
+    ├── monocle/                  # [EXISTS] binary crate: clap CLI, daemon entrypoint, TUI entrypoint
+    ├── monocle-static/           # [v1B] customization reader+writer: CLAUDE.md, settings.json,
+    │                             #   hooks, keybindings — interactive CRUD activated in v1B
+    ├── monocle-workflow/         # [v1B] factory-awareness: STATE.md parser, FactoryAdapter trait, VsddFactoryAdapter
+    │                             #   (struct/logic exists in monocle-runtime today; extracted to own crate in v1B)
+    ├── monocle-fuzz/             # [v1A or v1B] cargo-fuzz targets for parser and hook endpoint fuzzing
+    └── monocle-plugin-sdk/       # [Phase-3 SUSPENDED] WASM plugin ABI: EngineModule + FactoryAdapter for third-party plugins
 ```
 
-Mirrors zellij's `-utils/-server/-client/-tile` split but renamed for monocle's domain. `monocle-core` is the zero-dependency pure-types crate that all other crates depend on. The binary crate depends on everything; no other crate is allowed to depend on the binary.
+Note: SessionManager lives as a sub-module of `monocle-runtime` (not a separate crate). Rationale: PTY ownership is intrinsically a daemon responsibility; SessionManager shares daemon-internal types (child handles, PTY masters); no other crate depends on SessionManager directly (the proto wire is the interface); the PtySpawner trait provides test seam regardless of crate structure. This is a mechanical architecture decision, self-adjudicated per CLAUDE.md Rule 6 — architect to confirm in the architecture delta.
+
+---
 
 ## Key Abstractions
 
-### EngineModule
+### EngineModule (extended in v2.0)
 
-The multi-harness gene from codemachine-cli. Every AI coding harness (Claude Code, CodeMachine, future) is a plugin implementing this trait:
+The multi-harness gene from codemachine-cli. Extended with `spawn_recipe()` for the control-center inversion:
 
 ```rust
 /// Implemented by each AI coding harness adapter.
@@ -114,6 +233,22 @@ pub trait EngineModule: Send + Sync + 'static {
 
     /// Handle a hook event POSTed from a subprocess managed by this harness.
     async fn on_hook(&self, event: HookEvent) -> HookResponse;
+
+    /// NEW (v2.0): Return the recipe needed to spawn a session under monocle.
+    /// Default impl returns Err(UnsupportedOperation) for engines that do not
+    /// support monocle-spawned sessions. ClaudeCodeModule implements this.
+    fn spawn_recipe(&self, opts: &SpawnOptions) -> Result<SpawnRecipe, EngineError> {
+        Err(EngineError::UnsupportedOperation("spawn_recipe"))
+    }
+}
+
+/// NEW (v2.0): The spawn recipe produced by an EngineModule.
+/// SessionManager uses this to build the portable-pty CommandBuilder.
+pub struct SpawnRecipe {
+    pub binary: PathBuf,          // absolute path to the harness binary
+    pub args: Vec<String>,        // includes --settings <hooks_settings_path>
+    pub env: HashMap<String, String>, // injected hook config, CCR env vars
+    pub cwd: PathBuf,             // git worktree path (per claude-squad A.1 pattern)
 }
 
 pub struct EngineMetadata {
@@ -124,94 +259,112 @@ pub struct EngineMetadata {
 }
 ```
 
-Built-in: `ClaudeCodeModule`. Second built-in: `CodeMachineModule`. Third-party: WASM plugin implementing the same ABI via `monocle-plugin-sdk`.
+Built-in: `ClaudeCodeModule` (implements `spawn_recipe()`). Second built-in: `CodeMachineModule` (returns `UnsupportedOperation` in v1; implemented in a later wave). Third-party: WASM plugin implementing the same ABI via `monocle-plugin-sdk` (Phase 3, suspended).
 
-### Action enum + Binding
+### SessionManager (new in v2.0)
 
-The lazy* signature pattern from lazygit, adapted for Rust:
+Daemon-side sub-module of `monocle-runtime`. Owns the `(pty_master, vt100::Parser, child_handle)` triple per session.
 
 ```rust
-/// Every user-triggerable operation in monocle. Enum variants (not closures)
-/// keep bindings Eq + inspectable for the telescope help overlay.
+/// Session lifecycle state (adapted from claude-squad instance lifecycle).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SessionState {
+    Created,      // recipe built; PTY not yet opened
+    Launching,    // portable-pty spawn in progress
+    Running,      // child alive; PTY streaming
+    Detached,     // TUI disconnected; daemon still owns PTY and child
+    Terminated,   // child exited; GC in 10s grace period
+    Killed,       // user-initiated kill; child signaled
+}
+```
+
+The `PtySpawner` trait wraps `portable-pty` to enable test injection:
+
+```rust
+/// Seam for PTY spawn, modeled on claude-squad A.5 PtyFactory pattern.
+pub trait PtySpawner: Send + Sync + 'static {
+    fn spawn(&self, recipe: &SpawnRecipe) -> Result<(Box<dyn MasterPty>, Box<dyn Child>), PtyError>;
+}
+
+// RealPtySpawner: uses portable-pty::openpty + CommandBuilder
+// MockPtySpawner: injects a fake PTY master/child in integration tests
+```
+
+### Action enum (extended in v2.0)
+
+```rust
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Action {
-    // Navigation
+    // Navigation (unchanged)
     FocusPanel(PanelId),
-    ScrollUp,
-    ScrollDown,
-    PageUp,
-    PageDown,
-    FilterToggle,
-    FilterType(char),
+    ScrollUp, ScrollDown, PageUp, PageDown,
+    FilterToggle, FilterType(char),
 
-    // Session actions
+    // Session management (v1.1.2 stubs + new v2.0 actions)
     SessionSelect,
     SessionKill,
     SessionAttach,
+    SessionCreate,            // NEW v2.0: open launch wizard
+    SessionDetach,            // NEW v2.0: detach TUI from running session
+    SessionRename,            // NEW v2.0: rename a session
 
-    // Permission prompt
+    // Embedded terminal (NEW v2.0)
+    EnterEmbeddedTerminal,    // switch Preview pane to PTY widget for focused session
+    ExitEmbeddedTerminal,     // return to normal dashboard view
+    ForwardKeyToPty(KeyEvent),// route crossterm KeyEvent to PTY stdin
+    PtyScrollUp, PtyScrollDown,
+
+    // Permission prompt (unchanged)
     PermissionAcceptOnce,
     PermissionAcceptAlways,
     PermissionReject,
     PermissionTraceToSource,
 
-    // Overlay control
+    // Overlay control (unchanged)
     OverlayOpen(OverlayKind),
     OverlayClose,
     OverlayCycleNext,
 
-    // System
+    // Tune actions (v1B wave)
+    TuneEditBinding,          // edit a keybinding in-place
+    TuneApplyProfile,         // switch active profile
+    TuneResetBinding,         // reset binding to builtin
+    TuneEditCcrSlot,          // edit a CCR routing slot
+
+    // System (unchanged + additions)
     DaemonRestart,
     ConfigReload,
     Quit,
 }
-
-/// A resolved key → action mapping after applying precedence.
-pub struct Binding {
-    pub key: KeyEvent,
-    pub action: Action,
-    pub source: BindingSource, // which precedence level resolved this
-}
-
-/// 5-level precedence (highest → lowest), matching lazygit's model.
-pub enum BindingSource {
-    SearchPrompt,       // active filter input captures all printable keys
-    UserCustomCommand,  // user-defined custom commands in config
-    PerContext,         // bindings declared for the current AppMode panel
-    Global,             // bindings active in all modes
-    Builtin,            // factory defaults in monocle-core
-}
 ```
 
-The dispatcher walks the precedence stack in order and stops at the first matching binding. This gives users full control: a user custom command for `q` in the sessions panel beats the builtin `Quit` action.
-
-### AppMode state machine
-
-Compile-time mutual exclusion replaces NikiforovAll's bag-of-`Option` fields:
+### AppMode state machine (extended in v2.0)
 
 ```rust
-/// Exactly one AppMode is active at a time. The compiler enforces this.
 #[derive(Clone, PartialEq, Eq)]
 pub enum AppMode {
-    /// Normal dashboard view. FocusSnapshot records which panel had focus
-    /// before any overlay opened — so overlay-close restores the correct panel.
+    /// Normal dashboard view.
     Dashboard { focused: FocusSnapshot },
 
-    /// Telescope-style filter input is active over the focused panel.
+    /// Telescope-style filter input over the focused panel.
     Filtering { panel: PanelId, query: String, prior: FocusSnapshot },
 
-    /// A modal overlay is open (permission prompt, detail view, help).
-    /// VecDeque<PromptModal> fixes lazygit's single-popup drop-on-concurrent:
-    /// new prompts push_back; OverlayCycleNext rotates; Esc pops_front.
+    /// Modal overlay (permission prompt, detail view, help).
+    /// VecDeque<PromptModal> enables concurrent prompt queuing.
     Overlay { stack: VecDeque<PromptModal>, prior: FocusSnapshot },
 
-    /// Full-screen view of a single panel (Enter key from Dashboard).
+    /// Full-screen view of a single panel.
     Fullscreen { panel: PanelId, prior: FocusSnapshot },
+
+    /// NEW v2.0: Preview pane hosts the tui-term PTY widget for the focused session.
+    /// Keyboard events are forwarded to the daemon SessionManager as KeyInput IPC messages.
+    EmbeddedTerminal { session_id: Uuid, prior: FocusSnapshot },
+
+    /// NEW v2.0: Launch wizard — multi-step modal for creating a new session.
+    /// Steps: profile picker → project picker → worktree confirmation → launch.
+    SessionCreation { step: SessionCreationStep, prior: FocusSnapshot },
 }
 
-/// Which panel had focus before an overlay/filter/fullscreen transition.
-/// Explicit enum fixes NikiforovAll's gap where modal-close from MainPane
-/// focus loses the MainPane fact (was stored as None in Option<Panel>).
 #[derive(Clone, PartialEq, Eq)]
 pub enum FocusSnapshot {
     Sessions,
@@ -222,76 +375,82 @@ pub enum FocusSnapshot {
 }
 ```
 
-State transitions are pure functions in `monocle-core`: `fn transition(mode: AppMode, action: Action) -> AppMode`. No `Arc<Mutex<Option<...>>>` chains; no runtime panics on None unwraps.
+### FactoryAdapter (unchanged)
 
-### FactoryAdapter
+The workflow-plane plugin contract remains observe-only. Detection canonical signal: `document_type: pipeline-state` in `.factory/STATE.md`. The adapter reads; monocle never writes STATE.md.
 
-The workflow-plane plugin contract. Detection canonical signal: `document_type: pipeline-state` in `.factory/STATE.md`. Multi-repo signal: `.factory-project/` directory present alongside `.factory/`.
+---
 
-```rust
-/// Implemented by factory-pattern workflow adapters.
-pub trait FactoryAdapter: Send + Sync + 'static {
-    /// Stable identifier, e.g. "vsdd-factory", "custom-factory".
-    fn id(&self) -> &'static str;
-
-    /// Detect whether a project directory is managed by this factory.
-    /// Canonical signal: .factory/STATE.md with document_type: pipeline-state.
-    /// Must be synchronous and cheap — called on every directory scan.
-    fn detect(&self, project_root: &Path) -> bool;
-
-    /// Parse the factory state from the project directory.
-    /// Returns the workflow surface monocle surfaces in the Workflow panel.
-    async fn read_state(&self, project_root: &Path) -> Result<FactoryState>;
-
-    /// Called when the workflow file changes (notify watcher event).
-    async fn on_change(&self, project_root: &Path, changed: &Path) -> Result<FactoryState>;
-}
-
-pub struct FactoryState {
-    pub phase: String,
-    pub status: String,
-    pub awaiting: Option<String>,
-    pub blocking_issues: Vec<BlockingIssue>,
-    pub convergence: Option<ConvergenceInfo>,
-    pub cycle: Option<String>,
-    pub custom_fields: HashMap<String, serde_yaml::Value>, // adapter-specific extras
-}
-```
-
-Built-in: `VsddFactoryAdapter` (reads `.factory/STATE.md`, parses YAML frontmatter + Phase Progress table). Third-party adapters via WASM plugin implementing the same ABI, loaded from `~/.monocle/plugins/`.
-
-## TUI Layout
+## TUI Layout (v2.0 — control-center model)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │  monocle  [project: monocle]  3 sessions  2 workflows  Ctrl-\ hide  │
+│  [+] New session    [k] Kill    [d] Detach    [Enter] View terminal  │
 ├────────────────────────┬──────────────────┬────────────────────────┤
 │  [1] Sessions          │  [2] Preview     │  [3] Workflow          │
 │                        │                  │                        │
-│  ● CC  monocle  phase0 │  session detail  │  vsdd-factory          │
-│  ● CC  blog     wave-2 │  token: 142k     │  phase: pre-phase-0    │
-│  ● CM  api-svc  idle   │  cost: $0.83     │  status: active        │
-│                        │  hooks: 47       │  awaiting: human GO    │
-│  / filter  ? help      │  uptime: 00:42   │  blocking: 0           │
-│                        │                  │  cycle: cycle-001      │
+│  monocle/              │  session detail  │  vsdd-factory          │
+│  ● CC  monocle  phase0 │  token: 142k     │  phase: PIVOT          │
+│  ● CC  blog     wave-2 │  cost: $0.83     │  status: active        │
+│                        │  hooks: 47       │  awaiting: vision gate │
+│  api-svc/              │  uptime: 00:42   │  blocking: 0           │
+│  ● CM  api-svc  idle   │                  │  cycle: cycle-001      │
+│                        │  [Enter] Enter   │                        │
+│  / filter  + new  ? help  terminal view   │                        │
 │                        │                  │                        │
 ├────────────────────────┴──────────────────┴────────────────────────┤
-│  [4] Customizations                                                  │
-│  CLAUDE.md: /Users/jmagady/Dev/monocle/CLAUDE.md  (active)          │
-│  settings:  allowedTools [Bash,Read,Edit,Write,...] + 3 hooks        │
-│  keybinds:  12 custom  /  48 builtin                                 │
+│  [4] Customizations / Tune                                          │
+│  CLAUDE.md: /Users/jmagady/Dev/monocle/CLAUDE.md  (active)         │
+│  settings:  allowedTools [Bash,Read,Edit,Write,...] + 3 hooks       │
+│  keybinds:  12 custom  /  48 builtin     [e] Edit  [r] Reset       │
 ├─────────────────────────────────────────────────────────────────────┤
 │  [5] Events                                                          │
-│  20:29:01  PreToolUse    Bash  monocle-session-1                     │
-│  20:29:00  Notification  info  monocle-session-1  12ms               │
-│  20:28:58  PreToolUse    Edit  blog-session-2  PENDING               │
+│  20:29:01  PreToolUse    Bash  monocle-session-1                    │
+│  20:29:00  Notification  info  monocle-session-1  12ms              │
+│  20:28:58  PreToolUse    Edit  blog-session-2  PENDING              │
 ├─────────────────────────────────────────────────────────────────────┤
-│  Tab: cycle panels  Enter: fullscreen  ?: help  /: filter  q: quit  │
-│  breadcrumb: Dashboard > Sessions                                    │
+│  Tab: cycle panels  Enter: view terminal  +: new session  q: quit  │
+│  breadcrumb: Dashboard > Sessions                                   │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-Permission prompt popup overlay (cascades at parent.x+2, parent.y+1):
+Embedded terminal mode (AppMode::EmbeddedTerminal):
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  monocle  blog-session-2  [EMBEDDED TERMINAL]  Esc: exit terminal   │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  $ claude --settings /tmp/monocle-hooks-abc.json                    │
+│  Claude Code 1.x.x                                                  │
+│  ✓ Reading CLAUDE.md (3 files)                                      │
+│  ✓ Hooks configured (monocle: http://localhost:54321)               │
+│  > Working on wave-2 story S-012...                                 │
+│                                                                     │
+│  [all keystrokes forwarded to PTY stdin]                            │
+│  [↑↓]: scroll history  Ctrl-D: end session  Esc: exit terminal mode │
+│                                                                     │
+│  ▓ (cursor)                                                         │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+Session launch wizard (AppMode::SessionCreation):
+
+```
+┌─ New Session  [1/3: Profile] ───────────────────────────────────────┐
+│  Select a harness profile:                                          │
+│                                                                     │
+│  > Claude Code (default)              claude 1.x.x                 │
+│    Claude Code + CCR (background)     background model routing      │
+│    Claude Code + CCR (think)          extended thinking enabled     │
+│                                                                     │
+│  [↑↓] navigate  [Enter] select  [Esc] cancel                       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+Permission prompt popup overlay (unchanged from v1.1.2 — the "killer scenario" is preserved):
 
 ```
 ┌─ Permission Prompt  [1/2] ──────────────────────────────────────────┐
@@ -315,74 +474,207 @@ Permission prompt popup overlay (cascades at parent.x+2, parent.y+1):
       └─────────────────────────────────────────────────────────────┘
 ```
 
-The VecDeque stack means both prompts are queued simultaneously. `[↑↓]` rotates the stack. `[Esc]` hides the overlay without rejecting — the prompts remain queued and re-appear on next `Ctrl-\`. `[t]` trace-to-source opens the Static plane detail showing which settings.json permission rule (or lack thereof) triggered this prompt.
+---
 
-## End-to-End Killer Scenario
+## v1 Capability Set (D-237 — human-ratified)
 
-Setup: developer has three sessions running — `monocle-session-1` (Claude Code, project `monocle`, vsdd-factory phase pre-phase-0), `blog-session-2` (Claude Code, project `blog`, wave 2), `api-svc-session-3` (CodeMachine, project `api-svc`, idle). Two permission prompts arrive concurrently from different sessions. Developer is editing code in nvim.
+All four capabilities ship in v1. The two-wave split is feature-ordering per CLAUDE.md Rule 2 — each wave ships production-grade on its cycle.
 
-1. `blog-session-2` fires a `PreToolUse` hook with `decision_required: true` — Edit on `draft.md`. Daemon receives POST, queues `PromptModal` in overlay stack, sends push notification to TUI client.
-2. `api-svc-session-3` fires a `PreToolUse` hook with `decision_required: true` — Bash `cargo build --release`. Second `PromptModal` pushed to stack. TUI badge shows `2 prompts`.
-3. Developer presses `Ctrl-\` from nvim. Monocle popup appears (monocle tmux pane floats over editor). AppMode transitions to `Overlay { stack: [blog, api-svc], prior: Sessions }`. Both prompts visible: front prompt (blog) in focus.
-4. Developer reads diff for blog Edit. Presses `2` (Accept always). Daemon sends `{"decision": "always"}` back to `blog-session-2` hook response. `blog-session-2` unblocks and continues. Overlay stack pops front; `api-svc` prompt becomes front.
-5. Developer reads `cargo build --release`. Presses `1` (Accept once). Daemon sends `{"decision": "accept"}` to `api-svc-session-3`. Unblocks. Overlay stack now empty; AppMode restores to `Dashboard { focused: Sessions }`.
-6. Developer presses `Ctrl-\` again to dismiss popup. Returns to nvim.
-7. Total interactions: 3 keystrokes (`Ctrl-\`, `2`, `1`, `Ctrl-\` = 4 keys; 0 context switches between tmux windows; 0 `tmux select-window` commands; 0 sessions stalled due to missed prompt).
+### v1A: Launch Wave
 
-Contrast with today: developer would need to `Ctrl-b n` to find `blog-session-2`'s tmux window, read the inline permission prompt, type a response, `Ctrl-b n` again to find `api-svc-session-3`, repeat. If they missed the `api-svc` prompt and the session timed out, they would need to restart that session's task.
+**LAUNCH — the core inversion**
+
+monocle spawns and owns Claude Code (and future harness) sessions from the TUI. The daemon SessionManager opens a portable-pty PTY pair, builds a `CommandBuilder` from `EngineModule::spawn_recipe()` (binary + args including `--settings <hooks_settings_path>` for hook auto-injection + cwd as git worktree + CCR env vars), and supervises the child process. Session lifecycle: `Created → Launching → Running → Detached → Terminated`.
+
+This is the architectural reversal from v1.1.2: monocle no longer waits for hook POSTs from sessions the user launched elsewhere. It is now the launcher.
+
+**EMBEDDED PTY — never leave the TUI**
+
+The running session is visible and interactive inside monocle. The TUI Preview pane slot hosts a `tui-term::PseudoTerminal` widget that renders the `vt100::Screen` from the daemon's per-session `vt100::Parser`. The TUI sends keystrokes to the daemon as `KeyInput` IPC messages; the daemon writes PTY-encoded bytes to the master. The user reads and interacts with the Claude session inside monocle without switching windows.
+
+PTY byte stack: `portable-pty 0.9.0` (spawn + master read/write) + `vt100 0.16.2` (ANSI parse → screen state) + `tui-term 0.3.4` (render screen as ratatui widget). All MIT, no RUSTSEC, MSRV 1.88 compatible, ratatui 0.30 compatible (verified at manifest level — Cargo-init spike required at architecture delta step).
+
+Input fidelity (v1A): printable keys + control keys (Ctrl-C, Ctrl-D, Ctrl-Z) + arrows + Backspace + Tab + Esc + Enter + mouse events + Kitty keyboard protocol (full support IN v1A scope — human-ratified D-237 2026-06-03). Bracketed paste is included as part of full fidelity; implementation details (crossterm Kitty-enhancement flags + mouse capture → PTY byte translation wiring) are architect-routed items resolved at architecture delta. Full fidelity is the v1A target; no input class is deferred. This full-fidelity scope supersedes the narrower keyboard scope described in DISPOSITION-V2-CONTROL-CENTER-ROLLUP.md and embedded-pty-evaluation.md, which predate the D-237 ratification and will be reconciled during the architecture delta.
+
+**MULTI-SESSION / MULTI-PROJECT**
+
+List, switch, create, kill, rename, and group sessions by project from the TUI. Sessions grouped by `project_name` with collapsible header rows. Fast switching: O(1) — swap which parser the TUI widget renders; all sessions parse in the background. Project picker overlay (SessionCreation step 2). GC policy: Terminated sessions cleaned from registry after 10-second grace period.
+
+Persistence: DAEMON-OWNS-PTY (three cases — see §Process Topology for full detail): (1) TUI exit/restart → daemon PTY masters still running → TUI reconnects and re-streams (supported in v1A); (2) daemon-process restart → PTY masters dropped → sessions lost → user re-launches (in-place daemon restart without dropping PTYs is a later-wave feature, not v1A); (3) daemon crash → sessions lost → re-launch. `session-state.json` per session for re-display and parameter-based re-launch.
+
+**Hook auto-injection on spawn**
+
+When monocle launches a session, it writes the hooks settings file to a per-session temp path and passes `--settings <path>` in the `CommandBuilder` args. No manual `~/.claude/settings.json` copy required. Launch ownership carries hook-wiring ownership.
+
+### v1B: Interactive Tune Wave
+
+**INTERACTIVE TUNE**
+
+The Static plane becomes interactive. The user edits keybindings, profile definitions, and CCR routing slots directly in the TUI and the changes take effect (atomic `tempfile::persist` writes, then hot-reload). Profile management (create/edit/delete profiles in `~/.monocle/config.json`). CCR routing slot editor (select model per routing scenario, write CCR config, inform user of any restart requirements). monocle-static CRUD activation (enable/disable customizations, move between scopes). Every destructive Tune action follows the NikiforovAll Modal-Confirm-Callback 3-phase pattern.
+
+### Already-built, preserved + extended (from Phase 1 substrate)
+
+| Capability | Status | BCs |
+|-----------|--------|-----|
+| Hook ingestion (5 endpoints, PID-liveness, DTU clone) | Preserved | BC-2.05.*, BC-2.06.* |
+| Permission overlay (VecDeque stack, killer scenario ≤6 keystrokes) | Preserved | BC-2.06.022 |
+| Sessions panel (session list, token burn rate, phase tag) | Extended (project grouping + launch/kill/detach actions) | BC-2.05.002 |
+| Event ribbon (rolling hook event log with filter) | Preserved | BC-2.06.006/018 |
+| Profile picker (Ctrl-P, sticky-per-project, CCR path) | Preserved + extended (used in launch wizard) | BC-2.07.004/005 |
+| Workflow plane (FactoryAdapter, VsddFactoryAdapter, STATE.md parsing) | Preserved + new trigger path | existing |
+
+---
+
+## End-to-End Killer Scenarios
+
+### Scenario 1: Launch and enter a new session (new in v2.0)
+
+Developer opens monocle (`Ctrl-\`), sees sessions panel. Presses `+` to create a session. SessionCreation wizard opens: selects "Claude Code + CCR (background)" profile, selects project `blog`, confirms worktree path. monocle daemon spawns: `claude --settings /tmp/monocle-hooks-abc.json` in the blog worktree, with CCR env vars. Session appears as "Launching" then "Running" in the sessions panel. Developer presses Enter to enter the embedded terminal: the Preview pane shows the live Claude session. Developer types a prompt; keystrokes forward to the PTY. Claude responds. Developer presses Esc to return to Dashboard. Total: started a session, sent a prompt, and returned to the dashboard overview — without opening a new terminal window or manually configuring any hook.
+
+### Scenario 2: Multi-session permission resolution (preserved from v1.1.2)
+
+Setup: three sessions running. Two permission prompts arrive concurrently from different sessions.
+
+1. `blog-session-2` fires a `PreToolUse` hook — Edit on `draft.md`. Daemon queues `PromptModal`.
+2. `api-svc-session-3` fires a `PreToolUse` hook — Bash `cargo build --release`. Second `PromptModal` pushed. TUI badge shows `2 prompts`.
+3. Developer presses `Ctrl-\` from nvim. Overlay opens: both prompts visible.
+4. Developer presses `2` (Accept always). `blog-session-2` unblocks. Stack pops.
+5. Developer presses `1` (Accept once). `api-svc-session-3` unblocks. Stack empty; Dashboard restored.
+6. Developer presses `Ctrl-\` to dismiss. Returns to nvim.
+7. Total: 4 keystrokes. 0 context switches between tmux windows. 0 sessions stalled.
+
+---
 
 ## Explicit Non-Goals
 
-- Does NOT execute workflows — monocle is observe-only for factory/workflow state; it never writes STATE.md, never triggers phases, never dispatches agents
-- Does NOT write STATE.md — the factory adapter reads STATE.md; monocle never mutates it
-- Does NOT route LLM API requests — claude-code-router integration is detect-on-PATH + config-write; monocle does not proxy or modify LLM traffic
-- Does NOT replace the terminal multiplexer — monocle runs inside tmux, does not replace it; zellij's multiplexer internals are a Leave-behind gene
-- Does NOT include PM/Worker multi-agent orchestration — any-context/lazyclaude's PM/Worker subsystem is explicitly out of scope; the human is always the coordinator
+- Does NOT execute vsdd-factory workflows — monocle observes factory state (reads STATE.md); it never writes STATE.md, never triggers factory phases, never dispatches factory agents
+- Does NOT write STATE.md — the FactoryAdapter reads STATE.md; monocle never mutates it
+- Does NOT route LLM API requests — CCR integration is detect-on-PATH + config-write + env-inject; monocle does not proxy or modify LLM traffic
+- Does NOT replace the user's general-purpose terminal multiplexer — monocle runs inside the user's tmux session; it manages AI coding sessions via its own daemon-owned PTYs; it does not attempt to multiplex the user's non-AI terminal work
+- Does NOT include PM/Worker multi-agent orchestration — human is always the coordinator; sessions are independent (no inter-session bus, no automated handoff)
 - Does NOT own session transcripts — monocle reads hook events (fine-grained, ephemeral); full transcript storage belongs to Claude Code's own persistence layer
 - Does NOT build its own LLM provider abstraction — CCR is the external router; monocle integrates by detecting it, not by reimplementing it
+- Does NOT use tmux as the PRIMARY session multiplexer — portable-pty native in-process PTY is the chosen approach; tmux control-mode is a documented fallback if daemon-owned persistence proves insufficient (not a v1 default)
 
-## Tech Stack
+---
 
-**Canonical version pin manifest:** see `.factory/specs/architecture/SS-deps-pin-manifest.md`, which carries live-crates.io-verified pins and the RUSTSEC audit context. The pin manifest supersedes the version examples that appeared in v1.0 of this vision. The architectural intent of each crate (ratatui for TUI, crossterm as backend, tokio for async runtime, axum for hook ingestion, interprocess for IPC, prost for cross-host wire format, serde_yaml_ng for config, wasmtime for Phase 3 SDK, nucleo for fuzzy matching, similar for diff preview, directories for XDG paths, notify for FS watching, russh for federation, rmcp for MCP bridge, tempfile for atomic writes, clap for CLI, arboard for clipboard, tracing for instrumentation, thiserror+anyhow for error handling, reqwest for HTTP client) remains the same as v1.0. What changed: each pin was verified against crates.io between 2026-05-11 (v1.0) and 2026-05-12 (this v1.1), and updated to the current stable major.minor with explicit RUSTSEC justification where pre-current versions had known advisories. See `SS-deps-pin-manifest.md` §RUSTSEC Audit Context for the per-crate advisory list.
+## Tech Stack (v2.0 additions)
 
-## Phase Plan
+**Canonical version pin manifest:** see `.factory/specs/architecture/SS-deps-pin-manifest.md`, which carries live-crates.io-verified pins and the RUSTSEC audit context. The pin manifest supersedes version examples in this document.
 
-| Phase | Name | Scope | Exit criterion |
-|-------|------|-------|---------------|
-| 1 | Runtime core | monocle-core, monocle-runtime, monocle-ipc, monocle-config, monocle binary (daemon mode), ClaudeCodeModule, axum hook endpoints, broker, Sessions panel (TUI stub) | `monocle daemon start` receives hook POSTs from a real Claude Code session; sessions panel shows live session list with token counts |
-| 2 | Static plane | monocle-static, Customizations panel, trigger-trace (permission prompt → settings.json line), nikiforovall AppMode state machine, lazygit binding dispatch (5-level precedence), telescope help overlay | Permission prompt overlay works end-to-end; `[t]` trace-to-source jumps to correct settings.json line; help overlay lists all bindings with source |
-| 3 | Workflow plane | monocle-workflow, FactoryAdapter trait, VsddFactoryAdapter, Workflow panel, STATE.md live watcher, monocle-plugin-sdk (WASM ABI for EngineModule + FactoryAdapter) | Workflow panel shows phase/status/blocking-issues for a vsdd-factory project in real time; WASM plugin loads a third-party FactoryAdapter |
-| 4 | Cross-plane + multi-harness + federation | CodeMachineModule, monocle-proto (protobuf wire), russh federation tunnel, multi-host roster, OTel cost/token panel, CCR integration (detect + config-write), rmcp MCP bridge (optional) | Two hosts federated: monocle TUI on host A shows sessions from host B; CCR detected and per-session routing config written automatically |
+**New crates added in v2.0 (from embedded-pty-evaluation.md §7.1):**
 
-## Closure Log (v1.0 to v1.1)
+| Crate | Version | Location | Role | License | RUSTSEC |
+|-------|---------|----------|------|---------|---------|
+| `portable-pty` | `"0.9"` | `monocle-runtime` | PTY pair creation, child spawn, master read/write | MIT | none (2026-06-03) |
+| `vt100` | `"0.16"` | `monocle-runtime`, `monocle-tui` | ANSI/VT100 parse → in-memory screen state | MIT | none (2026-06-03) |
+| `tui-term` | `"0.3"` | `monocle-tui` | ratatui widget rendering `vt100::Screen` | MIT | none (2026-06-03) |
 
-**What this version captures:** The human's intent from the v1.0 approval event (2026-05-11) AS REFINED by:
+Compatibility notes:
+- `tui-term 0.3.4` depends on `ratatui-core ^0.1.0` and `ratatui-widgets ^0.3.0` — exactly what `ratatui 0.30.0` pins. Unifies to a single copy in the dependency graph (verified at manifest level on deps.rs 2026-06-03). Cargo-init spike required at architecture delta step: `cargo tree -d` must show zero duplicate `ratatui-core`/`ratatui-widgets`/`vt100` versions before committing.
+- MSRV impact: none — `tui-term` MSRV 1.86 ≤ monocle's 1.88 floor.
+- `tui-term` self-describes as "work in progress." **Decision-of-record (this section):** Pin it exactly; gate upgrades through review. Vendoring is cheap if needed (small surface) — apply if the WIP label becomes a stability concern. Do NOT enable the `unstable` feature flag (the tui-term spawn helper); monocle spawns via `portable-pty` directly in the runtime. See Q-7 in §Open Questions for the architect confirmation step.
 
-- JC-1 (7-customization-type scope) — moved to Phase 2 Exit Criteria, not Phase 1 (resolves contradiction in v1.0 success criteria)
-- JC-2 (5 hook endpoints, `PostToolUse` omitted) — canonical endpoint set locked
-- JC-3 (port 2748 fixed vs OS-assigned) — OS-assigned per OQ-04
-- EX-1 (13-crate workspace → 12-crate workspace per enumeration; see brief v1.4 for correct count)
-- EX-2 (`SessionStart` + `UserPromptSubmit` added to Phase 1 endpoint set)
-- OQ-01..OQ-11 resolutions per `.factory/planning/oq-research.md` (b3c68ca)
-- OQ-M1 (agent-view IPC coexistence): resolved — agent view uses internal Claude Code IPC, no port/auth collision with monocle's outbound hook POSTs
-- OQ-M2 (claude-manager hook protocol): resolved — claude-manager uses tmux pane management, NOT hook protocol; monocle's hook-native moat is intact
-- OQ-M3 (`PermissionRequest` as 6th endpoint): resolved — stay at 5 endpoints per JC-2 parity argument; revisit if Phase 2 trigger-trace UX surfaces signal gap
-- R-001 (Anthropic deepens agent view): probability red-lined from market-intel's 25–40% to <10% per human Q-B response (2026-05-12). At this probability, no separate mitigation scaffolding is required beyond the production-grade depth monocle is already shipping. Noted as informational background; brief v1.4.1 reflects the revised assessment.
+All architectural intent from v1.1.2 for existing crates is preserved (ratatui for TUI, crossterm as backend, tokio for async runtime, axum for hook ingestion, interprocess for IPC, prost for cross-host wire format, serde_yaml_ng for config, nucleo for fuzzy matching, similar for diff preview, directories for XDG paths, notify for FS watching, thiserror+anyhow for error handling, tempfile for atomic writes, clap for CLI, tracing for instrumentation, etc.). See `SS-deps-pin-manifest.md` for live verified pins.
 
-**What this version does NOT change:** The vision's core thesis ("one TUI lens over every Claude-class session"), the five-plane architecture, the observe-only-for-state / action-only-for-overlays principle, the killer scenario (4 keys per any concurrent permission prompt pair), the gene-transfusion methodology, or the multi-harness EngineModule trait abstraction. All architectural intent from v1.0 is preserved.
+---
+
+## Wave Plan (re-baselined v1)
+
+This replaces the Phase Plan from v1.1.2. The two-wave split is feature-ordering (CLAUDE.md Rule 2) — both waves ship in v1; each feature is production-grade on the wave it ships.
+
+| Wave | Name | Core capabilities | Key new work | Preserved/extended |
+|------|------|-------------------|--------------|-------------------|
+| v1A | Launch Wave | LAUNCH + EMBEDDED PTY + MULTI-SESSION/MULTI-PROJECT | SessionManager (portable-pty + vt100); EmbeddedTerminal AppMode; SessionCreation wizard; session-state.json; EngineModule.spawn_recipe(); monocle-proto PTY message types; hook auto-injection; PtySpawner trait + mock | All Phase-1 observe/control capabilities; profile picker (used in launch wizard); event ribbon; workflow plane |
+| v1B | Tune Wave | INTERACTIVE TUNE | monocle-static CRUD activation; keybinding editor; CCR routing slot editor; profile management UI; TuneEdit* Action variants | Everything from v1A |
+
+**Human ratified (D-237, 2026-06-03): v1A/v1B split confirmed.** All four capabilities ship in v1; v1A = Launch + Embedded PTY + Multi-session/project (+ persistence + hook auto-inject); v1B = Interactive Tune. Both waves production-grade on their cycles.
+
+---
+
+## Gene-Source Disposition Summary (v2.0)
+
+Full individual dispositions: `.factory/semport/DISPOSITION-V2-CONTROL-CENTER-ROLLUP.md`
+
+| Gene Source | v1.1.2 stance | v2.0 stance | Change |
+|------------|---------------|-------------|--------|
+| claude-squad: session launch | Out of scope | MODEL (portable-pty, not tmux) | Fully reversed |
+| claude-squad: lifecycle state machine | Out of scope | MODEL + ADAPT | Fully reversed |
+| claude-squad: worktree-per-session | ADOPT | ADOPT (extended) | Confirmed |
+| claude-squad: capture-pane / tmux-primary | LEAVE BEHIND | LEAVE BEHIND | Confirmed |
+| claude-squad: AutoYes / polling daemon | LEAVE BEHIND | LEAVE BEHIND | Confirmed |
+| zellij: PTY/pane architecture | Out of scope | MODEL (architecture pattern) | Reversed |
+| zellij: client/server IPC | ADOPT | ADOPT (extended: PTY byte types) | Confirmed |
+| zellij: zellij-as-library | LEAVE BEHIND | LEAVE BEHIND | Confirmed |
+| any-context: hook inject-on-spawn | N/A (couldn't inject) | ADOPT (`--settings` flag) | New |
+| nikiforovall: AppMode state machine | ADOPT | ADOPT (extended: EmbeddedTerminal + SessionCreation) | Extended |
+| nikiforovall: writer/CRUD genes | Not yet active | ADOPT (v1B) | Extended |
+| lazygit: 5-level precedence + Action enum | ADOPT | ADOPT (extended: PTY + launch actions) | Extended |
+| CCR: detect-on-PATH + env inject | ADOPT | ADOPT (extended: used in spawn path) | Extended |
+| codemachine: EngineModule trait | ADOPT | ADOPT (extended: spawn_recipe()) | Extended |
+| vsdd-factory: FactoryAdapter observe-only | ADOPT | ADOPT (confirmed observe-only) | Confirmed |
+| PM/Worker orchestration (any-context) | LEAVE BEHIND | LEAVE BEHIND | Confirmed |
+| SSH federation | ADOPT (Phase 4) | SUSPENDED (re-baselined v1 scope) | Suspended |
+| WASM plugin SDK | Phase 3 | SUSPENDED | Suspended |
+
+---
+
+## Open Questions for the Architecture Delta
+
+These are genuine cross-component architecture decisions that require architect adjudication. They are NOT deferrals of mechanical questions (per CLAUDE.md Rule 6 anti-pattern). They are captured here for the orchestrator to route to the architect after this vision is approved.
+
+Human-ratified questions are marked RESOLVED; they are retained for traceability but require no human action.
+
+---
+
+**RESOLVED — Q-3: Daemon crash persistence posture for v1A (human-ratified 2026-06-03, D-237)**
+Daemon crash → sessions lost → user re-launches. This is the accepted v1A boundary. The daemon is stable; crash is exceptional; launchd/systemd or a monocle-internal daemon watchdog provides operational mitigation. Native portable-pty only — no tmux fallback required for v1A. Cross-crash PTY state serialization is deferred to a later wave. TUI reconnect to a running daemon (DAEMON-OWNS-PTY) is the supported survival path; that is already the design in §Process Topology. Architect follow-on (implementation only): session-state.json schema for re-display and parameter-based re-launch of terminated sessions.
+
+**RESOLVED — Q-5: v1A / v1B wave boundary (human-ratified 2026-06-03, D-237)**
+v1A = Launch + Embedded PTY + Multi-session/Multi-project (+ persistence + hook auto-injection); v1B = Interactive Tune. All four capabilities ship in v1. The two-wave split is confirmed feature-ordering (CLAUDE.md Rule 2), not an MVP shortcut. Interactive Tune does NOT merge into v1A.
+
+**RESOLVED — Q-6: Keyboard fidelity scope for v1A (human-ratified 2026-06-03, D-237)**
+Full fidelity is IN v1A scope: printable keys + control keys (Ctrl-C, Ctrl-D, Ctrl-Z) + arrows + Backspace + Tab + Esc + Enter + mouse events + Kitty keyboard protocol. Bracketed paste is included as part of full fidelity. No deferral. Architect implementation sub-question (routed to architect, NOT human): how to wire crossterm Kitty-enhancement flags and mouse capture → PTY byte translation → portable-pty master write. This is an implementation decision in the architecture delta, not a scope question. Note: this full-fidelity scope supersedes the narrower keyboard scope still present in DISPOSITION-V2-CONTROL-CENTER-ROLLUP.md and embedded-pty-evaluation.md, which predate D-237 ratification; the architect will reconcile those documents during the architecture delta.
+
+---
+
+**Q-1: PTY bytes over existing UDS IPC vs. dedicated streaming path (architect)**
+Should `PtyOutput { session_id, bytes }` messages share the existing UDS IPC channel with hook events and command messages, or warrant a dedicated high-throughput streaming path per session?
+- Option A (shared channel with per-session PTY byte buffer sized at 1024): simpler; risk of PTY byte bursts starving hook-event delivery — mitigated by separate per-session bounded buffers and drop-counter surfacing.
+- Option B (dedicated per-session stream): cleaner throughput isolation; adds socket-per-session complexity or a multiplexed streaming protocol.
+Recommendation from embedded-pty-evaluation.md §8 Q4: Option A.
+- **v1A Gate Deliverable (benchmark):** Before v1A gate: benchmark PTY bytes over the chosen UDS + bounded-channel design at N concurrent sessions. Confirm or disprove that Option A holds at terminal-refresh rates (target: 1000+ events/sec per CLAUDE.md Conventions). The drop-counter convention surfaces starvation, but a benchmark is required before the gate. This is a pre-gate verification deliverable, not an open design question — the architect routes to performance-engineer once the Option A/B decision is made.
+
+**Q-2: EngineModule.spawn_recipe() vs. SessionManager lifecycle on the EngineModule trait (architect)**
+Should `launch`/`attach`/`detach`/`kill`/`resize`/PTY-stream become methods on the `EngineModule` trait, or should the trait provide only `spawn_recipe()` (binary/args/env) and the SessionManager component own all lifecycle? SS-engine-module.md already places operational concerns (spawning) on struct-level inherent operations, not the trait. Recommendation: lifecycle on SessionManager; EngineModule provides the recipe only.
+
+**Q-7: tui-term fork posture (architect)**
+tui-term 0.3.4 self-describes as "work in progress." Confirm the §Tech Stack default posture: exact-pin + vendoring-plan-if-needed is the production-grade default already decided; architect to confirm whether immediate vendoring before any v1A work is preferred over deferred-on-need. The small surface (one widget) makes vendoring cheap either way.
+
+---
 
 ## Provenance
 
-This vision synthesis was produced by the orchestrator agent after the full-protocol brownfield-ingest of 8 reference repos completed (factory-artifacts commit 2c2b676). The human approved it verbatim 2026-05-11 with the statement "I agree with this fully". It is the pre-brief vision document that downstream agents (product-owner for `/vsdd-factory:create-brief`, architect for `/vsdd-factory:create-architecture`, disposition-pass agents) must reference.
+This vision synthesis was originally produced by the orchestrator agent after the full-protocol brownfield-ingest of 8 reference repos completed (factory-artifacts commit 2c2b676). The human approved v1.0 verbatim 2026-05-11 with the statement "I agree with this fully."
 
-The vision is the synthesis lens for disposition decisions: every subsystem in every reference repo gets sorted into Model / Take-but-reimplement / Enhance / Leave-behind through THIS vision. If a future vision-doc change invalidates prior dispositions, those dispositions must be re-run.
+v1.1 was drafted by the business-analyst agent on 2026-05-12 to capture JC/EX/OQ-M closures and version-pin updates. Re-approved by the human on 2026-05-12.
 
-The vision is intentionally opinionated. It does NOT enumerate every option; it states the chosen direction. Alternative directions discussed in the synthesis bursts but rejected: build-in LLM routing (rejected — integrate CCR externally), inherit PM/Worker orchestration (rejected by user direction), execute workflows (rejected — observe-only).
+v1.1.1 (2026-05-12): Surgical frontmatter and §Tech Stack pointer fixes.
 
-v1.1 was drafted by the business-analyst agent on 2026-05-12 to capture the JC/EX/OQ-M closures and version-pin updates from the OQ research and market intel work that followed the v1.0 approval.
+v1.1.2 (2026-05-12): Surgical path fix — `/hooks/prompt-submit` wire correction.
 
-v1.1 re-approved by the human on 2026-05-12 during the production-grade remediation burst Phase 1 gate review. R-001 probability red-lined from market-intel's 25–40% estimate to <10% during the same review; brief v1.4.1 reflects the revised assessment.
+**v2.0 (2026-06-03):** Major revision by the product-owner agent in response to the D-236 human-directed vision pivot and D-237 human ratification of the re-baselined v1 control-center scope. This revision:
+- Retires the observe-only constraint and the specific rejections it codified
+- Adds LAUNCH, EMBEDDED PTY, MULTI-SESSION/MULTI-PROJECT, and INTERACTIVE TUNE as first-class v1 capabilities
+- Captures the DAEMON-OWNS-PTY persistence model (ratified D-237)
+- Captures the embedded-PTY tech direction (portable-pty 0.9.0 + vt100 0.16.2 + tui-term 0.3.4; from embedded-pty-evaluation.md v1.0)
+- Documents the v1A/v1B wave ordering (feature-ordering, not MVP shortcut)
+- Enumerates the preserved Phase-1 substrate as an asset set (not to be rebuilt)
+- Captures open architecture questions for the architect in the architecture delta phase
+- Sources: NEXT-SESSION-PIVOT.md, DISPOSITION-V2-CONTROL-CENTER-ROLLUP.md v1.0, embedded-pty-evaluation.md v1.0, STATE.md decisions D-236 and D-237
 
-v1.1.1 (2026-05-12): Surgical frontmatter and §Tech Stack pointer fixes — `dependencies.md` references updated to canonical `SS-deps-pin-manifest.md`; `approved_at` corrected to reflect 2026-05-12 v1.1 re-approval (original v1.0 approval preserved as `approved_at_v1_0`). Substantive content unchanged. Resolves consistency audit F-01-B and F-04-I (commit 0f28619).
+**Status: DRAFT — pending human approval gate.** The architecture delta (brief revision → architecture subsystem specs → story decomposition) must not begin until the human approves this document. The orchestrator should present this to the human for review and approval before dispatching the architect.
 
-v1.1.2 (2026-05-12): Surgical path fix — §Process Topology diagram endpoint `/hooks/user-prompt-submit` corrected to `/hooks/prompt-submit` to match canonical brief and DTU paths. Resolves adversary F-NEW-01 (CRITICAL wire-protocol divergence across 3 artifacts). No content change.
+The vision is the synthesis lens for disposition decisions: every subsystem in every reference repo gets sorted through THIS vision. The D-236/D-237 reversal of the launch/manage genes is captured in DISPOSITION-V2-CONTROL-CENTER-ROLLUP.md. If future vision-doc changes invalidate prior dispositions, those dispositions must be re-run.
+
+v1.1.2 trace: the observe-only record is preserved in git history on the `factory-artifacts` branch. The git history is the canonical preservation mechanism — this file supersedes v1.1.2 in place.

@@ -13,7 +13,7 @@ producer: architect
 phase: pre-phase-1-architecture
 timestamp: 2026-05-17T16:30:00Z
 inputs: [SS-core-types-and-abi.md, SS-permissions-phase1.md, product-brief.md]
-input-hash: "facd487"
+input-hash: "68d9588"
 traces_to: "F-FC-C001 adversary finding; F-FC-I004 adversary finding; BC-TYPES-001 exemption mechanism; SS-permissions-phase1.md §Decision; brief v1.4.7 §Scope (Public enum extensibility forward-compatibility contract)"
 project: monocle
 ---
