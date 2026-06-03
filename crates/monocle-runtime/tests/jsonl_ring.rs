@@ -12,11 +12,13 @@
 // Suppress unwrap/expect lints in tests — canonical project pattern (matches all other test files).
 #![allow(non_snake_case, clippy::expect_used, clippy::unwrap_used)]
 
+use std::path::PathBuf;
+
 use monocle_runtime::ring::{
     HookEventRecord, RingBuffer, RingError, RotationConfig, RING_FORMAT_VERSION,
 };
-use std::path::PathBuf;
 use tempfile::TempDir;
+use tracing_test::traced_test;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -532,5 +534,83 @@ fn test_BC_RING_001_flush_failure_degraded_not_broken() {
     assert!(
         second_result.is_err(),
         "second push after failure must still return Err, not panic"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// MED-002: post-shutdown enqueue guard — begin_shutdown() → append() returns Err
+// ---------------------------------------------------------------------------
+
+/// MED-002: once `begin_shutdown()` is called, `append()` must return
+/// `Err(RingError::Shutdown)` immediately without enqueueing the record.
+///
+/// This guards the force-close post-timeout window where a still-live handler holding
+/// its own `Arc<RingBuffer>` clone could silently enqueue a record after the flush task
+/// has drained and exited (E-RING-007 taxonomy).
+///
+/// The test also verifies:
+/// - `append()` succeeds BEFORE `begin_shutdown()` (pre-condition: ring is live).
+/// - After `begin_shutdown()`, append returns `Err(RingError::Shutdown)`, not a panic.
+/// - The RAM ring is NOT updated on rejected appends (record count does not increase).
+/// - The loud `tracing::error!` "E-RING: append after ring shutdown" is emitted exactly
+///   once per rejected append (verifies the observable contract in ring.rs append()).
+#[test]
+#[traced_test]
+fn test_ring_begin_shutdown_rejects_append() {
+    let dir = TempDir::new().expect("create tempdir");
+    let path = ring_path(&dir);
+    let config = RotationConfig::default();
+    let ring = RingBuffer::new(path, config);
+
+    // Pre-condition: append succeeds before shutdown.
+    let record = session_start_record();
+    ring.append(record.clone())
+        .expect("append must succeed before begin_shutdown");
+
+    // Verify the record landed in the RAM ring (latest_events returns 1 item).
+    let events_before = ring.latest_events(10);
+    assert_eq!(
+        events_before.len(),
+        1,
+        "RAM ring must have 1 event after successful append"
+    );
+
+    // Signal shutdown.
+    ring.begin_shutdown();
+
+    // Post-condition: append must fail with RingError::Shutdown.
+    let result = ring.append(record.clone());
+    assert!(
+        result.is_err(),
+        "append after begin_shutdown must return Err, not Ok"
+    );
+    match result.unwrap_err() {
+        RingError::Shutdown => { /* correct variant — E-RING-007 */ }
+        other => panic!("expected RingError::Shutdown, got: {other:?}"),
+    }
+
+    // Verify the RAM ring was NOT updated on the rejected append (still 1 event).
+    let events_after = ring.latest_events(10);
+    assert_eq!(
+        events_after.len(),
+        1,
+        "RAM ring must NOT be updated after a post-shutdown rejected append"
+    );
+
+    // Second rejected append must also return Shutdown (idempotent flag).
+    let result2 = ring.append(record);
+    assert!(
+        matches!(result2.unwrap_err(), RingError::Shutdown),
+        "subsequent appends after begin_shutdown must all return RingError::Shutdown"
+    );
+
+    // Verify the loud tracing::error! was emitted on each rejected append (E-RING-007).
+    // ring.rs append() documents: "returns Err(RingError::Shutdown) and emits tracing::error!".
+    // This assertion makes the observable log contract machine-verifiable.
+    // Uses tracing-test `logs_contain` injected by #[traced_test]; `no-env-filter` feature
+    // is required because this is an integration test in tests/ (separate crate from impl).
+    assert!(
+        logs_contain("E-RING: append after ring shutdown"),
+        "append() after begin_shutdown must emit E-RING: append after ring shutdown error log (E-RING-007)"
     );
 }

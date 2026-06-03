@@ -80,7 +80,12 @@ fn now_micros() -> i64 {
 ///
 /// DI-001: callers MUST invoke this BEFORE constructing any HTTP response.
 fn ring_push_best_effort(state: &DaemonState, record: &HookEventRecord) {
-    match &state.ring {
+    // Lock, clone Arc out, drop guard immediately before calling push.
+    // This follows the CRITICAL-1 constraint: MutexGuard must not be held across any
+    // await point. ring_push_best_effort is sync, but the pattern is enforced uniformly
+    // to prevent future regression (SS-daemon-wiring-impl.md §Fix Addendum Round 2).
+    let ring_arc = state.ring.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    match ring_arc.as_ref() {
         None => {
             tracing::warn!(
                 hook_type = %record.hook_type,

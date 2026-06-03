@@ -188,6 +188,15 @@ pub enum DaemonExit {
 
     /// A second SIGINT (signal 2, Ctrl-C) was received while a drain was in progress.
     /// POSIX convention 128+2. Exit code `130`.
+    ///
+    /// # IMPLEMENTATION STATUS
+    ///
+    /// CONTRACT GAP (S-DAEMON-WIRE-FIX-001): second-signal detection not yet wired;
+    /// this variant is defined per BC-2.01.004 INV-4 but not yet produced by
+    /// run_server/main. `main()` currently yields only `Graceful(0)` or
+    /// `AdminForceStop(2)`. A second SIGINT during the drain window hits the OS default
+    /// (process killed without this exit code). Second-signal detection is anchored to
+    /// story S-DAEMON-WIRE-FIX-001.
     SigintDuringDrain,
 
     /// A second SIGTERM (signal 15) was received while a drain was in progress.
@@ -197,6 +206,15 @@ pub enum DaemonExit {
     /// drain-timeout-forced-shutdown exits with `DaemonExit::Graceful` (exit code 0)
     /// per story spec line 171: "drain-timeout-forced-shutdown exits 0". This variant
     /// is exclusively for when a second SIGTERM arrives before the drain window closes.
+    ///
+    /// # IMPLEMENTATION STATUS
+    ///
+    /// CONTRACT GAP (S-DAEMON-WIRE-FIX-001): second-signal detection not yet wired;
+    /// this variant is defined per BC-2.01.004 INV-4 but not yet produced by
+    /// run_server/main. `main()` currently yields only `Graceful(0)` or
+    /// `AdminForceStop(2)`. A second SIGTERM during the drain window hits the OS default
+    /// (process killed without this exit code). Second-signal detection is anchored to
+    /// story S-DAEMON-WIRE-FIX-001.
     SigtermDuringDrain,
 }
 
@@ -378,13 +396,27 @@ struct StartSequenceLockContent {
 /// 11. Init crash recovery checkpoint infrastructure (stateless; verifies path is writable).
 /// 12. Signal startup complete.
 ///
+/// # Return value
+///
+/// Returns the fully-wired `DaemonState` **and** the bound `TcpListener` that was used to
+/// record the OS-assigned port. The listener is returned (not dropped) so that `main()` can
+/// pass it directly to `run_server(state, listener)` without any timing gap between port bind
+/// and HTTP accept. SOQ-2 is preserved: the listener is bound at step 3, the port is recorded
+/// in the lock file at step 8, and the listener is returned at step 12 — all in the same scope.
+///
 /// # Errors
 ///
 /// Returns [`DaemonStartError`] on any step failure. Post-step-8 failures trigger
 /// lock file cleanup before returning (invariant 6 of BC-2.04.001).
 pub async fn daemon_start_sequence(
     runtime_dir: &Path,
-) -> Result<std::sync::Arc<crate::state::DaemonState>, DaemonStartError> {
+) -> Result<
+    (
+        std::sync::Arc<crate::state::DaemonState>,
+        tokio::net::TcpListener,
+    ),
+    DaemonStartError,
+> {
     use std::sync::atomic::AtomicU64;
     use std::sync::Arc;
 
@@ -457,8 +489,46 @@ pub async fn daemon_start_sequence(
     let ring: Arc<crate::ring::RingBuffer> =
         Arc::new(crate::ring::RingBuffer::new(ring_path, ring_config));
 
+    // Step 4b: Spawn the ring flush task so write-queue records are persisted to disk.
+    // SS-daemon-wiring.md §Daemon Start Sequence step 4: "call spawn_flush_task() separately
+    // at daemon start step 4". Without this, ring.append() enqueues records to the in-memory
+    // write queue but they are never written to monocle-events.jsonl on disk (I2 fix).
+    //
+    // Create a RingShutdownNotify (Arc<Notify>) that allows the shutdown tail to signal the
+    // flush task to drain and exit deterministically, independent of Arc<RingBuffer> refcount
+    // (H1 fix — SS-daemon-wiring-impl.md §Round 3 H1). The notify is cloned into the flush
+    // task via spawn_flush_task(), and a clone is stored on DaemonState for the shutdown tail.
+    //
+    // Store the JoinHandle on DaemonState so the shutdown tail can await it after signalling
+    // the flush task (CRITICAL-1 fix — SS-daemon-wiring-impl.md §Fix Addendum Round 2).
+    //
+    // E2E-TEST-AFFORDANCE (e2e-test-affordances feature only): read MONOCLE_RING_FLUSH_DELAY_MS
+    // and pass to spawn_flush_task. Under this feature, the flush task sleeps for the specified
+    // number of milliseconds BEFORE writing each record to disk, making the record sit
+    // "enqueued but not yet flushed" for a controllable window so AC-E2E-008 can prove that
+    // the shutdown drain (H1 drain branch) is non-vacuous. In production (no feature), this
+    // block is not compiled and spawn_flush_task takes no delay argument.
+    let ring_shutdown_notify: crate::ring::RingShutdownNotify =
+        Arc::new(tokio::sync::Notify::new());
+
+    #[cfg(feature = "e2e-test-affordances")]
+    let ring_flush_delay_ms: Option<u64> = std::env::var("MONOCLE_RING_FLUSH_DELAY_MS")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok());
+
+    let ring_flush_handle = ring.spawn_flush_task(
+        Arc::clone(&ring_shutdown_notify),
+        #[cfg(feature = "e2e-test-affordances")]
+        ring_flush_delay_ms,
+    );
+
     // Step 5: Create bounded mpsc channel for event bus (4096 slots), drop counter AtomicU64.
-    let (event_tx, _event_rx) = tokio::sync::mpsc::channel::<crate::types::EventBusHookEvent>(
+    // Retain event_rx so the channel has a live consumer; fan-out and debounce tasks are
+    // spawned at step 5b after DaemonState construction. Dropping event_rx here would make
+    // the channel permanently Closed, causing every try_send to fail with
+    // TrySendError::Closed and produce a WARN per hook event (C1 fix —
+    // SS-daemon-wiring-impl.md §Fix Addendum C1).
+    let (event_tx, event_rx) = tokio::sync::mpsc::channel::<crate::types::EventBusHookEvent>(
         crate::types::EVENT_BUS_CAPACITY,
     );
     let drop_counter: Arc<AtomicU64> = Arc::new(AtomicU64::new(0));
@@ -570,7 +640,9 @@ pub async fn daemon_start_sequence(
         lock_file_path,
         sock_file_path,
         last_hook_ts: std::sync::RwLock::new(crate::state::LastHookTimestamps::default()),
-        ring: Some(ring),
+        ring: std::sync::Mutex::new(Some(ring)),
+        ring_flush_handle: std::sync::Mutex::new(Some(ring_flush_handle)),
+        ring_flush_shutdown: Some(Arc::clone(&ring_shutdown_notify)),
         tui_attached_count: std::sync::atomic::AtomicUsize::new(0),
         force_exit: std::sync::atomic::AtomicBool::new(false),
         daemon_lock: std::sync::Mutex::new(Some(daemon_lock)),
@@ -583,8 +655,44 @@ pub async fn daemon_start_sequence(
         ipc_subscribers: Some(Arc::clone(&ipc_subscribers)),
         uds_transport: Some(uds_transport),
         hook_decision_override: None,
-        hook_delay_ms: None,
+        hook_delay_ms: None, // Unit-test override only; not set via env var.
+        // HIGH-1 fix: MONOCLE_HOOK_DELAY_MS env var is gated behind the `e2e-test-affordances`
+        // cargo feature so production binaries compiled without the feature never read or
+        // compile this code path (SS-daemon-wiring-impl.md §Fix Addendum Round 2 HIGH-1).
+        // Under `e2e-test-affordances`: reads the env var; absent → None → no delay.
+        // Under production (no feature): always None; delay code never compiled.
+        #[cfg(feature = "e2e-test-affordances")]
+        hook_outer_delay_ms: std::env::var("MONOCLE_HOOK_DELAY_MS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok()),
+        #[cfg(not(feature = "e2e-test-affordances"))]
+        hook_outer_delay_ms: None,
     });
+
+    // Step 5b: Spawn event-bus fan-out and drop-counter-debounce tasks.
+    // Both tasks are Phase-1 drain/log tasks only (no TUI IPC delivery in Phase 1).
+    // Full TUI ribbon streaming is S-032 scope (BC-2.05.004 PC-2 obligation).
+    // Both tasks observe shutdown signals and exit cleanly (C1 fix —
+    // SS-daemon-wiring-impl.md §Fix Addendum C1).
+    //
+    // Ordering: DaemonState is fully constructed above before this block so the
+    // task closures receive a complete Arc<DaemonState>.
+    {
+        let fan_out_state = Arc::clone(&daemon_state);
+        let fan_out_shutdown_rx = daemon_state.shutdown_rx.clone();
+        tokio::spawn(crate::event_bus::event_bus_fan_out_task(
+            event_rx,
+            fan_out_state,
+            fan_out_shutdown_rx,
+        ));
+
+        let debounce_state = Arc::clone(&daemon_state);
+        let debounce_shutdown_rx = daemon_state.shutdown_rx.clone();
+        tokio::spawn(crate::event_bus::drop_counter_debounce_task(
+            debounce_state,
+            debounce_shutdown_rx,
+        ));
+    }
 
     // Spawn the UDS accept loop (BC-2.05.002 PC-1).
     // Clone shutdown_rx and ipc_subscribers before moving into the spawned task.
@@ -613,13 +721,18 @@ pub async fn daemon_start_sequence(
     );
 
     // Step 12: Startup complete. Log and return.
+    //
+    // The TcpListener is returned alongside DaemonState so that main() can pass it to
+    // run_server(state, listener) without any timing gap. SOQ-2 is preserved: the listener
+    // was bound at step 3, the port was recorded in monocle.lock at step 8, and the listener
+    // is returned here — all within the same function scope. No re-bind occurs.
     tracing::info!(
         runtime_dir = %runtime_dir.display(),
         port = port,
         "daemon_start_sequence: all steps complete (BC-2.04.001)"
     );
 
-    Ok(daemon_state)
+    Ok((daemon_state, listener))
 }
 
 /// Write `hooks-settings.json` atomically into the runtime directory (BC-2.04.010).

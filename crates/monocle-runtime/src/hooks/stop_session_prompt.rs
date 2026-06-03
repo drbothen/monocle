@@ -328,7 +328,10 @@ async fn handle_stop_inner(state: Arc<DaemonState>, envelope: HookEnvelope) -> R
         None,
         None,
     );
-    if let Some(ring) = &state.ring {
+    // Lock, clone Arc out, drop guard BEFORE calling append (CRITICAL-1 constraint:
+    // no MutexGuard held across any await point — SS-daemon-wiring-impl.md Round 2).
+    let ring_arc = state.ring.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    if let Some(ring) = ring_arc.as_ref() {
         if let Err(e) = ring.append(record) {
             tracing::warn!(
                 session_id = %envelope.session_id,
@@ -442,7 +445,10 @@ async fn handle_session_start_inner(state: Arc<DaemonState>, envelope: HookEnvel
         None,
         None,
     );
-    if let Some(ring) = &state.ring {
+    // Lock, clone Arc out, drop guard BEFORE calling append (CRITICAL-1 constraint:
+    // no MutexGuard held across any await point — SS-daemon-wiring-impl.md Round 2).
+    let ring_arc_ss = state.ring.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    if let Some(ring) = ring_arc_ss.as_ref() {
         if let Err(e) = ring.append(record) {
             tracing::warn!(
                 session_id = %envelope.session_id,
@@ -587,7 +593,10 @@ async fn handle_prompt_submit_inner(state: Arc<DaemonState>, envelope: HookEnvel
         None,
         None,
     );
-    if let Some(ring) = &state.ring {
+    // Lock, clone Arc out, drop guard BEFORE calling append (CRITICAL-1 constraint:
+    // no MutexGuard held across any await point — SS-daemon-wiring-impl.md Round 2).
+    let ring_arc_ps = state.ring.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    if let Some(ring) = ring_arc_ps.as_ref() {
         if let Err(e) = ring.append(record) {
             tracing::warn!(
                 session_id = %envelope.session_id,

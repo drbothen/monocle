@@ -240,11 +240,12 @@ async fn test_BC_2_04_011_fan_out_task_exits_on_channel_close() {
     state.drop_counter = Some(Arc::clone(&drop_counter));
     let state = Arc::new(state);
 
-    // Spawn the fan-out task.
-    // Red Gate: event_bus_fan_out_task is todo!() → this will panic.
+    // Spawn the fan-out task with a shutdown_rx (M3: fan-out now requires shutdown_rx).
+    let (_shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
     let task_handle = tokio::spawn(monocle_runtime::event_bus::event_bus_fan_out_task(
         rx,
         Arc::clone(&state),
+        shutdown_rx,
     ));
 
     // Drop all senders. This closes the channel.
@@ -280,11 +281,13 @@ async fn test_BC_2_04_011_fan_out_task_removes_disconnected_client() {
     state.drop_counter = Some(Arc::clone(&drop_counter));
     let state = Arc::new(state);
 
-    // Red Gate: event_bus_fan_out_task is todo!() → panics.
+    // Spawn the fan-out task with a shutdown_rx (M3: fan-out now requires shutdown_rx).
     // This test documents the EC-095 contract for the future implementation.
+    let (_shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
     let task_handle = tokio::spawn(monocle_runtime::event_bus::event_bus_fan_out_task(
         rx,
         Arc::clone(&state),
+        shutdown_rx,
     ));
 
     // Allow brief startup.
@@ -317,10 +320,12 @@ async fn test_BC_2_04_011_debounce_at_most_once_per_100ms() {
     state.drop_counter = Some(Arc::clone(&drop_counter));
     let state = Arc::new(state);
 
-    // Spawn the debounce task.
-    // Red Gate: drop_counter_debounce_task is todo!() → panics.
+    // Spawn the debounce task with a shutdown_rx that will not fire during the test.
+    // task_handle.abort() at the end cleans up the task.
+    let (_shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
     let task_handle = tokio::spawn(monocle_runtime::event_bus::drop_counter_debounce_task(
         Arc::clone(&state),
+        shutdown_rx,
     ));
 
     // Simulate a burst of 100 drop events in a short window.
@@ -335,7 +340,6 @@ async fn test_BC_2_04_011_debounce_at_most_once_per_100ms() {
     assert_eq!(drop_counter.load(Ordering::Relaxed), 100);
 
     // The debounce task should still be running (not terminated after one cycle).
-    // Red Gate: task panics at todo!().
     assert!(
         !task_handle.is_finished(),
         "debounce task must continue running after first cycle (BC-2.04.011 PC-8)"

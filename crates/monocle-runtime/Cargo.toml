@@ -8,6 +8,18 @@ repository.workspace = true
 authors.workspace = true
 description = "Runtime daemon for monocle: hook ingestion, session lifecycle, auth, ring buffer."
 
+[features]
+# E2E test affordances — test-only delay injection for drain-timeout tests.
+# MUST NOT be enabled in production builds. Only enabled by the E2E test binary target
+# via the test target's invocation: `cargo test --features e2e-test-affordances`.
+# When this feature is active, two env vars control delay injection:
+#   MONOCLE_HOOK_DELAY_MS   — outer handler sleep before the 300ms inner budget (AC-E2E-007).
+#   MONOCLE_RING_FLUSH_DELAY_MS — pre-write sleep in flush_task_loop; used by AC-E2E-008 to
+#                                 prove the drain-join is non-vacuous (CRITICAL-1 fix).
+# When this feature is absent (production), neither env var is read nor compiled in.
+# HIGH-1 fix (SS-daemon-wiring-impl.md §Fix Addendum Round 2 HIGH-1).
+e2e-test-affordances = []
+
 [lints]
 workspace = true
 
@@ -21,6 +33,10 @@ monocle-ipc = { path = "../monocle-ipc" }
 uuid = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
+# tracing-subscriber: fmt subscriber initialization in the daemon binary entry point.
+# Resolves ADV-W4GATE-MED-002 (no subscriber → daemon errors invisible in logs).
+# env-filter feature required for RUST_LOG / tracing_subscriber::EnvFilter support.
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 rand = { workspace = true }
 constant_time_eq = { workspace = true }
 tempfile = { workspace = true }
@@ -37,7 +53,7 @@ async-trait = { workspace = true }
 [dev-dependencies]
 # temp-env: test-only; declared inline (NOT workspace = true) per story AC-006.
 # Required for BC-ENGINE-002-ERR test isolation using async_with_vars.
-# SS-deps-pin-manifest.md v1.2.0 §Dev Dependencies.
+# SS-deps-pin-manifest.md v1.2.1 §Dev Dependencies.
 temp-env = { version = "0.3", features = ["async_closure"] }
 syn = { workspace = true }
 # tower + http-body-util: axum integration test helpers (ServiceExt::oneshot, BodyExt::collect).
@@ -54,3 +70,10 @@ regex-lite = "0.1"
 # implementation, so without no-env-filter the subscriber only captures the test crate's own
 # logs — not the monocle-runtime logs being tested. See tracing-test docs §"Per-crate Filtering".
 tracing-test = { version = "0.2.6", features = ["no-env-filter"] }
+# ureq: minimal synchronous HTTP client for E2E binary tests (daemon_e2e_serve.rs).
+# Test-only; the E2E test uses blocking HTTP calls to probe the live daemon.
+# Version 2.x chosen for simple API without async overhead in test context.
+ureq = { version = "2", features = ["json"] }
+# libc: POSIX signal constants (SIGTERM) for kill() in E2E test shutdown assertion.
+# Test-only; production code uses nix for signal handling.
+libc = "0.2"

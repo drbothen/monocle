@@ -13,7 +13,7 @@ use std::time::Instant;
 
 use tokio::sync::watch;
 
-use crate::ring::RingBuffer;
+use crate::ring::{RingBuffer, RingShutdownNotify};
 
 /// Operating mode of the monocle daemon.
 ///
@@ -133,12 +133,54 @@ pub struct DaemonState {
     /// `None` — ring buffer has not been initialized (normal in tests and before XDG path
     ///   resolution completes during daemon startup). Hook handlers MUST log WARN and
     ///   return 200 when this is `None` (AC-005: ring write is best-effort).
-    /// `Some(ring)` — ring buffer is live; handlers call `ring.push(&record)`. On push
+    /// `Some(ring)` — ring buffer is live; handlers call `ring.append(record)`. On append
     ///   failure the same best-effort policy applies (log WARN, return 200).
     ///
     /// Wrapped in `Arc` so the `DaemonState` can be cloned into axum's `State` extractor
     /// while the ring buffer remains shared (no double-buffering).
-    pub ring: Option<Arc<RingBuffer>>,
+    ///
+    /// Wrapped in `std::sync::Mutex` so the shutdown tail can take the Arc out (setting
+    /// `None`) from the shared `Arc<DaemonState>` as a belt-and-suspenders backstop
+    /// (CRITICAL-1 fix — SS-daemon-wiring-impl.md §Fix Addendum Round 2 CRITICAL-1).
+    ///
+    /// # Shutdown close mechanism
+    ///
+    /// The deterministic close/drain mechanism is the explicit `ring_flush_shutdown` Notify
+    /// (H1 fix): the shutdown tail calls `ring_flush_shutdown.notify_one()` BEFORE dropping
+    /// the ring Arc, which signals the flush task to drain all pending records and exit.
+    /// The subsequent `drop(ring_arc)` is a harmless belt-and-suspenders backstop — it does
+    /// NOT by itself close `write_tx` while any hook handler still holds a cloned Arc (hook
+    /// handlers lock the Mutex, clone the Arc out, and drop the guard BEFORE calling append,
+    /// so they may hold a live Arc clone past the DaemonState's Arc drop).
+    /// The `begin_shutdown` AtomicBool (on `RingBuffer`) converts any post-shutdown append
+    /// attempt (abnormal force-close window) into a loud, logged rejection rather than a
+    /// silent enqueue-then-loss.
+    ///
+    /// Hook handlers MUST lock, clone the `Arc` out, drop the guard, THEN call
+    /// `ring.append()` so no `std::sync::MutexGuard` is held across an `.await` point
+    /// (clippy::await_holding_lock would fire otherwise; CRITICAL-1 constraint).
+    pub ring: Mutex<Option<Arc<RingBuffer>>>,
+
+    /// JoinHandle for the ring buffer flush task (BC-2.04.012 PC-4).
+    ///
+    /// Stored so the shutdown tail can await it after closing the write channel.
+    /// `None` until `daemon_start_sequence` spawns the task at step 4b.
+    /// Taken (set to `None`) during the shutdown drain sequence so no double-await occurs.
+    pub ring_flush_handle: Mutex<Option<tokio::task::JoinHandle<()>>>,
+
+    /// Shutdown notify for the ring flush task (H1 fix — SS-daemon-wiring-impl.md §Round 3 H1).
+    ///
+    /// The shutdown tail calls `ring_flush_shutdown.notify_one()` BEFORE dropping the ring Arc
+    /// and BEFORE awaiting the flush JoinHandle. This signals the flush task to drain all
+    /// pending records via `try_recv()` and exit deterministically, independent of
+    /// `Arc<RingBuffer>` refcount.
+    ///
+    /// `None` in the unit-test constructor (`DaemonState::new()`) — no flush task is spawned
+    /// there. `Some(notify)` after `daemon_start_sequence` wires the flush task at step 4b.
+    ///
+    /// The shutdown tail checks `if let Some(notify) = state.ring_flush_shutdown.as_ref()`
+    /// so a `None` value (test path) is a no-op.
+    pub ring_flush_shutdown: Option<RingShutdownNotify>,
 
     /// Count of TUI clients currently attached to this daemon session (F-ADV2-HIGH-003).
     ///
@@ -299,14 +341,24 @@ pub struct DaemonState {
     /// NEVER set by production code. Only tests assign a `Some(_)` value.
     pub hook_decision_override: Option<(monocle_core::engine::HookDecision, Option<String>)>,
 
-    /// Artificial delay override for integration tests.
+    /// Artificial delay override for integration tests (inner handler, inside 300ms timeout).
     ///
     /// `None` — no delay (production default).
-    /// `Some(ms)` — sleep `ms` milliseconds inside the handler, before the decision is
-    ///   returned. Use a value > 300 to reliably trigger the 300ms outer timeout path.
+    /// `Some(ms)` — sleep `ms` milliseconds inside the inner handler body, before the decision
+    ///   is returned. Use a value > 300 to reliably trigger the 300ms outer timeout path.
     ///
-    /// NEVER set by production code. Only tests assign a `Some(_)` value.
+    /// NEVER set by production code. Only unit tests assign a `Some(_)` value.
     pub hook_delay_ms: Option<u64>,
+
+    /// Artificial delay override for E2E tests (outer handler, before 300ms timeout budget).
+    ///
+    /// `None` — no delay (production default).
+    /// `Some(ms)` — sleep `ms` milliseconds at the outer handler level, BEFORE the 300ms inner
+    ///   timeout budget starts. Used by the E2E drain-timeout test (AC-E2E-007) to create a
+    ///   genuinely long in-flight HTTP request that holds axum's graceful-shutdown drain open.
+    ///   Set via the `MONOCLE_HOOK_DELAY_MS` env var (read at daemon startup in
+    ///   `daemon_start_sequence`). Never set by production deployments.
+    pub hook_outer_delay_ms: Option<u64>,
 }
 
 impl DaemonState {
@@ -330,7 +382,9 @@ impl DaemonState {
             lock_file_path: String::new(),
             sock_file_path: String::new(),
             last_hook_ts: RwLock::new(LastHookTimestamps::default()),
-            ring: None,
+            ring: Mutex::new(None),
+            ring_flush_handle: Mutex::new(None),
+            ring_flush_shutdown: None,
             tui_attached_count: AtomicUsize::new(0),
             force_exit: AtomicBool::new(false),
             daemon_lock: Mutex::new(None),
@@ -344,6 +398,7 @@ impl DaemonState {
             uds_transport: None,
             hook_decision_override: None,
             hook_delay_ms: None,
+            hook_outer_delay_ms: None,
         }
     }
 }
@@ -412,12 +467,19 @@ pub fn snapshot_initial_state(state: &DaemonState) -> monocle_ipc::types::Server
     // ring_tail: last RING_TAIL_N events from the RAM ring as Vec<HookEventRecord>.
     // Pass-through — no type conversion, no field fabrication (architect decision
     // F-S022-ADV2-HIGH-002, BC-2.05.002 PC-2, ADR-0006).
+    //
+    // Lock, clone Arc out, drop guard — do NOT hold the guard across the latest_events call.
+    // This follows the CRITICAL-1 constraint: no Mutex guard held across any await point.
+    // snapshot_initial_state is a sync function so there is no await, but the pattern is
+    // consistent with the hook handlers and prevents accidental future regression.
     const RING_TAIL_N: usize = 50;
-    let ring_tail: Vec<monocle_ipc::types::HookEventRecord> = state
-        .ring
-        .as_ref()
-        .map(|ring| ring.latest_events(RING_TAIL_N))
-        .unwrap_or_default();
+    let ring_tail: Vec<monocle_ipc::types::HookEventRecord> = {
+        let ring_arc = state.ring.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        ring_arc
+            .as_ref()
+            .map(|ring| ring.latest_events(RING_TAIL_N))
+            .unwrap_or_default()
+    };
 
     // overlay_stack: clone all pending prompt payloads from pending_decisions registry.
     let overlay_stack: Vec<monocle_ipc::types::PermissionPromptPayload> = state

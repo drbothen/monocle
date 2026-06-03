@@ -179,7 +179,11 @@ async fn test_BC_2_04_012_rotation_at_100mb_threshold() {
     let ring = RingBuffer::new(path.clone(), config);
 
     // Spawn flush task before appending — it must be running to process records.
-    let handle = ring.spawn_flush_task();
+    let handle = ring.spawn_flush_task(
+        std::sync::Arc::new(tokio::sync::Notify::new()),
+        #[cfg(feature = "e2e-test-affordances")]
+        None,
+    );
 
     // Large record that serializes to > 200 bytes.
     let large_record = make_tool_record(&"a".repeat(300), 0, "Bash");
@@ -235,7 +239,11 @@ async fn test_BC_2_04_012_rotation_procedure_cascade_order() {
     let ring = RingBuffer::new(path.clone(), config);
 
     // Spawn flush task before appending.
-    let handle = ring.spawn_flush_task();
+    let handle = ring.spawn_flush_task(
+        std::sync::Arc::new(tokio::sync::Notify::new()),
+        #[cfg(feature = "e2e-test-affordances")]
+        None,
+    );
 
     let large_record = make_tool_record(&"cascade-order-".repeat(10), 0, "Read");
 
@@ -282,7 +290,11 @@ async fn test_BC_2_04_012_6_rotations_max_5_rotation_files() {
     let ring = RingBuffer::new(path.clone(), config);
 
     // Spawn flush task before appending.
-    let handle = ring.spawn_flush_task();
+    let handle = ring.spawn_flush_task(
+        std::sync::Arc::new(tokio::sync::Notify::new()),
+        #[cfg(feature = "e2e-test-affordances")]
+        None,
+    );
 
     let large_record = make_tool_record(&"max-files-test-".repeat(8), 1, "Bash");
 
@@ -332,7 +344,11 @@ async fn test_BC_2_04_012_active_file_mode_0o600_after_rotation() {
     let ring = RingBuffer::new(path.clone(), config);
 
     // Spawn flush task before appending.
-    let handle = ring.spawn_flush_task();
+    let handle = ring.spawn_flush_task(
+        std::sync::Arc::new(tokio::sync::Notify::new()),
+        #[cfg(feature = "e2e-test-affordances")]
+        None,
+    );
 
     let large_record = make_tool_record(&"mode-check-".repeat(20), 0, "Bash");
 
@@ -619,7 +635,11 @@ async fn test_BC_2_04_012_byte_count_reflects_written_bytes() {
     let byte_count_handle = ring.byte_count_handle();
 
     // Spawn flush task, append one record.
-    let handle = ring.spawn_flush_task();
+    let handle = ring.spawn_flush_task(
+        std::sync::Arc::new(tokio::sync::Notify::new()),
+        #[cfg(feature = "e2e-test-affordances")]
+        None,
+    );
     let record = make_record("byte-count-test", 0);
     ring.append(record).expect("append must succeed");
 
@@ -663,7 +683,11 @@ async fn test_BC_2_04_012_byte_count_reset_to_zero_after_rotation() {
     let byte_count_handle = ring.byte_count_handle();
 
     // Spawn flush task before appending.
-    let handle = ring.spawn_flush_task();
+    let handle = ring.spawn_flush_task(
+        std::sync::Arc::new(tokio::sync::Notify::new()),
+        #[cfg(feature = "e2e-test-affordances")]
+        None,
+    );
 
     let large_record = make_tool_record(&"byte-reset-".repeat(20), 0, "Bash");
 
@@ -719,7 +743,11 @@ async fn test_BC_2_04_012_graceful_shutdown_file_not_deleted() {
     let ring = RingBuffer::new(path.clone(), RotationConfig::default());
 
     // Spawn flush task so the record is written to disk.
-    let handle = ring.spawn_flush_task();
+    let handle = ring.spawn_flush_task(
+        std::sync::Arc::new(tokio::sync::Notify::new()),
+        #[cfg(feature = "e2e-test-affordances")]
+        None,
+    );
 
     ring.append(make_record("shutdown-test", 0))
         .expect("append must succeed");
@@ -779,7 +807,11 @@ async fn test_BC_2_04_012_jsonl_format_version_first_field() {
     let ring = RingBuffer::new(path.clone(), RotationConfig::default());
 
     // Spawn flush task and append a single record.
-    let handle = ring.spawn_flush_task();
+    let handle = ring.spawn_flush_task(
+        std::sync::Arc::new(tokio::sync::Notify::new()),
+        #[cfg(feature = "e2e-test-affordances")]
+        None,
+    );
     ring.append(make_record("fmt-version-test", 0))
         .expect("append must succeed");
 
@@ -901,7 +933,11 @@ async fn test_BC_2_04_012_initial_file_creation_mode_0o600() {
     let ring = RingBuffer::new(path.clone(), RotationConfig::default());
 
     // Spawn flush task, append one record, drain flush task.
-    let handle = ring.spawn_flush_task();
+    let handle = ring.spawn_flush_task(
+        std::sync::Arc::new(tokio::sync::Notify::new()),
+        #[cfg(feature = "e2e-test-affordances")]
+        None,
+    );
     ring.append(make_record("mode-test", 0))
         .expect("append must succeed");
     drop(ring);
@@ -936,7 +972,11 @@ async fn test_BC_2_04_012_rotation_cascade_content_ordering() {
     let ring = RingBuffer::new(path.clone(), config);
 
     // Spawn flush task.
-    let handle = ring.spawn_flush_task();
+    let handle = ring.spawn_flush_task(
+        std::sync::Arc::new(tokio::sync::Notify::new()),
+        #[cfg(feature = "e2e-test-affordances")]
+        None,
+    );
 
     // Append 3 distinguishable records: cycle-alpha (oldest), cycle-beta, cycle-gamma (newest).
     // Pad session_id so each record exceeds the 100-byte threshold and forces rotation.

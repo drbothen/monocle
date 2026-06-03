@@ -434,15 +434,135 @@ async fn launch_daemon(runtime_dir: &Path) -> DaemonHandle {
     }
 }
 
-/// Start daemon_start_sequence in a background tokio task.
+/// Start daemon_start_sequence in a background tokio task, then serve HTTP.
+///
+/// Retains the `(state, listener)` pair returned by `daemon_start_sequence` and calls
+/// `run_server(state, listener)` so that the port recorded in `monocle.lock` is genuinely
+/// served. Without calling `run_server`, dropping the `TcpListener` would release the
+/// OS port immediately, making the lock file point to a dead endpoint (I1 fix —
+/// SS-daemon-wiring-impl.md §Fix Addendum I1).
+///
+/// Runs the same shutdown tail as `main()` step 7 (UDS cleanup, lock release, hooks
+/// removal) so no stale files remain when the TUI process exits. Does NOT call `exit_with`
+/// — it returns from the task and lets the tokio runtime drop `DaemonState`.
 async fn launch_daemon_in_process(runtime_dir: &Path) -> DaemonHandle {
     let dir = runtime_dir.to_path_buf();
     // Spawn and drop the JoinHandle — the task runs until the runtime is dropped.
     // Dropping the handle does NOT abort the task (tokio semantics).
     tokio::spawn(async move {
-        if let Err(e) = monocle_runtime::lifecycle::daemon_start_sequence(&dir).await {
-            tracing::warn!(error = %e, "in-process daemon_start_sequence failed");
+        let (state, listener) = match monocle_runtime::lifecycle::daemon_start_sequence(&dir).await
+        {
+            Ok(pair) => pair,
+            Err(e) => {
+                tracing::warn!(error = %e, "in-process daemon_start_sequence failed");
+                return;
+            }
+        };
+
+        tracing::info!("in-process daemon: start sequence complete; serving HTTP");
+
+        // Run HTTP server — blocks until shutdown signal fires.
+        // The UDS accept loop is already spawned inside daemon_start_sequence.
+        // Note: the in-process daemon does NOT wrap run_server with tokio::time::timeout.
+        // BC-2.01.004 INV-1 applies to the subprocess binary; if the TUI process exits,
+        // the runtime drops and the task is aborted, preventing indefinite hang.
+        if let Err(e) =
+            monocle_runtime::server::run_server(std::sync::Arc::clone(&state), listener).await
+        {
+            tracing::warn!(error = %e, "in-process daemon: HTTP server returned error");
         }
+
+        // Shutdown tail — mirror main()'s step 7 cleanup.
+        // UDS socket cleanup.
+        if let Some(transport) = state.uds_transport.as_ref() {
+            transport.cleanup();
+        }
+        // Release the daemon lock.
+        let lock_opt = state
+            .daemon_lock
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take();
+        if let Some(lock) = lock_opt {
+            if let Err(e) = lock.release() {
+                tracing::warn!(
+                    error = %e,
+                    "in-process daemon: lock release failed during shutdown; continuing"
+                );
+            }
+        }
+        // Remove hooks-settings.json.
+        if let Err(e) = monocle_runtime::lifecycle::remove_hooks_settings(&dir) {
+            tracing::warn!(
+                error = %e,
+                "in-process daemon: hooks-settings removal failed; continuing"
+            );
+        }
+
+        // Ring flush drain — mirror main()'s step (d) for durability.
+        //
+        // BC-2.01.007 / BC-2.04.012: records enqueued by hooks that returned HTTP 200
+        // must not be lost on shutdown. Signal the flush task via the Notify handle (H1 fix
+        // — SS-daemon-wiring-impl.md §Round 3 H1), then drop the ring Arc backstop,
+        // then await the flush JoinHandle with a 2s bounded timeout.
+        //
+        // The ring_arc drop is a belt-and-suspenders backstop, NOT the close mechanism.
+        // Hook handlers clone the Arc out before calling append, so dropping the
+        // DaemonState's Arc does NOT necessarily close write_tx while any handler clone
+        // is live. The Notify (begin_shutdown → notify_one) is the deterministic drain trigger.
+        //
+        // The in-process daemon does not call exit_with, so the tokio runtime would
+        // eventually drop DaemonState — but "eventually" is non-deterministic under
+        // tokio's task scheduling. Explicit drain ensures determinism (CRITICAL-1 fix).
+        const RING_FLUSH_DRAIN_TIMEOUT_SECS: u64 = 2;
+        {
+            // Step (d-1): set begin_shutdown flag BEFORE notify so post-shutdown appends
+            // are loudly rejected. Order: begin_shutdown → notify_one → drop(backstop).
+            {
+                let ring_arc = state.ring.lock().unwrap_or_else(|e| e.into_inner()).clone();
+                if let Some(ring) = ring_arc.as_ref() {
+                    ring.begin_shutdown();
+                }
+            }
+            // Primary deterministic drain signal (H1 fix).
+            if let Some(notify) = state.ring_flush_shutdown.as_ref() {
+                notify.notify_one();
+            }
+            // Belt-and-suspenders backstop: drop the DaemonState's Arc clone.
+            let ring_arc = state.ring.lock().unwrap_or_else(|e| e.into_inner()).take();
+            drop(ring_arc);
+        }
+        {
+            let flush_handle = state
+                .ring_flush_handle
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .take();
+            if let Some(handle) = flush_handle {
+                match tokio::time::timeout(
+                    std::time::Duration::from_secs(RING_FLUSH_DRAIN_TIMEOUT_SECS),
+                    handle,
+                )
+                .await
+                {
+                    Ok(_) => {
+                        tracing::info!(
+                            "in-process daemon: ring flush task drained cleanly \
+                             (BC-2.04.012 durability)"
+                        );
+                    }
+                    Err(_elapsed) => {
+                        tracing::warn!(
+                            timeout_secs = RING_FLUSH_DRAIN_TIMEOUT_SECS,
+                            "in-process daemon: ring flush drain timeout; some records may \
+                             be lost (BC-2.04.012 best-effort)"
+                        );
+                    }
+                }
+            }
+        }
+
+        tracing::info!("in-process daemon: shutdown complete");
     });
     DaemonHandle::Task(())
 }

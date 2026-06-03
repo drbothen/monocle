@@ -29,8 +29,19 @@ use std::{
     collections::VecDeque,
     io::Write as _,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
 };
+
+/// Shutdown signal handle for the ring flush task (H1 fix — SS-daemon-wiring-impl.md §Round 3 H1).
+///
+/// The shutdown tail calls `ring_shutdown.notify_one()` to trigger deterministic drain-and-exit
+/// of the flush task, independent of `Arc<RingBuffer>` refcount. Cloned into `spawn_flush_task`
+/// via `Arc::clone`. The flush task polls `notified()` inside a `select!` loop. The shutdown
+/// tail holds the other clone and calls `notify_one()` before awaiting the JoinHandle.
+pub type RingShutdownNotify = Arc<tokio::sync::Notify>;
 
 /// Bounded write-queue capacity for the async-jsonl flush task (BC-2.04.012 PC-4).
 ///
@@ -113,6 +124,21 @@ pub enum RingError {
     /// (BC-2.04.012 EC-103). Subsequent `append()` calls return this until disk space recovers.
     #[error("ring disk full: disk I/O failed during rotation or flush (E-RING-004)")]
     DiskFull,
+    /// `begin_shutdown()` has been called and the ring is no longer accepting new records.
+    ///
+    /// Any `append()` call after `begin_shutdown()` returns this error. The caller MUST log
+    /// this at ERROR via `tracing::error!` (the ring's `append()` already does so) and MUST
+    /// NOT enqueue the record or change the HTTP response — append is best-effort. This
+    /// variant guards the post-shutdown force-close window against silent record loss: a
+    /// still-live handler holding its own `Arc<RingBuffer>` clone could otherwise
+    /// `try_send()` to `write_tx` (which remains open via that clone) after the flush task
+    /// has drained and exited, silently losing records.
+    ///
+    /// Error code: E-RING-007 (ring shut down — post-shutdown enqueue rejected).
+    #[error(
+        "E-RING-007: ring append after shutdown — record rejected (post-shutdown enqueue guard)"
+    )]
+    Shutdown,
 }
 
 /// JSONL ring buffer writer.
@@ -149,6 +175,24 @@ pub struct RingBuffer {
     /// Disk-error state: set to `true` when rotation or flush fails due to a full disk.
     /// While `true`, `append()` returns `Err(RingError::DiskFull)` (BC-2.04.012 EC-103).
     disk_error: Arc<Mutex<bool>>,
+    /// Shutdown guard (MED-002 — post-shutdown enqueue protection).
+    ///
+    /// Set to `true` by `begin_shutdown()`. Once set, `append()` returns
+    /// `Err(RingError::Shutdown)` and emits a `tracing::error!` ("E-RING: append after ring
+    /// shutdown — record dropped (post-shutdown enqueue rejected)") instead of
+    /// `try_send()`-ing the record to `write_tx`. This closes the force-close post-timeout
+    /// window where a still-live handler (holding its own Arc clone) could enqueue a record
+    /// after the flush task has exited, causing silent loss.
+    ///
+    /// `begin_shutdown()` MUST be called BEFORE `notify_one()` in the shutdown tail so the
+    /// flag is set before the flush task drains and exits. On the graceful path, all
+    /// in-flight handlers have returned before `begin_shutdown()` is called, so no legitimate
+    /// handler append occurs after the flag is set.
+    ///
+    /// `Ordering::SeqCst`: the write happens in the shutdown tail task; the read happens
+    /// in hook handler tasks on different threads. SeqCst provides the strongest ordering
+    /// guarantee, ensuring the flag is visible to all handler threads.
+    shutting_down: AtomicBool,
 }
 
 impl RingBuffer {
@@ -201,7 +245,24 @@ impl RingBuffer {
             write_tx: Arc::new(tx),
             write_rx: Mutex::new(Some(rx)),
             disk_error: Arc::new(Mutex::new(false)),
+            shutting_down: AtomicBool::new(false),
         }
+    }
+
+    /// Signal that the ring is shutting down; subsequent `append()` calls will be rejected.
+    ///
+    /// Called by the shutdown tail BEFORE `notify_one()` (H1) and BEFORE `drop(ring_arc)`
+    /// (backstop). This ordering ensures that the flag is visible to any handler thread
+    /// that holds its own `Arc<RingBuffer>` clone and calls `append()` after the flush task
+    /// has exited (the force-close post-timeout window).
+    ///
+    /// On the graceful path, `run_server` has already drained all in-flight handlers before
+    /// the shutdown tail runs, so no legitimate handler append occurs after this call.
+    /// The flag only defends against the abnormal force-close window.
+    ///
+    /// `Ordering::SeqCst`: write in shutdown tail, read in handler tasks on other threads.
+    pub fn begin_shutdown(&self) {
+        self.shutting_down.store(true, Ordering::SeqCst);
     }
 
     /// Enqueue a hook event record for async-jsonl flush (BC-2.04.012 PC-4, AC-004).
@@ -215,11 +276,26 @@ impl RingBuffer {
     /// - If the queue is full, returns `Err(RingError::WriteFull)`; the caller must log
     ///   `WARN: ring append failed: write queue full` and discard the event.
     /// - If the disk-error state is active, returns `Err(RingError::DiskFull)` immediately.
+    /// - If `begin_shutdown()` has been called, returns `Err(RingError::Shutdown)` and
+    ///   emits `tracing::error!` (E-RING-007). This guards the force-close post-timeout
+    ///   window against silent record loss.
     ///
     /// # Errors
+    /// - `RingError::Shutdown` — ring has been shut down; event rejected with loud log (E-RING-007).
     /// - `RingError::WriteFull` — write-queue is full; event must be discarded.
     /// - `RingError::DiskFull` — disk-error state is active (EC-103).
     pub fn append(&self, record: HookEventRecord) -> Result<(), RingError> {
+        // MED-002: post-shutdown enqueue guard. If begin_shutdown() has been called,
+        // reject the append loudly (tracing::error!) instead of silently enqueuing into
+        // a write_tx that has no live consumer. This converts silent loss (force-close
+        // post-timeout window) into a loud, provably-closed rejection.
+        if self.shutting_down.load(Ordering::SeqCst) {
+            tracing::error!(
+                "E-RING: append after ring shutdown — record dropped (post-shutdown enqueue rejected)"
+            );
+            return Err(RingError::Shutdown);
+        }
+
         // AC-010 / BC-2.04.012 invariant 5: if disk error is active, return DiskFull immediately.
         {
             let disk_err = self.disk_error.lock().expect("disk_error mutex poisoned");
@@ -352,19 +428,58 @@ impl RingBuffer {
     ///
     /// ## Flush task loop
     ///
-    /// 1. `recv()` from channel — returns `None` when sender is dropped (graceful shutdown).
-    /// 2. Serialise record to a JSONL line (one JSON object + `\n`).
-    /// 3. Write to the active file (open-append with mode `0o600`).
-    /// 4. Update `byte_count` after a successful write (invariant 4).
-    /// 5. If `byte_count >= config.hard_cap_bytes`: execute cascade rotation and reset to 0.
+    /// The flush loop uses `tokio::select!` to race two branches:
+    ///
+    /// 1. **Shutdown signal** (`ring_shutdown.notified()`): drains all remaining queued
+    ///    records via `rx.try_recv()` loop, writing each to disk, then returns. This is the
+    ///    primary shutdown mechanism (H1 fix — independent of Arc refcount reaching zero).
+    ///    `biased;` ensures this branch is checked first to prevent starvation by a record burst.
+    /// 2. **Normal recv** (`rx.recv()`): receives the next record and writes it to disk.
+    ///    Returns when all senders are dropped (channel closed).
+    ///
+    /// Each write: serialise record → write to active file (append, mode `0o600`) → update
+    /// `byte_count` → rotate if `byte_count >= config.hard_cap_bytes` (BC-2.04.012 PC-2).
     ///
     /// On rotation failure: log WARN and continue without rotation (AC-005).
-    /// On disk-full (ENOSPC): set `disk_error = true`, log ERROR (EC-103).
+    /// On disk-full (ENOSPC): set `disk_error = true`, log ERROR (EC-103), return.
+    ///
+    /// ## Parameters
+    ///
+    /// - `ring_shutdown`: Notify handle. The shutdown tail calls `ring_shutdown.notify_one()`
+    ///   to signal the flush task to drain all pending records and exit deterministically
+    ///   (H1 fix — SS-daemon-wiring-impl.md §Round 3 H1). The tail also drops the ring Arc
+    ///   as belt-and-suspenders, but the Notify is the primary close mechanism.
+    /// - `flush_delay_ms` (feature-gated): Under `e2e-test-affordances`, an artificial
+    ///   per-record delay is injected BEFORE the disk write, keeping the record enqueued-
+    ///   but-not-yet-flushed for a controllable window. This lets the shutdown drain-join
+    ///   test (AC-E2E-008) prove that records in the queue are not lost on SIGTERM.
+    ///   In production (`not(e2e-test-affordances)`) this parameter does not exist and
+    ///   no delay code is compiled (zero overhead).
+    ///
+    /// ## E2E test affordances (feature = "e2e-test-affordances" only)
+    ///
+    /// When the `e2e-test-affordances` cargo feature is enabled, two env vars are active:
+    ///
+    /// - `MONOCLE_HOOK_DELAY_MS` — outer handler delay before the 300ms inner timeout
+    ///   budget (pre_tool_use.rs). Used by AC-E2E-007 (drain timeout test).
+    /// - `MONOCLE_RING_FLUSH_DELAY_MS` — delay between flush task writes. Used by
+    ///   AC-E2E-008 to create a window where records are enqueued but not yet on disk,
+    ///   verifying that the shutdown drain path writes all pending records before exit.
+    ///
+    /// Both affordances are absent from production binaries compiled without the feature.
     ///
     /// ## Panics
     ///
     /// Panics if called after the receiver has already been taken (i.e., called twice).
-    pub fn spawn_flush_task(&self) -> tokio::task::JoinHandle<()> {
+    #[cfg_attr(
+        not(feature = "e2e-test-affordances"),
+        allow(clippy::needless_pass_by_value)
+    )]
+    pub fn spawn_flush_task(
+        &self,
+        ring_shutdown: RingShutdownNotify,
+        #[cfg(feature = "e2e-test-affordances")] flush_delay_ms: Option<u64>,
+    ) -> tokio::task::JoinHandle<()> {
         let rx = self
             .write_rx
             .lock()
@@ -378,7 +493,17 @@ impl RingBuffer {
         let disk_error = Arc::clone(&self.disk_error);
 
         tokio::spawn(async move {
-            flush_task_loop(rx, path, config, byte_count, disk_error).await;
+            flush_task_loop(
+                rx,
+                path,
+                config,
+                byte_count,
+                disk_error,
+                ring_shutdown,
+                #[cfg(feature = "e2e-test-affordances")]
+                flush_delay_ms,
+            )
+            .await;
         })
     }
 
@@ -595,95 +720,237 @@ fn open_active_file_append(path: &Path) -> Result<std::fs::File, std::io::Error>
     }
 }
 
+/// Write a single `HookEventRecord` to the active JSONL file on disk.
+///
+/// Shared by the normal recv path and the shutdown drain path in `flush_task_loop` to
+/// avoid duplicating the serialise-write-rotate logic (H1 fix — extract flush_one_record).
+///
+/// Returns `true` if the flush task should terminate (disk-full error). The caller must
+/// check the return value and exit the task if `true`.
+///
+/// # Behavior
+///
+/// 1. Serialise `record` to a JSONL line. On serialisation failure: log WARN, return false.
+/// 2. Write to the active file (open-append, mode `0o600`). On ENOSPC: set disk_error,
+///    log ERROR, return true (task must exit). On other write errors: log WARN, return false.
+/// 3. Update `byte_count` after successful write (BC-2.04.012 invariant 4).
+/// 4. If `byte_count >= config.hard_cap_bytes`: rotate. On ENOSPC during rotation: set
+///    disk_error, return true. On other rotation failure: re-read actual size, continue.
+///
+/// # E2E-TEST-AFFORDANCE (feature-gated)
+///
+/// Under `e2e-test-affordances`, an artificial per-record delay is injected BEFORE the
+/// disk write. This is async so the function is `async` under the feature; without the
+/// feature it is synchronous (the future resolves immediately with no await).
+#[cfg(feature = "e2e-test-affordances")]
+async fn flush_one_record(
+    record: &HookEventRecord,
+    path: &std::path::Path,
+    config: &RotationConfig,
+    byte_count: &Arc<Mutex<u64>>,
+    disk_error: &Arc<Mutex<bool>>,
+    flush_delay_ms: Option<u64>,
+) -> bool {
+    // E2E-TEST-AFFORDANCE: inject flush delay BEFORE disk write.
+    // This makes the record sit "enqueued but not yet flushed" for flush_delay_ms
+    // milliseconds. An immediate SIGTERM during this window requires the shutdown
+    // drain path to wait for this write to complete. Without the drain-join in main.rs
+    // step (d), the process would exit before the write executes, losing the record.
+    // This is the mechanism that makes AC-E2E-008 non-vacuous.
+    if let Some(delay_ms) = flush_delay_ms {
+        tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+    }
+    flush_one_record_sync(record, path, config, byte_count, disk_error)
+}
+
+#[cfg(not(feature = "e2e-test-affordances"))]
+fn flush_one_record(
+    record: &HookEventRecord,
+    path: &std::path::Path,
+    config: &RotationConfig,
+    byte_count: &Arc<Mutex<u64>>,
+    disk_error: &Arc<Mutex<bool>>,
+) -> bool {
+    flush_one_record_sync(record, path, config, byte_count, disk_error)
+}
+
+/// Synchronous core of `flush_one_record` — the actual serialise-write-rotate logic.
+///
+/// Returns `true` if the flush task should terminate (disk-full state entered).
+fn flush_one_record_sync(
+    record: &HookEventRecord,
+    path: &std::path::Path,
+    config: &RotationConfig,
+    byte_count: &Arc<Mutex<u64>>,
+    disk_error: &Arc<Mutex<bool>>,
+) -> bool {
+    // Serialise to JSONL line.
+    let line = match serde_json::to_string(record) {
+        Ok(mut s) => {
+            s.push('\n');
+            s
+        }
+        Err(e) => {
+            tracing::warn!(
+                error = %e,
+                "E-RING-001: flush task — JSON serialisation failed; record discarded"
+            );
+            return false;
+        }
+    };
+    let line_bytes = line.len() as u64;
+
+    // Write to active file.
+    let write_result = (|| -> Result<(), std::io::Error> {
+        let mut file = open_active_file_append(path)?;
+        file.write_all(line.as_bytes())?;
+        file.flush()?;
+        Ok(())
+    })();
+
+    if let Err(e) = write_result {
+        // Check for ENOSPC (disk full).
+        if e.raw_os_error() == Some(libc_enospc()) {
+            tracing::error!(
+                error = %e,
+                path = %path.display(),
+                "E-RING-004: disk full during flush — entering disk-error state"
+            );
+            *disk_error.lock().expect("disk_error mutex poisoned") = true;
+            return true; // Signal task exit.
+        }
+        tracing::warn!(
+            error = %e,
+            path = %path.display(),
+            "E-RING-001: ring buffer write failed in flush task"
+        );
+        return false;
+    }
+
+    // Update byte count after successful write (BC-2.04.012 invariant 4).
+    let current_count = {
+        let mut count = byte_count.lock().expect("byte_count mutex poisoned");
+        *count += line_bytes;
+        *count
+    };
+
+    // Check rotation threshold: use hard_cap_bytes (BC-2.04.012 PC-2).
+    if current_count >= config.hard_cap_bytes {
+        if let Err(e) = cascade_rotate_and_reset(path, config.retained, byte_count) {
+            // Check for ENOSPC during rotation.
+            let is_disk_full = matches!(&e, RingError::Io(io_err)
+                if io_err.raw_os_error() == Some(libc_enospc()));
+            if is_disk_full {
+                tracing::error!(
+                    error = %e,
+                    path = %path.display(),
+                    "E-RING-004: disk full during rotation — entering disk-error state"
+                );
+                *disk_error.lock().expect("disk_error mutex poisoned") = true;
+                return true; // Signal task exit.
+            }
+            tracing::warn!(
+                error = %e,
+                path = %path.display(),
+                "E-RING-002: ring file rotation failed; continuing without rotation"
+            );
+            // MED-001: After a failed rotation, re-read the actual on-disk file size
+            // and reset byte_count to match. Without this, the stale accumulated count
+            // would keep triggering the rotation threshold on every subsequent write,
+            // flooding the log with spurious E-RING-002 warnings.
+            let actual_size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+            *byte_count.lock().expect("byte_count mutex poisoned") = actual_size;
+        }
+    }
+
+    false // Normal completion; task continues.
+}
+
 /// The flush task loop.
 ///
-/// Drains the write-queue, serialises records to JSONL, and writes to the active file.
-/// Performs rotation when the active file reaches `config.hard_cap_bytes`.
-/// Terminates when the sender is dropped (receiver returns `None`).
+/// Uses `tokio::select!` with `biased;` to race two branches on each iteration:
+///
+/// 1. **Shutdown signal** (`ring_shutdown.notified()`): drains all remaining queued
+///    records via `rx.try_recv()` loop (writing each), then returns. This is the primary
+///    deterministic shutdown mechanism (H1 fix — does not depend on Arc refcount).
+///    `biased;` ensures the shutdown branch is checked FIRST so a burst of records
+///    cannot starve the shutdown signal.
+/// 2. **Normal recv** (`rx.recv()`): receives the next record from the write-queue and
+///    writes it to disk. Returns when the channel is closed (all senders dropped).
+///
+/// On disk-full during either path: sets `disk_error = true`, logs ERROR, returns.
 async fn flush_task_loop(
     mut rx: tokio::sync::mpsc::Receiver<HookEventRecord>,
     path: PathBuf,
     config: RotationConfig,
     byte_count: Arc<Mutex<u64>>,
     disk_error: Arc<Mutex<bool>>,
+    ring_shutdown: RingShutdownNotify,
+    // E2E-TEST-AFFORDANCE: artificial per-record delay BEFORE the disk write.
+    // Compiled ONLY under `e2e-test-affordances`; zero presence in production binaries.
+    // Set via MONOCLE_RING_FLUSH_DELAY_MS env var (read in lifecycle::daemon_start_sequence).
+    // With this delay active, a record received from the write-queue will not be written
+    // to disk until after the delay expires. The shutdown drain branch uses the same delay
+    // so that records drained via try_recv() in the shutdown path also wait for the delay.
+    // This is the mechanism that makes AC-E2E-008 non-vacuous (BC-2.01.007 / BC-2.04.012).
+    #[cfg(feature = "e2e-test-affordances")] flush_delay_ms: Option<u64>,
 ) {
-    while let Some(record) = rx.recv().await {
-        // Serialise to JSONL line.
-        let line = match serde_json::to_string(&record) {
-            Ok(mut s) => {
-                s.push('\n');
-                s
-            }
-            Err(e) => {
-                tracing::warn!(
-                    error = %e,
-                    "E-RING-001: flush task — JSON serialisation failed; record discarded"
-                );
-                continue;
-            }
-        };
-        let line_bytes = line.len() as u64;
+    loop {
+        tokio::select! {
+            biased; // Check shutdown branch first to prevent starvation by a record burst.
 
-        // Write to active file.
-        let write_result = (|| -> Result<(), std::io::Error> {
-            let mut file = open_active_file_append(&path)?;
-            file.write_all(line.as_bytes())?;
-            file.flush()?;
-            Ok(())
-        })();
-
-        if let Err(e) = write_result {
-            // Check for ENOSPC (disk full).
-            if e.raw_os_error() == Some(libc_enospc()) {
-                tracing::error!(
-                    error = %e,
-                    path = %path.display(),
-                    "E-RING-004: disk full during flush — entering disk-error state"
-                );
-                *disk_error.lock().expect("disk_error mutex poisoned") = true;
-                return; // Terminate flush task; daemon still runs but ring is in error state.
-            }
-            tracing::warn!(
-                error = %e,
-                path = %path.display(),
-                "E-RING-001: ring buffer write failed in flush task"
-            );
-            continue;
-        }
-
-        // Update byte count after successful write (BC-2.04.012 invariant 4).
-        let current_count = {
-            let mut count = byte_count.lock().expect("byte_count mutex poisoned");
-            *count += line_bytes;
-            *count
-        };
-
-        // Check rotation threshold: use hard_cap_bytes (BC-2.04.012 PC-2).
-        if current_count >= config.hard_cap_bytes {
-            if let Err(e) = cascade_rotate_and_reset(&path, config.retained, &byte_count) {
-                // Check for ENOSPC during rotation.
-                let is_disk_full = matches!(&e, RingError::Io(io_err)
-                    if io_err.raw_os_error() == Some(libc_enospc()));
-                if is_disk_full {
-                    tracing::error!(
-                        error = %e,
-                        path = %path.display(),
-                        "E-RING-004: disk full during rotation — entering disk-error state"
-                    );
-                    *disk_error.lock().expect("disk_error mutex poisoned") = true;
-                    return;
+            // Shutdown signal: drain all remaining queued records, then exit.
+            // The shutdown tail calls ring_shutdown.notify_one() (H1 fix). This branch
+            // drains via try_recv() loop, writing each record, then returns. All records
+            // enqueued before the signal are written to disk before the task exits.
+            _ = ring_shutdown.notified() => {
+                tracing::debug!("flush_task_loop: shutdown signal received; draining queue");
+                loop {
+                    match rx.try_recv() {
+                        Ok(record) => {
+                            #[cfg(feature = "e2e-test-affordances")]
+                            let should_exit = flush_one_record(
+                                &record, &path, &config, &byte_count, &disk_error, flush_delay_ms,
+                            ).await;
+                            #[cfg(not(feature = "e2e-test-affordances"))]
+                            let should_exit = flush_one_record(
+                                &record, &path, &config, &byte_count, &disk_error,
+                            );
+                            if should_exit {
+                                tracing::info!("flush_task_loop: disk-full during drain; exiting");
+                                return;
+                            }
+                        }
+                        Err(tokio::sync::mpsc::error::TryRecvError::Empty) => break,
+                        Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => break,
+                    }
                 }
-                tracing::warn!(
-                    error = %e,
-                    path = %path.display(),
-                    "E-RING-002: ring file rotation failed; continuing without rotation"
-                );
-                // MED-001: After a failed rotation, re-read the actual on-disk file size
-                // and reset byte_count to match. Without this, the stale accumulated count
-                // would keep triggering the rotation threshold on every subsequent write,
-                // flooding the log with spurious E-RING-002 warnings.
-                let actual_size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
-                *byte_count.lock().expect("byte_count mutex poisoned") = actual_size;
+                tracing::info!("flush_task_loop: drain complete; exiting");
+                return;
+            }
+
+            // Normal path: receive and write the next record from the write-queue.
+            record = rx.recv() => {
+                match record {
+                    None => {
+                        // All senders dropped — channel closed. Exit cleanly (BC-2.04.011 PC-7).
+                        tracing::debug!("flush_task_loop: channel closed; exiting");
+                        return;
+                    }
+                    Some(record) => {
+                        #[cfg(feature = "e2e-test-affordances")]
+                        let should_exit = flush_one_record(
+                            &record, &path, &config, &byte_count, &disk_error, flush_delay_ms,
+                        ).await;
+                        #[cfg(not(feature = "e2e-test-affordances"))]
+                        let should_exit = flush_one_record(
+                            &record, &path, &config, &byte_count, &disk_error,
+                        );
+                        if should_exit {
+                            return;
+                        }
+                    }
+                }
             }
         }
     }

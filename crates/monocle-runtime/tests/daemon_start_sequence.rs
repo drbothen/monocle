@@ -79,7 +79,7 @@ async fn test_BC_2_04_001_runtime_dir_created_with_mode_0o700() {
     let runtime_dir = tmp.path().join("monocle-runtime");
 
     // daemon_start_sequence must create runtime_dir with 0o700 if it doesn't exist.
-    daemon_start_sequence(&runtime_dir)
+    let (_state, _listener) = daemon_start_sequence(&runtime_dir)
         .await
         .expect("daemon_start_sequence must succeed");
 
@@ -106,7 +106,7 @@ async fn test_BC_2_04_001_lock_file_written_mode_0o600() {
     let runtime_dir = tmp.path().join("monocle-runtime");
     std::fs::create_dir_all(&runtime_dir).expect("create runtime_dir");
 
-    daemon_start_sequence(&runtime_dir)
+    let (_state, _listener) = daemon_start_sequence(&runtime_dir)
         .await
         .expect("daemon_start_sequence must succeed");
 
@@ -131,7 +131,7 @@ async fn test_BC_2_04_001_lock_file_contract_version_string() {
     let runtime_dir = tmp.path().join("monocle-runtime");
     std::fs::create_dir_all(&runtime_dir).expect("create runtime_dir");
 
-    daemon_start_sequence(&runtime_dir)
+    let (_state, _listener) = daemon_start_sequence(&runtime_dir)
         .await
         .expect("daemon_start_sequence must succeed");
 
@@ -167,7 +167,7 @@ async fn test_BC_2_04_001_auth_token_64_hex_chars_no_prefix() {
     let runtime_dir = tmp.path().join("monocle-runtime");
     std::fs::create_dir_all(&runtime_dir).expect("create runtime_dir");
 
-    daemon_start_sequence(&runtime_dir)
+    let (_state, _listener) = daemon_start_sequence(&runtime_dir)
         .await
         .expect("daemon_start_sequence must succeed");
 
@@ -229,7 +229,7 @@ async fn test_BC_2_04_010_hooks_settings_mode_0o600() {
     let runtime_dir = tmp.path().join("monocle-runtime");
     std::fs::create_dir_all(&runtime_dir).expect("create runtime_dir");
 
-    daemon_start_sequence(&runtime_dir)
+    let (_state, _listener) = daemon_start_sequence(&runtime_dir)
         .await
         .expect("daemon_start_sequence must succeed");
 
@@ -261,7 +261,7 @@ async fn test_BC_2_04_010_hooks_settings_json_schema_4_active_hooks() {
     let runtime_dir = tmp.path().join("monocle-runtime");
     std::fs::create_dir_all(&runtime_dir).expect("create runtime_dir");
 
-    daemon_start_sequence(&runtime_dir)
+    let (_state, _listener) = daemon_start_sequence(&runtime_dir)
         .await
         .expect("daemon_start_sequence must succeed");
 
@@ -305,7 +305,7 @@ async fn test_BC_2_04_010_hooks_settings_post_tool_use_empty_array() {
     let runtime_dir = tmp.path().join("monocle-runtime");
     std::fs::create_dir_all(&runtime_dir).expect("create runtime_dir");
 
-    daemon_start_sequence(&runtime_dir)
+    let (_state, _listener) = daemon_start_sequence(&runtime_dir)
         .await
         .expect("daemon_start_sequence must succeed");
 
@@ -335,7 +335,7 @@ async fn test_BC_2_04_010_hooks_settings_pre_compact_empty_array() {
     let runtime_dir = tmp.path().join("monocle-runtime");
     std::fs::create_dir_all(&runtime_dir).expect("create runtime_dir");
 
-    daemon_start_sequence(&runtime_dir)
+    let (_state, _listener) = daemon_start_sequence(&runtime_dir)
         .await
         .expect("daemon_start_sequence must succeed");
 
@@ -366,7 +366,7 @@ async fn test_BC_2_04_010_hooks_settings_no_session_start() {
     let runtime_dir = tmp.path().join("monocle-runtime");
     std::fs::create_dir_all(&runtime_dir).expect("create runtime_dir");
 
-    daemon_start_sequence(&runtime_dir)
+    let (_state, _listener) = daemon_start_sequence(&runtime_dir)
         .await
         .expect("daemon_start_sequence must succeed");
 
@@ -409,7 +409,7 @@ async fn test_BC_2_04_001_soq2_ordering_lock_before_hooks_settings() {
 
     // The daemon_start_sequence enforces this ordering. A full start must result
     // in both files present, with lock file's mtime <= hooks-settings.json's mtime.
-    daemon_start_sequence(&runtime_dir)
+    let (_state, _listener) = daemon_start_sequence(&runtime_dir)
         .await
         .expect("daemon_start_sequence must succeed");
 
@@ -451,7 +451,7 @@ async fn test_BC_2_04_001_uds_socket_created_at_runtime_dir() {
     let runtime_dir = tmp.path().join("monocle-runtime");
     std::fs::create_dir_all(&runtime_dir).expect("create runtime_dir");
 
-    daemon_start_sequence(&runtime_dir)
+    let (_state, _listener) = daemon_start_sequence(&runtime_dir)
         .await
         .expect("daemon_start_sequence must succeed");
 
@@ -484,7 +484,7 @@ async fn test_BC_2_04_001_stale_socket_removed_before_bind() {
     std::fs::write(&sock_path, b"stale-socket-placeholder").expect("plant stale socket file"); // nosemgrep: monocle-no-naked-fs-write
     assert!(sock_path.exists(), "stale socket must exist before start");
 
-    daemon_start_sequence(&runtime_dir)
+    let (_state, _listener) = daemon_start_sequence(&runtime_dir)
         .await
         .expect("daemon_start_sequence must succeed even with stale socket");
 
@@ -510,7 +510,7 @@ async fn test_BC_2_04_001_clean_start_all_13_steps_succeed() {
     let runtime_dir = tmp.path().join("monocle-runtime");
     // Do NOT pre-create runtime_dir — daemon_start_sequence must create it.
 
-    daemon_start_sequence(&runtime_dir)
+    let (_state, _listener) = daemon_start_sequence(&runtime_dir)
         .await
         .expect("daemon_start_sequence must succeed on clean start");
 
@@ -625,7 +625,7 @@ async fn test_BC_2_04_010_hooks_settings_removed_on_shutdown() {
     std::fs::create_dir_all(&runtime_dir).expect("create runtime_dir");
 
     // First, start the daemon to create hooks-settings.json.
-    daemon_start_sequence(&runtime_dir)
+    let (_state, _listener) = daemon_start_sequence(&runtime_dir)
         .await
         .expect("daemon_start_sequence must succeed");
 
@@ -665,7 +665,7 @@ async fn test_BC_2_04_001_ring_buffer_in_daemon_state() {
     let runtime_dir = tmp.path().join("monocle-runtime");
     std::fs::create_dir_all(&runtime_dir).expect("create runtime_dir");
 
-    daemon_start_sequence(&runtime_dir)
+    let (_state, _listener) = daemon_start_sequence(&runtime_dir)
         .await
         .expect("daemon_start_sequence must succeed");
 
@@ -739,7 +739,7 @@ async fn test_BC_2_04_001_event_bus_bounded_4096() {
     let tmp = isolated_runtime_dir();
     let runtime_dir = tmp.path().join("monocle-runtime");
 
-    daemon_start_sequence(&runtime_dir)
+    let (_state, _listener) = daemon_start_sequence(&runtime_dir)
         .await
         .expect("daemon_start_sequence must succeed");
 }
@@ -759,7 +759,7 @@ async fn test_BC_2_04_001_crash_recovery_checkpoint_init() {
     let tmp = isolated_runtime_dir();
     let runtime_dir = tmp.path().join("monocle-runtime");
 
-    daemon_start_sequence(&runtime_dir)
+    let (_state, _listener) = daemon_start_sequence(&runtime_dir)
         .await
         .expect("daemon_start_sequence must succeed");
 
@@ -1115,7 +1115,7 @@ async fn test_BC_2_04_001_step2_stale_lock_removed_and_new_daemon_starts() {
     );
 
     // daemon_start_sequence must detect the dead PID, remove the stale lock, and succeed.
-    daemon_start_sequence(&runtime_dir)
+    let (_state, _listener) = daemon_start_sequence(&runtime_dir)
         .await
         .expect("daemon_start_sequence must succeed when stale lock is present");
 
@@ -1258,7 +1258,7 @@ async fn test_S022_accept_loop_terminates_within_100ms_of_shutdown_signal() {
     let tmp = isolated_runtime_dir();
     let runtime_dir = tmp.path().join("monocle-runtime");
 
-    let daemon_state = daemon_start_sequence(&runtime_dir)
+    let (daemon_state, _listener) = daemon_start_sequence(&runtime_dir)
         .await
         .expect("daemon_start_sequence must succeed");
 
@@ -1305,7 +1305,7 @@ async fn test_S022_tui_attached_flips_on_connect_and_disconnect() {
     let tmp = isolated_runtime_dir();
     let runtime_dir = tmp.path().join("monocle-runtime");
 
-    let daemon_state = daemon_start_sequence(&runtime_dir)
+    let (daemon_state, _listener) = daemon_start_sequence(&runtime_dir)
         .await
         .expect("daemon_start_sequence must succeed");
 
@@ -1397,7 +1397,7 @@ async fn test_S022_daemon_start_sequence_uds_connect_receives_initial_state() {
 
     // daemon_start_sequence creates the runtime dir, binds the UDS socket, and spawns
     // the accept loop. The returned DaemonState has ipc_subscribers wired (S-022).
-    let _daemon_state = daemon_start_sequence(&runtime_dir)
+    let (_daemon_state, _listener) = daemon_start_sequence(&runtime_dir)
         .await
         .expect("daemon_start_sequence must succeed");
 
