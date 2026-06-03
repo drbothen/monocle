@@ -1,13 +1,13 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.27"
+version: "1.0.28"
 status: active
 producer: vsdd-factory:architect
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-architecture-delta
 inputs: [product-brief.md, prd.md, research/domain-monocle-vision-synthesis.md]
-input-hash: "69fff32"
+input-hash: "ac2d9a7"
 traces_to: prd.md
 deployment_topology: single-service
 project: monocle
@@ -35,8 +35,8 @@ project: monocle
 | Forward Compatibility | SS-forward-compatibility.md | ~7,871 | architect, implementer | FC contracts P2-1..P3-N |
 | Phase 1 Permissions | SS-permissions-phase1.md | ~2,661 | implementer, test-writer | Phase 1 permission enum |
 | Config | SS-config.md | ~2,600 | implementer, test-writer | Config persistence, harness profiles, profile picker, CCR detection |
-| Session Manager | SS-session-manager.md | ~2,600 | implementer, test-writer | Session-host coordinator, SessionManager, monocle-session-host binary, session-state.json, re-discovery, GC (v1A NEW) |
-| Embedded PTY / TUI | SS-embedded-pty.md | ~2,400 | implementer, test-writer | EmbeddedTerminal AppMode, PTY widget, keyboard encoding, resize, SessionCreation wizard (v1A NEW) |
+| Session Manager | SS-session-manager.md | ~3,100 | implementer, test-writer | Session-host coordinator, SessionManager, monocle-session-host binary, session-state.json, re-discovery, GC (v1A NEW) |
+| Embedded PTY / TUI | SS-embedded-pty.md | ~3,300 | implementer, test-writer | EmbeddedTerminal AppMode, PTY widget, keyboard encoding, resize, SessionCreation wizard (v1A NEW) |
 | EngineModule v2 Delta | SS-engine-module-v2-delta.md | ~1,200 | implementer | spawn_recipe() method, SpawnRecipe/SpawnOptions types, ClaudeCodeModule impl spec (v1A delta) |
 | Daemon Wiring v2 Delta | SS-daemon-wiring-v2-delta.md | ~1,100 | implementer | D-235 rework scope: DaemonState.session_manager, daemon_start_sequence step 8b, IPC handler new variants, broker PtyOutput fan-out (v1A delta) |
 | Deps Pin Manifest v2 Delta | SS-deps-pin-manifest-v2-delta.md | ~900 | implementer, devops-engineer | portable-pty/vt100/tui-term pin additions, monocle-session-host crate, version-pin-registry entries (v1A delta) |
@@ -681,6 +681,24 @@ tracked (not a silent-blindness path). No operative Phase-1 gate behavior change
   authored and its content cross-referenced in SS-conventions-anti-patterns.md v1.31.x but
   the ARCH-INDEX table row was never added. This entry closes the gap.
 - SE-16d PASS: 2026-05-29T08:00:00Z > chain high-water 2026-05-27T00:00:00Z (monotonic).
+## §Trace v1.0.28
+
+**Consistency validation findings — IMP-2/IMP-3/IMP-5/SUG-3/SUG-4** (2026-06-03):
+
+- NORMATIVE (SUG-4): Document Map token estimates corrected for SS-session-manager.md and
+  SS-embedded-pty.md. Prior estimates (~2,600 and ~2,400) were underestimates for the
+  actual file content (2,413 and 2,568 words × 1.3 = ~3,100 and ~3,300 tokens respectively,
+  per the wc -w × 1.3 methodology established in §Trace v1.0.2 RES-04). Correct estimates
+  ensure downstream agents budget context correctly.
+  SE-17c BEFORE: SS-session-manager ~2,600; SS-embedded-pty ~2,400
+  SE-17c AFTER: SS-session-manager ~3,100; SS-embedded-pty ~3,300
+- NORMATIVE: ARCH-INDEX version 1.0.27 → 1.0.28.
+- INFORMATIONAL: Consistency validation findings IMP-2/IMP-3/IMP-5/SUG-3 resolved in
+  SS-session-manager.md v1.0.1, SS-embedded-pty.md v1.0.2, SS-daemon-wiring-v2-delta.md
+  v1.0.1, SS-engine-module-v2-delta.md v1.0.1. No Document Map structural additions
+  (no new sections); only token estimates and version numbers updated here.
+- SE-16d PASS: 2026-06-03 >= chain high-water 2026-06-03T23:30:00Z (same-day patch).
+
 ## §Trace v1.0.27
 
 **D-238 architecture delta — v1A control-center subsystems, ADRs, and deltas** (2026-06-03T23:30:00Z):

@@ -44,7 +44,7 @@ individual_dispositions:
 > All other dispositions, CONFIRMED/LEAVE-BEHIND tables, and gene-source assessments in this
 > document remain valid and are confirmed by the architecture delta.
 >
-> Authoritative architecture: architecture/ARCH-INDEX.md v1.0.27 and the v1A delta set
+> Authoritative architecture: architecture/ARCH-INDEX.md v1.0.28 and the v1A delta set
 > (SS-session-manager.md, SS-embedded-pty.md, ADR-0009, ADR-0010, ADR-0011).
 
 ## The Vision Delta

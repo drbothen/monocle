@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "engine-module-v2-delta"
 subsystem: SS-03
-version: "1.0.0"
+version: "1.0.1"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -96,7 +96,7 @@ pub struct SpawnOptions {
 
 ### EngineError additions
 
-The following variant is added to `EngineError` in `monocle-core/src/engine.rs`:
+The following variants are added to `EngineError` in `monocle-core/src/engine.rs`:
 
 ```rust
 #[error("unsupported operation: {0}")]
@@ -104,7 +104,26 @@ UnsupportedOperation(&'static str),
 
 #[error("harness binary not found: {0}")]
 BinaryNotFound(String),
+
+/// Invalid argument supplied to spawn_recipe() — e.g., a hooks_settings_path that
+/// cannot be converted to a valid UTF-8 string, or a path that contains null bytes.
+/// Distinct from BinaryNotFound: the harness binary may exist but the argument is
+/// structurally invalid and cannot be passed as a CLI arg.
+#[error("invalid argument: {0}")]
+InvalidPath(String),
 ```
+
+**Semantic contract:**
+- `BinaryNotFound` is reserved exclusively for the case where `which::which("claude")`
+  (or the equivalent for other harnesses) fails — i.e., the harness binary cannot be
+  located on `PATH`.
+- `InvalidPath` is used for structurally invalid arguments to `spawn_recipe()`, including
+  `hooks_settings_path` values that cannot be converted to a UTF-8 string (required for
+  CLI arg passing), or that contain embedded null bytes.
+- These two failure modes are categorically different: `BinaryNotFound` means "the harness
+  is not installed"; `InvalidPath` means "the supplied configuration is invalid." Conflating
+  them (as the original draft did) misrepresents the error cause to callers and produces
+  incorrect diagnostic messages.
 
 ---
 
@@ -126,7 +145,9 @@ impl EngineModule for ClaudeCodeModule {
             "--settings".to_string(),
             opts.hooks_settings_path
                 .to_str()
-                .ok_or_else(|| EngineError::BinaryNotFound("invalid hooks_settings_path".into()))?
+                .ok_or_else(|| EngineError::InvalidPath(
+                    format!("hooks_settings_path is not valid UTF-8: {:?}", opts.hooks_settings_path)
+                ))?
                 .to_string(),
         ];
 
@@ -208,12 +229,28 @@ All Phase-1 `EngineModule` behavioral contracts (BC-2.03.*) remain in effect:
 |-------|-------|----------|
 | BC-2.03.005 | ClaudeCodeModule.spawn_recipe(): returns binary path, --settings arg, MONOCLE_SESSION_ID env | P0 |
 | BC-2.03.006 | ClaudeCodeModule.spawn_recipe(): injects ANTHROPIC_BASE_URL when ccr_base_url present | P0 |
-| BC-2.03.007 | spawn_recipe() with invalid hooks_settings_path returns BinaryNotFound error | P1 |
+| BC-2.03.007 | spawn_recipe() with non-UTF-8 hooks_settings_path returns InvalidPath error | P1 |
 | BC-2.03.008 | CodeMachineModule.spawn_recipe() returns UnsupportedOperation (v1 boundary) | P1 |
 
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.0.1
+
+**IMP-5 EngineError taxonomy fix — InvalidPath variant** (2026-06-03):
+- Added `EngineError::InvalidPath(String)` variant to the error taxonomy. The original
+  draft erroneously used `BinaryNotFound` for both "harness not found on PATH" and
+  "hooks_settings_path cannot be converted to UTF-8 string." These are categorically
+  different failure modes; conflating them produces misleading diagnostics.
+- `BinaryNotFound` is now reserved exclusively for the "harness binary not found on PATH"
+  case (which::which failure). `InvalidPath` is used for structurally invalid arguments
+  to spawn_recipe(), including non-UTF-8 path values.
+- ClaudeCodeModule::spawn_recipe() implementation spec updated: the to_str() unwrap now
+  returns `InvalidPath` instead of `BinaryNotFound`.
+- BC-2.03.007 proposal title corrected: "returns BinaryNotFound error" → "returns
+  InvalidPath error". PO will author the canonical BC text.
+- Semantic contract section added to distinguish the two error variants.
 
 ## §Trace v1.0.0
 

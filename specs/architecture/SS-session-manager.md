@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "1.0.0"
+version: "1.0.1"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -16,7 +16,7 @@ inputs:
   - specs/architecture/SS-daemon-lifecycle.md
   - specs/architecture/SS-ipc.md
   - specs/architecture/SS-engine-module.md
-input-hash: "7e4f4f4"
+input-hash: "13e1215"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---
@@ -71,6 +71,16 @@ daemon responsibility. SessionManager shares daemon-internal types (DaemonState,
 Arc<Broker<Event>>). No other crate depends on SessionManager directly — the proto/IPC wire
 is the interface. PtySpawner trait provides the test seam regardless of crate structure.
 
+### session_id type — canonical ruling
+
+**`session_id` is a `String` at all IPC, registry, and AppMode boundaries.** The underlying
+value is a UUID (v4), but it is generated once (via `uuid::Uuid::new_v4().to_string()`) and
+stored and transported as a `String` everywhere: `SessionEntry.session_id`, `SpawnOptions.session_id`,
+`AppMode::EmbeddedTerminal { session_id }`, all IPC message fields, and `session-state.json`.
+Callers MUST NOT assume any particular UUID variant or version; treat the value as an opaque
+string identifier. This avoids a `uuid` dependency in `monocle-core` (pure types crate) and
+eliminates UUID/String conversion friction at IPC/AppMode boundaries.
+
 ### SessionManager struct
 
 ```rust
@@ -78,6 +88,7 @@ is the interface. PtySpawner trait provides the test seam regardless of crate st
 /// Owned by DaemonState; one instance per daemon process.
 pub struct SessionManager {
     /// Active sessions keyed by session ID.
+    /// Key type: String (UUID rendered as string — see §session_id type ruling above).
     sessions: HashMap<String, SessionEntry>,
     /// Root directory for session sidecar files and per-session UDS sockets.
     runtime_dir: PathBuf,
@@ -449,6 +460,14 @@ Daemon removes stale socket files during GC in re-discovery (alongside sidecar d
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.0.1
+
+**IMP-2 session_id type ruling** (2026-06-03):
+- Added §session_id type — canonical ruling: `session_id` is `String` (UUID as String)
+  at all IPC, registry, and AppMode boundaries. Rationale: avoids `uuid` dep in pure-core
+  crate; eliminates UUID/String conversion friction. HashMap key comment updated.
+- Propagated from consistency validation findings (IMP-2).
 
 ## §Trace v1.0.0
 

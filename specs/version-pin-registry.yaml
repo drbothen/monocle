@@ -124,26 +124,26 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "1.0.0"
-  last_bump_commit: "[D-239 control-center architecture delta 2026-06-03 — SS-08 session-host coordinator, monocle-session-host binary]"
+  current_version: "1.0.1"
+  last_bump_commit: "[D-240 consistency-convergence 2026-06-03 — IMP-2 session_id:String canonical, IMP-5 InvalidPath error variant]"
   last_bump_date: "2026-06-03"
 
 SS-embedded-pty:
   path: specs/architecture/SS-embedded-pty.md
-  current_version: "1.0.0"
-  last_bump_commit: "[D-239 control-center architecture delta 2026-06-03 — SS-09 embedded PTY widget, tui-term, keyboard encoding]"
+  current_version: "1.0.2"
+  last_bump_commit: "[D-240 consistency-convergence 2026-06-03 — SUG-3 permission badge+bell during EmbeddedTerminal/SessionCreation, no silent suppression]"
   last_bump_date: "2026-06-03"
 
 SS-engine-module-v2-delta:
   path: specs/architecture/SS-engine-module-v2-delta.md
-  current_version: "1.0.0"
-  last_bump_commit: "[D-239 control-center architecture delta 2026-06-03 — spawn_recipe() method delta]"
+  current_version: "1.0.1"
+  last_bump_commit: "[D-240 consistency-convergence 2026-06-03 — IMP-2 session_id:String canonical propagation]"
   last_bump_date: "2026-06-03"
 
 SS-daemon-wiring-v2-delta:
   path: specs/architecture/SS-daemon-wiring-v2-delta.md
-  current_version: "1.0.0"
-  last_bump_commit: "[D-239 control-center architecture delta 2026-06-03 — D-235 rework scope, session_manager wiring]"
+  current_version: "1.0.1"
+  last_bump_commit: "[D-240 consistency-convergence 2026-06-03 — IMP-3 daemon-wiring step 8b placement fix]"
   last_bump_date: "2026-06-03"
 
 SS-deps-pin-manifest-v2-delta:
@@ -198,8 +198,8 @@ ADR-0011:
 
 ARCH-INDEX:
   path: specs/architecture/ARCH-INDEX.md
-  current_version: "1.0.27"
-  last_bump_commit: "[D-239 control-center architecture delta 2026-06-03 — SS-08/SS-09, CAP-008/009, ADR-0009/0010/0011 + 5 delta SS docs]"
+  current_version: "1.0.28"
+  last_bump_commit: "[D-240 consistency-convergence 2026-06-03 — SUG-4 token estimates, version rows updated for SS-session-manager v1.0.1/SS-embedded-pty v1.0.2/SS-engine-module-v2-delta v1.0.1/SS-daemon-wiring-v2-delta v1.0.1]"
   last_bump_date: "2026-06-03"
 
 BC-INDEX:
@@ -258,9 +258,9 @@ prd:
 
 product-brief:
   path: specs/product-brief.md
-  current_version: "1.4.34"
-  last_bump_commit: "47e6f9b"
-  last_bump_date: "2026-05-30"
+  current_version: "2.0.1"
+  last_bump_commit: "[D-240 consistency-convergence 2026-06-03 — CRIT-1/2/3 v2.1 session-host model + IMP-1 + SUG-1/2 propagated from vision v2.2]"
+  last_bump_date: "2026-06-03"
 
 # ───────────────────────────────────────────────────────────────────────────────
 # Behavioral Contract files (BC-N.NN.NNN)

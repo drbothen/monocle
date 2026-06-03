@@ -13,7 +13,7 @@ inputs:
   - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
   - {path: .factory/specs/research/domain-monocle-vision-synthesis.md, version: "1.1.3"}
 input-hash: "[pending]"
-traces_to: "product-brief.md v1.4.34 §Phase 1 scope"
+traces_to: "product-brief.md v1.4.34 §Phase 1 scope at Phase 1 authoring time"
 project: monocle
 ---
 
@@ -34,7 +34,7 @@ project: monocle
 
 ## Section 1: Feature Coverage Matrix
 
-The Phase 1 delivery contract is defined in `product-brief.md v1.4.34` §Phase 1 scope
+The Phase 1 delivery contract is defined in `product-brief.md v1.4.34 at Phase 1 authoring time` §Phase 1 scope
 (lines 110-176) and §Success Criteria (lines 239-252). The table below enumerates every
 discrete Phase 1 feature, cites the brief reference, maps current BC coverage, and
 classifies gap status.

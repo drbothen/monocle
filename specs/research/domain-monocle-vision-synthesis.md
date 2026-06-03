@@ -1,11 +1,11 @@
 ---
 document_type: vision-synthesis
 level: ops
-version: "2.1"
+version: "2.2"
 status: approved
 producer: product-owner
 phase: pre-phase-0-vision
-timestamp: 2026-06-03T20:00:00Z
+timestamp: 2026-06-03T23:30:00Z
 inputs:
   - semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md
   - semport/nikiforovall-lazyclaude/nikiforovall-lazyclaude-pass-8-final-synthesis-v2.md
@@ -39,7 +39,7 @@ approved_at_v1_0: 2026-05-11T20:30:00Z
 approved_at_v1_1: 2026-05-12T00:00:00Z
 ---
 
-# Monocle Vision Synthesis (v2.1 — D-238 Persistence Escalation, Approved)
+# Monocle Vision Synthesis (v2.2 — Consistency Propagation, Approved)
 
 ## Amendment History
 
@@ -51,6 +51,7 @@ approved_at_v1_1: 2026-05-12T00:00:00Z
 | 1.1.2 | 2026-05-12 | business-analyst | Surgical path fix — `/hooks/prompt-submit` wire correction. |
 | **2.0** | **2026-06-03** | **product-owner** | **D-236/D-237 CONTROL-CENTER PIVOT.** Retired: observe-only constraint; all specific "rejected" non-goals that blocked launching/orchestration. Added: LAUNCH, EMBEDDED PTY, MULTI-SESSION/MULTI-PROJECT, INTERACTIVE TUNE as first-class v1 capabilities. DAEMON-OWNS-PTY persistence model. Hook auto-injection on spawn. v1A/v1B wave ordering. See §Retired Constraints and §v1 Capability Set. Status: draft — pending human approval gate before architecture delta proceeds. Reconciled to human-ratified decisions 2026-06-03: full keyboard fidelity (mouse + Kitty keyboard protocol) IN v1A; Q-3/Q-5/Q-6 in §Open Questions converted to RESOLVED; wave-split adjudication note at §Wave Plan updated to reflect human ratification. Applied spec-review patch (SR-001..SR-005, SR-007): keyboard scope supersession pointer added; stale softener sentence replaced with affirmation; Q-4 merged into Q-1 benchmark gate; persistence model three-case disambiguation; workspace legend exists-today vs. aspirational; tui-term Q-7 softened to confirm-posture framing. |
 | **2.1** | **2026-06-03** | **product-owner** | **D-238 (human gate, 2026-06-03): v1A persistence ESCALATED — graceful daemon-process restart must SURVIVE.** Changed: CASE 2 (graceful daemon restart) now requires sessions survive via a native detached per-session session-host mechanism that owns PTY masters + child processes and outlives the daemon process (abduco/dtach-style); daemon coordinates and re-attaches on restart. Persistence principle renamed from DAEMON-OWNS-PTY to session-host-owns-PTY; daemon coordinates/re-attaches (no-tmux preserved as default; external supervisor only as architect-surfaced fallback for human decision). CASE 1 (TUI exit) unchanged; CASE 3 (hard crash → lost) unchanged. §Open Questions: new HIGH-priority item Q-8 for PTY-ownership-survival mechanism. Doc APPROVED by Joshua Magady to proceed to brief→architecture→story delta. |
+| **2.2** | **2026-06-03** | **product-owner** | **Consistency propagation of v2.1 session-host model + architect rulings; no scope change.** Applied ADR-0009 (native session-host process model) and SS-session-manager.md (SS-08) to all stale descriptions: §Process Topology ASCII diagram updated to show session-host processes owning PTYs + daemon coordinating; §SessionManager description corrected from in-process PTY ownership to session-host coordinator; `PtySpawner`/`RealPtySpawner`/`MockPtySpawner` replaced throughout with `SessionHostSpawner`/`RealSessionHostSpawner`/`MockSessionHostSpawner` (SS-08 canonical trait); `portable-pty` and `vt100` crate locations corrected to `monocle-session-host` (not `monocle-runtime`) per SS-deps-pin-manifest-v2-delta; `VsddFactoryAdapter`/`FactoryAdapter` extraction source corrected to `monocle-core` (not `monocle-runtime`) per IMP-1 (live codebase: `crates/monocle-core/src/factory/`); `EmbeddedTerminal { session_id }` typed as `String` (not `Uuid`) per SS-08 session_id canonical ruling (IMP-2); `Detached` state comment corrected for session-host ownership (SUG-1); §Wave Plan updated to name `monocle-session-host` binary as the v1A deliverable (SUG-2); permission badge+bell guarantee for embedded-terminal mode documented; v1B embedded-terminal pre-emption noted as open item for human ratification (SUG-3). Status: APPROVED (no scope change). |
 
 **What D-236/D-237 retired (precise list):**
 - The vision statement phrase "Observe-only for state, action-only via overlays"
@@ -138,31 +139,38 @@ User's tmux server (existing)
 monocle daemon (monocle-runtime, long-lived background process)
 ├── axum HTTP :<os-port>   (hook POST receiver; OS-assigned; port in lock file)
 ├── UDS socket             (TUI client connection: hook events + PTY bytes + control)
-├── SessionManager         (new in v2.0: owns PTY masters, child handles, vt100 parsers)
-│   ├── Session A: (portable-pty master, vt100::Parser, child handle, session-state.json)
-│   ├── Session B: (portable-pty master, vt100::Parser, child handle, session-state.json)
-│   └── Session N: ...
+├── SessionManager         (coordinator: spawns/tracks session-host processes; holds
+│   │                       session metadata + per-session UDS connections to hosts;
+│   │                       re-discovers and re-attaches on daemon startup)
+│   ├── → session-host A: monocle-session-host process  ──► session-<uuid-A>.sock
+│   │     (owns: pty_master, vt100::Parser, child_handle, session-state.json)
+│   ├── → session-host B: monocle-session-host process  ──► session-<uuid-B>.sock
+│   │     (owns: pty_master, vt100::Parser, child_handle, session-state.json)
+│   └── → session-host N: ...
 ├── Arc<Broker<Event>>     (fan-out: hook events + PTY bytes to all connected TUI clients)
 └── EngineModule registry  (ClaudeCodeModule: spawn_recipe() + hook handling)
 
-Claude sessions (owned by daemon SessionManager)
-├── Session A: claude --settings /tmp/monocle-hooks-A.json  (launched by monocle)
-│   ├── SessionStart hook      ──► POST http://localhost:<port>/hooks/session-start
-│   ├── UserPromptSubmit hook  ──► POST http://localhost:<port>/hooks/prompt-submit
-│   ├── PreToolUse hook        ──► POST http://localhost:<port>/hooks/pre-tool-use
-│   ├── Notification hook      ──► POST http://localhost:<port>/hooks/notification
-│   └── Stop hook              ──► POST http://localhost:<port>/hooks/stop
-├── PTY stdout/stderr ──► blocking reader thread ──► bounded mpsc ──► UDS PtyOutput msg
-└── PTY stdin  ◄── UDS KeyInput msg ◄── TUI crossterm KeyEvent
+Session-host processes (each is a native detached monocle-session-host binary)
+├── session-host A: monocle-session-host --session-id <uuid-A> ...  (setsid'd; outlives daemon)
+│   ├── Owns PTY master A  ──► vt100::Parser A  ──► per-session UDS A
+│   ├── Owns child handle: claude --settings /tmp/monocle-hooks-A.json
+│   │   ├── SessionStart hook      ──► POST http://localhost:<port>/hooks/session-start
+│   │   ├── UserPromptSubmit hook  ──► POST http://localhost:<port>/hooks/prompt-submit
+│   │   ├── PreToolUse hook        ──► POST http://localhost:<port>/hooks/pre-tool-use
+│   │   ├── Notification hook      ──► POST http://localhost:<port>/hooks/notification
+│   │   └── Stop hook              ──► POST http://localhost:<port>/hooks/stop
+│   ├── PTY stdout/stderr ──► blocking reader thread ──► HostToDaemon::PtyBytes ──► daemon
+│   └── PTY stdin  ◄── DaemonToHost::KeyInput ◄── daemon ◄── UDS KeyInput msg ◄── TUI
+└── session-host B: similar structure
 
 TUI client
 ├── Receives PtyOutput { session_id, bytes }  ──► vt100::Parser.process(bytes)
 ├── Renders PseudoTerminal widget (tui-term 0.3.4) from parser.screen()
 ├── Sends KeyInput { session_id, bytes }  ──► encoded crossterm KeyEvent → PTY bytes
-└── Sends ResizePane { session_id, rows, cols }  ──► daemon resizes PTY + parser
+└── Sends ResizePane { session_id, rows, cols }  ──► daemon → session-host resize
 ```
 
-**The architectural inversion:** in v1.1.2, the daemon received hooks from sessions the user launched elsewhere. In v2.0, the daemon spawns sessions (via SessionManager + EngineModule.spawn_recipe()) and owns their PTYs. The TUI is a client that streams PTY output and forwards keystrokes. Hook events continue to arrive via HTTP and are fan-out as before.
+**The architectural inversion:** in v1.1.2, the daemon received hooks from sessions the user launched elsewhere. In v2.0/v2.1, the daemon coordinates sessions that are owned by per-session `monocle-session-host` processes (ADR-0009). Each session-host is setsid'd and outlives a daemon restart. The TUI is a client that streams PTY output and forwards keystrokes. Hook events continue to arrive via HTTP and are fan-out as before.
 
 **Persistence model (session-host-owns-PTY; daemon coordinates/re-attaches) — three cases:**
 _(Previously called DAEMON-OWNS-PTY. Renamed at v2.1 / D-238 escalation. The daemon still coordinates all session lifecycle and streams PTY bytes to TUI clients; the change is that PTY ownership now resides in per-session session-host processes that outlive a daemon restart, rather than inside the daemon process itself.)_
@@ -190,7 +198,11 @@ monocle/
 └── crates/
     ├── monocle-core/             # [EXISTS] pure types: Event, Action, EngineMetadata, AppMode, SessionState; no I/O
     ├── monocle-runtime/          # [EXISTS] async daemon: axum server, broker, EngineModule registry;
-    │                             #   SessionManager sub-module [v1A NEW]: PTY ownership, spawn/kill/detach
+    │                             #   SessionManager sub-module [v1A NEW]: session-host coordinator,
+    │                             #   spawn/kill/attach/detach; proxies PTY bytes from session-hosts to TUI
+    ├── monocle-session-host/     # [v1A NEW] per-session native detached binary; owns the
+    │                             #   (pty_master, vt100::Parser, child_handle) triple; exposes
+    │                             #   per-session UDS socket; setsid'd to outlive daemon restarts
     ├── monocle-tui/              # [EXISTS] ratatui renderer: panels, overlays, keybinding dispatch;
     │                             #   EmbeddedTerminal mode [v1A NEW]: tui-term PTY widget
     ├── monocle-ipc/              # [EXISTS] Unix domain socket + shared-memory ring buffer;
@@ -198,17 +210,17 @@ monocle/
     ├── monocle-config/           # [EXISTS] ~/.monocle/config.json: harness profiles, binding overrides, CCR path
     ├── monocle-proto/            # [EXISTS] prost-generated protobuf types; extended with PTY message types [v1A]
     ├── monocle-test-harness/     # [EXISTS] integration test scaffolding: fake Claude Code subprocess, fake hooks;
-    │                             #   MockPtySpawner [v1A NEW]: PtySpawner trait test double
+    │                             #   MockSessionHostSpawner [v1A NEW]: SessionHostSpawner trait test double
     ├── monocle/                  # [EXISTS] binary crate: clap CLI, daemon entrypoint, TUI entrypoint
     ├── monocle-static/           # [v1B] customization reader+writer: CLAUDE.md, settings.json,
     │                             #   hooks, keybindings — interactive CRUD activated in v1B
     ├── monocle-workflow/         # [v1B] factory-awareness: STATE.md parser, FactoryAdapter trait, VsddFactoryAdapter
-    │                             #   (struct/logic exists in monocle-runtime today; extracted to own crate in v1B)
+    │                             #   (struct/logic exists in monocle-core today; extracted to own crate in v1B)
     ├── monocle-fuzz/             # [v1A or v1B] cargo-fuzz targets for parser and hook endpoint fuzzing
     └── monocle-plugin-sdk/       # [Phase-3 SUSPENDED] WASM plugin ABI: EngineModule + FactoryAdapter for third-party plugins
 ```
 
-Note: SessionManager lives as a sub-module of `monocle-runtime` (not a separate crate). Rationale: PTY ownership is intrinsically a daemon responsibility; SessionManager shares daemon-internal types (child handles, PTY masters); no other crate depends on SessionManager directly (the proto wire is the interface); the PtySpawner trait provides test seam regardless of crate structure. This is a mechanical architecture decision, self-adjudicated per CLAUDE.md Rule 6 — architect to confirm in the architecture delta.
+Note: SessionManager lives as a sub-module of `monocle-runtime` (not a separate crate) — confirmed by SS-08 (architecture delta). Rationale: session coordination is intrinsically a daemon responsibility; SessionManager shares daemon-internal types (DaemonState, Arc<Broker<Event>>); no other crate depends on SessionManager directly (the proto/IPC wire is the interface); the SessionHostSpawner trait provides the test seam regardless of crate structure. FactoryAdapter trait and VsddFactoryAdapter currently live in `monocle-core` (`crates/monocle-core/src/factory/`; extracted from monocle-core to monocle-workflow in v1B).
 
 ---
 
@@ -265,33 +277,47 @@ pub struct EngineMetadata {
 
 Built-in: `ClaudeCodeModule` (implements `spawn_recipe()`). Second built-in: `CodeMachineModule` (returns `UnsupportedOperation` in v1; implemented in a later wave). Third-party: WASM plugin implementing the same ABI via `monocle-plugin-sdk` (Phase 3, suspended).
 
-### SessionManager (new in v2.0)
+### SessionManager (new in v2.0 — redesigned for v2.1 session-host-owns-PTY model)
 
-Daemon-side sub-module of `monocle-runtime`. Owns the `(pty_master, vt100::Parser, child_handle)` triple per session.
+Daemon-side sub-module of `monocle-runtime` (location: `crates/monocle-runtime/src/session_manager/mod.rs`; not a separate crate). **Coordinator role**: the daemon's SessionManager holds session metadata and per-session UDS connections to the session-hosts; it re-discovers and re-attaches on daemon startup. It does NOT own the `(pty_master, vt100::Parser, child_handle)` triple — those are owned by each per-session `monocle-session-host` process (ADR-0009).
+
+_(Pre-v2.1 note: earlier drafts said "Daemon-side sub-module of monocle-runtime. Owns the (pty_master, vt100::Parser, child_handle) triple per session." That is the old v2.0 in-process model, superseded by ADR-0009 and the v2.1 session-host-owns-PTY escalation.)_
 
 ```rust
-/// Session lifecycle state (adapted from claude-squad instance lifecycle).
+/// Session lifecycle state (adapted from claude-squad A.3 instance lifecycle).
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SessionState {
-    Created,      // recipe built; PTY not yet opened
-    Launching,    // portable-pty spawn in progress
-    Running,      // child alive; PTY streaming
-    Detached,     // TUI disconnected; daemon still owns PTY and child
-    Terminated,   // child exited; GC in 10s grace period
-    Killed,       // user-initiated kill; child signaled
+    Created,      // spawn_session() called; monocle-session-host not yet started
+    Launching,    // session-host process spawned; waiting for its socket to appear
+    Running,      // session-host alive; PTY streaming
+    Detached,     // TUI disconnected; the session-host process still owns the PTY
+                  // and child; the daemon may or may not be attached
+    Terminated,   // child process exited; GC in 10s grace period
+    Killed,       // user-initiated kill; SIGTERM sent to session-host
 }
 ```
 
-The `PtySpawner` trait wraps `portable-pty` to enable test injection:
+The `SessionHostSpawner` trait provides the test seam for session-host process spawning:
 
 ```rust
-/// Seam for PTY spawn, modeled on claude-squad A.5 PtyFactory pattern.
-pub trait PtySpawner: Send + Sync + 'static {
-    fn spawn(&self, recipe: &SpawnRecipe) -> Result<(Box<dyn MasterPty>, Box<dyn Child>), PtyError>;
+/// Seam for session-host process spawning.
+/// Mirrors the PtyFactory concept from claude-squad A.5 pattern.
+pub trait SessionHostSpawner: Send + Sync + 'static {
+    /// Spawn a monocle-session-host process with the given session ID and recipe.
+    /// Returns the child PID and expected socket path.
+    async fn spawn(
+        &self,
+        session_id: &str,
+        recipe: &SpawnRecipe,
+        runtime_dir: &Path,
+    ) -> Result<SpawnedHostHandle, SessionError>;
 }
 
-// RealPtySpawner: uses portable-pty::openpty + CommandBuilder
-// MockPtySpawner: injects a fake PTY master/child in integration tests
+// RealSessionHostSpawner: spawns the monocle-session-host binary via
+//   std::process::Command with pre_exec setsid() — making the process a
+//   group leader immune to SIGHUP when the daemon exits.
+// MockSessionHostSpawner: in-memory mock host — does NOT open a real PTY;
+//   used in integration tests.
 ```
 
 ### Action enum (extended in v2.0)
@@ -362,7 +388,10 @@ pub enum AppMode {
 
     /// NEW v2.0: Preview pane hosts the tui-term PTY widget for the focused session.
     /// Keyboard events are forwarded to the daemon SessionManager as KeyInput IPC messages.
-    EmbeddedTerminal { session_id: Uuid, prior: FocusSnapshot },
+    /// session_id is a String (UUID rendered as String at AppMode/IPC boundary — avoids
+    /// a uuid dep in monocle-core and eliminates UUID/String conversion friction; per SS-08
+    /// session_id canonical ruling).
+    EmbeddedTerminal { session_id: String, prior: FocusSnapshot },
 
     /// NEW v2.0: Launch wizard — multi-step modal for creating a new session.
     /// Steps: profile picker → project picker → worktree confirmation → launch.
@@ -488,17 +517,19 @@ All four capabilities ship in v1. The two-wave split is feature-ordering per CLA
 
 **LAUNCH — the core inversion**
 
-monocle spawns and owns Claude Code (and future harness) sessions from the TUI. The daemon SessionManager opens a portable-pty PTY pair, builds a `CommandBuilder` from `EngineModule::spawn_recipe()` (binary + args including `--settings <hooks_settings_path>` for hook auto-injection + cwd as git worktree + CCR env vars), and supervises the child process. Session lifecycle: `Created → Launching → Running → Detached → Terminated`.
+monocle spawns and owns Claude Code (and future harness) sessions from the TUI. The daemon SessionManager spawns a native `monocle-session-host` process per session (via `SessionHostSpawner`), which opens a `portable-pty` PTY pair, builds a `CommandBuilder` from `EngineModule::spawn_recipe()` (binary + args including `--settings <hooks_settings_path>` for hook auto-injection + cwd as git worktree + CCR env vars), and owns the child process. The daemon coordinator tracks session-host processes and proxies PTY bytes to TUI clients. Session lifecycle: `Created → Launching → Running → Detached → Terminated`.
 
 This is the architectural reversal from v1.1.2: monocle no longer waits for hook POSTs from sessions the user launched elsewhere. It is now the launcher.
 
 **EMBEDDED PTY — never leave the TUI**
 
-The running session is visible and interactive inside monocle. The TUI Preview pane slot hosts a `tui-term::PseudoTerminal` widget that renders the `vt100::Screen` from the daemon's per-session `vt100::Parser`. The TUI sends keystrokes to the daemon as `KeyInput` IPC messages; the daemon writes PTY-encoded bytes to the master. The user reads and interacts with the Claude session inside monocle without switching windows.
+The running session is visible and interactive inside monocle. The TUI Preview pane slot hosts a `tui-term::PseudoTerminal` widget that renders the `vt100::Screen` from the TUI-side `vt100::Parser` (fed by `PtyOutput` IPC bytes proxied from the session-host). The TUI sends keystrokes to the daemon as `KeyInput` IPC messages; the daemon forwards them to the session-host which writes PTY-encoded bytes to the master. The user reads and interacts with the Claude session inside monocle without switching windows.
 
-PTY byte stack: `portable-pty 0.9.0` (spawn + master read/write) + `vt100 0.16.2` (ANSI parse → screen state) + `tui-term 0.3.4` (render screen as ratatui widget). All MIT, no RUSTSEC, MSRV 1.88 compatible, ratatui 0.30 compatible (verified at manifest level — Cargo-init spike required at architecture delta step).
+PTY byte stack: `portable-pty 0.9.0` (spawn + master read/write, in `monocle-session-host`) + `vt100 0.16.2` (ANSI parse → screen state, in `monocle-session-host` and `monocle-tui`) + `tui-term 0.3.4` (render screen as ratatui widget, in `monocle-tui`). All MIT, no RUSTSEC, MSRV 1.88 compatible, ratatui 0.30 compatible (verified at manifest level — Cargo-init spike required at architecture delta step).
 
 Input fidelity (v1A): printable keys + control keys (Ctrl-C, Ctrl-D, Ctrl-Z) + arrows + Backspace + Tab + Esc + Enter + mouse events + Kitty keyboard protocol (full support IN v1A scope — human-ratified D-237 2026-06-03). Bracketed paste is included as part of full fidelity; implementation details (crossterm Kitty-enhancement flags + mouse capture → PTY byte translation wiring) are architect-routed items resolved at architecture delta. Full fidelity is the v1A target; no input class is deferred. This full-fidelity scope supersedes the narrower keyboard scope described in DISPOSITION-V2-CONTROL-CENTER-ROLLUP.md and embedded-pty-evaluation.md, which predate the D-237 ratification and will be reconciled during the architecture delta.
+
+**Permission prompts while in EmbeddedTerminal or SessionCreation mode:** While the user is in `AppMode::EmbeddedTerminal` or `AppMode::SessionCreation`, incoming permission prompts are NEVER silently queued without notification. The production-grade behavior (architect-confirmed): an incoming `PreToolUse` hook MUST immediately raise a status-bar badge (e.g., `[2 prompts]` indicator) AND an audible bell (`\x07`). The user can press Esc to exit embedded terminal mode, at which point the overlay presents on the prior AppMode. This guarantee will be formalized as a dedicated behavioral contract (to be authored by product-owner in the PRD delta). A v1B enhancement — pre-emption of embedded terminal mode by the overlay itself (i.e., the overlay slides in without requiring the user to Esc first) — is a potentially desirable UX upgrade but requires human ratification before it is added to scope; it is recorded here as an open v1B item (not v1A).
 
 **MULTI-SESSION / MULTI-PROJECT**
 
@@ -570,8 +601,8 @@ Setup: three sessions running. Two permission prompts arrive concurrently from d
 
 | Crate | Version | Location | Role | License | RUSTSEC |
 |-------|---------|----------|------|---------|---------|
-| `portable-pty` | `"0.9"` | `monocle-runtime` | PTY pair creation, child spawn, master read/write | MIT | none (2026-06-03) |
-| `vt100` | `"0.16"` | `monocle-runtime`, `monocle-tui` | ANSI/VT100 parse → in-memory screen state | MIT | none (2026-06-03) |
+| `portable-pty` | `"0.9"` | `monocle-session-host` | PTY pair creation, child spawn, master read/write | MIT | none (2026-06-03) |
+| `vt100` | `"0.16"` | `monocle-session-host`, `monocle-tui` | ANSI/VT100 parse → in-memory screen state | MIT | none (2026-06-03) |
 | `tui-term` | `"0.3"` | `monocle-tui` | ratatui widget rendering `vt100::Screen` | MIT | none (2026-06-03) |
 
 Compatibility notes:
@@ -589,7 +620,7 @@ This replaces the Phase Plan from v1.1.2. The two-wave split is feature-ordering
 
 | Wave | Name | Core capabilities | Key new work | Preserved/extended |
 |------|------|-------------------|--------------|-------------------|
-| v1A | Launch Wave | LAUNCH + EMBEDDED PTY + MULTI-SESSION/MULTI-PROJECT | SessionManager (portable-pty + vt100); EmbeddedTerminal AppMode; SessionCreation wizard; session-state.json; EngineModule.spawn_recipe(); monocle-proto PTY message types; hook auto-injection; PtySpawner trait + mock | All Phase-1 observe/control capabilities; profile picker (used in launch wizard); event ribbon; workflow plane |
+| v1A | Launch Wave | LAUNCH + EMBEDDED PTY + MULTI-SESSION/MULTI-PROJECT | SessionManager + monocle-session-host binary (portable-pty + vt100 live in the session-host); EmbeddedTerminal AppMode; SessionCreation wizard; session-state.json; EngineModule.spawn_recipe(); monocle-proto PTY message types; hook auto-injection; SessionHostSpawner trait + MockSessionHostSpawner | All Phase-1 observe/control capabilities; profile picker (used in launch wizard); event ribbon; workflow plane |
 | v1B | Tune Wave | INTERACTIVE TUNE | monocle-static CRUD activation; keybinding editor; CCR routing slot editor; profile management UI; TuneEdit* Action variants | Everything from v1A |
 
 **Human ratified (D-237, 2026-06-03): v1A/v1B split confirmed.** All four capabilities ship in v1; v1A = Launch + Embedded PTY + Multi-session/project (+ persistence + hook auto-inject); v1B = Interactive Tune. Both waves production-grade on their cycles.
@@ -631,18 +662,13 @@ Human-ratified questions are marked RESOLVED; they are retained for traceability
 
 ---
 
-**[HIGH PRIORITY] Q-8: PTY-ownership-survival mechanism for graceful daemon-process restart (CASE 2) — architect (D-238)**
+**RESOLVED — Q-8: PTY-ownership-survival mechanism for graceful daemon-process restart (CASE 2) — ADR-0009**
 
-Design a native detached per-session session-host that owns the PTY master and harness child process and survives a daemon-process restart, with the daemon coordinating and re-attaching over UDS. Specific design questions:
+Design a native detached per-session session-host that owns the PTY master and harness child process and survives a daemon-process restart, with the daemon coordinating and re-attaching over UDS.
 
-- What is the session-host process model? Options include: (a) a standalone lightweight subprocess per session forked from the daemon at spawn time and detached (POSIX double-fork or `setsid`); (b) a dedicated `monocle-session-host` binary invoked per session; (c) use of an existing detach library (abduco, dtach) as the host container. Option (a) or (b) is the default (native, no external dep).
-- How does the daemon re-attach to a running session-host after restart? The session-host must expose a stable re-attach IPC endpoint (e.g., per-session UDS socket at a known path derived from session ID) that the daemon can connect to on startup. The `vt100::Parser` scroll-back state must be re-streamable after re-attach.
-- What is the re-attach protocol? The daemon must query surviving session-hosts at startup to reconstruct the in-memory session registry before accepting TUI client connections.
-- What changes are required to the already-built in-process daemon wiring (D-235)? The current implementation places PTY ownership inside the daemon process (SessionManager sub-module of monocle-runtime). Moving PTY ownership to session-host processes likely requires reworking the SessionManager abstraction boundary — the PtySpawner trait may need to model a session-host spawn rather than a direct portable-pty call.
+**Q-8 VERDICT (ADR-0009, 2026-06-03): Native feasible at acceptable cost for v1A.** Option (b) adopted: dedicated `monocle-session-host` binary per session, spawned by the daemon via `std::process::Command` with a pre-exec `setsid()` call. Session-host process owns `(pty_master, vt100::Parser, child_handle)`; exposes per-session UDS at `<runtime_dir>/session-<uuid>.sock`; writes `session-state.json` sidecar. Daemon re-attaches on startup via `SessionManager::rediscover_sessions()` (reads sidecars, probes PID liveness, connects to alive hosts). Option (a) (double-fork inside the daemon) rejected: fork() in async Tokio runtime is unsafe. Option (c) (external supervisor) rejected: no-tmux constraint. SessionManager abstraction boundary reworked from PTY-owning (old v2.0 model) to session-host coordinator (v2.1 model): `SessionHostSpawner` trait replaces `PtySpawner`; `RealSessionHostSpawner` spawns the session-host binary; `MockSessionHostSpawner` is the in-memory test double. See ADR-0009 and SS-session-manager.md (SS-08) for full design. SS-deps-pin-manifest-v2-delta.md for crate placement (`portable-pty` and `vt100` in `monocle-session-host`; `tui-term` in `monocle-tui`). Retained here for traceability; no further architect action required.
 
-**Default design constraint (no-tmux preserved):** The native detached session-host approach is the required default. An external supervisor (tmux, abduco, dtach as primary mechanism) is NOT the default. If the architect determines that a native session-host is infeasible for v1A at acceptable cost/complexity, the architect MUST surface that tradeoff explicitly for human decision — do NOT silently adopt an external multiplexer dependency.
-
-This question interacts with: Q-1 (PTY bytes over UDS — the re-attach protocol uses the same UDS), Q-2 (EngineModule/SessionManager surface — PTY ownership boundary changes), and the already-built in-process daemon wiring from D-235 (which assumed in-process PTY ownership and will likely need rework). Route: architect (architecture delta). Flag: architect must confirm or propose rework before the architecture delta spec is finalized.
+**Default design constraint (no-tmux preserved):** The native detached session-host approach is the chosen primary. tmux/abduco remain documented fallbacks only (Q-8 architecture decision closed — native feasible).
 
 ---
 
@@ -694,6 +720,8 @@ v1.1.2 (2026-05-12): Surgical path fix — `/hooks/prompt-submit` wire correctio
 - Status at v2.0: DRAFT — pending human approval gate.
 
 **v2.1 (2026-06-03):** D-238 escalation applied by product-owner agent. Persistence model escalated: CASE 2 (graceful daemon-process restart) now REQUIRES session survival via native detached session-host processes (session-host-owns-PTY model). Persistence principle renamed from DAEMON-OWNS-PTY to session-host-owns-PTY; daemon coordinates/re-attaches. No-tmux default preserved; external supervisor only as architect-surfaced fallback for human decision. Q-8 (HIGH priority) added to §Open Questions for architect. Doc **APPROVED** by Joshua Magady (2026-06-03) to proceed to brief → architecture → story delta.
+
+**v2.2 (2026-06-03):** Consistency propagation of v2.1 session-host model + architect rulings; no scope change. Applied ADR-0009 and SS-08 (SS-session-manager.md): §Process Topology ASCII diagram and §SessionManager description rewritten from in-process PTY ownership to session-host coordinator model. `PtySpawner`/`RealPtySpawner`/`MockPtySpawner` replaced with `SessionHostSpawner`/`RealSessionHostSpawner`/`MockSessionHostSpawner` (SS-08 canonical). `portable-pty` and `vt100` crate locations corrected to `monocle-session-host` per SS-deps-pin-manifest-v2-delta. `VsddFactoryAdapter`/`FactoryAdapter` extraction source corrected to `monocle-core` per live codebase (IMP-1). `EmbeddedTerminal { session_id }` typed as `String` per SS-08 ruling (IMP-2). `Detached` state comment updated for session-host ownership (SUG-1). §Wave Plan now names `monocle-session-host` binary as the v1A crate deliverable (SUG-2). Permission badge+bell guarantee documented; v1B embedded-terminal pre-emption open item recorded (SUG-3). Status: APPROVED (no scope change; consistency-only propagation).
 
 The vision is the synthesis lens for disposition decisions: every subsystem in every reference repo gets sorted through THIS vision. The D-236/D-237 reversal of the launch/manage genes is captured in DISPOSITION-V2-CONTROL-CENTER-ROLLUP.md. If future vision-doc changes invalidate prior dispositions, those dispositions must be re-run.
 

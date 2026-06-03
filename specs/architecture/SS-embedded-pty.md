@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "embedded-pty"
 subsystem: SS-09
-version: "1.0.0"
+version: "1.0.2"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -16,7 +16,7 @@ inputs:
   - specs/architecture/adr/ADR-0011-pty-stack-native-portable-pty-vt100-tui-term.md
   - specs/architecture/SS-ipc.md
   - specs/architecture/SS-tui.md
-input-hash: "7e4f4f4"
+input-hash: "13e1215"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---
@@ -43,8 +43,10 @@ New variants added to `AppMode` in `monocle-core/src/app_mode.rs`:
 ```rust
 /// Preview pane hosts the tui-term PTY widget for the focused session.
 /// All keyboard events are forwarded to the daemon as KeyInput IPC messages.
+/// session_id type: String (UUID rendered as string — canonical per SS-session-manager.md
+/// §session_id type ruling; same type at all IPC/registry/AppMode boundaries).
 EmbeddedTerminal {
-    session_id: String,   // currently-focused session
+    session_id: String,   // currently-focused session (UUID as String)
     prior: FocusSnapshot, // AppMode to restore on Esc
 },
 
@@ -64,9 +66,39 @@ pub enum SessionCreationStep {
 ```
 
 **State machine invariants:**
-- `EmbeddedTerminal` and `SessionCreation` are mutually exclusive with `Overlay` (permission
-  prompts cannot queue during an embedded terminal session — they queue in the daemon and
-  are displayed when the user exits embedded terminal mode).
+
+- **Permission prompts while in `EmbeddedTerminal`:** Permission prompts are time-sensitive
+  and are monocle's killer feature. Silently suppressing or purely queueing them while in
+  embedded terminal mode is NOT acceptable under the production-grade principle — a permission
+  prompt from any session (including non-focused sessions) must be immediately surfaced to the
+  user. The production-grade behavior is:
+
+  1. **Status-bar badge (mandatory):** When a `PermissionPromptQueued` IPC message arrives
+     while `AppMode::EmbeddedTerminal` is active, the TUI MUST immediately render a visible
+     indicator in the status bar (e.g., `[1 pending permission]` badge + terminal bell) so
+     the user is aware a prompt is waiting, regardless of which session triggered it.
+  2. **Pre-emption option:** The user can exit embedded terminal mode (Esc) and the pending
+     permission overlay will be presented on the `prior` AppMode. Alternatively, if the
+     permission is for the currently embedded session, the implementer MAY (as a v1A
+     enhancement) pre-empt embedded terminal mode and immediately present the overlay — this
+     pre-emption behavior requires a dedicated BC and is flagged to product-owner below.
+  3. **No silent queueing:** Prompts MUST NOT be held invisibly in the daemon until the user
+     happens to exit embedded mode. The status-bar badge + bell is the minimum visibility
+     guarantee.
+
+  **BC requirement flag (for product-owner):** The exact pre-emption vs badge-only behavior
+  for permission prompts during `EmbeddedTerminal` mode requires a product decision and a
+  BC. Architect recommendation: badge-only for v1A (status bar badge + bell on any incoming
+  permission prompt while in embedded mode); full pre-emption (overlay replaces embedded
+  terminal) as a v1B enhancement. This decision requires human ratification because it
+  involves a UX tradeoff between session-focus interruption and permission visibility — the
+  production-grade minimum (badge + bell) is unambiguous and does not require ratification.
+  The pre-emption enhancement does require explicit product sign-off.
+
+- `SessionCreation` is mutually exclusive with `Overlay` (the session creation wizard blocks
+  permission overlays; pending overlays are visible via status-bar badge while in wizard mode,
+  same as EmbeddedTerminal).
+
 - Entering `EmbeddedTerminal`: requires `session_id` to have `SessionState::Running`. If the
   session is `Terminated`, the action is a no-op with a status bar message.
 - Exiting `EmbeddedTerminal` via Esc: transition to `prior` AppMode (typically `Dashboard`).
@@ -391,6 +423,26 @@ Mitigation: integration tests use a PTY fixture corpus from `embedded-pty-evalua
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.0.2
+
+**SUG-3 + IMP-2 consistency findings** (2026-06-03):
+- SUG-3: Replaced the silent-queuing permission prompt mutual-exclusion rule (original text:
+  "permission prompts cannot queue during an embedded terminal session — they queue in the
+  daemon and are displayed when the user exits embedded terminal mode"). The original rule
+  was production-grade non-conformant: it silently suppressed time-sensitive permission
+  prompts — monocle's killer feature. Replaced with three-tier rule: (1) mandatory
+  status-bar badge + bell on any incoming permission prompt while in EmbeddedTerminal mode;
+  (2) user can pre-empt by pressing Esc; (3) no silent queueing. BC requirement flagged
+  for product-owner: badge-only is v1A minimum; pre-emption enhancement is v1B (requires
+  human ratification). SessionCreation mode receives the same badge-only treatment.
+- IMP-2: Added session_id type annotation to EmbeddedTerminal AppMode variant doc-comment
+  (String; UUID as String; canonical per SS-session-manager.md §session_id type ruling).
+
+## §Trace v1.0.1
+
+**IMP-2 session_id type annotation** (2026-06-03):
+- Intermediate bump — superseded by v1.0.2 (combined with SUG-3 in same burst).
 
 ## §Trace v1.0.0
 

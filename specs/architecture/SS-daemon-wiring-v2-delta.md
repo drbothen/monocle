@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "daemon-wiring-v2-delta"
 subsystem: SS-04
-version: "1.0.0"
+version: "1.0.1"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -62,8 +62,12 @@ pub struct DaemonState {
 
 ### 2. daemon_start_sequence() — session re-discovery step
 
-**Add step (between existing step 8 "write lock file" and step 9 that currently doesn't exist —
-the UDS bind step):**
+**Current step numbering in SS-daemon-wiring.md (authoritative):**
+- Step 8: Write lock file (SOQ-2 write point)
+- Step 9: Generate hooks-settings.json (BC-2.04.010)
+- Step 10: Create UDS socket (bind `<runtime_dir>/monocle.sock`)
+
+**Add step 8b between existing step 8 (write lock file) and step 9 (generate hooks-settings.json):**
 
 ```
 Step 8b (NEW): Session re-discovery
@@ -74,9 +78,11 @@ Step 8b (NEW): Session re-discovery
     (do NOT abort startup — a clean start is better than no start)
 ```
 
-This step MUST complete before the UDS socket is bound (step 9 / step 10 in current
-SS-daemon-wiring.md sequence). TUI clients must not connect before the session registry is
-populated.
+**Insertion invariant:** Step 8b MUST complete before step 10 (UDS socket bind). The UDS
+bind at step 10 is the point at which TUI clients can connect; session re-discovery must
+finish before any client can connect to ensure the initial state push contains all
+re-discovered sessions. Steps 9 (hooks-settings.json) and 10 (UDS bind) retain their
+existing order and positions; step 8b is inserted before both.
 
 **Integration test:** `test_daemon_start_sequence_with_session_rediscovery` — verifies that
 a pre-existing session sidecar is discovered and the session appears in the initial state push
@@ -159,7 +165,8 @@ is for metrics/labeling only (the `spawned_by_monocle` field on `EnrichedSession
 
 ## What does NOT change
 
-- `daemon_start_sequence()` core sequence (steps 1–8, 9+) — only step 8b is added.
+- `daemon_start_sequence()` core sequence (steps 1–8 and 9–13) — only step 8b is inserted
+  between step 8 (lock file) and step 9 (hooks-settings.json). All other steps are unchanged.
 - `run_server()` — HTTP axum server; unchanged.
 - Hook ingestion endpoints — unchanged.
 - Auth token handling — unchanged.
@@ -185,6 +192,18 @@ If no in-process SessionManager stub exists in D-235 (i.e., the stub was skeleta
 implementer creates `SessionManager` from scratch per SS-08.
 
 ---
+
+## §Trace v1.0.1
+
+**IMP-3 step placement correction** (2026-06-03):
+- Corrected step 8b placement language. Original text erroneously said "step 9 that currently
+  doesn't exist — the UDS bind step." Step 9 in SS-daemon-wiring.md IS the hooks-settings.json
+  step (it exists); step 10 IS the UDS bind. The error arose from conflating the delta's
+  "new step numbering" intent with the base document's established step numbering.
+- Added explicit "Current step numbering" preamble citing SS-daemon-wiring.md as authoritative.
+- Clarified insertion invariant: step 8b inserted BEFORE step 9 (hooks-settings.json); the
+  "must complete before UDS bind (step 10)" constraint is stated in terms of the real step
+  numbers. "What does NOT change" updated to be consistent (steps 1–8 and 9–13; only 8b added).
 
 ## §Trace v1.0.0
 
