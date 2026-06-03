@@ -181,7 +181,7 @@ Phase sequence:
 - Phase 0.9: Market intel + validate-brief (DONE) — VALID
 - Phase 1: Spec Crystallization (DONE — D-155 original, D-168 expansion, D-169 adversarial convergence) — 70 BCs (expanded from 22), 7 subsystems, 5 ADRs, 15-pass adversarial review
 - Phase 2: Story Decomposition (DONE original D-159; EXPANSION D-170+D-171 — adversarial review pending) — 33 stories, 7 waves, 195 points, 24 holdout scenarios
-- **Phase 3: TDD Implementation (IN PROGRESS)** — Waves 1-6 DONE (169 pts, gates D-164/D-166/D-167/D-175/D-182/D-224). Wave 7: S-027 DONE (D-226), S-031 DONE (D-227), S-028 DONE (D-228). 31/33 stories (187/195 pts). Remaining: S-029 (HUMAN-AUTHORIZED 2026-06-02 — DISPATCH NOW). After wave-7 gate → Phase 4.
+- **Phase 3: TDD Implementation (IN PROGRESS — wave-7-gate pending)** — Waves 1-6 DONE (169 pts, gates D-164/D-166/D-167/D-175/D-182/D-224). Wave 7 COMPLETE: S-027 DONE (D-226), S-031 DONE (D-227), S-028 DONE (D-228), S-029 DONE (D-230, PR #35 @ 48463fb). 32/33 stories (192/195 pts, 98%). NEXT: wave-7-gate then Phase 4.
 - Phase 4: Holdout Evaluation
 - Phase 5: Adversarial Refinement
 - Phase 6: Formal Hardening
