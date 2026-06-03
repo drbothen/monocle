@@ -1,10 +1,10 @@
 ---
 document_type: story-index
 level: L4
-version: "5.28"
+version: "5.29"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-06-01T18:00:00Z
+timestamp: 2026-06-03T04:35:15Z
 phase: 2
 inputs:
   - .factory/specs/prd.md
@@ -77,7 +77,7 @@ traces_to: .factory/specs/prd.md
 | S-026 | Permission Overlay: VecDeque Stack, Decision Keybindings, Esc Hide, SOQ-3 | EPIC-06 | 13 | 6 | done | S-027, S-029 |
 | S-027 | Permission Overlay Rendering, Diff Preview (similar 3), Status Bar | EPIC-06 | 8 | 7 | done | S-029 |
 | S-028 | Sessions Panel Nucleo Filter + Event Ribbon Rolling Log | EPIC-06 | 5 | 7 | done | — |
-| S-029 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | EPIC-06 | 5 | 7 | not_started | — |
+| S-029 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | EPIC-06 | 5 | 7 | done | — |
 | S-031 | Profile Picker: Sticky-Per-Project Selection + Ctrl-P Override | EPIC-07 | 5 | 7 | done | — |
 | S-032 | Daemon Event-Bus Fan-Out: Broadcast HookEventReceived with daemon timestamp_micros | EPIC-05 | 5 | 8 | draft | — |
 

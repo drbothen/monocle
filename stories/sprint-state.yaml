@@ -1,9 +1,9 @@
 ---
 document_type: sprint-state
-version: "1.36"
+version: "1.37"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-06-01T18:00:00Z
+timestamp: 2026-06-03T04:35:15Z
 phase: 2
 target_implementation_phase: 3
 traces_to: STORY-INDEX.md
@@ -404,12 +404,12 @@ stories:
     epic: EPIC-06
     wave: 7
     points: 5
-    status: not_started
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 7. BCs: BC-2.06.022. E2E integration test — full stack dual concurrent permission resolve. Depends on S-026, S-027, S-022, S-018. UNBLOCKED as of D-226 (S-027 delivered)."
+    completed_at: "2026-06-03"
+    pr_url: "https://github.com/jmagady/monocle/pull/35"
+    notes: "Wave 7. BCs: BC-2.06.022. Validates holdout HS-EXP-008. PR #35 squash-merged to develop @ 48463fb (2026-06-03T04:35:15Z). 7-scenario E2E integration test (killer_scenario.rs). Production seam: setup_ipc_streams_with_rx + handle_server_message exposed #[doc(hidden)] pub. 3 consecutive CLEAN adversarial passes (BC-5.39.001) after 2 fix rounds closing EPIC-06 inbound-wiring defect class. Security review PASS (0 findings). All 9 CI checks green. S-029 spec v1.3 (story-writer). D-230. Wave 7 COMPLETE (4/4)."
 
   - id: S-031
     title: "Profile Picker: Sticky-Per-Project Selection + Ctrl-P Override"
@@ -425,14 +425,14 @@ stories:
 
 summary:
   total_stories: 33
-  not_started: 1
+  not_started: 0
   in_progress: 0
   review: 0
-  done: 31
+  done: 32
   ready: 0
   blocked: 1
   total_points: 195
-  points_complete: 187
+  points_complete: 192
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
@@ -480,6 +480,11 @@ summary:
   # - BC-INDEX.md pin: "1.19" → "1.21"; ARCH-INDEX.md pin: "1.0.11" → "1.0.16"; SS-tui.md pin: "1.6.0" → "1.7.0"
   # - traces_to_full: STORY-INDEX.md v4.0 → v4.4 (STORY-INDEX bumped after Pass 3 fixes)
   # - No story status or count changes
+  # v1.37 updates (2026-06-03):
+  # - S-029 flipped not_started → done (PR #35 squash-merged develop @ 48463fb; BC-2.06.022 satisfied;
+  #   7-scenario E2E integration test; 3 consecutive CLEAN adversarial passes; security review PASS; D-230)
+  # - done: 31 → 32; not_started: 1 → 0; points_complete: 187 → 192
+  # - Wave 7 COMPLETE: 4/4 stories done (23/23 pts). Wave-7-gate pending.
   # v1.36 updates (2026-06-01):
   # - S-031 flipped not_started → done (PR #33 squash-merged develop @ 8451486; BCs: BC-2.07.004/005 satisfied; 9-pass adversarial convergence 3 consecutive CLEAN; D-227)
   # - S-028 flipped not_started → done (PR #34 squash-merged develop @ 682e5e5; BCs: BC-2.05.002/004/BC-2.06.006/018 satisfied; 10-pass adversarial convergence + S-031 integration-merge + 3-cycle PR review; human-authorized scope expansion timestamp_micros + display_name; BC bumps BC-2.05.004 v1.1.0/BC-2.06.006 v1.1.0/BC-2.06.018 v1.1.0/SS-ipc v1.10.0; D-228)
