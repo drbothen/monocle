@@ -956,7 +956,15 @@ where
 /// to verify that `app.ipc_tx` is wired and messages flow through the write half).
 ///
 /// Returns `(reader_handle, writer_handle, inbound_rx)`.
-fn setup_ipc_streams_with_rx<R, W>(
+///
+/// # Integration test seam
+///
+/// Exposed as `pub` (with `#[doc(hidden)]`) so that external integration tests in
+/// `crates/monocle-tui/tests/` can retain the real `inbound_rx` and drive the full
+/// inbound dispatch path without duplicating channel setup. Not part of the stable
+/// public API — callers should pin to the `monocle-tui` crate version.
+#[doc(hidden)]
+pub fn setup_ipc_streams_with_rx<R, W>(
     app: &mut App,
     read_half: R,
     write_half: W,
@@ -1947,7 +1955,15 @@ pub async fn run() -> Result<()> {
 /// Returns `Ok(())` on successful dispatch, or `Err` if the message represents
 /// a fatal protocol violation (e.g., duplicate `InitialState`). The event loop
 /// treats an `Err` return as a connection-close signal.
-fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
+///
+/// # Integration test seam
+///
+/// Exposed as `pub` (with `#[doc(hidden)]`) so that external integration tests in
+/// `crates/monocle-tui/tests/` can call the real inbound dispatch router directly
+/// after injecting messages through the `inbound_rx` channel obtained from
+/// [`setup_ipc_streams_with_rx`]. Not part of the stable public API.
+#[doc(hidden)]
+pub fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
     match msg {
         ServerToClient::InitialState { .. } => {
             // BC-2.05.002 Invariant 1: a second InitialState on an already-initialized
