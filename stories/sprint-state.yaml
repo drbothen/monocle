@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.39"
+version: "1.40"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-03T08:00:00Z
@@ -431,6 +431,30 @@ stories:
     pr_url: "https://github.com/jmagady/monocle/pull/33"
     notes: "Wave 7. BCs: BC-2.07.004, BC-2.07.005. Sticky project profile + Ctrl-P picker. PR #33 squash-merged to develop @ 8451486. 9-pass adversarial convergence (3 consecutive CLEAN). D-227. Wave-7 gate PASSED D-232."
 
+  - id: S-032
+    title: "Daemon Event-Bus Fan-Out: Broadcast HookEventReceived with daemon timestamp_micros"
+    epic: EPIC-05
+    wave: 8
+    points: 5
+    status: draft
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 8 draft. BC-2.05.004 PC-2/INV-4 daemon producer obligation. Deferred from S-028 adversarial review. Does not block Phase 4 holdout evaluation. Excluded from Phase-3 totals by design."
+
+  - id: S-DAEMON-WIRE-FIX-001
+    title: "Second-Signal Exit Codes (SigtermDuringDrain=143, SigintDuringDrain=130)"
+    epic: EPIC-04
+    wave: 8
+    points: 5
+    status: draft
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 8 draft. Anchored deferral from daemon-wiring adversarial Round-3 HIGH-2. BC-2.01.004 PC-8/INV-4 second-signal exit-code paths. Code carries CONTRACT GAP (S-DAEMON-WIRE-FIX-001) markers in lifecycle.rs. Architect design seam: SS-daemon-wiring-impl.md §Fix Addendum Round 2 §HIGH-2 (two-phase signal loop, DaemonState.second_sigterm AtomicBool). Does not block Phase 4 holdout evaluation. Excluded from Phase-3 totals by design."
+
 summary:
   total_stories: 33
   not_started: 0
@@ -453,10 +477,19 @@ summary:
   wave_7_gate_decision: D-232
   wave_7_gate_date: "2026-06-03"
   phase_3_status: COMPLETE
-  # S-032 NOTE: S-032 (Wave 8, daemon event-bus fan-out, 5 pts, EPIC-05) is tracked in STORY-INDEX
-  #   as a draft story but is EXCLUDED from sprint-state Phase-3 totals (33 stories / 195 pts)
-  #   by design. S-032 discharges the deferred BC-2.05.004 v1.1.0 PC-2 obligation (timestamp_micros
-  #   daemon emit) and belongs to a post-Phase-3 wave. It does not block Phase 4 holdout evaluation.
+  # WAVE-8 EXCLUSION NOTE: S-032 and S-DAEMON-WIRE-FIX-001 are Wave 8 draft stories tracked in
+  #   STORY-INDEX but EXCLUDED from sprint-state Phase-3 totals (33 stories / 195 pts) by design.
+  #   S-032 (EPIC-05, 5 pts): discharges deferred BC-2.05.004 v1.1.0 PC-2 daemon fan-out obligation.
+  #   S-DAEMON-WIRE-FIX-001 (EPIC-04, 5 pts): anchored deferral for second-signal exit-code paths
+  #     (BC-2.01.004 PC-8/INV-4 SigtermDuringDrain=143 / SigintDuringDrain=130). Code carries
+  #     CONTRACT GAP markers in lifecycle.rs. Design seam: SS-daemon-wiring-impl.md §HIGH-2.
+  #   Neither blocks Phase 4 holdout evaluation.
+  # v1.40 updates (2026-06-03):
+  # - S-032 formal story entry added to stories list (previously only in STORY-INDEX; sprint-state
+  #   had no entry). Status: draft.
+  # - S-DAEMON-WIRE-FIX-001 created: anchored deferral for daemon-wiring adversarial Round-3 HIGH-2.
+  #   Story file: .factory/stories/S-DAEMON-WIRE-FIX-001-second-signal-exit-codes.md. Status: draft.
+  # - Summary note updated to cover both Wave-8 exclusions.
   # v1.39 updates (2026-06-03):
   # - LOW-003: added S-032 exclusion note to summary block (by design, not counted in Phase-3 totals).
   # - LOW-004: bulk story-file status corrections — 15 draft→done (S-001..S-015), 12 not_started→done

@@ -171,7 +171,7 @@ path is complete when S-028 + S-032 are both done.
 | BC-2.04.011 (event bus + drop counter) | ~1,500 |
 | SS-ipc.md v1.10.0 (message types + framing) <!-- version-pin-historical: authored against SS-ipc v1.10.0 at S-032 authoring time --> | ~3,000 |
 | SS-daemon-wiring.md v1.3.0 (fan-out task context) | ~2,000 |
-| SS-deps-pin-manifest.md v1.2.0 (version pins) | ~2,000 |
+| SS-deps-pin-manifest.md (version pins) | ~2,000 | <!-- version-pin-historical: authored against v1.2.0 at S-032 authoring time -->
 | `event_bus.rs` (current stub, ~200 lines) | ~800 |
 | `types.rs` (EventBusHookEvent, ~50 relevant lines) | ~300 |
 | `ipc_server.rs` (SubscriberList usage, ~80 relevant lines) | ~400 |
@@ -250,7 +250,7 @@ required.
 ## Architecture Compliance Rules
 
 Source: `architecture/SS-ipc.md v1.10.0`, `architecture/SS-daemon-wiring.md v1.3.0`, <!-- version-pin-historical: authored against SS-ipc v1.10.0 at S-032 authoring time -->
-`architecture/SS-deps-pin-manifest.md v1.2.0`.
+`architecture/SS-deps-pin-manifest.md`. <!-- version-pin-historical: authored against v1.2.0 at S-032 authoring time -->
 
 1. **Single clock capture per hook event (BC-2.05.004 INV-4 / SS-ipc.md §timestamp_micros):**
    One and only one `SystemTime::now()` or `chrono::Utc::now()` call per hook handler
@@ -282,8 +282,8 @@ Source: `architecture/SS-ipc.md v1.10.0`, `architecture/SS-daemon-wiring.md v1.3
 
 ## Library & Framework Requirements
 
-All versions from `SS-deps-pin-manifest.md v1.2.0` (authoritative source; never invent
-versions from training data):
+All versions from `SS-deps-pin-manifest.md` (authoritative source; never invent
+versions from training data): <!-- version-pin-historical: authored against v1.2.0 at S-032 authoring time -->
 
 | Library | Version | Usage in This Story | Pin Policy |
 |---------|---------|---------------------|------------|

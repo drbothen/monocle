@@ -80,11 +80,17 @@ SS-daemon-wiring:
   last_bump_commit: "58500b8397b0"
   last_bump_date: "2026-05-27"
 
+SS-daemon-wiring-impl:
+  path: specs/architecture/SS-daemon-wiring-impl.md
+  current_version: "1.3.0"
+  last_bump_commit: "[DAEMON-WIRE adversarial fix addendum Round 3 H1/M3/H2-doc/F-DW-HIGH-001]"
+  last_bump_date: "2026-06-03"
+
 SS-deps-pin-manifest:
   path: specs/architecture/SS-deps-pin-manifest.md
-  current_version: "1.2.0"
-  last_bump_commit: "f3533ce8d9311ab781f627f19ad23c836411cc8a"
-  last_bump_date: "2026-05-28"
+  current_version: "1.2.1"
+  last_bump_commit: "[S-029 daemon-wire-serve dep registration — tracing-subscriber prod + ureq/libc dev-deps]"
+  last_bump_date: "2026-06-03"
 
 SS-engine-module:
   path: specs/architecture/SS-engine-module.md
@@ -144,9 +150,9 @@ ADR-0008-structural-claim-discipline:
 
 ARCH-INDEX:
   path: specs/architecture/ARCH-INDEX.md
-  current_version: "1.0.25"
-  last_bump_commit: "[set at ADR-0008 v1.0.6 Pass 34 closure]"
-  last_bump_date: "2026-05-30"
+  current_version: "1.0.26"
+  last_bump_commit: "[D-235 daemon-wiring convergence 2026-06-03 — SS-daemon-wiring-impl.md Document Map row + S-DAEMON-WIRE-FIX-001 cross-ref]"
+  last_bump_date: "2026-06-03"
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
@@ -156,8 +162,8 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.31"
-  last_bump_commit: "[D-233 Phase-3→4 consistency cleanup 2026-06-03 — story-writer MED-001 Wave-2 status drift, MED-004 BC-2.05.004 overclaim, LOW-001 story-count, LOW-002 EPIC-05 S-032, LOW-005 EPIC-05 S-032 header]"
+  current_version: "5.32"
+  last_bump_commit: "[D-235 daemon-wiring convergence 2026-06-03 — S-DAEMON-WIRE-FIX-001 Wave-8 deferral anchor added, S-032 Wave-8 formalized, sprint-state v1.40]"
   last_bump_date: "2026-06-03"
 
 VP-INDEX:
@@ -728,3 +734,9 @@ S-030-config-crate-foundation:
   current_version: "1.1"
   last_bump_commit: "c6ec52a"
   last_bump_date: "2026-05-31"
+
+S-DAEMON-WIRE-FIX-001-second-signal-exit-codes:
+  path: stories/S-DAEMON-WIRE-FIX-001-second-signal-exit-codes.md
+  current_version: "1.0"
+  last_bump_commit: "[D-235 daemon-wiring convergence 2026-06-03 — HIGH-2 second-signal exit-codes deferral anchor; Wave 8 draft]"
+  last_bump_date: "2026-06-03"

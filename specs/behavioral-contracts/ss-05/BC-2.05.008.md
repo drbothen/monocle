@@ -133,7 +133,7 @@ of shared-memory crates), and a semgrep check in CI (detecting direct `libc::mma
 | L2 Domain Invariants | DI-007 (monocle must not write to harness-owned files — shared-memory primitives could theoretically be used to violate this; the prohibition on shared-memory in monocle-ipc upholds DI-007's spirit at the transport layer) |
 | Architecture Module | monocle-ipc (Transport trait, UdsTransport, `#![forbid(unsafe_code)]`) per ARCH-INDEX Subsystem Registry SS-05 |
 | Architecture Source | SS-ipc.md v1.11.0 §Transport Layer §Transport Trait; SS-ipc.md v1.11.0 §Phase 1 Transport Constraint |
-| Cross-Ref | SS-deps-pin-manifest.md v1.2.0 §cargo-deny rules (shared-memory deny list); SS-conventions-anti-patterns.md §Forbidden Patterns (shared-memory primitives) |
+| Cross-Ref | SS-deps-pin-manifest.md §cargo-deny rules (shared-memory deny list); SS-conventions-anti-patterns.md §Forbidden Patterns (shared-memory primitives) |
 | Test File | CI enforcement (cargo deny, semgrep, rustc compile gate) — not an integration test |
 | Test Name | `test_BC_2_05_008_uds_only_constraint` (static analysis CI job) |
 | Stories | S-TBD (filled by story-writer) |

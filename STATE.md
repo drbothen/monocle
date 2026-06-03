@@ -2,16 +2,16 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.83"
+version: "6.84"
 status: active
 producer: state-manager
-timestamp: 2026-06-03T12:00:00Z
+timestamp: 2026-06-03T14:00:00Z
 phase: phase-4-ACTIVE
-current_step: "D-234: DTU clone false-negative corrected. S-DTU-001 clone validated fidelity 1.0000 (25/25 fixtures, 5 endpoints). Gate-2 DTU-VALIDATION = PASS (was incorrectly recorded as SKIP). DTU-CLONE-STORY closed (RESOLVED-FALSE-PREMISE). Phase 4 Holdout Evaluation UNBLOCKED. PROC-DTU-VALIDATE-LOCATION process gap added. POL-11/POL-12 PASS. NEXT: Phase 4 Holdout Evaluation — vsdd-factory:phase-4-holdout-evaluation."
+current_step: "D-235: Daemon-wiring integration CONVERGED. monocle-runtime binary now actually serves (was a sleep-loop stub). main() wires daemon_start_sequence + run_server + UDS + tracing + durable ring-flush shutdown + 10s drain timeout. 16+ adversarial passes over 6 fix rounds. SS-daemon-wiring-impl v1.3.0, SS-deps-pin-manifest v1.2.1 (tracing-subscriber prod dep), ARCH-INDEX v1.0.26, STORY-INDEX v5.32, sprint-state v1.40. S-DAEMON-WIRE-FIX-001 (Wave 8) anchors HIGH-2 second-signal exit codes deferral. POL-11/POL-12 PASS. factory-artifacts pushed — daemon-wire code PR (feat/daemon-wire-serve) now safe to merge."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE. D-224: Wave-6 GATE PASSED (develop @ 2a51a91). D-225: STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to wave-7-READY; points 177→169/195 reconciled to sprint-state. D-226: S-027 DELIVERED (PR #32 @ 3787ebd) — Wave 7: 1/4 done. D-227: S-031 DELIVERED (PR #33 @ 8451486). D-228: S-028 DELIVERED (PR #34 @ 682e5e5) — Wave 7: 3/4 done. develop @ 682e5e5. D-229: Zero-context resume checkpoint — S-029 human-authorized 2026-06-02. develop @ 1158e24. D-230: S-029 DELIVERED (PR #35 @ 48463fb) — Wave 7 COMPLETE (4/4). 32/33 done (192/195 pts). develop @ 48463fb. D-231: Wave-7-gate prerequisite sweep complete — SS-ipc v1.11.0, BC-2.06.021 v1.0.7, BC-INDEX v1.34, STORY-INDEX v5.30, citation atomicity propagation. POL-11/POL-12 PASS. S-027/S-028 story frontmatter status fixed. D-232: Wave-7 gate PASSED — Phase 3 COMPLETE. 1514 tests, 0 failures. F-W7G3-MED-001 fixed (PR #37 @ 6811103). HS-EXP-008 score 1.0. DTU SKIP (DTU-CLONE-STORY added as Phase 4 prereq). sprint-state v1.38. D-233: Phase-3→4 consistency cleanup — EVAL-INDEX v1.9, STORY-INDEX v5.31, BC-HOOK-034 v1.0.2 (typo fix), sprint-state v1.39. 28 story-file status fields corrected. Input-hash refresh (113→0+17 bookkeeping-residual). POL-11/POL-12 PASS. All MED/LOW audit findings RESOLVED. D-234: DTU clone false-negative corrected — S-DTU-001 (cargo binary dtu-claude-code-hooks-v1) validated fidelity 1.0000 (25/25 fixtures). Gate-2 DTU-VALIDATION corrected from SKIP to PASS. DTU-CLONE-STORY closed (RESOLVED-FALSE-PREMISE). Phase 4 UNBLOCKED. dtu_clones_built updated. PROC-DTU-VALIDATE-LOCATION process gap added."
+traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE. D-224: Wave-6 GATE PASSED (develop @ 2a51a91). D-225: STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to wave-7-READY; points 177→169/195 reconciled to sprint-state. D-226: S-027 DELIVERED (PR #32 @ 3787ebd) — Wave 7: 1/4 done. D-227: S-031 DELIVERED (PR #33 @ 8451486). D-228: S-028 DELIVERED (PR #34 @ 682e5e5) — Wave 7: 3/4 done. develop @ 682e5e5. D-229: Zero-context resume checkpoint — S-029 human-authorized 2026-06-02. develop @ 1158e24. D-230: S-029 DELIVERED (PR #35 @ 48463fb) — Wave 7 COMPLETE (4/4). 32/33 done (192/195 pts). develop @ 48463fb. D-231: Wave-7-gate prerequisite sweep complete — SS-ipc v1.11.0, BC-2.06.021 v1.0.7, BC-INDEX v1.34, STORY-INDEX v5.30, citation atomicity propagation. POL-11/POL-12 PASS. S-027/S-028 story frontmatter status fixed. D-232: Wave-7 gate PASSED — Phase 3 COMPLETE. 1514 tests, 0 failures. F-W7G3-MED-001 fixed (PR #37 @ 6811103). HS-EXP-008 score 1.0. DTU SKIP (DTU-CLONE-STORY added as Phase 4 prereq). sprint-state v1.38. D-233: Phase-3→4 consistency cleanup — EVAL-INDEX v1.9, STORY-INDEX v5.31, BC-HOOK-034 v1.0.2 (typo fix), sprint-state v1.39. 28 story-file status fields corrected. Input-hash refresh (113→0+17 bookkeeping-residual). POL-11/POL-12 PASS. All MED/LOW audit findings RESOLVED. D-234: DTU clone false-negative corrected — S-DTU-001 (cargo binary dtu-claude-code-hooks-v1) validated fidelity 1.0000 (25/25 fixtures). Gate-2 DTU-VALIDATION corrected from SKIP to PASS. DTU-CLONE-STORY closed (RESOLVED-FALSE-PREMISE). Phase 4 UNBLOCKED. dtu_clones_built updated. PROC-DTU-VALIDATE-LOCATION process gap added. D-235: Daemon-wiring convergence — monocle-runtime binary now serves (main() wires daemon_start_sequence + run_server + UDS + tracing + ring-flush + 10s drain). SS-daemon-wiring-impl v1.3.0. SS-deps-pin-manifest v1.2.1. ARCH-INDEX v1.0.26. STORY-INDEX v5.32. sprint-state v1.40. S-DAEMON-WIRE-FIX-001 Wave-8 anchor. Resolved: ADV-W5GATE-HIGH-001, ADV-W3GATE-MED-002/004, ADV-W4GATE-MED-002, S-005-main-wiring, F-DW-HIGH-001. POL-11/POL-12 PASS."
 awaiting: "Phase 4 Holdout Evaluation — vsdd-factory:phase-4-holdout-evaluation. D-234: DTU clone validated (fidelity 1.0000), Phase 4 UNBLOCKED. Non-blocking open items: (a) e2e-tester HS-EXP-006-TTY-CAVEAT; (b) HUMAN ACTION ADR-HOOK-001-WIRING; (c) F-S027-DOC-002/003 implementer doc-comments; (d) SIGTERM-TERMINAL-RESTORE architectural gap."
 durable_task_register:
   outstanding:
@@ -26,14 +26,24 @@ durable_task_register:
       detail: "D-234: two independent agents (wave-7 Gate-2 dtu-validator and Phase-3→4 consistency-audit HIGH-001) produced false-negative DTU-missing verdicts by looking for a .factory/dtu-clones/ docker-style directory. They MISSED the cargo-binary clone delivered as S-DTU-001 (crates/monocle-test-harness/src/bin/dtu_server.rs, binary target dtu-claude-code-hooks-v1). DTU validation tooling must check the actual clone artifact location as recorded in the DTU story (target_module field) rather than assuming a fixed .factory/dtu-clones/ path. Routing: agent-prompt improvement for vsdd-factory:dtu-validator and vsdd-factory:consistency-validator. Target: self-improvement epic or upstream vsdd-factory issue. Non-blocking."
       blocking: false
     - id: "ADV-W5GATE-HIGH-001"
-      subject: "daemon_start_sequence() doesn't wire DaemonState — integration story needed"
-      status: pending
-      detail: "Wave 5 gate adversarial: daemon_start_sequence() in monocle-runtime does not wire DaemonState fields (sock_file_path, last_hook_ts, ring). Requires integration story. Route to story-writer for new story in Wave 6/7."
+      subject: "daemon_start_sequence() doesn't wire DaemonState — RESOLVED D-235"
+      status: resolved
+      detail: "RESOLVED D-235: main() now wires daemon_start_sequence + run_server + UDS listener + tracing subscriber + durable ring-flush shutdown + 10s drain timeout. DaemonState fields (sock_file_path, ring) are wired. 16+ adversarial passes over 6 fix rounds, converged. Code on feat/daemon-wire-serve (PR pending merge)."
       blocking: false
     - id: "ADV-W5GATE-HIGH-002"
-      subject: "Duplicate S-009 handler dead code — cleanup needed"
+      subject: "Duplicate S-009 handler dead code — cleanup needed (re-confirmed D-235)"
       status: pending
-      detail: "Wave 5 gate adversarial: S-009 HTTP handler has a duplicate code path. Dead code is non-functional. Route to implementer for cleanup fix-PR."
+      detail: "Wave 5 gate adversarial: S-009 HTTP handler has a duplicate code path. Dead code is non-functional. Re-confirmed still present during D-235 daemon-wiring adversarial review. Route to implementer for cleanup fix-PR."
+      blocking: false
+    - id: "F-DW-HIGH-001"
+      subject: "CI false-green — daemon integration test was a sleep loop — RESOLVED D-235"
+      status: resolved
+      detail: "RESOLVED D-235: daemon-e2e-affordances CI job added on feat/daemon-wire-serve branch catches the real serve path. The pre-daemon-wiring test suite was green because the daemon binary ran a sleep loop with no assertions on actual service behavior. Resolved by implementing the real main() wiring + wiring test coverage."
+      blocking: false
+    - id: "HIGH-2-SECOND-SIGNAL-DEFER"
+      subject: "Second-signal exit codes (143/130) during drain — DEFERRED to S-DAEMON-WIRE-FIX-001 (Wave 8)"
+      status: deferred-wave-8
+      detail: "D-235 daemon-wiring adversarial Round-3 HIGH-2: DaemonExit::SigtermDuringDrain (exit 143) and SigintDuringDrain (exit 130) variants are defined in BC-2.01.004 INV-4 monitoring contract but NOT produced — a second SIGTERM/SIGINT during graceful drain currently hits the OS default. Explicit human-authorized deferral per CANONICAL PRINCIPLE rule 3 (future story anchor required): S-DAEMON-WIRE-FIX-001 (Wave 8, P1, 5pts, EPIC-04). CONTRACT GAP markers in crates/monocle-runtime/src/lifecycle.rs. NOT a loose item."
       blocking: false
     - id: "ADV-W5GATE-MED-001"
       subject: "S-017 UDS socket creation spurious WARN on rebind"
@@ -91,9 +101,9 @@ durable_task_register:
       detail: "prost-types is a transitive dep but not explicitly registered in SS-deps-pin-manifest.md. Architect must add explicit pin."
       blocking: false
     - id: "S-005-main-wiring"
-      subject: "S-005 main.rs wiring: 10s drain timeout + second-signal detection + signal-path lock release"
-      status: pending
-      detail: "S-005 graceful shutdown implemented at library level. Requires main.rs wiring in integration story (Wave 3 or post-Wave-3)."
+      subject: "S-005 main.rs wiring: 10s drain timeout + second-signal detection + signal-path lock release — PARTIALLY RESOLVED D-235"
+      status: resolved
+      detail: "RESOLVED D-235: main() wires daemon_start_sequence + run_server + UDS + tracing + durable ring-flush + 10s drain timeout. Signal-path lock release wired. Second-signal exit codes (143/130) deferred to S-DAEMON-WIRE-FIX-001 (Wave 8) as documented HIGH-2 anchored deferral in SS-daemon-wiring-impl v1.3.0."
       blocking: false
     - id: "S-008-ADV-tempfile-spec"
       subject: "AC-003 tempfile::persist spec wording divergence"
@@ -126,9 +136,9 @@ durable_task_register:
       detail: "DaemonState.last_hook_ts field exists but hook handler paths never write it. Requires daemon wiring integration story."
       blocking: false
     - id: "ADV-W3GATE-MED-002"
-      subject: "Ring buffer DaemonState.ring never set to Some (main.rs stub)"
-      status: pending
-      detail: "DaemonState.ring is always None; ring_buffer_fill_pct always returns 0.0. Requires main.rs wiring."
+      subject: "Ring buffer DaemonState.ring never set to Some — RESOLVED D-235"
+      status: resolved
+      detail: "RESOLVED D-235: main() wires durable ring-flush shutdown + DaemonState.ring set to Some. ring_buffer_fill_pct now reflects actual ring state. Code on feat/daemon-wire-serve."
       blocking: false
     - id: "ADV-W3GATE-MED-003"
       subject: "Only 1/5 hook endpoints tested in running-mode full-stack path"
@@ -136,14 +146,14 @@ durable_task_register:
       detail: "Full-stack integration tests cover only pre-tool endpoint. 4/5 endpoints lack coverage. Phase 4 integration story."
       blocking: false
     - id: "ADV-W3GATE-MED-004"
-      subject: "ring_buffer_fill_pct hardcoded to 0.0"
-      status: pending
-      detail: "Metric always 0.0 because DaemonState.ring is never set. Same root cause as ADV-W3GATE-MED-002."
+      subject: "ring_buffer_fill_pct hardcoded to 0.0 — RESOLVED D-235"
+      status: resolved
+      detail: "RESOLVED D-235: same fix as ADV-W3GATE-MED-002 — ring wired in main(). ring_buffer_fill_pct now reflects real ring state."
       blocking: false
     - id: "ADV-W4GATE-MED-002"
-      subject: "tracing::error() no-ops in monocle CLI binary (no subscriber)"
-      status: pending
-      detail: "monocle CLI binary does not initialize a tracing subscriber. Fix: initialize subscriber at binary entry or replace with eprintln! for startup errors."
+      subject: "tracing::error() no-ops in monocle CLI binary (no subscriber) — RESOLVED D-235"
+      status: resolved
+      detail: "RESOLVED D-235: monocle-runtime main() now initializes a tracing subscriber (tracing-subscriber 0.3 added as prod dep in SS-deps-pin-manifest v1.2.1). CLI binary startup errors now emit to the subscriber."
       blocking: false
     - id: "HS-EXP-009-hint"
       subject: "Exit 70 missing stderr remediation hint for MONOCLE_RUNTIME_DIR"
@@ -384,7 +394,7 @@ durable_task_register:
     - "TALLY-GUARD (D-225): STATE running-tally must re-sum sprint-state per-story; summary.points_complete is a cache. Hand-increment drift produced +8 pts error + premature Phase-3-COMPLETE. L-W6-GATE-003."
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v6.83 (D-234) — 2026-06-03
+  ZERO-CONTEXT RESUME CHECKPOINT v6.84 (D-235) — 2026-06-03
   PHASE 4 ACTIVE — DTU VALIDATED — 32/33 STORIES — NEXT: Phase 4 Holdout Evaluation
   ============================================================================
 
@@ -409,7 +419,7 @@ next_session_resume_protocol: |
   factory-artifacts: run git -C .factory log -1 --format='%h %s' for live HEAD.
   32/33 stories done (192/195 pts, 98%). 1 blocked S-PHASE-3-PREP (upstream dep, does NOT block Phase 4).
   S-032 draft Wave 8 (daemon fan-out, does NOT block Phase 4).
-  sprint-state v1.39 (wave_7_gate_status: passed). STORY-INDEX v5.31. BC-INDEX v1.34 (113 BCs). EVAL-INDEX v1.9.
+  sprint-state v1.40. STORY-INDEX v5.32. BC-INDEX v1.34 (113 BCs). EVAL-INDEX v1.9.
   DTU: S-DTU-001 clone validated fidelity 1.0000 (25/25 fixtures, 5 endpoints). dtu_clones_built: 2026-05-28.
   Factory worktree: /Users/jmagady/Dev/monocle/.factory/ (orphan branch factory-artifacts)
 
@@ -435,18 +445,23 @@ next_session_resume_protocol: |
   (RESOLVED) F-S028-NIT-002-DEFERRED — same fix, index-space remap complete.
   (RESOLVED) DTU-CLONE-STORY — false-negative; S-DTU-001 clone exists and validated (D-234).
 
+  D-235 NOTE: Daemon-wiring CONVERGED. feat/daemon-wire-serve PR READY TO MERGE (factory-artifacts
+  already pushed; CI POL-11 will pass). S-DAEMON-WIRE-FIX-001 (Wave 8, P1, 5pts) anchors the
+  HIGH-2 second-signal exit codes deferral. ADV-W5GATE-HIGH-002 (duplicate dead handler) still open.
+
   REMAINING OPEN (non-blocking for Phase 4):
   (a) e2e-tester/demo-recorder: HS-EXP-006-TTY-CAVEAT — terminal restore TTY-backed harness.
   (b) HUMAN ACTION: ADR-HOOK-001-WIRING — wire scripts/validate_adr_self_consistency.sh into settings.json.
   (c) implementer: F-S027-DOC-002/003 — render_frame and overlay.rs stale docstrings.
   (d) SIGTERM-TERMINAL-RESTORE — Phase 4+ architectural item.
   (e) PROC-DTU-VALIDATE-LOCATION — agent-prompt improvement (non-blocking process gap).
+  (f) ADV-W5GATE-HIGH-002 — duplicate S-009 dead handler; implementer fix-PR (re-confirmed D-235).
 
   ARTIFACT VERSIONS (D-232 canonical; version-pin-registry.yaml is authoritative source):
     PRD v1.27.4 | SS-tui v1.8.2 | SS-ipc v1.11.0 | SS-conventions v1.32.6
-    SS-engine-module v1.1.26 | SS-deps-pin-manifest v1.2.0
-    ARCH-INDEX v1.0.25 | ADR-0007 v1.0.8 | ADR-0008 v1.0.6
-    BC-INDEX v1.34 (113 BCs) | STORY-INDEX v5.31 | EVAL-INDEX v1.9 | VP-INDEX v1.17
+    SS-engine-module v1.1.26 | SS-deps-pin-manifest v1.2.1 | SS-daemon-wiring-impl v1.3.0
+    ARCH-INDEX v1.0.26 | ADR-0007 v1.0.8 | ADR-0008 v1.0.6
+    BC-INDEX v1.34 (113 BCs) | STORY-INDEX v5.32 | EVAL-INDEX v1.9 | VP-INDEX v1.17
     BC-2.05.004 v1.1.0 | BC-2.06.006 v1.1.0 | BC-2.06.015 v1.0.7 | BC-2.06.016 v1.1.0
     BC-2.06.018 v1.1.0 | BC-2.06.019 v1.1.0 | BC-2.06.020 v1.1.0 | BC-2.06.021 v1.0.7
     BC-2.06.023 v1.5.1 | BC-2.06.024 v1.1.0 | BC-2.07.004 v1.0.2 | BC-2.07.005 v1.3.1
@@ -525,19 +540,21 @@ D-047 through D-221 archived at: `cycles/cycle-001/decisions-archive.md`, `cycle
 | D-232 | Wave-7 gate PASSED — Phase 3 TDD Implementation COMPLETE. Gate results: gate-1 PASS (1514 tests, 0 failures; clippy+fmt CLEAN), gate-2 SKIP (no DTU clone story — DTU-CLONE-STORY added as Phase 4 prereq; zero hook-boundary files touched), gate-3 PASS (0 CRIT/HIGH, 1 MED F-W7G3-MED-001 fixed in scope via PR #37 @ 6811103), gate-4 PASS (all 4 wave-7 demos), gate-5 PASS (HS-EXP-008 score 1.0), gate-6 PASS (this update), mutation-testing SKIP (strict-mode only). F-S028-NIT-002/NIT-002-DEFERRED both RESOLVED. sprint-state v1.37→v1.38 (wave_7_gate_status: passed). POL-11 PASS (248 active, 578 files). POL-12 PASS. NEXT: Phase 3→4 transition gate (consistency audit + human approval) → Phase 4. STATE v6.80→v6.81. | 2026-06-03 | state-manager |
 | D-233 | Phase-3→4 consistency cleanup — all MED/LOW audit findings RESOLVED. EVAL-INDEX v1.8→v1.9 (PO, S-027 input added). BC-HOOK-034 v1.0.1→v1.0.2 (PO, deprecated_by typo). STORY-INDEX v5.30→v5.31 (story-writer, 9 Wave-2 stories draft→done + BC-2.05.004 coverage PARTIAL + story-count fix + EPIC-05 S-032). sprint-state v1.38→v1.39 (S-032 exclusion note + LOW-004 bulk flip note). 28 story-file status fields corrected (15 draft→done, 12 not_started→done, 1 in_progress→done). version-pin-registry: EVAL-INDEX 1.9 + STORY-INDEX 5.31 anchors set + S-027 added. Input-hash refresh: 113+1 stale → 114 updated, 17 residual bookkeeping-class (convergence limit — not content drift; POL-11/POL-12 PASS). BC-HOOK-034-typo RESOLVED. STATE v6.81→v6.82. | 2026-06-03 | state-manager |
 | D-234 | DTU clone false-negative corrected — S-DTU-001 clone (dtu-claude-code-hooks-v1 cargo binary, crates/monocle-test-harness/src/bin/dtu_server.rs) validated on develop @ 90ae584: fidelity mean 1.0000 (25/25 fixtures, threshold 0.95), all 5 endpoints covered (pre-tool-use/notification/stop/session-start/prompt-submit), X-Claude-Code-Ide-Authorization header correct, BC-HOOK-034 filter passes, clippy + semgrep CLEAN. GATE-2 DTU-VALIDATION corrected from SKIP (false-negative) to PASS. Wave-7-gate-report.md Gate-2 annotated with D-234 correction. DTU-CLONE-STORY closed (RESOLVED-FALSE-PREMISE — blocking: false). dtu_clones_built updated to 2026-05-28. Phase 4 holdout-eval gate UNBLOCKED. Process gap: dtu-validator and consistency-validator searched for .factory/dtu-clones/ docker dir and missed cargo-binary clone location (S-DTU-001). PROC-DTU-VALIDATE-LOCATION added. POL-11/POL-12 PASS. STATE v6.82→v6.83. | 2026-06-03 | state-manager |
+| D-235 | Daemon-wiring integration CONVERGED — monocle-runtime binary now actually serves (was a sleep-loop stub). main() wires daemon_start_sequence + run_server + UDS listener + tracing subscriber (tracing-subscriber 0.3) + durable ring-flush shutdown + 10s drain timeout. 16+ adversarial passes over 6 fix rounds, converged to CLEAN. Code on feat/daemon-wire-serve (PR pending merge). Spec artifacts: SS-daemon-wiring-impl v1.3.0 (new — architect's implementation plan + Round 1/2/3 fix addenda), SS-deps-pin-manifest v1.2.1 (tracing-subscriber 0.3 prod dep + ureq/libc dev-deps), ARCH-INDEX v1.0.26 (SS-daemon-wiring-impl row), STORY-INDEX v5.32, sprint-state v1.40 (S-032 + S-DAEMON-WIRE-FIX-001 Wave-8 entries formalized). HIGH-2 second-signal exit codes (143/130) explicitly deferred to S-DAEMON-WIRE-FIX-001 (Wave 8, P1, 5pts). RESOLVED: ADV-W5GATE-HIGH-001 (DaemonState wiring), ADV-W3GATE-MED-002/004 (ring never Some), ADV-W4GATE-MED-002 (no tracing subscriber), S-005-main-wiring (partial), F-DW-HIGH-001 (CI false-green). ADV-W5GATE-HIGH-002 (duplicate dead handler) re-confirmed open. factory-artifacts pushed before daemon-wire code PR to satisfy CI POL-11. POL-11/POL-12 PASS. STATE v6.83→v6.84. | 2026-06-03 | state-manager |
 
 ## Key Tech Stack (D-229 canonical)
 
 ratatui 0.30 | crossterm 0.29 | tokio 1.52 | axum 0.8 | interprocess 2.4 | prost 0.14
 serde_yaml_ng 0.10 | wasmtime 44 | nucleo 0.5 | time 0.3.47 (RUSTSEC-2026-0009 floor)
-serde_json =1.0.149 | rand =0.8.6 | 28 pinned deps. SS-deps-pin-manifest v1.2.0.
+serde_json =1.0.149 | rand =0.8.6 | 28 pinned deps. SS-deps-pin-manifest v1.2.1 (D-235: +tracing-subscriber 0.3 prod, +ureq/libc dev-deps).
 MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44).
-**PRD v1.27.4** | **BC-INDEX v1.34** (113 BCs) | **ARCH-INDEX v1.0.25** | **SS-tui v1.8.2**
-**SS-ipc v1.11.0** | **SS-conventions v1.32.6** | **ADR-0007 v1.0.8** | **ADR-0008 v1.0.6** | **STORY-INDEX v5.31**
+**PRD v1.27.4** | **BC-INDEX v1.34** (113 BCs) | **ARCH-INDEX v1.0.26** | **SS-tui v1.8.2**
+**SS-ipc v1.11.0** | **SS-conventions v1.32.6** | **ADR-0007 v1.0.8** | **ADR-0008 v1.0.6** | **STORY-INDEX v5.32**
+**SS-deps-pin-manifest v1.2.1** | **SS-daemon-wiring-impl v1.3.0** (NEW)
 **BC-2.05.004 v1.1.0** | **BC-2.06.006 v1.1.0** | **BC-2.06.015 v1.0.7** | **BC-2.06.016 v1.1.0** | **BC-2.06.018 v1.1.0**
 **BC-2.06.019 v1.1.0** | **BC-2.06.020 v1.1.0** | **BC-2.06.021 v1.0.7** | **BC-2.06.023 v1.5.1** | **BC-2.06.024 v1.1.0**
 **BC-2.07.004 v1.0.2** | **BC-2.07.005 v1.3.1** | **BC-HOOK-034 v1.0.2** | **S-026 v1.11** | **S-027 v1.10** | **product-brief v1.4.34**
-**EVAL-INDEX v1.9** | **STORY-INDEX v5.31** | **sprint-state v1.39** (32/33 done, 192/195 pts; wave-7 gate PASSED D-232). **S-029 v1.3**. 62 codified disciplines. D-233: Phase-3→4 consistency cleanup COMPLETE.
+**EVAL-INDEX v1.9** | **STORY-INDEX v5.32** | **sprint-state v1.40** (32/33 done, 192/195 pts; wave-7 gate PASSED D-232). **S-029 v1.3**. 62 codified disciplines. D-235: Daemon-wiring CONVERGED. D-233: Phase-3→4 consistency cleanup COMPLETE.
 9 workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask, monocle-tui (S-025).
 
 ## Historical Content
@@ -554,7 +571,25 @@ MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44).
 | Resolved blocking issues | `cycles/cycle-001/blocking-issues-resolved.md` |
 | CODIFY-001 sweep protocol reference (Categories 1-11) | `cycles/cycle-001/burst-log.md` (D-207 archive) |
 
-## §Trace v6.83 (D-234 — DTU clone false-negative corrected; Phase 4 ACTIVE)
+## §Trace v6.84 (D-235 — Daemon-wiring CONVERGED; Phase 4 ACTIVE)
+
+**D-235 (2026-06-03):** Daemon-wiring integration CONVERGED. monocle-runtime binary
+now actually serves (was a sleep-loop stub). main() wires daemon_start_sequence + run_server
++ UDS listener + tracing subscriber (tracing-subscriber 0.3) + durable ring-flush shutdown
++ 10s drain timeout. 16+ adversarial passes over 6 fix rounds, converged to CLEAN.
+Code on feat/daemon-wire-serve (PR pending merge). Spec artifacts committed: SS-daemon-wiring-impl
+v1.3.0 (NEW — architect's implementation plan + Round 1/2/3 fix addenda); SS-deps-pin-manifest
+v1.2.1 (tracing-subscriber 0.3 as prod dep, ureq/libc as dev-deps); ARCH-INDEX v1.0.26
+(SS-daemon-wiring-impl Document Map row); STORY-INDEX v5.32 + sprint-state v1.40
+(S-DAEMON-WIRE-FIX-001 Wave-8 deferral anchor formalized, S-032 Wave-8 entry formalized).
+HIGH-2 second-signal exit codes (DaemonExit::SigtermDuringDrain exit 143 / SigintDuringDrain
+exit 130) explicitly deferred to S-DAEMON-WIRE-FIX-001 (Wave 8, P1, 5pts, EPIC-04) per
+CANONICAL PRINCIPLE rule 3. CONTRACT GAP markers in lifecycle.rs. RESOLVED: ADV-W5GATE-HIGH-001
+(DaemonState wiring), ADV-W3GATE-MED-002/004 (ring never Some), ADV-W4GATE-MED-002 (no tracing
+subscriber), S-005-main-wiring (partial), F-DW-HIGH-001 (CI false-green). ADV-W5GATE-HIGH-002
+(duplicate dead handler) re-confirmed still open. factory-artifacts pushed before daemon-wire code
+PR to satisfy CI POL-11 (SS-deps-pin-manifest v1.2.1 must be on factory-artifacts before CI runs).
+POL-11/POL-12 PASS. v6.83→v6.84.
 
 **D-234 (2026-06-03):** DTU clone false-negative corrected. S-DTU-001 (cargo binary
 dtu-claude-code-hooks-v1, crates/monocle-test-harness/src/bin/dtu_server.rs) validated on

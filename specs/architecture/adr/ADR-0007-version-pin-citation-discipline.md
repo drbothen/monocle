@@ -115,7 +115,7 @@ Permitted:   BC-2.06.005 §Postconditions
 Permitted:   SS-deps-pin-manifest.md §Phase-1-Pins
 Permitted:   SS-tui.md §AppMode-State-Machine
 Forbidden:   BC-2.06.005 v1.0.6 §Postconditions
-Forbidden:   SS-deps-pin-manifest.md v1.2.0
+Forbidden:   SS-deps-pin-manifest.md v1.2.1
 ```
 
 **One explicit exception — historical-anchor form (Form 2):**
@@ -127,10 +127,10 @@ are frozen at authoring time and are never updated as the cited document evolves
 This preserves the conformance record without creating drift pressure.
 
 ```
-Historical anchor (frozen at authoring):
+Historical anchor (frozen at authoring): <!-- version-pin-historical: example of historical-anchor form; version is intentionally frozen -->
   "implemented against SS-deps-pin-manifest.md v1.2.0 at S-025 authoring time (2026-05-29)"
 Active pointer (forbidden in new artifacts):
-  "see SS-deps-pin-manifest.md v1.2.0"  ← this form MUST NOT appear in new artifacts
+  "see SS-deps-pin-manifest.md v1.2.1"  ← this form MUST NOT appear in new artifacts
 ```
 
 **For existing artifacts (pre-D-204):**
@@ -407,7 +407,7 @@ In any artifact in the NORMATIVE scan scope (see §Enforcement Scan Scope) and N
 a `§Trace` section:
 
 - **Forbidden:** Active version-pin literals in artifact bodies, e.g.:
-  - `SS-deps-pin-manifest.md v1.2.0` (active pointer in body prose — must be unversioned)
+  - `SS-deps-pin-manifest.md v1.2.1` (active pointer in body prose — must be unversioned)
   - `BC-2.06.005 v1.0.6` (active pointer in body prose — must be unversioned)
   - `inputs: [{path: SS-tui.md, version: "1.8.2"}]` (active pointer in INDEX doc frontmatter — see §inputs[] Provenance Classification below)
 

@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "deps-pin-manifest"
 subsystem: cross-cutting
-version: "1.2.0"
+version: "1.2.1"
 status: complete
 producer: architect
 phase: pre-phase-1-architecture
@@ -52,6 +52,7 @@ All versions verified against crates.io REST API on 2026-05-12.
 | pulldown-cmark | 0.13 | Markdown rendering in TUI panels | caret pin |
 | arboard | 3 | Clipboard integration | caret pin |
 | tracing | 0.1 | Structured logging and instrumentation | caret pin |
+| tracing-subscriber | 0.3 | Tracing subscriber for `monocle-runtime` binary: initializes the `EnvFilter`-gated log subscriber in the daemon entry point so that `tracing::info!` / `tracing::warn!` calls are routed to stderr/stdout; resolves ADV-W4GATE-MED-002 ("no subscriber in runtime binary") | caret pin; declare as `tracing-subscriber = { version = "0.3", features = ["env-filter"] }` in `crates/monocle-runtime/Cargo.toml` (NOT workspace-level — subscriber initialization is binary-crate concern, not library-crate concern; library crates must not initialize global subscribers); `tracing-subscriber 0.3.23` is the current stable release (crates.io verified 2026-06-03); MSRV 1.65 — well within Phase 1 floor of Rust 1.88; no RUSTSEC advisory on 0.3.x line; license MIT; `tracing 0.1` is its sibling facade crate from tokio-rs/tracing — standard companion; S-029 (daemon-wire-serve) closure |
 | semver | 1 | Semantic version parsing | caret pin |
 | thiserror | 2 | Error type derivation | caret pin; 2.x major — do NOT pin to 1.x |
 | anyhow | 1 | Error propagation in binary crate | caret pin |
@@ -75,6 +76,8 @@ These crates do NOT appear in the production binary.
 | temp-env | 0.3 | Environment variable manipulation in integration tests with RAII cleanup — sync (`with_vars`) and async (`async_with_vars`) variants | caret pin (`^0.3`); feature `async_closure` required for `async_with_vars` API; `[dev-dependencies]` only; declare as `temp-env = { version = "^0.3", features = ["async_closure"] }` in `monocle-runtime/Cargo.toml`; required for BC-ENGINE-002-ERR test isolation (see SS-engine-module.md); bumped from `^0.2` in round-24 (F-R24-adv-1): `^0.2` exposed only synchronous `with_vars`; the async `enrich()` half of BC-ENGINE-002-ERR requires `async_with_vars` which is gated on the `async_closure` feature introduced in 0.3.0; latest 0.3.x is 0.3.6 (2023-09-24, not yanked, verified against crates.io API 2026-05-13) |
 | syn | 2.0 | AST audit tests for `#[non_exhaustive]` enum policy (S-011), FactoryAdapter trait surface (S-012), EngineModule trait surface (S-014) — production code does NOT depend on syn | caret pin (`^2.0`); `[dev-dependencies]` only; declare as `syn = { version = "2", features = ["full"] }` in the crates that declare AST audit tests (monocle-core, monocle-runtime); Phase 3.A architect dispatch — F-A-01 closure |
 | regex-lite | 0.1 | Lightweight regex engine for semver-format assertions in healthz integration tests (S-002); validates `X.Y.Z` pattern in `/health` response body | caret pin (`^0.1`); `[dev-dependencies]` only; declare inline in `monocle-runtime/Cargo.toml` (not `workspace = true`); follows temp-env precedent for test-only deps not promoted to workspace level; production code does NOT depend on regex-lite |
+| ureq | 2 | HTTP client for E2E integration test `daemon_e2e_serve` (S-029): fires real HTTP requests against the live daemon's hook-ingestion endpoint to validate the end-to-end permission overlay path (Ctrl-\ → VecDeque<PromptModal> → IPC write-back); caret pin (`^2`); declare as `ureq = { version = "2", features = ["json"] }` in `crates/monocle-runtime/Cargo.toml` `[dev-dependencies]`; does NOT appear in the production binary; Cargo.lock resolved to 2.12.1 on feat/daemon-wire-serve; no RUSTSEC advisory on 2.x line; license MIT OR Apache-2.0; production code does NOT depend on ureq; S-029 (daemon_e2e_serve E2E test) |
+| libc | 0.2 | Low-level POSIX bindings needed in daemon E2E test infrastructure for signal delivery (`libc::kill`) and process control in `daemon_e2e_serve` test harness (S-029); caret pin (`^0.2`); declare inline in `crates/monocle-runtime/Cargo.toml` `[dev-dependencies]`; does NOT appear in the production binary; production code uses `nix 0.30` (type-safe wrapper, already in manifest) for the liveness probe — `libc` is test-scope only and follows the nix-over-libc policy (production code must not call `libc::kill` directly per SS-conventions-anti-patterns.md forbidden-pattern); Cargo.lock resolved to 0.2.186 on feat/daemon-wire-serve; no RUSTSEC advisory on 0.2.x line; license MIT OR Apache-2.0; S-029 (daemon_e2e_serve E2E test) |
 
 ## Phase 2/3/4 Additions
 
@@ -164,6 +167,7 @@ graph TD
 
     runtime --> tokio
     runtime --> tracing
+    runtime --> tracing-subscriber
     runtime --> rand
     runtime --> constant_time_eq
     runtime --> core
@@ -921,3 +925,82 @@ v1.1.6 changes (round-22 fix F-R22-3):
 
 - SE-16b monotonicity check PASS: v1.1.22 → v1.2.0 is a monotonic increment.
 - SE-16d PASS: UTC ISO-8601 Z form, 2026-05-28T12:00:00Z >= chain high-water 2026-05-26T12:30:00Z. PASS.
+
+**§Trace v1.2.1** (2026-06-03T00:00:00Z) — S-029 daemon-wire-serve: `tracing-subscriber 0.3` production dep + `ureq 2` / `libc 0.2` dev-deps:
+
+- NORMATIVE: `tracing-subscriber 0.3` added to Phase 1 Pin Manifest (production dependency of `monocle-runtime`).
+  Root cause: story S-029 (daemon-wire-serve) delivers `BC-2.06.022` and the end-to-end killer scenario.
+  The implementer added `tracing-subscriber = { version = "0.3", features = ["env-filter"] }` as a
+  production dependency of `crates/monocle-runtime` (branch `feat/daemon-wire-serve`). The manifest
+  had no `tracing-subscriber` entry; without registration the canonical pin discipline is violated.
+  This addition also retroactively resolves ADV-W4GATE-MED-002 ("no tracing subscriber in runtime binary")
+  which was recorded as a durable follow-up in STATE.md.
+
+  Pin: caret `^0.3` per §Patch-Pinning Policy (not on untrusted-input deserialization path; not a
+  security-protocol boundary; not an async runtime; utility subscriber crate). Declared as
+  `tracing-subscriber = { version = "0.3", features = ["env-filter"] }` in `crates/monocle-runtime/Cargo.toml`
+  — NOT workspace-level because subscriber initialization is a binary-crate concern; library crates
+  must not initialize global subscribers (a library-crate tracing-subscriber dep would force subscriber
+  setup onto every consumer).
+
+  Version verification (2026-06-03 against Cargo.lock `feat/daemon-wire-serve` + crates.io):
+  - Latest 0.3.x: `0.3.23` (crates.io, Perplexity search 2026-06-03). Cargo.lock resolves to `0.3.23`.
+  - Checksum: `cb7f578e5945fb242538965c2d0b04418d38ec25c79d160cd279bf0731c8d319`.
+  - MSRV: Rust 1.65 — well within Phase 1 floor of Rust 1.88. PASS.
+  - RUSTSEC: no advisory on `tracing-subscriber` 0.3.x line. CLEAN.
+  - License: MIT. Compatible with monocle project license. PASS.
+
+  Dep graph edge added: `runtime --> tracing-subscriber` (in Workspace Dependency Graph Mermaid block).
+  `tracing-subscriber` is the standard companion to `tracing 0.1` from the tokio-rs/tracing repository;
+  both are maintained by the same team with synchronized releases. The `env-filter` feature enables
+  `RUST_LOG`-governed verbosity control at runtime.
+
+- NORMATIVE: `ureq 2` added to Dev Dependencies table (dev-dependency of `crates/monocle-runtime`).
+  Root cause: S-029 E2E integration test `daemon_e2e_serve` fires real HTTP requests against the live
+  daemon's hook-ingestion endpoint to validate the end-to-end production path (Ctrl-\ popup →
+  VecDeque<PromptModal> → IPC write-back). The test requires an HTTP client. `ureq` is the standard
+  minimal synchronous HTTP client used for this pattern in Rust test code.
+
+  Pin: caret `^2` per §Patch-Pinning Policy (dev-dep; not a production binary dep; not a
+  security-protocol boundary; standard test tooling). Declared as `ureq = { version = "2", features = ["json"] }`
+  in `crates/monocle-runtime/Cargo.toml` `[dev-dependencies]`.
+
+  Version verification (2026-06-03):
+  - Cargo.lock resolves to `2.12.1` (checksum `02d1a66277ed75f640d608235660df48c8e3c19f3b4edb6a263315626cc3c01d`).
+  - RUSTSEC: no advisory on `ureq` 2.x line. CLEAN.
+  - License: MIT OR Apache-2.0. Compatible. PASS.
+  - `cargo deny` / `cargo audit`: dev-deps are included in `Cargo.lock` and therefore scanned by
+    `cargo audit`. `ureq 2.12.1` will be audited on every PR and weekly scheduled scan.
+
+- NORMATIVE: `libc 0.2` added to Dev Dependencies table (dev-dependency of `crates/monocle-runtime`).
+  Root cause: S-029 E2E test harness (`daemon_e2e_serve`) uses POSIX signal delivery and process
+  control via `libc::kill` in the test scaffolding only. Production code uses `nix 0.30` (typed
+  POSIX wrapper) per the `nix-over-libc` policy in SS-conventions-anti-patterns.md; `libc` is
+  test-scope only and does not appear in any production code path.
+
+  Pin: caret `^0.2` per §Patch-Pinning Policy (dev-dep; utility bindings). Declared inline in
+  `crates/monocle-runtime/Cargo.toml` `[dev-dependencies]`.
+
+  Version verification (2026-06-03):
+  - Cargo.lock resolves to `0.2.186` (checksum `68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66`).
+  - RUSTSEC: no advisory on `libc` 0.2.x line. CLEAN.
+  - License: MIT OR Apache-2.0. Compatible. PASS.
+  - Note: `libc 0.2` is a transitive dependency of many workspace crates already (via `nix`, `tokio`,
+    `interprocess`, etc.); this dev-dep declaration makes the direct test usage explicit and auditable.
+
+- INFORMATIONAL: Version bump 1.2.0 → 1.2.1. Patch bump: new crate registrations only; no policy changes,
+  no MSRV changes, no security-policy changes.
+  - Production crate count: 32 → **33** (added `tracing-subscriber 0.3`).
+  - Dev-dep count: 3 → **5** (added `ureq 2`, `libc 0.2`).
+  - `runtime` node outbound edges: 15 → **16** (added `tracing-subscriber`; tokio, tracing,
+    tracing-subscriber, rand, constant_time_eq, core, proto, ipc, async_trait, tempfile, serde_json,
+    directories, nix, axum, serde, chrono).
+
+- cargo-deny / cargo-audit scope note: all three new crates (`tracing-subscriber`, `ureq`, `libc`)
+  appear in `Cargo.lock` regardless of prod/dev scope. `cargo audit` scans the full lockfile on every
+  PR. `cargo deny check` (licenses, advisories, bans) covers both prod and dev deps. No additional
+  `deny.toml` configuration is required for these crates: their licenses (MIT / MIT OR Apache-2.0)
+  are already in the allow-list, and they carry no active RUSTSEC advisories.
+
+- SE-16b monotonicity check PASS: v1.2.0 → v1.2.1 is a monotonic increment.
+- SE-16d PASS: UTC ISO-8601 Z form, 2026-06-03T00:00:00Z >= chain high-water 2026-05-28T12:00:00Z. PASS.

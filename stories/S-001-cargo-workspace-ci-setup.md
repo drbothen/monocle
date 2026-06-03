@@ -39,7 +39,7 @@ inputs:
   - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
   - {path: .factory/specs/dtu-assessment.md, version: "1.7.5"}
 input-hash: "[live-state]"
-traces_to: "Implements NFR-007 (CI green-builds, MSRV pin), NFR-008 (build-time matrix); establishes workspace structure invariants for all Phase 1 crates; enforces SS-deps-pin-manifest.md v1.2.0 EXACT-pin policy."
+traces_to: "Implements NFR-007 (CI green-builds, MSRV pin), NFR-008 (build-time matrix); establishes workspace structure invariants for all Phase 1 crates; enforces SS-deps-pin-manifest.md EXACT-pin policy."
 ---
 
 # S-001: Cargo Workspace Init + CI/DevOps Setup
@@ -103,7 +103,7 @@ appears in NO architectural source-of-truth; SS-deps-pin-manifest.md already dec
 one-function helper. `monocle-tui` is NOT declared as a Phase 1 workspace member per
 product-brief.md Phase 1 scope.
 
-### AC-006 (dependency manifest compliance — SS-deps-pin-manifest.md v1.2.0)
+### AC-006 (dependency manifest compliance — SS-deps-pin-manifest.md) <!-- version-pin-historical: S-001 implemented against v1.2.0 at Wave-1 authoring time -->
 `Cargo.toml` workspace `[workspace.dependencies]` table uses the Cargo 2021+ recommended
 pattern: workspace-level declarations, member crates inherit via `{ workspace = true }`.
 The following EXACT-pinned security-sensitive crates (per Patch-Pinning Policy, 9 crates)
@@ -112,7 +112,7 @@ are declared in workspace `[workspace.dependencies]`:
 - `axum = "=0.8.9"` (EXACT)
 - `serde_json = "=1.0.149"` (EXACT)
 - `rand = "=0.8.6"` (EXACT)
-- `prost = "=0.14.1"` (EXACT; workspace-declared for monocle-proto crate per SS-deps-pin-manifest.md v1.2.0 L33-74)
+- `prost = "=0.14.1"` (EXACT; workspace-declared for monocle-proto crate per SS-deps-pin-manifest.md §Phase-1-Pins) <!-- version-pin-historical: S-001 implemented against v1.2.0 at Wave-1 authoring time -->
 - `bytes = "1.11"` (caret; direct workspace pin overrides prost-transitive; closes RUSTSEC-2026-0007 per SS-deps-pin-manifest.md §RUSTSEC Audit Context)
 - `wasmtime = "=44.0.1"` (EXACT; workspace-declared but NOT added to any Phase 1 member crate's `[dependencies]`; activated at Phase 3 plugin SDK boundary)
 - `russh = "=0.60.2"` (EXACT; workspace-declared but NOT added to any Phase 1 member crate's `[dependencies]`; activated at Phase 4 federation boundary)
@@ -120,10 +120,10 @@ are declared in workspace `[workspace.dependencies]`:
 
 NOTE: `rmcp` is OMITTED from Phase 1 workspace entirely per OQ-09 (Phase 4 only).
 
-All other Phase 1 crates use caret pins per SS-deps-pin-manifest.md v1.2.0 L33-74 (Phase 1 Pin Manifest table).
+All other Phase 1 crates use caret pins per SS-deps-pin-manifest.md §Phase-1-Pins (Phase 1 Pin Manifest table). <!-- version-pin-historical: S-001 implemented against v1.2.0 at Wave-1 authoring time -->
 `temp-env = { version = "^0.3", features = ["async_closure"] }` MUST be declared in
 `monocle-runtime/Cargo.toml` `[dev-dependencies]` (NOT workspace dependencies; it is a
-test-only crate). Pin: caret `^0.3` per SS-deps-pin-manifest.md v1.2.0 L33-74.
+test-only crate). Pin: caret `^0.3` per SS-deps-pin-manifest.md §Phase-1-Pins. <!-- version-pin-historical: S-001 implemented against v1.2.0 at Wave-1 authoring time -->
 
 ### AC-007 (cargo audit CI gate)
 `.github/workflows/audit.yml` exists with `cron: '0 0 * * 0'` (weekly) running
@@ -135,7 +135,7 @@ test-only crate). Pin: caret `^0.3` per SS-deps-pin-manifest.md v1.2.0 L33-74.
 | Component | Tokens |
 |-----------|--------|
 | This story spec | ~1,100 |
-| SS-deps-pin-manifest.md v1.2.0 (full) | ~9,976 |
+| SS-deps-pin-manifest.md v1.2.0 (full) | ~9,976 | <!-- version-pin-historical: at S-001 authoring time -->
 | SS-daemon-lifecycle.md v1.0.33 (workspace scope section) | ~2,000 |
 | SS-conventions-anti-patterns.md v1.29.5 (CI enforcement section) | ~1,000 | <!-- version-pin-historical: at S-001 authoring time -->
 | Cargo.toml template + toolchain files | ~500 |
@@ -158,7 +158,7 @@ Well within 20% of 200k context window. No split required.
   profile = "minimal"
   ```
 - [ ] Declare all 9 EXACT-pin security-sensitive crates in workspace `[workspace.dependencies]`
-  per SS-deps-pin-manifest.md v1.2.0 L33-74 (Phase 1 Pin Manifest table)
+  per SS-deps-pin-manifest.md §Phase-1-Pins (Phase 1 Pin Manifest table) <!-- version-pin-historical: S-001 implemented against v1.2.0 at Wave-1 authoring time -->
 - [ ] Declare `wasmtime = "=44.0.1"` and `russh = "=0.60.2"` in workspace `[workspace.dependencies]`
   but do NOT add them to any Phase 1 member crate's `[dependencies]`; they are workspace-declared
   for Phase 3 (wasmtime plugin SDK) and Phase 4 (russh federation) availability

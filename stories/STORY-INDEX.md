@@ -1,10 +1,10 @@
 ---
 document_type: story-index
 level: L4
-version: "5.31"
+version: "5.32"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-06-03T04:35:15Z
+timestamp: 2026-06-03T08:30:00Z
 phase: 2
 inputs:
   - .factory/specs/prd.md
@@ -35,7 +35,7 @@ traces_to: .factory/specs/prd.md
 | EPIC-01 | Daemon Lifecycle | CAP-001 | SS-01 | S-001, S-002, S-003, S-004, S-005, S-006, S-007, S-008, S-009 |
 | EPIC-02 | Core Types and ABI | CAP-002 | SS-02 | S-010, S-011, S-012, S-013 |
 | EPIC-03 | Engine Module | CAP-003 | SS-03 | S-014, S-015 |
-| EPIC-04 | Daemon Wiring | CAP-004 | SS-04 | S-016, S-017, S-018, S-019, S-020 |
+| EPIC-04 | Daemon Wiring | CAP-004 | SS-04 | S-016, S-017, S-018, S-019, S-020, S-DAEMON-WIRE-FIX-001 |
 | EPIC-05 | IPC | CAP-005 | SS-05 | S-021, S-022, S-023, S-032 |
 | EPIC-06 | TUI | CAP-006 | SS-06 | S-024, S-025, S-026, S-027, S-028, S-029 |
 | EPIC-07 | Config | CAP-007 | SS-07 | S-030, S-031 |
@@ -80,10 +80,11 @@ traces_to: .factory/specs/prd.md
 | S-029 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | EPIC-06 | 5 | 7 | done | — |
 | S-031 | Profile Picker: Sticky-Per-Project Selection + Ctrl-P Override | EPIC-07 | 5 | 7 | done | — |
 | S-032 | Daemon Event-Bus Fan-Out: Broadcast HookEventReceived with daemon timestamp_micros | EPIC-05 | 5 | 8 | draft | — |
+| S-DAEMON-WIRE-FIX-001 | Second-Signal Exit Codes (SigtermDuringDrain=143, SigintDuringDrain=130) | EPIC-04 | 5 | 8 | draft | — |
 
-**Total stories:** 34 (32 product + 1 DTU + 1 prep)
-**Total points (product):** 194 (excl. DTU 3 pts and PREP 3 pts)
-**Total points (all):** 200
+**Total stories:** 35 (33 product + 1 DTU + 1 prep)
+**Total points (product):** 199 (excl. DTU 3 pts and PREP 3 pts)
+**Total points (all):** 205
 
 ## Wave Summary
 
@@ -97,7 +98,7 @@ traces_to: .factory/specs/prd.md
 | Wave 5 | S-017, S-018, S-019, S-020, S-021 | 34 | Daemon integration — S-017 (serial prerequisite), then S-018, S-019, S-020, S-021 (parallel after S-017). 34 pts. |
 | Wave 6 | S-022, S-023, S-025, S-026 | 34 | IPC + TUI integration — S-022 (serial prerequisite), then S-023 + S-025 (parallel after S-022), then S-026 (after S-023 + S-022). 34 pts. |
 | Wave 7 | S-027, S-028, S-029, S-031 | 23 | Polish: overlay rendering, filter, killer scenario, profile picker (parallel-eligible within wave) |
-| Wave 8 | S-032 | 5 | Post-Phase-3 follow-up: daemon event-bus fan-out live wiring (discharges deferred S-028 BC-2.05.004 obligation) |
+| Wave 8 | S-032, S-DAEMON-WIRE-FIX-001 | 10 | Post-Phase-3 follow-up: daemon event-bus fan-out live wiring (S-032) + second-signal exit-code fix anchored deferral (S-DAEMON-WIRE-FIX-001) |
 
 ## BC Coverage Table
 
@@ -106,7 +107,7 @@ traces_to: .factory/specs/prd.md
 | BC-2.01.001 | Healthz Endpoint | S-002 | AC-001..AC-006 | YES |
 | BC-2.01.002 | Status Endpoint | S-003 | AC-001, AC-005, AC-006, AC-007, AC-008 | YES |
 | BC-2.01.003 | Body Size Limit | S-004 | AC-001..AC-006 | YES |
-| BC-2.01.004 | Graceful Shutdown | S-005 | AC-001..AC-006 | YES |
+| BC-2.01.004 | Graceful Shutdown | S-005, S-DAEMON-WIRE-FIX-001 | S-005: AC-001..AC-006 (library-level drain + exit codes 0/1/2); S-DAEMON-WIRE-FIX-001: AC-001..AC-008 (second-signal exit codes 143/130 — PC-8/INV-4 second-signal paths deferred; code carries CONTRACT GAP marker) | PARTIAL (PC-8/INV-4 second-signal paths deferred to S-DAEMON-WIRE-FIX-001 Wave 8) |
 | BC-2.01.005 | Lock File Atomic Lifecycle | S-006 | AC-001..AC-009 | YES |
 | BC-2.01.006 | Crash Recovery Checkpoint | S-007 | AC-001..AC-010 | YES |
 | BC-2.01.007 | JSONL Ring Format Version | S-008 | AC-001..AC-007 | YES |
@@ -186,8 +187,8 @@ traces_to: .factory/specs/prd.md
 | BC-HOOK-007 | Exactly Five Hook Types Registered; PostToolUse Intentionally Absent | S-DTU-001 | AC-001 | YES |
 | BC-HOOK-008..BC-HOOK-041 | Hooks-settings.json encoding, path, lifecycle, timeout, env, edge cases | S-DTU-001 | AC-001..AC-006 (fidelity gate) | YES |
 
-**BC Coverage: 22/22 product BCs Waves 1-3 (100%); 49/50 product BCs Waves 4-7 (BC-2.06.017 deferred — see GAP-P2-005; BC-2.06.024 added); 41/41 DTU gene-source BCs (100%); BC-2.05.004 PARTIAL — daemon producer path (PC-2/INV-4) deferred to S-032 Wave 8**
-**Total product BC coverage: 71/72 (BC-2.06.017 gap — GAP-P2-005; BC-2.06.024 covered by S-027). BC-2.05.004 partial: S-021 (types) + S-028 (TUI consumer) done; S-032 (daemon producer PC-2/INV-4) Wave 8 draft — full coverage when S-032 delivered.**
+**BC Coverage: 22/22 product BCs Waves 1-3 (100%); 49/50 product BCs Waves 4-7 (BC-2.06.017 deferred — see GAP-P2-005; BC-2.06.024 added); 41/41 DTU gene-source BCs (100%); BC-2.05.004 PARTIAL — daemon producer path (PC-2/INV-4) deferred to S-032 Wave 8; BC-2.01.004 PARTIAL — second-signal exit-code paths (PC-8/INV-4) deferred to S-DAEMON-WIRE-FIX-001 Wave 8**
+**Total product BC coverage: 69/72 (BC-2.06.017 gap — GAP-P2-005; BC-2.05.004 partial — S-032 Wave 8; BC-2.01.004 partial — S-DAEMON-WIRE-FIX-001 Wave 8). Full coverage when S-032 and S-DAEMON-WIRE-FIX-001 both delivered.**
 
 ## VP Coverage Table
 
@@ -452,6 +453,21 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.32
+
+**S-DAEMON-WIRE-FIX-001 CREATED — anchored deferral for second-signal exit codes** (2026-06-03):
+
+- S-DAEMON-WIRE-FIX-001 (Second-Signal Exit Codes SigtermDuringDrain=143 / SigintDuringDrain=130, EPIC-04, 5 pts, Wave 8, draft) created to discharge the daemon-wiring adversarial Round-3 HIGH-2 finding that deferred implementing second-signal detection.
+- Context: `DaemonExit::SigtermDuringDrain` (exit 143) and `DaemonExit::SigintDuringDrain` (exit 130) variants are defined and documented in BC-2.01.004 INV-4 (monitoring contract) but NOT produced — a second SIGTERM/SIGINT during graceful drain currently hits the OS default rather than yielding 143/130. Code carries `// CONTRACT GAP (S-DAEMON-WIRE-FIX-001)` markers at the two variant doc-comments in `crates/monocle-runtime/src/lifecycle.rs`. The architect's design seam is specified in `SS-daemon-wiring-impl.md` §Fix Addendum Round 2 §HIGH-2.
+- EPIC-04 Stories column updated: `S-016, S-017, S-018, S-019, S-020` → `S-016, S-017, S-018, S-019, S-020, S-DAEMON-WIRE-FIX-001`.
+- BC-2.01.004 coverage updated from `YES` (S-005) to `PARTIAL` (S-005 + S-DAEMON-WIRE-FIX-001): PC-8/INV-4 second-signal exit-code paths now anchored to S-DAEMON-WIRE-FIX-001 Wave 8.
+- Wave 8 summary updated: `S-032` (5 pts) → `S-032, S-DAEMON-WIRE-FIX-001` (10 pts total).
+- Story totals: 34 → 35 stories; 194 → 199 product pts; 200 → 205 total pts.
+- SS-daemon-wiring-impl.md v1.3.0 verified in version-pin-registry.yaml (key: `SS-daemon-wiring-impl`, registered by architect during daemon-wiring adversarial rounds). ARCH-INDEX v1.0.25 does NOT contain a Document Map row for `SS-daemon-wiring-impl.md` — this is flagged below; see ARCH-INDEX gap note.
+- SE-16d monotonicity: v5.32 timestamp 2026-06-03 >= v5.31 timestamp 2026-06-03. PASS (same-day).
+
+**ARCH-INDEX gap (story-writer flag for architect):** `SS-daemon-wiring-impl.md` v1.3.0 exists in `.factory/specs/architecture/` and is registered in `version-pin-registry.yaml` but is NOT present in the ARCH-INDEX.md Document Map table or Cross-References table. This is a routing gap — downstream agents (implementer, test-writer) consulting ARCH-INDEX will not discover this document. The architect must add the row to ARCH-INDEX in the next burst; this has been addressed by the story-writer as part of this burst (see ARCH-INDEX update below).
 
 ## §Trace v5.31
 

@@ -1,10 +1,10 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.25"
+version: "1.0.26"
 status: active
 producer: vsdd-factory:architect
-timestamp: 2026-05-29T12:00:00Z
+timestamp: 2026-06-03T08:30:00Z
 phase: phase-1-expansion
 inputs: [product-brief.md, prd.md]
 input-hash: "da60462"
@@ -27,6 +27,7 @@ project: monocle
 | Core Types and ABI | SS-core-types-and-abi.md | ~10,072 | implementer, formal-verifier | Forward-compatible wire formats, factory abstractions, protocol versioning |
 | Engine Module | SS-engine-module.md | ~15,013 | implementer, formal-verifier | EngineModule trait, ClaudeCodeModule adapter, harness abstraction |
 | Daemon Wiring | SS-daemon-wiring.md | ~4,800 | orchestrator, implementer, test-writer | Composition root: CLI surface, daemon start sequence, event bus, hooks-settings.json |
+| Daemon Wiring Implementation | SS-daemon-wiring-impl.md | ~16,000 | implementer, test-writer | Phase-3 implementer execution plan: listener seam decision, main.rs pseudo-structure, adversarial fix addenda (C1 dead event bus, C2 10s drain timeout, I1 in-process fallback, Round-2 CRITICAL-1 ring flush drain, HIGH-2 second-signal exit codes — anchored to S-DAEMON-WIRE-FIX-001, Round-3 H1/M3) |
 | IPC | SS-ipc.md | ~3,200 | implementer, test-writer | UDS transport, framing protocol, message types, reconnection, SOQ-3 overlay clear |
 | TUI | SS-tui.md | ~5,200 | implementer, test-writer, formal-verifier | AppMode state machine, Action dispatch, panels, permission overlay, Ctrl-\ integration |
 | Dependency Manifest | SS-deps-pin-manifest.md | ~9,976 | implementer, devops-engineer | Version pins, MSRV policy, workspace dependency graph |
@@ -45,6 +46,7 @@ project: monocle
 | Phase 3+ upgrade impact | SS-forward-compatibility.md + SS-deps-pin-manifest.md |
 | Code review enforcement rules | SS-conventions-anti-patterns.md |
 | Daemon binary wiring (composition root) | SS-daemon-wiring.md + SS-daemon-lifecycle.md + SS-engine-module.md |
+| Daemon binary implementer execution plan (main.rs wiring) | SS-daemon-wiring-impl.md + SS-daemon-wiring.md + SS-daemon-lifecycle.md |
 | IPC protocol (TUI ↔ daemon transport) | SS-ipc.md + SS-daemon-wiring.md |
 | TUI implementation (panels + overlay) | SS-tui.md + SS-ipc.md + SS-core-types-and-abi.md + SS-deps-pin-manifest.md |
 | Config crate implementation | SS-config.md + SS-deps-pin-manifest.md + SS-conventions-anti-patterns.md |
@@ -664,6 +666,26 @@ tracked (not a silent-blindness path). No operative Phase-1 gate behavior change
   authored and its content cross-referenced in SS-conventions-anti-patterns.md v1.31.x but
   the ARCH-INDEX table row was never added. This entry closes the gap.
 - SE-16d PASS: 2026-05-29T08:00:00Z > chain high-water 2026-05-27T00:00:00Z (monotonic).
+## §Trace v1.0.26
+
+**SS-daemon-wiring-impl.md registered in Document Map + S-DAEMON-WIRE-FIX-001 anchor noted** (2026-06-03):
+
+- NORMATIVE: Document Map updated to include `SS-daemon-wiring-impl.md` v1.3.0. This file
+  was created by the architect during daemon-wiring adversarial convergence rounds on
+  `feat/daemon-wire-serve` and registered in `version-pin-registry.yaml` (key: `SS-daemon-wiring-impl`)
+  but was NOT present in the ARCH-INDEX Document Map. Downstream agents consulting ARCH-INDEX
+  could not discover it — this is the routing gap flagged by story-writer in STORY-INDEX §Trace v5.32.
+- NORMATIVE: Cross-References table updated: added row "Daemon binary implementer execution plan
+  (main.rs wiring)" → `SS-daemon-wiring-impl.md + SS-daemon-wiring.md + SS-daemon-lifecycle.md`.
+- INFORMATIONAL: S-DAEMON-WIRE-FIX-001 (Wave 8, draft) is the anchored deferral target for
+  the `SS-daemon-wiring-impl.md §Fix Addendum Round 2 §HIGH-2` second-signal exit-code finding.
+  `DaemonExit::SigtermDuringDrain` (exit 143) and `SigintDuringDrain` (exit 130) variants are
+  defined but not yet produced in the runtime path. Code carries `// CONTRACT GAP (S-DAEMON-WIRE-FIX-001)`
+  markers in `crates/monocle-runtime/src/lifecycle.rs`.
+- NORMATIVE: ARCH-INDEX version 1.0.25 → 1.0.26.
+- NORMATIVE: version-pin-registry.yaml: ARCH-INDEX → v1.0.26 (update in same burst).
+- SE-16d PASS: 2026-06-03 >= chain high-water 2026-05-30. ARITHMETICALLY TRUE: PASS.
+
 ## §Trace v1.0.25
 
 **ADR-0008 v1.0.6 — Pass 34 MED-001 closure (§Form-Coverage Matrix DEFERRED label + qualified invariant)** (2026-05-30):
