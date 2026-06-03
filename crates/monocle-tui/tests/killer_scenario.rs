@@ -8,17 +8,42 @@
 //! BC-2.06.022: Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve.
 //! Every test drives the REAL production handler chain — NOT isolated helpers.
 //!
-//! # Production path exercised
+//! # Production path exercised per test
 //!
-//! Every async test drives at minimum:
-//!   - `setup_ipc_streams_with_rx` (wires app.ipc_tx + returns inbound_rx from real socket)
-//!   - `spawn_ipc_reader` (real reader task that drains the UDS socket)
+//! ## Async tests with socket-queued prompts (accept, multi_prompt, accept_always)
+//!
+//! These tests connect with an empty `InitialState`, then have the `MockDaemon` write
+//! `ServerToClient::PermissionPromptQueued` frames over the real UDS socket. Each frame
+//! is drained via `inbound_rx.recv()` and dispatched through:
 //!   - `handle_server_message` (real inbound dispatch router)
-//!   - `on_permission_prompt_queued` (IPC receive → overlay_stack push + mode transition)
-//!   - `dispatch_key_event` (key → PermissionDecision send via ipc_tx)
-//!   - `on_permission_prompt_resolved` (reached THROUGH handle_server_message dispatch)
-//!   - `on_transport_event(Disconnected)` (for AC-004 disconnect tests; reached from
-//!     the Err arm of inbound_rx — mirroring the run() loop's Ok(Err(e)) dispatch path)
+//!   - `on_permission_prompt_queued` (reached THROUGH `handle_server_message` at app.rs ~1987)
+//!
+//! After prompts are queued over the socket, the tests also exercise:
+//!   - `dispatch_key_event` (key → `send_permission_decision` → `ipc_tx`)
+//!   - `on_permission_prompt_resolved` (reached THROUGH `handle_server_message` dispatch)
+//!
+//! ## accept_always test (KS-001/KS-002)
+//!
+//!   - `'A'` key → `Action::PermissionAcceptAlways` → `send_permission_decision(AcceptAlways)`
+//!   - `ClientToServer::PermissionDecision { decision: AcceptAlways }` arrives at MockDaemon
+//!   - `'y'` key resolves P2 → `Allow` → Dashboard
+//!
+//! ## disconnect test (AC-004)
+//!
+//!   - `on_transport_event(Disconnected)` (reached from the Err arm of `inbound_rx`)
+//!
+//! ## edit_diff test (AC-006)
+//!
+//!   - `on_permission_prompt_queued` called DIRECTLY (not over socket) — headless render test
+//!   - `render_overlay_widget` → `render_edit_payload` → `similar` LINE diff
+//!
+//! ## isolation test (AC-007)
+//!
+//!   - `tempfile::TempDir` isolation; two independent socket paths, no cross-contamination.
+//!
+//! ## ESC no-reject test (AC-005)
+//!
+//!   - `dispatch_key_event(Esc)` x3 → identity; no IPC send; `received_rx` stays empty.
 //!
 //! # Test isolation (AC-007 / BC-2.06.022 INV-1)
 //!
@@ -300,25 +325,30 @@ const SHORT_TIMEOUT: Duration = Duration::from_millis(500);
 // AC-002 / BC-2.06.022 PC-2 — killer_scenario_accept (full 8-step happy path)
 //
 // Production path (REAL socket through REAL dispatch):
-//   on_permission_prompt_queued → dispatch_key_event('y') → send_permission_decision
+//   MockDaemon writes PermissionPromptQueued → spawn_ipc_reader → inbound_rx →
+//   handle_server_message → on_permission_prompt_queued → overlay_stack push + Overlay mode
+//   → dispatch_key_event('y') → send_permission_decision(Allow)
 //   → ipc_tx → spawn_ipc_writer → UDS wire → MockDaemon receives ClientToServer::PermissionDecision
 //   → MockDaemon sends ServerToClient::PermissionPromptResolved → spawn_ipc_reader → inbound_rx
 //   → handle_server_message → on_permission_prompt_resolved → overlay_stack.retain() → Dashboard
 // ---------------------------------------------------------------------------
 
-/// BC-2.06.022 PC-2 / AC-002: Full E2E happy path — Bash prompt queued, `y` accepted,
-/// daemon receives `PermissionDecision { Allow }` over the UDS socket, daemon sends
-/// `PermissionPromptResolved`, the real `handle_server_message` dispatches to
-/// `on_permission_prompt_resolved`, TUI stack empties, mode collapses to Dashboard.
+/// BC-2.06.022 PC-2 / AC-002: Full E2E happy path — Bash prompt queued over real UDS
+/// socket via `PermissionPromptQueued`, `y` accepted, daemon receives `PermissionDecision
+/// { Allow }`, daemon sends `PermissionPromptResolved`, real `handle_server_message`
+/// dispatches to `on_permission_prompt_resolved`, TUI stack empties, mode collapses to
+/// Dashboard.
 ///
-/// This test drives the REAL inbound dispatch path:
-///   MockDaemon writes PermissionPromptResolved → spawn_ipc_reader reads it from socket
-///   → inbound_rx.recv() → handle_server_message → on_permission_prompt_resolved
+/// This test drives BOTH inbound router arms over the real UDS socket:
+///   1. `handle_server_message` → `on_permission_prompt_queued` (socket-queued prompt)
+///   2. `handle_server_message` → `on_permission_prompt_resolved` (socket-resolved)
 ///
 /// Production symbols exercised:
 ///   - `setup_ipc_streams_with_rx`: wires app.ipc_tx + returns real inbound_rx
 ///   - `spawn_ipc_reader`: reads ServerToClient frames off the real UDS socket
-///   - `handle_server_message`: routes PermissionPromptResolved to on_permission_prompt_resolved
+///   - `handle_server_message`: routes PermissionPromptQueued → on_permission_prompt_queued
+///     AND PermissionPromptResolved → on_permission_prompt_resolved (app.rs ~1987, ~1990)
+///   - `on_permission_prompt_queued`: overlay_stack push + Overlay mode transition (reached THROUGH dispatch)
 ///   - `on_permission_prompt_resolved`: retain() + Dashboard collapse (reached THROUGH dispatch)
 #[tokio::test]
 async fn test_BC_2_06_022_killer_scenario_accept() {
@@ -328,26 +358,68 @@ async fn test_BC_2_06_022_killer_scenario_accept() {
 
     let pid = Uuid::new_v4();
 
-    // Step 1: spawn MockDaemon with one queued Bash prompt (P1).
+    // Step 1: spawn MockDaemon with EMPTY overlay — prompts are queued over the socket
+    // via PermissionPromptQueued (not via InitialState) to exercise the on_permission_prompt_queued
+    // router arm of handle_server_message (app.rs ~1987-1988).
     let (to_send_tx, mut received_rx, daemon_handle, ready_rx) =
-        spawn_mock_daemon(sock_path.clone(), vec![bash_payload(pid)]).await;
+        spawn_mock_daemon(sock_path.clone(), vec![]).await;
 
     // Wait for the daemon listener to be ready (prevents connect-before-listen race).
     ready_rx.await.expect("MockDaemon ready signal");
 
-    // Step 2: connect TUI App to MockDaemon and receive InitialState.
+    // Step 2: connect TUI App to MockDaemon and receive InitialState (empty overlay_stack).
     let mut app = App::new(MonocleConfig::default());
     let (rh, wh, mut inbound_rx) = connect_app_to_mock_daemon(&mut app, &sock_path).await;
 
+    // After empty InitialState: mode must be Dashboard, stack must be empty.
+    assert!(
+        matches!(app.mode, AppMode::Dashboard { .. }),
+        "BC-2.06.022 PC-2 precondition: mode must be Dashboard after empty InitialState"
+    );
+    assert_eq!(
+        app.overlay_stack.len(),
+        0,
+        "BC-2.06.022 PC-2 precondition: overlay_stack must be empty after empty InitialState"
+    );
+
+    // Step 2b: MockDaemon sends ServerToClient::PermissionPromptQueued over the real UDS socket.
+    // This exercises the on_permission_prompt_queued arm of handle_server_message (app.rs ~1987).
+    //
+    // Ordering: write-before-read guaranteed — to_send_tx.send fires the frame, which
+    // spawn_ipc_reader delivers to inbound_rx. We drain and dispatch immediately after.
+    to_send_tx
+        .send(ServerToClient::PermissionPromptQueued {
+            payload: bash_payload(pid),
+        })
+        .await
+        .expect("step 2b: to_send_tx.send(PermissionPromptQueued) failed");
+
+    // Drain inbound_rx: wait for spawn_ipc_reader to deliver the PermissionPromptQueued frame.
+    let queued_msg = tokio::time::timeout(SHORT_TIMEOUT, inbound_rx.recv())
+        .await
+        .expect(
+            "step 2b: timed out waiting for PermissionPromptQueued from inbound_rx \
+             — spawn_ipc_reader did not deliver the frame",
+        )
+        .expect("inbound_rx channel closed unexpectedly");
+
+    // Dispatch through the REAL router — exercises handle_server_message →
+    // on_permission_prompt_queued (reached THROUGH dispatch, not called directly).
+    let queued_ok = queued_msg.expect("step 2b: inbound_rx contained Err (unexpected disconnect)");
+    handle_server_message(&mut app, queued_ok).unwrap();
+
     // Step 3: assert TUI is in Overlay mode with overlay_stack.len() == 1.
+    // These assertions verify on_permission_prompt_queued ran correctly via handle_server_message.
     assert!(
         matches!(app.mode, AppMode::Overlay { .. }),
-        "BC-2.06.022 PC-2 step 3: app.mode must be Overlay after InitialState with one prompt"
+        "BC-2.06.022 PC-2 step 3: app.mode must be Overlay after PermissionPromptQueued \
+         dispatched through handle_server_message → on_permission_prompt_queued"
     );
     assert_eq!(
         app.overlay_stack.len(),
         1,
-        "BC-2.06.022 PC-2 step 3: overlay_stack.len() must be 1 after InitialState"
+        "BC-2.06.022 PC-2 step 3: overlay_stack.len() must be 1 after PermissionPromptQueued \
+         dispatched through handle_server_message"
     );
     assert_eq!(
         app.overlay_stack.front().unwrap().prompt_id,
@@ -457,30 +529,35 @@ async fn test_BC_2_06_022_killer_scenario_accept() {
 // AC-003 / BC-2.06.022 PC-3 — killer_scenario_multi_prompt (two-prompt FIFO stacking)
 //
 // Production path (REAL socket through REAL dispatch):
-//   on_permission_prompt_queued x2 (FIFO) → stack len 2 →
+//   MockDaemon writes PermissionPromptQueued(P1) → handle_server_message → on_permission_prompt_queued
+//   MockDaemon writes PermissionPromptQueued(P2) → handle_server_message → on_permission_prompt_queued
+//   → stack len 2, Overlay mode →
 //   dispatch_key_event('n') → PermissionDecision(Deny) for P1 (outbound over UDS) →
 //   MockDaemon sends PermissionPromptResolved(P1) (inbound over UDS) →
 //   handle_server_message → on_permission_prompt_resolved(P1) → len 1 →
 //   dispatch_key_event('y') → PermissionDecision(Allow) for P2 (outbound over UDS) →
 //   MockDaemon sends PermissionPromptResolved(P2) (inbound over UDS) →
-//   handle_server_message → on_permission_prompt_resolved(P2) → empty → Dashboard
+//   handle_server_message → on_permission_prompt_resolved(P2) → empty →
+//   Dashboard { focused: FocusSnapshot::Sessions }
 // ---------------------------------------------------------------------------
 
 /// BC-2.06.022 PC-3 / AC-003: Two-prompt FIFO stacking and sequential resolution.
 ///
 /// Exercises:
-///   - `on_permission_prompt_queued` x2 → FIFO stack (P1 at front, P2 at back)
+///   - `handle_server_message` → `on_permission_prompt_queued` x2 over socket (FIFO: P1 at front)
 ///   - `dispatch_key_event('n')` → Deny P1 (front), IPC write-back to MockDaemon
 ///   - MockDaemon sends `PermissionPromptResolved(P1)` over real UDS socket
 ///   - `handle_server_message` dispatches to `on_permission_prompt_resolved(P1)` → stack len 1
 ///   - `dispatch_key_event('y')` → Allow P2 (now front), IPC write-back
 ///   - MockDaemon sends `PermissionPromptResolved(P2)` over real UDS socket
-///   - `handle_server_message` dispatches to `on_permission_prompt_resolved(P2)` → empty → Dashboard
+///   - `handle_server_message` dispatches to `on_permission_prompt_resolved(P2)` → empty →
+///     `AppMode::Dashboard { focused: FocusSnapshot::Sessions }` (exact match per BC-2.06.001)
 ///
-/// Production symbols exercised (inbound):
+/// Production symbols exercised (inbound — BOTH router arms exercised over socket):
 ///   - `setup_ipc_streams_with_rx` → real inbound_rx from spawn_ipc_reader
-///   - `handle_server_message` → routes PermissionPromptResolved to on_permission_prompt_resolved
-///   - `on_permission_prompt_resolved` reached THROUGH handle_server_message dispatch (not directly)
+///   - `handle_server_message` → routes PermissionPromptQueued to on_permission_prompt_queued (x2)
+///   - `handle_server_message` → routes PermissionPromptResolved to on_permission_prompt_resolved (x2)
+///   - Both handlers reached THROUGH dispatch, not called directly
 ///
 /// Non-vacuity: if the FIFO ordering is reversed (P2 at front), the first `n`
 /// would resolve P2 instead of P1 and the second decision would target P1 — the
@@ -494,22 +571,74 @@ async fn test_BC_2_06_022_killer_scenario_multi_prompt() {
     let pid1 = Uuid::new_v4();
     let pid2 = Uuid::new_v4();
 
-    // Step 1: Daemon emits two PermissionPromptQueued (both in InitialState for simplicity).
-    let (to_send_tx, mut received_rx, daemon_handle, ready_rx) = spawn_mock_daemon(
-        sock_path.clone(),
-        vec![bash_payload(pid1), bash_payload(pid2)],
-    )
-    .await;
+    // Step 1: Daemon starts with EMPTY overlay — prompts are queued over the socket via
+    // PermissionPromptQueued to exercise the on_permission_prompt_queued router arm of
+    // handle_server_message (app.rs ~1987-1988). FIFO insertion order: P1 first, P2 second.
+    let (to_send_tx, mut received_rx, daemon_handle, ready_rx) =
+        spawn_mock_daemon(sock_path.clone(), vec![]).await;
     ready_rx.await.expect("MockDaemon ready");
 
     let mut app = App::new(MonocleConfig::default());
     let (rh, wh, mut inbound_rx) = connect_app_to_mock_daemon(&mut app, &sock_path).await;
 
-    // Step 2: assert stack len == 2 and P1 is at front (FIFO).
+    // After empty InitialState: Dashboard mode, empty stack.
+    assert!(
+        matches!(app.mode, AppMode::Dashboard { .. }),
+        "BC-2.06.022 PC-3 precondition: Dashboard after empty InitialState"
+    );
+
+    // Step 1b: MockDaemon sends PermissionPromptQueued(P1) over the real UDS socket.
+    to_send_tx
+        .send(ServerToClient::PermissionPromptQueued {
+            payload: bash_payload(pid1),
+        })
+        .await
+        .expect("step 1b: to_send_tx.send(PermissionPromptQueued P1) failed");
+
+    let queued1 = tokio::time::timeout(SHORT_TIMEOUT, inbound_rx.recv())
+        .await
+        .expect("step 1b: timed out waiting for PermissionPromptQueued(P1) from inbound_rx")
+        .expect("inbound_rx closed");
+    handle_server_message(
+        &mut app,
+        queued1.expect("step 1b: unexpected disconnect in inbound_rx"),
+    )
+    .unwrap();
+
+    // After P1 queued: Overlay mode, stack len 1.
+    assert_eq!(
+        app.overlay_stack.len(),
+        1,
+        "stack must be 1 after P1 queued via socket"
+    );
+    assert!(
+        matches!(app.mode, AppMode::Overlay { .. }),
+        "mode must be Overlay after P1 queued"
+    );
+
+    // Step 1c: MockDaemon sends PermissionPromptQueued(P2) over the real UDS socket.
+    to_send_tx
+        .send(ServerToClient::PermissionPromptQueued {
+            payload: bash_payload(pid2),
+        })
+        .await
+        .expect("step 1c: to_send_tx.send(PermissionPromptQueued P2) failed");
+
+    let queued2 = tokio::time::timeout(SHORT_TIMEOUT, inbound_rx.recv())
+        .await
+        .expect("step 1c: timed out waiting for PermissionPromptQueued(P2) from inbound_rx")
+        .expect("inbound_rx closed");
+    handle_server_message(
+        &mut app,
+        queued2.expect("step 1c: unexpected disconnect in inbound_rx"),
+    )
+    .unwrap();
+
+    // Step 2: assert stack len == 2 and P1 is at front (FIFO insertion order).
     assert_eq!(
         app.overlay_stack.len(),
         2,
-        "BC-2.06.022 PC-3 step 2: overlay_stack must have 2 prompts after InitialState"
+        "BC-2.06.022 PC-3 step 2: overlay_stack must have 2 prompts after both PermissionPromptQueued dispatched"
     );
     assert_eq!(
         app.overlay_stack.front().unwrap().prompt_id,
@@ -642,14 +771,259 @@ async fn test_BC_2_06_022_killer_scenario_multi_prompt() {
     )
     .unwrap();
 
-    // Stack must be empty; mode must collapse to Dashboard.
+    // Stack must be empty; mode must collapse to exact Dashboard { focused: Sessions }.
+    // Tightened from `matches!(app.mode, AppMode::Dashboard { .. })` to exact variant match
+    // for parity with AC-002/AC-004 and BC-2.06.022 Step-3 / BC-2.06.001 empty-stack invariant.
     assert!(
         app.overlay_stack.is_empty(),
         "BC-2.06.022 PC-3 step 8: overlay_stack must be empty after P2 resolved via handle_server_message"
     );
     assert!(
-        matches!(app.mode, AppMode::Dashboard { .. }),
-        "BC-2.06.022 PC-3 step 8: mode must collapse to Dashboard after last prompt resolved"
+        matches!(
+            app.mode,
+            AppMode::Dashboard {
+                focused: FocusSnapshot::Sessions
+            }
+        ),
+        "BC-2.06.022 PC-3 step 8: AppMode must collapse to Dashboard {{ Sessions }} after last \
+         prompt resolved (BC-2.06.001 empty-stack invariant)"
+    );
+
+    drop(to_send_tx);
+    rh.abort();
+    wh.abort();
+    let _ = tokio::time::timeout(Duration::from_millis(200), daemon_handle).await;
+}
+
+// ---------------------------------------------------------------------------
+// BC-2.06.022 KS-001/KS-002 — killer_scenario_accept_always (AcceptAlways + Accept)
+//
+// Production path (REAL socket through REAL dispatch):
+//   MockDaemon writes PermissionPromptQueued(P1) → handle_server_message → on_permission_prompt_queued
+//   MockDaemon writes PermissionPromptQueued(P2) → handle_server_message → on_permission_prompt_queued
+//   → stack len 2, Overlay mode →
+//   dispatch_key_event('A') → Action::PermissionAcceptAlways → send_permission_decision(AcceptAlways)
+//   → ipc_tx → spawn_ipc_writer → UDS wire → MockDaemon receives PermissionDecision { AcceptAlways }
+//   → MockDaemon sends PermissionPromptResolved(P1) → handle_server_message → on_permission_prompt_resolved
+//   → stack len 1, Overlay mode →
+//   dispatch_key_event('y') → send_permission_decision(Allow) → MockDaemon receives Allow
+//   → MockDaemon sends PermissionPromptResolved(P2) → handle_server_message → on_permission_prompt_resolved
+//   → empty → Dashboard { focused: FocusSnapshot::Sessions }
+// ---------------------------------------------------------------------------
+
+/// BC-2.06.022 KS-001/KS-002: AcceptAlways (`A`) + Accept (`y`) killer scenario.
+///
+/// This is the BC's HEADLINE end-to-end flow: queue P1+P2 over the socket, press `A`
+/// to AcceptAlways P1, then `y` to Accept P2. Validates the canonical 4-keystroke path
+/// (`[connect]`, `A`, `y`, `[disconnect]`) from KS-001/KS-002.
+///
+/// # Keybinding resolution (app.rs ~2368-2369 / monocle-core binding.rs)
+///
+/// `'A'` in Overlay mode resolves to `Action::PermissionAcceptAlways` (binding.rs:252).
+/// `dispatch_key_event` calls `send_permission_decision(app, PermissionDecisionKind::AcceptAlways)`.
+/// The daemon receives `ClientToServer::PermissionDecision { decision: AcceptAlways }`.
+///
+/// Production symbols exercised:
+///   - `handle_server_message` → `on_permission_prompt_queued` x2 (inbound, over socket)
+///   - `dispatch_key_event('A')` → `Action::PermissionAcceptAlways` → `send_permission_decision(AcceptAlways)`
+///   - `ClientToServer::PermissionDecision { decision: PermissionDecisionKind::AcceptAlways }` arrives at daemon
+///   - `handle_server_message` → `on_permission_prompt_resolved` x2 (inbound, over socket)
+///
+/// Traces to: BC-2.06.022 KS-001 / KS-002 / Step 2 (AcceptAlways, `A`) / Step 3 (Accept, `y`).
+#[tokio::test]
+async fn test_BC_2_06_022_killer_scenario_accept_always() {
+    // AC-007: unique socket path per test.
+    let dir = tempfile::TempDir::new().expect("TempDir::new");
+    let sock_path = dir.path().join("monocle_ks_accept_always.sock");
+
+    let pid1 = Uuid::new_v4();
+    let pid2 = Uuid::new_v4();
+
+    // Spawn MockDaemon with EMPTY overlay — queue P1 and P2 over the socket via
+    // PermissionPromptQueued to exercise handle_server_message → on_permission_prompt_queued.
+    let (to_send_tx, mut received_rx, daemon_handle, ready_rx) =
+        spawn_mock_daemon(sock_path.clone(), vec![]).await;
+    ready_rx.await.expect("MockDaemon ready");
+
+    let mut app = App::new(MonocleConfig::default());
+    let (rh, wh, mut inbound_rx) = connect_app_to_mock_daemon(&mut app, &sock_path).await;
+
+    // Queue P1 over socket → handle_server_message → on_permission_prompt_queued.
+    to_send_tx
+        .send(ServerToClient::PermissionPromptQueued {
+            payload: bash_payload(pid1),
+        })
+        .await
+        .expect("KS-001 step 1: send PermissionPromptQueued(P1) failed");
+
+    let q1 = tokio::time::timeout(SHORT_TIMEOUT, inbound_rx.recv())
+        .await
+        .expect("KS-001: timed out waiting for PermissionPromptQueued(P1)")
+        .expect("inbound_rx closed");
+    handle_server_message(&mut app, q1.expect("unexpected disconnect")).unwrap();
+
+    // Queue P2 over socket → handle_server_message → on_permission_prompt_queued.
+    to_send_tx
+        .send(ServerToClient::PermissionPromptQueued {
+            payload: bash_payload(pid2),
+        })
+        .await
+        .expect("KS-001 step 1: send PermissionPromptQueued(P2) failed");
+
+    let q2 = tokio::time::timeout(SHORT_TIMEOUT, inbound_rx.recv())
+        .await
+        .expect("KS-001: timed out waiting for PermissionPromptQueued(P2)")
+        .expect("inbound_rx closed");
+    handle_server_message(&mut app, q2.expect("unexpected disconnect")).unwrap();
+
+    // Both prompts queued: stack len 2, P1 at front.
+    assert_eq!(
+        app.overlay_stack.len(),
+        2,
+        "KS-001: overlay_stack must have 2 prompts after both PermissionPromptQueued dispatched"
+    );
+    assert_eq!(
+        app.overlay_stack.front().unwrap().prompt_id,
+        pid1,
+        "KS-001: P1 must be at front (FIFO insertion order)"
+    );
+    assert!(
+        matches!(app.mode, AppMode::Overlay { .. }),
+        "KS-001: mode must be Overlay with 2 queued prompts"
+    );
+
+    // KS-001 Step 2: inject `A` — drives dispatch_key_event → Action::PermissionAcceptAlways
+    // → send_permission_decision(AcceptAlways) → ipc_tx → UDS → MockDaemon receives AcceptAlways.
+    //
+    // Keybinding resolution: binding.rs:252 — KeyCode::Char('A') in Overlay → PermissionAcceptAlways.
+    // Decision send: app.rs ~2368-2369 — Action::PermissionAcceptAlways → send_permission_decision(AcceptAlways).
+    let layers = build_builtin_binding_layers();
+    let mut sessions_state = SessionsPanelState::default();
+    let outcome_a = dispatch_key_event(
+        &mut app,
+        &key(KeyCode::Char('A')),
+        &layers,
+        &mut sessions_state,
+    );
+    assert_eq!(outcome_a, KeyOutcome::Continue, "KS-001: `A` must not quit");
+
+    // Assert MockDaemon physically received AcceptAlways for P1 over the real UDS socket.
+    let received_a = tokio::time::timeout(SHORT_TIMEOUT, received_rx.recv())
+        .await
+        .expect(
+            "KS-001: timed out waiting for PermissionDecision(AcceptAlways) at MockDaemon \
+             — outbound AcceptAlways path not wired",
+        )
+        .expect("received_rx closed");
+    match received_a {
+        ClientToServer::PermissionDecision {
+            prompt_id,
+            decision,
+        } => {
+            assert_eq!(
+                prompt_id, pid1,
+                "KS-001: AcceptAlways decision must target P1 (front of stack)"
+            );
+            assert_eq!(
+                decision,
+                PermissionDecisionKind::AcceptAlways,
+                "KS-001: `A` must send AcceptAlways (not Allow or Deny) \
+                 per BC-2.06.022 Step 2 / binding.rs:252"
+            );
+        }
+    }
+
+    // Overlay_stack is NOT modified on send — awaiting PermissionPromptResolved from daemon.
+    assert_eq!(
+        app.overlay_stack.len(),
+        2,
+        "KS-001: overlay_stack must remain len 2 after AcceptAlways send (BC-2.06.023 — no eager pop)"
+    );
+
+    // MockDaemon sends PermissionPromptResolved(P1) over real UDS → handle_server_message
+    // → on_permission_prompt_resolved → retain() removes P1, stack len 1, mode stays Overlay.
+    to_send_tx
+        .send(ServerToClient::PermissionPromptResolved { prompt_id: pid1 })
+        .await
+        .expect("KS-001: send PermissionPromptResolved(P1) failed");
+
+    let res1 = tokio::time::timeout(SHORT_TIMEOUT, inbound_rx.recv())
+        .await
+        .expect("KS-001: timed out waiting for PermissionPromptResolved(P1) from inbound_rx")
+        .expect("inbound_rx closed");
+    handle_server_message(&mut app, res1.expect("unexpected disconnect")).unwrap();
+
+    // After P1 resolved: stack len 1, P2 at front, Overlay mode persists.
+    assert_eq!(
+        app.overlay_stack.len(),
+        1,
+        "KS-001: stack must be len 1 after P1 resolved via handle_server_message"
+    );
+    assert_eq!(
+        app.overlay_stack.front().unwrap().prompt_id,
+        pid2,
+        "KS-001: P2 must be at front after P1 resolved"
+    );
+    assert!(
+        matches!(app.mode, AppMode::Overlay { .. }),
+        "KS-001: mode must remain Overlay while P2 is still in stack"
+    );
+
+    // KS-001 Step 3: inject `y` — drives dispatch_key_event → Allow → ipc_tx → MockDaemon.
+    let outcome_y = dispatch_key_event(
+        &mut app,
+        &key(KeyCode::Char('y')),
+        &layers,
+        &mut sessions_state,
+    );
+    assert_eq!(outcome_y, KeyOutcome::Continue, "KS-001: `y` must not quit");
+
+    // Assert MockDaemon physically received Allow for P2.
+    let received_y = tokio::time::timeout(SHORT_TIMEOUT, received_rx.recv())
+        .await
+        .expect("KS-001: timed out waiting for PermissionDecision(Allow) for P2 at MockDaemon")
+        .expect("received_rx closed");
+    match received_y {
+        ClientToServer::PermissionDecision {
+            prompt_id,
+            decision,
+        } => {
+            assert_eq!(prompt_id, pid2, "KS-001: Allow decision must target P2");
+            assert_eq!(
+                decision,
+                PermissionDecisionKind::Allow,
+                "KS-001: `y` must send Allow"
+            );
+        }
+    }
+
+    // MockDaemon sends PermissionPromptResolved(P2) → handle_server_message →
+    // on_permission_prompt_resolved → stack empty → Dashboard { Sessions }.
+    to_send_tx
+        .send(ServerToClient::PermissionPromptResolved { prompt_id: pid2 })
+        .await
+        .expect("KS-001: send PermissionPromptResolved(P2) failed");
+
+    let res2 = tokio::time::timeout(SHORT_TIMEOUT, inbound_rx.recv())
+        .await
+        .expect("KS-001: timed out waiting for PermissionPromptResolved(P2) from inbound_rx")
+        .expect("inbound_rx closed");
+    handle_server_message(&mut app, res2.expect("unexpected disconnect")).unwrap();
+
+    // Final state: stack empty, Dashboard { focused: Sessions } (BC-2.06.001 empty-stack collapse).
+    assert!(
+        app.overlay_stack.is_empty(),
+        "KS-001: overlay_stack must be empty after both prompts resolved"
+    );
+    assert!(
+        matches!(
+            app.mode,
+            AppMode::Dashboard {
+                focused: FocusSnapshot::Sessions
+            }
+        ),
+        "KS-001: AppMode must collapse to Dashboard {{ Sessions }} after last prompt resolved \
+         (BC-2.06.022 Step 3 / BC-2.06.001 empty-stack invariant)"
     );
 
     drop(to_send_tx);
