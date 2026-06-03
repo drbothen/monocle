@@ -45,3 +45,12 @@ pub use ui::sessions_panel::SESSIONS_EMPTY_LINE_1;
 pub use ui::sessions_panel::SESSIONS_EMPTY_LINE_2;
 pub use ui::sessions_panel::TOKEN_COUNT_OVERFLOW_CAP;
 pub use ui::sessions_panel::UPTIME_OVERFLOW_CAP;
+
+// S-029: inbound IPC dispatch seam — exposed for killer-scenario E2E test (H-1 closure).
+// These are NOT part of the stable public API; #[doc(hidden)] signals "test seam only".
+// External integration tests import these via `monocle_tui::handle_server_message` /
+// `monocle_tui::setup_ipc_streams_with_rx` (or via `monocle_tui::app::{...}`).
+#[doc(hidden)]
+pub use app::handle_server_message;
+#[doc(hidden)]
+pub use app::setup_ipc_streams_with_rx;
