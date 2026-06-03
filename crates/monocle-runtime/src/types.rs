@@ -45,7 +45,7 @@ impl RecoveryCheckpoint {
         //   2. chrono parse to verify the date/time values are real (e.g., month 13 rejected).
         //
         // chrono is already a workspace production dependency; regex-lite is dev-only per
-        // SS-deps-pin-manifest.md v1.2.0 §Trace and must not be used in production code.
+        // SS-deps-pin-manifest.md v1.2.1 §Trace and must not be used in production code.
         //
         // Expected layout (24 chars): YYYY-MM-DDTHH:MM:SS.MMMZ
         //   [0..4]  year digits

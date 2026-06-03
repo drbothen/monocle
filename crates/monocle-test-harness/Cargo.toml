@@ -18,16 +18,16 @@ name = "dtu-claude-code-hooks-v1"
 path = "src/bin/dtu_server.rs"
 
 [dependencies]
-# axum: EXACT pin per SS-deps-pin-manifest.md v1.2.0 §Patch-Pinning Policy
+# axum: EXACT pin per SS-deps-pin-manifest.md v1.2.1 §Patch-Pinning Policy
 # HTTP server for the 5 DTU clone hook endpoints.
 axum = { workspace = true }
-# tokio: EXACT pin per SS-deps-pin-manifest.md v1.2.0 §Patch-Pinning Policy
+# tokio: EXACT pin per SS-deps-pin-manifest.md v1.2.1 §Patch-Pinning Policy
 # Async runtime for the axum server.
 tokio = { workspace = true }
 # serde + serde_json: monocle-canonical payload structs and JSON deserialization.
 serde = { workspace = true }
 serde_json = { workspace = true }
-# reqwest: EXACT pin per SS-deps-pin-manifest.md v1.2.0 §Patch-Pinning Policy
+# reqwest: EXACT pin per SS-deps-pin-manifest.md v1.2.1 §Patch-Pinning Policy
 # HTTP client used to POST fixtures to daemon during fidelity tests.
 reqwest = { workspace = true }
 # tracing: structured logging — no println! per clippy.toml disallowed_methods.

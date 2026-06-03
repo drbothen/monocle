@@ -45,5 +45,5 @@ tokio = { workspace = true }
 # Declared inline (NOT workspace = true) per least-privilege dev-dependency policy
 # (same pattern as monocle-runtime).  The `async_closure` feature is required for
 # `temp_env::async_with_vars` used in tokio test bodies.
-# SS-deps-pin-manifest.md v1.2.0 §Dev Dependencies.
+# SS-deps-pin-manifest.md v1.2.1 §Dev Dependencies.
 temp-env = { version = "0.3", features = ["async_closure"] }
