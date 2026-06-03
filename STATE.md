@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "6.84"
+version: "6.85"
 status: active
 producer: state-manager
-timestamp: 2026-06-03T14:00:00Z
-phase: phase-4-ACTIVE
-current_step: "D-235: Daemon-wiring integration CONVERGED. monocle-runtime binary now actually serves (was a sleep-loop stub). main() wires daemon_start_sequence + run_server + UDS + tracing + durable ring-flush shutdown + 10s drain timeout. 16+ adversarial passes over 6 fix rounds. SS-daemon-wiring-impl v1.3.0, SS-deps-pin-manifest v1.2.1 (tracing-subscriber prod dep), ARCH-INDEX v1.0.26, STORY-INDEX v5.32, sprint-state v1.40. S-DAEMON-WIRE-FIX-001 (Wave 8) anchors HIGH-2 second-signal exit codes deferral. POL-11/POL-12 PASS. factory-artifacts pushed — daemon-wire code PR (feat/daemon-wire-serve) now safe to merge."
+timestamp: 2026-06-03T22:00:00Z
+phase: PIVOT-vision-revision-pending
+current_step: "D-236: PRODUCT-VISION PIVOT — monocle becomes a full TUI control center (launch/manage/observe/tune/control; multi-session, multi-project; never leave the TUI). Observe-only principle RETIRED. Phase-1 substrate BUILT and REUSABLE. VSDD Phase 4/5/6/7 of old observe-only scope SUSPENDED pending vision revision. Next session: read NEXT-SESSION-PIVOT.md FIRST, facilitate vision revision with human, redo gene-source disposition (claude-squad + zellij first), then delta brief→architecture→stories."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE. D-224: Wave-6 GATE PASSED (develop @ 2a51a91). D-225: STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to wave-7-READY; points 177→169/195 reconciled to sprint-state. D-226: S-027 DELIVERED (PR #32 @ 3787ebd) — Wave 7: 1/4 done. D-227: S-031 DELIVERED (PR #33 @ 8451486). D-228: S-028 DELIVERED (PR #34 @ 682e5e5) — Wave 7: 3/4 done. develop @ 682e5e5. D-229: Zero-context resume checkpoint — S-029 human-authorized 2026-06-02. develop @ 1158e24. D-230: S-029 DELIVERED (PR #35 @ 48463fb) — Wave 7 COMPLETE (4/4). 32/33 done (192/195 pts). develop @ 48463fb. D-231: Wave-7-gate prerequisite sweep complete — SS-ipc v1.11.0, BC-2.06.021 v1.0.7, BC-INDEX v1.34, STORY-INDEX v5.30, citation atomicity propagation. POL-11/POL-12 PASS. S-027/S-028 story frontmatter status fixed. D-232: Wave-7 gate PASSED — Phase 3 COMPLETE. 1514 tests, 0 failures. F-W7G3-MED-001 fixed (PR #37 @ 6811103). HS-EXP-008 score 1.0. DTU SKIP (DTU-CLONE-STORY added as Phase 4 prereq). sprint-state v1.38. D-233: Phase-3→4 consistency cleanup — EVAL-INDEX v1.9, STORY-INDEX v5.31, BC-HOOK-034 v1.0.2 (typo fix), sprint-state v1.39. 28 story-file status fields corrected. Input-hash refresh (113→0+17 bookkeeping-residual). POL-11/POL-12 PASS. All MED/LOW audit findings RESOLVED. D-234: DTU clone false-negative corrected — S-DTU-001 (cargo binary dtu-claude-code-hooks-v1) validated fidelity 1.0000 (25/25 fixtures). Gate-2 DTU-VALIDATION corrected from SKIP to PASS. DTU-CLONE-STORY closed (RESOLVED-FALSE-PREMISE). Phase 4 UNBLOCKED. dtu_clones_built updated. PROC-DTU-VALIDATE-LOCATION process gap added. D-235: Daemon-wiring convergence — monocle-runtime binary now serves (main() wires daemon_start_sequence + run_server + UDS + tracing + ring-flush + 10s drain). SS-daemon-wiring-impl v1.3.0. SS-deps-pin-manifest v1.2.1. ARCH-INDEX v1.0.26. STORY-INDEX v5.32. sprint-state v1.40. S-DAEMON-WIRE-FIX-001 Wave-8 anchor. Resolved: ADV-W5GATE-HIGH-001, ADV-W3GATE-MED-002/004, ADV-W4GATE-MED-002, S-005-main-wiring, F-DW-HIGH-001. POL-11/POL-12 PASS."
-awaiting: "Phase 4 Holdout Evaluation — vsdd-factory:phase-4-holdout-evaluation. D-234: DTU clone validated (fidelity 1.0000), Phase 4 UNBLOCKED. Non-blocking open items: (a) e2e-tester HS-EXP-006-TTY-CAVEAT; (b) HUMAN ACTION ADR-HOOK-001-WIRING; (c) F-S027-DOC-002/003 implementer doc-comments; (d) SIGTERM-TERMINAL-RESTORE architectural gap."
+awaiting: "Human cleared context for restart. PIVOT IN EFFECT (D-236). Next session MUST read /Users/jmagady/Dev/monocle/NEXT-SESSION-PIVOT.md FIRST, then CLAUDE.md, then this STATE.md. Do NOT auto-resume VSDD Phase 4/5/6/7 of the retired observe-only scope. Start the vision-revision facilitation for the control-center pivot. Reuse Phase-1 substrate (daemon, hook ingestion, permission overlay, EngineModule/FactoryAdapter, proto, ring, TUI rendering) — do NOT rebuild it."
 durable_task_register:
   outstanding:
     - id: "DTU-CLONE-STORY"
@@ -380,6 +380,11 @@ durable_task_register:
       status: resolved
       detail: "RESOLVED D-232: the D-231 deferred maintenance item surfaced at integration scope during wave-7 adversarial gate review as F-W7G3-MED-001 (MEDIUM severity). Fixed in scope via PR #37 @ 6811103. Both F-S028-NIT-002 and F-S028-NIT-002-DEFERRED are now closed."
       blocking: false
+    - id: "PIVOT-CONTROL-CENTER"
+      subject: "PRODUCT-VISION PIVOT — monocle becomes full TUI control center (D-236)"
+      status: active
+      detail: "D-236 (2026-06-03): Human-directed vision pivot. monocle evolves from observe-only to full TUI control center: launch + manage + observe + tune + control; many sessions, many projects; never leave the TUI. A better lazyclaude AND claude-squad. Observe-only constraint (vision-synthesis v1.1.2, approved 2026-05-11) RETIRED. VSDD Phase 4/5/6/7 of the old observe-only scope SUSPENDED pending vision revision. Phase-1 substrate is built and reusable: daemon (now actually serves), hook ingestion, permission overlay (VecDeque<PromptModal>), EngineModule/FactoryAdapter traits, proto/ring, TUI rendering. NEXT: facilitate revised vision with human → redo gene-source disposition (claude-squad + zellij first) → delta brief→architecture→stories. Handoff: /Users/jmagady/Dev/monocle/NEXT-SESSION-PIVOT.md. The Wave-8 stories (S-032 daemon fan-out, S-DAEMON-WIRE-FIX-001 second-signal exit codes) and non-blocking durable_task_register backlog remain valid but are SUBORDINATE to this pivot."
+      blocking: false
   se_candidates:
     - id: SE-40
       occurrences: 2
@@ -394,103 +399,80 @@ durable_task_register:
     - "TALLY-GUARD (D-225): STATE running-tally must re-sum sprint-state per-story; summary.points_complete is a cache. Hand-increment drift produced +8 pts error + premature Phase-3-COMPLETE. L-W6-GATE-003."
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v6.84 (D-235) — 2026-06-03
-  PHASE 4 ACTIVE — DTU VALIDATED — 32/33 STORIES — NEXT: Phase 4 Holdout Evaluation
+  ZERO-CONTEXT RESUME CHECKPOINT v6.85 (D-236) — 2026-06-03
+  PIVOT: monocle → full TUI control center — DO NOT resume Phase 4/5/6/7 of old scope
   ============================================================================
 
-  YOUR FIRST 4 COMMANDS (RUN IN ORDER):
+  YOUR FIRST 3 COMMANDS (RUN IN ORDER — BEFORE ANYTHING ELSE):
 
-  1. Read /Users/jmagady/Dev/monocle/CLAUDE.md — production-grade-default + correct-agent-routing
-     override ALL agent defaults. Read before dispatching anything.
+  1. Read /Users/jmagady/Dev/monocle/NEXT-SESSION-PIVOT.md — THIS IS THE CANONICAL
+     NEXT-SESSION ENTRY POINT. Read it FULLY before any other action.
 
-  2. Read this STATE.md fully — especially §Trace v6.83, durable_task_register.
+  2. Read /Users/jmagady/Dev/monocle/CLAUDE.md — production-grade-default + correct-agent-routing
+     override ALL agent defaults.
 
-  3. Run worktree health check (BLOCKING per orchestrator startup protocol):
-     Agent(subagent_type="vsdd-factory:devops-engineer",
-           prompt="cd /Users/jmagady/Dev/monocle && run factory-worktree-health skill on this project")
+  3. Read this STATE.md fully — especially §Trace v6.85, durable_task_register,
+     and PIVOT-CONTROL-CENTER entry.
 
-  4. Execute NEXT ACTION below.
+  CRITICAL ORIENTATION — D-236 PIVOT:
 
-  PIPELINE STATE (as of 2026-06-03):
+  monocle is pivoting from "observe-only" to a FULL TUI CONTROL CENTER.
+  Human decision 2026-06-03. Details in NEXT-SESSION-PIVOT.md §1.
+
+  DO NOT run vsdd-factory:phase-4-holdout-evaluation.
+  DO NOT resume adversarial refinement (Phase 5), formal hardening (Phase 6), or
+  convergence (Phase 7) of the old observe-only scope.
+  The old scope (passive observer receiving hook POSTs) is SUPERSEDED.
+
+  WHAT THE NEW SESSION MUST DO:
+
+  Step 1: Confirm pivot intent with human (NEXT-SESSION-PIVOT.md is the seed).
+  Step 2: Facilitate revised vision: launch+manage+observe+tune+control;
+          many sessions, many projects; never leave the TUI.
+          Explicitly retire the observe-only constraint in the vision doc.
+  Step 3: Redo gene-source disposition — read semport/ files for claude-squad and
+          zellij FIRST (primary gene sources for the new direction).
+  Step 4: Delta brief → architecture → stories (VSDD pipeline as a delta/re-baseline).
+
+  WHAT IS ALREADY BUILT (REUSE — DO NOT REBUILD):
+
+  - Daemon (now actually serves: HTTP hook ingestion + UDS socket + tracing + ring).
+  - Hook ingestion (5 endpoints, proto, JSONL ring, dtu-claude-code-hooks-v1 clone).
+  - Permission overlay (VecDeque<PromptModal>, Ctrl-\ popup, y/n/A resolve, IPC write-back).
+  - EngineModule / FactoryAdapter traits — the seam to extend with launch/spawn/attach/kill.
+  - monocle-proto wire schemas, monocle-ipc, monocle-config, monocle-core.
+  - TUI rendering (ratatui + crossterm, sessions panel, event ribbon, profile picker, status bar).
+  - 1514 passing tests. 9 workspace crates on develop.
+
+  PIPELINE STATE (as of 2026-06-03 D-236):
 
   Phase 3 TDD Implementation COMPLETE (D-232). All 7 waves delivered and gated.
-  Phase 4 ACTIVE — UNBLOCKED (D-234).
-  develop @ 6811103 (F-W7G3-MED-001 fix, PR #37 — final wave-7-gate fix).
+  D-235: Daemon-wiring CONVERGED. feat/daemon-wire-serve PR ready to merge.
+  develop: check git log -1 for live HEAD (last committed: NEXT-SESSION-PIVOT.md + CLAUDE.md banner).
   factory-artifacts: run git -C .factory log -1 --format='%h %s' for live HEAD.
-  32/33 stories done (192/195 pts, 98%). 1 blocked S-PHASE-3-PREP (upstream dep, does NOT block Phase 4).
-  S-032 draft Wave 8 (daemon fan-out, does NOT block Phase 4).
-  sprint-state v1.40. STORY-INDEX v5.32. BC-INDEX v1.34 (113 BCs). EVAL-INDEX v1.9.
-  DTU: S-DTU-001 clone validated fidelity 1.0000 (25/25 fixtures, 5 endpoints). dtu_clones_built: 2026-05-28.
+  32/33 stories done (192/195 pts, 98%). Phase 4-7 SUSPENDED per D-236 pivot.
   Factory worktree: /Users/jmagady/Dev/monocle/.factory/ (orphan branch factory-artifacts)
 
-  NEXT ACTION — Phase 4 Holdout Evaluation:
+  KEY ARTIFACTS FOR VISION REVISION:
 
-  D-234 CORRECTION: DTU-CLONE-STORY false-negative closed. Phase 4 is UNBLOCKED.
-  The DTU clone S-DTU-001 exists as cargo binary dtu-claude-code-hooks-v1
-  (crates/monocle-test-harness/src/bin/dtu_server.rs). No story decomposition needed.
+  - /Users/jmagady/Dev/monocle/NEXT-SESSION-PIVOT.md — pivot handoff (read FIRST)
+  - .factory/specs/research/domain-monocle-vision-synthesis.md — ORIGINAL vision to revise
+  - .factory/specs/product-brief.md — Phase 1-4 plan (observe-only; to be updated)
+  - .factory/specs/architecture/SS-engine-module.md — EngineModule trait (extend with launch/lifecycle)
+  - .factory/semport/ — gene sources: claude-squad + zellij (re-study these first)
+  - .factory/STATE.md durable_task_register entry PIVOT-CONTROL-CENTER
 
-  STEP 1: vsdd-factory:phase-4-holdout-evaluation
-
-  WAVE 7 GATE SUMMARY (D-232 — PASSED; D-234 correction applied):
-  * Gate 1 (test-suite): PASS — 1514 tests, 0 failures; clippy --all-targets CLEAN; fmt CLEAN.
-  * Gate 2 (dtu-validation): PASS (D-234 correction — was incorrectly recorded SKIP; S-DTU-001 validated fidelity 1.0000).
-  * Gate 3 (adversarial-review): PASS — 0 CRIT/HIGH, 1 MED fixed (F-W7G3-MED-001 PR #37 @ 6811103).
-  * Gate 4 (demo-evidence): PASS — all 4 stories demoed (S-027/S-031 @ b2c8635, S-028 @ 70418e7, S-029 @ fdf1a31).
-  * Gate 5 (holdout-eval): PASS — HS-EXP-008 score 1.0 (killer scenario <=6 keystrokes).
-  * Gate 6 (state-update): PASS — this checkpoint.
-  * Mutation testing: SKIP — all wave-7 stories tdd_mode: strict.
-
-  D-232/D-234 RESOLVED (do NOT re-flag):
-  (RESOLVED) F-S028-NIT-002 — fixed in scope as F-W7G3-MED-001 (PR #37 @ 6811103).
-  (RESOLVED) F-S028-NIT-002-DEFERRED — same fix, index-space remap complete.
-  (RESOLVED) DTU-CLONE-STORY — false-negative; S-DTU-001 clone exists and validated (D-234).
-
-  D-235 NOTE: Daemon-wiring CONVERGED. feat/daemon-wire-serve PR READY TO MERGE (factory-artifacts
-  already pushed; CI POL-11 will pass). S-DAEMON-WIRE-FIX-001 (Wave 8, P1, 5pts) anchors the
-  HIGH-2 second-signal exit codes deferral. ADV-W5GATE-HIGH-002 (duplicate dead handler) still open.
-
-  REMAINING OPEN (non-blocking for Phase 4):
-  (a) e2e-tester/demo-recorder: HS-EXP-006-TTY-CAVEAT — terminal restore TTY-backed harness.
-  (b) HUMAN ACTION: ADR-HOOK-001-WIRING — wire scripts/validate_adr_self_consistency.sh into settings.json.
-  (c) implementer: F-S027-DOC-002/003 — render_frame and overlay.rs stale docstrings.
-  (d) SIGTERM-TERMINAL-RESTORE — Phase 4+ architectural item.
-  (e) PROC-DTU-VALIDATE-LOCATION — agent-prompt improvement (non-blocking process gap).
-  (f) ADV-W5GATE-HIGH-002 — duplicate S-009 dead handler; implementer fix-PR (re-confirmed D-235).
-
-  ARTIFACT VERSIONS (D-232 canonical; version-pin-registry.yaml is authoritative source):
-    PRD v1.27.4 | SS-tui v1.8.2 | SS-ipc v1.11.0 | SS-conventions v1.32.6
-    SS-engine-module v1.1.26 | SS-deps-pin-manifest v1.2.1 | SS-daemon-wiring-impl v1.3.0
-    ARCH-INDEX v1.0.26 | ADR-0007 v1.0.8 | ADR-0008 v1.0.6
-    BC-INDEX v1.34 (113 BCs) | STORY-INDEX v5.32 | EVAL-INDEX v1.9 | VP-INDEX v1.17
-    BC-2.05.004 v1.1.0 | BC-2.06.006 v1.1.0 | BC-2.06.015 v1.0.7 | BC-2.06.016 v1.1.0
-    BC-2.06.018 v1.1.0 | BC-2.06.019 v1.1.0 | BC-2.06.020 v1.1.0 | BC-2.06.021 v1.0.7
-    BC-2.06.023 v1.5.1 | BC-2.06.024 v1.1.0 | BC-2.07.004 v1.0.2 | BC-2.07.005 v1.3.1
-    S-026 v1.11 | S-027 v1.10 | S-029 v1.3 | sprint-state v1.38 | product-brief v1.4.34
-    MSRV: Rust 1.88 (Phase 1-2; time 0.3.47 RUSTSEC-2026-0009 floor). Phase 3 = Rust 1.92.
-    9 workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness,
-      monocle (binary), monocle-config, monocle-ipc, xtask, monocle-tui.
+  WAVE-8 BACKLOG (valid, subordinate to pivot):
+    S-032 (5 pts, Wave 8, EPIC-05) — daemon fan-out (BC-2.05.004 v1.1.0 PC-2 obligation)
+    S-DAEMON-WIRE-FIX-001 (Wave 8, P1, 5pts) — second-signal exit codes 143/130
 
   KNOWN-FLAKY (DO NOT FLAG):
     cli_daemon_stop, factory_self_referential, test_BC_2_07_006, wit-bindgen unmatched-skip,
     PATH isolation flake.
 
-  DEFERRED ITEMS — DO NOT RE-FLAG:
-    F-S025-ADV12-LOW-002 + F-S025-ADV13-NIT-003/NIT-004 (BC polish)
-    F-S025-PATH-B-CLAUDE-MD (MSRV CLAUDE.md human-update — PENDING HUMAN ACTION)
-    F-S025-ADV24-MED-001 cross-story + F-S025-ADV24-MED-002 VP-body (phase-5)
-    F-S025-ADV28-OBS-002 [worktree-vs-canonical App struct] (phase-5)
-    ADR-HOOK-001 (mechanical ADR pre-commit hook; devops — hook script delivered; wiring BLOCKED human action)
-    PROCESS-GAP-CI-PARITY-1 (CLAUDE.md --all-targets; HUMAN action required)
-    PROCESS-GAP-CI-PARITY-2 (per-story POL-11/POL-12 local gate; devops codification)
-    F-S027-DOC-002/003 (render_frame + overlay stale docstrings; implementer)
-    SIGTERM-TERMINAL-RESTORE (Phase 4+ architectural gap)
-    PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP (architect-spec-only codification; orchestrator)
-    PROCESS-GAP-TMP-COMMIT-MSG-MIXUP (unique /tmp paths; delivery-skill update)
-    PROCESS-GAP-PRMANAGER-EARLY-RETURN (pr-manager completion discipline; skill update)
-
   FACTORY INFRASTRUCTURE:
     .factory/ mounted at factory-artifacts orphan branch.
-    Run factory-worktree-health via devops-engineer FIRST on session start (step 3 above).
+    Run factory-worktree-health via devops-engineer FIRST on session start.
     Commit hooks: block-ai-attribution, validate-input-hash, validate-table-cell-count — must pass.
     NEVER use --no-verify. NEVER add Co-Authored-By: Claude or robot emoji.
 dtu_required: true
@@ -512,10 +494,10 @@ current_cycle: cycle-001
 | 1 Spec Crystallization | DONE (expansion complete, D-169 APPROVED) | 2026-05-27 | D-155 original gate. D-168: PRD 22→70 BCs. D-169: Phase 1d CONVERGED (15 passes, trajectory 15→0). D-170: human gate APPROVED. BC-INDEX v1.19 (112 BCs). |
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4. D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). |
 | 3 TDD Implementation | COMPLETE — Wave-7 GATE PASSED (D-232) | 2026-06-03 | Wave 1+2+3 DONE (83 pts). Wave 4 GATE PASSED (D-175). Wave 5 GATE PASSED (D-182). Wave 6 GATE PASSED (D-224) @ 2a51a91. Wave 7 GATE PASSED (D-232): S-027 (D-226), S-031 (D-227), S-028 (D-228), S-029 (D-230). F-W7G3-MED-001 fixed PR #37 @ 6811103. 1514 tests, 0 failures. HS-EXP-008 score 1.0. 32/33 done (192/195 pts). develop @ 6811103. NEXT: Phase 3→4 transition gate → Phase 4. |
-| 4 Holdout Evaluation | ACTIVE — UNBLOCKED (D-234) | — | DTU clone S-DTU-001 validated fidelity 1.0000 (25/25). Dispatch vsdd-factory:phase-4-holdout-evaluation. |
-| 5-7 | not-started | — | |
+| 4-7 | SUSPENDED — vision pivot D-236 | — | Old observe-only scope retired. Do NOT run phase-4-holdout-evaluation until vision revision complete. |
+| PIVOT | ACTIVE (D-236) | 2026-06-03 | Observe-only → full TUI control center. Vision revision pending. See NEXT-SESSION-PIVOT.md. |
 
-develop @ 6811103 (D-232 — wave-7 gate PASSED, F-W7G3-MED-001 fix). Waves 1-7 DONE. Phase 3 COMPLETE. 32/33 stories done, 192/195 pts (98%). D-234: DTU clone S-DTU-001 validated (fidelity 1.0000). Phase 4 ACTIVE — UNBLOCKED. NEXT: vsdd-factory:phase-4-holdout-evaluation.
+develop @ fcd42f04 (NEXT-SESSION-PIVOT.md + CLAUDE.md D-236 banner). Phase 3 COMPLETE (D-232). 32/33 stories done, 192/195 pts (98%). D-236: PRODUCT-VISION PIVOT — monocle becomes full TUI control center. VSDD Phases 4-7 (old scope) SUSPENDED. NEXT: read NEXT-SESSION-PIVOT.md → facilitate vision revision → delta brief→architecture→stories.
 
 ## Blocking Issues
 
@@ -541,6 +523,7 @@ D-047 through D-221 archived at: `cycles/cycle-001/decisions-archive.md`, `cycle
 | D-233 | Phase-3→4 consistency cleanup — all MED/LOW audit findings RESOLVED. EVAL-INDEX v1.8→v1.9 (PO, S-027 input added). BC-HOOK-034 v1.0.1→v1.0.2 (PO, deprecated_by typo). STORY-INDEX v5.30→v5.31 (story-writer, 9 Wave-2 stories draft→done + BC-2.05.004 coverage PARTIAL + story-count fix + EPIC-05 S-032). sprint-state v1.38→v1.39 (S-032 exclusion note + LOW-004 bulk flip note). 28 story-file status fields corrected (15 draft→done, 12 not_started→done, 1 in_progress→done). version-pin-registry: EVAL-INDEX 1.9 + STORY-INDEX 5.31 anchors set + S-027 added. Input-hash refresh: 113+1 stale → 114 updated, 17 residual bookkeeping-class (convergence limit — not content drift; POL-11/POL-12 PASS). BC-HOOK-034-typo RESOLVED. STATE v6.81→v6.82. | 2026-06-03 | state-manager |
 | D-234 | DTU clone false-negative corrected — S-DTU-001 clone (dtu-claude-code-hooks-v1 cargo binary, crates/monocle-test-harness/src/bin/dtu_server.rs) validated on develop @ 90ae584: fidelity mean 1.0000 (25/25 fixtures, threshold 0.95), all 5 endpoints covered (pre-tool-use/notification/stop/session-start/prompt-submit), X-Claude-Code-Ide-Authorization header correct, BC-HOOK-034 filter passes, clippy + semgrep CLEAN. GATE-2 DTU-VALIDATION corrected from SKIP (false-negative) to PASS. Wave-7-gate-report.md Gate-2 annotated with D-234 correction. DTU-CLONE-STORY closed (RESOLVED-FALSE-PREMISE — blocking: false). dtu_clones_built updated to 2026-05-28. Phase 4 holdout-eval gate UNBLOCKED. Process gap: dtu-validator and consistency-validator searched for .factory/dtu-clones/ docker dir and missed cargo-binary clone location (S-DTU-001). PROC-DTU-VALIDATE-LOCATION added. POL-11/POL-12 PASS. STATE v6.82→v6.83. | 2026-06-03 | state-manager |
 | D-235 | Daemon-wiring integration CONVERGED — monocle-runtime binary now actually serves (was a sleep-loop stub). main() wires daemon_start_sequence + run_server + UDS listener + tracing subscriber (tracing-subscriber 0.3) + durable ring-flush shutdown + 10s drain timeout. 16+ adversarial passes over 6 fix rounds, converged to CLEAN. Code on feat/daemon-wire-serve (PR pending merge). Spec artifacts: SS-daemon-wiring-impl v1.3.0 (new — architect's implementation plan + Round 1/2/3 fix addenda), SS-deps-pin-manifest v1.2.1 (tracing-subscriber 0.3 prod dep + ureq/libc dev-deps), ARCH-INDEX v1.0.26 (SS-daemon-wiring-impl row), STORY-INDEX v5.32, sprint-state v1.40 (S-032 + S-DAEMON-WIRE-FIX-001 Wave-8 entries formalized). HIGH-2 second-signal exit codes (143/130) explicitly deferred to S-DAEMON-WIRE-FIX-001 (Wave 8, P1, 5pts). RESOLVED: ADV-W5GATE-HIGH-001 (DaemonState wiring), ADV-W3GATE-MED-002/004 (ring never Some), ADV-W4GATE-MED-002 (no tracing subscriber), S-005-main-wiring (partial), F-DW-HIGH-001 (CI false-green). ADV-W5GATE-HIGH-002 (duplicate dead handler) re-confirmed open. factory-artifacts pushed before daemon-wire code PR to satisfy CI POL-11. POL-11/POL-12 PASS. STATE v6.83→v6.84. | 2026-06-03 | state-manager |
+| D-236 | PRODUCT-VISION PIVOT — monocle becomes a full TUI control center (launch/manage/observe/tune/control; multi-session, multi-project; never leave the TUI). "A better lazyclaude AND a better claude-squad." Observe-only / no-orchestration principle from vision-synthesis v1.1.2 (approved 2026-05-11) RETIRED — specifically reverses: "inherit PM/Worker orchestration — rejected" and "execute workflows — rejected — observe-only." Phase-1 substrate (daemon-now-serves, hook ingestion, permission overlay, EngineModule/FactoryAdapter, proto, ring, TUI rendering) is BUILT and REUSABLE. VSDD Phases 4-7 (old observe-only scope) SUSPENDED. Next session: facilitate vision revision (NEXT-SESSION-PIVOT.md is the seed), redo gene-source disposition (claude-squad + zellij first), then delta brief→architecture→stories. Handoff canonical: /Users/jmagady/Dev/monocle/NEXT-SESSION-PIVOT.md. S-032 + S-DAEMON-WIRE-FIX-001 (Wave 8) and all non-blocking durable_task items remain valid but subordinate to pivot. STATE v6.84→v6.85. | 2026-06-03 | human+state-manager |
 
 ## Key Tech Stack (D-229 canonical)
 
@@ -571,7 +554,21 @@ MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44).
 | Resolved blocking issues | `cycles/cycle-001/blocking-issues-resolved.md` |
 | CODIFY-001 sweep protocol reference (Categories 1-11) | `cycles/cycle-001/burst-log.md` (D-207 archive) |
 
-## §Trace v6.84 (D-235 — Daemon-wiring CONVERGED; Phase 4 ACTIVE)
+## §Trace v6.85 (D-236 — PRODUCT-VISION PIVOT; Phase 4-7 SUSPENDED)
+
+**D-236 (2026-06-03):** PRODUCT-VISION PIVOT. monocle pivots from observe-only to
+a full TUI control center: launch + manage + observe + tune + control; many sessions,
+many projects; never leave the TUI. "A better lazyclaude AND a better claude-squad."
+Human decision. The observe-only / no-orchestration constraint (vision-synthesis v1.1.2,
+approved 2026-05-11) is RETIRED — specifically reverses the two rejected genes:
+"inherit PM/Worker orchestration — rejected" and "execute workflows — rejected —
+observe-only." Phase-1 substrate (daemon-now-serves, hook ingestion, permission overlay,
+EngineModule/FactoryAdapter traits, proto, ring, TUI rendering) is BUILT and REUSABLE.
+VSDD Phases 4-7 of the old observe-only scope SUSPENDED pending vision revision.
+Handoff: /Users/jmagady/Dev/monocle/NEXT-SESSION-PIVOT.md committed to develop.
+CLAUDE.md updated with D-236 pivot banner. durable_task_register: PIVOT-CONTROL-CENTER
+added (active). S-032 and S-DAEMON-WIRE-FIX-001 (Wave 8) remain valid but subordinate.
+STATE v6.84→v6.85.
 
 **D-235 (2026-06-03):** Daemon-wiring integration CONVERGED. monocle-runtime binary
 now actually serves (was a sleep-loop stub). main() wires daemon_start_sequence + run_server
