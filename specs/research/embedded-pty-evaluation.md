@@ -18,6 +18,32 @@ traces_to: NEXT-SESSION-PIVOT.md §4 items 1-3 (D-236 control-center pivot)
 
 # Research: Embedded PTY Terminal Inside monocle's ratatui TUI
 
+> **SR-002 SUPERSESSION NOTE (2026-06-03T23:30:00Z — D-237 architecture delta):**
+>
+> This document was produced before the D-237 human ratification (2026-06-03) of the full
+> keyboard fidelity scope. Two positions in this document are SUPERSEDED by the D-237
+> ratification and the subsequent architecture delta (vision v2.1, ADR-0011, SS-09):
+>
+> 1. **§3.3 point 3 (keyboard scope narrow):** States "Phase-1-correct scope: cover the keys a
+>    Claude Code session actually needs (printable, Enter, arrows, Ctrl-C, Ctrl-D, Backspace,
+>    Tab, Esc) to production grade; defer exotic protocols to a later wave." This is SUPERSEDED.
+>    D-237 human ratification (2026-06-03) placed full keyboard fidelity IN v1A scope: printable
+>    + control + arrows + Backspace + Tab + Esc + Enter + **mouse events + Kitty keyboard protocol**.
+>    Bracketed paste is also v1A. No deferral. See vision §Open Questions Q-6 (RESOLVED) and
+>    SS-embedded-pty.md §Full-Fidelity Keyboard Encoding.
+>
+> 2. **§8 Q5 (keyboard fidelity open question):** The question "Which key/input protocols are in
+>    v1 production scope?" is RESOLVED — full fidelity as described in point 1 above. The human
+>    decision note "HUMAN DECISION NEEDED" was resolved at D-237. No further human input needed.
+>
+> All other analysis and recommendations in this document remain valid and inform the architecture
+> delta. The PTY stack selection (portable-pty 0.9.0 + vt100 0.16.2 + tui-term 0.3.4) is
+> confirmed by ADR-0011. The Option A UDS channel recommendation (§8 Q4) is confirmed by ADR-0010.
+>
+> Authoritative keyboard scope: SS-embedded-pty.md §Full-Fidelity Keyboard Encoding (v1A).
+> Authoritative PTY stack: ADR-0011 + SS-deps-pin-manifest-v2-delta.md.
+> Authoritative session persistence model: ADR-0009 + SS-session-manager.md.
+
 ## Executive Summary
 
 The D-236 pivot requires that a user "never leave the TUI" while a running Claude Code

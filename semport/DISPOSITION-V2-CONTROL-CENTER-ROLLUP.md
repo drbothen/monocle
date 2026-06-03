@@ -21,6 +21,32 @@ individual_dispositions:
 
 # Gene-Source Disposition v2: Master Rollup (Control-Center Pivot)
 
+> **SR-002 SUPERSESSION NOTE (2026-06-03T23:30:00Z — D-237 architecture delta):**
+>
+> This document was produced during the D-236/D-237 disposition pass before the D-237 human
+> ratification of full keyboard fidelity scope and the D-238 session-host persistence escalation.
+> The following positions are SUPERSEDED:
+>
+> 1. **§EMBEDDED PTY — "Critical v1 scope decisions" narrow keyboard scope:** The bullet
+>    "Keyboard scope deferred (feature ordering): Kitty keyboard protocol, mouse, bracketed paste"
+>    is SUPERSEDED. D-237 human ratification (2026-06-03) placed full keyboard fidelity IN v1A:
+>    printable + control + arrows + Backspace + Tab + Esc + Enter + **mouse + Kitty protocol +
+>    bracketed paste**. No deferral. See vision §Open Questions Q-6 (RESOLVED) and SS-embedded-pty.md.
+>
+> 2. **§MULTI-SESSION / MULTI-PROJECT — persistence strategy:** The "tmux control-mode: documented
+>    fallback" and "daemon crash: sessions lost" posture is PARTIALLY superseded. D-238 (2026-06-03)
+>    escalated graceful-daemon-restart survival to a hard v1A requirement. The adopted design is
+>    `monocle-session-host` native detached processes (ADR-0009). Daemon crash (CASE 3) remains
+>    an accepted boundary (sessions lost). TUI exit survival (CASE 1) is unchanged. Only CASE 2
+>    (graceful daemon restart) is newly required to survive.
+>    Authoritative persistence model: ADR-0009 + SS-session-manager.md.
+>
+> All other dispositions, CONFIRMED/LEAVE-BEHIND tables, and gene-source assessments in this
+> document remain valid and are confirmed by the architecture delta.
+>
+> Authoritative architecture: architecture/ARCH-INDEX.md v1.0.27 and the v1A delta set
+> (SS-session-manager.md, SS-embedded-pty.md, ADR-0009, ADR-0010, ADR-0011).
+
 ## The Vision Delta
 
 The D-236 pivot (human-ratified D-237) transforms monocle from:

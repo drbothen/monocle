@@ -122,6 +122,36 @@ SS-tui:
   last_bump_commit: "740465d313d5a76210c6e9f550d13daaf7b4fdff"
   last_bump_date: "2026-05-28"
 
+SS-session-manager:
+  path: specs/architecture/SS-session-manager.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-239 control-center architecture delta 2026-06-03 — SS-08 session-host coordinator, monocle-session-host binary]"
+  last_bump_date: "2026-06-03"
+
+SS-embedded-pty:
+  path: specs/architecture/SS-embedded-pty.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-239 control-center architecture delta 2026-06-03 — SS-09 embedded PTY widget, tui-term, keyboard encoding]"
+  last_bump_date: "2026-06-03"
+
+SS-engine-module-v2-delta:
+  path: specs/architecture/SS-engine-module-v2-delta.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-239 control-center architecture delta 2026-06-03 — spawn_recipe() method delta]"
+  last_bump_date: "2026-06-03"
+
+SS-daemon-wiring-v2-delta:
+  path: specs/architecture/SS-daemon-wiring-v2-delta.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-239 control-center architecture delta 2026-06-03 — D-235 rework scope, session_manager wiring]"
+  last_bump_date: "2026-06-03"
+
+SS-deps-pin-manifest-v2-delta:
+  path: specs/architecture/SS-deps-pin-manifest-v2-delta.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-239 control-center architecture delta 2026-06-03 — portable-pty/vt100/tui-term pins, monocle-session-host crate]"
+  last_bump_date: "2026-06-03"
+
 # ───────────────────────────────────────────────────────────────────────────────
 # ADR files
 # ───────────────────────────────────────────────────────────────────────────────
@@ -144,14 +174,32 @@ ADR-0008-structural-claim-discipline:
   last_bump_commit: "[set at Pass 34 MED-001 closure]"
   last_bump_date: "2026-05-30"
 
+ADR-0009:
+  path: specs/architecture/adr/ADR-0009-native-session-host-process-model.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-239 control-center architecture delta 2026-06-03 — native session-host process model ADR]"
+  last_bump_date: "2026-06-03"
+
+ADR-0010:
+  path: specs/architecture/adr/ADR-0010-pty-bytes-over-shared-uds-ipc.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-239 control-center architecture delta 2026-06-03 — PTY bytes over shared UDS IPC ADR]"
+  last_bump_date: "2026-06-03"
+
+ADR-0011:
+  path: specs/architecture/adr/ADR-0011-pty-stack-native-portable-pty-vt100-tui-term.md
+  current_version: "1.0.0"
+  last_bump_commit: "[D-239 control-center architecture delta 2026-06-03 — native PTY stack ADR]"
+  last_bump_date: "2026-06-03"
+
 # ───────────────────────────────────────────────────────────────────────────────
 # Index / meta documents
 # ───────────────────────────────────────────────────────────────────────────────
 
 ARCH-INDEX:
   path: specs/architecture/ARCH-INDEX.md
-  current_version: "1.0.26"
-  last_bump_commit: "[D-235 daemon-wiring convergence 2026-06-03 — SS-daemon-wiring-impl.md Document Map row + S-DAEMON-WIRE-FIX-001 cross-ref]"
+  current_version: "1.0.27"
+  last_bump_commit: "[D-239 control-center architecture delta 2026-06-03 — SS-08/SS-09, CAP-008/009, ADR-0009/0010/0011 + 5 delta SS docs]"
   last_bump_date: "2026-06-03"
 
 BC-INDEX:

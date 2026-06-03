@@ -1,13 +1,13 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.26"
+version: "1.0.27"
 status: active
 producer: vsdd-factory:architect
-timestamp: 2026-06-03T08:30:00Z
-phase: phase-1-expansion
-inputs: [product-brief.md, prd.md]
-input-hash: "da60462"
+timestamp: 2026-06-03T23:30:00Z
+phase: v1A-architecture-delta
+inputs: [product-brief.md, prd.md, research/domain-monocle-vision-synthesis.md]
+input-hash: "69fff32"
 traces_to: prd.md
 deployment_topology: single-service
 project: monocle
@@ -35,21 +35,29 @@ project: monocle
 | Forward Compatibility | SS-forward-compatibility.md | ~7,871 | architect, implementer | FC contracts P2-1..P3-N |
 | Phase 1 Permissions | SS-permissions-phase1.md | ~2,661 | implementer, test-writer | Phase 1 permission enum |
 | Config | SS-config.md | ~2,600 | implementer, test-writer | Config persistence, harness profiles, profile picker, CCR detection |
+| Session Manager | SS-session-manager.md | ~2,600 | implementer, test-writer | Session-host coordinator, SessionManager, monocle-session-host binary, session-state.json, re-discovery, GC (v1A NEW) |
+| Embedded PTY / TUI | SS-embedded-pty.md | ~2,400 | implementer, test-writer | EmbeddedTerminal AppMode, PTY widget, keyboard encoding, resize, SessionCreation wizard (v1A NEW) |
+| EngineModule v2 Delta | SS-engine-module-v2-delta.md | ~1,200 | implementer | spawn_recipe() method, SpawnRecipe/SpawnOptions types, ClaudeCodeModule impl spec (v1A delta) |
+| Daemon Wiring v2 Delta | SS-daemon-wiring-v2-delta.md | ~1,100 | implementer | D-235 rework scope: DaemonState.session_manager, daemon_start_sequence step 8b, IPC handler new variants, broker PtyOutput fan-out (v1A delta) |
+| Deps Pin Manifest v2 Delta | SS-deps-pin-manifest-v2-delta.md | ~900 | implementer, devops-engineer | portable-pty/vt100/tui-term pin additions, monocle-session-host crate, version-pin-registry entries (v1A delta) |
 
 ## Cross-References
 
 | If you need... | Read these together |
 |----------------|-------------------|
 | Implementation plan for daemon | SS-daemon-lifecycle.md + SS-core-types-and-abi.md + SS-deps-pin-manifest.md |
-| Harness abstraction implementation | SS-engine-module.md + SS-core-types-and-abi.md |
+| Harness abstraction implementation | SS-engine-module.md + SS-engine-module-v2-delta.md + SS-core-types-and-abi.md |
 | Verification plan for a module | SS-core-types-and-abi.md + SS-engine-module.md |
 | Phase 3+ upgrade impact | SS-forward-compatibility.md + SS-deps-pin-manifest.md |
 | Code review enforcement rules | SS-conventions-anti-patterns.md |
 | Daemon binary wiring (composition root) | SS-daemon-wiring.md + SS-daemon-lifecycle.md + SS-engine-module.md |
-| Daemon binary implementer execution plan (main.rs wiring) | SS-daemon-wiring-impl.md + SS-daemon-wiring.md + SS-daemon-lifecycle.md |
+| Daemon binary implementer execution plan (main.rs wiring) | SS-daemon-wiring-impl.md + SS-daemon-wiring.md + SS-daemon-lifecycle.md + SS-daemon-wiring-v2-delta.md |
 | IPC protocol (TUI ↔ daemon transport) | SS-ipc.md + SS-daemon-wiring.md |
 | TUI implementation (panels + overlay) | SS-tui.md + SS-ipc.md + SS-core-types-and-abi.md + SS-deps-pin-manifest.md |
 | Config crate implementation | SS-config.md + SS-deps-pin-manifest.md + SS-conventions-anti-patterns.md |
+| Session spawn + lifecycle (v1A) | SS-session-manager.md + SS-engine-module-v2-delta.md + ADR-0009 + SS-daemon-wiring-v2-delta.md |
+| Embedded PTY + keyboard fidelity (v1A) | SS-embedded-pty.md + SS-ipc.md + ADR-0010 + ADR-0011 |
+| New dependency pins (v1A) | SS-deps-pin-manifest.md + SS-deps-pin-manifest-v2-delta.md |
 
 ## Subsystem Registry
 
@@ -66,6 +74,8 @@ project: monocle
 | SS-05 | IPC | SS-ipc.md | monocle-ipc (UDS client + server, Transport trait, message types, framing, reconnection logic) | Phase 1 |
 | SS-06 | TUI | SS-tui.md | monocle-core (AppMode, Action, FocusSnapshot, PanelId, PromptModal, BindingSource, Binding, transition() — pure types and transition function); monocle-tui (ratatui renderer, panel layout, crossterm event loop, IPC client, keybinding dispatcher) | Phase 1 |
 | SS-07 | Config | SS-config.md | monocle-config (config.json reader/writer, harness profile schema, profile picker logic, CCR detection) | Phase 1 |
+| SS-08 | Session Manager | SS-session-manager.md | monocle-runtime (SessionManager coordinator sub-module); monocle-session-host (new binary crate — per-session PTY supervisor) | v1A |
+| SS-09 | Embedded PTY | SS-embedded-pty.md | monocle-core (EmbeddedTerminal + SessionCreation AppMode variants, SessionCreationStep); monocle-tui (tui-term PTY widget, keyboard encoding, resize handling) | v1A |
 
 **ID format:** `SS-NN` (two-digit sequential, append-only).
 
@@ -85,6 +95,8 @@ project: monocle
 | SS-05 | CAP-005 | Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear |
 | SS-06 | CAP-006 | User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration |
 | SS-07 | CAP-007 | Configuration persistence; harness profile management; profile picker; CCR detection |
+| SS-08 | CAP-008 | Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn |
+| SS-09 | CAP-009 | Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard |
 
 ## Cross-Cutting Files
 
@@ -110,6 +122,9 @@ They define conventions, constraints, and cross-cutting concerns that apply to a
 | ADR-0006 | Non-Exhaustive Structs with Public Positional Constructors | accepted | adr/ADR-0006-non-exhaustive-structs-with-public-constructors.md |
 | ADR-0007 | Version-Pin Citation Discipline — Semantic Anchors + CI Registry Enforcement | accepted | adr/ADR-0007-version-pin-citation-discipline.md |
 | ADR-0008 | Structural-Claim Discipline — Canonical Shape Anchors + POL-12 Detection | accepted | adr/ADR-0008-structural-claim-discipline.md |
+| ADR-0009 | Native Detached Session-Host Process Model for PTY Ownership | accepted | adr/ADR-0009-native-session-host-process-model.md |
+| ADR-0010 | PTY Bytes Shared on Existing UDS IPC Channel (Option A) | accepted | adr/ADR-0010-pty-bytes-over-shared-uds-ipc.md |
+| ADR-0011 | PTY Stack: Native portable-pty + vt100 + tui-term | accepted | adr/ADR-0011-pty-stack-native-portable-pty-vt100-tui-term.md |
 
 **Note:** ADR-0001 covers Phase 3 wasmtime 44 adoption (not a Phase 1 runtime dependency).
 ADR-0002 accepts nucleo 0.5 dormancy risk; re-eval trigger: if nucleo has no commit activity
@@ -666,6 +681,36 @@ tracked (not a silent-blindness path). No operative Phase-1 gate behavior change
   authored and its content cross-referenced in SS-conventions-anti-patterns.md v1.31.x but
   the ARCH-INDEX table row was never added. This entry closes the gap.
 - SE-16d PASS: 2026-05-29T08:00:00Z > chain high-water 2026-05-27T00:00:00Z (monotonic).
+## §Trace v1.0.27
+
+**D-238 architecture delta — v1A control-center subsystems, ADRs, and deltas** (2026-06-03T23:30:00Z):
+
+- NORMATIVE: SS-08 (Session Manager) registered. Architecture doc: `SS-session-manager.md` v1.0.0.
+  Implementing crates: `monocle-runtime` (SessionManager coordinator sub-module);
+  `monocle-session-host` (new binary crate — per-session PTY supervisor).
+  Capability: CAP-008 (session lifecycle, session-host process model, re-discovery, GC, hook auto-injection).
+  Phase introduced: v1A.
+- NORMATIVE: SS-09 (Embedded PTY) registered. Architecture doc: `SS-embedded-pty.md` v1.0.0.
+  Implementing crates: `monocle-core` (EmbeddedTerminal + SessionCreation AppMode variants);
+  `monocle-tui` (PTY widget, keyboard encoding, resize).
+  Capability: CAP-009 (embedded PTY widget, full-fidelity keyboard, session creation wizard).
+  Phase introduced: v1A.
+- NORMATIVE: SS-08 and SS-09 rows added to Subsystem Registry and Capability Traceability table.
+- NORMATIVE: ADR-0009 registered — Native Detached Session-Host Process Model (Q-8 resolution).
+- NORMATIVE: ADR-0010 registered — PTY Bytes Shared on Existing UDS IPC Channel (Q-1 resolution).
+- NORMATIVE: ADR-0011 registered — PTY Stack native portable-pty + vt100 + tui-term (Q-7 resolution + stack formalization).
+- NORMATIVE: Document Map extended with 5 new delta/section files:
+  SS-session-manager.md, SS-embedded-pty.md, SS-engine-module-v2-delta.md,
+  SS-daemon-wiring-v2-delta.md, SS-deps-pin-manifest-v2-delta.md.
+- NORMATIVE: Cross-References table extended with v1A routing guidance.
+- NORMATIVE: ARCH-INDEX version 1.0.26 → 1.0.27.
+- INFORMATIONAL: Delta docs (SS-*-v2-delta.md) will be incorporated into their base SS-* docs
+  by the implementer and marked SUPERSEDED at that time. They exist as delta artifacts to
+  avoid rewriting large base docs before the implementer validates the design.
+- INFORMATIONAL: input-hash field updated to [pending] — state-manager refreshes after commit.
+  Inputs now include `research/domain-monocle-vision-synthesis.md` (v2.1 approved, D-238).
+- SE-16d PASS: 2026-06-03T23:30:00Z > chain high-water 2026-06-03T08:30:00Z (monotonic).
+
 ## §Trace v1.0.26
 
 **SS-daemon-wiring-impl.md registered in Document Map + S-DAEMON-WIRE-FIX-001 anchor noted** (2026-06-03):
