@@ -496,7 +496,22 @@ pub async fn daemon_start_sequence(
     //
     // Store the JoinHandle on DaemonState so the shutdown tail can await it after closing
     // the write channel (CRITICAL-1 fix — SS-daemon-wiring-impl.md §Fix Addendum Round 2).
-    let ring_flush_handle = ring.spawn_flush_task();
+    //
+    // E2E-TEST-AFFORDANCE (e2e-test-affordances feature only): read MONOCLE_RING_FLUSH_DELAY_MS
+    // and pass to spawn_flush_task. Under this feature, the flush task sleeps for the specified
+    // number of milliseconds BEFORE writing each record to disk, making the record sit
+    // "enqueued but not yet flushed" for a controllable window so AC-E2E-008 can prove that
+    // the shutdown drain-join (step d in main.rs) is non-vacuous. In production (no feature),
+    // this block is not compiled and spawn_flush_task takes no delay argument.
+    #[cfg(feature = "e2e-test-affordances")]
+    let ring_flush_delay_ms: Option<u64> = std::env::var("MONOCLE_RING_FLUSH_DELAY_MS")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok());
+
+    let ring_flush_handle = ring.spawn_flush_task(
+        #[cfg(feature = "e2e-test-affordances")]
+        ring_flush_delay_ms,
+    );
 
     // Step 5: Create bounded mpsc channel for event bus (4096 slots), drop counter AtomicU64.
     // Retain event_rx so the channel has a live consumer; fan-out and debounce tasks are

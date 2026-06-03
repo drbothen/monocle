@@ -14,6 +14,7 @@
 //! | AC-E2E-005 | monocle.sock exists and is a socket |
 //! | AC-E2E-006 | SIGTERM → exit 0 + hooks-settings.json + monocle.lock removed |
 //! | AC-E2E-007 | Drain timeout fires ≤11s under a held in-flight request (C2 fix) |
+//! | AC-E2E-008 | Ring flush drain-join is non-vacuous: 500ms flush delay + immediate SIGTERM → record durable (CRITICAL-1 fix) |
 
 // Test files: expect/unwrap are idiomatic assertion amplification, not production code.
 #![allow(clippy::expect_used, clippy::unwrap_used)]
@@ -637,18 +638,62 @@ fn test_daemon_e2e_drop_counter_zero_under_normal_load_C1() {
     );
 }
 
-/// AC-E2E-008 — Ring durability under immediate SIGTERM.
+/// AC-E2E-008 — Ring durability: flush-delay drain proves the drain-join is non-vacuous.
 ///
-/// Posts a PreToolUse hook and sends SIGTERM IMMEDIATELY (no sleep between POST and SIGTERM).
-/// Asserts that the daemon exits 0 within 15s AND `monocle-events.jsonl` contains the
-/// enqueued record — proving the ring flush drain step in the shutdown tail persists
-/// records before `process::exit` fires (BC-2.01.007 / BC-2.04.012 CRITICAL-1 fix).
+/// # What this test verifies (non-vacuity argument)
 ///
-/// This test does NOT require the `e2e-test-affordances` feature because it does not use
-/// `MONOCLE_HOOK_DELAY_MS`. The daemon binary compiled with standard `cargo test --workspace`
-/// is sufficient. The 15s budget = 10s HTTP drain + 2s ring flush + 3s buffer.
+/// The ring flush task (`flush_task_loop` in ring.rs) writes each record to disk IMMEDIATELY
+/// on receipt when running without a flush delay — so in the absence of `MONOCLE_RING_FLUSH_DELAY_MS`,
+/// any record enqueued before SIGTERM is already on disk by the time the drain-join runs.
+/// That makes the drain-join vacuous: it passes whether or not the drain-join exists.
+///
+/// This test activates `MONOCLE_RING_FLUSH_DELAY_MS=500` to inject a 500ms artificial delay
+/// BEFORE each disk write in the flush task. The timeline is then:
+///
+/// ```text
+/// t=0ms   POST /hooks/pre-tool-use → handler returns 200 → record enqueued to write-queue
+/// t=~5ms  SIGTERM sent (immediately after confirming POST was received by the handler)
+/// t=~5ms  Shutdown sequence begins: HTTP drain completes (no in-flight requests), then
+///         hooks-settings.json removed, then ring Arc dropped (closing write-queue channel)
+/// t=~5ms  flush_task_loop: currently sleeping 500ms for the enqueued record's pre-write delay
+/// t=~505ms flush_task_loop: write + flush to disk; rx.recv() returns None → task exits
+/// t=~505ms drain-join (2s timeout) sees task exited → cleanup continues
+/// t=~510ms daemon exits 0
+/// ```
+///
+/// Without the drain-join in main.rs step (d):
+/// - `process::exit` would fire at ~5ms (after HTTP drain)
+/// - The flush task is still sleeping; the 500ms write never executes
+/// - Record is LOST → test FAILS with "monocle-events.jsonl does not contain PreToolUse"
+///
+/// With the drain-join (2s timeout > 500ms delay):
+/// - Shutdown waits for the flush task to complete the 500ms sleep and execute the write
+/// - Record is DURABLE → test PASSES
+///
+/// # Feature gate
+///
+/// Requires `e2e-test-affordances` (same as AC-E2E-007). The daemon binary compiled with
+/// `--features e2e-test-affordances` supports `MONOCLE_RING_FLUSH_DELAY_MS`. Run via:
+///   `cargo test -p monocle-runtime --test daemon_e2e_serve --features e2e-test-affordances`
+///
+/// # Timing parameters
+///
+/// - `MONOCLE_RING_FLUSH_DELAY_MS=500`: flush delay. Must be > typical daemon shutdown time
+///   (~5ms) so the record is provably NOT on disk at SIGTERM, and < the 2s drain-join timeout
+///   so the drain completes deterministically.
+/// - SIGTERM sent: immediately after confirming POST was received (≤10ms wait for 200 response).
+///   No 100ms pre-SIGTERM sleep — unlike the vacuous version, we don't need to let the flush
+///   complete before SIGTERM; the delay guarantees it hasn't.
+/// - Exit budget: 15s (10s HTTP drain + 2s ring-flush drain + 3s buffer).
 #[test]
+#[cfg(feature = "e2e-test-affordances")]
 fn test_daemon_e2e_ring_durability_immediate_sigterm_AC_E2E_008() {
+    // Flush delay: 500ms. Drain-join timeout in main.rs: 2000ms.
+    // Invariant: FLUSH_DELAY_MS < DRAIN_JOIN_TIMEOUT_MS so the drain always completes.
+    // Invariant: FLUSH_DELAY_MS >> typical daemon-shutdown-path duration (~5ms on loopback)
+    //            so the record is provably NOT flushed at the moment SIGTERM fires.
+    const FLUSH_DELAY_MS: u64 = 500;
+
     let binary = std::path::PathBuf::from(env!("CARGO_BIN_EXE_monocle-runtime"));
     assert!(
         binary.exists(),
@@ -658,12 +703,16 @@ fn test_daemon_e2e_ring_durability_immediate_sigterm_AC_E2E_008() {
     let tmp = tempfile::tempdir().expect("AC-E2E-008: create tmpdir");
     let runtime_dir = tmp.path().to_path_buf();
 
-    // Spawn the daemon — no MONOCLE_HOOK_DELAY_MS; standard production path.
+    // Spawn the daemon WITH the flush delay affordance.
+    // MONOCLE_RING_FLUSH_DELAY_MS=500 causes flush_task_loop to sleep 500ms BEFORE
+    // writing each record to disk. Combined with an immediate SIGTERM after the POST,
+    // the record will be ENQUEUED but NOT YET FLUSHED when shutdown begins.
     let mut child = std::process::Command::new(&binary)
         .env("MONOCLE_RUNTIME_DIR", &runtime_dir)
         .env("RUST_LOG", "monocle_runtime=info")
+        .env("MONOCLE_RING_FLUSH_DELAY_MS", FLUSH_DELAY_MS.to_string())
         .spawn()
-        .expect("AC-E2E-008: spawn monocle-runtime binary");
+        .expect("AC-E2E-008: spawn monocle-runtime binary with MONOCLE_RING_FLUSH_DELAY_MS");
 
     let daemon_pid = child.id();
 
@@ -698,59 +747,62 @@ fn test_daemon_e2e_ring_durability_immediate_sigterm_AC_E2E_008() {
         "AC-E2E-008: daemon did not become healthy within 5s"
     );
 
-    // Issue the POST in a background thread — we do NOT wait for the HTTP response
-    // before sending SIGTERM. The hook handler is fast (<300ms), so the thread will
-    // complete the request and enqueue the ring record before or around the time SIGTERM
-    // fires. The ring drain in the shutdown tail must persist the record before exit.
+    // POST the hook and wait for the HTTP 200 response to confirm the record was ENQUEUED
+    // to the write-queue. We use a synchronous (blocking) POST here — once we get 200,
+    // we know the handler ran and called ring.append(), which enqueued the record to the
+    // async write-queue. The flush task has then started sleeping for 500ms BEFORE the write.
     //
-    // A 100ms sleep after spawning the thread (before SIGTERM) gives the TCP connection
-    // time to be established so the request is genuinely in-flight. Without this, SIGTERM
-    // could fire before the TCP handshake completes, meaning the daemon never receives the
-    // hook at all and the test degenerates to "does the file exist after an empty run".
-    // 100ms is <<< the hook handler's 300ms timeout budget and << the 10s drain window,
-    // so this sleep does not change the test's core assertion about ring flush durability.
+    // Non-vacuity: at the moment SIGTERM fires (immediately below), the record is:
+    //   - ENQUEUED in the write-queue (ring.append() returned Ok)
+    //   - NOT YET ON DISK (flush task is sleeping for FLUSH_DELAY_MS ms)
+    // The shutdown drain-join (2s timeout) is the ONLY mechanism that waits for the flush
+    // task to finish sleeping and execute the disk write. Without it, the record is lost.
     let hook_url = format!("http://127.0.0.1:{port}/hooks/pre-tool-use");
-    let request_thread = std::thread::spawn(move || {
-        let hook_body = serde_json::json!({
-            "hook_event_name": "PreToolUse",
-            "session_id": "e2e-durability-test-session",
-            "tool_name": "Bash",
-            "tool_input": {"command": "echo durability-test"}
-        });
-        let _ = ureq::post(&hook_url)
-            .set("Content-Type", "application/json")
-            .set(
-                "X-Monocle-Authorization",
-                &format!("monocle-v1:{hex_token}"),
-            )
-            .send_json(hook_body);
-        // The response may or may not arrive before shutdown — that's the race condition
-        // this test exercises. The ring flush drain must persist the record regardless.
+    let hook_body = serde_json::json!({
+        "hook_event_name": "PreToolUse",
+        "session_id": "e2e-durability-flush-delay-session",
+        "tool_name": "Bash",
+        "tool_input": {"command": "echo durability-flush-delay-test"}
     });
+    let hook_resp = ureq::post(&hook_url)
+        .set("Content-Type", "application/json")
+        .set(
+            "X-Monocle-Authorization",
+            &format!("monocle-v1:{hex_token}"),
+        )
+        .send_json(hook_body)
+        .expect("AC-E2E-008: POST /hooks/pre-tool-use must succeed");
+    assert_eq!(
+        hook_resp.status(),
+        200,
+        "AC-E2E-008: POST /hooks/pre-tool-use must return 200 (record must be enqueued)"
+    );
 
-    // Wait 100ms for the background thread to establish the TCP connection and send the
-    // request body (the fast path: TCP handshake + HTTP request = ~5–50ms on loopback).
-    // This ensures the hook is in-flight when SIGTERM arrives.
-    std::thread::sleep(Duration::from_millis(100));
-
-    // Send SIGTERM while the request is in-flight (or just completed).
-    // We do NOT wait for the hook's HTTP response — SIGTERM fires without calling
-    // request_thread.join() first. This is the "immediate SIGTERM" guarantee from the spec.
+    // SIGTERM fires IMMEDIATELY after the 200 response.
+    // At this point: record is ENQUEUED but NOT YET WRITTEN (flush task is sleeping 500ms).
+    // The drain-join in main.rs step (d) must wait for the 500ms sleep to complete and the
+    // write to execute before process::exit fires.
     unsafe {
         libc::kill(daemon_pid as libc::pid_t, libc::SIGTERM);
     }
 
-    // Wait for daemon exit (15s: 10s HTTP drain + 2s ring flush + 3s buffer).
-    let deadline = std::time::Instant::now() + Duration::from_secs(15);
+    // Wait for daemon exit.
+    // Budget: 10s HTTP drain (no in-flight requests so this is fast) + 500ms flush delay
+    // + 2s drain-join timeout + 2s buffer = ~15s total.
+    let sigterm_time = std::time::Instant::now();
+    let deadline = sigterm_time + Duration::from_secs(15);
     let exit_status = loop {
         match child.try_wait() {
             Ok(Some(status)) => break status,
             Ok(None) => {
                 if std::time::Instant::now() >= deadline {
                     child.kill().ok();
+                    let elapsed = sigterm_time.elapsed();
                     panic!(
-                        "AC-E2E-008: daemon did not exit within 15s after SIGTERM + \
-                         immediate hook POST (BC-2.01.007 / BC-2.04.012 durability)"
+                        "AC-E2E-008: daemon did not exit within 15s after SIGTERM \
+                         (MONOCLE_RING_FLUSH_DELAY_MS={FLUSH_DELAY_MS}; elapsed: {elapsed:.1?}). \
+                         The drain-join in main.rs step (d) may not be awaiting the flush task \
+                         (BC-2.01.007 / BC-2.04.012 CRITICAL-1)."
                     );
                 }
                 std::thread::sleep(Duration::from_millis(50));
@@ -764,13 +816,19 @@ fn test_daemon_e2e_ring_durability_immediate_sigterm_AC_E2E_008() {
         "AC-E2E-008: daemon must exit 0 on graceful shutdown (got: {exit_status:?})"
     );
 
-    // The ring_path must exist and contain a PreToolUse record.
-    // The ring flush drain in the shutdown tail must have written the record before exit.
+    // The ring file MUST exist and contain the PreToolUse record.
+    //
+    // Non-vacuity assertion: if the drain-join were absent (or the drain-join timeout were
+    // < FLUSH_DELAY_MS), process::exit would fire before the flush task writes the record.
+    // The file would either not exist or not contain the PreToolUse entry. This is the
+    // discriminating assertion that makes this test non-vacuous: it can only pass if the
+    // shutdown drain-join successfully waited for the delayed flush to complete.
     let ring_path = runtime_dir.join("monocle-events.jsonl");
     assert!(
         ring_path.exists(),
         "AC-E2E-008: monocle-events.jsonl must exist after daemon exit \
-         (BC-2.01.007 / BC-2.04.012 durability contract violated — record lost on shutdown)"
+         (record lost — drain-join did not wait for the {FLUSH_DELAY_MS}ms-delayed flush; \
+         BC-2.01.007 / BC-2.04.012 CRITICAL-1 fix violated)"
     );
 
     let ring_content =
@@ -788,11 +846,10 @@ fn test_daemon_e2e_ring_durability_immediate_sigterm_AC_E2E_008() {
     assert!(
         has_pre_tool_use,
         "AC-E2E-008: monocle-events.jsonl must contain a PreToolUse record after \
-         immediate-SIGTERM shutdown — the ring drain must persist the record before \
-         process::exit fires (BC-2.01.007 / BC-2.04.012 CRITICAL-1 fix). \
-         Ring content:\n{ring_content}"
+         immediate-SIGTERM shutdown with MONOCLE_RING_FLUSH_DELAY_MS={FLUSH_DELAY_MS}. \
+         The record was ENQUEUED (HTTP 200 returned) but the flush task sleeps {FLUSH_DELAY_MS}ms \
+         before writing. The drain-join (2s timeout) in main.rs step (d) must have waited for \
+         the flush to complete. If the record is absent, the drain-join did not wait \
+         (BC-2.01.007 / BC-2.04.012 CRITICAL-1 fix). Ring content:\n{ring_content}"
     );
-
-    // Cleanup the request thread (it may have already joined if the response arrived).
-    let _ = request_thread.join();
 }

@@ -364,7 +364,24 @@ impl RingBuffer {
     /// ## Panics
     ///
     /// Panics if called after the receiver has already been taken (i.e., called twice).
-    pub fn spawn_flush_task(&self) -> tokio::task::JoinHandle<()> {
+    /// Spawn the async flush task that drains the write-queue to disk.
+    ///
+    /// # Parameters
+    ///
+    /// - `flush_delay_ms` (feature-gated): Under `e2e-test-affordances`, an artificial
+    ///   per-record delay is injected BEFORE the disk write, keeping the record enqueued-
+    ///   but-not-yet-flushed for a controllable window. This lets the shutdown drain-join
+    ///   test (AC-E2E-008) prove that records in the queue are not lost on SIGTERM.
+    ///   In production (`not(e2e-test-affordances)`) this parameter does not exist and
+    ///   no delay code is compiled (zero overhead).
+    #[cfg_attr(
+        not(feature = "e2e-test-affordances"),
+        allow(clippy::needless_pass_by_value)
+    )]
+    pub fn spawn_flush_task(
+        &self,
+        #[cfg(feature = "e2e-test-affordances")] flush_delay_ms: Option<u64>,
+    ) -> tokio::task::JoinHandle<()> {
         let rx = self
             .write_rx
             .lock()
@@ -378,7 +395,16 @@ impl RingBuffer {
         let disk_error = Arc::clone(&self.disk_error);
 
         tokio::spawn(async move {
-            flush_task_loop(rx, path, config, byte_count, disk_error).await;
+            flush_task_loop(
+                rx,
+                path,
+                config,
+                byte_count,
+                disk_error,
+                #[cfg(feature = "e2e-test-affordances")]
+                flush_delay_ms,
+            )
+            .await;
         })
     }
 
@@ -606,8 +632,31 @@ async fn flush_task_loop(
     config: RotationConfig,
     byte_count: Arc<Mutex<u64>>,
     disk_error: Arc<Mutex<bool>>,
+    // E2E-TEST-AFFORDANCE: artificial per-record delay BEFORE the disk write.
+    // Compiled ONLY under `e2e-test-affordances`; zero presence in production binaries.
+    // Set via MONOCLE_RING_FLUSH_DELAY_MS env var (read in lifecycle::daemon_start_sequence).
+    // With this delay active, a record received from the write-queue will not be written
+    // to disk until after the delay expires. An immediate SIGTERM will hit while the record
+    // is ENQUEUED-BUT-NOT-YET-FLUSHED; the shutdown drain-join (2s bounded timeout in main.rs
+    // step d) must wait for the delay and then the flush to complete before exit. Without the
+    // drain-join, process::exit would fire before the flush, losing the record. This is the
+    // mechanism that makes AC-E2E-008 non-vacuous: the test is only passable if the drain-join
+    // exists and is awaited before process::exit (BC-2.01.007 / BC-2.04.012 CRITICAL-1 fix).
+    #[cfg(feature = "e2e-test-affordances")] flush_delay_ms: Option<u64>,
 ) {
     while let Some(record) = rx.recv().await {
+        // E2E-TEST-AFFORDANCE: inject flush delay BEFORE disk write.
+        // This makes the record sit "enqueued but not yet flushed" for flush_delay_ms
+        // milliseconds. An immediate SIGTERM during this window requires the shutdown
+        // drain-join to wait for this task to complete (the channel is closed → rx.recv()
+        // will return None after this record, draining all pending records before the task
+        // exits). Without the 2s-bounded drain-join in main.rs step (d), the process would
+        // exit before the delay completes and the write() call never executes.
+        #[cfg(feature = "e2e-test-affordances")]
+        if let Some(delay_ms) = flush_delay_ms {
+            tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+        }
+
         // Serialise to JSONL line.
         let line = match serde_json::to_string(&record) {
             Ok(mut s) => {
