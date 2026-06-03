@@ -1,25 +1,26 @@
 //! monocle-runtime daemon binary entry point.
 //!
-//! Wired in S-016 as the daemon subprocess spawned by `monocle daemon start`.
-//! The daemon:
-//! 1. Creates a new session (setsid) and blocks SIGHUP so it survives terminal session end.
-//! 2. Resolves the runtime directory via `monocle_runtime::lifecycle::resolve_runtime_dir`.
-//! 3. Ensures the runtime directory exists with mode 0o700.
-//! 4. Acquires the lock file via `monocle_runtime::lock::DaemonLock::acquire`.
-//! 5. Loops indefinitely, servicing incoming connections (HTTP server wired in S-017).
+//! Wires the fully-implemented library functions into a live, serving daemon. The daemon:
 //!
-//! The lock file serves as the readiness signal for `monocle daemon start` — the CLI polls
-//! for the lock file's existence and exits 0 once it appears (BC-2.04.004 PC-3/PC-4).
+//! 1. Creates a new session (`setsid`) and blocks SIGHUP so it survives terminal session end.
+//! 2. Initialises a `tracing_subscriber` to stderr before any fallible operation (resolves
+//!    ADV-W4GATE-MED-002).
+//! 3. Resolves and ensures the runtime directory (XDG / `MONOCLE_RUNTIME_DIR`).
+//! 4. Runs the full 12-step `daemon_start_sequence` which binds the HTTP listener, writes
+//!    `monocle.lock` and `hooks-settings.json`, binds the UDS socket, and spawns the accept loop.
+//! 5. Calls `run_server(state, listener)` to serve HTTP with graceful shutdown.
+//! 6. After `run_server` returns: cleans up UDS socket, releases lock, removes
+//!    `hooks-settings.json`, and exits with the appropriate `DaemonExit` code.
 //!
 //! # Daemon exit codes
 //!
 //! | Code | Condition |
 //! |------|-----------|
-//! | 0    | Graceful shutdown (SIGTERM received, reserved for future drain logic) |
-//! | 1    | Startup failure (runtime dir unresolvable, lock write failure, etc.) |
-//!
-//! Exit code 1 on startup failure causes the CLI poller to detect early daemon exit
-//! and map it to CLI exit code 71 (internal error) per BC-2.04.004 PC-8.
+//! | 0    | Graceful shutdown (SIGTERM received, drain complete) |
+//! | 1    | Startup failure (runtime dir unresolvable, port bind failure, etc.) |
+//! | 2    | AdminForceStop (second POST /shutdown during drain) |
+//! | 130  | SigintDuringDrain (second SIGINT during drain) |
+//! | 143  | SigtermDuringDrain (second SIGTERM during drain) |
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
@@ -37,16 +38,23 @@ const _: () = assert!(
 );
 
 fn main() {
-    // --- Step 1: Detach from calling terminal session ---
+    // -------------------------------------------------------------------------
+    // Step 1: Session detach — BEFORE tokio runtime is created.
     //
-    // Call setsid() to create a new session. This daemon is no longer the session leader
-    // of the calling terminal, so it will not receive SIGHUP when the terminal session ends.
-    // nix::unistd::setsid() is a safe Rust function (BC-2.04.004 INV-2 / AC-014).
+    // setsid() and sigprocmask() must execute on the process main thread before tokio
+    // spawns its thread pool. Using Builder::new_multi_thread (step 4) rather than
+    // #[tokio::main] guarantees this ordering: the synchronous setup is complete before
+    // the async executor starts. (SS-daemon-wiring-impl.md §Tokio Runtime Choice)
+    // -------------------------------------------------------------------------
+
+    // Create a new session so the daemon is no longer the session leader of the calling
+    // terminal, and will not receive SIGHUP when the terminal session ends.
+    // nix::unistd::setsid() is a safe Rust wrapper (BC-2.04.004 INV-2).
     let _ = nix::unistd::setsid();
 
     // Block SIGHUP so that explicit kill(pid, SIGHUP) signals do not terminate the daemon.
     // This ensures the daemon survives terminal session end simulation in tests
-    // (BC-2.04.004 INV-2 test: `test_ac_014_daemon_survives_terminal_session_end`).
+    // (BC-2.04.004 INV-2 test: test_ac_014_daemon_survives_terminal_session_end).
     let mut hup_mask = nix::sys::signal::SigSet::empty();
     hup_mask.add(nix::sys::signal::Signal::SIGHUP);
     let _ = nix::sys::signal::sigprocmask(
@@ -55,13 +63,30 @@ fn main() {
         None,
     );
 
-    // --- Step 2: Resolve and create the runtime directory ---
+    // -------------------------------------------------------------------------
+    // Step 2: Initialise tracing subscriber — BEFORE any fallible operation.
+    //
+    // Resolves ADV-W4GATE-MED-002: daemon errors are now visible in logs.
+    // Daemon errors log to stderr; the parent process / shell will redirect stderr to a
+    // log file if needed. SS-conventions-anti-patterns.md §Logging: no println! in
+    // normal paths. RUST_LOG / tracing_subscriber::EnvFilter drives log level.
+    // -------------------------------------------------------------------------
+    tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
+        )
+        .init();
+
+    // -------------------------------------------------------------------------
+    // Step 3: Resolve and ensure the runtime directory (synchronous).
+    // -------------------------------------------------------------------------
     let runtime_dir = match monocle_runtime::lifecycle::resolve_runtime_dir() {
         Ok(dir) => dir,
         Err(e) => {
             tracing::error!(error = %e, "daemon: failed to resolve runtime directory");
-            // SS-conventions-anti-patterns.md: use exit_with(), not std::process::exit().
-            // exit_with(StartupFailure) emits the shutdown tracing log then exits 1.
+            // SS-conventions-anti-patterns.md: exit_with() is the SOLE process::exit call-site.
             monocle_runtime::lifecycle::exit_with(
                 monocle_runtime::lifecycle::DaemonExit::StartupFailure,
             );
@@ -75,28 +100,126 @@ fn main() {
         );
     }
 
-    // --- Step 3: Acquire lock file ---
+    // -------------------------------------------------------------------------
+    // Step 4: Build a multi-thread tokio runtime manually.
     //
-    // DaemonLock::acquire writes the lock file atomically. On failure (read-only dir,
-    // existing live lock, I/O error), exit 1 so the CLI poller detects early exit and
-    // reports exit code 71 (internal error) to the user.
-    let _lock = match monocle_runtime::lock::DaemonLock::acquire(&runtime_dir, 39_001) {
-        Ok((lock, _token)) => lock,
-        Err(e) => {
-            tracing::error!(error = %e, "daemon: failed to acquire lock file");
+    // setsid() and sigprocmask() must complete BEFORE tokio spawns its thread pool.
+    // Using Builder::new_multi_thread().build() instead of #[tokio::main] lets us
+    // guarantee the synchronous setup in steps 1–3 is done first.
+    // -------------------------------------------------------------------------
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap_or_else(|e| {
+            tracing::error!(error = %e, "daemon: failed to build tokio runtime");
             monocle_runtime::lifecycle::exit_with(
                 monocle_runtime::lifecycle::DaemonExit::StartupFailure,
             );
-        }
-    };
+        });
 
-    // --- Step 4: Daemon main loop ---
-    //
-    // In S-016, the daemon loop is a simple sleep loop. The HTTP server (axum, routes,
-    // state management) will be wired in S-017. SIGTERM uses the default signal handler
-    // (process terminates), which is correct for the stub — the daemon exits cleanly when
-    // `monocle daemon stop` sends SIGTERM.
-    loop {
-        std::thread::sleep(std::time::Duration::from_secs(1));
-    }
+    // -------------------------------------------------------------------------
+    // Steps 5–8: Async execution block.
+    // -------------------------------------------------------------------------
+    rt.block_on(async move {
+        // -----------------------------------------------------------------------
+        // Step 5: Full 12-step daemon start sequence.
+        //
+        // daemon_start_sequence:
+        //   - Binds TcpListener on 127.0.0.1:0 (OS-assigned port)
+        //   - Writes monocle.lock with the real port
+        //   - Writes hooks-settings.json
+        //   - Binds UDS socket (monocle.sock)
+        //   - Spawns the UDS accept loop as a tokio task
+        //   - Returns (DaemonState, TcpListener) — the listener is returned so we can
+        //     pass it to run_server without any timing gap or port re-bind
+        // -----------------------------------------------------------------------
+        let (state, listener) =
+            match monocle_runtime::lifecycle::daemon_start_sequence(&runtime_dir).await {
+                Ok(pair) => pair,
+                Err(e) => {
+                    tracing::error!(error = %e, "daemon: start sequence failed");
+                    monocle_runtime::lifecycle::exit_with(
+                        monocle_runtime::lifecycle::DaemonExit::StartupFailure,
+                    );
+                }
+            };
+
+        tracing::info!("daemon: start sequence complete; serving HTTP");
+
+        // -----------------------------------------------------------------------
+        // Step 6: Run the HTTP server.
+        //
+        // run_server blocks until a shutdown signal fires (SIGTERM, SIGINT, or POST
+        // /shutdown). The UDS accept loop is already running as a tokio::spawn task
+        // (spawned inside daemon_start_sequence at step 10 of the sequence).
+        // Graceful shutdown: run_server uses axum::serve(...).with_graceful_shutdown(...)
+        // which waits for in-flight requests to complete (10s drain window per BC-2.01.004
+        // INV-1, enforced inside run_server via tokio::signal).
+        // -----------------------------------------------------------------------
+        let serve_result = monocle_runtime::server::run_server(
+            std::sync::Arc::clone(&state),
+            listener,
+        )
+        .await;
+
+        if let Err(e) = serve_result {
+            tracing::error!(error = %e, "daemon: HTTP server returned error");
+            // Continue to shutdown tail so lock + hooks-settings are cleaned up even on
+            // server error (production-grade: no partial cleanup).
+        }
+
+        // -----------------------------------------------------------------------
+        // Step 7: Graceful shutdown tail.
+        //
+        // Order matters (BC-2.01.004 PC-7 → BC-2.04.010 PC-5):
+        //   (a) UDS socket cleanup — remove monocle.sock
+        //   (b) Release DaemonLock — remove monocle.lock
+        //   (c) Remove hooks-settings.json
+        //
+        // Errors in cleanup are logged as WARN but do not change the exit code
+        // (production-grade: shutdown must complete regardless of cleanup errors).
+        // -----------------------------------------------------------------------
+
+        // (a) UDS socket cleanup: UdsTransport::cleanup() removes monocle.sock.
+        // uds_transport is Option<UdsTransport> on DaemonState; use .as_ref() so we
+        // don't take ownership (cleanup() takes &self).
+        if let Some(transport) = state.uds_transport.as_ref() {
+            transport.cleanup();
+        }
+
+        // (b) Release the daemon lock (removes monocle.lock from the filesystem).
+        // daemon_lock is Mutex<Option<DaemonLock>>; take() leaves None so any concurrent
+        // caller cannot double-release.
+        let lock_opt = state
+            .daemon_lock
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take();
+        if let Some(lock) = lock_opt {
+            if let Err(e) = lock.release() {
+                tracing::warn!(error = %e, "daemon: lock release failed during shutdown; continuing");
+            }
+        }
+
+        // (c) Remove hooks-settings.json so Claude Code stops posting to the dead endpoint.
+        if let Err(e) = monocle_runtime::lifecycle::remove_hooks_settings(&runtime_dir) {
+            tracing::warn!(error = %e, "daemon: hooks-settings removal failed; continuing");
+        }
+
+        // -----------------------------------------------------------------------
+        // Step 8: Determine exit code and exit.
+        //
+        // force_exit flag is set by the post_shutdown handler when a second POST /shutdown
+        // arrives during the drain window (EC-050 / DaemonExit::AdminForceStop = exit 2).
+        // -----------------------------------------------------------------------
+        use std::sync::atomic::Ordering;
+        let exit_reason = if state.force_exit.load(Ordering::SeqCst) {
+            monocle_runtime::lifecycle::DaemonExit::AdminForceStop
+        } else {
+            monocle_runtime::lifecycle::DaemonExit::Graceful
+        };
+
+        tracing::info!(?exit_reason, "daemon: clean shutdown complete");
+        monocle_runtime::lifecycle::exit_with(exit_reason);
+    });
 }

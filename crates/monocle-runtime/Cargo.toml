@@ -21,6 +21,10 @@ monocle-ipc = { path = "../monocle-ipc" }
 uuid = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
+# tracing-subscriber: fmt subscriber initialization in the daemon binary entry point.
+# Resolves ADV-W4GATE-MED-002 (no subscriber → daemon errors invisible in logs).
+# env-filter feature required for RUST_LOG / tracing_subscriber::EnvFilter support.
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 rand = { workspace = true }
 constant_time_eq = { workspace = true }
 tempfile = { workspace = true }
@@ -54,3 +58,10 @@ regex-lite = "0.1"
 # implementation, so without no-env-filter the subscriber only captures the test crate's own
 # logs — not the monocle-runtime logs being tested. See tracing-test docs §"Per-crate Filtering".
 tracing-test = { version = "0.2.6", features = ["no-env-filter"] }
+# ureq: minimal synchronous HTTP client for E2E binary tests (daemon_e2e_serve.rs).
+# Test-only; the E2E test uses blocking HTTP calls to probe the live daemon.
+# Version 2.x chosen for simple API without async overhead in test context.
+ureq = { version = "2", features = ["json"] }
+# libc: POSIX signal constants (SIGTERM) for kill() in E2E test shutdown assertion.
+# Test-only; production code uses nix for signal handling.
+libc = "0.2"

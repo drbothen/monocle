@@ -378,13 +378,27 @@ struct StartSequenceLockContent {
 /// 11. Init crash recovery checkpoint infrastructure (stateless; verifies path is writable).
 /// 12. Signal startup complete.
 ///
+/// # Return value
+///
+/// Returns the fully-wired `DaemonState` **and** the bound `TcpListener` that was used to
+/// record the OS-assigned port. The listener is returned (not dropped) so that `main()` can
+/// pass it directly to `run_server(state, listener)` without any timing gap between port bind
+/// and HTTP accept. SOQ-2 is preserved: the listener is bound at step 3, the port is recorded
+/// in the lock file at step 8, and the listener is returned at step 12 — all in the same scope.
+///
 /// # Errors
 ///
 /// Returns [`DaemonStartError`] on any step failure. Post-step-8 failures trigger
 /// lock file cleanup before returning (invariant 6 of BC-2.04.001).
 pub async fn daemon_start_sequence(
     runtime_dir: &Path,
-) -> Result<std::sync::Arc<crate::state::DaemonState>, DaemonStartError> {
+) -> Result<
+    (
+        std::sync::Arc<crate::state::DaemonState>,
+        tokio::net::TcpListener,
+    ),
+    DaemonStartError,
+> {
     use std::sync::atomic::AtomicU64;
     use std::sync::Arc;
 
@@ -613,13 +627,18 @@ pub async fn daemon_start_sequence(
     );
 
     // Step 12: Startup complete. Log and return.
+    //
+    // The TcpListener is returned alongside DaemonState so that main() can pass it to
+    // run_server(state, listener) without any timing gap. SOQ-2 is preserved: the listener
+    // was bound at step 3, the port was recorded in monocle.lock at step 8, and the listener
+    // is returned here — all within the same function scope. No re-bind occurs.
     tracing::info!(
         runtime_dir = %runtime_dir.display(),
         port = port,
         "daemon_start_sequence: all steps complete (BC-2.04.001)"
     );
 
-    Ok(daemon_state)
+    Ok((daemon_state, listener))
 }
 
 /// Write `hooks-settings.json` atomically into the runtime directory (BC-2.04.010).
