@@ -356,12 +356,81 @@ jobs:
           set -euo pipefail
           cargo test --workspace --locked --target ${{ matrix.target }}
 
+  # Feature-gated daemon E2E tests: e2e-test-affordances.
+  # These tests exercise the real production binary with delay-injection env vars
+  # (MONOCLE_HOOK_DELAY_MS, MONOCLE_RING_FLUSH_DELAY_MS) to prove drain-timeout
+  # (AC-E2E-007) and ring-durability (AC-E2E-008) behaviours are non-vacuous.
+  #
+  # WHY A SEPARATE JOB: the standard build-and-test matrix runs `cargo test --workspace`
+  # WITHOUT --features e2e-test-affordances. The feature-gated code paths (and the two
+  # tests that verify them) are therefore never compiled or executed in that job. This
+  # job closes the false-green gap identified in adversarial finding F-DW-HIGH-001.
+  #
+  # PLATFORM: ubuntu-24.04 only. The tests spawn the local daemon binary; cross-platform
+  # binary behaviour differences for these signal/shutdown paths are covered by the
+  # main build-and-test matrix. Running the affordance tests on linux is sufficient to
+  # prove non-vacuousness.
+  #
+  # TIMEOUT: AC-E2E-007 drain-timeout test takes ~11 s (10 s drain window + overhead).
+  #          AC-E2E-008 ring-durability SIGTERM test takes ~1 s.
+  #          20 minutes is deliberately generous to absorb runner cold-start and slow
+  #          cargo cache restores without killing legitimate test runs.
+  daemon-e2e-affordances:
+    name: Daemon E2E (e2e-test-affordances)
+    needs: [semgrep, audit-table-drift, pol-lint]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        # actions/checkout@v4 — pinned to SHA (supply-chain security; SS-conventions §R-001)
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Install Rust toolchain
+        # dtolnay/rust-toolchain@v1 — pinned to SHA (supply-chain security; SS-conventions §R-001)
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
+        with:
+          toolchain: "1.88"
+          components: clippy, rustfmt
+
+      - name: Cache cargo
+        # Swatinem/rust-cache@v2 — pinned to SHA (supply-chain security; SS-conventions §R-001)
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32
+        with:
+          shared-key: daemon-e2e-affordances
+
+      - name: Install protoc (monocle-proto prost-build dependency)
+        # prost-build =0.14.1 requires the protoc binary at compile time; it is NOT bundled.
+        # ubuntu-24.04 runner images no longer pre-install protoc as of image 20260525.161+.
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends protobuf-compiler
+
+      - name: cargo clippy -p monocle-runtime --all-targets --features e2e-test-affordances -- -D warnings
+        # Ensures the feature-gated affordance code compiles cleanly under clippy.
+        # Without this step a compile-break in the #[cfg(feature = "e2e-test-affordances")]
+        # paths would pass the standard preflight job (which does not enable the feature).
+        run: |
+          set -euo pipefail
+          cargo clippy -p monocle-runtime --all-targets --features e2e-test-affordances -- -D warnings
+
+      - name: cargo test -p monocle-runtime --test daemon_e2e_serve --features e2e-test-affordances --locked
+        # Runs the four daemon E2E tests including:
+        #   - test_daemon_e2e_drain_timeout_AC_E2E_007  (~11 s: 10 s drain window)
+        #   - test_daemon_e2e_ring_durability_immediate_sigterm_AC_E2E_008  (~1 s)
+        # These tests spawn the real monocle-runtime binary and verify the C2 + CRITICAL-1
+        # fixes are exercised end-to-end (not merely isolated unit coverage).
+        # --locked rejects an out-of-date Cargo.lock (same policy as build-and-test).
+        run: |
+          set -euo pipefail
+          cargo test -p monocle-runtime --test daemon_e2e_serve --features e2e-test-affordances --locked
+
   # cargo-deny gate: license policy, banned crates, active RUSTSEC advisories, non-registry sources.
   # Runs after build-and-test per §CI Wiring step ordering (test → deny → audit).
   # Uses deny.toml at workspace root per SS-conventions §deny.toml configuration.
   cargo-deny:
     name: cargo deny (license + bans + advisories)
-    needs: build-and-test
+    needs: [build-and-test, daemon-e2e-affordances]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
