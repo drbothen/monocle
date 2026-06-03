@@ -169,6 +169,13 @@ fn cmd_daemon_start() -> i32 {
         Ok(dir) => dir,
         Err(_) => {
             // EC-2.04.004-06: RuntimeDirUnresolvable → exit 70.
+            // Emit directly to stderr before any tracing-subscriber or dir-dependent
+            // initialisation. This is the accepted pattern for pre-subscriber fail-fast
+            // errors (consistent with the tokio-runtime init path and panic-hook precedent).
+            eprintln!(
+                "ERROR: cannot resolve runtime directory; \
+                set MONOCLE_RUNTIME_DIR to specify an explicit path"
+            );
             return EXIT_RUNTIME_DIR_UNRESOLVABLE;
         }
     };
@@ -288,6 +295,13 @@ fn cmd_daemon_stop() -> i32 {
     let runtime_dir = match monocle_runtime::lifecycle::resolve_runtime_dir() {
         Ok(dir) => dir,
         Err(_) => {
+            // EC-2.04.005-07: RuntimeDirUnresolvable → exit 70.
+            // Emit directly to stderr before any tracing-subscriber or dir-dependent
+            // initialisation (symmetric with cmd_daemon_start).
+            eprintln!(
+                "ERROR: cannot resolve runtime directory; \
+                set MONOCLE_RUNTIME_DIR to specify an explicit path"
+            );
             return EXIT_RUNTIME_DIR_UNRESOLVABLE;
         }
     };

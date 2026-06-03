@@ -330,6 +330,37 @@ fn test_ac_008_exit_code_70_runtime_dir_unresolvable() {
     cmd.assert().code(70); // WILL FAIL: todo!() produces 101
 }
 
+/// HS-EXP-009 + BC-2.04.004 EC-2.04.004-06: When runtime directory resolution fails,
+/// `daemon start` must exit 70 AND emit the canonical diagnostic hint to stderr verbatim.
+///
+/// The holdout scenario HS-EXP-009 explicitly checks the byte-for-byte stderr message —
+/// no story AC previously covered this. This test locks the contract so the hint can never
+/// silently regress.
+///
+/// Triggers RuntimeDirUnresolvable by clearing HOME and all XDG fallbacks without setting
+/// MONOCLE_RUNTIME_DIR. The tracing subscriber is not initialised on this fail-fast path,
+/// so the hint must be emitted via direct stderr write (eprintln!) before any subscriber
+/// setup — verified here end-to-end from the binary surface.
+///
+/// Traces to HS-EXP-009, BC-2.04.004 PC-8, EC-2.04.004-06.
+#[test]
+fn test_hs_exp_009_start_runtime_dir_unresolvable_stderr_hint() {
+    let mut cmd = Command::cargo_bin("monocle").expect("monocle binary must be buildable");
+    cmd.arg("daemon")
+        .arg("start")
+        .env_remove("MONOCLE_RUNTIME_DIR")
+        .env_remove("HOME")
+        .env_remove("XDG_RUNTIME_DIR")
+        .env_remove("XDG_DATA_HOME")
+        .env_remove("XDG_CONFIG_HOME")
+        .env_remove("USERPROFILE");
+
+    cmd.assert().code(70).stderr(predicate::str::contains(
+        "ERROR: cannot resolve runtime directory; \
+            set MONOCLE_RUNTIME_DIR to specify an explicit path",
+    ));
+}
+
 // ---------------------------------------------------------------------------
 // AC-005 edge cases: stale lock treated as absent, MONOCLE_NO_AUTOSTART ignored
 // ---------------------------------------------------------------------------
