@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -52,7 +52,9 @@ sign-off.
    of the `overlay_stack` being updated. The badge format is:
    `[N pending permission(s)]` (where N is `overlay_stack.len()`).
 3. The terminal bell is emitted (by writing `\x07` — BEL character — to stdout) once per
-   new `PermissionPromptQueued` event. One bell per new prompt; NOT one bell per render tick.
+   new `PermissionPromptQueued` event — every prompt rings the bell. NOT one bell per render
+   tick; NOT capped at the first prompt. Each arriving `PermissionPromptQueued` event triggers
+   exactly one bell regardless of how many prompts are already pending.
 4. The badge MUST be visible in the status bar even while the PTY widget occupies the main
    pane area. The status bar is rendered below the main pane and is always visible.
 5. When the user presses Esc in `EmbeddedTerminal`:
@@ -68,10 +70,13 @@ sign-off.
 1. **No silent queueing:** Prompts MUST NOT be held invisibly until the user exits embedded
    mode. The badge + bell is the mandatory minimum visibility guarantee. This invariant is
    production-grade non-negotiable (SS-embedded-pty.md §State machine invariants, SUG-3).
-2. The bell (`\x07`) is written to stdout exactly ONCE per new `PermissionPromptQueued`
-   event. A second prompt arrival adds to the badge count but does not re-ring the bell.
-   Rationale: one bell alerts the user; per-prompt bells are annoying if multiple prompts
-   arrive quickly.
+2. The bell (`\x07`) is written to stdout exactly ONCE per `PermissionPromptQueued` event —
+   every new prompt rings the bell, including the second, third, etc. prompts in rapid
+   succession. Rationale: every new blocking permission prompt is an independent user
+   attention demand; silencing bells after the first would allow subsequent prompts to
+   arrive invisibly if the user is not watching the screen. Visibility wins over bell
+   suppression. This rule is consistent with HS-EXP-013 step 7 ("a second bell is
+   emitted") and must be consistent with the holdout's must-pass satisfaction criteria.
 3. `overlay_stack` is populated by the standard `PermissionPromptQueued` handler
    (BC-2.06.008 applies regardless of the current AppMode). This BC adds only the badge
    and bell as additional side effects when `AppMode` is `EmbeddedTerminal` or
@@ -84,7 +89,7 @@ sign-off.
 
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
-| EC-260 | Two permission prompts arrive in rapid succession | Badge shows `[2 pending permissions]`; bell emitted on FIRST prompt only |
+| EC-260 | Two permission prompts arrive in rapid succession | Badge shows `[2 pending permissions]`; bell emitted for EACH prompt (two bells total) |
 | EC-261 | Permission prompt arrives while in `SessionCreation::Launching` | Badge appears in status bar; bell emitted; wizard continues; user can Esc to cancel wizard and reach overlay |
 | EC-262 | User resolves all pending prompts (overlay_stack empties) | Badge disappears from status bar; no bell |
 | EC-263 | Permission prompt from a non-focused session while in EmbeddedTerminal | Badge shows; bell emitted; the prompt is for a different session — the badge does not indicate which session's prompt it is (v1A scope; session-specific badges are v1B) |
@@ -95,7 +100,7 @@ sign-off.
 | Scenario | Expected Output | Category |
 |----------|----------------|----------|
 | EmbeddedTerminal active; `PermissionPromptQueued` received | Badge `[1 pending permission]` in status bar; bell `\x07` to stdout | happy-path |
-| Two rapid `PermissionPromptQueued` events | Badge `[2 pending permissions]`; bell emitted once | happy-path |
+| Two rapid `PermissionPromptQueued` events | Badge `[2 pending permissions]`; bell emitted twice (once per prompt) | happy-path |
 | Esc in EmbeddedTerminal with 1 pending prompt | AppMode → Dashboard → Overlay; prompt displayed | happy-path |
 
 ## Verification Properties
@@ -103,7 +108,7 @@ sign-off.
 | VP-NNN | Property | Proof Method |
 |--------|----------|-------------|
 | VP-TBD | Badge rendered in status bar on `PermissionPromptQueued` while in EmbeddedTerminal | unit |
-| VP-TBD | Bell (`\x07`) emitted once per new prompt (not per render tick, not per second prompt) | unit |
+| VP-TBD | Bell (`\x07`) emitted once per new `PermissionPromptQueued` event — every prompt rings, including second+ prompts; not per render tick | unit |
 | VP-TBD | Esc from EmbeddedTerminal with pending prompt → overlay appears | unit |
 
 ## Traceability
@@ -114,7 +119,7 @@ sign-off.
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — this BC governs the behavior of the embedded terminal mode when permission prompts arrive; it is an invariant of the EmbeddedTerminal AppMode, which is defined in CAP-009; the "never silently queue" guarantee is core to the embedded terminal UX |
 | L2 Domain Invariants | (none — DI-NNN catalog not produced; permission prompt visibility is captured as an SS-embedded-pty invariant) |
 | Architecture Module | monocle-tui (status bar badge renderer, bell emit, overlay_stack integration); monocle-core (AppMode transition logic) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.1.0 §State machine invariants (permission prompts while in EmbeddedTerminal; SUG-3 fix); §BC requirement flag (v1B pre-emption deferred) |
+| Architecture Source | SS-embedded-pty.md v1.2.0 §State machine invariants (permission prompts while in EmbeddedTerminal; SUG-3 fix); §BC requirement flag (v1B pre-emption deferred) |
 | Cross-Ref | BC-2.06.008 (Permission Overlay: VecDeque Stack Push on PermissionPromptQueued — overlay_stack populated regardless of AppMode); BC-2.09.008 (Esc exit from EmbeddedTerminal restores prior; with pending overlay → Overlay AppMode) |
 | Test Name | test_BC_2_09_009_permission_badge_bell_in_embedded_terminal |
 
@@ -134,6 +139,27 @@ S-TBD — Implement permission badge + bell in EmbeddedTerminal status bar (fill
 ## VP Anchors
 
 VP-TBD — Badge + bell unit tests (filled after VP creation)
+
+## §Trace v1.1.0
+
+**C2-001 adversarial pass-2 fix — per-prompt bell rule** (2026-06-03):
+- C2-001 finding: BC-2.09.009 had a three-way internal contradiction: PC-3 said "bell once per
+  new `PermissionPromptQueued` event" which implies every prompt rings; Invariant 2 + EC-260
+  said "second prompt does NOT re-ring the bell" which means only first rings; HS-EXP-013 step
+  7 asserted "a second bell is emitted" which matches every-prompt. Three artifacts, three
+  different rules.
+- Resolution: per-prompt bell rule adopted as the single canonical rule. Every
+  `PermissionPromptQueued` arrival emits exactly one bell. Rationale documented in Invariant
+  2: visibility wins over bell suppression; each new blocking permission prompt is an
+  independent attention demand; silencing after the first creates invisible follow-on prompts.
+- PC-3: rewritten to state "every prompt rings" clearly.
+- Invariant 2: rewritten with rationale for per-prompt rule; cites HS-EXP-013 step 7 for
+  consistency.
+- EC-260: updated from "FIRST prompt only" to "EACH prompt (two bells total)".
+- Canonical test vector: updated from "bell emitted once" to "bell emitted twice (once per
+  prompt)".
+- BC is now internally consistent (PC-3 ↔ Invariant 2 ↔ EC-260 ↔ test vector) AND
+  consistent with HS-EXP-013 (holdout step 7 asserts two bells).
 
 ## §Trace v1.0.0
 

@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "engine-module-v2-delta"
 subsystem: SS-03
-version: "1.0.1"
+version: "1.1.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -68,24 +68,33 @@ pub struct SpawnRecipe {
     /// CLI arguments (e.g., ["--settings", "/tmp/monocle-hooks-abc.json"]).
     /// The hooks_settings_path from SpawnOptions MUST be passed here as --settings.
     pub args: Vec<String>,
-    /// Environment variables to inject (CCR ANTHROPIC_BASE_URL, MONOCLE_SESSION_ID, etc.).
-    /// These are MERGED with the harness binary's current environment; they do not replace it.
+    /// Environment variables to OVERLAY on top of the session-host process's inherited env.
+    /// The session-host CommandBuilder inherits the session-host process env first, then
+    /// overlays these fields. They do NOT replace the base env (PATH/HOME must be preserved).
+    /// Keys present here will override any matching key in the inherited env.
     pub env: HashMap<String, String>,
     /// Working directory for the harness child process.
-    /// MUST be the git worktree root for the project (claude-squad A.1 worktree-per-task).
+    /// Populated from SpawnOptions.worktree_root — the resolved git worktree path
+    /// (or project_root if no worktree applies). See SpawnOptions.worktree_root for rules.
+    /// NEVER hardcoded to project_root.
     pub cwd: PathBuf,
 }
 
 /// Options passed from SessionManager to EngineModule::spawn_recipe().
 #[derive(Debug, Clone)]
 pub struct SpawnOptions {
-    /// Project root directory (used as cwd if no worktree is configured).
+    /// Project root directory (user-selected in the wizard; used for display grouping).
     pub project_root: PathBuf,
+    /// Working directory for the harness child process (resolved git worktree root or
+    /// project_root). Set by SessionCreation wizard Step 3 (WorktreeConfirm) per resolution
+    /// rules in SS-session-manager.md §SpawnOptions.worktree_root. The EngineModule MUST
+    /// use this as SpawnRecipe.cwd — NOT project_root.
+    pub worktree_root: PathBuf,
     /// Harness profile ID selected by the user in the SessionCreation wizard.
     pub profile_id: String,
     /// Pre-generated session UUID.
     pub session_id: String,
-    /// Path where the daemon has already written the per-session hooks-settings.json.
+    /// Path where the daemon has already written the shared hooks-settings.json.
     /// The EngineModule MUST include "--settings <hooks_settings_path>" in the returned recipe args.
     pub hooks_settings_path: PathBuf,
     /// If CCR is detected and a base URL is configured, this carries the URL.
@@ -163,7 +172,9 @@ impl EngineModule for ClaudeCodeModule {
             binary,
             args,
             env,
-            cwd: opts.project_root.clone(),
+            // Use the resolved worktree root (not project_root directly).
+            // project_root == worktree_root when no git worktree is configured.
+            cwd: opts.worktree_root.clone(),
         })
     }
 }
@@ -235,6 +246,25 @@ All Phase-1 `EngineModule` behavioral contracts (BC-2.03.*) remain in effect:
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.1.0
+
+**I2-002 worktree-per-session operationalized** (2026-06-03):
+- `SpawnOptions.worktree_root: PathBuf` added (was absent; cwd was incorrectly set from
+  `project_root`). The new field carries the resolved git worktree path (or `project_root`
+  when no worktree applies). The three-rule resolution spec is in SS-session-manager.md
+  §SpawnOptions.worktree_root.
+- `SpawnRecipe.cwd` doc-comment corrected: "populated from SpawnOptions.worktree_root"
+  (was "MUST be git worktree root" without specifying how to get it).
+- `ClaudeCodeModule::spawn_recipe()` implementation updated: `cwd: opts.worktree_root.clone()`
+  (was `opts.project_root.clone()` — the root bug that caused the missing worktree field).
+- `SpawnRecipe.env` doc-comment updated: "OVERLAY on top of inherited env" (was "MERGED
+  with current environment" — the session-host startup step 4 spec in SS-session-manager
+  defines the inheritance semantics; this doc now matches).
+- BC sync required (product-owner): BC-2.03.005 PC-1 ("cwd is worktree root" needs
+  SpawnOptions.worktree_root to be cited as the source), BC-2.03.006 (env overlay semantics),
+  BC-2.08.001 (spawn recipe assembled from worktree root), BC-2.08.007 ("cwd is project root"
+  in title must be revised to "cwd is resolved worktree root or project_root").
 
 ## §Trace v1.0.1
 

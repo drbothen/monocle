@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.0"
+version: "1.2.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -58,7 +58,12 @@ was removed from the state machine and spawn goes directly to `Launching`.
    - `socket_path`: `<runtime_dir>/session-<session_id>.sock`
    - `child_pid`: the session-host's tracked child PID (available after session-host startup)
    - `state: "Launching"`
-   - `project_root`: `recipe.cwd.to_string_lossy()`
+   - `project_root`: `opts.project_root.to_string_lossy()` — the user-selected project
+     directory from the SessionCreation wizard Step 2. Used for sessions panel grouping.
+     This is distinct from `cwd` when a git worktree is configured.
+   - `cwd`: `opts.worktree_root.to_string_lossy()` — the resolved worktree root path (per
+     three-rule algorithm in SS-session-manager.md §SpawnOptions.worktree_root). Equals
+     `project_root` when no worktree is configured or the project is not a git repo.
    - `harness_id`: the supplied `harness_id`
    - `profile_id`: the supplied `profile_id`
    - `started_at`: ISO-8601 UTC timestamp of spawn
@@ -118,7 +123,7 @@ was removed from the state machine and spawn goes directly to `Launching`.
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC is the primary definition of the spawn operation that launches the session-host process and creates the session registry entry |
 | L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness — the sidecar is a monocle-owned file, not a harness file; the atomic write via tempfile::persist ensures no partial writes to monocle's own state) |
 | Architecture Module | monocle-runtime (SessionManager sub-module — `monocle-runtime/src/session_manager/mod.rs`) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v1.2.0 §SessionManager §Public API (spawn_session signature); SS-session-manager.md §session-state.json schema; ADR-0009 §native-detached-session-host-process-model |
+| Architecture Source | SS-session-manager.md v1.3.0 §SessionManager §Public API (spawn_session signature); SS-session-manager.md §session-state.json schema; ADR-0009 §native-detached-session-host-process-model |
 | Test Name | test_BC_2_08_001_spawn_session_entry_created_within_2s |
 
 ## Related BCs
@@ -141,6 +146,18 @@ S-TBD — Implement SessionManager::spawn_session() with SessionHostSpawner (fil
 ## VP Anchors
 
 VP-TBD — Session spawn integration tests (filled after VP creation)
+
+## §Trace v1.2.0
+
+**Architect-delegated BC edit — cwd vs project_root distinction in sidecar (I2-002)** (2026-06-03):
+- I2-002 finding: BC-2.08.001 PC-3 sidecar schema listed `project_root` as `recipe.cwd`
+  (incorrect). The architecture (SS-session-manager.md v1.3.0 §session-state.json schema)
+  defines two distinct fields: `project_root` (user-selected project dir; used for sessions
+  panel grouping) and `cwd` (resolved worktree root; passed to session-host as working dir).
+  The two fields are equal only when no worktree is configured.
+- PC-3 sidecar schema: split `project_root` and `cwd` fields with correct sources
+  (`opts.project_root` vs `opts.worktree_root`). Added explanation of when they differ.
+- Architecture Source updated to SS-session-manager.md v1.3.0.
 
 ## §Trace v1.1.0
 

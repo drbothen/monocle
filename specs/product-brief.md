@@ -312,7 +312,7 @@ v1B ships when ALL of the following pass:
 |---------|--------|--------|
 | Hook receiver body size limit | Daemon enforces 256 KiB max on all hook POST endpoints | Exceeding returns HTTP 413 with `{"error":"payload_too_large","limit_bytes":262144}`. BC-2.01.003. |
 | DTU clone fidelity | `dtu-claude-code-hooks-v1` clone exists and validates | Fidelity ≥0.95 against fixture corpus; all 5 endpoint payloads schema-valid; CI per-PR gate. Per NFR-011. DTU already validated at D-234 (fidelity 1.0000, 25/25 fixtures). |
-| Forward-compatibility contracts | All 6 FC items shipped | 22 BCs active in PRD: BC-2.02.001/002 (ABI), BC-2.02.003 (Types), BC-2.02.004/005 (Factory), BC-2.02.006/007/008 (Proto), BC-2.01.007 (Ring), BC-2.01.008/009 (Auth), BC-2.03.001/002/003/004 (Engine), BC-2.01.010 (Lock). Per BC-INDEX v1.36. |
+| Forward-compatibility contracts | All 6 FC items shipped | 22 BCs active in PRD: BC-2.02.001/002 (ABI), BC-2.02.003 (Types), BC-2.02.004/005 (Factory), BC-2.02.006/007/008 (Proto), BC-2.01.007 (Ring), BC-2.01.008/009 (Auth), BC-2.03.001/002/003/004 (Engine), BC-2.01.010 (Lock). Per BC-INDEX v1.37. |
 | Factory detection | vsdd-factory project detected; workflow panel populated | Self-referential integration test against monocle's own `.factory/`. |
 
 ---
@@ -490,7 +490,7 @@ All 6 forward-compatibility contracts from Phase-1 are preserved:
 5. Every JSONL ring record carries `format_version: u32 = 1` as first key.
 6. Auth token format `monocle-v1:<64-char-hex>`; dual-accept per ADR-0005.
 
-The 22 BCs covering these contracts (per BC-INDEX v1.36) are preserved. New v1A BCs will be
+The 22 BCs covering these contracts (per BC-INDEX v1.37) are preserved. New v1A BCs will be
 added by the product-owner in the PRD delta to cover LAUNCH, EMBEDDED PTY, MULTI-SESSION, and
 PERSISTENCE. New v1B BCs will cover INTERACTIVE TUNE.
 

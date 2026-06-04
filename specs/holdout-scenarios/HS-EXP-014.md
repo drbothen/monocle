@@ -8,6 +8,7 @@ severity: must-pass
 visibility: holdout-evaluator-only
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T12:00:00Z
+modified: 2026-06-03T23:59:00Z
 ---
 
 # HS-EXP-014: Hook Auto-Injection Under Concurrent Spawns — Shared hooks-settings.json Not Clobbered; All Sessions Get Correct `--settings` Arg
@@ -31,7 +32,13 @@ per-session). All sessions spawned in this test share this single file.
 2. Verify within 2 seconds: `MockSessionHostSpawner` was called with args that include
    `--settings <runtime_dir>/hooks-settings.json` (the single shared file path).
 3. Verify: `session-state.json` for S1 was written at flat path `<runtime_dir>/session-<S1-uuid>.json`
-   and contains the `hook_settings_path` field pointing to `<runtime_dir>/hooks-settings.json`.
+   and contains the standard schema fields (schema_version, session_id, pid, socket_path, state,
+   project_root, cwd, harness_id, profile_id, started_at, display_name, pty_rows, pty_cols).
+   NOTE: The sidecar MUST NOT contain a `hook_settings_path` field — that field does not exist
+   in the session-state.json schema (SS-session-manager v1.3.0 §session-state.json schema). The
+   hooks path is a shared constant (`<runtime_dir>/hooks-settings.json`) baked into every
+   session's spawn args via `SpawnOptions.hooks_settings_path`; it is not stored redundantly
+   in the sidecar.
 4. Verify: NO per-session hooks file was created (i.e., no `runtime_dir/session-<S1-uuid>-hooks.json`
    or similar; only the shared `hooks-settings.json` exists).
 
@@ -52,7 +59,9 @@ per-session). All sessions spawned in this test share this single file.
    absent `--settings` arg.
 
 9. Verify: each session S2..S6 has a `session-state.json` sidecar written successfully at its
-   flat path `<runtime_dir>/session-<uuid>.json`. No sidecar is missing or zero-byte.
+   flat path `<runtime_dir>/session-<uuid>.json`. No sidecar is missing or zero-byte. None of
+   the sidecars contain a `hook_settings_path` field (that field is not in the schema — absence
+   is the correct outcome; presence would be a schema violation).
 
 10. Verify: NO per-session hooks files were created alongside the sidecars. The only hooks
     file in runtime_dir is the shared `hooks-settings.json`.
@@ -60,7 +69,8 @@ per-session). All sessions spawned in this test share this single file.
 ## Expected Outcome
 
 - Part A: `--settings <runtime_dir>/hooks-settings.json` arg is present and correct for the
-  sequential spawn. No per-session hooks file is created.
+  sequential spawn. No per-session hooks file is created. Sidecar does NOT contain
+  `hook_settings_path` field (that field is not in the schema).
 - Part B: `hooks-settings.json` content is unchanged after 5 concurrent spawns (spawns do NOT
   write to it; the file is written once at daemon startup). All 5 sessions received the shared
   `--settings <runtime_dir>/hooks-settings.json` arg. No per-session hooks files exist.
@@ -85,7 +95,9 @@ no per-session hooks files exist in runtime_dir; no session-state.json sidecar i
 FAIL: `hooks-settings.json` is empty, truncated, or modified from its daemon-startup content after
 concurrent spawns (indicates spawns erroneously wrote to it); any spawn call is missing the `--settings`
 arg or points to a per-session path; any `session-state.json` sidecar is zero-byte or absent;
-any spawn takes >2 seconds; any per-session hooks file created (violates BC-HOOK-010 PC-3).
+any spawn takes >2 seconds; any per-session hooks file created (violates BC-HOOK-010 PC-3);
+any `session-state.json` sidecar contains a `hook_settings_path` field (schema violation — field
+does not exist in session-state.json schema v2 per SS-session-manager v1.3.0).
 
 **NOT in any story AC:** The story implementing BC-2.08.006 will have ACs for the `--settings` arg
 presence in a single spawn. This holdout tests the **shared-file model invariant under concurrent load**:
@@ -93,3 +105,13 @@ does the shared `hooks-settings.json` remain unmodified after 5 simultaneous spa
 sessions consistently reference the same shared path? The BC-HOOK-010 guarantee (no per-session files)
 and the BC-2.08.006 invariant (spawn does not write hooks file) must hold simultaneously under
 concurrency — this cannot be validated by any single AC in the implementing story.
+
+---
+
+**Modification note (C2-004 adversarial pass-2 fix, 2026-06-03):** Steps A3, B9, FAIL criteria
+updated to remove the assertion that `session-state.json` contains a `hook_settings_path` field.
+That field does not exist in the session-state.json schema (SS-session-manager v1.3.0 §session-
+state.json schema). The architect noted the field is redundant — the hooks path is a shared
+constant (`<runtime_dir>/hooks-settings.json`) passed via spawn args, not stored per-session in
+the sidecar. The holdout now asserts the ABSENCE of the field (schema compliance) and instead
+verifies correct `--settings` arg injection for all concurrent sessions.

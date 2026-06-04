@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.0"
+version: "1.2.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -52,7 +52,10 @@ pane.
      `[?]` for pre-v1A forward-compat sessions where `spawned_by_monocle: None` — the
      `None` case occurs for sessions discovered from sidecars written before this field
      existed; `[?]` indicates "origin unknown, treat as external"), `display_name`,
-     `SessionState` indicator (`Running`, `Launching`, `Detached`, `Terminated`).
+     `SessionState` indicator (`Running`, `Launching`, `Detached`, `Terminating`, `Terminated`).
+   - Sessions with `SessionState::Terminating` render a `[Terminating]` indicator (e.g.,
+     a spinner or dimmed name). Lifecycle actions (`k`, `D`, `r`) are DISABLED for
+     `Terminating` sessions — the kill is already in progress.
 2. Fast session switching:
    - Arrow keys navigate sessions within the list (including across project groups).
    - Enter on a `Running` session: AppMode transitions to `EmbeddedTerminal { session_id }`.
@@ -82,6 +85,12 @@ pane.
    is received (adds/removes/updates rows without full panel re-render).
 4. Sessions with `SessionState::Terminated` are shown in the list with a `[X]` indicator
    until GC removes them (BC-2.08.005 10-second grace period).
+   Sessions with `SessionState::Terminating` are shown with a `[Terminating]` indicator (a
+   spinner or dimmed style) and MUST NOT allow lifecycle actions (`k`, `D`, `r` are no-ops
+   or explicitly blocked with a status bar hint). The `[Terminating]` state persists until
+   the daemon broadcasts `SessionListUpdate` with `state: Terminated` (on session-host
+   confirmation or 12s watchdog). See BC-2.08.003 Invariant 4 for the Terminating state
+   definition and transition rules.
 
 ## Edge Cases
 
@@ -90,7 +99,8 @@ pane.
 | EC-290 | No sessions in list | Sessions panel shows "No sessions. Press 'n' to create one." |
 | EC-291 | All sessions from same project_root | Single project group with all sessions as children |
 | EC-292 | `project_root` is an empty string (edge case in session registry) | Grouped under `"<unknown>"` project header |
-| EC-293 | `k` key on a `Launching` session | KillSession IPC sent; session-host handles Kill; session transitions to Terminated |
+| EC-293 | `k` key on a `Launching` session | KillSession IPC sent; daemon transitions `Launching → Terminating`; `[Terminating]` renders; eventually `→ Terminated` |
+| EC-296 | `k` key on a `Terminating` session | No-op (idempotent); kill already in progress; status bar shows "Session is already terminating…"; no duplicate KillSession IPC sent |
 | EC-294 | Rename with empty string | `RenameSession` with empty `new_name` → `ServerToClient::Error`; inline editor shows error indicator |
 | EC-295 | `spawned_by_monocle: None` (pre-v1A forward-compat session — sidecar has no `spawned_by_monocle` field) | Session row renders `[?]` badge; treated as "external" for lifecycle purposes (Kill/Detach/Rename all available); NOT treated as monocle-launched for hook injection purposes |
 
@@ -110,6 +120,8 @@ pane.
 | VP-TBD | Project group headers rendered correctly for sessions with distinct project_roots | unit |
 | VP-TBD | O(1) session switch: arrow key changes focused session; no IPC sent | unit |
 | VP-TBD | `n` → SessionCreation; `k` → KillSession IPC; `D` → DetachSession IPC | unit |
+| VP-TBD | `Terminating` session renders `[Terminating]` indicator; lifecycle actions are no-ops | unit |
+| VP-TBD | `k` on `Terminating` session → no KillSession IPC sent; status bar hint shown | unit |
 | VP-TBD | `spawned_by_monocle: None` session renders `[?]` badge (not blank, not `[M]`, not `[E]`) | unit |
 
 ## Traceability
@@ -119,7 +131,7 @@ pane.
 | L2 Capability | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability traceability §SS-06 |
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability traceability — this BC extends the sessions panel capability in CAP-006 with multi-session, multi-project grouping, and lifecycle actions |
 | Architecture Module | monocle-tui (sessions panel renderer, session list grouping logic, lifecycle keybindings) per ARCH-INDEX Subsystem Registry SS-06 |
-| Architecture Source | SS-session-manager.md v1.2.0 §SessionManager §Public API (session_list()); SS-embedded-pty.md v1.1.0 §Fast switching; SS-engine-module-v2-delta.md v1.0.1 §ProcessSnapshot.spawned_by_monocle field |
+| Architecture Source | SS-session-manager.md v1.3.0 §SessionManager §Public API (session_list()); SS-embedded-pty.md v1.2.0 §Fast switching; SS-engine-module-v2-delta.md v1.1.0 §ProcessSnapshot.spawned_by_monocle field |
 | Cross-Ref | BC-2.05.010 (KillSession/DetachSession/RenameSession IPC variants triggered from sessions panel); BC-2.09.008 (SessionCreation wizard and EmbeddedTerminal enter) |
 | Test Name | test_BC_2_06_025_multi_session_grouped_by_project |
 
@@ -140,6 +152,20 @@ S-TBD — Implement multi-session grouped sessions panel with lifecycle actions 
 ## VP Anchors
 
 VP-TBD — Sessions panel multi-session render tests (filled after VP creation)
+
+## §Trace v1.2.0
+
+**Architect-delegated BC edits — Terminating state render + lifecycle action blocking** (2026-06-03):
+- Architect delegated from SS-session-manager.md v1.3.0 §Terminating state (I2-004): sessions
+  panel must render `[Terminating]` state and disable lifecycle actions for Terminating sessions.
+- PC-1: `Terminating` added to SessionState indicator list with `[Terminating]` render spec
+  and lifecycle-action-disabled rule.
+- Invariant 4: `Terminating` state render and lifecycle action blocking specified with cross-
+  reference to BC-2.08.003 Invariant 4.
+- EC-293: updated — `k` on Launching sends Kill and transitions to Terminating, not directly
+  to Terminated.
+- EC-296 added: `k` on Terminating session is idempotent (no-op, status bar hint).
+- VP table: added Terminating render and no-op verification properties.
 
 ## §Trace v1.1.0
 

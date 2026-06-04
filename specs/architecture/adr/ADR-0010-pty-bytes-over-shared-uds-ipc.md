@@ -6,7 +6,7 @@ title: "PTY Bytes Shared on Existing UDS IPC Channel (Option A)"
 status: accepted
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
-version: "1.1.0"
+version: "1.2.0"
 timestamp: 2026-06-03T23:00:00Z
 inputs:
   - research/domain-monocle-vision-synthesis.md
@@ -132,17 +132,77 @@ Route to: `vsdd-factory:performance-engineer` for benchmark design and execution
 The following new variants are added to the existing SS-05 message enums:
 
 ```rust
-// ServerToClient (new variants in v1A)
+// ── ServerToClient (new variants in v1A) ──────────────────────────────────
+
+/// Raw PTY bytes from a session's harness child. The TUI feeds these into
+/// the per-session vt100::Parser.
 PtyOutput {
     session_id: String,  // matches session_id throughout the codebase
     bytes: Vec<u8>,      // raw PTY output bytes; NOT pre-decoded
 },
+
+/// A session's lifecycle state changed (e.g., Launching → Running,
+/// Running → Terminated).
 SessionStateChanged {
     session_id: String,
     new_state: SessionState,
 },
 
-// ClientToServer (new variants in v1A)
+/// Scrollback dump — one chunk of a multi-message scrollback transfer.
+///
+/// When the daemon first attaches to (or re-discovers) a session-host, it
+/// sends DaemonToHost::Attach. The session-host responds by streaming the
+/// current vt100::Screen as a series of ScrollbackChunk messages, terminated
+/// by a single ScrollbackDumpComplete sentinel.
+///
+/// The TUI MUST NOT begin rendering PTY bytes for this session until it has
+/// received ScrollbackDumpComplete. After Complete, the TUI discards the
+/// dump and switches to streaming PtyOutput messages (the session-host
+/// resumes streaming from the live PTY after sending Complete).
+///
+/// Framing invariant: each ScrollbackChunk message MUST fit within the
+/// 256 KiB per-message limit (BC-2.01.003). The session-host chunks rows
+/// to respect this limit. Typical scrollback (80-col × 1000 rows × ~40
+/// bytes/cell JSON) is ~3.2 MB — chunked into ~13 messages.
+ScrollbackChunk {
+    session_id: String,
+    /// Row-major styled-cell data (Vec<Vec<SerializedCell>>; see
+    /// SS-session-manager.md §Screen-state transfer). Rows in this chunk,
+    /// ordered oldest-to-newest (continuing from the previous chunk).
+    rows: Vec<Vec<crate::ipc::SerializedCell>>,
+    /// Chunk sequence number (0-indexed). Used by the TUI to detect
+    /// out-of-order or dropped chunks (if sequence is non-contiguous, TUI
+    /// logs WARN and requests re-attach to restart the dump).
+    chunk_seq: u32,
+},
+
+/// Sentinel that terminates a scrollback dump sequence.
+/// After receiving this, the TUI applies the accumulated rows, resets
+/// pty_parsers[session_id], reconstructs the screen, and switches to live
+/// streaming (subsequent PtyOutput messages are processed normally).
+ScrollbackDumpComplete {
+    session_id: String,
+    /// Total number of chunks sent (for integrity validation on the TUI side).
+    total_chunks: u32,
+    /// Cursor position at the time the dump was taken.
+    cursor_row: u16,
+    cursor_col: u16,
+    /// PTY dimensions at the time of the dump.
+    pty_rows: u16,
+    pty_cols: u16,
+},
+
+/// PTY byte-sequence integrity reset. Sent by the daemon when the
+/// session-host sends HostToDaemon::PtyReset (see SS-session-manager.md
+/// §PTY reader thread). The TUI must reset the vt100::Parser for this
+/// session and re-attach (triggering a new ScrollbackChunk* + ScrollbackDumpComplete
+/// sequence from the session-host).
+PtyReset {
+    session_id: String,
+},
+
+// ── ClientToServer (new variants in v1A) ──────────────────────────────────
+
 KeyInput {
     session_id: String,
     bytes: Vec<u8>,      // terminal-encoded key bytes (see SS-09 §Keyboard Encoding)
@@ -172,11 +232,133 @@ to existing consumers. Consumers using `..` wildcard matches on `ServerToClient`
 `ClientToServer` will silently ignore new variants at runtime; this is correct behavior for
 the forward-compatibility model (BC-2.02.003).
 
+### Interleaving of live PtyOutput during a ScrollbackDump transfer
+
+When a daemon attaches to a session-host (on first spawn or re-discovery), the session-host
+begins streaming ScrollbackChunk messages. During this multi-message window, the session-host's
+PTY reader may be producing new bytes concurrently. The protocol is:
+
+**Buffer-then-apply-after-Complete (mandatory).**
+
+The session-host MUST pause forwarding live `HostToDaemon::PtyBytes` messages to the daemon
+for the duration of the scrollback dump sequence (from the moment `Attach` is received until
+`ScrollbackDumpComplete` is sent). Concretely:
+
+1. On `DaemonToHost::Attach`: the session-host snapshots the current vt100::Screen state
+   (styled cells, cursor, PTY dimensions).
+2. The session-host streams `ScrollbackChunk` messages for the snapshot.
+3. While streaming chunks, new PTY bytes from the PTY reader continue to accumulate in the
+   session-host's PTY reader channel (the channel capacity is 1024; a typical dump completes
+   in < 100ms, well within the channel's budget at normal terminal speeds).
+4. After `ScrollbackDumpComplete` is sent, the session-host resumes forwarding
+   `HostToDaemon::PtyBytes` from where the reader left off.
+5. The TUI, after receiving `ScrollbackDumpComplete`, has a correct screen state and any
+   subsequent `PtyOutput` messages are applied to the reset parser — no double-counting,
+   no interleaving corruption.
+
+**Rationale:** Interleaving live PtyOutput messages DURING a multi-message ScrollbackDump
+would require the TUI to implement complex sequencing logic (apply bytes to which parser
+state? before or after the dump rows?). Buffer-then-apply-after-Complete is simpler, correct
+by construction, and the latency cost (< 100ms during attach) is acceptable. No live streaming
+is lost — bytes are buffered in the session-host PTY reader channel during the brief window.
+
+## Cross-Client / Cross-Session Backpressure Isolation (I2-003)
+
+The shared UDS channel design (Option A) introduces a cross-client backpressure livelock
+risk that the original head-of-line analysis did not address: one slow-but-alive TUI client
+can, via end-to-end `.send().await` backpressure, block the PTY reader syscall even for
+sessions the slow client is not displaying.
+
+**End-to-end backpressure chain (with single broker buffer):**
+
+```
+PTY read syscall
+  → spawn_blocking thread: channel.send().await (blocks if full)
+  → session-host async event loop: PtyBytes → HostToDaemon
+  → daemon session-host proxy: broker.send(Event::PtyOutput)
+  → broker fan-out: iter over all clients
+      → client_A.send().await  ← if Client A's UDS write buffer is full,
+                                   this .await blocks the broker task,
+                                   which blocks ALL other clients and ALL
+                                   sessions sharing the same broker task.
+```
+
+This means: Client A watching Session 1 being slow causes Session 2's PTY reader to stall,
+stalling Session 2's harness child — even though Client B (watching Session 2) is healthy.
+
+**Required fix: per-client isolated bounded send buffer.**
+
+Each connected TUI client gets an owned `mpsc::Sender<ServerToClient>` with a bounded
+channel (capacity = `CLIENT_SEND_BUFFER_SIZE`, default 256 messages). The broker's fan-out
+task sends into each client's per-client channel via `.try_send()` (non-blocking). If
+`.try_send()` returns `Err(Full)`, the broker increments a per-client `slow_client_counter`
+and (after a configurable threshold, default = 3 consecutive full-send attempts) disconnects
+the client (per BC-2.05.004 EC-005 semantics). A separate per-client writer task drains the
+channel to the UDS write socket using `.send().await` (backpressure is now contained inside
+the per-client writer task, not the broker fan-out task).
+
+This design guarantees that a slow or stalled TUI client's backpressure does NOT reach the
+shared broker, the session-host proxy, or the PTY reader. The PTY reader's only source of
+backpressure is the durable per-session ring/buffer in the session-host, not any individual
+client's render rate.
+
+**Cross-session isolation:** Each session-host proxy task owns its PTY reader independently.
+The broker fan-out for Session 1's PtyOutput and Session 2's PtyOutput are dispatched
+asynchronously into each client's per-client buffer. A slow client watching Session 1 does
+not affect Session 2's PTY reader because the broker fan-out task returns immediately (via
+`.try_send()`) for both sessions.
+
+**Per-client buffer sizing rationale:**
+- 256 messages × 4096 bytes/message (typical max chunk) = 1 MiB per client per session in
+  the worst case. For 8 sessions and 4 clients: 32 MiB — within the memory budget.
+- The disconnect threshold (3 consecutive full sends) gives slow clients brief leeway for
+  render pauses without disconnecting on transient lag spikes.
+
+**Implementation location:** `monocle-runtime/src/broker.rs` fan-out task.
+**Benchmark gate constraint:** the pre-v1A benchmark MUST validate that the per-client
+buffer design eliminates the cross-client backpressure path. The benchmark success criterion
+for the cross-client case: Client B watching Session 2 receives no throughput reduction when
+Client A (watching Session 1) is stalled.
+
+**BC sync required (flag for product-owner):** BC-2.05.009 Postcondition 1b and Invariant 2
+reference the broker fan-out model. Product-owner must update BC-2.05.009 to reflect the
+per-client isolated buffer design: the broker fan-out uses `.try_send()` into per-client
+channels (not `.send().await` directly to the UDS socket), slow clients are disconnected at
+the per-client buffer threshold, and the PTY reader's backpressure source is the durable
+session ring, not any TUI client. Specific BC-2.05.009 edits required:
+- PC-1b: "daemon proxy task posts `Event::PtyOutput` to the broker; broker fans out to each
+  client's per-client send buffer via `.try_send()`; a dedicated per-client writer task drains
+  the buffer to the UDS socket".
+- Invariant 3: revise backpressure description: "The PTY reader channel's backpressure source
+  is the durable session-host ring, NOT individual TUI client render rate. Per-client isolated
+  send buffers (capacity 256) decouple each client's consumption rate."
+- Add new Invariant: "Each TUI client has an owned bounded send buffer (capacity 256). A slow
+  client is disconnected after 3 consecutive full-buffer `.try_send()` failures (per
+  BC-2.05.004 EC-005). This isolation guarantees zero cross-client backpressure."
+- EC-272: update to reference per-client buffer mechanism.
+
 ## ADR Cross-References
 
 - Extends: SS-ipc.md §Message Types (new variants documented in SS-05 delta).
 - Requires: SS-08 Session Manager (session-host proxy that posts to per-session PTY channel).
 - Pre-gate benchmark deliverable: routes to `vsdd-factory:performance-engineer`.
+
+## §Trace v1.2.0
+
+**C2-002 + I2-003 — Missing ServerToClient variants + cross-client backpressure isolation** (2026-06-03):
+- **C2-002 (BLOCKING):** Added missing `ServerToClient` variants: `ScrollbackChunk`,
+  `ScrollbackDumpComplete`, and `PtyReset`. These were referenced by the C5 scrollback and
+  C3 PtyReset protocols in SS-session-manager.md but absent from the IPC message type table.
+  `ScrollbackDump` in SS-session-manager.md §Per-session UDS protocol is a `HostToDaemon`
+  variant (session-host → daemon); the `ServerToClient` direction to the TUI uses
+  `ScrollbackChunk` + `ScrollbackDumpComplete` for chunked streaming. Field schemas, framing
+  constraints, and chunk integrity semantics defined. Interleaving protocol specified:
+  buffer-then-apply-after-Complete (session-host pauses live PtyBytes during dump).
+- **I2-003 (BLOCKING):** Cross-client / cross-session backpressure livelock analyzed and
+  resolved. Per-client isolated bounded send buffer (capacity 256) with `.try_send()` in
+  broker fan-out and dedicated per-client writer tasks. PTY reader backpressure source is
+  the durable session-host ring only. Slow-client disconnect threshold retained from
+  BC-2.05.004. BC-2.05.009 sync flagged to product-owner (exact edits specified).
 
 ## §Trace v1.1.0
 

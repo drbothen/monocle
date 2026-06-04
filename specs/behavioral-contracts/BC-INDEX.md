@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.36"
+version: "1.37"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T14:00:00Z
@@ -124,6 +124,7 @@ traces_to: prd.md
 | BC-2.05.008 | UDS-Only in Phase 1 (No Shared-Memory Transport) | P1 | active | ss-05/BC-2.05.008.md | — |
 | BC-2.05.009 | PtyOutput Fan-Out — Per-Session Bounded Channel (1024) with Surfaced Drop Counter | P0 | active | ss-05/BC-2.05.009.md | — |
 | BC-2.05.010 | New ClientToServer IPC Variants — SpawnSession, KillSession, KeyInput, ResizePane, DetachSession, RenameSession | P0 | active | ss-05/BC-2.05.010.md | — |
+| BC-2.05.011 | New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset | P0 | active | ss-05/BC-2.05.011.md | — |
 
 ---
 
@@ -195,6 +196,7 @@ traces_to: prd.md
 | BC-2.08.005 | Session GC — Terminated Sessions Removed from Registry After 10s Grace Period | P1 | active | ss-08/BC-2.08.005.md | — |
 | BC-2.08.006 | Hook Auto-Injection — `--settings` Arg Present in Session-Host Child Args Within 2s of Spawn | P0 | active | ss-08/BC-2.08.006.md | — |
 | BC-2.08.007 | Attach/Detach — ScrollbackDump on Attach; session-host Stays Alive on Detach | P1 | active | ss-08/BC-2.08.007.md | — |
+| BC-2.08.008 | SessionStateChanged — Daemon Emits on Every SessionState Transition; Delivered to All TUI Clients; Ordering Relative to SessionListUpdate | P0 | active | ss-08/BC-2.08.008.md | — |
 
 ---
 
@@ -282,13 +284,13 @@ traces_to: prd.md
 | SS-02 Core Types and ABI | 8 | 8 | 0 |
 | SS-03 Engine Module | 8 | 8 | 0 |
 | SS-04 Daemon Wiring | 12 | 12 | 0 |
-| SS-05 IPC | 10 | 10 | 0 |
+| SS-05 IPC | 11 | 11 | 0 |
 | SS-06 TUI | 25 | 25 | 0 |
 | SS-07 Config | 6 | 6 | 0 |
-| SS-08 Session Manager | 7 | 7 | 0 |
+| SS-08 Session Manager | 8 | 8 | 0 |
 | SS-09 Embedded PTY | 9 | 9 | 0 |
 | SS-DTU Hook Protocol (Gene-Source) | 41 | 41 | 0 |
-| **Total** | **136** | **136** | **0** |
+| **Total** | **138** | **138** | **0** |
 
 ---
 
@@ -1194,6 +1196,36 @@ Holdout scenario corrections:
 - HS-EXP-013: Step 8 keybinding pinned to BC-2.09.009 PC-5 exact semantics (Esc → prior → Overlay).
 
 SE-16d monotonicity: v1.36 timestamp 2026-06-03T14:00:00Z > v1.35 timestamp 2026-06-03T12:00:00Z. PASS.
+
+## §Trace v1.37
+
+**Adversarial pass-2 PO-owned + architect-delegated BC fixes — 2 new BCs, 14 existing BCs updated** (2026-06-03T23:59:00Z):
+
+**NEW BCs:**
+- BC-2.05.011 v1.0.0: New `ServerToClient` IPC variants — `ScrollbackChunk`, `ScrollbackDumpComplete`, `PtyReset` (C2-002 architect delegation; chunked scrollback protocol + PtyReset TUI receiver spec).
+- BC-2.08.008 v1.0.0: `SessionStateChanged` emission — daemon emits on every `SessionState` transition; delivered to all TUI clients; ordering relative to `SessionListUpdate` (S2-005 gap fill; backs wizard auto-advance and `EmbeddedTerminal` exit).
+
+**UPDATED BCs (PO-owned adversarial findings):**
+- BC-2.09.009 v1.0.0 → v1.1.0: C2-001 bell contradiction resolved. Per-prompt bell rule adopted (every `PermissionPromptQueued` rings). PC-3, Invariant 2, EC-260, test vector all aligned. BC↔HS-EXP-013 now consistent.
+- HS-EXP-014 (holdout): C2-004 — removed `hook_settings_path` field assertion. Field does not exist in `session-state.json` schema v2. Replaced with `--settings` shared path assertion and explicit schema-compliance FAIL criterion.
+- BC-2.09.003 v1.1.0 → v1.2.0: I2-001 — scoped mouse capture model. PC-2 and Invariant 1 rewritten: `EnableMouseCapture` scoped to `EmbeddedTerminal` entry/exit (I3 fix per SS-embedded-pty v1.2.0). Global capture removed.
+- BC-2.08.002 v1.0.0 → v1.1.0: I2-005 — EC-158 synced to canonical re-discovery procedure: single Attach attempt, 5s hard timeout, no exponential backoff.
+- BC-2.08.004 v1.0.0 → v1.1.0: I2-005 — PC-2b uses `ScrollbackDumpComplete` (not retired `ScrollbackDump`); adds SO_PEERCRED step; Invariant 2 adds "no backoff" note. Architecture Source pins bumped to v1.3.0/v1.2.0.
+- BC-2.05.010 v1.0.0 → v1.1.0: S2-004 — EC-282 zero-dimension: clamp-to-1 at daemon boundary (no SessionError). Invariant 5 added.
+- BC-2.09.006 v1.0.0 → v1.1.0: S2-004 — EC-239 added: degenerate pane area no-op (TUI) + daemon defense-in-depth clamp. Related BCs updated.
+
+**UPDATED BCs (architect-delegated):**
+- BC-2.05.009 v1.1.0 → v1.2.0: PC-1b, Invariant 3, Invariant 3b (new), EC-272 — per-client backpressure isolation (capacity 256, `.try_send()`, 3-failure disconnect). Backpressure source = durable ring, NOT TUI clients.
+- BC-2.08.003 v1.1.0 → v1.2.0: Terminating state, 12s watchdog, SO_PEERCRED on kill-path fresh-connect. Kill path: `Running|Detached|Launching → Terminating → Terminated`. PC-5 (watchdog), Invariant 1/2/5 updated. EC-164 rewritten.
+- BC-2.06.025 v1.1.0 → v1.2.0: `[Terminating]` state render, lifecycle action blocking for Terminating sessions, EC-296 (`k` on Terminating = no-op).
+- BC-2.03.005 v1.0.0 → v1.1.0: `recipe.cwd = opts.worktree_root` (not `project_root`). Precondition, PC-1, Invariant 4, test vectors, VP updated.
+- BC-2.03.006 v1.0.0 → v1.1.0: Description explicitly states `SpawnRecipe.env` is an OVERLAY (not replacement) on inherited process env.
+- BC-2.08.001 v1.1.0 → v1.2.0: Sidecar schema: `project_root` = user-selected dir; `cwd` = resolved `worktree_root`. Two distinct fields, not conflated.
+- BC-2.08.007 v1.1.0 → v1.2.0: C2-002 — PC-4/5/10 and Invariant 3/4 reference `ScrollbackChunk*` + `ScrollbackDumpComplete`. Added BC-2.05.011 cross-reference. Architecture Source pinned to v1.3.0.
+
+Summary table updated: 136 → 138 total BCs. SS-05: 10→11. SS-08: 7→8.
+
+SE-16d monotonicity: v1.37 timestamp 2026-06-03T23:59:00Z > v1.36 timestamp 2026-06-03T14:00:00Z. PASS.
 
 ## §Trace v1.35
 

@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "1.2.0"
+version: "1.3.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -104,6 +104,15 @@ struct SessionEntry {
     session_host_pid: u32,
     session_host_socket: PathBuf,       // <runtime_dir>/session-<uuid>.sock
     state: SessionState,
+    /// Canonical working directory for the harness child process.
+    /// When a git worktree is configured, this is the worktree root.
+    /// When no worktree is configured (or the project is not a git repo),
+    /// this equals project_root. Always absolute. See §SpawnRecipe integration
+    /// for the worktree resolution rules.
+    cwd: PathBuf,
+    /// The project root passed at session creation (wizard Step 2 selection).
+    /// This is always the user-selected project directory, regardless of worktree.
+    /// Used for display grouping (sessions panel groups by project_root, not cwd).
     project_root: PathBuf,
     harness_id: String,                 // "claude-code", "codemachine", etc.
     profile_id: String,
@@ -131,10 +140,14 @@ struct SessionHostConnection {
 /// REACHABLE STATES ONLY (I4 audit — pruned unreachable variants):
 ///   Created — REMOVED: spawn_session() transitions directly to Launching (the OS process
 ///     is spawned synchronously inside spawn_session()); Created was never persisted or observed.
-///   Killed — REMOVED: kill_session() sends SIGTERM to the session-host, which causes the
-///     harness child to exit, which triggers the child_exit_watch arm, which sends
-///     StateChanged::Terminated. The TUI/daemon never observe a "Killed" state in the
-///     registry; the state goes Running → (SIGTERM) → Terminated. Killed was never reachable.
+///   Killed — REMOVED: superseded by Terminating (see below). kill_session() now transitions
+///     to Terminating (not Killed), providing observable in-flight kill status without the
+///     confusion of "Killed" implying completion.
+///
+/// I2-004: Terminating transient state added. Without it, a session whose harness child
+/// ignores SIGTERM stays in Running state for up to 10 seconds after the user presses kill.
+/// This violates production-grade observability: the user cannot tell whether the kill was
+/// sent or is still pending. The Terminating state closes this gap.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SessionState {
     /// session-host process spawned; waiting for its UDS socket to become connectable.
@@ -145,7 +158,26 @@ pub enum SessionState {
     /// TUI or daemon explicitly detached; session-host still alive; daemon not currently attached.
     /// Daemon can re-attach at any time via attach_session().
     Detached,
-    /// Harness child exited (naturally or via SIGTERM from kill_session()); session-host
+    /// kill_session() has been called; DaemonToHost::Kill has been sent to the session-host;
+    /// awaiting HostToDaemon::StateChanged { new_state: Terminated } confirmation.
+    ///
+    /// The TUI renders this as `[Terminating]` (e.g., with a spinner or dimmed indicator).
+    /// Lifecycle actions (Kill, Detach, Rename) are disabled for sessions in Terminating state.
+    ///
+    /// Transitions:
+    ///   Running / Detached / Launching → Terminating: kill_session() called.
+    ///   Terminating → Terminated: session-host confirms exit via StateChanged::Terminated.
+    ///   Terminating → Terminated (timeout): if no StateChanged received within 12 seconds
+    ///     (10s SIGTERM window + 2s buffer), the daemon forces the session to Terminated,
+    ///     sends SIGKILL to the session-host PID directly, and GCs the sidecar. This prevents
+    ///     Terminating state from persisting indefinitely if the session-host itself crashes.
+    ///
+    /// Re-discovery: if a sidecar is found in Terminating state at daemon restart, the daemon
+    /// treats it as Running (sidecar may have been written mid-kill-sequence) and probes
+    /// liveness. If alive, it re-sends Kill and waits. If dead, it transitions to Terminated
+    /// and GCs the sidecar.
+    Terminating,
+    /// Harness child exited (naturally or via SIGTERM/SIGKILL from kill_session()); session-host
     /// sent StateChanged::Terminated to daemon. Terminal state — no further transitions.
     Terminated,
 }
@@ -157,14 +189,20 @@ pub enum SessionState {
 |------|-------|----|-------|
 | *(none)* | `spawn_session()` called | `Launching` | OS process spawned; sidecar written |
 | `Launching` | Daemon receives `StateChanged::Running` from session-host | `Running` | Session-host UDS connectable; proxy task started |
-| `Launching` | `ScrollbackDump` received on re-discovery | `Running` | Re-discovery path: host was already up |
+| `Launching` | `ScrollbackDumpComplete` received on re-discovery | `Running` | Re-discovery path: host was already up |
 | `Launching` | PID dead on re-discovery probe | `Terminated` | GC sidecar |
 | `Launching` | `StateChanged::Terminated` (spawn failed inside session-host) | `Terminated` | GC sidecar |
+| `Launching` | `kill_session()` called | `Terminating` | Kill sent; awaiting session-host confirmation |
 | `Running` | `detach_session()` called | `Detached` | Proxy task aborted; session-host continues |
 | `Running` | `StateChanged::Terminated` from session-host | `Terminated` | Child exited naturally or via SIGTERM |
 | `Running` | PID dead on re-discovery | `Terminated` | GC sidecar (should not occur normally) |
-| `Detached` | `attach_session()` called | `Running` | New proxy task created; ScrollbackDump received |
+| `Running` | `kill_session()` called | `Terminating` | Kill sent; awaiting session-host confirmation |
+| `Detached` | `attach_session()` called | `Running` | New proxy task created; ScrollbackDumpComplete received |
 | `Detached` | PID dead on re-discovery | `Terminated` | GC sidecar |
+| `Detached` | `kill_session()` called | `Terminating` | Fresh UDS connect + Kill sent; awaiting confirmation |
+| `Terminating` | `StateChanged::Terminated` from session-host | `Terminated` | Normal kill completion |
+| `Terminating` | 12s timeout (no StateChanged received) | `Terminated` | Daemon sends SIGKILL to session-host PID; GC sidecar |
+| `Terminating` | PID dead on re-discovery | `Terminated` | GC sidecar |
 | `Terminated` | GC timer (10s) | *(removed)* | Entry removed from registry |
 
 #### Re-discovery state handling (I4 — all states covered)
@@ -173,15 +211,19 @@ pub enum SessionState {
 
 - **Sidecar state `Launching`:** The session-host was spawned but the daemon crashed before
   confirming Running. Probe liveness: if alive, attempt `Attach` with 5s timeout. If
-  `ScrollbackDump` received → register as `Running`. If no response within 5s → `SIGTERM`
-  session-host; mark `Terminated`; GC sidecar. If process dead → GC sidecar.
+  `ScrollbackDumpComplete` received → register as `Running`. If no response within 5s →
+  `SIGTERM` session-host; mark `Terminated`; GC sidecar. If process dead → GC sidecar.
 - **Sidecar state `Running`:** Normal re-discovery path. Probe liveness; if alive, `Attach`;
-  on `ScrollbackDump` → `Running`. If dead → GC.
+  on `ScrollbackDumpComplete` → `Running`. If dead → GC.
 - **Sidecar state `Detached`:** Session-host was alive but daemon was not attached. Probe
   liveness; if alive, attempt `Attach` (the session-host accepts Attach from Detached state);
-  on `ScrollbackDump` → `Running`. If dead → GC. Note: re-discovery always tries to attach
-  (even Detached sidecars) because the daemon needs the proxy task to maintain the broker
-  fan-out.
+  on `ScrollbackDumpComplete` → `Running`. If dead → GC. Note: re-discovery always tries to
+  attach (even Detached sidecars) because the daemon needs the proxy task to maintain the
+  broker fan-out.
+- **Sidecar state `Terminating`:** Daemon crashed mid-kill-sequence. Probe liveness: if alive,
+  re-send `DaemonToHost::Kill` and register in `Terminating` state with a 12s watchdog.
+  If process dead → mark `Terminated`; GC sidecar. Re-discovery does NOT treat Terminating
+  as Running — the kill is still in progress and must be completed.
 - **Sidecar state `Terminated`:** Should not appear (session-host deletes sidecar on clean
   exit; GC removes it on timer). If found: delete sidecar; skip. Treat as GC cleanup of a
   crash-leftover sidecar.
@@ -202,8 +244,25 @@ The `SpawnedHostHandle.pid` returned by `SessionHostSpawner::spawn()` MUST be us
 // On sidecar write failure after OS process is already running:
 nix::sys::signal::kill(Pid::from_raw(pid), Signal::SIGTERM)?;
 // Wait up to 2s for exit; if still running:
-// nix::sys::signal::kill(Pid::from_raw(pid), Signal::SIGKILL)?;
+nix::sys::signal::kill(Pid::from_raw(pid), Signal::SIGKILL)?;
 ```
+
+**Escalation deadline: 2 seconds (pre-socket-bind orphan, not normal kill).**
+The 2s SIGTERM→SIGKILL deadline applies exclusively to the pre-socket-bind orphan path
+(spawn-failure cleanup). The rationale: the session-host process has just been spawned and
+has not yet written its sidecar or bound its socket — it is not running user workload. A 2s
+window is sufficient for any startup-path initialization code to observe the signal.
+
+**This is distinct from the normal kill-path deadline (10 seconds):**
+`kill_session()` on a Running/Detached/Launching session-host sends `DaemonToHost::Kill`
+over the per-session UDS. The session-host sends SIGTERM to the harness child and waits up
+to 10 seconds before sending SIGKILL (BC-2.08.003 Invariant 4). The 10s window is justified
+by the harness child (Claude Code) needing time for clean shutdown — flushing tool output,
+saving state, removing temp files. These two kill paths are fundamentally different:
+- **Pre-socket-bind orphan kill (2s):** no user workload; clean shutdown irrelevant.
+- **Normal kill via DaemonToHost::Kill (10s):** harness child is running; clean shutdown needed.
+
+Both deadlines are explicit and justified. There is no inconsistency.
 
 This is the only correct path when the socket is not yet bound. This fallback applies
 to ALL spawn-path failures that occur after `SessionHostSpawner::spawn()` returns `Ok`
@@ -307,7 +366,27 @@ share any code with the daemon's async runtime (to keep it independent). It has 
 1. Parse CLI args: `--session-id <uuid>  --runtime-dir <path>  --binary <path>  --args <JSON>  --env <JSON>  --cwd <path>`.
 2. Call `nix::unistd::setsid()` to become a process group leader.
 3. Open PTY pair via `portable-pty::openpty(PtySize { rows: 24, cols: 80, ... })`.
-4. Build `CommandBuilder` from `--binary/--args/--env/--cwd`.
+4. Build `CommandBuilder` from `--binary/--args/--env/--cwd`:
+   - **Env inheritance (I2-006 fix — mandatory):** The session-host process inherits its OWN
+     environment from its parent (the daemon), which itself inherits from the user's shell.
+     `CommandBuilder` for the harness child MUST inherit the session-host process environment
+     FIRST, then overlay the recipe's `--env` fields on top. The `portable-pty` `CommandBuilder`
+     API populates the environment via `env()` calls — if `CommandBuilder` does NOT inherit the
+     parent env by default (check the `portable-pty` 0.8.x API), the session-host MUST
+     explicitly seed the builder with `std::env::vars()` before calling `cmd.env()` for each
+     recipe env var.
+   - **Why this matters:** Without env inheritance, the harness child launches with NO `PATH`,
+     NO `HOME`, and NO `TERM`. Claude Code's hook JS calls `os.homedir()` (BC-HOOK-029
+     requires this for `~/.monocle/` path resolution) — `os.homedir()` on most platforms reads
+     `HOME` from the env. A missing `PATH` causes the child to fail to resolve sub-processes.
+     A missing `HOME` causes node's `os.homedir()` to return `undefined` or `/root`, breaking
+     hook behavior silently.
+   - **EC for missing critical env:** If the inherited env does not contain `HOME` or `PATH`
+     (edge case: the daemon was launched in a degenerate environment), the session-host MUST
+     log a WARN at startup with the list of missing critical env vars before spawning the
+     harness child. The session-host does NOT abort — it proceeds and lets the harness child
+     handle the degraded environment — but the WARN makes the root cause visible. This is an
+     observable failure mode, not a silent one.
 5. Spawn harness child on PTY slave.
 6. Initialize `vt100::Parser` with initial size.
 7. Bind per-session UDS socket at `<runtime_dir>/session-<session_id>.sock` (mode `0o600`).
@@ -318,13 +397,14 @@ share any code with the daemon's async runtime (to keep it independent). It has 
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "session_id": "<uuid>",
   "pid": 12345,
   "socket_path": "<runtime_dir>/session-<uuid>.sock",
   "child_pid": 12346,
   "state": "Running",
   "project_root": "/path/to/project",
+  "cwd": "/path/to/project/worktree-feature-branch",
   "harness_id": "claude-code",
   "profile_id": "default",
   "started_at": "2026-06-03T23:00:00Z",
@@ -334,7 +414,12 @@ share any code with the daemon's async runtime (to keep it independent). It has 
 }
 ```
 
-`schema_version` MUST be checked on read; unknown versions must be ignored (forward-compat).
+`schema_version` 2 adds the `cwd` field (resolved worktree root; may equal `project_root`
+when no worktree is configured). Version 1 sidecars (no `cwd` field) MUST be treated as
+`cwd = project_root` on read (backward-compat default).
+
+`schema_version` MUST be checked on read; version 1 sidecars treat `cwd` as `project_root`
+(backward-compat); unknown versions beyond 2 must be ignored (forward-compat).
 
 ### Per-session UDS security (I5)
 
@@ -346,14 +431,21 @@ Claude Code session via `DaemonToHost::KeyInput`.
 
 **Required security controls:**
 
-1. **SO_PEERCRED peer-credential check (mandatory):** On every per-session UDS connection
-   (both when the session-host accepts a daemon connection AND when the daemon connects to
-   a session-host socket), the connecting peer's `uid` MUST be checked via `SO_PEERCRED`
-   (Linux) or `LOCAL_PEERPID` + `getpwuid` (macOS). The connection MUST be rejected if the
-   peer `uid` differs from the current process `uid`. Implementation: call
-   `nix::sys::socket::getsockopt::<nix::sys::socket::sockopt::PeerCredentials>(fd)` (Linux)
-   or `nix::sys::socket::getsockopt::<nix::sys::socket::sockopt::LocalPeerPid>(fd)` (macOS)
-   immediately after `accept()`/`connect()`, before reading any bytes.
+1. **SO_PEERCRED peer-credential check (mandatory on EVERY per-session UDS connect):**
+   The SO_PEERCRED / LOCAL_PEERPID uid check applies universally — it is NOT restricted to
+   attach or re-discovery. Every per-session UDS connection attempt (attach, re-discovery,
+   AND kill/detach re-connect for Detached sessions per BC-2.08.003 EC-164) MUST verify the
+   connecting peer's `uid` before reading any bytes.
+
+   - On Linux: `nix::sys::socket::getsockopt::<nix::sys::socket::sockopt::PeerCredentials>(fd)`.
+   - On macOS: `nix::sys::socket::getsockopt::<nix::sys::socket::sockopt::LocalPeerPid>(fd)`
+     followed by `getpwuid` to resolve the pid to a uid.
+   - The connection MUST be rejected (socket closed, operation aborted) if the peer `uid`
+     differs from the current process `uid`.
+   - **Kill-path specific:** `kill_session()` for a `Detached` session must fresh-connect to
+     the session-host UDS (EC-164 path). This fresh connect MUST apply SO_PEERCRED before
+     sending `DaemonToHost::Kill`. Failure to apply SO_PEERCRED on the kill-path fresh
+     connect would expose the same keystroke-injection vector as attach. No exceptions.
 
 2. **Sidecar trust validation on re-discovery (mandatory):** During `rediscover_sessions()`,
    after reading a sidecar file and connecting to the session-host socket, the daemon MUST
@@ -397,21 +489,33 @@ pub enum DaemonToHost {
 #[non_exhaustive]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum HostToDaemon {
-    /// Initial response to Attach: current vt100 screen state as styled-cell serialization.
-    /// See §Screen-state transfer (C5) for the correct serialization contract.
-    ScrollbackDump {
-        /// Serialized vt100::Screen cells: row-major, each cell is (char, fg, bg, attrs).
-        /// Format: Vec<Vec<SerializedCell>> where outer vec is rows (top to bottom),
-        /// inner vec is columns. MUST include ALL rows (scrollback + visible screen),
-        /// ordered from oldest scrollback row to current screen bottom.
+    /// One chunk of the scrollback dump stream.
+    /// Sent in response to DaemonToHost::Attach. Multiple ScrollbackChunk messages are sent
+    /// followed by a single ScrollbackDumpComplete sentinel. The session-host pauses
+    /// live PtyBytes forwarding during the dump (see ADR-0010 §Interleaving).
+    /// `ScrollbackDump` (single-message form) is RETIRED; use ScrollbackChunk* + Complete.
+    ScrollbackChunk {
+        /// Serialized vt100::Screen cells for this chunk: row-major, each cell is
+        /// (char, fg, bg, attrs). Rows in this chunk, oldest-to-newest (continuing
+        /// from the previous chunk). Each chunk MUST be ≤ 256 KiB serialized.
         rows: Vec<Vec<SerializedCell>>,
+        /// 0-indexed chunk sequence number. Non-contiguous sequence → daemon logs WARN
+        /// and re-requests Attach.
+        chunk_seq: u32,
+    },
+    /// Sentinel terminating the scrollback dump stream.
+    /// Sent after the last ScrollbackChunk. Contains cursor and PTY dimensions at
+    /// the moment the dump snapshot was taken. After sending this, the session-host
+    /// resumes forwarding live PtyBytes.
+    ScrollbackDumpComplete {
+        total_chunks: u32,
         cursor_row: u16,
         cursor_col: u16,
         /// Current PTY dimensions (rows × cols) at time of dump.
         pty_rows: u16,
         pty_cols: u16,
     },
-    /// Live PTY output bytes.
+    /// Live PTY output bytes. NOT sent during an active scrollback dump transfer.
     PtyBytes { bytes: Vec<u8> },
     /// Session state changed (child exited, etc.).
     StateChanged { new_state: SessionState },
@@ -422,7 +526,7 @@ pub enum HostToDaemon {
     PtyReset,
 }
 
-/// A single terminal cell as serialized for ScrollbackDump.
+/// A single terminal cell as serialized for scrollback dump (ScrollbackChunk rows).
 /// Sufficient to reconstruct the full styled vt100::Screen without re-parsing PTY bytes.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SerializedCell {
@@ -444,7 +548,7 @@ pub enum SerializedColor {
 }
 ```
 
-### Screen-state transfer on Attach (C5 — correct ScrollbackDump semantics)
+### Screen-state transfer on Attach (C5 — correct ScrollbackChunk protocol)
 
 When the session-host handles `DaemonToHost::Attach`, it MUST transfer the vt100 screen
 state correctly so the TUI can reconstruct the current terminal without double-applying
@@ -457,33 +561,71 @@ PTY bytes.
    bg color, and attribute flags. This preserves full visual fidelity (colors, bold, etc.)
    that is lost by `String`-only row serialization.
 
-2. **Send `HostToDaemon::ScrollbackDump`** with the serialized cells, cursor position,
-   and current PTY dimensions.
+2. **Pause live PtyBytes forwarding** while the dump is in progress (see ADR-0010
+   §Interleaving of live PtyOutput during a ScrollbackDump transfer).
 
-3. **TUI receiver protocol:** On receipt of `ScrollbackDump`, the TUI MUST:
-   a. Reset the parser: `pty_parsers[session_id] = vt100::Parser::new(pty_rows, pty_cols, SCROLLBACK_ROWS)`.
-   b. Reconstruct the screen by replaying the cells as a synthetic `DCS` or `ED` clear +
-      cursor-position + write sequence, OR by using `vt100::Parser::set_screen()` if the
-      vt100 crate exposes such an API, OR by implementing a direct screen-state injection
+3. **Stream `HostToDaemon::ScrollbackChunk` messages**, each ≤ 256 KiB (UDS message limit).
+   After all chunks, send `HostToDaemon::ScrollbackDumpComplete` with cursor position, PTY
+   dimensions, and total chunk count.
+
+4. **Resume PtyBytes forwarding** after `ScrollbackDumpComplete` is sent.
+
+5. **TUI receiver protocol:** On receipt of `ScrollbackDumpComplete`, the TUI MUST:
+   a. Validate that `total_chunks` matches the number of `ScrollbackChunk` messages received.
+      If mismatch → log WARN; send a re-attach request (re-sends `SpawnSession`'s Attach)
+      to restart the dump.
+   b. Reset the parser: `pty_parsers[session_id] = vt100::Parser::new(pty_rows, pty_cols, SCROLLBACK_ROWS)`.
+   c. Reconstruct the screen by replaying the accumulated cells as a synthetic `DCS` or `ED`
+      clear + cursor-position + write sequence, OR by using `vt100::Parser::set_screen()` if
+      the vt100 crate exposes such an API, OR by implementing a direct screen-state injection
       that sets each cell's content/attributes without going through byte parsing.
-   c. If the vt100 crate does not expose direct cell injection: send the scrollback dump
+   d. If the vt100 crate does not expose direct cell injection: send the scrollback dump
       as a sequence of ANSI `\x1b[2J\x1b[H` (clear screen, home cursor) followed by
       cell-by-cell reconstruction using ANSI SGR sequences. This is the `scrollback-as-bytes`
       reconstruction path.
-   d. After reconstruction, subsequent `PtyBytes` events are processed by the now-correctly-
+   e. After reconstruction, subsequent `PtyBytes` events are processed by the now-correctly-
       initialized parser. No double-counting occurs because the parser was reset before
-      applying the dump.
+      applying the dump. No interleaving corruption occurs because the session-host paused
+      PtyBytes during the dump transfer.
 
-**Scrollback memory bound (O4):** `SCROLLBACK_ROWS` is configurable (default 1000, max
-10000 per SS-embedded-pty.md). Each row in a `SerializedCell` representation costs:
-per cell ≈ `sizeof(SerializedCell)` ≈ 6 bytes (1 char + 2 color + 1 attrs, with enum
-overhead ≈ 2 bytes per color) + serde JSON overhead ≈ 30–50 bytes per cell in JSON.
-A 80-column × 10000-row scrollback buffer in JSON ≈ 80 × 10000 × 40 bytes ≈ 32 MB per
-session. For 8 sessions ≈ 256 MB. The ScrollbackDump is transient (sent over UDS, not
-stored); the TUI reconstructs and then discards the dump. The UDS 256 KiB message limit
-means large scrollbacks MUST be chunked: `ScrollbackDump` may be split into multiple
-messages, each ≤ 256 KiB. The session-host streams scrollback rows in batches; a
-`ScrollbackDumpComplete` sentinel message terminates the stream.
+**Scrollback memory bound (O4 — wire-JSON vs in-RAM, reconciled with SS-embedded-pty §O4):**
+
+There are two distinct memory contexts to reason about. They must not be conflated:
+
+**Wire-JSON (this section — session-host → daemon UDS):**
+`SCROLLBACK_ROWS` is configurable (default 1000, max 10000 per SS-embedded-pty.md). Each
+`SerializedCell` in JSON is ≈ 30–50 bytes (1 UTF-8 char + fg/bg color fields + attrs, with
+JSON key overhead). A 80-column × 10000-row scrollback buffer in JSON ≈ 80 × 10000 × 40
+bytes ≈ 32 MB per session. Across 8 sessions ≈ 256 MB of wire-JSON. This is TRANSIENT —
+it is not stored anywhere permanently. The session-host serializes the buffer, sends it over
+the per-session UDS, and the TUI deserializes and reconstructs it. After reconstruction the
+wire-JSON is discarded. The peak transient allocation occurs DURING the attach/re-discovery
+ScrollbackDump transfer: both the session-host (JSON encoding the buffer) and the TUI
+(holding the received JSON before reconstruction) have ~32 MB of the same data in memory
+simultaneously. For a single attach this is a ~64 MB transient spike; for 8 concurrent
+re-discoveries at daemon restart it could be ~256 MB transient.
+
+**In-RAM (cross-reference to SS-embedded-pty §O4 — TUI vt100::Parser storage):**
+After reconstruction, the TUI's `vt100::Parser` holds the screen state as styled cells in
+Rust-native form. The `vt100::Cell` struct (per SS-embedded-pty §O4) is ≈ 16 bytes
+(char + fg/bg color enums + attrs + padding). A 80-col × 10000-row parser buffer ≈
+80 × 10000 × 16 = 12.8 MB per session (in-RAM, not wire-JSON). For 8 sessions ≈ 102 MB.
+This is the STEADY-STATE memory cost per SS-embedded-pty §O4 ruling.
+
+**Chunked-stream mitigation for transient spike:**
+The UDS 256 KiB message limit means large scrollbacks MUST be chunked: the `ScrollbackChunk`
+protocol (replacing the legacy single-message `ScrollbackDump`) streams rows in batches of
+≤ 256 KiB each. Chunking reduces the PEAK transient allocation on BOTH sides (session-host
+holds only one chunk in JSON at a time during streaming; TUI accumulates chunks but can begin
+parser reconstruction incrementally). The `ScrollbackDumpComplete` sentinel terminates the
+stream. The session-host streams scrollback rows in batches; the TUI accumulates until
+Complete, then reconstructs and discards the wire-JSON.
+
+**Summary of reconciled numbers:**
+- Wire-JSON per session (transient during attach): ~32 MB (10k rows × 80 cols × 40 bytes/JSON-cell)
+- In-RAM vt100::Parser per session (steady-state): ~12.8 MB (10k rows × 80 cols × 16 bytes/cell)
+- Transient attach spike (wire+TUI simultaneously): ~64 MB per session for max scrollback
+- Steady-state 8 sessions: ~102 MB (in-RAM only; wire-JSON is discarded after reconstruction)
 
 ### Main event loop
 
@@ -501,8 +643,9 @@ tokio::select! {
     }
     Some(msg) = daemon_conn.recv() => match msg {
         DaemonToHost::Attach => {
-            // Serialize current vt100::Screen as styled cells (see §Screen-state transfer)
-            send_scrollback_dump_styled_cells().await;
+            // Snapshot vt100::Screen as styled cells, pause PtyBytes, stream chunks,
+            // send ScrollbackDumpComplete (see §Screen-state transfer on Attach).
+            stream_scrollback_dump_chunked().await;
         }
         DaemonToHost::KeyInput { bytes } => { pty_writer.write_all(&bytes).await?; }
         DaemonToHost::Resize { rows, cols } => {
@@ -547,7 +690,7 @@ OOM that kills the channel sender), the session-host MUST:
 1. Detect the drop (sender returns `Err(SendError)` if the receiver is gone).
 2. Immediately send `HostToDaemon::PtyReset { session_id }` to the daemon.
 3. The daemon propagates `ServerToClient::PtyReset { session_id }` to all TUI clients.
-4. Each TUI client, on receiving `PtyReset`, calls `pty_parsers[session_id] = vt100::Parser::new(rows, cols, scrollback_rows)` (fresh parser) and issues a forced full redraw request to the session-host (re-attaches to get a fresh `ScrollbackDump`).
+4. Each TUI client, on receiving `PtyReset`, calls `pty_parsers[session_id] = vt100::Parser::new(rows, cols, scrollback_rows)` (fresh parser) and re-attaches to the session-host (sends a fresh `Attach` to trigger a new `ScrollbackChunk*` + `ScrollbackDumpComplete` sequence).
 
 This reset protocol ensures terminal corruption is NEVER silent. It is the mandatory
 fallback; the primary design (backpressure via `.send().await`) makes it unreachable
@@ -582,7 +725,8 @@ runs:
    c. If alive: attempt UDS connect to socket_path; immediately verify `SO_PEERCRED` / 
       `LOCAL_PEERPID` matches sidecar pid (I5 cross-check); if mismatch: log WARN, SIGTERM
       both pids, delete sidecar, skip. If match: send `DaemonToHost::Attach`; wait up to 5s
-      for `HostToDaemon::ScrollbackDump`; register in SessionManager as `Running`.
+      for `HostToDaemon::ScrollbackDumpComplete` (after receiving the full chunk sequence);
+      register in SessionManager as `Running`.
    d. If dead: delete sidecar (GC); also delete orphaned socket file if present.
 3. All re-discovered sessions are in `DaemonState.session_manager` before UDS bind (step 10).
 4. Publish re-discovered sessions in `DaemonState.sessions` before serving TUI clients.
@@ -616,14 +760,48 @@ pub struct SpawnRecipe {
     pub binary: PathBuf,
     /// CLI args (e.g., ["--settings", "/tmp/monocle-hooks-abc.json"]).
     pub args: Vec<String>,
-    /// Environment variables to inject (hook config, CCR env vars, etc.).
+    /// Environment variables to OVERLAY on the session-host process's inherited environment.
+    /// They do not replace the full env; the session-host builds CommandBuilder from
+    /// the parent process env (inheriting PATH, HOME, etc.) and then overlays these fields.
+    /// See §session-host startup step 4 for the env inheritance specification.
     pub env: HashMap<String, String>,
-    /// Working directory for the session (git worktree path per claude-squad A.1).
+    /// Working directory for the harness child process.
+    /// Populated from SpawnOptions.worktree_root — the resolved git worktree path
+    /// (or project_root when no worktree applies). See SpawnOptions.worktree_root
+    /// for resolution rules. NEVER hardcoded to project_root.
     pub cwd: PathBuf,
 }
 
 pub struct SpawnOptions {
+    /// The project root directory selected by the user in the SessionCreation wizard.
+    /// Used for display grouping in the sessions panel (project_root, not cwd).
     pub project_root: PathBuf,
+    /// The working directory for the harness child process.
+    ///
+    /// **Worktree-per-session (adopted from claude-squad A.1 gene, v1A scope):**
+    /// When the user confirms a git worktree in SessionCreation Step 3 (WorktreeConfirm),
+    /// the wizard resolves the worktree root path and sets this field. The harness child
+    /// is spawned with cwd = worktree_root_or_project_root, NOT necessarily project_root.
+    ///
+    /// Resolution rules (applied in order by the SessionCreation wizard step 3):
+    /// 1. If the project_root is a git worktree or the main worktree of a git repo AND the
+    ///    user confirmed a specific worktree path in Step 3: `worktree_root` is that path.
+    ///    Validation: the path exists AND `git -C <path> rev-parse --is-inside-work-tree`
+    ///    returns exit 0. If validation fails, fall back to rule 3.
+    /// 2. If the project_root is a git repo root and no specific worktree was selected:
+    ///    `worktree_root` = project_root (the main worktree is the project root itself).
+    /// 3. If the project_root is NOT a git repo (no `.git` present in any ancestor):
+    ///    `worktree_root` = project_root. The cwd for the harness child is the project root.
+    ///    BC-HOOK-029 requires `os.homedir()` to work in the hook JS — this is unrelated to
+    ///    the project being a git repo; HOME is always available from the inherited env
+    ///    (see §session-host startup step 4 env inheritance fix below).
+    ///
+    /// The wizard MUST resolve and validate this path in Step 3 (WorktreeConfirm). If the
+    /// path cannot be validated, the wizard shows an error and stays on Step 3 until the
+    /// user provides a valid path or cancels.
+    ///
+    /// `SpawnRecipe.cwd` is populated from this field (see §SpawnRecipe integration).
+    pub worktree_root: PathBuf,
     pub profile_id: String,
     pub session_id: String,           // pre-generated UUID; used in hooks_settings_path
     pub hooks_settings_path: PathBuf, // pre-written by daemon; passed as --settings arg
@@ -634,8 +812,8 @@ pub struct SpawnOptions {
 `ClaudeCodeModule::spawn_recipe()` fills the recipe from:
 - Binary: `which::which("claude")` result
 - Args: `["--settings", opts.hooks_settings_path.to_str().unwrap()]`
-- Env: `ANTHROPIC_BASE_URL` if `opts.ccr_base_url.is_some()`
-- Cwd: `opts.project_root`
+- Env: `ANTHROPIC_BASE_URL` if `opts.ccr_base_url.is_some()`; `MONOCLE_SESSION_ID = opts.session_id`
+- Cwd: `opts.worktree_root` (the resolved worktree path — NOT opts.project_root directly)
 
 **Hook auto-injection — SHARED FILE MODEL (C1 decision):** The daemon writes a SINGLE shared
 `hooks-settings.json` at `<runtime_dir>/hooks-settings.json` (not per-session) using
@@ -652,10 +830,12 @@ it for all sessions is clobber-safe precisely because the content is a pure func
 (daemon_port, auth_token) — both of which are fixed for the daemon's lifetime.
 
 **BC-HOOK-010 is the authoritative model.** BC-2.08.006 Invariant 3 and EC-182 (which
-mandated per-session paths to avoid clobber) are architecture-level errors: they misdiagnosed
-the clobber risk. Clobber is a problem only when content differs between writers; here it
-never differs. BC-2.08.006 must be updated by product-owner to remove Invariant 3 and EC-182
-and replace with the shared-file model (see §Trace C1 flag for product-owner delegation).
+previously mandated per-session paths to avoid clobber) were architecture-level errors: they
+misdiagnosed the clobber risk. Clobber is a problem only when content differs between writers;
+here it never differs. BC-2.08.006 v1.1.0 has been RECONCILED in place by product-owner to
+reflect the shared-file model — Invariant 3 and EC-182 have been rewritten (not removed) to
+describe the correct shared-file behavior. This reconciliation is the canonical outcome; no
+further BC-2.08.006 edits are needed.
 
 The `--settings` arg carries this shared path. No user action required. `lock.app = 'monocle'`
 filter in the hook JS ensures only monocle-launched sessions trigger the monocle endpoint.
@@ -727,6 +907,54 @@ Daemon removes stale socket files during GC in re-discovery (alongside sidecar d
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.3.0
+
+**Adversarial Pass 2 resolution — C2-002/C2-003/C2-005/I2-002/I2-003/I2-004/I2-006/S2-003** (2026-06-03):
+
+- **C2-002 (wire variants):** `HostToDaemon::ScrollbackDump` RETIRED; replaced by chunked
+  `ScrollbackChunk`/`ScrollbackDumpComplete` two-message protocol. State transition table
+  updated to reference `ScrollbackDumpComplete` (was `ScrollbackDump`). Re-discovery state
+  handling table updated. Screen-state transfer §C5 updated to the chunked protocol with
+  TUI integrity validation step (chunk count check). `ServerToClient::ScrollbackChunk`,
+  `ServerToClient::ScrollbackDumpComplete`, `ServerToClient::PtyReset` are defined in
+  ADR-0010; SS-daemon-wiring-v2-delta §5b/§5c carry the daemon fan-out paths.
+- **C2-003 (directive-vs-outcome mismatch):** Removed stale "must be removed" directive.
+  BC-2.08.006 Invariant 3 + EC-182 were RECONCILED IN PLACE by product-owner (not removed).
+  The text now correctly states "BC-2.08.006 v1.1.0 has been reconciled in place." No further
+  BC-2.08.006 edits are needed.
+- **C2-005(a) (kill-path SO_PEERCRED):** §Per-session UDS security item 1 updated to state
+  explicitly that SO_PEERCRED applies to EVERY per-session UDS connect including kill-path
+  fresh-connect (EC-164). Added kill-path specific note.
+- **C2-005(b) (SIGTERM escalation deadlines):** §Pre-socket-bind orphan kill updated to
+  add SIGKILL call (was a comment), and added explicit explanation that the 2s deadline
+  applies ONLY to pre-socket-bind orphan kills (not normal kills). Normal kill deadline (10s
+  SIGTERM → SIGKILL, per BC-2.08.003 Invariant 4) is stated side-by-side for clarity.
+  BC-2.08.003 sync flagged to product-owner (see product-owner action list below).
+- **I2-002 (worktree-per-session operationalized):** `SpawnOptions.worktree_root` field added
+  (was absent; only `project_root` existed). Three-rule resolution logic specified. `SpawnRecipe.cwd`
+  doc-comment corrected to reference `worktree_root`. `ClaudeCodeModule::spawn_recipe()` fill
+  corrected from `opts.project_root` to `opts.worktree_root`. `SessionEntry.cwd` field added
+  (distinct from `project_root`). SessionCreation wizard Step 3 (WorktreeConfirm) owns
+  resolution and validation. BC flag for product-owner: BC-2.03.005, BC-2.03.006, BC-2.08.001,
+  and BC-2.08.007 need `worktree_root` vs `project_root` semantics reflected.
+- **I2-003 (cross-client backpressure):** Specification deferred to ADR-0010 §Cross-Client/
+  Cross-Session Backpressure Isolation and SS-daemon-wiring-v2-delta §5d. This document's
+  references to "proxy task sends to broker" implicitly follow the new per-client buffer model.
+- **I2-004 (Terminating state):** `Terminating` variant added to `SessionState` enum with
+  full semantics (transitions, TUI render, 12s watchdog, re-discovery handling). State
+  transition table updated with all Terminating transitions. BC flag for product-owner:
+  BC-2.08.003 (kill description uses `Running → Terminating → Terminated`), BC-2.06.025
+  (sessions panel must render `[Terminating]` state).
+- **I2-006 (env inheritance):** Session-host startup step 4 updated with mandatory env
+  inheritance rule: `CommandBuilder` inherits session-host process env THEN overlays
+  recipe.env. EC for missing-critical-env (HOME/PATH missing) specified as WARN-logged
+  (not abort). `SpawnRecipe.env` doc-comment updated to say "overlay" not "replace."
+- **S2-003 (scrollback memory reconciliation):** §O4 expanded to explicitly separate
+  wire-JSON (transient, ~32 MB/session at max scrollback) vs in-RAM vt100::Parser
+  (steady-state, ~12.8 MB/session). Transient attach spike quantified (~64 MB per single
+  max-scrollback attach; ~256 MB for 8 concurrent daemon-restart re-discoveries). Chunked
+  protocol mitigation noted.
 
 ## §Trace v1.2.0
 

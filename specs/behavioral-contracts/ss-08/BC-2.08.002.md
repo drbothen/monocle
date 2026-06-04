@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -82,7 +82,7 @@ client can connect.
 | EC-155 | Session-host process is alive but its UDS socket file was deleted (e.g., tmpfs cleared) | `kill(pid, None)` succeeds (process alive) but `connect(socket_path)` fails; session marked `Terminated`; sidecar deleted; TUI session list omits the session |
 | EC-156 | Session-host process is alive but does not respond within 5s (stuck) | Session marked `Terminated`; sidecar deleted; `SIGTERM` sent to session-host PID to release PTY resources; TUI shows session as terminated |
 | EC-157 | Daemon exits with SIGKILL (crash); session-host survives | Session-host process survives (setsid); sidecar intact; next daemon startup re-discovers session per BC-2.08.004 |
-| EC-158 | Session was in `SessionState::Launching` when daemon exited (spawn in progress) | On re-discovery, `kill(pid, None)` check: if session-host alive, attempt attach; if not yet up (< 5s), retry with exponential backoff; if never responds within 5s, mark Terminated; if responds, mark Running |
+| EC-158 | Session was in `SessionState::Launching` when daemon exited (spawn in progress) | On re-discovery: `kill(pid, None)` probe — if alive, attempt `DaemonToHost::Attach` with 5s timeout waiting for `HostToDaemon::ScrollbackDumpComplete`; if `ScrollbackDumpComplete` received within 5s, register as Running; if no response within 5s, send SIGTERM to session-host PID, mark Terminated, GC sidecar. No exponential backoff — the 5s is a hard single-attempt timeout (canonical per SS-session-manager.md v1.3.0 §Daemon startup: session re-discovery). |
 | EC-159 | Multiple sessions exist; one alive, one dead | Re-discovery marks alive session Running; dead session Terminated with GC; TUI receives SessionListUpdate with only the alive session |
 
 ## Canonical Test Vectors
@@ -108,7 +108,7 @@ client can connect.
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC defines the persistence property: sessions survive daemon restart, which is the primary differentiator of the detached session-host model (ADR-0009) |
 | L2 Domain Invariants | DI-001 (hook event durability — session survival ensures hook events from in-progress sessions continue to flow after daemon restart, because the session-host continues running; this supports DI-001 continuity) |
 | Architecture Module | monocle-runtime (SessionManager, `rediscover_sessions()`); monocle-session-host (setsid startup step) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v1.2.0 §Daemon startup: session re-discovery; SS-session-manager.md §monocle-session-host binary §startup sequence step 2; ADR-0009 §native-detached-session-host |
+| Architecture Source | SS-session-manager.md v1.3.0 §Daemon startup: session re-discovery; SS-session-manager.md §monocle-session-host binary §startup sequence step 2; ADR-0009 §native-detached-session-host |
 | Test Name | test_BC_2_08_002_session_survives_daemon_graceful_restart |
 
 ## Related BCs
@@ -130,6 +130,16 @@ S-TBD — Implement session re-discovery and setsid in monocle-session-host (fil
 ## VP Anchors
 
 VP-TBD — Daemon restart integration test (filled after VP creation)
+
+## §Trace v1.1.0
+
+**I2-005 adversarial pass-2 fix — EC-158 synced to canonical re-discovery procedure** (2026-06-03):
+- I2-005 finding: EC-158 described "retry with exponential backoff" for Launching-state sessions
+  on re-discovery. This contradicts the canonical procedure in SS-session-manager.md v1.3.0
+  §Daemon startup: session re-discovery (and BC-2.08.004 PC-2), which specifies a single
+  `DaemonToHost::Attach` attempt with a 5-second hard timeout — no exponential backoff.
+- EC-158: rewritten to match SS-session-manager.md v1.3.0 canonically: one Attach attempt,
+  5s timeout for `ScrollbackDumpComplete`, then Terminated+GC. No invented retry logic.
 
 ## §Trace v1.0.0
 

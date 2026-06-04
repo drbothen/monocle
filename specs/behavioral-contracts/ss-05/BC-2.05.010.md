@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -90,6 +90,12 @@ state updates to all TUI clients.
    SS-session-manager.md §session_id type ruling.
 4. Unknown variants (future additions from newer TUI to older daemon) are silently ignored
    per `#[non_exhaustive]` forward-compat policy.
+5. **Zero-dimension clamp (S2-004 consistency rule):** The daemon IPC handler MUST clamp
+   `ResizePane.rows` and `ResizePane.cols` to a minimum of 1 before forwarding to
+   `resize_session()`. This rule is applied at the daemon boundary (not in the TUI). The TUI
+   (BC-2.09.006) should also prevent sending zero dimensions, but the daemon is the final
+   enforcement point. Clamping prevents undefined PTY behavior without surfacing an error to
+   the TUI. Cross-reference: BC-2.09.006 EC-237 (TUI-side resize no-op detection).
 
 ## Edge Cases
 
@@ -97,7 +103,7 @@ state updates to all TUI clients.
 |----|-------------|-------------------|
 | EC-280 | `SpawnSession` with a `SpawnRecipe` where `binary` is empty path | `SessionError::SpawnFailed`; `ServerToClient::Error` sent back |
 | EC-281 | `KeyInput` for unknown `session_id` | `SessionError::SessionNotFound`; `ServerToClient::Error` |
-| EC-282 | `ResizePane` with `rows=0` or `cols=0` | Passed to `resize_session()`; if PTY rejects zero dimensions, `SessionError` returned; `ServerToClient::Error` |
+| EC-282 | `ResizePane` with `rows=0` or `cols=0` | The daemon's IPC handler MUST clamp each dimension to a minimum of 1 BEFORE forwarding to `resize_session()`. `rows = max(rows, 1); cols = max(cols, 1)`. The PTY and parser are resized to the clamped values. No `SessionError` is returned; the operation succeeds with clamped dimensions. Clamping is consistent with BC-2.09.006 EC-237 and the resize behavior in the TUI. A zero-dimension PTY is undefined by POSIX; clamping to 1 is the most robust behavior. |
 | EC-283 | `RenameSession` with empty `new_name` | `SessionError::InvalidSessionName`; `ServerToClient::Error` |
 | EC-284 | Concurrent `KeyInput` messages from the same TUI client | Processed in order of arrival; each forwarded to session-host in receipt order |
 
@@ -126,7 +132,7 @@ state updates to all TUI clients.
 | L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — these new ClientToServer variants extend the internal transport capability with session lifecycle control messages (spawn, kill, key input, resize, detach, rename) — all transported over the existing UDS per the session/event/prompt push design |
 | Architecture Module | monocle-ipc (`ClientToServer` enum new variants); monocle-runtime (IPC handler routing to SessionManager) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-daemon-wiring-v2-delta.md v1.1.0 §IPC handler — new ClientToServer variants |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.2.0 §IPC handler — new ClientToServer variants |
 | Cross-Ref | BC-2.08.001 (SpawnSession → spawn_session()); BC-2.08.003 (KillSession → kill_session()); BC-2.08.007 (DetachSession → detach_session()) |
 | Test Name | test_BC_2_05_010_new_client_to_server_variants_routed |
 
@@ -148,6 +154,20 @@ S-TBD — Implement new ClientToServer IPC variants and daemon routing (filled b
 ## VP Anchors
 
 VP-TBD — IPC variant routing integration tests (filled after VP creation)
+
+## §Trace v1.1.0
+
+**S2-004 adversarial pass-2 fix — zero-dimension clamp at daemon boundary** (2026-06-03):
+- S2-004 finding: EC-282 said "if PTY rejects zero dimensions, `SessionError` returned" — this
+  was inconsistent with BC-2.09.006 which has no zero-dimension handling and simply forwards
+  the resize. Two BCs with different behaviors for the same condition is production-grade non-
+  conformant. Resolution: clamp-to-1 at the daemon boundary, no error returned.
+- EC-282: rewritten with clamp-to-1 rule at daemon IPC handler. No SessionError. Clamped values
+  forwarded to resize_session(). Rationale: zero-dimension PTY is POSIX-undefined; clamping
+  is more robust than rejecting (avoids unnecessary error handling in the TUI while preventing
+  undefined behavior in the PTY).
+- Invariant 5 added: zero-dimension clamp rule as a production-grade enforcement point at the
+  daemon boundary. Cross-referenced with BC-2.09.006 EC-237 (TUI-side no-op detection).
 
 ## §Trace v1.0.0
 

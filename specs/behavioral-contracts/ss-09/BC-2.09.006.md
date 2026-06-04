@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -81,6 +81,7 @@ the parser must reflect the new size within 2 render ticks of the first dimensio
 | EC-236 | Resize while `AppMode::Dashboard` (not in EmbeddedTerminal) | No `ResizePane` sent; local parsers are NOT resized; they will be resized when the session is next entered in EmbeddedTerminal mode |
 | EC-237 | Resize to same size as current | `area.rows == parser.screen().size().0 && area.cols == parser.screen().size().1`; no-op; no IPC message sent |
 | EC-238 | Session-host dies while resize IPC is in-flight | Resize message arrives at dead socket; daemon handles `SessionError` from `resize_session()`; session transitions to Terminated; TUI receives `SessionStateChanged::Terminated` |
+| EC-239 | TUI pane area collapses to 0 rows or 0 cols (degenerate layout) | The TUI detects area.rows==0 or area.cols==0 as a degenerate case and does NOT send ResizePane (no-op; same as "resize to same size as current"). The daemon's IPC handler also clamps zero dimensions to minimum 1 as a defense-in-depth fallback (BC-2.05.010 EC-282 Invariant 5). If ResizePane(rows=0, cols=0) somehow reaches the daemon, the daemon clamps to 1x1 and resizes without error. |
 
 ## Canonical Test Vectors
 
@@ -105,12 +106,13 @@ the parser must reflect the new size within 2 render ticks of the first dimensio
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — resize propagation is a core PTY widget capability that ensures the harness child renders at the correct dimensions in the embedded terminal pane |
 | Architecture Module | monocle-tui (resize detection, debounce, ResizePane send); monocle-runtime (SessionManager resize_session); monocle-session-host (PTY resize) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.1.0 §Pane area and resize (detection logic, debounce, SIGWINCH) |
+| Architecture Source | SS-embedded-pty.md v1.2.0 §Pane area and resize (detection logic, debounce, SIGWINCH) |
 | Test Name | test_BC_2_09_006_pty_and_parser_resized_within_2_render_ticks |
 
 ## Related BCs
 
 - [BC-2.09.001] — composes with: after resize, PTY output is rendered at new dimensions via the parser pipeline
+- [BC-2.05.010] — depends on: ResizePane IPC variant; EC-282/Invariant 5 defines zero-dimension clamp at daemon boundary
 
 ## Architecture Anchors
 
@@ -123,6 +125,17 @@ S-TBD — Implement resize detection, debounce, ResizePane IPC in monocle-tui (f
 ## VP Anchors
 
 VP-TBD — Resize debounce timing tests (filled after VP creation)
+
+## §Trace v1.1.0
+
+**S2-004 adversarial pass-2 fix — zero-dimension edge case + cross-reference** (2026-06-03):
+- S2-004 finding: BC-2.09.006 had no zero-dimension handling. BC-2.05.010 EC-282 said
+  "SessionError returned" — contradicting this BC which has no error path for resize. The
+  two BCs gave different behaviors for the same condition.
+- EC-239 added: degenerate pane area (rows=0 or cols=0) — TUI no-ops; daemon defense-in-
+  depth clamp to 1 per BC-2.05.010 Invariant 5. Documents the two-layer defense without
+  duplicating the daemon's rule.
+- Related BCs: added [BC-2.05.010] cross-reference for the zero-dimension clamp relationship.
 
 ## §Trace v1.0.0
 

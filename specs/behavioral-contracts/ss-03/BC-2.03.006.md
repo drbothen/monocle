@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -33,6 +33,9 @@ passed via `SpawnOptions.ccr_base_url`, `ClaudeCodeModule::spawn_recipe()` injec
 as the `ANTHROPIC_BASE_URL` environment variable in the returned `SpawnRecipe.env`. This
 routes the spawned Claude Code session through CCR for API proxying. The injection is
 additive — it supplements the `MONOCLE_SESSION_ID` injection defined in BC-2.03.005.
+`SpawnRecipe.env` is an OVERLAY on the session-host process's inherited environment: the
+session-host inherits its own process env (PATH, HOME, TERM, etc.) first, then overlays
+the `SpawnRecipe.env` fields on top. The env map does NOT replace the full environment.
 
 ## Preconditions
 
@@ -92,7 +95,7 @@ additive — it supplements the `MONOCLE_SESSION_ID` injection defined in BC-2.0
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC governs the CCR routing injection that enables monocle to transparently route spawned Claude Code sessions through CCR, a key capability of the engine abstraction |
 | L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness — CCR injection is purely via environment variable; no config file is written to the harness's configuration directory) |
 | Architecture Module | monocle-runtime (ClaudeCodeModule — `monocle-runtime/src/engine/claude_code.rs`) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module-v2-delta.md v1.0.1 §ClaudeCodeModule::spawn_recipe() implementation spec (env injection block) |
+| Architecture Source | SS-engine-module-v2-delta.md v1.1.0 §ClaudeCodeModule::spawn_recipe() implementation spec (env injection block) |
 | Cross-Ref | BC-2.07.006 (CCR Detection via `ccr_path` Config Field — source of the CCR URL that becomes opts.ccr_base_url) |
 | Test Name | test_BC_2_03_006_spawn_recipe_ccr_base_url_injected |
 
@@ -112,6 +115,19 @@ S-TBD — Same story as BC-2.03.005 (ClaudeCodeModule::spawn_recipe() implementa
 ## VP Anchors
 
 VP-TBD — CCR base URL injection presence/absence unit tests (filled after VP creation)
+
+## §Trace v1.1.0
+
+**Architect-delegated BC edit — SpawnRecipe.env is an OVERLAY (I2-006)** (2026-06-03):
+- I2-006 finding: BC-2.03.006 description did not explicitly state that `SpawnRecipe.env`
+  is an OVERLAY on the inherited process environment (not a full replacement). The architecture
+  (SS-session-manager.md v1.3.0 §SpawnRecipe integration + startup step 4 env inheritance fix)
+  mandates overlay semantics: session-host inherits its own process env (PATH, HOME, etc.)
+  FIRST, then overlays the recipe.env fields. Without env inheritance, the harness child
+  launches without PATH or HOME, breaking hooks and binary resolution.
+- Description: added explicit "SpawnRecipe.env is an OVERLAY" statement.
+- Invariant 3 was already correct ("MERGED with the child process's inherited environment") —
+  no change needed there; description now aligned with it.
 
 ## §Trace v1.0.0
 

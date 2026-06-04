@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -41,7 +41,9 @@ to `opts.project_root`. The returned recipe is consumed by `SessionManager` to s
 2. `opts.hooks_settings_path` is a valid UTF-8 path (can be converted via `.to_str()`).
 3. `opts.hooks_settings_path` does not contain embedded null bytes.
 4. `opts.session_id` is a non-empty string (UUID rendered as string).
-5. `opts.project_root` is an absolute path to the session's working directory.
+5. `opts.worktree_root` is an absolute, validated path to the harness child's working
+   directory — the resolved git worktree root (or `project_root` when no worktree applies,
+   per the three-rule algorithm in SS-session-manager.md §SpawnOptions.worktree_root).
 
 ## Postconditions
 
@@ -54,7 +56,10 @@ to `opts.project_root`. The returned recipe is consumed by `SessionManager` to s
      If `opts.ccr_base_url` is `None`, `recipe.env` contains exactly one key
      (`"MONOCLE_SESSION_ID"`). If `opts.ccr_base_url` is `Some(_)`, `recipe.env` also
      contains `"ANTHROPIC_BASE_URL"` (see BC-2.03.006).
-   - `recipe.cwd` equals `opts.project_root`.
+   - `recipe.cwd` equals `opts.worktree_root` — the resolved worktree root path (which equals
+     `opts.project_root` when no git worktree is configured or when the project is not a git
+     repo; see three-rule algorithm in SS-session-manager.md §SpawnOptions.worktree_root).
+     NEVER hardcoded to `opts.project_root` directly.
 2. The returned `SpawnRecipe` is fully populated — no `None` or empty fields.
 3. `spawn_recipe()` is synchronous (non-async). It performs one filesystem lookup
    (`which::which`) and one UTF-8 conversion; no I/O beyond `PATH` resolution.
@@ -73,9 +78,11 @@ to `opts.project_root`. The returned recipe is consumed by `SessionManager` to s
 3. The environment map (`recipe.env`) is MERGED with the child process's inherited
    environment by `monocle-session-host` at spawn time — it does NOT replace the entire
    environment. Variables not in `recipe.env` are inherited unchanged.
-4. `recipe.cwd` MUST be the git worktree root for the project (claude-squad A.1
-   worktree-per-task pattern). The caller (`SessionManager`) is responsible for resolving
-   the correct worktree path before calling `spawn_recipe()`.
+4. `recipe.cwd` MUST be `opts.worktree_root` — the resolved worktree root path from
+   `SpawnOptions` (claude-squad A.1 worktree-per-session pattern). The caller
+   (`SessionManager` via `SessionCreation` wizard) resolves the worktree path in Step 3
+   (WorktreeConfirm) before calling `spawn_recipe()`. `spawn_recipe()` uses the pre-resolved
+   path verbatim — it does NOT perform its own worktree resolution.
 
 ## Edge Cases
 
@@ -91,8 +98,9 @@ to `opts.project_root`. The returned recipe is consumed by `SessionManager` to s
 
 | Input | Expected Output | Category |
 |-------|----------------|----------|
-| `SpawnOptions { session_id: "sess-001", hooks_settings_path: "/tmp/hooks.json", ccr_base_url: None, project_root: "/home/user/project" }` with `claude` on PATH | `Ok(SpawnRecipe { binary: "/usr/local/bin/claude", args: ["--settings", "/tmp/hooks.json"], env: {"MONOCLE_SESSION_ID": "sess-001"}, cwd: "/home/user/project" })` | happy-path |
+| `SpawnOptions { session_id: "sess-001", hooks_settings_path: "/tmp/monocle-rt/hooks-settings.json", ccr_base_url: None, worktree_root: "/home/user/project/worktree-feature" }` with `claude` on PATH | `Ok(SpawnRecipe { binary: "/usr/local/bin/claude", args: ["--settings", "/tmp/monocle-rt/hooks-settings.json"], env: {"MONOCLE_SESSION_ID": "sess-001"}, cwd: "/home/user/project/worktree-feature" })` | happy-path |
 | Same but `ccr_base_url: Some("http://127.0.0.1:8080")` | `Ok(SpawnRecipe { ..., env: {"MONOCLE_SESSION_ID": "sess-001", "ANTHROPIC_BASE_URL": "http://127.0.0.1:8080"} })` | happy-path |
+| Non-git project: `worktree_root = project_root = "/home/user/project"` | `recipe.cwd = "/home/user/project"` (three-rule fallback; worktree_root equals project_root for non-git) | happy-path |
 | `which::which("claude")` fails | `Err(EngineError::BinaryNotFound("claude"))` | error |
 | `hooks_settings_path` with non-UTF-8 bytes | `Err(EngineError::InvalidPath(...))` | error |
 
@@ -102,7 +110,7 @@ to `opts.project_root`. The returned recipe is consumed by `SessionManager` to s
 |--------|----------|-------------|
 | VP-TBD | `spawn_recipe()` returns `Ok(recipe)` with binary = `which("claude")`, args = `["--settings", path]`, `MONOCLE_SESSION_ID` in env, cwd = project_root | unit |
 | VP-TBD | `MONOCLE_SESSION_ID` is always present in `recipe.env` regardless of CCR config | unit |
-| VP-TBD | `recipe.cwd` equals `opts.project_root` verbatim | unit |
+| VP-TBD | `recipe.cwd` equals `opts.worktree_root` (not `opts.project_root`); for non-git projects the two are equal | unit |
 
 ## Traceability
 
@@ -112,7 +120,7 @@ to `opts.project_root`. The returned recipe is consumed by `SessionManager` to s
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the spawn recipe assembly for the ClaudeCodeModule adapter, which is the mechanism by which the engine abstraction enables monocle to launch Claude Code sessions |
 | L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness or factory workflow system — PC-4 explicitly states spawn_recipe() writes no files; the hooks-settings.json path is passed through as a CLI arg string only) |
 | Architecture Module | monocle-runtime (ClaudeCodeModule implementation — `monocle-runtime/src/engine/claude_code.rs`) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module-v2-delta.md v1.0.1 §ClaudeCodeModule::spawn_recipe() implementation spec; SS-session-manager.md v1.2.0 §SpawnRecipe integration with EngineModule |
+| Architecture Source | SS-engine-module-v2-delta.md v1.1.0 §ClaudeCodeModule::spawn_recipe() implementation spec; SS-session-manager.md v1.3.0 §SpawnRecipe integration with EngineModule |
 | Stories | S-TBD (filled by story-writer) |
 | Test Name | test_BC_2_03_005_spawn_recipe_happy_path_binary_args_env_cwd |
 
@@ -135,11 +143,25 @@ S-TBD — Implement ClaudeCodeModule::spawn_recipe() with binary resolution, --s
 
 VP-TBD — spawn_recipe() happy-path unit tests (filled after VP creation)
 
+## §Trace v1.1.0
+
+**Architect-delegated BC edit — cwd = worktree_root, not project_root (I2-002)** (2026-06-03):
+- I2-002 finding: BC-2.03.005 set `recipe.cwd = opts.project_root` (incorrect). The
+  architecture (SS-session-manager.md v1.3.0 §SpawnRecipe integration) specifies that
+  `recipe.cwd` is populated from `SpawnOptions.worktree_root` — the resolved worktree root
+  path, which equals `project_root` only when no git worktree is configured (three-rule
+  algorithm). For git repos with worktrees, `cwd` is the worktree root, not `project_root`.
+- Precondition 5: changed from `opts.project_root` to `opts.worktree_root`.
+- PC-1 cwd field: changed from `opts.project_root` to `opts.worktree_root` with explanation.
+- Invariant 4: rewritten — `recipe.cwd = opts.worktree_root`; caller resolves at wizard Step 3.
+- Canonical test vectors: updated to use `worktree_root` field and show non-git fallback.
+- VP: updated from `project_root` to `worktree_root`.
+
 ## §Trace v1.0.0
 
 **Initial production — v1A PRD delta** (2026-06-03T23:30:00Z):
 - BC-2.03.005 authored for SS-03 as part of the v1A control-center pivot BC burst.
 - Covers: spawn_recipe() happy-path — binary resolution, --settings arg construction,
   MONOCLE_SESSION_ID injection, cwd from project_root.
-- Architecture source: SS-engine-module-v2-delta.md v1.0.1 (IMP-5 InvalidPath fix applied).
+- Architecture source: SS-engine-module-v2-delta.md v1.1.0 (IMP-5 InvalidPath fix applied).
 - SE-16d PASS: 2026-06-03T23:30:00Z (new artifact).

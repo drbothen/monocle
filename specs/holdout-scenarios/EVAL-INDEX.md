@@ -1,7 +1,7 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.11"
+version: "1.12"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T14:00:00Z
@@ -19,7 +19,7 @@ inputs:
   - {path: .factory/stories/S-027-overlay-rendering-status-bar.md, version: "1.10"}
   - {path: .factory/stories/S-029-killer-scenario-test.md, version: "1.3"}
   - {path: .factory/stories/S-030-config-crate-foundation.md, version: "1.1"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.36"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.37"}
 traces_to: .factory/stories/STORY-INDEX.md
 input-hash: "[pending]"
 ---

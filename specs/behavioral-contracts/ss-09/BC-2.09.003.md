@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.0"
+version: "1.2.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -38,8 +38,12 @@ scroll (wheel), and motion events. This enables mouse-driven Claude Code TUI fea
 ## Preconditions
 
 1. `AppMode::EmbeddedTerminal { session_id }` is active.
-2. `crossterm::event::EnableMouseCapture` is globally active (enabled at TUI startup).
-3. SGR mouse mode (`ESC [ ? 1006 h`) has been written to the terminal on EmbeddedTerminal entry.
+2. `crossterm::event::EnableMouseCapture` was called during `App::enter_embedded_terminal()`
+   — mouse capture is scoped to `EmbeddedTerminal` entry, NOT globally active at TUI startup
+   (I3 fix per SS-embedded-pty.md v1.2.0: global mouse capture is NOT used; it would steal
+   text selection from monocle's own panels).
+3. SGR mouse mode (`ESC [ ? 1006 h`) has been written to the terminal on EmbeddedTerminal entry
+   (immediately after `EnableMouseCapture`).
 4. The terminal emulator hosting monocle supports SGR extended mouse reporting.
 
 ## Postconditions
@@ -60,10 +64,16 @@ scroll (wheel), and motion events. This enables mouse-driven Claude Code TUI fea
 
 ## Invariants
 
-1. SGR mouse mode is enabled on `EmbeddedTerminal` entry and disabled on exit (by restoring
-   the normal mouse mode — `crossterm::execute!(stdout(), DisableMouseCapture)` is NOT called
-   on EmbeddedTerminal exit; the global mouse capture remains active but the SGR extension
-   is disabled by writing `ESC [ ? 1006 l`).
+1. Mouse capture and SGR 1006 are symmetric and SCOPED to `EmbeddedTerminal`:
+   - **Entry** (`App::enter_embedded_terminal()`): `crossterm::execute!(stdout(), EnableMouseCapture)?`
+     followed by `print!("\x1b[?1006h")` (SGR mouse mode on).
+   - **Exit** (`App::exit_embedded_terminal()`): `print!("\x1b[?1006l")` (SGR mouse mode off)
+     followed by `crossterm::execute!(stdout(), DisableMouseCapture)?`.
+   - Ordering is critical: SGR `l` BEFORE `DisableMouseCapture` on exit.
+   - `EnableMouseCapture` is NOT called at TUI startup; it is NOT globally active outside
+     `EmbeddedTerminal` mode. Rationale: global mouse capture would steal terminal text
+     selection from monocle's sessions panel, event ribbon, and other panels. See
+     SS-embedded-pty.md v1.2.0 §I3 UX tradeoff.
 2. `mouse_event_to_pty_bytes(event, pane_area: Rect)` is a PURE function — no I/O or state mutation.
 3. Mouse motion events (`MouseEventKind::Moved`) are forwarded only if button 1/2/3 tracking
    is active (i.e., the harness's TUI has requested motion reporting). monocle always forwards
@@ -103,7 +113,7 @@ scroll (wheel), and motion events. This enables mouse-driven Claude Code TUI fea
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — mouse forwarding is explicitly named in CAP-009 ("mouse") as part of the full-fidelity keyboard forwarding capability |
 | Architecture Module | monocle-core (`mouse_event_to_pty_bytes()` pure function); monocle-tui (EmbeddedTerminal event handler, SGR mode write) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.1.0 §Mouse support (SGR mode) |
+| Architecture Source | SS-embedded-pty.md v1.2.0 §Mouse support (SGR mode); §I3 UX tradeoff (scoped mouse capture) |
 | Test Name | test_BC_2_09_003_mouse_events_sgr_encoded |
 
 ## Related BCs
@@ -121,6 +131,20 @@ S-TBD — Implement mouse_event_to_pty_bytes() and SGR mode entry (filled by sto
 ## VP Anchors
 
 VP-TBD — Mouse event SGR encoding unit tests (filled after VP creation)
+
+## §Trace v1.2.0
+
+**I2-001 adversarial pass-2 fix — scoped mouse capture model** (2026-06-03):
+- I2-001 finding: PC-2 + Invariant 1 still encoded the PRE-fix GLOBAL mouse-capture model
+  ("EnableMouseCapture globally active"; "DisableMouseCapture is NOT called on exit"). These
+  preconditions contradicted the architecture (SS-embedded-pty v1.2.0, I3 fix) which scopes
+  mouse capture to EmbeddedTerminal entry/exit.
+- PC-2 rewritten: `EnableMouseCapture` called at `EmbeddedTerminal` entry (not globally at
+  TUI startup). Rationale for scoping added: global capture would steal terminal text selection.
+- Invariant 1 rewritten: symmetric Enable/Disable with correct entry/exit sequence and SGR
+  `h/l` ordering. References SS-embedded-pty.md v1.2.0 §I3 UX tradeoff for authoritative
+  design rationale.
+- Architecture Source updated to reference SS-embedded-pty.md v1.2.0.
 
 ## §Trace v1.1.0
 

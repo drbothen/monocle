@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.0"
+version: "1.2.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -47,7 +47,11 @@ channel fills, a drop counter is incremented and logged.
    a. The daemon proxy task posts `Event::PtyOutput { session_id: session_id.clone(), bytes }` to
       the broker.
    b. The broker fan-out sends `ServerToClient::PtyOutput { session_id, bytes }` to ALL
-      connected TUI clients (not just the TUI currently displaying this session).
+      connected TUI clients via each client's per-client isolated send buffer (capacity 256
+      messages; see Invariant 3b). The broker uses `.try_send()` into each client's
+      `mpsc::Sender<ServerToClient>`. A dedicated per-client writer task drains the channel
+      to the UDS socket. Slow clients are isolated — a stalled client does NOT apply
+      backpressure to other clients or to the PTY reader.
 2. The per-session UDS connection has a bounded mpsc channel (capacity 1024) between the
    PTY reader blocking thread and the session-host async event loop. When the channel is
    full, the PTY reader thread drops the bytes and increments a `drop_counter`.
@@ -70,10 +74,22 @@ channel fills, a drop counter is incremented and logged.
    This supports future multi-TUI scenarios and ensures background sessions can be
    monitored by connecting a second TUI instance.
 3. The session-host's PTY reader channel (capacity 1024) uses `.send().await` (backpressure),
-   NOT `.try_send()` (drop). Backpressure propagates from the TUI render rate up through
+   NOT `.try_send()` (drop). Backpressure propagates from the durable session ring up through
    the daemon broker → session-host proxy → session-host async event loop → PTY reader
    `spawn_blocking` thread. The `pty_drop_counter` counts channel sender errors (receiver
    gone), not overflow drops. Under normal backpressure, PTY bytes are never dropped.
+   **Backpressure source is the durable session ring (NOT TUI clients)**: the durable ring's
+   write path is the upstream backpressure signal; a slow TUI client applies backpressure only
+   within its own per-client send buffer and does NOT propagate backpressure to the PTY reader.
+
+3b. **Per-client send buffer isolation:** Each connected TUI client has a dedicated
+   `mpsc::channel::<ServerToClient>(256)` (capacity 256). The broker uses `.try_send()` into
+   the per-client channel (NOT `.send().await`). A dedicated per-client writer task drains
+   this channel to the UDS socket via `.write_all().await`. Disconnection threshold: after 3
+   consecutive full-buffer `.try_send()` failures for the same client, the broker disconnects
+   that client and logs `WARN: slow TUI client disconnected`. Other clients are unaffected by
+   the disconnected client's send-buffer pressure. This is the per-client backpressure
+   isolation model per SS-daemon-wiring-v2-delta.md v1.2.0 §5d.
 4. **Forced parser-reset protocol on ANY PTY drop:** If a PTY byte is ever dropped (sender
    error, OOM, other extreme condition), the session-host sends `HostToDaemon::PtyReset`.
    The daemon propagates `ServerToClient::PtyReset { session_id }` to all TUI clients.
@@ -92,7 +108,7 @@ channel fills, a drop counter is incremented and logged.
 |----|-------------|-------------------|
 | EC-270 | Session-host PTY produces >1024 read()s faster than daemon can consume | Session-host drops excess reads; drop counter incremented; WARN logged; consumer (daemon broker) sees slightly reduced throughput; no crash |
 | EC-271 | No TUI clients connected | Bytes posted to broker; broker fan-out has no subscribers; bytes discarded by broker; no error |
-| EC-272 | TUI client's send buffer full (slow TUI) | Slow client disconnected per BC-2.05.004 EC-005 semantics; other clients continue |
+| EC-272 | TUI client's per-client send buffer full (slow TUI) | After 3 consecutive full-buffer `.try_send()` failures for this client, the broker disconnects the client. The per-client send buffer (capacity 256) is isolated: its overflow does NOT propagate to the PTY reader or to other clients. Other clients continue to receive PtyOutput messages uninterrupted. |
 | EC-273 | Large `PtyBytes` chunk (e.g., 64 KiB of output) | Sent as a single `ServerToClient::PtyOutput` IPC message; 256 KiB message size limit per BC-2.01.003; 64 KiB is within limit |
 
 ## Canonical Test Vectors
@@ -118,7 +134,7 @@ channel fills, a drop counter is incremented and logged.
 | L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — PtyOutput fan-out extends the session/event/prompt push capability of CAP-005 with real-time PTY byte streaming, which is transported over the same shared UDS per ADR-0010 |
 | Architecture Module | monocle-ipc (`ServerToClient::PtyOutput` variant); monocle-runtime (session-host proxy task, broker fan-out) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-daemon-wiring-v2-delta.md v1.1.0 §broker fan-out — PtyOutput messages; ADR-0010 §pty-bytes-over-shared-uds-ipc; SS-session-manager.md v1.2.0 §PTY reader thread |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.2.0 §broker fan-out — PtyOutput messages; ADR-0010 §pty-bytes-over-shared-uds-ipc; SS-session-manager.md v1.3.0 §PTY reader thread |
 | Cross-Ref | BC-2.05.004 (fan-out semantics for slow-client disconnect); BC-2.04.011 (hook event drop counter — separate from PTY channel drop counter) |
 | Test Name | test_BC_2_05_009_pty_output_fan_out_bounded_channel |
 
@@ -139,6 +155,21 @@ S-TBD — Implement PtyOutput broker fan-out and session-host PTY reader bounded
 ## VP Anchors
 
 VP-TBD — PtyOutput fan-out integration tests (filled after VP creation)
+
+## §Trace v1.2.0
+
+**Architect-delegated BC edits — per-client backpressure isolation (SS-daemon-wiring-v2-delta v1.2.0 §5d)** (2026-06-03):
+- PC-1b: broker fan-out description updated to reference per-client isolated send buffer
+  (capacity 256, `.try_send()`, dedicated writer task). Clarified that slow clients are
+  isolated and do NOT propagate backpressure to the PTY reader or other clients.
+- Invariant 3: "Backpressure source is the durable session ring (NOT TUI clients)" added as
+  explicit statement to prevent confusion between the `.send().await` upstream path and the
+  `.try_send()` per-client buffer model.
+- Invariant 3b added: per-client send buffer specification (capacity 256, `.try_send()`,
+  3-failure disconnect threshold, dedicated writer task). Per SS-daemon-wiring-v2-delta.md
+  v1.2.0 §5d (per-client isolated send buffer design).
+- EC-272: updated from generic "slow client disconnected" to precise "3 consecutive full-buffer
+  failures → disconnect; isolation from other clients".
 
 ## §Trace v1.1.0
 

@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "daemon-wiring-v2-delta"
 subsystem: SS-04
-version: "1.1.0"
+version: "1.2.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -174,21 +174,97 @@ The `sessions` list is now populated from BOTH:
 
 The two lists are merged; `spawned_by_monocle` field distinguishes them.
 
-### 5. broker fan-out — PtyOutput messages
+### 5. broker fan-out — PtyOutput, ScrollbackChunk, ScrollbackDumpComplete, PtyReset
 
-The broker fan-out task (`monocle-runtime/src/broker.rs` or equivalent) gains a new message
-type `Event::PtyOutput { session_id, bytes }`. When the session-host proxy task receives bytes
-from a session-host (via `HostToDaemon::PtyBytes`), it posts them to the broker as:
+The broker fan-out task (`monocle-runtime/src/broker.rs`) gains the following new event types.
+Each is dispatched to all connected TUI clients using the per-client isolated send buffer
+design (see ADR-0010 §Cross-Client / Cross-Session Backpressure Isolation).
+
+#### 5a. PtyOutput fan-out
+
+When the session-host proxy receives `HostToDaemon::PtyBytes`, it posts:
 
 ```rust
 broker.send(Event::PtyOutput {
     session_id: session_id.clone(),
     bytes,
-}).await;
+});
 ```
 
-The broker fan-out sends `ServerToClient::PtyOutput { session_id, bytes }` to all connected
-TUI clients. This follows the same fan-out pattern as `HookEventReceived`.
+The broker fan-out dispatches `ServerToClient::PtyOutput { session_id, bytes }` to each
+client's per-client send buffer via `.try_send()`. A dedicated per-client writer task drains
+the buffer to the UDS socket.
+
+#### 5b. ScrollbackChunk + ScrollbackDumpComplete fan-out
+
+When a daemon attaches to a session-host (on spawn or re-discovery) and receives the
+session-host's scrollback dump stream (`HostToDaemon::ScrollbackChunk` / `HostToDaemon::ScrollbackDumpComplete`),
+the daemon fan-outs these to TUI clients:
+
+```rust
+// For each HostToDaemon::ScrollbackChunk { rows, chunk_seq } received from session-host:
+broker.send(Event::ScrollbackChunk {
+    session_id: session_id.clone(),
+    rows,
+    chunk_seq,
+});
+// After HostToDaemon::ScrollbackDumpComplete received:
+broker.send(Event::ScrollbackDumpComplete {
+    session_id: session_id.clone(),
+    total_chunks,
+    cursor_row,
+    cursor_col,
+    pty_rows,
+    pty_cols,
+});
+```
+
+The broker delivers `ServerToClient::ScrollbackChunk` and `ServerToClient::ScrollbackDumpComplete`
+to each client's per-client buffer. The TUI accumulates chunks until Complete, then resets
+and reconstructs the parser.
+
+**HostToDaemon enum additions (session-host → daemon, per-session UDS):**
+The `HostToDaemon` enum in SS-session-manager.md §Per-session UDS protocol gains two new
+variants for the chunked scrollback protocol:
+```rust
+ScrollbackChunk { rows: Vec<Vec<SerializedCell>>, chunk_seq: u32 },
+ScrollbackDumpComplete { total_chunks: u32, cursor_row: u16, cursor_col: u16, pty_rows: u16, pty_cols: u16 },
+```
+The existing `HostToDaemon::ScrollbackDump { rows, cursor_row, cursor_col, pty_rows, pty_cols }`
+is REPLACED by this two-message protocol. `ScrollbackDump` is RETIRED from `HostToDaemon`
+(the name was misleading for large scrollbacks). Session-hosts MUST NOT send `ScrollbackDump`
+in v1A; they MUST send `ScrollbackChunk*` + `ScrollbackDumpComplete`.
+
+#### 5c. PtyReset fan-out
+
+When the session-host proxy receives `HostToDaemon::PtyReset`, it posts:
+
+```rust
+broker.send(Event::PtyReset {
+    session_id: session_id.clone(),
+});
+```
+
+The broker dispatches `ServerToClient::PtyReset { session_id }` to all TUI clients. Each TUI
+client resets `pty_parsers[session_id]` and re-attaches (triggering a new
+`ScrollbackChunk*` + `ScrollbackDumpComplete` sequence).
+
+#### 5d. Per-client isolated send buffer (I2-003 fix)
+
+The broker fan-out MUST use per-client isolation to prevent cross-client / cross-session
+backpressure livelock. For each connected TUI client, the broker maintains:
+- `client_send_tx: mpsc::Sender<ServerToClient>` (capacity = `CLIENT_SEND_BUFFER_SIZE`,
+  default 256)
+- A dedicated per-client writer task that drains the channel to the UDS socket via
+  `.write_all().await`.
+
+The broker fan-out uses `.try_send()` into each client's channel. On `Err(Full)`, the broker
+increments a per-client `slow_send_count`. After `SLOW_CLIENT_DISCONNECT_THRESHOLD`
+consecutive full-send attempts (default 3), the broker disconnects the client and logs
+`WARN: slow TUI client disconnected (send buffer repeatedly full)`.
+
+This guarantees that a stalled client's backpressure does NOT propagate to the PTY reader
+or to other clients. See ADR-0010 §Cross-Client / Cross-Session Backpressure Isolation.
 
 ### 6. HTTP hook handler — session correlation
 
@@ -228,6 +304,20 @@ If no in-process SessionManager stub exists in D-235 (i.e., the stub was skeleta
 implementer creates `SessionManager` from scratch per SS-08.
 
 ---
+
+## §Trace v1.2.0
+
+**C2-002 + I2-003 — Missing ServerToClient variants + per-client isolation** (2026-06-03):
+- **C2-002:** §5 expanded from a single PtyOutput fan-out section to four subsections (5a–5d).
+  `ServerToClient::ScrollbackChunk`, `ServerToClient::ScrollbackDumpComplete`, and
+  `ServerToClient::PtyReset` added as named broker event types and fan-out paths.
+  `HostToDaemon::ScrollbackDump` RETIRED; replaced by chunked `ScrollbackChunk*` +
+  `ScrollbackDumpComplete` protocol in both `HostToDaemon` and `ServerToClient` directions.
+  `HostToDaemon` enum additions documented in §5b.
+- **I2-003:** §5d added: per-client isolated send buffer (capacity 256, `.try_send()` into
+  per-client channel, dedicated writer task). Prevents cross-client / cross-session livelock.
+  Slow-client disconnect threshold specified. See ADR-0010 §Cross-Client / Cross-Session
+  Backpressure Isolation for full analysis.
 
 ## §Trace v1.1.0
 

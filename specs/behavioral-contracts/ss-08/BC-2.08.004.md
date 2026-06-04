@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -50,9 +50,14 @@ seconds for the typical case of up to 8 sessions.
    (deleted).
 2. For each sidecar with `schema_version: 1`:
    a. `nix::sys::signal::kill(Pid::from_raw(pid), None)` probes process liveness.
-   b. If alive: `connect(socket_path)` → `DaemonToHost::Attach` → wait up to 5s for
-      `HostToDaemon::ScrollbackDump` → on receipt, add `SessionEntry` to registry with
-      `state: Running` and populate the `host_conn` with the live connection.
+   b. If alive: verify SO_PEERCRED peer uid matches daemon uid (per SS-session-manager.md
+      v1.3.0 §Per-session UDS security I5); if mismatch → log WARN, SIGTERM both pids,
+      delete sidecar, skip. If uid matches: send `DaemonToHost::Attach`; wait up to 5s for
+      the full `HostToDaemon::ScrollbackChunk*` + `HostToDaemon::ScrollbackDumpComplete`
+      sequence (chunked scrollback protocol — `ScrollbackDump` single-message form is
+      RETIRED per SS-session-manager.md v1.3.0); on `ScrollbackDumpComplete` receipt, add
+      `SessionEntry` to registry with `state: Running` and populate `host_conn` with the
+      live connection.
    c. If dead: delete sidecar file; no `SessionEntry` added.
 3. All `SessionEntry` records from step 2b are in `DaemonState.session_manager` before any
    TUI client can connect (UDS bind has not happened yet).
@@ -74,8 +79,9 @@ seconds for the typical case of up to 8 sessions.
    push that is missing re-discovered sessions. This is enforced by placement in
    `daemon_start_sequence` (step 8b precedes step 10).
 2. The 5-second timeout per session-host during attach probing is a hard deadline. After 5s
-   without `ScrollbackDump`, the session-host is treated as non-responsive (see BC-2.08.002
-   EC-156 for the termination path).
+   without `ScrollbackDumpComplete` (i.e., the full chunked scrollback sequence has not
+   completed), the session-host is treated as non-responsive (see BC-2.08.002 EC-156 for the
+   termination path). No exponential backoff or retry — one attempt, 5s hard deadline.
 3. Parallel attach: all session-host attach probes run concurrently (not sequentially).
    With up to 8 sessions and 5s per timeout, sequential probing would take up to 40s — which
    is unacceptable for daemon startup. `tokio::join_all` (or equivalent) ensures all probes
@@ -121,7 +127,7 @@ seconds for the typical case of up to 8 sessions.
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — re-discovery on daemon restart is explicitly named in CAP-008; this BC defines the complete re-discovery algorithm including the ordering guarantee |
 | Architecture Module | monocle-runtime (SessionManager `rediscover_sessions()`; `daemon_start_sequence` step 8b) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v1.2.0 §Daemon startup: session re-discovery; SS-daemon-wiring-v2-delta.md v1.1.0 §daemon_start_sequence() — session re-discovery step (step 8b placement and insertion invariant) |
+| Architecture Source | SS-session-manager.md v1.3.0 §Daemon startup: session re-discovery; SS-daemon-wiring-v2-delta.md v1.2.0 §daemon_start_sequence() — session re-discovery step (step 8b placement and insertion invariant) |
 | Test Name | test_BC_2_08_004_rediscovery_completes_before_uds_bind |
 
 ## Related BCs
@@ -142,6 +148,21 @@ S-TBD — Implement daemon_start_sequence step 8b: rediscover_sessions() (filled
 ## VP Anchors
 
 VP-TBD — Re-discovery integration tests including timing (filled after VP creation)
+
+## §Trace v1.1.0
+
+**I2-005 adversarial pass-2 fix — sync re-discovery to canonical procedure (SS-session-manager v1.3.0)** (2026-06-03):
+- I2-005 finding: BC-2.08.004 PC-2b referenced `HostToDaemon::ScrollbackDump` (single-message
+  retired form) as the success signal. SS-session-manager v1.3.0 retires `ScrollbackDump` in
+  favor of the chunked `ScrollbackChunk*` + `ScrollbackDumpComplete` protocol. Invariant 2
+  similarly referenced `ScrollbackDump`.
+- PC-2b: updated to reference `ScrollbackChunk*` + `ScrollbackDumpComplete` chunked protocol;
+  added SO_PEERCRED peer-uid cross-check step before `DaemonToHost::Attach` (per I5 security
+  fix in SS-session-manager v1.3.0 §Per-session UDS security); clarified no exponential backoff.
+- Invariant 2: updated `ScrollbackDump` → `ScrollbackDumpComplete` with explicit "no exponential
+  backoff" clarification.
+- Architecture Source: version pins bumped to SS-session-manager.md v1.3.0 and
+  SS-daemon-wiring-v2-delta.md v1.2.0.
 
 ## §Trace v1.0.0
 

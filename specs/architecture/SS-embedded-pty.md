@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "embedded-pty"
 subsystem: SS-09
-version: "1.1.0"
+version: "1.2.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -325,10 +325,25 @@ pub fn key_event_to_pty_bytes(event: KeyEvent) -> Option<Vec<u8>> {
         // Function keys (F1–F12)
         KeyCode::F(n) => Some(fn_key_bytes(n)),
 
-        // Kitty keyboard protocol: modified key encoding
-        // When Kitty enhancement flags are enabled, crossterm reports modifier
-        // combinations using KeyboardEnhancementFlags. The terminal (in Kitty-enhanced
-        // mode) expects CSI u sequences for modified keys.
+        // Kitty keyboard protocol: modified key encoding (FIRST catch-all).
+        //
+        // PRECEDENCE NOTE (S2-002 fix): This arm appears BEFORE the VT-fallback modified-arrow
+        // arms below. The intended precedence is:
+        //   1. Specific key matches above (printable chars, Ctrl+printable, Enter, Esc, etc.)
+        //   2. Kitty-enhanced keys (this arm) — when Kitty enhancement flags are active,
+        //      modified arrows and other modified keys arrive as enhanced events that
+        //      `is_kitty_enhanced_key` recognizes. Kitty-encoded output goes to Kitty-capable
+        //      terminals via `encode_kitty_key`.
+        //   3. VT-fallback modified arrows (arms below) — reached ONLY when `is_kitty_enhanced_key`
+        //      returns false (terminal does not support Kitty enhancement, or the modifier
+        //      combination is not Kitty-enhanced). This is the correct design: on a Kitty-capable
+        //      terminal, Ctrl+Arrow is encoded as a CSI u sequence (Kitty), not as CSI 1;5A (VT).
+        //      On a non-Kitty terminal, the VT arms provide the fallback.
+        //
+        // The VT-fallback arms below are NOT unreachable on non-Kitty terminals — they are
+        // the primary encoding path on such terminals. On Kitty terminals, the VT arms are
+        // unreachable for keys that `is_kitty_enhanced_key` handles, which is correct.
+        //
         // Reference: https://sw.kovidgoyal.net/kitty/keyboard-protocol/
         _ if is_kitty_enhanced_key(event.code, mods) => {
             Some(encode_kitty_key(event.code, mods, event.kind))
@@ -348,10 +363,12 @@ pub fn key_event_to_pty_bytes(event: KeyEvent) -> Option<Vec<u8>> {
         // Shift+Tab is also reported as KeyCode::Tab with KeyModifiers::SHIFT on some terminals.
         KeyCode::Tab if mods == KeyModifiers::SHIFT => Some(b"\x1b[Z".to_vec()),
 
-        // Modified arrows (Ctrl+Arrow, Shift+Arrow) — non-Kitty fallback path.
+        // Modified arrows (Ctrl+Arrow, Shift+Arrow) — VT-fallback path (non-Kitty terminals).
         // Standard xterm modifier encoding: CSI 1 ; <modifier+1> <arrow>.
         // Modifier value: Shift=2, Alt=3, Ctrl=5, Shift+Ctrl=6, Alt+Ctrl=7, etc.
-        // These are the standard VT sequences for terminals that do NOT support Kitty protocol.
+        // These arms are reached ONLY when is_kitty_enhanced_key returned false (see above).
+        // On Kitty-capable terminals these arms are unreachable for the key combinations
+        // handled by encode_kitty_key — this is intentional, not a dead-code bug.
         KeyCode::Up if mods == KeyModifiers::CONTROL    => Some(b"\x1b[1;5A".to_vec()),
         KeyCode::Down if mods == KeyModifiers::CONTROL  => Some(b"\x1b[1;5B".to_vec()),
         KeyCode::Right if mods == KeyModifiers::CONTROL => Some(b"\x1b[1;5C".to_vec()),
@@ -360,15 +377,6 @@ pub fn key_event_to_pty_bytes(event: KeyEvent) -> Option<Vec<u8>> {
         KeyCode::Down if mods == KeyModifiers::SHIFT    => Some(b"\x1b[1;2B".to_vec()),
         KeyCode::Right if mods == KeyModifiers::SHIFT   => Some(b"\x1b[1;2C".to_vec()),
         KeyCode::Left if mods == KeyModifiers::SHIFT    => Some(b"\x1b[1;2D".to_vec()),
-
-        // Kitty keyboard protocol: modified key encoding.
-        // When Kitty enhancement flags are enabled, crossterm reports modifier
-        // combinations using KeyboardEnhancementFlags. The terminal (in Kitty-enhanced
-        // mode) expects CSI u sequences for modified keys.
-        // Reference: https://sw.kovidgoyal.net/kitty/keyboard-protocol/
-        _ if is_kitty_enhanced_key(event.code, mods) => {
-            Some(encode_kitty_key(event.code, mods, event.kind))
-        }
 
         // Mouse events are handled separately via crossterm::event::MouseEvent.
         _ => None,
@@ -533,8 +541,14 @@ The `AppMode::SessionCreation` wizard delegates to existing components where pos
 - **Step 2 (ProjectPicker):** new component — nucleo-filtered list of recently-used project
   roots + a free-text entry for new paths. Project roots sourced from: (a) existing sessions'
   `project_root` fields, (b) `~/.monocle/recent_projects.json` (new small config file).
-- **Step 3 (WorktreeConfirm):** display resolved git worktree path + display name (editable).
-  Confirm with Enter. Cancel with Esc.
+- **Step 3 (WorktreeConfirm):** Resolve the git worktree path for the project selected in
+  Step 2. Display the resolved path + display name (both editable). Confirm with Enter.
+  Cancel with Esc. Resolution follows the three-rule algorithm in SS-session-manager.md
+  §SpawnOptions.worktree_root: (1) user-confirmed worktree if git repo + valid worktree
+  path; (2) project_root if it is the git repo root with no explicit worktree selection;
+  (3) project_root for non-git projects. The wizard MUST validate the resolved path (exists
+  + git work-tree check) before allowing Confirm. Validation failures display an inline error
+  and keep the wizard on Step 3. The resolved path populates `SpawnOptions.worktree_root`.
 - **Step 4 (Launching):** the TUI sends `ClientToServer::SpawnSession { recipe }` to the daemon.
   SessionCreation.step transitions to `Launching`. When the TUI receives
   `ServerToClient::SessionStateChanged { new_state: Running }` for the new session, the
@@ -602,6 +616,19 @@ Mitigation: integration tests use a PTY fixture corpus from `embedded-pty-evalua
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.2.0
+
+**Adversarial Pass 2 resolution — S2-002** (2026-06-03):
+- **S2-002 (duplicate match arm + arm ordering):** Removed the duplicate
+  `_ if is_kitty_enhanced_key(event.code, mods)` match arm (second copy was unreachable
+  and semantically identical to the first). One `is_kitty_enhanced_key` catch-all remains,
+  positioned BEFORE the VT-fallback modified-arrow arms — this is the correct precedence.
+  Added a detailed PRECEDENCE NOTE comment explaining: (1) Kitty arm handles Kitty-capable
+  terminals; (2) VT-fallback arms handle non-Kitty terminals; (3) VT-fallback arms are
+  intentionally unreachable for Kitty-enhanced keys on Kitty terminals (not a dead-code bug).
+  This resolves the ambiguity without changing behavior — the Kitty arm always appeared first;
+  the second duplicate was the unreachable copy.
 
 ## §Trace v1.1.0
 
