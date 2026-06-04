@@ -106,9 +106,9 @@ SS-forward-compatibility:
 
 SS-ipc:
   path: specs/architecture/SS-ipc.md
-  current_version: "1.15.0"
-  last_bump_commit: "[Pass-7 I-P7-001/I-P7-002/I-P7-003 — sidecar_write_failed + session_id_collision codes added; kill_failed made reachable via op-aware IpcOp mapping; spawn_ipc_reader IpcRead wrapper fixes ServerToClient::Disconnected non-variant]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.16.0"
+  last_bump_commit: "[Pass-11 I11-001 PRONG B — doc-comment extension for multi-client future-scope boundary note]"
+  last_bump_date: "2026-06-04"
 
 SS-permissions-phase1:
   path: specs/architecture/SS-permissions-phase1.md
@@ -124,15 +124,15 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "1.7.1"
-  last_bump_commit: "[Pass-10 I10-001 — re-attach wording corrected to ClientToServer::AttachSession in §Screen-state-transfer step 5a and §PTY-reader-thread step 4]"
+  current_version: "1.7.2"
+  last_bump_commit: "[Pass-11 S11-001 — §Trace phantom kill_deadline_reason correction]"
   last_bump_date: "2026-06-04"
 
 SS-embedded-pty:
   path: specs/architecture/SS-embedded-pty.md
-  current_version: "1.3.0"
-  last_bump_commit: "[Pass-5 I5-003/I5-004 — stale pane_area forward-instruction converted to settled cross-ref; §Scrollback navigation pty_scroll_offset→pty_scroll_offsets[focused_session_id]]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.4.0"
+  last_bump_commit: "[Pass-11 I11-001 PRONG A — auto-attach-on-EmbeddedTerminal-entry mandate]"
+  last_bump_date: "2026-06-04"
 
 SS-engine-module-v2-delta:
   path: specs/architecture/SS-engine-module-v2-delta.md
@@ -142,9 +142,9 @@ SS-engine-module-v2-delta:
 
 SS-daemon-wiring-v2-delta:
   path: specs/architecture/SS-daemon-wiring-v2-delta.md
-  current_version: "1.5.0"
-  last_bump_commit: "[Pass-8 I-P8-001/I-P8-002/P8-STRUCTURAL — op-aware session_error_to_code(IpcOp,&e) propagated to all arms; bare ?-propagation replaced in KeyInput/DetachSession/RenameSession (→ServerToClient::Error) and ResizePane (→WARN-continue); canonical-pattern lock note + per-arm table added to §3]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.6.0"
+  last_bump_commit: "[Pass-11 I11-001 PRONG B — multi-client future-scope boundary note + deferral anchor TD-MULTI-CLIENT-ATTACH-STORM-001]"
+  last_bump_date: "2026-06-04"
 
 SS-deps-pin-manifest-v2-delta:
   path: specs/architecture/SS-deps-pin-manifest-v2-delta.md
@@ -797,9 +797,9 @@ BC-2.08.008:
 
 BC-2.09.001:
   path: specs/behavioral-contracts/ss-09/BC-2.09.001.md
-  current_version: "1.2.0"
-  last_bump_commit: "[Adversarial Pass 4 resolution D-245 2026-06-03 — CRIT-001 Invariant 5 + Related-BCs: nonexistent ServerToClient::ScrollbackDump retired→chunked ScrollbackChunk*/ScrollbackDumpComplete]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.3.0"
+  last_bump_commit: "[Pass-11 I11-001 PRONG A — new PC-6 auto-attach-on-EmbeddedTerminal-entry; Architecture Source → SS-embedded-pty v1.4.0]"
+  last_bump_date: "2026-06-04"
 
 BC-2.09.002:
   path: specs/behavioral-contracts/ss-09/BC-2.09.002.md

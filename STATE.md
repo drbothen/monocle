@@ -2,19 +2,24 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "7.03"
+version: "7.04"
 status: active
 producer: state-manager
 timestamp: 2026-06-04T00:00:00Z
 phase: PIVOT-delta-in-progress
-current_step: "D-252: Adversarial Pass-10 convergence-fix COMMITTED to factory-artifacts (single atomic commit, POL-11/POL-12 PASS). 0 Critical / 1 Important / 4 Suggestions. Important + 3 answerable Suggestions fixed in-scope; S10-004 (S-TBD holdout/BC anchors) deferred to Phase-2 story-writer. I10-001: SS-session-manager re-attach wording corrected to ClientToServer::AttachSession in both §Screen-state-transfer step 5a and §PTY-reader-thread step 4 (v1.7.0→v1.7.1). S10-001: SS-deps-pin-manifest-v2-delta historical annotation on registry-action block. S10-002: BC-2.05.010 success POs now name ordered SessionStateChanged→SessionListUpdate emission sequence (v1.4.0→v1.5.0). S10-003: ADR-0009 doubled-word typo. Stale-literal sweep: 13 BC files + HS-EXP-014 updated SS-session-manager v1.7.0→v1.7.1 (all normative Architecture Source rows; §Trace/historical anchors time-qualified per ADR-0007). Closure grep CLEAN (BC-2.05.011:118 daemon→host DaemonToHost::Attach is correct direction — not a survivor). 2 registry entries bumped atomically (L-S027-004): SS-session-manager→1.7.1, BC-2.05.010→1.5.0. POL-11 PASS (313 active). POL-12 PASS. STREAK: Pass-10 non-clean (Important present) → consecutive-clean counter remains 0; need 3. NEXT = Pass-11 (clean-streak candidate 1)."
+current_step: "D-253: Adversarial Pass-11 convergence-fix COMMITTED to factory-artifacts (single atomic commit, POL-11/POL-12 PASS). 0 Critical / 1 Important / 4 Suggestions. I11-001 (multi-client late-join) adjudicated: PRONG A (single-client persistence-reconnect) was a REAL v1A gap — auto-attach-on-EmbeddedTerminal-entry now mandated (SS-embedded-pty 1.3.0→1.4.0 + BC-2.09.001 PC-6, 1.2.0→1.3.0); PRONG B (concurrent multi-TUI-client storm) is RATIFIED-FUTURE per BC-2.05.009 Inv-2 — explicit scope-boundary note + deferral anchor TD-MULTI-CLIENT-ATTACH-STORM-001 added to SS-daemon-wiring-v2-delta 1.5.0→1.6.0 (NO unicast protocol scope-crept into v1A). S11-001 phantom kill_deadline_reason §Trace corrected (SS-session-manager 1.7.1→1.7.2). S11-002/003 deferred (S11-003 is a brief-mislabel no-op; specs correct). S11-004-class S-TBD anchors → Phase-2 story-writer. SS-ipc doc-comment extended 1.15.0→1.16.0. Propagation sweep: 35 unique files swept to bumped SS versions (POL-11-driven). 5 registry entries bumped atomically (L-S027-004): SS-embedded-pty→1.4.0, SS-daemon-wiring-v2-delta→1.6.0, SS-session-manager→1.7.2, SS-ipc→1.16.0, BC-2.09.001→1.3.0. POL-11 PASS (314 active). POL-12 PASS. STREAK: Pass-11 non-clean (Important present) → consecutive-clean counter reset to 0; need 3. NEXT = Pass-12 (clean-streak candidate 1)."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE. D-224: Wave-6 GATE PASSED (develop @ 2a51a91). D-225: STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to wave-7-READY; points 177→169/195 reconciled to sprint-state. D-226: S-027 DELIVERED (PR #32 @ 3787ebd) — Wave 7: 1/4 done. D-227: S-031 DELIVERED (PR #33 @ 8451486). D-228: S-028 DELIVERED (PR #34 @ 682e5e5) — Wave 7: 3/4 done. develop @ 682e5e5. D-229: Zero-context resume checkpoint — S-029 human-authorized 2026-06-02. develop @ 1158e24. D-230: S-029 DELIVERED (PR #35 @ 48463fb) — Wave 7 COMPLETE (4/4). 32/33 done (192/195 pts). develop @ 48463fb. D-231: Wave-7-gate prerequisite sweep complete — SS-ipc v1.11.0, BC-2.06.021 v1.0.7, BC-INDEX v1.34, STORY-INDEX v5.30, citation atomicity propagation. POL-11/POL-12 PASS. S-027/S-028 story frontmatter status fixed. D-232: Wave-7 gate PASSED — Phase 3 COMPLETE. 1514 tests, 0 failures. F-W7G3-MED-001 fixed (PR #37 @ 6811103). HS-EXP-008 score 1.0. DTU SKIP (DTU-CLONE-STORY added as Phase 4 prereq). sprint-state v1.38. D-233: Phase-3→4 consistency cleanup — EVAL-INDEX v1.9, STORY-INDEX v5.31, BC-HOOK-034 v1.0.2 (typo fix), sprint-state v1.39. 28 story-file status fields corrected. Input-hash refresh (113→0+17 bookkeeping-residual). POL-11/POL-12 PASS. All MED/LOW audit findings RESOLVED. D-234: DTU clone false-negative corrected — S-DTU-001 (cargo binary dtu-claude-code-hooks-v1) validated fidelity 1.0000 (25/25 fixtures). Gate-2 DTU-VALIDATION corrected from SKIP to PASS. DTU-CLONE-STORY closed (RESOLVED-FALSE-PREMISE). Phase 4 UNBLOCKED. dtu_clones_built updated. PROC-DTU-VALIDATE-LOCATION process gap added. D-235: Daemon-wiring convergence — monocle-runtime binary now serves (main() wires daemon_start_sequence + run_server + UDS + tracing + ring-flush + 10s drain). SS-daemon-wiring-impl v1.3.0. SS-deps-pin-manifest v1.2.1. ARCH-INDEX v1.0.26. STORY-INDEX v5.32. sprint-state v1.40. S-DAEMON-WIRE-FIX-001 Wave-8 anchor. Resolved: ADV-W5GATE-HIGH-001, ADV-W3GATE-MED-002/004, ADV-W4GATE-MED-002, S-005-main-wiring, F-DW-HIGH-001. POL-11/POL-12 PASS. D-236: PRODUCT-VISION PIVOT — observe-only RETIRED; monocle → full TUI control center. Phases 4-7 SUSPENDED. D-237: Human ratified re-baselined-v1 control-center vision scope (4 capabilities: Launch, Embedded PTY, Multi-session/multi-project, Interactive Tune + already-built Observe+Control). DAEMON-OWNS-PTY locus. Hook auto-injection v1. embedded-pty-evaluation.md v1.0: primary = portable-pty 0.9.0 + vt100 0.16.2 + tui-term 0.3.4. NEXT: gene-source disposition → revised vision-synthesis → human gate. D-238: Vision approval gate PASSED. domain-monocle-vision-synthesis.md APPROVED at v2.1 by Joshua Magady as the canonical basis for the control-center re-baselined-v1 brief→architecture→story delta. HUMAN ESCALATION folded in at the gate: v1A persistence now REQUIRES that a graceful daemon-PROCESS restart SURVIVES (CASE 2 changed from 'lost' to 'survive'). Persistence principle renamed DAEMON-OWNS-PTY → 'session-host-owns-PTY; daemon coordinates/re-attaches': PTY masters + harness child processes owned by native detached per-session session-host processes (abduco/dtach-style) that outlive the daemon process; daemon re-attaches over UDS on restart. NO-TMUX preserved as default; external supervisor is architect-surfaced fallback only (requires human decision, not silent adoption). CASE 1 (TUI restart survives) and CASE 3 (hard crash → lost, re-launch) unchanged. New HIGH-priority architect question Q-8 (PTY-ownership-survival mechanism) added; NOTE: the already-built D-235 in-process daemon wiring will likely need rework to move PTY ownership out of the daemon process. Remaining architect-only open questions: Q-1 (PTY bytes over UDS), Q-2 (EngineModule/SessionManager surface), Q-7 (tui-term fork posture), plus PTY-throughput benchmark — all resolved during architecture delta. Architect must also reconcile the stale narrow keyboard scope in DISPOSITION-V2 rollup + embedded-pty-evaluation (superseded by full-fidelity ratification). NEXT: brief delta (product-owner) → architecture delta (architect) → story decomposition (story-writer)."
-awaiting: "Adversarial Pass-11 (Pass-10 non-clean — 0C/1I/4S; 0 consecutive clean passes so far; need 3 total). Pass-1 DONE (D-242). Pass-2 DONE (D-243). Pass-3 DONE (D-244). Pass-4 DONE (D-245). Pass-5 DONE (D-246). Pass-6 DONE (D-247). Pass-7 DONE (D-248, all 0C/4I/4S — FIRST zero-Critical). Pass-8 DONE (D-249, all 0C/2I/1S). Pass-9 DONE (D-250, all 0C/1I/1S). Pass-10 DONE (D-252, all 0C/1I/4S — FOURTH consecutive zero-Critical). Novelty trajectory (C:5→5→4→1→2→2→0→0→0→0; I:8→6→9→4→4→2→4→2→1→1). Pass-11 dispatches fresh-context adversary on updated spec package (SS-session-manager v1.7.1 + BC-2.05.010 v1.5.0; rest unchanged from Pass-10 package). CODIFIED CYCLE CHECKLIST (D-245 SUG-003): after any RETIRED-term or corrected-magic-number fix, grep -rn .factory/specs before next adversarial pass — every survivor must be in §Trace/changelog/enforcement, NOT live PC/Invariant/title. CODIFIED (D-246): anchor-resolution-closure check — every BC Architecture-Source citation must resolve to a symbol that EXISTS in the cited doc (prevents C5-001 class). CODIFIED: propagation-closure consistency audit after every split architect+PO fix round (D-244 PROCESS WIN). OPEN (non-blocking, human ratification required before v1A story wave): (1) CC-TUITERM-WIP-SIGNOFF; (2) CC-GLOBAL-MOUSE-CAPTURE. DEFERRED (non-blocking): VP authoring for SS-08/SS-09 BCs; v1B Tune BCs; v1B pre-emption BC."
+awaiting: "Adversarial Pass-12 (Pass-11 non-clean — 0C/1I/4S; consecutive-clean counter = 0; need 3 total). Pass-1 DONE (D-242). Pass-2 DONE (D-243). Pass-3 DONE (D-244). Pass-4 DONE (D-245). Pass-5 DONE (D-246). Pass-6 DONE (D-247). Pass-7 DONE (D-248, all 0C/4I/4S — FIRST zero-Critical). Pass-8 DONE (D-249, all 0C/2I/1S). Pass-9 DONE (D-250, all 0C/1I/1S). Pass-10 DONE (D-252, all 0C/1I/4S — FOURTH consecutive zero-Critical). Pass-11 DONE (D-253, all 0C/1I/4S — FIFTH consecutive zero-Critical). Novelty trajectory (C:5→5→4→1→2→2→0→0→0→0→0; I:8→6→9→4→4→2→4→2→1→1→1). Pass-12 dispatches fresh-context adversary on updated spec package (SS-embedded-pty v1.4.0 + SS-daemon-wiring-v2-delta v1.6.0 + SS-session-manager v1.7.2 + SS-ipc v1.16.0 + BC-2.09.001 v1.3.0; rest unchanged from Pass-11 package). CODIFIED CYCLE CHECKLIST (D-245 SUG-003): after any RETIRED-term or corrected-magic-number fix, grep -rn .factory/specs before next adversarial pass — every survivor must be in §Trace/changelog/enforcement, NOT live PC/Invariant/title. CODIFIED (D-246): anchor-resolution-closure check — every BC Architecture-Source citation must resolve to a symbol that EXISTS in the cited doc (prevents C5-001 class). CODIFIED: propagation-closure consistency audit after every split architect+PO fix round (D-244 PROCESS WIN). OPEN (non-blocking, human ratification required before v1A story wave): (1) CC-TUITERM-WIP-SIGNOFF; (2) CC-GLOBAL-MOUSE-CAPTURE. DEFERRED (non-blocking): VP authoring for SS-08/SS-09 BCs; v1B Tune BCs; v1B pre-emption BC."
 durable_task_register:
   outstanding:
+    - id: "TD-MULTI-CLIENT-ATTACH-STORM-001"
+      subject: "concurrent multi-TUI-client attach-reset storm refinement — ratified-FUTURE scope boundary (BC-2.05.009 Invariant 2)"
+      status: ratified-future
+      detail: "D-253 Pass-11 I11-001 PRONG B adjudication: concurrent multi-TUI-client attach-storm (per-client unicast scrollback or attach-scoped fan-out instead of broadcast-reset-all) is explicitly ratified as out-of-v1A scope per BC-2.05.009 Invariant 2 ('v1A: single TUI client or first-win semantics for concurrent attach'). The current broadcast fan-out is forward-compatible infrastructure. Scope-boundary note added to SS-daemon-wiring-v2-delta v1.6.0. Specify the unicast/per-client protocol refinement when the multi-TUI-client capability is formally scheduled (v1B or later); current infra does not need rework. NOT a v1A defect."
+      blocking: false
     - id: "DTU-CLONE-STORY"
       subject: "DTU clone false-negative — RESOLVED D-234 (RESOLVED-FALSE-PREMISE)"
       status: resolved-false-premise
@@ -409,9 +414,9 @@ durable_task_register:
     - "TALLY-GUARD (D-225): STATE running-tally must re-sum sprint-state per-story; summary.points_complete is a cache. Hand-increment drift produced +8 pts error + premature Phase-3-COMPLETE. L-W6-GATE-003."
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v7.03 (D-252) — 2026-06-04
+  ZERO-CONTEXT RESUME CHECKPOINT v7.04 (D-253) — 2026-06-04
   PIVOT: monocle → full TUI control center — PHASE-1D ADV CONVERGENCE IN PROGRESS
-  10 PASSES COMPLETE; CONSECUTIVE-CLEAN COUNTER = 0; PASS-11 NEXT
+  11 PASSES COMPLETE; CONSECUTIVE-CLEAN COUNTER = 0; PASS-12 NEXT
   ============================================================================
 
   READ THESE FIRST (in order — before anything else):
@@ -420,7 +425,7 @@ next_session_resume_protocol: |
   3. This STATE.md fully                                 ← durable_task_register + PIVOT-CONTROL-CENTER
 
   ============================================================================
-  WHERE WE ARE (D-252, 2026-06-04)
+  WHERE WE ARE (D-253, 2026-06-04)
   ============================================================================
 
   MODE: greenfield-with-reference-ingest.
@@ -429,11 +434,11 @@ next_session_resume_protocol: |
   NO production code written yet for v1A. Do NOT write code for v1A.
   factory-artifacts: run `git -C .factory log -1 --format='%h %s'` for live HEAD.
 
-  10 adversarial passes complete on the v1A control-center spec package.
-  Finding trajectory: Critical 5,5,4,1,2,2,0,0,0,0 / Important 8,6,9,4,4,2,4,2,1,1
-  Passes 7/8/9/10 all ZERO-Critical. Pass 10 = 0C/1I (resolved, D-252).
+  11 adversarial passes complete on the v1A control-center spec package.
+  Finding trajectory: Critical 5,5,4,1,2,2,0,0,0,0,0 / Important 8,6,9,4,4,2,4,2,1,1,1
+  Passes 7/8/9/10/11 all ZERO-Critical. Pass 11 = 0C/1I (resolved, D-253).
   CONSECUTIVE-CLEAN COUNTER = 0 (need 3 consecutive CLEAN = zero Critical+Important).
-  NEXT = adversarial Pass 11 (clean-streak candidate 1 of 3).
+  NEXT = adversarial Pass 12 (clean-streak candidate 1 of 3).
   HUMAN DIRECTIVE: strict 3-consecutive-clean (chosen at Pass-6 checkpoint over
   the "1 more pass then decide" option — do NOT accept less than 3).
 
@@ -448,10 +453,10 @@ next_session_resume_protocol: |
   D-239: Architecture delta COMMITTED — ADR-0009/0010/0011 + 5 SS deltas.
   D-240: Consistency gate PASSED — ARCH-INDEX v1.0.28; vision v2.2 + brief v2.0.1 VALID.
   D-241: BC/PRD delta — 25 new v1A BCs; PRD v1.28.1; 5 holdout scenarios HS-EXP-011..015.
-  D-242 through D-250: Adversarial Passes 1-9, all findings resolved.
+  D-242 through D-252: Adversarial Passes 1-10, all findings resolved. D-253: Pass-11 convergence-fix — I11-001 PRONG A auto-attach mandate (SS-embedded-pty 1.4.0 + BC-2.09.001 1.3.0) + PRONG B scope-boundary note (SS-daemon-wiring-v2-delta 1.6.0 + TD-MULTI-CLIENT-ATTACH-STORM-001); S11-001 phantom §Trace fix (SS-session-manager 1.7.2); SS-ipc 1.16.0 doc-comment extension; 35-file propagation sweep; POL-11/POL-12 PASS.
 
   ============================================================================
-  CONVERGENCE LOOP PROCEDURE (how the fresh session runs Pass 10+)
+  CONVERGENCE LOOP PROCEDURE (how the fresh session runs Pass 12+)
   ============================================================================
 
   Step A — Dispatch adversary (vsdd-factory:adversary) FRESH-CONTEXT for Pass N.
@@ -511,11 +516,11 @@ next_session_resume_protocol: |
   ARCH-INDEX v1.0.28
 
   Architecture subsystem specs (delta docs):
-    SS-ipc v1.15.0                       (IPC wire authority — all 21 message variants)
-    SS-session-manager v1.7.1            (SS-08 — session-host coordinator)
-    SS-embedded-pty v1.3.0               (SS-09 — embedded PTY widget)
+    SS-ipc v1.16.0                       (IPC wire authority — all 21 message variants)
+    SS-session-manager v1.7.2            (SS-08 — session-host coordinator)
+    SS-embedded-pty v1.4.0               (SS-09 — embedded PTY widget + auto-attach mandate)
     SS-engine-module-v2-delta v1.1.0     (spawn_recipe() + SpawnOptions)
-    SS-daemon-wiring-v2-delta v1.5.0     (daemon coordinator + IPC handler all-arms canonical)
+    SS-daemon-wiring-v2-delta v1.6.0     (daemon coordinator + IPC handler + multi-client scope boundary)
     SS-deps-pin-manifest-v2-delta v1.0.0 (portable-pty/vt100/tui-term pins)
 
   ADRs:

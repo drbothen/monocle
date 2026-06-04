@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "1.7.1"
+version: "1.7.2"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -762,7 +762,7 @@ pub enum HostToDaemon {
     PtyReset,
 }
 
-// C5-002 (SS-ipc.md v1.15.0): SerializedCell and SerializedColor are defined in
+// C5-002 (SS-ipc.md v1.16.0): SerializedCell and SerializedColor are defined in
 // monocle-ipc (crate::ipc::SerializedCell / crate::ipc::SerializedColor) so both
 // monocle-session-host (writer) and monocle-tui (reader) share the type without a
 // cross-binary dependency. The canonical definition with full field documentation
@@ -1170,6 +1170,23 @@ BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
 
+## §Trace v1.7.2
+
+**S11-001 — §Trace v1.4.0 phantom `kill_deadline_reason` field corrected** (2026-06-04):
+
+- **Finding (S11-001):** §Trace v1.4.0 (I3-002 bullet) listed `kill_deadline_reason:
+  Option<String>` as a field added to `SessionEntry`. The normative `SessionEntry` struct
+  (lines ~102–131) has no such field. The struct gained `kill_deadline: Option<Instant>`,
+  `degraded: bool`, and `degraded_reason: Option<String>` in v1.4.0 — `degraded_reason` is
+  the human-readable reason for the `degraded` flag (missing env vars, per I3-009). There
+  is no kill-deadline-specific reason string; the `kill_deadline` field is an `Option<Instant>`
+  with no associated reason string in the normative struct.
+- **Correction (changelog only):** §Trace v1.4.0 I3-002 bullet: `kill_deadline_reason:
+  Option<String>` replaced with a correction note pointing to this §Trace entry. The normative
+  struct definition is unchanged and was never wrong — the phantom field existed only in the
+  §Trace prose.
+- Semver: patch (v1.7.1 → v1.7.2) — changelog correction only; no normative change.
+
 ## §Trace v1.7.1
 
 **I10-001 — re-attach wording correction** (2026-06-04):
@@ -1294,7 +1311,8 @@ BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
   Elapsed deadline → immediate SIGKILL at re-discovery. Non-elapsed → watchdog uses sidecar
   deadline (not a new 12s window from restart). BC-2.08.004 PC-7 5s bound reconciliation note
   added: Terminating watchdog wait is excluded from the 5s re-discovery budget.
-  `SessionEntry.kill_deadline: Option<Instant>` and `kill_deadline_reason: Option<String>` added.
+  `SessionEntry.kill_deadline: Option<Instant>` added. (`kill_deadline_reason` was listed here in
+  error — no such field exists in the normative `SessionEntry` struct; see §Trace v1.7.2 correction.)
 - **I3-003 (dump-pause stall):** §Screen-state transfer on Attach step 2 updated from
   "Pause live PtyBytes forwarding" to "Resume live PtyBytes forwarding IMMEDIATELY after snapshot."
   TUI receiver protocol step (e) updated: buffer live PtyOutput received during dump, replay after

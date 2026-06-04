@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.0"
+version: "1.3.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -54,6 +54,17 @@ TUI's IPC socket. This timing budget covers: IPC framing decode → `vt100::Pars
 5. All sessions receive `PtyOutput` processing even if not currently focused. Only the
    focused session is rendered, but non-focused sessions' parsers are updated (enabling
    instant-rendering on focus switch with no re-fetch needed).
+6. **Auto-attach on first entry — persistence-reconnect (I11-001 PRONG A):** When
+   `enter_embedded_terminal(session_id)` is invoked for a session that has not yet received a
+   `ScrollbackDumpComplete` in the current TUI process lifetime (i.e., `session_id` is absent
+   from `App::pty_dump_received`), the TUI MUST send
+   `ClientToServer::AttachSession { session_id }` to the daemon before the first render tick of
+   `AppMode::EmbeddedTerminal`. The TUI MUST mark the session as dump-in-progress so that any
+   `PtyOutput` messages received while awaiting `ScrollbackDumpComplete` are buffered in
+   `pending_pty_bytes[session_id]`. The resulting `ScrollbackChunk*` + `ScrollbackDumpComplete`
+   dump and screen reconstruction MUST complete before live `PtyOutput` is applied to the
+   parser (the buffering-and-replay obligations of BC-2.09.001 Invariant 5 and
+   BC-2.05.011 §ScrollbackDumpComplete PC-3 and Invariant 6 already apply).
 
 ## Invariants
 
@@ -121,7 +132,7 @@ TUI's IPC socket. This timing budget covers: IPC framing decode → `vt100::Pars
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — this BC defines the PTY byte pipeline performance contract: IPC → vt100 → tui-term within 100ms, which is the core of CAP-009's embedded PTY widget capability |
 | Architecture Module | monocle-tui (App::on_pty_output, pty_parsers, PseudoTerminal widget) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.3.0 §PTY Widget Pipeline; §Parser ownership in TUI; §O4 memory bound; §I7 per-session scroll offset; SS-session-manager.md v1.7.1 §Screen-state transfer (C5); ADR-0011 §PTY stack selection |
+| Architecture Source | SS-embedded-pty.md v1.4.0 §PTY Widget Pipeline; §Parser ownership in TUI; §O4 memory bound; §I7 per-session scroll offset; §EmbeddedTerminal ENTRY (auto-attach mandate, I11-001 PRONG A); SS-session-manager.md v1.7.2 §Screen-state transfer (C5); ADR-0011 §PTY stack selection |
 | Test Name | test_BC_2_09_001_pty_output_renders_within_100ms |
 
 ## Related BCs
@@ -142,6 +153,21 @@ S-TBD — Implement TUI PTY widget (vt100 parser, PseudoTerminal render, PtyOutp
 ## VP Anchors
 
 VP-TBD — PTY output render latency tests (filled after VP creation)
+
+## §Trace v1.3.0
+
+**I11-001 PRONG A — PC-6: auto-attach mandate for persistence-reconnect** (2026-06-04):
+- PC-6 added: normative postcondition mandating that `enter_embedded_terminal(session_id)` MUST
+  send `ClientToServer::AttachSession { session_id }` before the first render tick of
+  `AppMode::EmbeddedTerminal` when the session has not yet received a `ScrollbackDumpComplete`
+  in the current TUI process lifetime (i.e., `session_id` absent from `App::pty_dump_received`).
+  Closes the v1A spec gap identified by architect in Phase-1d Pass-11 finding I11-001 PRONG A.
+- Architecture Source updated: `SS-embedded-pty.md v1.3.0` → `v1.4.0`, adding
+  §EmbeddedTerminal ENTRY (auto-attach mandate) as an explicit anchor citation.
+- BC-2.05.011 §ScrollbackDumpComplete PC-3 + Invariant 6 referenced in PC-6 as the
+  buffering-and-replay obligations that govern the dump window (verified: PC-3 is item 3 in
+  the §ScrollbackDumpComplete postconditions, covering parser reset + screen reconstruction;
+  Invariant 6 specifies `pending_pty_bytes` buffering during dump-in-progress).
 
 ## §Trace v1.2.0
 

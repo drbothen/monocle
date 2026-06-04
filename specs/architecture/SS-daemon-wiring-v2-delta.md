@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "daemon-wiring-v2-delta"
 subsystem: SS-04
-version: "1.5.0"
+version: "1.6.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -354,7 +354,7 @@ can use it without importing daemon-internal types.
 > was retired in v1.4.0 (I6-002 fix) because it diverged from the SS-ipc.md canonical by
 > omitting the `degraded`/`degraded_reason` fields.
 >
-> **Current canonical field summary** (SS-ipc.md v1.15.0 §Supporting Types — authoritative):
+> **Current canonical field summary** (SS-ipc.md v1.16.0 §Supporting Types — authoritative):
 > `session_id`, `display_name`, `state`, `harness_id`, `project_root`, `cwd`,
 > `spawned_by_monocle: Option<bool>`, `started_at_micros: i64`, `pty_rows: u16`,
 > `pty_cols: u16`, `degraded: bool` (`#[serde(default)]`), `degraded_reason: Option<String>`
@@ -506,6 +506,33 @@ This change is recorded in ADR-0010 §Trace v1.3.0 (I3-003 fix).
 additionally verify that a 10k-row max scrollback dump completes while the harness child
 produces 1 MB/s PTY output with zero PTY channel drops.
 
+**I11-001 SCOPE NOTE — v1A single-client broadcast; multi-client attach-storm is explicitly
+deferred (post-v1A):**
+
+The `ScrollbackChunk*` + `ScrollbackDumpComplete` fan-out in §5b broadcasts to ALL connected
+TUI clients (BC-2.05.009 Invariant 2 and BC-2.05.011 Invariant 5 use "all connected TUI
+clients"). This is intentional forward-compatible infrastructure for the v1A single-client
+case. In v1A, there is exactly one TUI process attached to the daemon at any given time (monocle
+is a tmux popup — one popup per user session; multiple TUI clients simultaneously is not a v1A
+use case). The broadcast is therefore harmless for v1A.
+
+**The known multi-client "attach-reset storm"** (one client's `ClientToServer::AttachSession`
+triggers a `DaemonToHost::Attach` → session-host sends `ScrollbackChunk*` +
+`ScrollbackDumpComplete` → broadcast resets ALL clients' parsers, including clients that did
+NOT request re-attach) is a REAL correctness issue for concurrent multi-TUI scenarios. This
+issue is **explicitly deferred** to the future multi-client capability (ref: `BC-2.05.009
+Invariant 2` which states the all-clients fan-out "supports FUTURE multi-TUI scenarios").
+
+**Deferral anchor:** This is tracked as `TD-MULTI-CLIENT-ATTACH-STORM-001`. The candidate fix
+(per-client unicast scrollback — the daemon sends `ScrollbackChunk*` + `ScrollbackDumpComplete`
+only to the client that sent `AttachSession`, not broadcast) MUST be designed and specified when
+the multi-client TUI capability is scheduled. The fix requires: (a) routing `AttachSession` to a
+client-scoped delivery path in the broker, and (b) ensuring the session-host can service
+concurrent per-client dump requests without interleaving chunks. Until then, the broadcast is
+the canonical implementation. Implementers reading this MUST NOT "fix" the broadcast to unicast
+speculatively — that change has correctness implications for the PtyReset recovery path and
+requires BC updates.
+
 **HostToDaemon enum additions (session-host → daemon, per-session UDS):**
 The `HostToDaemon` enum in SS-session-manager.md §Per-session UDS protocol gains two new
 variants for the chunked scrollback protocol:
@@ -631,6 +658,29 @@ If no in-process SessionManager stub exists in D-235 (i.e., the stub was skeleta
 implementer creates `SessionManager` from scratch per SS-08.
 
 ---
+
+## §Trace v1.6.0
+
+**I11-001 PRONG B — explicit scope-boundary note for broadcast fan-out + multi-client deferral anchor** (2026-06-04):
+
+- **Finding (I11-001 PRONG B):** The `ScrollbackChunk*` + `ScrollbackDumpComplete` broadcast
+  fan-out in §5b had no explicit statement clarifying that concurrent multi-TUI-client attach to
+  the SAME session is a FUTURE (post-v1A) capability. An adversarial reviewer reading the broadcast
+  semantics could reasonably conclude that the "attach-reset storm" (one client's AttachSession
+  resets all other clients' parsers) is an unaddressed v1A bug. It is not — but that boundary was
+  only implicit (the phrase "supports FUTURE multi-TUI scenarios" in BC-2.05.009 Invariant 2 was
+  the only anchor, and it is not in this file).
+- **Fix — §5b scope-boundary note added:** An explicit scope note in §5b states:
+  (a) v1A has exactly one TUI client; the broadcast is correct and harmless for v1A;
+  (b) the multi-client attach-reset storm is a real issue deferred to the future multi-client
+  capability, tracked as `TD-MULTI-CLIENT-ATTACH-STORM-001`;
+  (c) the candidate fix (per-client unicast scrollback) is named but must NOT be speculatively
+  implemented — it requires BC updates and session-host concurrency design.
+- **Deferral is concrete (per CLAUDE.md):** `TD-MULTI-CLIENT-ATTACH-STORM-001` is the named
+  deferral anchor. It will be picked up when the multi-client TUI capability story is scheduled.
+  It is NOT "later" or "Phase N" — it is tied to the specific future capability that introduces
+  concurrent multi-TUI clients.
+- Semver: minor (v1.5.0 → v1.6.0) — adds scope-clarifying normative note.
 
 ## §Trace v1.5.0
 

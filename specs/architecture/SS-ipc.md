@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "ipc"
 subsystem: SS-05
-version: "1.15.0"
+version: "1.16.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -170,7 +170,7 @@ pub enum ServerToClient {
     /// `Vec<SessionSnapshot>`. `SessionSnapshot` is the canonical wire boundary type for
     /// all sessions (monocle-spawned and externally-detected). `EnrichedSession` is retained
     /// internally for `EngineModule::detect()` but is NOT exposed on the wire. See
-    /// SS-daemon-wiring-v2-delta.md v1.5.0 §4 for the three-representation reconciliation.
+    /// SS-daemon-wiring-v2-delta.md v1.6.0 §4 for the three-representation reconciliation.
     InitialState {
         /// All sessions (monocle-spawned and externally-detected) as `SessionSnapshot`.
         sessions: Vec<SessionSnapshot>,
@@ -415,6 +415,15 @@ pub enum ClientToServer {
     ///
     /// This replaces the incorrect BC-2.05.011 PC-3c description of sending "a fresh
     /// DaemonToHost::Attach" from the TUI (the TUI never sends DaemonToHost messages).
+    ///
+    /// I11-001 (v1.16.0): This variant is also sent AUTOMATICALLY by `enter_embedded_terminal()`
+    /// when the TUI enters a session that has not yet received a `ScrollbackDumpComplete` in the
+    /// current process lifetime (i.e., the parser is blank because the session was already running
+    /// when this TUI process started). See SS-embedded-pty.md §EmbeddedTerminal ENTRY
+    /// "Auto-attach on first entry". Three trigger cases:
+    ///   (a) Auto-attach on first EmbeddedTerminal entry (blank parser, no prior dump received).
+    ///   (b) Re-attach after PtyReset (parser corruption recovery).
+    ///   (c) Chunk-count mismatch on ScrollbackDumpComplete (integrity retry per BC-2.05.011).
     AttachSession {
         session_id: String,
     },
@@ -1174,6 +1183,22 @@ still pending in the daemon's registry (i.e., still within the 300ms timeout win
 prompts are never re-pushed.
 
 ---
+
+## §Trace v1.16.0
+
+**I11-001 PRONG A — AttachSession auto-attach-on-entry trigger documented** (2026-06-04):
+
+- **Finding (I11-001 PRONG A):** The `ClientToServer::AttachSession` doc-comment listed only
+  two trigger cases: (b) re-attach after PtyReset, and (c) explicit user re-attach from sessions
+  panel. The auto-attach-on-first-EmbeddedTerminal-entry case (blank parser, session already
+  running when TUI process started) was not enumerated. The trigger is normatively specified in
+  SS-embedded-pty.md §EmbeddedTerminal ENTRY v1.4.0 but was not cross-referenced here.
+- **Fix:** `ClientToServer::AttachSession` doc-comment extended with case (a): auto-attach on
+  first EmbeddedTerminal entry (blank parser, no prior dump received). All three trigger cases
+  are now enumerated in the doc-comment. Cross-reference to SS-embedded-pty.md §EmbeddedTerminal
+  ENTRY added.
+- Semver: patch (v1.15.0 → v1.16.0) — doc-comment extension; no normative change to this file's
+  wire types. The normative change is in SS-embedded-pty.md v1.4.0.
 
 ## §Trace v1.15.0
 

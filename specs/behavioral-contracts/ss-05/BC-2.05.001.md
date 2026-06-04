@@ -107,7 +107,7 @@ file is removed alongside `monocle.lock` and `hooks-settings.json`.
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability Traceability §SS-05 — this BC governs the UDS socket bind lifecycle that establishes the transport foundation on which all TUI-to-daemon communication depends |
 | L2 Domain Invariants | DI-002 (the lock file must be present and contain a valid port and auth token before any hook endpoint accepts connections — this BC extends that invariant to the UDS socket: the socket is bound after the lock file is written, ensuring ordered initialization); DI-003 (auth token written to lock file after port is bound — the socket bind happens after lock file write, preserving SOQ-2 ordering) |
 | Architecture Module | monocle-ipc (UDS server bind), monocle-runtime (daemon start sequence step 10) per ARCH-INDEX Subsystem Registry SS-05 and SS-04 |
-| Architecture Source | SS-ipc.md v1.15.0 §Transport Layer §Lifecycle; SS-daemon-wiring.md v1.3.0 §Daemon Start Sequence |
+| Architecture Source | SS-ipc.md v1.16.0 §Transport Layer §Lifecycle; SS-daemon-wiring.md v1.3.0 §Daemon Start Sequence |
 | Cross-Ref | BC-2.01.005 (lock file atomic lifecycle — socket bind happens after lock file write per SOQ-2); BC-2.05.002 (TUI connects to this socket) |
 | Test File | `monocle-ipc/tests/uds_bind_lifecycle.rs` |
 | Test Name | `test_BC_2_05_001_uds_bind_and_cleanup` |

@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "embedded-pty"
 subsystem: SS-09
-version: "1.3.0"
+version: "1.4.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -161,6 +161,16 @@ Parser initialization: when the TUI receives `SessionListUpdate` with a new sess
 via `~/.monocle/config.json`; default 1000 rows. Parsers are removed when the session is GC'd
 from the list.
 
+**Blank-parser state for pre-existing sessions:** When the TUI starts fresh (new process) and
+receives sessions via `InitialState.sessions` (or `SessionListUpdate`), the parsers for those
+sessions start blank — they contain no screen history. This is correct for sessions that the
+TUI has never yet displayed; the blank state becomes populated as PTY output arrives. However,
+for an ALREADY-RUNNING session (one that has been producing output before this TUI process
+started), the blank parser means the user would see an empty screen on first entry. The
+auto-attach mandate (§EmbeddedTerminal ENTRY above) closes this gap: `enter_embedded_terminal()`
+MUST trigger `AttachSession` for any session that has not yet received a scrollback dump in
+this process lifetime.
+
 **Fast switching:** switching the focused session = changing which parser's `screen()` is
 passed to the widget on the next render tick. All other parsers continue to process bytes in
 the background. O(1) switch cost.
@@ -245,6 +255,49 @@ crossterm::execute!(
 // Write SGR mouse mode (1006) escape to terminal:
 print!("\x1b[?1006h");
 ```
+
+**Auto-attach on first entry (I11-001 fix — normative):**
+
+When `enter_embedded_terminal(session_id)` is called AND the TUI has not yet received a
+`ScrollbackDumpComplete` for this `session_id` in the current process lifetime (i.e., the
+`vt100::Parser` for this session was initialized blank by `SessionListUpdate` or `InitialState`
+and has never been populated via a scrollback dump), the TUI MUST IMMEDIATELY send
+`ClientToServer::AttachSession { session_id }` to the daemon.
+
+```rust
+// Auto-attach mandate: send AttachSession if this parser has never been
+// populated from a scrollback dump in this process lifetime.
+if !app.pty_dump_received.contains(&session_id) {
+    app.ipc_tx.send(ClientToServer::AttachSession {
+        session_id: session_id.clone(),
+    }).await.ok();
+    // Mark dump_in_progress so live PtyOutput is buffered in pending_pty_bytes
+    // until ScrollbackDumpComplete is received (per BC-2.05.011 Invariant 6).
+}
+```
+
+`App::pty_dump_received: HashSet<String>` tracks which session IDs have received a
+`ScrollbackDumpComplete` in this TUI process lifetime. On receipt of `ScrollbackDumpComplete`
+for a session, insert `session_id` into `pty_dump_received`. On session GC (`SessionState::Terminated`
+plus list removal), remove from `pty_dump_received` so a future re-entry triggers a fresh dump.
+
+**Rationale:** When the TUI starts fresh (new process) and connects to a daemon that has one
+or more already-running sessions, it receives those sessions in `InitialState.sessions` (or
+`SessionListUpdate`) and creates blank `vt100::Parser` instances for them. Without the
+`AttachSession` trigger, selecting any of those pre-existing sessions in the TUI would show a
+blank embedded terminal until the next PTY byte from the harness child — a blank screen for
+an already-running session is silently wrong (the user sees no history or current state).
+The `AttachSession` trigger causes the daemon to call `SessionManager::attach_session()` which
+issues `DaemonToHost::Attach` to the session-host, triggering the `ScrollbackChunk*` +
+`ScrollbackDumpComplete` sequence. The TUI then reconstructs the full terminal state
+(per BC-2.09.001 Invariant 5, BC-2.05.011 §ScrollbackDumpComplete PC-3, and
+SS-session-manager.md §Screen-state transfer on Attach). This is a v1A-critical guarantee:
+sessions survive TUI close and daemon restart; a TUI opening an already-running session MUST
+see the current terminal state immediately.
+
+This mandate does NOT apply when transitioning from `SessionCreation::Launching` to
+`EmbeddedTerminal` on a NEW session (the new session emits live `PtyOutput` from the start;
+no historical screen state exists to restore).
 
 **EmbeddedTerminal EXIT (in App::exit_embedded_terminal()):**
 ```rust
@@ -617,6 +670,30 @@ Mitigation: integration tests use a PTY fixture corpus from `embedded-pty-evalua
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.4.0
+
+**I11-001 PRONG A — auto-attach-on-entry normative mandate added** (2026-06-04):
+
+- **Finding (I11-001 PRONG A):** No normative statement mandated that `enter_embedded_terminal()`
+  send `ClientToServer::AttachSession` when the TUI enters an already-running session for the
+  first time in the current process lifetime. The blank-parser scenario (TUI reopened, pre-existing
+  sessions shown in InitialState/SessionListUpdate, user selects one) had no specified recovery path.
+  The reconnect and PtyReset paths were both documented (BC-2.09.001 Invariant 5; BC-2.05.011
+  §ScrollbackDumpComplete), but the INITIAL entry case (first enter for a session the TUI has
+  never dumped) was implicit.
+- **Fix — §EmbeddedTerminal ENTRY extended (normative):** Added "Auto-attach on first entry"
+  requirement: `enter_embedded_terminal()` MUST send `ClientToServer::AttachSession { session_id }`
+  if `session_id` is not in `App::pty_dump_received` (a new `HashSet<String>` field tracking
+  which sessions have received `ScrollbackDumpComplete` in this process lifetime). The code
+  skeleton, rationale, and new-session exclusion rule are specified.
+- **Fix — §Parser ownership in TUI extended:** Added "Blank-parser state for pre-existing
+  sessions" prose explaining when the blank state is acceptable vs. when the auto-attach mandate
+  applies. Closes the gap between "parsers start blank" (correct behavior on `SessionListUpdate`)
+  and "already-running sessions must show current state on entry" (production-grade v1A guarantee).
+- **Scope:** v1A-critical. Sessions survive TUI close and daemon restart (the persistence model
+  is ratified). A reopened TUI selecting a running session MUST see its current terminal state.
+- Semver: minor (v1.3.0 → v1.4.0) — adds a new normative behavior obligation.
 
 ## §Trace v1.3.0
 
