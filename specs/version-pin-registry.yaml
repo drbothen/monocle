@@ -124,8 +124,8 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "1.8.0"
-  last_bump_commit: "[Pass-12 I12-001 — SessionError::EngineError(#[from]) bridge + session_error_to_code arm; exhaustiveness preserved]"
+  current_version: "1.8.1"
+  last_bump_commit: "[Pass-14 I14-001 — portable-pty 0.9.x normative literal in env-inheritance prose; exhaustive crate-pin sweep confirmed lone stale straggler (class closed)]"
   last_bump_date: "2026-06-04"
 
 SS-embedded-pty:

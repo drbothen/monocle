@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "1.8.0"
+version: "1.8.1"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -594,7 +594,7 @@ share any code with the daemon's async runtime (to keep it independent). It has 
      `CommandBuilder` for the harness child MUST inherit the session-host process environment
      FIRST, then overlay the recipe's `--env` fields on top. The `portable-pty` `CommandBuilder`
      API populates the environment via `env()` calls — if `CommandBuilder` does NOT inherit the
-     parent env by default (check the `portable-pty` 0.8.x API), the session-host MUST
+     parent env by default (check the `portable-pty` 0.9.x API), the session-host MUST
      explicitly seed the builder with `std::env::vars()` before calling `cmd.env()` for each
      recipe env var.
    - **Why this matters:** Without env inheritance, the harness child launches with NO `PATH`,
@@ -1200,6 +1200,24 @@ Daemon removes stale socket files during GC in re-discovery (alongside sidecar d
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.8.1
+
+**I14-001 fix — stale `portable-pty 0.8.x` version literal corrected to `0.9.x`** (2026-06-04):
+
+- **I14-001 (IMPORTANT — stale crate-pin literal):** §session-host startup step 4 env-inheritance
+  mandate contained one stale `portable-pty 0.8.x` version reference in the parenthetical
+  "(check the `portable-pty` 0.8.x API)". The ratified pin is `portable-pty 0.9.0` (D-239;
+  SS-deps-pin-manifest-v2-delta.md v1.0.0; ADR-0011 v1.0.0). All other `portable-pty` references
+  in this file correctly cite the 0.9 line; the 0.8.x literal was the lone stale survivor.
+  Changed: `0.8.x` → `0.9.x`. The behavioral mandate (seed builder from `std::env::vars()` before
+  overlay) is version-independent and unchanged.
+- SE-17c BEFORE: `(check the \`portable-pty\` 0.8.x API)`
+- SE-17c AFTER:  `(check the \`portable-pty\` 0.9.x API)`
+- Semver: patch (v1.8.0 → v1.8.1) — version-literal correction only; no normative behavior change.
+- Root-cause: POL-11 enforcement keys on artifact-ID version pins (SS-x vN.M.P, BC-x vN.M.P),
+  not crates.io version literals in prose, so this stale literal escaped CI enforcement.
+  Durable follow-up DEP-PIN-SWEEP-RULE recommended for state-manager.
 
 ## §Trace v1.8.0
 
