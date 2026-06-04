@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md]
-input-hash: "2d6731a"
+input-hash: "a5eead3"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-09
@@ -21,7 +21,6 @@ deprecated_by: null
 replacement: null
 retired: null
 removed: null
-removal_range: null
 removal_reason: null
 ---
 
@@ -167,6 +166,13 @@ S-TBD — Implement key_event_to_pty_bytes() and KeyInput IPC send in monocle-tu
 ## VP Anchors
 
 VP-TBD — Keyboard translation unit tests (filled after VP creation)
+
+## §Trace v1.0.1
+
+**S-P7-002 — Remove stray `removal_range: null` frontmatter field** (2026-06-03):
+- Removed spurious `removal_range: null` field that appeared in no sibling BC.
+  Correct lifecycle fields are `removed: null` + `removal_reason: null`; this
+  stray line was a copy-paste artifact. No content change.
 
 ## §Trace v1.0.0
 

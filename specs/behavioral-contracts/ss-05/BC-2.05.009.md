@@ -88,7 +88,7 @@ on normal channel fullness. Under normal backpressure, PTY bytes are never dropp
    within its own per-client send buffer and does NOT propagate backpressure to the PTY reader.
 
 3b. **Per-client send buffer isolation:** Each connected TUI client has a dedicated
-   `mpsc::channel::<ServerToClient>(64)` (capacity 64, per SS-ipc.md v1.14.0 §TUI IPC Read
+   `mpsc::channel::<ServerToClient>(64)` (capacity 64, per SS-ipc.md v1.15.0 §TUI IPC Read
    Loop Pattern canonical pattern — rationale: 64 covers typical burst sizes without unbounded
    memory growth; 64×256KiB=16MiB maximum in-flight per client). The broker uses `.try_send()`
    into the per-client channel (NOT `.send().await`). A dedicated per-client writer task drains
@@ -143,7 +143,7 @@ on normal channel fullness. Under normal backpressure, PTY bytes are never dropp
 | L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — PtyOutput fan-out extends the session/event/prompt push capability of CAP-005 with real-time PTY byte streaming, which is transported over the same shared UDS per ADR-0010 |
 | Architecture Module | monocle-ipc (`ServerToClient::PtyOutput` variant); monocle-runtime (session-host proxy task, broker fan-out) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-daemon-wiring-v2-delta.md v1.4.0 §broker fan-out — PtyOutput messages; ADR-0010 v1.4.0 §pty-bytes-over-shared-uds-ipc; SS-session-manager.md v1.6.0 §PTY reader thread; SS-ipc.md v1.14.0 §TUI IPC Read Loop Pattern (per-client channel capacity 64, rationale) |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.4.0 §broker fan-out — PtyOutput messages; ADR-0010 v1.4.0 §pty-bytes-over-shared-uds-ipc; SS-session-manager.md v1.7.0 §PTY reader thread; SS-ipc.md v1.15.0 §TUI IPC Read Loop Pattern (per-client channel capacity 64, rationale) |
 | Cross-Ref | BC-2.05.004 (fan-out semantics for slow-client disconnect); BC-2.04.011 (hook event drop counter — separate from PTY channel drop counter) |
 | Test Name | test_BC_2_05_009_pty_output_fan_out_bounded_channel |
 

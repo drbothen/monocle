@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "ipc"
 subsystem: SS-05
-version: "1.14.0"
+version: "1.15.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -345,8 +345,10 @@ pub enum ServerToClient {
     /// # When emitted
     ///
     /// Emitted on failure of any `ClientToServer` lifecycle operation:
-    /// - `SpawnSession` → `SessionError::SpawnFailed` (or any other spawn error)
-    /// - `KillSession` → `SessionError::SessionNotFound`
+    /// - `SpawnSession` → `SessionError::SpawnFailed`
+    /// - `SpawnSession` → `SessionError::SidecarWriteFailed` (post-spawn sidecar write failure)
+    /// - `SpawnSession` → `SessionError::SessionIdCollision` (UUID v4 collision in registry)
+    /// - `KillSession` → `SessionError::SessionNotFound`, `SessionError::SessionHostDead`
     /// - `AttachSession` → `SessionError::SessionHostDead`, `SessionError::SessionNotFound`
     /// - `KeyInput` → `SessionError::SessionNotFound` (session does not exist or is Terminated)
     /// - `RenameSession` → `SessionError::InvalidSessionName`
@@ -362,14 +364,16 @@ pub enum ServerToClient {
     ///
     /// The `code` field carries one of the following string literals (snake_case):
     ///
-    /// | code                  | Trigger                                              |
-    /// |-----------------------|------------------------------------------------------|
-    /// | `"spawn_failed"`      | `SessionManager::spawn_session()` returned error     |
-    /// | `"session_not_found"` | `session_id` not in registry (any lifecycle op)      |
-    /// | `"attach_failed"`     | `SessionManager::attach_session()` returned error    |
-    /// | `"kill_failed"`       | `SessionManager::kill_session()` returned error      |
-    /// | `"rename_failed"`     | `SessionManager::rename_session()` returned error    |
-    /// | `"invalid_request"`   | Validation failure before the SessionManager call    |
+    /// | code                       | Trigger                                                              |
+    /// |----------------------------|----------------------------------------------------------------------|
+    /// | `"spawn_failed"`           | OS process spawn failure from `SessionHostSpawner::spawn()`          |
+    /// | `"sidecar_write_failed"`   | Sidecar write failed after OS process spawned (`SessionError::SidecarWriteFailed`) — orphan-kill protocol ran before error surfaces |
+    /// | `"session_id_collision"`   | UUID v4 collision in registry (`SessionError::SessionIdCollision`) — do not auto-retry |
+    /// | `"session_not_found"`      | `session_id` not in registry (any lifecycle op)                      |
+    /// | `"attach_failed"`          | `SessionError::SessionHostDead` on the attach-path                   |
+    /// | `"kill_failed"`            | `SessionError::SessionHostDead` on the kill-path (op-aware mapping via `IpcOp::Kill`) |
+    /// | `"rename_failed"`          | `SessionManager::rename_session()` returned error                    |
+    /// | `"invalid_request"`        | Validation failure before the SessionManager call                    |
     ///
     /// The `message` field carries a human-readable diagnostic string (not user-facing;
     /// logged by the TUI for diagnostics). The TUI renders a fixed-text error banner keyed
@@ -781,27 +785,42 @@ match tokio::time::timeout(
 
 **Canonical pattern — dedicated reader task + bounded `mpsc::channel(64)`:**
 
-- Spawn a dedicated reader task that owns the transport exclusively:
+`ServerToClient` has no `Disconnected` variant — `Disconnected` belongs to the separate
+process-local `TransportEvent` enum (defined in §Supporting Types) which is NOT serialized
+over the wire. The reader task therefore sends a wrapped type so it can signal both wire
+messages and transport disconnects on a single channel without inventing non-existent variants:
 
 ```rust
+/// Events delivered by the IPC reader task to the event loop.
+/// This is a process-local type — it is NOT a wire message and NOT derived
+/// from `ServerToClient`. `Disconnected` maps to `TransportEvent::Disconnected`.
+pub enum IpcRead {
+    /// A wire message received from the daemon.
+    Msg(ServerToClient),
+    /// The UDS connection was lost (EOF, BrokenPipe, ConnectionReset).
+    /// Triggers SOQ-3 overlay clear and reconnect (see §Reconnect handoff below).
+    Disconnected,
+}
+
 /// Spawn a dedicated IPC reader task.
-/// Returns a JoinHandle; the event loop holds the Receiver.
+/// Returns a JoinHandle; the event loop holds the Receiver<IpcRead>.
 pub fn spawn_ipc_reader(
     mut transport: UdsClientTransport,
-    tx: mpsc::Sender<ServerToClient>,
+    tx: mpsc::Sender<IpcRead>,
 ) -> JoinHandle<()> {
     tokio::spawn(async move {
         loop {
             match transport.recv_message().await {
                 Ok(msg) => {
-                    if tx.send(msg).await.is_err() {
+                    if tx.send(IpcRead::Msg(msg)).await.is_err() {
                         // Receiver dropped — event loop has exited; stop reading.
                         break;
                     }
                 }
                 Err(_) => {
                     // EOF, BrokenPipe, or ConnectionReset — signal disconnect.
-                    let _ = tx.send(ServerToClient::Disconnected).await;
+                    // IpcRead::Disconnected corresponds to TransportEvent::Disconnected.
+                    let _ = tx.send(IpcRead::Disconnected).await;
                     break;
                 }
             }
@@ -810,8 +829,10 @@ pub fn spawn_ipc_reader(
 }
 ```
 
-- Event loop holds `mpsc::Receiver<ServerToClient>` and `JoinHandle<()>`; drains via
+- Event loop holds `mpsc::Receiver<IpcRead>` and `JoinHandle<()>`; drains via
   `ipc_rx.try_recv()` on each keyboard tick (16ms / ~60Hz cadence).
+- The `IpcRead` wrapper is defined in `monocle-ipc` alongside `TransportEvent` so both
+  the reader task and the event loop share the type without extra crate boundaries.
 
 **Design invariants:**
 
@@ -825,12 +846,16 @@ pub fn spawn_ipc_reader(
 - **Transport ownership:** reader task takes exclusive `move` ownership of
   `UdsClientTransport`. The event loop holds `mpsc::Receiver` and `JoinHandle`. No
   `Arc<Mutex<UdsClientTransport>>`.
-- **Reconnect handoff:** on disconnect (`Ok(Err(_))` or channel `Disconnected`):
+- **Reconnect handoff:** on receiving `IpcRead::Disconnected` from the channel:
   1. `reader_handle.abort()` — terminate the stale reader task.
   2. Invoke SOQ-3 handler — clear the TUI's local `VecDeque<PromptModal>` overlay stack.
-  3. Call `monocle_ipc::reconnect::reconnect(...)` to obtain a fresh
-     `(UdsClientTransport, EventReceiver)`.
+     (`IpcRead::Disconnected` corresponds to `TransportEvent::Disconnected` — the SOQ-3
+     invariant fires on this signal, per §SOQ-3 Is a TUI-Side Concern Only.)
+  3. Call `monocle_ipc::reconnect::reconnect(...)` to obtain a fresh `UdsClientTransport`.
   4. Spawn a new `spawn_ipc_reader(new_transport, ipc_tx.clone())` task.
+  The disconnect→SOQ-3 stale-overlay-prevention path is representable because
+  `IpcRead::Disconnected` unambiguously signals the event loop that the transport was lost;
+  the event loop then clears the overlay stack before reconnecting.
 
 **Reference implementation:** `crates/monocle-tui/src/app.rs::spawn_ipc_reader` (S-025).
 
@@ -1149,6 +1174,43 @@ still pending in the daemon's registry (i.e., still within the 300ms timeout win
 prompts are never re-pushed.
 
 ---
+
+## §Trace v1.15.0
+
+**Pass-7 architecture findings — I-P7-001/I-P7-002/I-P7-003** (2026-06-03):
+
+- **I-P7-001 (error code taxonomy — two new codes):** v1A error code taxonomy updated to add
+  `"sidecar_write_failed"` (maps from `SessionError::SidecarWriteFailed`) and
+  `"session_id_collision"` (maps from `SessionError::SessionIdCollision`). Both are spawn-path
+  codes for failures that occur after the OS process has been spawned but before the session
+  is registered. Distinct codes are warranted because the diagnostics are distinct: a sidecar
+  I/O failure points to filesystem/permissions issues; a collision points to a UUID generation
+  anomaly. Total v1A codes: 8 (was 6). The "When emitted" doc list for `ServerToClient::Error`
+  gains: `SpawnSession → SessionError::SidecarWriteFailed` and
+  `SpawnSession → SessionError::SessionIdCollision`. `session_error_to_code()` in SS-08 §Error
+  handling (SS-session-manager.md v1.7.0) is now exhaustive over all 7 `SessionError` variants.
+- **I-P7-002 (kill_failed reachable via op-aware mapping):** `"kill_failed"` was previously
+  unreachable because `session_error_to_code(&SessionError)` mapped `SessionHostDead`
+  unconditionally to `"attach_failed"`. The function is now op-aware:
+  `session_error_to_code(IpcOp, &SessionError)`. Kill-path `SessionHostDead` now correctly
+  maps to `"kill_failed"`; all other paths map to `"attach_failed"`. The taxonomy table
+  updated to reflect this: `"attach_failed"` row narrowed to "attach-path"; `"kill_failed"`
+  row updated from "kill_session() returned error" to "SessionError::SessionHostDead on
+  the kill-path (op-aware mapping via IpcOp::Kill)". `kill_failed` is now fully reachable.
+- **I-P7-003 (ServerToClient::Disconnected non-variant fixed):** The `spawn_ipc_reader`
+  canonical code block (~lines 789–810) was sending `ServerToClient::Disconnected` on
+  transport error — a variant that does not exist on `ServerToClient`. `Disconnected` belongs
+  to `TransportEvent` (process-local, not serialized). Fixed by:
+  (1) Defining a `pub enum IpcRead { Msg(ServerToClient), Disconnected }` wrapper type
+  (defined in `monocle-ipc`) as the channel payload type. `spawn_ipc_reader` now sends
+  `IpcRead::Msg(msg)` for wire messages and `IpcRead::Disconnected` for transport errors.
+  (2) The reconnect handoff prose (~line 828) updated to match: "on receiving
+  `IpcRead::Disconnected` from the channel" (was "on disconnect (`Ok(Err(_))` or channel
+  `Disconnected`)"). The disconnect→SOQ-3 stale-overlay-prevention path is confirmed
+  representable via `IpcRead::Disconnected`.
+  Reference implementation: `crates/monocle-tui/src/app.rs::spawn_ipc_reader` (S-025)
+  uses a compatible channel-based disconnect signal; the spec pattern now matches the
+  shipped implementation's approach.
 
 ## §Trace v1.14.0
 

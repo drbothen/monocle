@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.38"
+version: "1.39"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T14:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
-input-hash: "65e580b"
+input-hash: "cbf13d5"
 traces_to: prd.md
 ---
 
@@ -123,7 +123,7 @@ traces_to: prd.md
 | BC-2.05.007 | Overlay Stack Cleared on Daemon Disconnect (SOQ-3) | P0 | active | ss-05/BC-2.05.007.md | — |
 | BC-2.05.008 | UDS-Only in Phase 1 (No Shared-Memory Transport) | P1 | active | ss-05/BC-2.05.008.md | — |
 | BC-2.05.009 | PtyOutput Fan-Out — Per-Session Bounded Channel (1024) with Surfaced Drop Counter | P0 | active | ss-05/BC-2.05.009.md | — |
-| BC-2.05.010 | New ClientToServer IPC Variants — SpawnSession, KillSession, KeyInput, ResizePane, DetachSession, RenameSession | P0 | active | ss-05/BC-2.05.010.md | — |
+| BC-2.05.010 | New ClientToServer IPC Variants — SpawnSession, KillSession, KeyInput, ResizePane, DetachSession, RenameSession, AttachSession | P0 | active | ss-05/BC-2.05.010.md | — |
 | BC-2.05.011 | New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset | P0 | active | ss-05/BC-2.05.011.md | — |
 
 ---
@@ -1196,6 +1196,23 @@ Holdout scenario corrections:
 - HS-EXP-013: Step 8 keybinding pinned to BC-2.09.009 PC-5 exact semantics (Esc → prior → Overlay).
 
 SE-16d monotonicity: v1.36 timestamp 2026-06-03T14:00:00Z > v1.35 timestamp 2026-06-03T12:00:00Z. PASS.
+
+## §Trace v1.39
+
+**Pass-7 PO-owned fixes — S-P7-002 (BC-2.09.002 stray field) + S-P7-003 (BC-2.05.010 H1 title)** (2026-06-03):
+
+**UPDATED BCs:**
+- BC-2.09.002 v1.0.0 → v1.0.1: S-P7-002 — Removed stray `removal_range: null` frontmatter field
+  (orphan field not present in any sibling BC; correct fields are `removed: null` + `removal_reason: null`).
+  No content change.
+- BC-2.05.010 v1.3.0 → v1.4.0: S-P7-003 — Appended "AttachSession" to H1 title for H1↔body
+  consistency. AttachSession was added in v1.2.0 (I3-004) but the H1 was not updated at that time.
+  Description and Invariant 1 both correctly state "seven variants" — the H1 now matches.
+
+**INDEX changes:**
+- BC-2.05.010 title updated from 6-variant to 7-variant form (bc_h1_is_title_source_of_truth).
+
+SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. PASS.
 
 ## §Trace v1.38
 

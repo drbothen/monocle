@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.0"
+version: "1.4.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:45:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-ipc.md, architecture/SS-daemon-wiring-v2-delta.md]
-input-hash: "c787ee0"
+input-hash: "aa4c9cd"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-05
@@ -24,7 +24,7 @@ removed: null
 removal_reason: null
 ---
 
-# Behavioral Contract BC-2.05.010: New ClientToServer IPC Variants — SpawnSession, KillSession, KeyInput, ResizePane, DetachSession, RenameSession
+# Behavioral Contract BC-2.05.010: New ClientToServer IPC Variants — SpawnSession, KillSession, KeyInput, ResizePane, DetachSession, RenameSession, AttachSession
 
 ## Description
 
@@ -99,7 +99,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
    re-attaches a `Detached` session from the sessions panel. The TUI MUST NOT send
    `DaemonToHost::Attach` directly — that is a daemon→session-host message. The TUI sends
    `ClientToServer::AttachSession` to the daemon, which routes to `SessionManager::attach_session()`.
-   Per SS-ipc.md v1.14.0 §`ClientToServer::AttachSession`.
+   Per SS-ipc.md v1.15.0 §`ClientToServer::AttachSession`.
 
 ## Invariants
 
@@ -153,7 +153,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 | L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — these ClientToServer variants extend the internal transport capability with session lifecycle control messages (spawn, kill, key input, resize, detach, rename, re-attach) — all transported over the existing UDS per the session/event/prompt push design |
 | Architecture Module | monocle-ipc (`ClientToServer` enum new variants); monocle-runtime (IPC handler routing to SessionManager) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-daemon-wiring-v2-delta.md v1.4.0 §IPC handler — new ClientToServer variants (including AttachSession); SS-ipc.md v1.14.0 §`ClientToServer::AttachSession` (I3-004 — TUI re-attach; replaces incorrect "TUI sends DaemonToHost::Attach" description); SS-ipc.md v1.14.0+ §`ServerToClient::Error` — Error variant + code taxonomy (`spawn_failed`, `session_not_found`, `attach_failed`, `kill_failed`, `rename_failed`, `invalid_request`) added by architect in Pass-6 parallel track (C6-001) |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.4.0 §IPC handler — new ClientToServer variants (including AttachSession); SS-ipc.md v1.15.0 §`ClientToServer::AttachSession` (I3-004 — TUI re-attach; replaces incorrect "TUI sends DaemonToHost::Attach" description); SS-ipc.md v1.15.0+ §`ServerToClient::Error` — Error variant + code taxonomy (`spawn_failed`, `session_not_found`, `attach_failed`, `kill_failed`, `rename_failed`, `invalid_request`) added by architect in Pass-6 parallel track (C6-001) |
 | Cross-Ref | BC-2.08.001 (SpawnSession → spawn_session()); BC-2.08.003 (KillSession → kill_session()); BC-2.08.007 (DetachSession → detach_session()) |
 | Test Name | test_BC_2_05_010_new_client_to_server_variants_routed |
 
@@ -176,6 +176,15 @@ S-TBD — Implement new ClientToServer IPC variants and daemon routing (filled b
 ## VP Anchors
 
 VP-TBD — IPC variant routing integration tests (filled after VP creation)
+
+## §Trace v1.4.0
+
+**S-P7-003 — Add AttachSession to H1 title for H1↔body consistency** (2026-06-03):
+- H1 title listed 6 variants but Description, Invariant 1, and body all specify seven variants
+  (AttachSession was added in v1.2.0 per I3-004 but the H1 was not updated at that time).
+- H1 title corrected to enumerate all 7 variants: appended "AttachSession" to the comma-separated
+  variant list. BC-INDEX row updated to match.
+- No content change; cosmetic H1 consistency fix only.
 
 ## §Trace v1.3.0
 

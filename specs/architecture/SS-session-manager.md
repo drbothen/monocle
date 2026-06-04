@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "1.6.0"
+version: "1.7.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -384,6 +384,18 @@ pub enum SessionError {
     SessionNotFound { session_id: String },
     #[error("spawn failed: {reason}")]
     SpawnFailed { reason: String },
+    /// Sidecar file could not be written after the session-host OS process was already
+    /// spawned. The orphan-kill protocol (§Pre-socket-bind orphan kill) MUST run before
+    /// this error is returned so the spawned process is cleaned up. Error code:
+    /// `"sidecar_write_failed"`.
+    #[error("sidecar write failed at {path}: {reason}")]
+    SidecarWriteFailed { path: String, reason: String },
+    /// A session with the generated session_id already exists in the registry. This is
+    /// a UUID v4 collision — astronomically rare but must be handled. The spawn is
+    /// aborted; the caller should not retry automatically. Error code:
+    /// `"session_id_collision"`.
+    #[error("session_id collision: {session_id}")]
+    SessionIdCollision { session_id: String },
     #[error("session host dead: {session_id}")]
     SessionHostDead { session_id: String },
     #[error("invalid session name: {reason}")]
@@ -398,14 +410,51 @@ pub enum SessionError {
 | SessionError variant | Triggering lifecycle method(s) | code | Notes |
 |----------------------|-------------------------------|------|-------|
 | `SessionNotFound` | `kill_session`, `detach_session`, `attach_session`, `rename_session`, `send_key_input`, `resize_session` | `"session_not_found"` | Session ID not in registry |
-| `SpawnFailed` | `spawn_session` | `"spawn_failed"` | Process spawn failure, sidecar write failure, etc. |
-| `SessionHostDead` | `attach_session`, `kill_session` (Detached path) | `"attach_failed"` or `"kill_failed"` depending on op | Session-host PID dead at operation time |
+| `SpawnFailed` | `spawn_session` | `"spawn_failed"` | OS process spawn failure (from spawner) |
+| `SidecarWriteFailed` | `spawn_session` | `"sidecar_write_failed"` | Sidecar write failed after OS process spawned; orphan-kill protocol runs before this error surfaces |
+| `SessionIdCollision` | `spawn_session` | `"session_id_collision"` | UUID v4 collision in registry; astronomically rare; do not auto-retry |
+| `SessionHostDead` (attach-path) | `attach_session` | `"attach_failed"` | Session-host PID dead when daemon attempts attach |
+| `SessionHostDead` (kill-path) | `kill_session` | `"kill_failed"` | Session-host PID dead when daemon attempts kill; see `session_error_to_code(Op, &SessionError)` |
 | `InvalidSessionName` | `rename_session` | `"rename_failed"` | Empty name or name exceeding length limit |
-| `Io` | Any | `"invalid_request"` | Unexpected I/O error; code chosen as the nearest generic failure code |
+| `Io` | Any | `"invalid_request"` | Unexpected I/O error; nearest generic failure code |
 
 #### IPC handler pattern (mandatory)
 
 ```rust
+/// The operation context passed to `session_error_to_code` so that
+/// `SessionHostDead` can map to the correct user-visible code.
+/// Each variant corresponds to one IPC lifecycle request kind.
+#[derive(Debug, Clone, Copy)]
+pub enum IpcOp {
+    Spawn,
+    Kill,
+    Attach,
+    Detach,
+    Rename,
+    KeyInput,
+    Resize,
+}
+
+/// Maps a SessionError to its v1A IPC error code.
+/// The `op` context is required to distinguish `SessionHostDead` on the
+/// kill-path (`"kill_failed"`) from the attach-path (`"attach_failed"`).
+/// This function is EXHAUSTIVE over the SessionError enum — the compiler
+/// enforces coverage. Every arm must match.
+fn session_error_to_code(op: IpcOp, e: &SessionError) -> &'static str {
+    match e {
+        SessionError::SessionNotFound { .. }     => "session_not_found",
+        SessionError::SpawnFailed { .. }          => "spawn_failed",
+        SessionError::SidecarWriteFailed { .. }   => "sidecar_write_failed",
+        SessionError::SessionIdCollision { .. }   => "session_id_collision",
+        SessionError::SessionHostDead { .. } => match op {
+            IpcOp::Kill               => "kill_failed",
+            _                         => "attach_failed",
+        },
+        SessionError::InvalidSessionName { .. }  => "rename_failed",
+        SessionError::Io(_)                       => "invalid_request",
+    }
+}
+
 // In the per-client IPC message handler task:
 match msg {
     ClientToServer::SpawnSession { recipe } => {
@@ -414,7 +463,7 @@ match msg {
             Err(e) => {
                 // MUST NOT swallow — send error to requesting client only:
                 let _ = client_tx.send(ServerToClient::Error {
-                    code: session_error_to_code(&e).to_string(),
+                    code: session_error_to_code(IpcOp::Spawn, &e).to_string(),
                     message: e.to_string(),
                 }).await;
             }
@@ -425,24 +474,24 @@ match msg {
             Ok(()) => { /* broker emits SessionStateChanged{Terminating} + SessionListUpdate */ }
             Err(e) => {
                 let _ = client_tx.send(ServerToClient::Error {
-                    code: session_error_to_code(&e).to_string(),
+                    code: session_error_to_code(IpcOp::Kill, &e).to_string(),
                     message: e.to_string(),
                 }).await;
             }
         }
     }
-    // … same pattern for AttachSession, RenameSession, KeyInput …
-}
-
-/// Maps a SessionError to its v1A IPC error code.
-fn session_error_to_code(e: &SessionError) -> &'static str {
-    match e {
-        SessionError::SessionNotFound { .. } => "session_not_found",
-        SessionError::SpawnFailed { .. }    => "spawn_failed",
-        SessionError::SessionHostDead { .. } => "attach_failed",
-        SessionError::InvalidSessionName { .. } => "rename_failed",
-        SessionError::Io(_) => "invalid_request",
+    ClientToServer::AttachSession { session_id } => {
+        match state.session_manager.lock().await.attach_session(&session_id).await {
+            Ok(()) => { /* broker streams ScrollbackChunk* + ScrollbackDumpComplete */ }
+            Err(e) => {
+                let _ = client_tx.send(ServerToClient::Error {
+                    code: session_error_to_code(IpcOp::Attach, &e).to_string(),
+                    message: e.to_string(),
+                }).await;
+            }
+        }
     }
+    // … same pattern for RenameSession (IpcOp::Rename), KeyInput (IpcOp::KeyInput) …
 }
 ```
 
@@ -665,8 +714,10 @@ pub enum DaemonToHost {
 pub enum HostToDaemon {
     /// One chunk of the scrollback dump stream.
     /// Sent in response to DaemonToHost::Attach. Multiple ScrollbackChunk messages are sent
-    /// followed by a single ScrollbackDumpComplete sentinel. The session-host pauses
-    /// live PtyBytes forwarding during the dump (see ADR-0010 §Interleaving).
+    /// followed by a single ScrollbackDumpComplete sentinel. The session-host resumes live
+    /// PtyBytes forwarding IMMEDIATELY after taking the vt100::Screen snapshot — it does NOT
+    /// pause during the dump transfer. Live PtyBytes continue to arrive during the dump; the
+    /// TUI buffers them and replays after ScrollbackDumpComplete (I3-003 / ADR-0010 §Interleaving).
     /// `ScrollbackDump` (single-message form) is RETIRED; use ScrollbackChunk* + Complete.
     ScrollbackChunk {
         /// Serialized vt100::Screen cells for this chunk: row-major, each cell is
@@ -694,7 +745,9 @@ pub enum HostToDaemon {
     /// Session state changed (child exited, etc.).
     /// I3-009: extended with optional degraded_env field. Serde default = None for
     /// backward-compat with session-hosts that don't populate this field.
-    #[serde(default)]
+    /// NOTE: #[serde(default)] belongs at the FIELD level only (not variant level);
+    /// the field-level attribute on degraded_env below is the correct and sufficient
+    /// mechanism for backward-compat deserialization (S-P7-001 fix).
     StateChanged {
         new_state: SessionState,
         /// Missing critical env vars detected at startup (e.g., ["HOME", "PATH"]).
@@ -709,7 +762,7 @@ pub enum HostToDaemon {
     PtyReset,
 }
 
-// C5-002 (SS-ipc.md v1.14.0): SerializedCell and SerializedColor are defined in
+// C5-002 (SS-ipc.md v1.15.0): SerializedCell and SerializedColor are defined in
 // monocle-ipc (crate::ipc::SerializedCell / crate::ipc::SerializedColor) so both
 // monocle-session-host (writer) and monocle-tui (reader) share the type without a
 // cross-binary dependency. The canonical definition with full field documentation
@@ -840,8 +893,11 @@ tokio::select! {
     }
     Some(msg) = daemon_conn.recv() => match msg {
         DaemonToHost::Attach => {
-            // Snapshot vt100::Screen as styled cells, pause PtyBytes, stream chunks,
-            // send ScrollbackDumpComplete (see §Screen-state transfer on Attach).
+            // Snapshot vt100::Screen as styled cells; resume live PtyBytes IMMEDIATELY
+            // (do NOT pause); stream ScrollbackChunk* messages; send ScrollbackDumpComplete
+            // (see §Screen-state transfer on Attach, I3-003, ADR-0010 §Interleaving).
+            // The TUI buffers live PtyBytes received during the dump and replays them
+            // after ScrollbackDumpComplete.
             stream_scrollback_dump_chunked().await;
         }
         DaemonToHost::KeyInput { bytes } => { pty_writer.write_all(&bytes).await?; }
@@ -1111,6 +1167,42 @@ Daemon removes stale socket files during GC in re-discovery (alongside sidecar d
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.7.0
+
+**Pass-7 architecture findings — I-P7-001/I-P7-002/I-P7-004/S-P7-001** (2026-06-03):
+
+- **I-P7-001 (SessionError taxonomy incomplete):** Added two missing variants to `SessionError`:
+  `SidecarWriteFailed { path, reason }` (maps to `"sidecar_write_failed"`) and
+  `SessionIdCollision { session_id }` (maps to `"session_id_collision"`). Both are
+  spawn-path failures referenced by BC-2.08.001 EC-151 and EC-152. Distinct codes are used
+  rather than collapsing to `"spawn_failed"` because they carry distinct user diagnostics:
+  a sidecar I/O failure vs. a UUID v4 registry collision. The SS-ipc.md taxonomy is updated
+  in v1.15.0 to add both codes to the closed error-code set. Added variant rows to the
+  mapping table. `session_error_to_code()` is now exhaustive over all 7 variants (compiler
+  enforced via exhaustive match).
+- **I-P7-002 (kill_failed dead code):** Made `session_error_to_code` op-aware. Signature
+  changed to `session_error_to_code(op: IpcOp, e: &SessionError)`. `IpcOp` enum added
+  (Spawn / Kill / Attach / Detach / Rename / KeyInput / Resize). `SessionHostDead` now maps
+  to `"kill_failed"` when `op == IpcOp::Kill` and `"attach_failed"` for all other ops.
+  The mapping table updated: `SessionHostDead` split into two rows (attach-path and kill-path).
+  `kill_failed` is now reachable; its previous dead-code status was a silent semantic error
+  (kill failures surfaced as the misleading `"attach_failed"` code). All call sites updated
+  to pass the `IpcOp` context (SpawnSession, KillSession, AttachSession arms shown).
+- **I-P7-004 (retired pause-during-dump survivors):** Fixed two positions carrying the
+  retired pause-during-dump model:
+  (1) `HostToDaemon::ScrollbackChunk` doc-comment: rewritten from "session-host pauses live
+  PtyBytes during the dump" to "session-host resumes live PtyBytes IMMEDIATELY after snapshot;
+  does NOT pause; TUI buffers live bytes during dump and replays after Complete (I3-003)."
+  (2) Event-loop Attach arm comment: rewritten from "pause PtyBytes, stream chunks" to
+  "resume live PtyBytes IMMEDIATELY; do NOT pause; stream ScrollbackChunk*; TUI buffers
+  live PtyBytes during dump (I3-003)." Both positions now consistently reference I3-003 and
+  ADR-0010 §Interleaving.
+- **S-P7-001 (spurious variant-level #[serde(default)]):** Removed `#[serde(default)]`
+  from the `HostToDaemon::StateChanged` ENUM VARIANT. The attribute is invalid at enum
+  variant level; serde `default` is field/container-level only. The field-level
+  `#[serde(default)]` on `degraded_env` (which was already present) is the correct and
+  sufficient mechanism for backward-compatible deserialization. Clarifying comment added.
 
 ## §Trace v1.6.0
 

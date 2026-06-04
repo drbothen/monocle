@@ -106,8 +106,8 @@ SS-forward-compatibility:
 
 SS-ipc:
   path: specs/architecture/SS-ipc.md
-  current_version: "1.14.0"
-  last_bump_commit: "[Pass-6 C6-001 — ServerToClient::Error variant added (13th variant); v1A error code taxonomy; no-silent-failure invariant; SpawnSession dangling SS-08 §Error handling reference resolved]"
+  current_version: "1.15.0"
+  last_bump_commit: "[Pass-7 I-P7-001/I-P7-002/I-P7-003 — sidecar_write_failed + session_id_collision codes added; kill_failed made reachable via op-aware IpcOp mapping; spawn_ipc_reader IpcRead wrapper fixes ServerToClient::Disconnected non-variant]"
   last_bump_date: "2026-06-03"
 
 SS-permissions-phase1:
@@ -124,8 +124,8 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "1.6.0"
-  last_bump_commit: "[Pass-6 C6-001(b) — §Error handling section added; SessionError taxonomy + SessionError→ServerToClient::Error mapping table + IPC handler pattern + KeyInput/ResizePane special rules]"
+  current_version: "1.7.0"
+  last_bump_commit: "[Pass-7 I-P7-001/I-P7-002/I-P7-004/S-P7-001 — SidecarWriteFailed+SessionIdCollision variants added; IpcOp op-aware session_error_to_code (kill_failed reachable); pause-during-dump stale comments fixed; spurious variant-level #[serde(default)] removed]"
   last_bump_date: "2026-06-03"
 
 SS-embedded-pty:
@@ -204,8 +204,8 @@ ARCH-INDEX:
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.38"
-  last_bump_commit: "[Adversarial Pass 4 resolution D-245 2026-06-03 — Pass-4 ScrollbackDump+buffer-256 propagation residue cleared; all findings resolved]"
+  current_version: "1.39"
+  last_bump_commit: "[Pass-7 S-P7-003 — BC-2.05.010 H1 title sync +AttachSession (7 variants); BC-INDEX v1.38→v1.39]" # version-pin-historical: changelog description of bump, not a live pin
   last_bump_date: "2026-06-03"
 
 STORY-INDEX:
@@ -731,8 +731,8 @@ BC-2.05.009:
 
 BC-2.05.010:
   path: specs/behavioral-contracts/ss-05/BC-2.05.010.md
-  current_version: "1.3.0"
-  last_bump_commit: "[Pass-6 C6-001 — error codes aligned to SS-ipc v1.14.0 taxonomy (spawn_failed/session_not_found/attach_failed/kill_failed/rename_failed/invalid_request)]"
+  current_version: "1.4.0"
+  last_bump_commit: "[Pass-7 S-P7-003 — H1 title +AttachSession = 7 variants; BC-INDEX v1.39 title sync]"
   last_bump_date: "2026-06-03"
 
 BC-2.05.011:
@@ -803,8 +803,8 @@ BC-2.09.001:
 
 BC-2.09.002:
   path: specs/behavioral-contracts/ss-09/BC-2.09.002.md
-  current_version: "1.0.0"
-  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-09 EmbeddedPTY BC: PTY detach]"
+  current_version: "1.0.1"
+  last_bump_commit: "[Pass-7 S-P7-002 — stray removal_range field removed from BC-2.09.002 frontmatter]"
   last_bump_date: "2026-06-03"
 
 BC-2.09.003:

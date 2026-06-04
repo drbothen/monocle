@@ -284,7 +284,7 @@ can use it without importing daemon-internal types.
 > was retired in v1.4.0 (I6-002 fix) because it diverged from the SS-ipc.md canonical by
 > omitting the `degraded`/`degraded_reason` fields.
 >
-> **Current canonical field summary** (SS-ipc.md v1.14.0 §Supporting Types — authoritative):
+> **Current canonical field summary** (SS-ipc.md v1.15.0 §Supporting Types — authoritative):
 > `session_id`, `display_name`, `state`, `harness_id`, `project_root`, `cwd`,
 > `spawned_by_monocle: Option<bool>`, `started_at_micros: i64`, `pty_rows: u16`,
 > `pty_cols: u16`, `degraded: bool` (`#[serde(default)]`), `degraded_reason: Option<String>`
