@@ -6,7 +6,7 @@ title: "PTY Bytes Shared on Existing UDS IPC Channel (Option A)"
 status: accepted
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
-version: "1.4.0"
+version: "1.5.0"
 timestamp: 2026-06-03T00:00:00Z
 inputs:
   - research/domain-monocle-vision-synthesis.md
@@ -176,10 +176,13 @@ SessionStateChanged {
 /// current vt100::Screen as a series of ScrollbackChunk messages, terminated
 /// by a single ScrollbackDumpComplete sentinel.
 ///
-/// The TUI MUST NOT begin rendering PTY bytes for this session until it has
-/// received ScrollbackDumpComplete. After Complete, the TUI discards the
-/// dump and switches to streaming PtyOutput messages (the session-host
-/// resumes streaming from the live PTY after sending Complete).
+/// The session-host takes an atomic vt100::Screen snapshot on Attach, then
+/// IMMEDIATELY resumes forwarding live PtyBytes — it does NOT pause during
+/// the dump transfer. The TUI MUST buffer incoming PtyOutput for this session
+/// in pending_pty_bytes while dump_in_progress is true, replay the buffer
+/// through the freshly-reset parser after ScrollbackDumpComplete (in receipt
+/// order), then clear the buffer and process subsequent PtyOutput normally.
+/// See §Interleaving for the full snapshot-then-resume protocol.
 ///
 /// Framing invariant: each ScrollbackChunk message MUST fit within the
 /// 256 KiB per-message limit (BC-2.01.003). The session-host chunks rows
@@ -198,9 +201,13 @@ ScrollbackChunk {
 },
 
 /// Sentinel that terminates a scrollback dump sequence.
-/// After receiving this, the TUI applies the accumulated rows, resets
-/// pty_parsers[session_id], reconstructs the screen, and switches to live
-/// streaming (subsequent PtyOutput messages are processed normally).
+/// After receiving this, the TUI: (1) resets pty_parsers[session_id] and
+/// reconstructs the screen from the accumulated ScrollbackChunk rows;
+/// (2) replays pending_pty_bytes (PtyOutput buffered during the dump, per
+/// §Interleaving) through the freshly-reset parser in receipt order;
+/// (3) clears the buffer and sets dump_in_progress = false. Subsequent
+/// PtyOutput messages are processed normally. The session-host is NOT
+/// paused during the dump — live PtyBytes continue to flow; see §Interleaving.
 ScrollbackDumpComplete {
     session_id: String,
     /// Total number of chunks sent (for integrity validation on the TUI side).
@@ -399,6 +406,38 @@ session ring, not any TUI client. Specific BC-2.05.009 edits required:
 - Extends: SS-ipc.md §Message Types (new variants documented in SS-05 delta).
 - Requires: SS-08 Session Manager (session-host proxy that posts to per-session PTY channel).
 - Pre-gate benchmark deliverable: routes to `vsdd-factory:performance-engineer`.
+
+## §Trace v1.5.0
+
+**I-P9-001 — Pass-9 I3-003 propagation residue: retired pause-during-dump model removed from variant doc-comments** (2026-06-03):
+
+- **ScrollbackChunk doc-comment (lines ~179-182):** The doc-comment carried the RETIRED
+  pause-during-dump / wait-to-render model: "The TUI MUST NOT begin rendering PTY bytes for
+  this session until it has received ScrollbackDumpComplete. After Complete, the TUI discards
+  the dump and switches to streaming PtyOutput messages (the session-host resumes streaming
+  from the live PTY after sending Complete)." This contradicted ADR-0010 §Interleaving's own
+  canonical snapshot-then-resume protocol (lines ~256-297) and SS-ipc.md §286-318.
+  Rewritten to: session-host takes atomic snapshot then IMMEDIATELY resumes live PtyBytes (no
+  pause); TUI MUST buffer incoming PtyOutput in pending_pty_bytes while dump_in_progress is
+  true; replay buffer through freshly-reset parser after ScrollbackDumpComplete in receipt
+  order; then clear buffer and process normally. Cross-reference to §Interleaving added.
+- **ScrollbackDumpComplete doc-comment (lines ~200-203):** The doc-comment described only
+  "applies the accumulated rows, resets, reconstructs, switches to live streaming" — omitting
+  the mandatory pending_pty_bytes replay step and implicitly suggesting the session-host was
+  paused (no mention of buffered live bytes). Rewritten to the three-step TUI procedure:
+  (1) reset parser and reconstruct from snapshot rows; (2) replay pending_pty_bytes through
+  freshly-reset parser in receipt order; (3) clear buffer and set dump_in_progress = false.
+  Explicit note added: session-host is NOT paused during the dump. Cross-reference to
+  §Interleaving added.
+- **Comprehensive sweep result:** All other architecture files inspected for normative
+  pause/wait-to-render survivors. SS-session-manager.md lines ~717-720 and ~793 already use
+  correct "IMMEDIATELY resumes" language. SS-daemon-wiring-v2-delta.md lines ~455 and ~561
+  correctly describe the new protocol in context of the I3-003 fix narrative (legitimate).
+  SS-session-manager.md line ~980 "wait up to 5s for ScrollbackDumpComplete" is the daemon
+  attach-handshake timeout (operational step, not a rendering pause — legitimate).
+  SS-engine-module.md line ~448 "paused awaiting user decision" is unrelated (permission
+  overlay state). SS-daemon-wiring-impl.md line ~1389 "pause before writing body" is HTTP
+  testing prose, unrelated. I-P9-001 confirmed as the only live normative survivor.
 
 ## §Trace v1.4.0
 

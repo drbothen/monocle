@@ -182,8 +182,8 @@ ADR-0009:
 
 ADR-0010:
   path: specs/architecture/adr/ADR-0010-pty-bytes-over-shared-uds-ipc.md
-  current_version: "1.4.0"
-  last_bump_commit: "[Pass-5 I5-002 — §Throughput sizing typical/max per-message distinction; 4096-byte assumption retired; self-consistent with MAX_MESSAGE_BYTES 256 KiB]"
+  current_version: "1.5.0"
+  last_bump_commit: "[Pass-9 I-P9-001 — ScrollbackChunk/ScrollbackDumpComplete doc-comments rewritten from RETIRED pause-during-dump model to canonical snapshot-then-resume; sole normative survivor of I3-003 propagation sweep]"
   last_bump_date: "2026-06-03"
 
 ADR-0011:
@@ -228,8 +228,8 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.14"
-  last_bump_commit: "[Pass-8 S-P8-001 — HS-EXP-015 input-class count 5→6 (ResizePane now classified as independent input class)]"
+  current_version: "1.15"
+  last_bump_commit: "[Pass-9 S-P9-001 — HS-EXP-014 stale schema v2 label corrected to schema v3 (schema_version: 3) per SS-session-manager v1.7.0]"
   last_bump_date: "2026-06-03"
 
 nfr-catalog:

@@ -1,7 +1,7 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.14"
+version: "1.15"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:45:00Z
@@ -160,6 +160,13 @@ Phase 4 holdout evaluation MUST evaluate ALL holdout scenarios:
 **Bump:** 1.5 → 1.6.
 **Scope:** `traces_to:` field: `STORY-INDEX.md v4.7` → `STORY-INDEX.md v5.20` (Option 1 per ADR-0007 §Decision; EVAL-INDEX is an active INDEX document; its traces_to must reflect canonical current STORY-INDEX version).
 **SE-16d PASS:** 2026-05-30 >= 2026-05-30 (patch; no normative behavioral change).
+
+## §Trace v1.15 — Pass-9 S-P9-001: HS-EXP-014 stale schema v2 label corrected to v3 (2026-06-03)
+
+**Bump:** 1.14 → 1.15.
+**Scope:** HS-EXP-014.md cosmetic stale-label fix only. No Scenario Index table, BC Coverage Traceability table, Wave Coverage Summary rows, or behavioral semantics changed.
+**Correction:** Two occurrences of "schema v2 per SS-session-manager v1.7.0" updated to "schema v3 (`schema_version: 3`) per SS-session-manager v1.7.0" — in the FAIL criterion and in the C2-004 modification note. The `hook_settings_path` absence assertion is true in both v2 and v3; the stale label was purely cosmetic. SS-session-manager v1.7.0 canonically defines `schema_version: 3` (v3 added `kill_deadline_unix_ms`).
+**SE-16d PASS:** 2026-06-03 >= 2026-06-03 (same-day cosmetic fix; no holdout scenario behavioral change).
 
 ## §Trace v1.14 — Pass-8 S-P8-001: HS-EXP-015 input-class count normalized to 6 (2026-06-03)
 
