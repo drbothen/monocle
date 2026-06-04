@@ -142,6 +142,10 @@ all workspace dependencies.
 
 ## Version-pin-registry.yaml entries (state-manager action required)
 
+<!-- version-pin-historical: HISTORICAL — authoring-time registry action, completed at D-239/D-240;
+     current pins live in version-pin-registry.yaml. The block below is preserved as an audit trail
+     of the initial registration instructions; do NOT act on the version literals listed here. -->
+
 State-manager MUST add the following entries to `version-pin-registry.yaml` in the same
 commit that creates the `monocle-session-host` crate and bumps SS-deps-pin-manifest.md:
 

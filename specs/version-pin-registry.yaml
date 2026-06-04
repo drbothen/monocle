@@ -124,9 +124,9 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "1.7.0"
-  last_bump_commit: "[Pass-7 I-P7-001/I-P7-002/I-P7-004/S-P7-001 — SidecarWriteFailed+SessionIdCollision variants added; IpcOp op-aware session_error_to_code (kill_failed reachable); pause-during-dump stale comments fixed; spurious variant-level #[serde(default)] removed]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.7.1"
+  last_bump_commit: "[Pass-10 I10-001 — re-attach wording corrected to ClientToServer::AttachSession in §Screen-state-transfer step 5a and §PTY-reader-thread step 4]"
+  last_bump_date: "2026-06-04"
 
 SS-embedded-pty:
   path: specs/architecture/SS-embedded-pty.md
@@ -229,7 +229,7 @@ L2-INDEX:
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
   current_version: "1.15"
-  last_bump_commit: "[Pass-9 S-P9-001 — HS-EXP-014 stale schema v2 label corrected to schema v3 (schema_version: 3) per SS-session-manager v1.7.0]"
+  last_bump_commit: "[Pass-9 S-P9-001 — HS-EXP-014 stale schema v2 label corrected to schema v3 (schema_version: 3) per SS-session-manager v1.7.0]" # version-pin-historical: historical record of what Pass-9 changed; v1.7.0 is the spec version at time of that fix
   last_bump_date: "2026-06-03"
 
 nfr-catalog:
@@ -731,9 +731,9 @@ BC-2.05.009:
 
 BC-2.05.010:
   path: specs/behavioral-contracts/ss-05/BC-2.05.010.md
-  current_version: "1.4.0"
-  last_bump_commit: "[Pass-7 S-P7-003 — H1 title +AttachSession = 7 variants; BC-INDEX v1.39 title sync]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.5.0"
+  last_bump_commit: "[Pass-10 S10-002 — success POs now name ordered SessionStateChanged→SessionListUpdate emission sequence]"
+  last_bump_date: "2026-06-04"
 
 BC-2.05.011:
   path: specs/behavioral-contracts/ss-05/BC-2.05.011.md

@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "1.7.0"
+version: "1.7.1"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -802,8 +802,10 @@ PTY bytes.
 
 5. **TUI receiver protocol:** On receipt of `ScrollbackDumpComplete`, the TUI MUST:
    a. Validate that `total_chunks` matches the number of `ScrollbackChunk` messages received.
-      If mismatch → log WARN; send a re-attach request (re-sends `SpawnSession`'s Attach)
-      to restart the dump.
+      If mismatch → log WARN; send `ClientToServer::AttachSession { session_id }` to the
+      daemon to trigger a fresh scrollback dump (TUI MUST NOT send `DaemonToHost::Attach`
+      directly — that is a daemon→session-host message; per BC-2.05.011 Invariant 6 and
+      SS-ipc.md §ClientToServer::AttachSession).
    b. Reset the parser: `pty_parsers[session_id] = vt100::Parser::new(pty_rows, pty_cols, SCROLLBACK_ROWS)`.
    c. Reconstruct the screen using the **`scrollback-as-bytes` path** (the single canonical
       reconstruction path for vt100 0.16). vt100 0.16 does NOT expose `set_screen()`,
@@ -943,7 +945,7 @@ OOM that kills the channel sender), the session-host MUST:
 1. Detect the drop (sender returns `Err(SendError)` if the receiver is gone).
 2. Immediately send `HostToDaemon::PtyReset { session_id }` to the daemon.
 3. The daemon propagates `ServerToClient::PtyReset { session_id }` to all TUI clients.
-4. Each TUI client, on receiving `PtyReset`, calls `pty_parsers[session_id] = vt100::Parser::new(rows, cols, scrollback_rows)` (fresh parser) and re-attaches to the session-host (sends a fresh `Attach` to trigger a new `ScrollbackChunk*` + `ScrollbackDumpComplete` sequence).
+4. Each TUI client, on receiving `PtyReset`, calls `pty_parsers[session_id] = vt100::Parser::new(rows, cols, scrollback_rows)` (fresh parser) and sends `ClientToServer::AttachSession { session_id }` to the daemon (NOT `DaemonToHost::Attach` directly — the TUI cannot send daemon→session-host messages; see SS-ipc.md §ClientToServer::AttachSession and C6-002 in SS-daemon-wiring-v2-delta §3) to trigger a new `ScrollbackChunk*` + `ScrollbackDumpComplete` sequence.
 
 This reset protocol ensures terminal corruption is NEVER silent. It is the mandatory
 fallback; the primary design (backpressure via `.send().await`) makes it unreachable
@@ -1167,6 +1169,21 @@ Daemon removes stale socket files during GC in re-discovery (alongside sidecar d
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.7.1
+
+**I10-001 — re-attach wording correction** (2026-06-04):
+
+- **Location A (§Screen-state transfer on Attach, step 5a):** Replaced incorrect
+  `SpawnSession`'s Attach re-send wording with the canonical `ClientToServer::AttachSession
+  { session_id }` mechanism and explicit prohibition against sending `DaemonToHost::Attach`
+  from the TUI. Phrasing now matches BC-2.05.011 Invariant 6 / PC-3a and SS-ipc.md
+  §ClientToServer::AttachSession.
+- **Location B (§PTY reader thread, Forced parser-reset protocol, step 4):** Replaced
+  ambiguous "sends a fresh `Attach`" phrasing with explicit `ClientToServer::AttachSession
+  { session_id }` and note that `DaemonToHost::Attach` is a daemon→session-host message
+  the TUI cannot send directly. Cross-reference to SS-daemon-wiring-v2-delta §3 C6-002 added.
+- Semver: patch (v1.7.0 → v1.7.1) — normative wording correction; no behavioral change.
 
 ## §Trace v1.7.0
 

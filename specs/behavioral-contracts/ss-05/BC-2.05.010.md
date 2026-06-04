@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.0"
+version: "1.5.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:45:00Z
@@ -48,14 +48,22 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 
 1. `ClientToServer::SpawnSession { recipe: SpawnRecipe }` is received.
 2. Daemon calls `SessionManager::spawn_session(recipe, ...)` (BC-2.08.001).
-3. On success: `ServerToClient::SessionListUpdate` broadcast.
+3. On success: `ServerToClient::SessionStateChanged { session_id, new_state }` broadcast BEFORE
+   `ServerToClient::SessionListUpdate` broadcast (ordered pair, per-client FIFO, per BC-2.08.008
+   PC-3 / SS-daemon-wiring-v2-delta.md v1.5.0 §3b). The `SessionStateChanged` event reflects
+   the `Launching → Running` transition; the ordering is atomically guaranteed under the
+   `SessionManager` mutex hold into each client's per-client `mpsc::Sender`.
 4. On failure: `ServerToClient::Error { code: "spawn_failed", message: ... }` sent to the requesting client.
 
 ### KillSession
 
 1. `ClientToServer::KillSession { session_id: String }` is received.
 2. Daemon calls `SessionManager::kill_session(&session_id)` (BC-2.08.003).
-3. On success: `ServerToClient::SessionListUpdate` broadcast.
+3. On success: `ServerToClient::SessionStateChanged { session_id, new_state }` broadcast BEFORE
+   `ServerToClient::SessionListUpdate` broadcast (ordered pair, per-client FIFO, per BC-2.08.008
+   PC-3 / SS-daemon-wiring-v2-delta.md v1.5.0 §3b). The `SessionStateChanged` event reflects
+   the `Running → Terminating` transition (emitted immediately; `Terminating → Terminated`
+   follows when the session-host confirms exit per BC-2.08.003).
 4. On failure (not found): `ServerToClient::Error { code: "session_not_found", message: ... }`.
 
 ### KeyInput
@@ -75,7 +83,9 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 
 1. `ClientToServer::DetachSession { session_id: String }` is received.
 2. Daemon calls `SessionManager::detach_session(&session_id)` (BC-2.08.007).
-3. On success: `ServerToClient::SessionListUpdate` broadcast.
+3. On success: `ServerToClient::SessionStateChanged { session_id, new_state: Detached }` broadcast
+   BEFORE `ServerToClient::SessionListUpdate` broadcast (ordered pair, per-client FIFO, per
+   BC-2.08.008 PC-3 / SS-daemon-wiring-v2-delta.md v1.5.0 §3b).
 
 ### RenameSession
 
@@ -176,6 +186,29 @@ S-TBD — Implement new ClientToServer IPC variants and daemon routing (filled b
 ## VP Anchors
 
 VP-TBD — IPC variant routing integration tests (filled after VP creation)
+
+## §Trace v1.5.0
+
+**S10-002 — Add ordered SessionStateChanged→SessionListUpdate emission to SpawnSession-PC-3, KillSession-PC-3, DetachSession-PC-3** (2026-06-04):
+- S10-002 (Phase-1d Pass 10 SUGGESTION): SpawnSession PC-3, KillSession PC-3, and DetachSession
+  PC-3 stated only "On success: `ServerToClient::SessionListUpdate` broadcast", omitting the
+  required `SessionStateChanged` emission that precedes it for every state transition.
+- Per BC-2.08.008 PC-3 (verified): "`SessionStateChanged` is enqueued BEFORE `SessionListUpdate`
+  into each client's per-client FIFO channel … Both `.try_send()` calls are made while holding
+  the `SessionManager` mutex, into the same per-client `mpsc::Sender` in the correct sequence."
+  Per SS-daemon-wiring-v2-delta.md v1.5.0 §3b emission table: spawn/kill/detach each trigger
+  the ordered pair (SessionStateChanged then SessionListUpdate).
+- **SpawnSession PC-3**: updated to state `SessionStateChanged { session_id, new_state }` BEFORE
+  `SessionListUpdate`; notes the `Launching → Running` transition and the atomicity window.
+- **KillSession PC-3**: updated to state `SessionStateChanged { session_id, new_state }` BEFORE
+  `SessionListUpdate`; notes the `Running → Terminating` immediate transition; references
+  BC-2.08.003 for the subsequent `Terminating → Terminated` transition.
+- **DetachSession PC-3**: updated to state `SessionStateChanged { session_id, new_state: Detached }`
+  BEFORE `SessionListUpdate`.
+- AttachSession PC-3 already specified the ordered pair (added in v1.2.0); no change needed.
+- RenameSession PC-3 correctly omits `SessionStateChanged` per BC-2.08.008 PC-4a (rename is NOT
+  a `SessionState` transition); no change needed.
+- BC-2.08.008 PC-3 cross-reference verified against BC-2.08.008 before citation.
 
 ## §Trace v1.4.0
 

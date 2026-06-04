@@ -85,7 +85,7 @@ fallback ONLY. Using tmux or abduco as the primary session-host mechanism would 
 hard external runtime dependency (tmux/abduco must be installed), constrain the deployment
 environments monocle targets (minimal containers, CI, systems without tmux), and violate the
 no-tmux-as-primary constraint from the product brief. The human explicitly required native
-native as default with external supervisor only as architect-surfaced fallback.
+as default with external supervisor only as architect-surfaced fallback.
 
 **Verdict: tmux/abduco remain documented fallbacks; not the v1A primary.**
 
