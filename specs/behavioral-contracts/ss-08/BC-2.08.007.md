@@ -7,7 +7,7 @@ producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md]
-input-hash: "71a7d29"
+input-hash: "81ce91a"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-08
@@ -133,7 +133,7 @@ background. The TUI can re-attach at any time.
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — detach/attach are explicitly named session lifecycle operations in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager `attach_session()`, `detach_session()`) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v1.7.0 §Public API (attach_session, detach_session signatures); §Per-session UDS protocol (DaemonToHost::Attach/Detach, HostToDaemon::ScrollbackChunk/ScrollbackDumpComplete); §Screen-state transfer on Attach; §Re-discovery state handling (I3-005 Detached preservation across restart); SS-daemon-wiring-v2-delta.md v1.4.0 §3b (SessionStateChanged{Running} before SessionListUpdate on attach) |
+| Architecture Source | SS-session-manager.md v1.7.0 §Public API (attach_session, detach_session signatures); §Per-session UDS protocol (DaemonToHost::Attach/Detach, HostToDaemon::ScrollbackChunk/ScrollbackDumpComplete); §Screen-state transfer on Attach; §Re-discovery state handling (I3-005 Detached preservation across restart); SS-daemon-wiring-v2-delta.md v1.5.0 §3b (SessionStateChanged{Running} before SessionListUpdate on attach) |
 | Test Name | test_BC_2_08_007_attach_receives_scrollback_detach_keeps_session_alive |
 
 ## Related BCs

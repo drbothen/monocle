@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "daemon-wiring-v2-delta"
 subsystem: SS-04
-version: "1.4.0"
+version: "1.5.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -126,6 +126,19 @@ to a TUI client that connects after the daemon starts.
 
 ### 3. IPC handler — new ClientToServer variants
 
+> **CANONICAL PATTERN LOCK (P8-STRUCTURAL):** The error-routing discipline in this handler
+> MUST match **SS-session-manager.md §Error handling** (lines ~443–507), which is the single
+> authoritative specification for `IpcOp`, `session_error_to_code`, the per-op error-code
+> mapping table, the KeyInput special rule, and the ResizePane special rule. Any future
+> change to the canonical pattern in SS-session-manager.md §Error handling MUST propagate
+> here in the same edit burst. Do NOT maintain a locally-diverging copy of the logic.
+>
+> **Import note:** `IpcOp` and `session_error_to_code` are defined in
+> `monocle-session-manager` (or `monocle-runtime::session_manager`) per SS-session-manager.md
+> §IPC handler pattern. The implementing crate must `use` them. All nine `ClientToServer`
+> arms MUST follow the canonical no-silent-failure discipline defined there — no bare `?`
+> that lets a `SessionError` escape to the per-client task boundary.
+
 The IPC client message handler (`monocle-runtime/src/ipc_handler.rs` or equivalent) gains
 branches for the new `ClientToServer` variants from ADR-0010:
 
@@ -142,7 +155,7 @@ ClientToServer::SpawnSession { recipe } => {
         }
         Err(e) => {
             let _ = client_tx.send(ServerToClient::Error {
-                code: "spawn_failed".to_string(),
+                code: session_error_to_code(IpcOp::Spawn, &e).to_string(),
                 message: e.to_string(),
             }).await;
         }
@@ -150,13 +163,14 @@ ClientToServer::SpawnSession { recipe } => {
 }
 ClientToServer::KillSession { session_id } => {
     // C6-001: no-silent-failure — map SessionError to ServerToClient::Error
+    // IpcOp::Kill is required so SessionHostDead maps to "kill_failed" (not "attach_failed").
     match state.session_manager.lock().await.kill_session(&session_id).await {
         Ok(()) => {
             // kill_session() emits SessionStateChanged{Terminating} then SessionListUpdate.
         }
         Err(e) => {
             let _ = client_tx.send(ServerToClient::Error {
-                code: session_error_to_code(&e).to_string(),
+                code: session_error_to_code(IpcOp::Kill, &e).to_string(),
                 message: e.to_string(),
             }).await;
         }
@@ -175,29 +189,85 @@ ClientToServer::AttachSession { session_id } => {
         Err(e) => {
             // C6-001: no-silent-failure — send Error to requesting client
             let _ = client_tx.send(ServerToClient::Error {
-                code: session_error_to_code(&e).to_string(),
+                code: session_error_to_code(IpcOp::Attach, &e).to_string(),
                 message: e.to_string(),
             }).await;
         }
     }
 }
 ClientToServer::KeyInput { session_id, bytes } => {
-    state.session_manager.lock().await.send_key_input(&session_id, bytes).await?;
+    // KeyInput special rule (SS-session-manager §Error handling): fire-and-forget on success
+    // (no reply), but errors MUST NOT be dropped — SessionError is routed to
+    // ServerToClient::Error. Bare `?` is forbidden (silently drops the connection).
+    match state.session_manager.lock().await.send_key_input(&session_id, bytes).await {
+        Ok(()) => { /* no acknowledgement sent on success — fire-and-forget */ }
+        Err(e) => {
+            let _ = client_tx.send(ServerToClient::Error {
+                code: session_error_to_code(IpcOp::KeyInput, &e).to_string(),
+                message: e.to_string(),
+            }).await;
+        }
+    }
 }
 ClientToServer::ResizePane { session_id, rows, cols } => {
-    state.session_manager.lock().await.resize_session(&session_id, rows, cols).await?;
+    // ResizePane special rule (SS-session-manager §Error handling): resize errors are
+    // benign races (session may have terminated between TUI send and daemon processing).
+    // Do NOT send ServerToClient::Error; do NOT propagate with `?`. Log at WARN and
+    // continue — the per-client task MUST remain alive.
+    if let Err(e) = state.session_manager.lock().await
+        .resize_session(&session_id, rows, cols).await
+    {
+        tracing::warn!(
+            session_id = %session_id,
+            error = %e,
+            "resize_session failed (benign race — session may have terminated); ignoring"
+        );
+    }
 }
 ClientToServer::DetachSession { session_id } => {
-    state.session_manager.lock().await.detach_session(&session_id).await?;
     // detach_session() emits SessionStateChanged{Detached} then SessionListUpdate.
+    match state.session_manager.lock().await.detach_session(&session_id).await {
+        Ok(()) => { /* SessionStateChanged{Detached} + SessionListUpdate emitted by detach_session */ }
+        Err(e) => {
+            let _ = client_tx.send(ServerToClient::Error {
+                code: session_error_to_code(IpcOp::Detach, &e).to_string(),
+                message: e.to_string(),
+            }).await;
+        }
+    }
 }
 ClientToServer::RenameSession { session_id, new_name } => {
-    state.session_manager.lock().await.rename_session(&session_id, new_name).await?;
     // rename_session() emits SessionListUpdate ONLY (rename is not a state transition;
     // no SessionStateChanged is emitted — see C3-003 fix in SS-session-manager).
+    match state.session_manager.lock().await.rename_session(&session_id, new_name).await {
+        Ok(()) => { /* SessionListUpdate emitted by rename_session */ }
+        Err(e) => {
+            let _ = client_tx.send(ServerToClient::Error {
+                code: session_error_to_code(IpcOp::Rename, &e).to_string(),
+                message: e.to_string(),
+            }).await;
+        }
+    }
 }
 // ... existing variants unchanged ...
 ```
+
+#### §3 per-arm error-handling summary (all nine ClientToServer arms)
+
+The following table is authoritative for this handler. No arm may use bare `?` that allows
+a `SessionError` to escape to the per-client task boundary.
+
+| Arm | Error routing | Op context | Notes |
+|-----|---------------|------------|-------|
+| `SpawnSession` | `ServerToClient::Error` | `IpcOp::Spawn` | Lifecycle op — must surface failure to requesting client |
+| `KillSession` | `ServerToClient::Error` | `IpcOp::Kill` | `IpcOp::Kill` required: `SessionHostDead` → `"kill_failed"` not `"attach_failed"` |
+| `AttachSession` | `ServerToClient::Error` | `IpcOp::Attach` | `IpcOp::Attach` required: `SessionHostDead` → `"attach_failed"` |
+| `KeyInput` | `ServerToClient::Error` | `IpcOp::KeyInput` | Fire-and-forget on success; errors MUST still be surfaced (special rule) |
+| `ResizePane` | WARN-log-and-continue | `IpcOp::Resize` | Benign race; NO `ServerToClient::Error`; per-client task MUST stay alive |
+| `DetachSession` | `ServerToClient::Error` | `IpcOp::Detach` | Lifecycle op |
+| `RenameSession` | `ServerToClient::Error` | `IpcOp::Rename` | Rename emits `SessionListUpdate` only (not `SessionStateChanged`) |
+| `PermissionDecision` | (existing — no change) | — | Oneshot channel; error path unchanged from D-235 |
+| `Ping` | (existing — no change) | — | Pong reply; no `SessionError` path |
 
 ### 3b. SessionStateChanged emission rule (C3-001 fix)
 
@@ -561,6 +631,42 @@ If no in-process SessionManager stub exists in D-235 (i.e., the stub was skeleta
 implementer creates `SessionManager` from scratch per SS-08.
 
 ---
+
+## §Trace v1.5.0
+
+**I-P8-001/I-P8-002/P8-STRUCTURAL — Pass-8 op-aware error signature + no-silent-failure for all arms** (2026-06-03):
+
+- **I-P8-001 — op-aware `session_error_to_code` signature propagated to all arms:** The `KillSession`
+  and `AttachSession` Err branches used the single-argument form `session_error_to_code(&e)`, which
+  does not exist in the canonical signature. The canonical signature is `session_error_to_code(op:
+  IpcOp, e: &SessionError)` (SS-session-manager.md v1.7.0 §Error handling, lines ~443-456). The
+  single-arg form made `SessionHostDead` → `"kill_failed"` unreachable on the kill path (it would
+  always fall through to `"attach_failed"` if it compiled at all). Fixed: `KillSession` Err branch
+  → `session_error_to_code(IpcOp::Kill, &e)`; `AttachSession` Err branch →
+  `session_error_to_code(IpcOp::Attach, &e)`. The `SpawnSession` Err branch was using a hardcoded
+  `"spawn_failed"` string literal instead of the function — corrected to
+  `session_error_to_code(IpcOp::Spawn, &e)` for consistency and exhaustiveness. An `IpcOp` import
+  note added to the §3 preamble.
+- **I-P8-002 — bare `?`-propagation eliminated from four arms:** `KeyInput`, `ResizePane`,
+  `DetachSession`, and `RenameSession` arms used `.await?`, which propagates `SessionError` out of
+  the per-client task (silently dropping the connection) instead of surfacing a structured error.
+  This violated BC-2.05.010 §KeyInput PC-4 / EC-281 / EC-283 and SS-session-manager §Error
+  handling. Fixed per canonical pattern:
+  - `KeyInput` → `match … { Ok(()) => {} Err(e) => client_tx.send(ServerToClient::Error { code:
+    session_error_to_code(IpcOp::KeyInput, &e), message }).await }`. Success = no reply
+    (fire-and-forget); errors MUST NOT be dropped.
+  - `DetachSession` → same match/Error pattern with `IpcOp::Detach`.
+  - `RenameSession` → same match/Error pattern with `IpcOp::Rename`.
+  - `ResizePane` → `if let Err(e) = … { tracing::warn!(…) }` — WARN-log-and-continue. No
+    `ServerToClient::Error` (benign race per ResizePane special rule). Per-client task stays alive.
+  All nine `ClientToServer` arms now follow the no-silent-failure discipline. No bare `?` escapes
+  a `SessionError` to the per-client task boundary.
+- **P8-STRUCTURAL — canonical-pattern lock note added:** A blockquote note at the top of §3
+  declares that the error-routing discipline MUST match SS-session-manager.md §Error handling and
+  that any future canonical-pattern change in SS-session-manager MUST propagate here in the same
+  edit burst. An IpcOp/session_error_to_code import note is included. A per-arm error-handling
+  summary table (all nine arms) is added immediately after the code block to make the exhaustive
+  discipline visible and reviewable without re-reading the full inline code.
 
 ## §Trace v1.4.0
 

@@ -13,7 +13,7 @@ inputs:
   - specs/product-brief.md
   - specs/research/embedded-pty-evaluation.md
   - semport/DISPOSITION-V2-CONTROL-CENTER-ROLLUP.md
-input-hash: "7e4f4f4"
+input-hash: "13e1215"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---

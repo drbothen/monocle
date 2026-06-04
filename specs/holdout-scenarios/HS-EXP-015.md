@@ -65,7 +65,7 @@ variant — there is no such variant. Mouse events are SGR-encoded by `mouse_eve
 
 ## Expected Outcome
 
-- All 5 input classes (printable, control, arrows, Kitty, SGR mouse, bracketed paste) result in
+- All 6 input classes (printable, control, arrows, Kitty, SGR mouse, bracketed paste) result in
   byte sequences delivered to session-host PTY stdin within 50ms of the TUI event injection.
 - Byte sequences match the canonical encoding per BC-2.09.002 Table of Input Classes.
 - Forwarding does not corrupt other PTY output arriving concurrently (no interleaving corruption).
@@ -88,15 +88,26 @@ absent for enhanced keys; adversarial flood drops any byte or delivers bytes out
 
 **NOT in any story AC:** The story implementing BC-2.09.002 will have ACs for individual input
 class forwarding. The stories implementing BC-2.09.003/004/005 will have ACs for SGR mouse, Kitty,
-and bracketed paste individually. This holdout tests **all five input classes in sequence within a
+and bracketed paste individually. This holdout tests **all six input classes in sequence within a
 single running EmbeddedTerminal session**, with a concurrent adversarial flood. The interaction
-between the five forwarding paths (particularly when Kitty encoding is enabled but SGR mouse events
+between the six forwarding paths (particularly when Kitty encoding is enabled but SGR mouse events
 also arrive) is not exercised by any single BC-specific AC, and the adversarial 100-keystroke flood
 tests the IPC channel's bounded ordering guarantee under load.
 
 ---
 
 ## §Trace
+
+### v1.2 — Pass-8 S-P8-001: Normalize input-class count to 6 (2026-06-03)
+
+- **S-P8-001:** Expected Outcome (line 68) said "All 5 input classes" while parenthetically
+  enumerating six distinct classes (printable, control, arrows, Kitty, SGR mouse, bracketed paste).
+  Satisfaction Criteria PASS (line 81) already correctly stated "All 6 input classes". The count
+  discrepancy was cosmetic — the enumerated set of six has always been six.
+- **Fix:** "All 5" → "All 6" in Expected Outcome. "all five input classes" → "all six input
+  classes" in the NOT-in-any-story-AC paragraph (two occurrences). Satisfaction Criteria line 81
+  confirmed correct at "All 6" — no change needed.
+- EVAL-INDEX bumped 1.13 → 1.14 for auditability.
 
 ### v1.1 — Pass-6 I6-001: Remove phantom MouseInput IPC variant (2026-06-03T23:45:00Z)
 

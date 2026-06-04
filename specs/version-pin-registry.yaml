@@ -142,8 +142,8 @@ SS-engine-module-v2-delta:
 
 SS-daemon-wiring-v2-delta:
   path: specs/architecture/SS-daemon-wiring-v2-delta.md
-  current_version: "1.4.0"
-  last_bump_commit: "[Pass-6 C6-001/C6-002/I6-002 — ClientToServer::ReAttach removed (never existed); error routing added to SpawnSession/KillSession/AttachSession arms; stale inline SessionSnapshot §4 retired → pointer to SS-ipc.md §Supporting Types]"
+  current_version: "1.5.0"
+  last_bump_commit: "[Pass-8 I-P8-001/I-P8-002/P8-STRUCTURAL — op-aware session_error_to_code(IpcOp,&e) propagated to all arms; bare ?-propagation replaced in KeyInput/DetachSession/RenameSession (→ServerToClient::Error) and ResizePane (→WARN-continue); canonical-pattern lock note + per-arm table added to §3]"
   last_bump_date: "2026-06-03"
 
 SS-deps-pin-manifest-v2-delta:
@@ -228,8 +228,8 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.13"
-  last_bump_commit: "[Pass-6 I6-001 — HS-EXP-015 MouseInput→KeyInput fix; EVAL-INDEX modified timestamp bump]"
+  current_version: "1.14"
+  last_bump_commit: "[Pass-8 S-P8-001 — HS-EXP-015 input-class count 5→6 (ResizePane now classified as independent input class)]"
   last_bump_date: "2026-06-03"
 
 nfr-catalog:

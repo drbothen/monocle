@@ -1,7 +1,7 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.13"
+version: "1.14"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:45:00Z
@@ -160,6 +160,16 @@ Phase 4 holdout evaluation MUST evaluate ALL holdout scenarios:
 **Bump:** 1.5 → 1.6.
 **Scope:** `traces_to:` field: `STORY-INDEX.md v4.7` → `STORY-INDEX.md v5.20` (Option 1 per ADR-0007 §Decision; EVAL-INDEX is an active INDEX document; its traces_to must reflect canonical current STORY-INDEX version).
 **SE-16d PASS:** 2026-05-30 >= 2026-05-30 (patch; no normative behavioral change).
+
+## §Trace v1.14 — Pass-8 S-P8-001: HS-EXP-015 input-class count normalized to 6 (2026-06-03)
+
+**Bump:** 1.13 → 1.14.
+**Scope:** HS-EXP-015 Expected Outcome corrected: "5 input classes" → "6 input classes" (cosmetic count
+drift; enumerated set was always six). Two further "all five" → "all six" occurrences fixed in the
+NOT-in-any-story-AC paragraph. Satisfaction Criteria PASS was already correct at "All 6". No Scenario
+Index, BC Coverage Traceability, or Wave Coverage Summary rows changed.
+See HS-EXP-015.md §Trace v1.2 for full detail.
+**SE-16d PASS:** 2026-06-03 >= 2026-06-03 (same-day cosmetic fix; no holdout scenario behavioral change).
 
 ## §Trace v1.13 — Pass-6 I6-001: HS-EXP-015 phantom MouseInput removal (2026-06-03T23:45:00Z)
 
