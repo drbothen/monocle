@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.1"
+version: "1.1.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -91,7 +91,7 @@ per-session worktree applies). The returned recipe is consumed by `SessionManage
 |----|-------------|-------------------|
 | EC-100 | `which::which("claude")` succeeds; `opts.ccr_base_url` is `None` | Returns `Ok(SpawnRecipe)` with `env = {"MONOCLE_SESSION_ID": opts.session_id}`; no `ANTHROPIC_BASE_URL` key in `recipe.env` |
 | EC-101 | `which::which("claude")` succeeds; `opts.ccr_base_url` is `Some("http://localhost:8080")` | Returns `Ok(SpawnRecipe)` with `env = {"MONOCLE_SESSION_ID": opts.session_id, "ANTHROPIC_BASE_URL": "http://localhost:8080"}`; see BC-2.03.006 |
-| EC-102 | `opts.project_root` is a path that exists on disk but is not a git repo | No error from `spawn_recipe()` — it uses `opts.project_root` as-is; session-host is spawned in that directory; git worktree validation (if required) is caller's responsibility |
+| EC-102 | `opts.worktree_root` resolves (via three-rule algorithm) to a path that exists on disk but is not a git repo (non-git project; three-rule fallback: `worktree_root = project_root`) | No error from `spawn_recipe()` — it uses `opts.worktree_root` as-is (which equals `opts.project_root` for non-git projects per the three-rule fallback); session-host is spawned in that directory; git worktree validation (if required) is caller's responsibility before passing `worktree_root` to `spawn_recipe()` |
 | EC-103 | `which::which("claude")` fails (binary not on PATH) | Returns `Err(EngineError::BinaryNotFound("claude".into()))` — see BC-2.03.007 |
 | EC-104 | `opts.hooks_settings_path` is non-UTF-8 | Returns `Err(EngineError::InvalidPath(...))` — see BC-2.03.007 (corrected: InvalidPath) |
 
@@ -109,7 +109,7 @@ per-session worktree applies). The returned recipe is consumed by `SessionManage
 
 | VP-NNN | Property | Proof Method |
 |--------|----------|-------------|
-| VP-TBD | `spawn_recipe()` returns `Ok(recipe)` with binary = `which("claude")`, args = `["--settings", path]`, `MONOCLE_SESSION_ID` in env, cwd = project_root | unit |
+| VP-TBD | `spawn_recipe()` returns `Ok(recipe)` with binary = `which("claude")`, args = `["--settings", path]`, `MONOCLE_SESSION_ID` in env, cwd = `opts.worktree_root` | unit |
 | VP-TBD | `MONOCLE_SESSION_ID` is always present in `recipe.env` regardless of CCR config | unit |
 | VP-TBD | `recipe.cwd` equals `opts.worktree_root` (not `opts.project_root`); for non-git projects the two are equal | unit |
 
@@ -144,6 +144,34 @@ S-TBD — Implement ClaudeCodeModule::spawn_recipe() with binary resolution, --s
 
 VP-TBD — spawn_recipe() happy-path unit tests (filled after VP creation)
 
+## §Trace v1.1.2
+
+**I13-001 + S13-001 — Complete worktree_root propagation (residual stale CWD-source locations)** (2026-06-04):
+- Context: This is the 3rd remediation pass for the I2-002 cwd = project_root → worktree_root
+  correction. Prior passes (v1.1.0, v1.1.1) each claimed completion but each missed one
+  location. This pass exhaustively grepped every `project_root` and `cwd` occurrence and
+  classified each before editing.
+- I13-001 (IMPORTANT): VP table row 1 (line ~112) still asserted `cwd = project_root`.
+  Fixed: changed to `cwd = \`opts.worktree_root\`` — now consistent with VP row 3, PC-1,
+  Invariant 4, and Description.
+- S13-001 (SUGGESTION): EC-102 described the CWD source as "it uses `opts.project_root`
+  as-is". Fixed: rewritten to reference `opts.worktree_root` as the source (which equals
+  `opts.project_root` for non-git projects per the three-rule fallback). The scenario now
+  correctly models spawn_recipe() behavior: it always consumes `opts.worktree_root`; the
+  caller resolves worktree_root before calling spawn_recipe().
+- §Trace v1.1.0 false attestation corrected: the claim "VP: updated from project_root to
+  worktree_root" is annotated to acknowledge it was incomplete (only VP row 3 was fixed;
+  VP row 1 was missed).
+- S13-002 adjudication (NO CHANGE): BC-2.03.005 Invariant 3 uses "MERGED". BC-2.03.006
+  §Trace v1.1.0 explicitly ratifies: "Invariant 3 was already correct ('MERGED with the
+  child process's inherited environment') — no change needed there". "MERGED" is the
+  deliberately-ratified phrasing; "OVERLAY" is the term used in BC-2.03.006's Description
+  for the overall semantics. Both terms are correct in context. No change to Invariant 3.
+- Proof: post-edit grep for CWD-source `project_root` occurrences → zero stale occurrences
+  remain (all remaining `project_root` references are legitimate SpawnOptions field references
+  explaining the three-rule fallback relationship).
+- Scope: coherence/propagation completion; no behavioral change. Version bumped as patch 1.1.1→1.1.2.
+
 ## §Trace v1.1.1
 
 **I12-002 — Description partial-fix regression corrected** (2026-06-04):
@@ -170,7 +198,10 @@ VP-TBD — spawn_recipe() happy-path unit tests (filled after VP creation)
 - PC-1 cwd field: changed from `opts.project_root` to `opts.worktree_root` with explanation.
 - Invariant 4: rewritten — `recipe.cwd = opts.worktree_root`; caller resolves at wizard Step 3.
 - Canonical test vectors: updated to use `worktree_root` field and show non-git fallback.
-- VP: updated from `project_root` to `worktree_root`.
+- VP: **partially** updated — VP row 3 updated from `project_root` to `worktree_root`; VP row 1
+  was missed (residual stale CWD-source `project_root` — corrected in v1.1.2 per I13-001).
+  NOTE: The original attestation "VP: updated from project_root to worktree_root" was
+  INCOMPLETE — VP row 1 still said `cwd = project_root` after this pass. Corrected in v1.1.2.
 
 ## §Trace v1.0.0
 

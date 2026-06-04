@@ -2285,3 +2285,30 @@ This test can be in a dedicated test file (ipc_outbound_writer.rs pattern) but m
 **Root cause:** pr-manager skill does not have an explicit "COMPLETE" signal requirement. Agents can return early (at any intermediate step) without failure — the early return is semantically valid but operationally wrong when 4-5 remaining steps are still needed.
 **Codify:** pr-manager must complete all 9 steps in a single dispatch before returning. The skill should emit `PR-MANAGER COMPLETE: PR #NNN merged` as the terminal output. Orchestrator should treat any early return (before the COMPLETE signal) as a partial and re-dispatch with continuation prompt "continue from step N".
 **Guard:** PROCESS-GAP-PRMANAGER-EARLY-RETURN in durable_task_register.
+
+---
+
+## Phase-1d Adversarial Pass-13 Process Lessons (D-255)
+
+### L-CWD-PROPAGATION-ATTESTATION: whole-file grep required before changelog claims fix completeness [process-gap, CODIFY]
+
+**Date:** 2026-06-04
+**Severity:** process-gap (fix-discipline failure — changelog claimed completeness without exhaustive sweep; recurred 3×)
+**Origin:** D-255 Pass-13 I13-001. BC-2.03.005 `worktree_root` fix for the `cwd=project_root` defect (originally surfaced as I2-002) recurred three times across three versions:
+- v1.1.0: Precondition/PC/Invariant sections fixed (Pass-2 convergence-fix)
+- v1.1.1: Description section fixed (Pass-12 I12-002 — D-254)
+- v1.1.2: VP row-1 + EC-102 fixed (Pass-13 I13-001+S13-001 — D-255) + §Trace false-attestation corrected
+
+Each prior fix wrote a changelog entry claiming propagation was complete, but did NOT run a whole-file grep to confirm zero survivors. The adversary found the remaining occurrences in the next pass. This is a systematic fix-discipline gap, not a one-off miss.
+
+**Root cause:** Owning agents performed targeted fixes (updated the sections they were aware of) and wrote §Trace/changelog entries attesting completeness without verifying via exhaustive grep. Reviewers and the adversary then encountered stale occurrences that the changelog had already declared resolved.
+
+**Codify (L-CWD-PROPAGATION-ATTESTATION):** When a fix replaces a term, value, or reference across a spec file, the owning agent MUST:
+1. `grep` the ENTIRE file for ALL occurrences of the old term/value (not just the sections the agent is aware of).
+2. Fix every occurrence in one pass — not iteratively across future passes.
+3. Only write a §Trace/changelog entry claiming completeness AFTER confirming the whole-file grep returned zero survivors outside §Trace/historical/enforcement contexts.
+4. Reviewers and adversaries MUST distrust "updated X to Y" changelog claims and re-grep before accepting completeness.
+
+**Recurrence threshold:** This pattern recurred 3+ times in a single file, crossing the 3-instance codification threshold per the factory's S-7.02 rule.
+
+**Guard:** Mandatory whole-file grep step for ANY fix that replaces a term/value in a spec file. The grep must be part of the fix procedure, not a post-hoc check. Apply equally to BC files, SS files, ADR files, and holdout scenarios.

@@ -176,9 +176,9 @@ ADR-0008-structural-claim-discipline:
 
 ADR-0009:
   path: specs/architecture/adr/ADR-0009-native-session-host-process-model.md
-  current_version: "1.0.0"
-  last_bump_commit: "[D-239 control-center architecture delta 2026-06-03 — native session-host process model ADR]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.0.1"
+  last_bump_commit: "[Pass-13 I13-002 — line 165 mis-anchor SS-09→SS-08 corrected]"
+  last_bump_date: "2026-06-04"
 
 ADR-0010:
   path: specs/architecture/adr/ADR-0010-pty-bytes-over-shared-uds-ipc.md
@@ -188,9 +188,9 @@ ADR-0010:
 
 ADR-0011:
   path: specs/architecture/adr/ADR-0011-pty-stack-native-portable-pty-vt100-tui-term.md
-  current_version: "1.1.0"
-  last_bump_commit: "[Adversarial Pass 1 resolution 2026-06-03 — O2 tui-term WIP risk: human risk-acceptance required before v1A story wave]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.2.0"
+  last_bump_commit: "[Pass-13 I13-002 sibling sweep — inverted SS-08/SS-09 cross-refs corrected]"
+  last_bump_date: "2026-06-04"
 
 # ───────────────────────────────────────────────────────────────────────────────
 # Index / meta documents
@@ -701,8 +701,8 @@ BC-2.07.006:
 
 BC-2.03.005:
   path: specs/behavioral-contracts/ss-03/BC-2.03.005.md
-  current_version: "1.1.1"
-  last_bump_commit: "[Pass-12 I12-002 — Description partial-fix regression: cwd→worktree_root]"
+  current_version: "1.1.2"
+  last_bump_commit: "[Pass-13 I13-001+S13-001 — exhaustive worktree_root: VP row1 + EC-102 + §Trace false-attestation; 3rd recurrence resolved whole-file]"
   last_bump_date: "2026-06-04"
 
 BC-2.03.006:

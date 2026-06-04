@@ -6,8 +6,8 @@ title: "PTY Stack: Native portable-pty + vt100 + tui-term (Q-7 tui-term posture)
 status: accepted
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
-version: "1.1.0"
-timestamp: 2026-06-03T23:00:00Z
+version: "1.2.0"
+timestamp: 2026-06-04T00:00:00Z
 inputs:
   - research/embedded-pty-evaluation.md
   - specs/product-brief.md
@@ -153,8 +153,8 @@ review gate on each upgrade upgrade compensates for the WIP status.
 ## ADR Cross-References
 
 - Extends: SS-deps-pin-manifest.md (adds three crates to Phase 1 Pin Manifest; see SS-deps-pin-manifest delta in this architecture delta batch).
-- Requires: SS-09 Session Host (uses `portable-pty` + `vt100`).
-- Requires: SS-08 Embedded PTY (uses `tui-term` + `vt100` in monocle-tui).
+- Requires: SS-08 Session Manager — monocle-session-host binary (uses `portable-pty` + `vt100`; see SS-session-manager.md).
+- Requires: SS-09 Embedded PTY — monocle-tui renderer (uses `tui-term` + `vt100`; see SS-embedded-pty.md).
 
 ## §Trace v1.1.0
 
@@ -171,3 +171,27 @@ review gate on each upgrade upgrade compensates for the WIP status.
 - Native portable-pty + vt100 + tui-term adopted; tmux and zellij-as-library rejected.
 - Q-7 VERDICT: deferred-vendoring-on-need; exact-pin on tui-term; Cargo-init spike required.
 - SE-16d PASS: 2026-06-03T23:00:00Z (new artifact).
+
+## §Trace v1.2.0
+
+**I13-002 sweep — ADR Cross-References SS-08/SS-09 inversion corrected** (2026-06-04T00:00:00Z):
+- NORMATIVE (I13-002 sweep — IMPORTANT): §ADR Cross-References "Requires:" lines were
+  inverted: SS-09 was labeled "Session Host" and SS-08 was labeled "Embedded PTY" — the
+  reverse of the ARCH-INDEX Subsystem Registry authoritative names.
+  Per ARCH-INDEX Subsystem Registry: SS-08 = "Session Manager" (monocle-session-host binary,
+  portable-pty/vt100 usage); SS-09 = "Embedded PTY" (monocle-tui renderer, tui-term/vt100 usage).
+  The original incorrect lines:
+  - `Requires: SS-09 Session Host (uses portable-pty + vt100).`
+  - `Requires: SS-08 Embedded PTY (uses tui-term + vt100 in monocle-tui).`
+  Corrected to:
+  - `Requires: SS-08 Session Manager — monocle-session-host binary (uses portable-pty + vt100; see SS-session-manager.md).`
+  - `Requires: SS-09 Embedded PTY — monocle-tui renderer (uses tui-term + vt100; see SS-embedded-pty.md).`
+  - SE-17c BEFORE: `Requires: SS-09 Session Host (uses portable-pty + vt100).`
+  - SE-17c AFTER:  `Requires: SS-08 Session Manager — monocle-session-host binary (uses portable-pty + vt100; see SS-session-manager.md).`
+  - SE-17c BEFORE: `Requires: SS-08 Embedded PTY (uses tui-term + vt100 in monocle-tui).`
+  - SE-17c AFTER:  `Requires: SS-09 Embedded PTY — monocle-tui renderer (uses tui-term + vt100; see SS-embedded-pty.md).`
+  Note: the code-comment inside the IPC message type `KeyInput` variant in ADR-0010 (line ~237)
+  references "SS-09 §Keyboard Encoding" — this is a cross-reference to the SS-09 Embedded PTY
+  subsystem doc and is CORRECT per ARCH-INDEX (SS-09 = Embedded PTY owns keyboard encoding);
+  it is not a mis-anchor and requires no fix.
+- SE-16d PASS: 2026-06-04T00:00:00Z > chain high-water 2026-06-03T23:00:00Z (monotonic).

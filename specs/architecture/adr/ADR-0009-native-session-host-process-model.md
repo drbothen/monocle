@@ -6,8 +6,8 @@ title: "Native Detached Session-Host Process Model for PTY Ownership"
 status: accepted
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
-version: "1.0.0"
-timestamp: 2026-06-03T23:00:00Z
+version: "1.0.1"
+timestamp: 2026-06-04T00:00:00Z
 inputs:
   - research/domain-monocle-vision-synthesis.md
   - specs/product-brief.md
@@ -161,8 +161,7 @@ operational safety net.
 - Supersedes: the v2.0 in-process DAEMON-OWNS-PTY persistence model in `domain-monocle-vision-synthesis.md` §Process Topology (now superseded by the session-host-owns-PTY model at v2.1).
 - Extends: SS-daemon-lifecycle.md (daemon start sequence adds session-host discovery step).
 - Extends: SS-ipc.md (adds per-session UDS protocol alongside existing daemon UDS).
-- Requires: SS-08 Session Manager (new) — the SessionManager redesign required by this ADR.
-- Requires: SS-09 Session Host (new) — the monocle-session-host binary spec.
+- Requires: SS-08 Session Manager (new) — the SessionManager redesign required by this ADR AND the monocle-session-host binary spec (SS-session-manager.md).
 
 ## §Trace v1.0.0
 
@@ -172,3 +171,22 @@ operational safety net.
   external supervisor rejected as primary (no-tmux constraint).
 - Q-8 VERDICT: **Native feasible at acceptable cost for v1A.** Design proceeds.
 - SE-16d PASS: 2026-06-03T23:00:00Z (new artifact, no prior chain entry).
+
+## §Trace v1.0.1
+
+**I13-002 — ADR Cross-References SS-09 mis-anchor corrected** (2026-06-04T00:00:00Z):
+- NORMATIVE (I13-002 IMPORTANT): §ADR Cross-References "Requires:" list corrected.
+  The original two-line form was:
+  - `Requires: SS-08 Session Manager (new) — the SessionManager redesign required by this ADR.`
+  - `Requires: SS-09 Session Host (new) — the monocle-session-host binary spec.`
+  The second line is a mis-anchor: "SS-09 Session Host" is not a registered subsystem.
+  Per ARCH-INDEX Subsystem Registry: SS-09 = "Embedded PTY" (SS-embedded-pty.md); there is
+  no "SS-09 Session Host" artifact. The monocle-session-host binary spec lives in
+  SS-session-manager.md under SS-08 Session Manager.
+  The two-line form also created a double-attribution: SS-08 was cited for SessionManager
+  redesign while the binary spec (equally part of SS-08) was misattributed to SS-09.
+  Corrected to a single line: `Requires: SS-08 Session Manager (new) — the SessionManager
+  redesign required by this ADR AND the monocle-session-host binary spec (SS-session-manager.md).`
+  - SE-17c BEFORE: `- Requires: SS-09 Session Host (new) — the monocle-session-host binary spec.`
+  - SE-17c AFTER: line removed; SS-08 line updated to cover both the redesign and the binary spec.
+- SE-16d PASS: 2026-06-04T00:00:00Z > chain high-water 2026-06-03T23:00:00Z (monotonic).
