@@ -1,10 +1,10 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.12"
+version: "1.13"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-03T14:00:00Z
+timestamp: 2026-06-03T23:45:00Z
 phase: 2
 visibility: holdout-evaluator-only
 inputs:
@@ -160,6 +160,21 @@ Phase 4 holdout evaluation MUST evaluate ALL holdout scenarios:
 **Bump:** 1.5 → 1.6.
 **Scope:** `traces_to:` field: `STORY-INDEX.md v4.7` → `STORY-INDEX.md v5.20` (Option 1 per ADR-0007 §Decision; EVAL-INDEX is an active INDEX document; its traces_to must reflect canonical current STORY-INDEX version).
 **SE-16d PASS:** 2026-05-30 >= 2026-05-30 (patch; no normative behavioral change).
+
+## §Trace v1.13 — Pass-6 I6-001: HS-EXP-015 phantom MouseInput removal (2026-06-03T23:45:00Z)
+
+**Bump:** 1.12 → 1.13.
+**Scope:** HS-EXP-015 Setup corrected (scenario-file internal fix). No Scenario Index table, BC Coverage
+Traceability table, or Wave Coverage Summary rows changed. EVAL-INDEX version bumped for auditability only.
+**Correction:** HS-EXP-015 Setup referenced a phantom `MouseInput` IPC variant that does not exist.
+Mouse events are SGR-encoded and forwarded as `KeyInput` per SS-embedded-pty SS-09 §Mouse support.
+Setup rewritten to reference `KeyInput` only; Part D (Steps 15-16) was already correct.
+See HS-EXP-015.md §Trace v1.1 for full detail.
+**SE-16d PASS:** 2026-06-03T23:45:00Z > 2026-06-03T14:00:00Z (v1.12). PASS.
+
+## §Trace v1.12 — BC-INDEX pin cascade from adversarial pass-1 (2026-06-03T14:00:00Z)
+
+_(Previously unlabeled — retroactively assigned version number for §Trace ordering consistency. Content is as-committed.)_
 
 ## §Trace v1.11 — Adversarial pass-1 PO-owned fixes: holdout scenario data-model reconciliation (2026-06-03T14:00:00Z)
 

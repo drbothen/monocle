@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "1.5.0"
+version: "1.6.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -362,6 +362,101 @@ impl SessionManager {
 }
 ```
 
+### §Error handling — SessionError → ServerToClient::Error mapping
+
+Every `SessionManager` method in the Public API returns `Result<_, SessionError>`. The daemon IPC
+handler (`monocle-runtime/src/ipc_handler.rs`) MUST map every `Err(SessionError::...)` return to
+a `ServerToClient::Error { code, message }` sent to the requesting TUI client over its per-client
+channel. **No `Err` may be silently swallowed at the task boundary** (return `Ok(())` after an
+error) — doing so leaves the TUI hung in `Launching` state (or another stale state) with no
+user-visible feedback, which is a user-visible silent failure (BC-2.05.010 §No-silent-failure invariant).
+
+#### SessionError taxonomy
+
+```rust
+/// Errors returned by SessionManager lifecycle methods.
+///
+/// These map to ServerToClient::Error.code values per the v1A error code taxonomy
+/// in SS-ipc.md §ServerToClient::Error.
+#[derive(Debug, thiserror::Error)]
+pub enum SessionError {
+    #[error("session not found: {session_id}")]
+    SessionNotFound { session_id: String },
+    #[error("spawn failed: {reason}")]
+    SpawnFailed { reason: String },
+    #[error("session host dead: {session_id}")]
+    SessionHostDead { session_id: String },
+    #[error("invalid session name: {reason}")]
+    InvalidSessionName { reason: String },
+    #[error("I/O error: {0}")]
+    Io(#[from] std::io::Error),
+}
+```
+
+#### Mapping table (SessionError → ServerToClient::Error.code)
+
+| SessionError variant | Triggering lifecycle method(s) | code | Notes |
+|----------------------|-------------------------------|------|-------|
+| `SessionNotFound` | `kill_session`, `detach_session`, `attach_session`, `rename_session`, `send_key_input`, `resize_session` | `"session_not_found"` | Session ID not in registry |
+| `SpawnFailed` | `spawn_session` | `"spawn_failed"` | Process spawn failure, sidecar write failure, etc. |
+| `SessionHostDead` | `attach_session`, `kill_session` (Detached path) | `"attach_failed"` or `"kill_failed"` depending on op | Session-host PID dead at operation time |
+| `InvalidSessionName` | `rename_session` | `"rename_failed"` | Empty name or name exceeding length limit |
+| `Io` | Any | `"invalid_request"` | Unexpected I/O error; code chosen as the nearest generic failure code |
+
+#### IPC handler pattern (mandatory)
+
+```rust
+// In the per-client IPC message handler task:
+match msg {
+    ClientToServer::SpawnSession { recipe } => {
+        match state.session_manager.lock().await.spawn_session(recipe, ...).await {
+            Ok(session_id) => { /* broker emits SessionStateChanged{Launching} + SessionListUpdate */ }
+            Err(e) => {
+                // MUST NOT swallow — send error to requesting client only:
+                let _ = client_tx.send(ServerToClient::Error {
+                    code: session_error_to_code(&e).to_string(),
+                    message: e.to_string(),
+                }).await;
+            }
+        }
+    }
+    ClientToServer::KillSession { session_id } => {
+        match state.session_manager.lock().await.kill_session(&session_id).await {
+            Ok(()) => { /* broker emits SessionStateChanged{Terminating} + SessionListUpdate */ }
+            Err(e) => {
+                let _ = client_tx.send(ServerToClient::Error {
+                    code: session_error_to_code(&e).to_string(),
+                    message: e.to_string(),
+                }).await;
+            }
+        }
+    }
+    // … same pattern for AttachSession, RenameSession, KeyInput …
+}
+
+/// Maps a SessionError to its v1A IPC error code.
+fn session_error_to_code(e: &SessionError) -> &'static str {
+    match e {
+        SessionError::SessionNotFound { .. } => "session_not_found",
+        SessionError::SpawnFailed { .. }    => "spawn_failed",
+        SessionError::SessionHostDead { .. } => "attach_failed",
+        SessionError::InvalidSessionName { .. } => "rename_failed",
+        SessionError::Io(_) => "invalid_request",
+    }
+}
+```
+
+**KeyInput special rule:** `KeyInput` failures (session not found or Terminated) MUST still send
+`ServerToClient::Error`. The BC-2.05.010 specification states `KeyInput` is fire-and-forget with
+no acknowledgement on success — this does NOT mean errors are dropped. Success = no reply;
+failure = `ServerToClient::Error`.
+
+**ResizePane special rule:** `ResizePane` failures are silently dropped per BC-2.05.010 (no
+`ServerToClient::Error` for resize failures). The daemon clamps zero dimensions (Invariant 5
+in BC-2.05.010) before calling `resize_session()`, so the only remaining failure path is a
+session-not-found error — which is benign (the session may have terminated between the TUI
+sending the resize and the daemon processing it). Resize errors are logged at WARN level only.
+
 ### SessionHostSpawner trait
 
 ```rust
@@ -614,7 +709,7 @@ pub enum HostToDaemon {
     PtyReset,
 }
 
-// C5-002 (SS-ipc.md v1.13.0): SerializedCell and SerializedColor are defined in
+// C5-002 (SS-ipc.md v1.14.0): SerializedCell and SerializedColor are defined in
 // monocle-ipc (crate::ipc::SerializedCell / crate::ipc::SerializedColor) so both
 // monocle-session-host (writer) and monocle-tui (reader) share the type without a
 // cross-binary dependency. The canonical definition with full field documentation
@@ -1016,6 +1111,22 @@ Daemon removes stale socket files during GC in re-discovery (alongside sidecar d
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.6.0
+
+**C6-001(b) — Pass-6 §Error handling section added; SessionError taxonomy + IPC handler mapping** (2026-06-03):
+
+- **C6-001(b):** §Error handling section added between §Public API and §SessionHostSpawner trait.
+  Documents: (1) `SessionError` enum with all variants and `thiserror` integration; (2) the
+  mapping table from `SessionError` variant → `ServerToClient::Error.code` for every lifecycle
+  method; (3) the canonical IPC handler pattern that MUST NOT swallow errors; (4) the
+  `session_error_to_code()` helper; (5) the KeyInput special rule (errors still sent despite
+  fire-and-forget success semantics); (6) the ResizePane special rule (errors silently dropped
+  with WARN logging — benign race condition).
+- This section is cross-referenced by SS-ipc.md v1.14.0 `SpawnSession` doc-comment ("SS-08 §Error
+  handling") — the dangling reference from the SpawnSession variant is now resolved.
+- BC-2.05.010's no-silent-failure invariant (PC-4 for SpawnSession, PC-4/last item for
+  AttachSession/KillSession) is directly implemented by the mandatory IPC handler pattern here.
 
 ## §Trace v1.5.0
 

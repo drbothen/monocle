@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "daemon-wiring-v2-delta"
 subsystem: SS-04
-version: "1.3.1"
+version: "1.4.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -131,23 +131,55 @@ branches for the new `ClientToServer` variants from ADR-0010:
 
 ```rust
 ClientToServer::SpawnSession { recipe } => {
-    let session_id = state.session_manager.lock().await
+    // C6-001: no-silent-failure — map SessionError to ServerToClient::Error
+    match state.session_manager.lock().await
         .spawn_session(recipe, /* harness_id, profile_id from recipe context */)
-        .await?;
-    // SessionManager::spawn_session() emits SessionStateChanged{Launching} then
-    // SessionListUpdate to the broker (see §SessionStateChanged emission rule below).
+        .await
+    {
+        Ok(_session_id) => {
+            // spawn_session() emits SessionStateChanged{Launching} then
+            // SessionListUpdate to the broker (see §SessionStateChanged emission rule below).
+        }
+        Err(e) => {
+            let _ = client_tx.send(ServerToClient::Error {
+                code: "spawn_failed".to_string(),
+                message: e.to_string(),
+            }).await;
+        }
+    }
 }
 ClientToServer::KillSession { session_id } => {
-    state.session_manager.lock().await.kill_session(&session_id).await?;
-    // kill_session() emits SessionStateChanged{Terminating} then SessionListUpdate.
+    // C6-001: no-silent-failure — map SessionError to ServerToClient::Error
+    match state.session_manager.lock().await.kill_session(&session_id).await {
+        Ok(()) => {
+            // kill_session() emits SessionStateChanged{Terminating} then SessionListUpdate.
+        }
+        Err(e) => {
+            let _ = client_tx.send(ServerToClient::Error {
+                code: session_error_to_code(&e).to_string(),
+                message: e.to_string(),
+            }).await;
+        }
+    }
 }
-ClientToServer::AttachSession { session_id } | ClientToServer::ReAttach { session_id } => {
+ClientToServer::AttachSession { session_id } => {
     // TUI-initiated re-attach (used after PtyReset or explicit re-attach request).
     // Daemon calls SessionManager::attach_session() which issues DaemonToHost::Attach to
     // the session-host and streams a fresh ScrollbackDump (ScrollbackChunk* + Complete).
     // On ScrollbackDumpComplete receipt, daemon emits SessionStateChanged{Running} then
     // SessionListUpdate (if state changed from Detached to Running).
-    state.session_manager.lock().await.attach_session(&session_id).await?;
+    // C6-002: ClientToServer::ReAttach does NOT exist — I3-004 consolidated all re-attach
+    // onto AttachSession. The ReAttach alternative was removed in v1.4.0.
+    match state.session_manager.lock().await.attach_session(&session_id).await {
+        Ok(()) => { /* SessionStateChanged{Running} + SessionListUpdate emitted by attach_session */ }
+        Err(e) => {
+            // C6-001: no-silent-failure — send Error to requesting client
+            let _ = client_tx.send(ServerToClient::Error {
+                code: session_error_to_code(&e).to_string(),
+                message: e.to_string(),
+            }).await;
+        }
+    }
 }
 ClientToServer::KeyInput { session_id, bytes } => {
     state.session_manager.lock().await.send_key_input(&session_id, bytes).await?;
@@ -242,39 +274,21 @@ actor can post to the broker. The channel FIFO order is the actual ordering mech
 #### SessionSnapshot — canonical boundary type
 
 `SessionSnapshot` is the canonical boundary type that crosses the UDS wire in `InitialState`
-and `SessionListUpdate`. It is defined in `monocle-ipc/src/types.rs` (or `monocle-core`) so
-both daemon and TUI can use it without importing daemon-internal types.
+and `SessionListUpdate`. It is defined in `monocle-ipc/src/types.rs` so both daemon and TUI
+can use it without importing daemon-internal types.
 
-```rust
-/// Canonical boundary type for session data crossing the UDS IPC wire.
-/// Used in InitialState.sessions and SessionListUpdate.sessions.
-/// Replaces EnrichedSession for the wire representation.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SessionSnapshot {
-    /// Session UUID string (canonical per SS-session-manager.md §session_id type ruling).
-    pub session_id: String,
-    /// Human-readable display name (defaults to "<harness_id> — <project_root_basename>").
-    pub display_name: String,
-    /// Current lifecycle state.
-    pub state: SessionState,
-    /// Harness identifier (e.g., "claude-code", "codemachine").
-    pub harness_id: String,
-    /// User-selected project root (used for sessions panel grouping by project).
-    pub project_root: String,
-    /// Resolved worktree root / working directory for the harness child.
-    /// Equals project_root when no worktree is configured.
-    pub cwd: String,
-    /// Whether the session was spawned by monocle (Some(true)), detected externally
-    /// (Some(false)), or is a pre-v1A legacy session (None — sidecar has no field).
-    /// The TUI sessions panel renders [M] / [E] / [?] badges respectively.
-    pub spawned_by_monocle: Option<bool>,
-    /// Epoch microseconds when the session was started (for display sorting/filtering).
-    pub started_at_micros: i64,
-    /// Current PTY dimensions (rows, cols) — last known from sidecar or resize.
-    pub pty_rows: u16,
-    pub pty_cols: u16,
-}
-```
+> **Canonical definition:** See **SS-ipc.md §Supporting Types — `SessionSnapshot`** for the
+> authoritative field list. The canonical definition includes `degraded: bool` and
+> `degraded_reason: Option<String>` (added in v1.12.0 / I3-009 fix) in addition to the
+> ten base fields. **Do not maintain a duplicate struct here** — the inline copy in §4
+> was retired in v1.4.0 (I6-002 fix) because it diverged from the SS-ipc.md canonical by
+> omitting the `degraded`/`degraded_reason` fields.
+>
+> **Current canonical field summary** (SS-ipc.md v1.14.0 §Supporting Types — authoritative):
+> `session_id`, `display_name`, `state`, `harness_id`, `project_root`, `cwd`,
+> `spawned_by_monocle: Option<bool>`, `started_at_micros: i64`, `pty_rows: u16`,
+> `pty_cols: u16`, `degraded: bool` (`#[serde(default)]`), `degraded_reason: Option<String>`
+> (`#[serde(default)]`). Total: 12 fields.
 
 #### Three session representations — reconciliation
 
@@ -547,6 +561,30 @@ If no in-process SessionManager stub exists in D-235 (i.e., the stub was skeleta
 implementer creates `SessionManager` from scratch per SS-08.
 
 ---
+
+## §Trace v1.4.0
+
+**C6-001/C6-002/I6-002 — Pass-6 error routing + ReAttach removal + stale SessionSnapshot retired** (2026-06-03):
+
+- **C6-002 — ClientToServer::ReAttach removed from §3 IPC handler:** The match arm
+  `ClientToServer::AttachSession { session_id } | ClientToServer::ReAttach { session_id }` was
+  uncompilable: `ClientToServer::ReAttach` does not exist. I3-004 (v1.3.0) consolidated all
+  TUI re-attach onto `AttachSession`; `ReAttach` was never added to the `ClientToServer` enum
+  in SS-ipc.md. The `ReAttach` alternative was introduced in v1.3.0 §Trace incorrectly
+  (the §Trace v1.3.0 entry `ClientToServer::AttachSession / ReAttach variant added` is a
+  historical artifact of the authoring session; the variant was never in the canonical enum).
+  Fix: `| ClientToServer::ReAttach { session_id }` alternative deleted; only the
+  `ClientToServer::AttachSession { session_id }` arm remains.
+- **C6-001 — Error routing added to §3 IPC handler:** All lifecycle operation match arms
+  (`SpawnSession`, `KillSession`, `AttachSession`) updated from `?`-propagation to explicit
+  `Err(e)` branches that send `ServerToClient::Error { code, message }` to the requesting
+  client. This implements the no-silent-failure invariant (BC-2.05.010 / SS-08 §Error
+  handling / SS-ipc.md v1.14.0 §ServerToClient::Error).
+- **I6-002 — Stale inline SessionSnapshot in §4 retired:** The 10-field inline `SessionSnapshot`
+  struct definition omitted `degraded: bool` and `degraded_reason: Option<String>` (added by
+  I3-009 / SS-ipc.md v1.12.0). Rather than maintaining a second copy that would continue to
+  drift, the inline struct is replaced with an explicit pointer to SS-ipc.md §Supporting Types
+  as the single source of truth. The pointer lists all 12 canonical fields for quick reference.
 
 ## §Trace v1.3.1
 

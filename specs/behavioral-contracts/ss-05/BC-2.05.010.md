@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.0"
+version: "1.3.0"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-03T23:30:00Z
+timestamp: 2026-06-03T23:45:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-ipc.md, architecture/SS-daemon-wiring-v2-delta.md]
-input-hash: "a9eb6a4"
+input-hash: "c787ee0"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-05
@@ -63,7 +63,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 1. `ClientToServer::KeyInput { session_id: String, bytes: Vec<u8> }` is received.
 2. Daemon calls `SessionManager::send_key_input(&session_id, bytes)`.
 3. No broadcast — key input is fire-and-forget; no acknowledgement message sent back.
-4. On failure (session not found or dead): `ServerToClient::Error` sent to requesting client.
+4. On failure (session not found or dead): `ServerToClient::Error { code: "session_not_found", message: ... }` sent to requesting client.
 
 ### ResizePane
 
@@ -99,7 +99,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
    re-attaches a `Detached` session from the sessions panel. The TUI MUST NOT send
    `DaemonToHost::Attach` directly — that is a daemon→session-host message. The TUI sends
    `ClientToServer::AttachSession` to the daemon, which routes to `SessionManager::attach_session()`.
-   Per SS-ipc.md v1.13.0 §`ClientToServer::AttachSession`.
+   Per SS-ipc.md v1.14.0 §`ClientToServer::AttachSession`.
 
 ## Invariants
 
@@ -122,10 +122,10 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
-| EC-280 | `SpawnSession` with a `SpawnRecipe` where `binary` is empty path | `SessionError::SpawnFailed`; `ServerToClient::Error` sent back |
-| EC-281 | `KeyInput` for unknown `session_id` | `SessionError::SessionNotFound`; `ServerToClient::Error` |
+| EC-280 | `SpawnSession` with a `SpawnRecipe` where `binary` is empty path | `SessionError::SpawnFailed`; `ServerToClient::Error { code: "spawn_failed", message: ... }` sent back |
+| EC-281 | `KeyInput` for unknown `session_id` | `SessionError::SessionNotFound`; `ServerToClient::Error { code: "session_not_found", message: ... }` sent to requesting client |
 | EC-282 | `ResizePane` with `rows=0` or `cols=0` | The daemon's IPC handler MUST clamp each dimension to a minimum of 1 BEFORE forwarding to `resize_session()`. `rows = max(rows, 1); cols = max(cols, 1)`. The PTY and parser are resized to the clamped values. No `SessionError` is returned; the operation succeeds with clamped dimensions. Clamping is consistent with BC-2.09.006 EC-237 and the resize behavior in the TUI. A zero-dimension PTY is undefined by POSIX; clamping to 1 is the most robust behavior. |
-| EC-283 | `RenameSession` with empty `new_name` | `SessionError::InvalidSessionName`; `ServerToClient::Error` |
+| EC-283 | `RenameSession` with empty `new_name` | `SessionError::InvalidSessionName`; `ServerToClient::Error { code: "invalid_request", message: ... }` sent to requesting client |
 | EC-284 | Concurrent `KeyInput` messages from the same TUI client | Processed in order of arrival; each forwarded to session-host in receipt order |
 
 ## Canonical Test Vectors
@@ -153,7 +153,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 | L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — these ClientToServer variants extend the internal transport capability with session lifecycle control messages (spawn, kill, key input, resize, detach, rename, re-attach) — all transported over the existing UDS per the session/event/prompt push design |
 | Architecture Module | monocle-ipc (`ClientToServer` enum new variants); monocle-runtime (IPC handler routing to SessionManager) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-daemon-wiring-v2-delta.md v1.3.1 §IPC handler — new ClientToServer variants (including AttachSession); SS-ipc.md v1.13.0 §`ClientToServer::AttachSession` (I3-004 — TUI re-attach; replaces incorrect "TUI sends DaemonToHost::Attach" description) |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.4.0 §IPC handler — new ClientToServer variants (including AttachSession); SS-ipc.md v1.14.0 §`ClientToServer::AttachSession` (I3-004 — TUI re-attach; replaces incorrect "TUI sends DaemonToHost::Attach" description); SS-ipc.md v1.14.0+ §`ServerToClient::Error` — Error variant + code taxonomy (`spawn_failed`, `session_not_found`, `attach_failed`, `kill_failed`, `rename_failed`, `invalid_request`) added by architect in Pass-6 parallel track (C6-001) |
 | Cross-Ref | BC-2.08.001 (SpawnSession → spawn_session()); BC-2.08.003 (KillSession → kill_session()); BC-2.08.007 (DetachSession → detach_session()) |
 | Test Name | test_BC_2_05_010_new_client_to_server_variants_routed |
 
@@ -176,6 +176,24 @@ S-TBD — Implement new ClientToServer IPC variants and daemon routing (filled b
 ## VP Anchors
 
 VP-TBD — IPC variant routing integration tests (filled after VP creation)
+
+## §Trace v1.3.0
+
+**Pass-6 C6-001 — Align error codes with SS-ipc.md v1.14.0 architect taxonomy** (2026-06-03):
+- C6-001: Architect is adding `ServerToClient::Error { code: String, message: String }` to SS-ipc.md
+  (v1.14.0) with canonical code strings: `spawn_failed`, `session_not_found`, `attach_failed`,
+  `kill_failed`, `rename_failed`, `invalid_request`.
+- **KeyInput-PC-4:** Added explicit `code: "session_not_found"` — previously said only
+  `ServerToClient::Error` with no code string. `session_not_found` is the correct code for
+  unknown or dead session (matches architect taxonomy + SessionError::SessionNotFound).
+- **EC-280:** Added `code: "spawn_failed"` to `ServerToClient::Error` — previously omitted code string.
+- **EC-281:** Added `code: "session_not_found"` to `ServerToClient::Error` — previously omitted code string.
+- **EC-283:** Added `code: "invalid_request"` to `ServerToClient::Error` — previously omitted code string.
+  `rename_failed` in the architect's taxonomy covers operational rename failures (e.g., session-host
+  unreachable); `invalid_request` covers input-validation failures such as an empty `new_name`.
+  EC-283 is a validation failure, so `invalid_request` is the correct code.
+- **Architecture Source:** Added SS-ipc.md v1.14.0+ citation for the Error variant and code taxonomy.
+  (v1.13.0 does NOT define `ServerToClient::Error`; the architect adds it in Pass-6 in parallel.)
 
 ## §Trace v1.2.0
 

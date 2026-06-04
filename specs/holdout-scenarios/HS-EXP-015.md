@@ -7,7 +7,7 @@ source_bcs: [BC-2.09.002, BC-2.09.003, BC-2.09.004, BC-2.09.005]
 severity: must-pass
 visibility: holdout-evaluator-only
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-03T12:00:00Z
+timestamp: 2026-06-03T23:45:00Z
 ---
 
 # HS-EXP-015: Full-Fidelity Keyboard Forwarding — Kitty + SGR Mouse + Bracketed Paste Reach PTY stdin in EmbeddedTerminal
@@ -20,8 +20,11 @@ timestamp: 2026-06-03T12:00:00Z
 
 A `ratatui::backend::TestBackend` with the TUI in `AppMode::EmbeddedTerminal { session_id: S1 }`.
 A mock `monocle-session-host` that exposes a read-end of the PTY stdin pipe. All bytes written
-to the PTY stdin via the IPC `KeyInput` or `MouseInput` messages are captured by the mock and
-returned as a byte buffer for inspection.
+to the PTY stdin via the IPC `KeyInput` message are captured by the mock and returned as a byte
+buffer for inspection. Note: mouse events are NOT transported as a separate `MouseInput` IPC
+variant — there is no such variant. Mouse events are SGR-encoded by `mouse_event_to_pty_bytes()`
+(per SS-embedded-pty SS-09 §Mouse support) and forwarded as `KeyInput { bytes: <SGR sequence> }`
+(see Part D below).
 
 ## Steps
 
@@ -90,3 +93,25 @@ single running EmbeddedTerminal session**, with a concurrent adversarial flood. 
 between the five forwarding paths (particularly when Kitty encoding is enabled but SGR mouse events
 also arrive) is not exercised by any single BC-specific AC, and the adversarial 100-keystroke flood
 tests the IPC channel's bounded ordering guarantee under load.
+
+---
+
+## §Trace
+
+### v1.1 — Pass-6 I6-001: Remove phantom MouseInput IPC variant (2026-06-03T23:45:00Z)
+
+- **I6-001:** Setup (original line 23) described bytes delivered "via the IPC `KeyInput` or
+  `MouseInput` messages." There is NO `MouseInput` variant in `ClientToServer` — it was never
+  defined. Mouse events are SGR-encoded by `mouse_event_to_pty_bytes()` per
+  SS-embedded-pty SS-09 §Mouse support and forwarded as `ClientToServer::KeyInput { bytes: <SGR sequence> }`.
+  Part D (Step 15-16) already correctly expected the bytes to arrive via `KeyInput`; only the
+  Setup was inconsistent.
+- **Fix:** Setup rewritten to reference `KeyInput` only, with an inline note explaining that
+  mouse events are SGR-encoded and carried as `KeyInput` (no separate `MouseInput` variant exists).
+  Part D unchanged — it was already correct.
+- Frontmatter `timestamp` updated to 2026-06-03T23:45:00Z.
+
+### v1.0 — Initial (2026-06-03T12:00:00Z)
+
+Created as part of D-241 control-center v1A holdout burst — Wave 8 SS-09 embedded PTY
+keyboard-forwarding coverage. See EVAL-INDEX v1.10 §Trace.

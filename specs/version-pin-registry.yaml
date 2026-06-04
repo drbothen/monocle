@@ -106,8 +106,8 @@ SS-forward-compatibility:
 
 SS-ipc:
   path: specs/architecture/SS-ipc.md
-  current_version: "1.13.0"
-  last_bump_commit: "[Pass-5 C5-001/C5-002 — 11 v1A wire variants added to enum bodies; SerializedCell/SerializedColor defined in monocle-ipc §Supporting Types]"
+  current_version: "1.14.0"
+  last_bump_commit: "[Pass-6 C6-001 — ServerToClient::Error variant added (13th variant); v1A error code taxonomy; no-silent-failure invariant; SpawnSession dangling SS-08 §Error handling reference resolved]"
   last_bump_date: "2026-06-03"
 
 SS-permissions-phase1:
@@ -124,8 +124,8 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "1.5.0"
-  last_bump_commit: "[Pass-5 C5-002 — SerializedCell/SerializedColor moved to monocle-ipc; HostToDaemon::ScrollbackChunk references crate::ipc::SerializedCell]"
+  current_version: "1.6.0"
+  last_bump_commit: "[Pass-6 C6-001(b) — §Error handling section added; SessionError taxonomy + SessionError→ServerToClient::Error mapping table + IPC handler pattern + KeyInput/ResizePane special rules]"
   last_bump_date: "2026-06-03"
 
 SS-embedded-pty:
@@ -142,8 +142,8 @@ SS-engine-module-v2-delta:
 
 SS-daemon-wiring-v2-delta:
   path: specs/architecture/SS-daemon-wiring-v2-delta.md
-  current_version: "1.3.1"
-  last_bump_commit: "[Adversarial Pass 4 resolution D-245 2026-06-03 — HIGH-004 PO-edit-block §5d CLIENT_SEND_BUFFER_SIZE=256 survivor corrected to 64]"
+  current_version: "1.4.0"
+  last_bump_commit: "[Pass-6 C6-001/C6-002/I6-002 — ClientToServer::ReAttach removed (never existed); error routing added to SpawnSession/KillSession/AttachSession arms; stale inline SessionSnapshot §4 retired → pointer to SS-ipc.md §Supporting Types]"
   last_bump_date: "2026-06-03"
 
 SS-deps-pin-manifest-v2-delta:
@@ -228,8 +228,8 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.12"
-  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — D-243 BC-INDEX input pin v1.36→v1.37; HS-EXP-014 modified]"
+  current_version: "1.13"
+  last_bump_commit: "[Pass-6 I6-001 — HS-EXP-015 MouseInput→KeyInput fix; EVAL-INDEX modified timestamp bump]"
   last_bump_date: "2026-06-03"
 
 nfr-catalog:
@@ -731,8 +731,8 @@ BC-2.05.009:
 
 BC-2.05.010:
   path: specs/behavioral-contracts/ss-05/BC-2.05.010.md
-  current_version: "1.2.0"
-  last_bump_commit: "[Adversarial Pass 3 resolution 2026-06-03 — D-244 I3-005 Detached preserved on re-discovery]"
+  current_version: "1.3.0"
+  last_bump_commit: "[Pass-6 C6-001 — error codes aligned to SS-ipc v1.14.0 taxonomy (spawn_failed/session_not_found/attach_failed/kill_failed/rename_failed/invalid_request)]"
   last_bump_date: "2026-06-03"
 
 BC-2.05.011:

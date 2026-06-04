@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "ipc"
 subsystem: SS-05
-version: "1.13.0"
+version: "1.14.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -170,7 +170,7 @@ pub enum ServerToClient {
     /// `Vec<SessionSnapshot>`. `SessionSnapshot` is the canonical wire boundary type for
     /// all sessions (monocle-spawned and externally-detected). `EnrichedSession` is retained
     /// internally for `EngineModule::detect()` but is NOT exposed on the wire. See
-    /// SS-daemon-wiring-v2-delta.md v1.3.1 §4 for the three-representation reconciliation.
+    /// SS-daemon-wiring-v2-delta.md v1.4.0 §4 for the three-representation reconciliation.
     InitialState {
         /// All sessions (monocle-spawned and externally-detected) as `SessionSnapshot`.
         sessions: Vec<SessionSnapshot>,
@@ -336,6 +336,53 @@ pub enum ServerToClient {
     PtyReset {
         session_id: String,
     },
+
+    /// A lifecycle operation requested by the TUI failed. Sent by the daemon to the
+    /// requesting client ONLY (not broadcast to all clients). The TUI MUST surface an
+    /// error banner to the user (e.g., in the sessions panel or status bar) so the
+    /// failure is never silent.
+    ///
+    /// # When emitted
+    ///
+    /// Emitted on failure of any `ClientToServer` lifecycle operation:
+    /// - `SpawnSession` → `SessionError::SpawnFailed` (or any other spawn error)
+    /// - `KillSession` → `SessionError::SessionNotFound`
+    /// - `AttachSession` → `SessionError::SessionHostDead`, `SessionError::SessionNotFound`
+    /// - `KeyInput` → `SessionError::SessionNotFound` (session does not exist or is Terminated)
+    /// - `RenameSession` → `SessionError::InvalidSessionName`
+    ///
+    /// # No-silent-failure invariant (BC-2.05.010 PC-4 / PC-3-4 obligation)
+    ///
+    /// The IPC handler MUST NOT silently swallow `Err(SessionError::...)` from any lifecycle
+    /// operation by returning `Ok(())` to the task boundary. Every `Err` from
+    /// `SessionManager` MUST produce a `ServerToClient::Error` sent to the requesting
+    /// client over its per-client channel.
+    ///
+    /// # v1A error code taxonomy (closed set for Phase 1)
+    ///
+    /// The `code` field carries one of the following string literals (snake_case):
+    ///
+    /// | code                  | Trigger                                              |
+    /// |-----------------------|------------------------------------------------------|
+    /// | `"spawn_failed"`      | `SessionManager::spawn_session()` returned error     |
+    /// | `"session_not_found"` | `session_id` not in registry (any lifecycle op)      |
+    /// | `"attach_failed"`     | `SessionManager::attach_session()` returned error    |
+    /// | `"kill_failed"`       | `SessionManager::kill_session()` returned error      |
+    /// | `"rename_failed"`     | `SessionManager::rename_session()` returned error    |
+    /// | `"invalid_request"`   | Validation failure before the SessionManager call    |
+    ///
+    /// The `message` field carries a human-readable diagnostic string (not user-facing;
+    /// logged by the TUI for diagnostics). The TUI renders a fixed-text error banner keyed
+    /// to `code`; it does NOT display `message` verbatim (avoids leaking internal detail).
+    ///
+    /// Future phases may add new codes. The TUI MUST handle unknown codes by rendering a
+    /// generic `[operation failed]` banner without panicking (forward-compat with `#[non_exhaustive]`).
+    Error {
+        /// Machine-readable error class. One of the v1A taxonomy codes above.
+        code: String,
+        /// Human-readable diagnostic detail for logging. Not displayed verbatim to the user.
+        message: String,
+    },
 }
 ```
 
@@ -396,7 +443,8 @@ pub enum ClientToServer {
 
     /// Spawn a new harness session. The daemon calls `SessionManager::spawn_session(recipe)`.
     /// On success the daemon emits `SessionStateChanged { Launching }` + `SessionListUpdate`.
-    /// On failure the daemon sends an error response (SS-08 §Error handling).
+    /// On failure the daemon sends `ServerToClient::Error { code: "spawn_failed", message }` to
+    /// the requesting client (SS-08 §Error handling; SS-05 §ServerToClient::Error taxonomy).
     SpawnSession {
         /// Serialized spawn recipe from `ClaudeCodeModule::spawn_recipe()` (SS-engine-module).
         recipe: SpawnRecipe,
@@ -1101,6 +1149,20 @@ still pending in the daemon's registry (i.e., still within the 300ms timeout win
 prompts are never re-pushed.
 
 ---
+
+## §Trace v1.14.0
+
+**C6-001 — Pass-6 ServerToClient::Error variant added (13th variant); no-silent-failure on lifecycle ops** (2026-06-03):
+
+- **C6-001(a) — ServerToClient::Error variant added:** `ServerToClient::Error { code: String, message: String }` added as the 13th variant of `ServerToClient`. This closes the silent-failure gap where the daemon could swallow `Err(SessionError::...)` from any lifecycle operation and leave the TUI hanging in `Launching` state with no user-visible signal.
+  - `ServerToClient` grows from 12 variants to **13 variants** (InitialState, SessionListUpdate, HookEventReceived, PermissionPromptQueued, PermissionPromptResolved, DropCounterUpdate, Pong, PtyOutput, SessionStateChanged, ScrollbackChunk, ScrollbackDumpComplete, PtyReset, **Error** — in definition order).
+  - The variant is `#[non_exhaustive]` alongside the rest of the enum.
+  - Full v1A error code taxonomy documented inline: `spawn_failed`, `session_not_found`, `attach_failed`, `kill_failed`, `rename_failed`, `invalid_request`.
+  - No-silent-failure invariant stated: the IPC handler MUST NOT return `Ok(())` at the task boundary on `Err(SessionError::...)`. Every error from `SessionManager` MUST produce `ServerToClient::Error` to the requesting client.
+  - `SpawnSession` `ClientToServer` doc-comment cross-reference updated: "SS-08 §Error handling" now also cites "SS-05 §ServerToClient::Error taxonomy" so the link resolves to the new variant definition. The dangling reference to a non-existent section is resolved by the §Error handling addition in SS-session-manager.md v1.6.0 (same burst).
+- **C6-001(b) — 12→13 census sweep:** Searched all architecture files for "12 ServerToClient", "ServerToClient.*12", "12 variant" census claims. Survivors:
+  - SS-ipc.md §Trace v1.13.0 line "C5-001 (11 v1A wire variants added)" — **no change required**: this is a historical count of v1A-round-5 _additions_ (the 5 ServerToClient + 6 ClientToServer additions in Pass 5), not a total variant count claim. The addend "11 additions" remains correct regardless of the total reaching 13.
+  - No other file carries a "12 ServerToClient variants" claim. The total variant count was never stated as a census number in any spec; the prior version was 12 by construction (7 original + 5 Pass-5 additions), now 13.
 
 ## §Trace v1.13.0
 
