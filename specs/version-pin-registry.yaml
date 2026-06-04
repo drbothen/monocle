@@ -106,8 +106,8 @@ SS-forward-compatibility:
 
 SS-ipc:
   path: specs/architecture/SS-ipc.md
-  current_version: "1.11.0"
-  last_bump_commit: "[D-231 wave-7-gate sweep 2026-06-03 — architect F-S026-ADV1-LOW-002 naming reconciliation]"
+  current_version: "1.12.1"
+  last_bump_commit: "[F-01 closure-audit — §Connection Lifecycle prose Vec<EnrichedSession>→Vec<SessionSnapshot> + §Framing Protocol JSON rationale stale ref corrected]"
   last_bump_date: "2026-06-03"
 
 SS-permissions-phase1:
@@ -124,8 +124,8 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "1.3.0"
-  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — C2-002/C2-003/C2-005/I2-002/I2-003/I2-004/I2-006/S2-003]"
+  current_version: "1.4.0"
+  last_bump_commit: "[Adversarial Pass 3 resolution 2026-06-03 — C3-003 rename emit fix; I3-002 Terminating watchdog background task + kill_deadline sidecar; I3-003 snapshot-then-resume; I3-005 Detached re-discovery preserved; I3-008 vt100-0.16 attrs 5-flag correction; I3-009 degraded-env surfaced to daemon]"
   last_bump_date: "2026-06-03"
 
 SS-embedded-pty:
@@ -142,8 +142,8 @@ SS-engine-module-v2-delta:
 
 SS-daemon-wiring-v2-delta:
   path: specs/architecture/SS-daemon-wiring-v2-delta.md
-  current_version: "1.2.0"
-  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — C2-002 ScrollbackChunk/ScrollbackDumpComplete/PtyReset fan-out paths; I2-003 per-client isolated send buffer §5d]"
+  current_version: "1.3.0"
+  last_bump_commit: "[Adversarial Pass 3 resolution 2026-06-03 — C3-001 SessionStateChanged emission rule §3b; C3-003 rename→SessionListUpdate only; C3-004 SessionSnapshot §4 + wire type change; I3-001 ordered-pair split disconnect; I3-003 snapshot-then-resume §5b; I3-004 AttachSession handler §3; O3-004 CLIENT_SEND_BUFFER_SIZE=64 §5d]"
   last_bump_date: "2026-06-03"
 
 SS-deps-pin-manifest-v2-delta:
@@ -182,8 +182,8 @@ ADR-0009:
 
 ADR-0010:
   path: specs/architecture/adr/ADR-0010-pty-bytes-over-shared-uds-ipc.md
-  current_version: "1.2.0"
-  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — C2-002 ScrollbackChunk/ScrollbackDumpComplete/PtyReset ServerToClient variants + interleaving protocol; I2-003 per-client isolated send buffer backpressure isolation]"
+  current_version: "1.3.0"
+  last_bump_commit: "[Adversarial Pass 3 resolution 2026-06-03 — I3-001 ordered-pair split; I3-003 interleaving protocol replaced: snapshot-then-resume, TUI buffers live PtyOutput; O3-004 CLIENT_SEND_BUFFER_SIZE corrected to 64]"
   last_bump_date: "2026-06-03"
 
 ADR-0011:
@@ -725,32 +725,32 @@ BC-2.03.008:
 
 BC-2.05.009:
   path: specs/behavioral-contracts/ss-05/BC-2.05.009.md
-  current_version: "1.2.0"
-  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — D-243 I2-001 mouse-capture scoped BC; ServerToClient variants]"
+  current_version: "1.3.0"
+  last_bump_commit: "[Adversarial Pass 3 resolution 2026-06-03 — D-244 I3-006 SO_PEERCRED universal; O3-001 dup PC]"
   last_bump_date: "2026-06-03"
 
 BC-2.05.010:
   path: specs/behavioral-contracts/ss-05/BC-2.05.010.md
-  current_version: "1.1.0"
-  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — D-243 I2-005 Launching re-discovery synced]"
+  current_version: "1.2.0"
+  last_bump_commit: "[Adversarial Pass 3 resolution 2026-06-03 — D-244 I3-005 Detached preserved on re-discovery]"
   last_bump_date: "2026-06-03"
 
 BC-2.05.011:
   path: specs/behavioral-contracts/ss-05/BC-2.05.011.md
-  current_version: "1.0.0"
-  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — D-243 NEW: ServerToClient variants BC]"
+  current_version: "1.2.0"
+  last_bump_commit: "[Adversarial Pass 3 closure F-02 2026-06-03 — D-244 buffer 256→64 propagation fix]"
   last_bump_date: "2026-06-03"
 
 BC-2.06.025:
   path: specs/behavioral-contracts/ss-06/BC-2.06.025.md
-  current_version: "1.2.0"
-  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — D-243 I2-001 mouse-capture permission bell scoped]"
+  current_version: "1.3.0"
+  last_bump_commit: "[Adversarial Pass 3 resolution 2026-06-03 — D-244 I3-006 SO_PEERCRED on UDS permission sub-channel]"
   last_bump_date: "2026-06-03"
 
 BC-2.08.001:
   path: specs/behavioral-contracts/ss-08/BC-2.08.001.md
-  current_version: "1.2.0"
-  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — D-243 C2-005 SO_PEERCRED kill-path + 2s/10s escalation reconciled]"
+  current_version: "1.3.0"
+  last_bump_commit: "[Adversarial Pass 3 resolution 2026-06-03 — D-244 C3-001 SessionStateChanged emission; I3-004 AttachSession variant; I3-005 Detached re-discovery]"
   last_bump_date: "2026-06-03"
 
 BC-2.08.002:
@@ -761,14 +761,14 @@ BC-2.08.002:
 
 BC-2.08.003:
   path: specs/behavioral-contracts/ss-08/BC-2.08.003.md
-  current_version: "1.2.0"
-  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — D-243 C2-005 2s/10s escalation reconciled + watchdog]"
+  current_version: "1.3.0"
+  last_bump_commit: "[Adversarial Pass 3 resolution 2026-06-03 — D-244 I3-002 Terminating watchdog post-bind bg task + kill_deadline persistence (schema_version 3)]"
   last_bump_date: "2026-06-03"
 
 BC-2.08.004:
   path: specs/behavioral-contracts/ss-08/BC-2.08.004.md
-  current_version: "1.1.0"
-  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — D-243 I2-004 Terminating transient state]"
+  current_version: "1.2.0"
+  last_bump_commit: "[Adversarial Pass 3 resolution 2026-06-03 — D-244 C3-002 schema_version 3 consistent; self-deleting-sidecar bug closed]"
   last_bump_date: "2026-06-03"
 
 BC-2.08.005:
@@ -780,19 +780,19 @@ BC-2.08.005:
 BC-2.08.006:
   path: specs/behavioral-contracts/ss-08/BC-2.08.006.md
   current_version: "1.1.0"
-  last_bump_commit: "[D-242 adversarial pass-1 convergence-fix 2026-06-03 — C1 shared-hooks model; Architecture Source cite updated to SS-session-manager v1.3.0]"
+  last_bump_commit: "[D-242 adversarial pass-1 convergence-fix 2026-06-03 — C1 shared-hooks model; Architecture Source cite updated to SS-session-manager at D-242 authoring time]"
   last_bump_date: "2026-06-03"
 
 BC-2.08.007:
   path: specs/behavioral-contracts/ss-08/BC-2.08.007.md
-  current_version: "1.2.0"
-  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — D-243 S2-005 SessionStateChanged emission + C2-005 SO_PEERCRED]"
+  current_version: "1.3.0"
+  last_bump_commit: "[Adversarial Pass 3 resolution 2026-06-03 — D-244 C3-001 SessionStateChanged emission point per-method; C3-003 rename→SessionListUpdate only]"
   last_bump_date: "2026-06-03"
 
 BC-2.08.008:
   path: specs/behavioral-contracts/ss-08/BC-2.08.008.md
-  current_version: "1.0.0"
-  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — D-243 NEW: SessionStateChanged emission BC]"
+  current_version: "1.1.0"
+  last_bump_commit: "[Adversarial Pass 3 resolution 2026-06-03 — D-244 C3-001 emission point rule; C3-004 SessionSnapshot wire boundary type; O3-004 per-client buffer 64]"
   last_bump_date: "2026-06-03"
 
 BC-2.09.001:

@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.0"
+version: "1.2.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -28,11 +28,14 @@ removal_reason: null
 
 ## Description
 
-v1A adds six new `ClientToServer` IPC message variants for session lifecycle operations.
-The TUI sends these messages to the daemon's UDS server, which routes them to
+v1A adds seven `ClientToServer` IPC message variants for session lifecycle operations and
+re-attach. The TUI sends these messages to the daemon's UDS server, which routes them to
 `SessionManager`. Each variant is `#[non_exhaustive]` per BC-2.02.003. The daemon handles
 each variant by delegating to the corresponding `SessionManager` method and broadcasting
-state updates to all TUI clients.
+state updates to all TUI clients. `AttachSession` (7th variant, I3-004) was added in v1.2.0
+to support TUI-initiated re-attach after `PtyReset` and explicit user re-attach of Detached
+sessions. The TUI MUST NOT send `DaemonToHost::Attach` directly — that is a daemon-only
+message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 
 ## Preconditions
 
@@ -78,11 +81,29 @@ state updates to all TUI clients.
 
 1. `ClientToServer::RenameSession { session_id: String, new_name: String }` is received.
 2. Daemon calls `SessionManager::rename_session(&session_id, new_name)`.
-3. On success: `ServerToClient::SessionListUpdate` broadcast.
+3. On success: `ServerToClient::SessionListUpdate` broadcast. NOTE: `SessionStateChanged` is
+   NOT emitted for rename — rename is not a `SessionState` transition (per BC-2.08.008 PC-4a).
+
+### AttachSession
+
+1. `ClientToServer::AttachSession { session_id: String }` is received.
+2. Daemon calls `SessionManager::attach_session(&session_id)` (BC-2.08.007).
+3. On success: the session-host streams a fresh `HostToDaemon::ScrollbackChunk*` +
+   `HostToDaemon::ScrollbackDumpComplete` sequence; the daemon fans these out as
+   `ServerToClient::ScrollbackChunk` / `ServerToClient::ScrollbackDumpComplete` to all
+   connected TUI clients (per BC-2.05.011). If state transitions from `Detached → Running`,
+   `ServerToClient::SessionStateChanged { session_id, new_state: Running }` is broadcast
+   BEFORE `ServerToClient::SessionListUpdate`.
+4. On failure (session not found, session-host dead): `ServerToClient::Error { code: "attach_failed", message: ... }` sent to the requesting client.
+5. Use cases: (a) TUI re-attach after `PtyReset` (BC-2.05.011 PC-3c), (b) user explicitly
+   re-attaches a `Detached` session from the sessions panel. The TUI MUST NOT send
+   `DaemonToHost::Attach` directly — that is a daemon→session-host message. The TUI sends
+   `ClientToServer::AttachSession` to the daemon, which routes to `SessionManager::attach_session()`.
+   Per SS-ipc.md v1.12.1 §`ClientToServer::AttachSession`.
 
 ## Invariants
 
-1. All six variants are `#[non_exhaustive]` fields per ADR-0006 (non-exhaustive structs with
+1. All seven variants are `#[non_exhaustive]` fields per ADR-0006 (non-exhaustive structs with
    public constructors). The message enum itself is `#[non_exhaustive]` per BC-2.02.003.
 2. `KeyInput` and `ResizePane` are high-frequency messages. The IPC handler MUST process
    them with minimal latency (no locking beyond `Arc<Mutex<SessionManager>>.lock()`).
@@ -121,7 +142,7 @@ state updates to all TUI clients.
 
 | VP-NNN | Property | Proof Method |
 |--------|----------|-------------|
-| VP-TBD | All 6 new variants routed to correct `SessionManager` methods | integration |
+| VP-TBD | All 7 variants routed to correct `SessionManager` methods (incl. AttachSession → attach_session()) | integration |
 | VP-TBD | `KeyInput` and `ResizePane` generate no broadcast (fire-and-forget) | unit |
 | VP-TBD | Unknown `ClientToServer` variant handled without panic | unit |
 
@@ -130,9 +151,9 @@ state updates to all TUI clients.
 | Field | Value |
 |-------|-------|
 | L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
-| Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — these new ClientToServer variants extend the internal transport capability with session lifecycle control messages (spawn, kill, key input, resize, detach, rename) — all transported over the existing UDS per the session/event/prompt push design |
+| Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — these ClientToServer variants extend the internal transport capability with session lifecycle control messages (spawn, kill, key input, resize, detach, rename, re-attach) — all transported over the existing UDS per the session/event/prompt push design |
 | Architecture Module | monocle-ipc (`ClientToServer` enum new variants); monocle-runtime (IPC handler routing to SessionManager) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-daemon-wiring-v2-delta.md v1.2.0 §IPC handler — new ClientToServer variants |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.3.0 §IPC handler — new ClientToServer variants (including AttachSession); SS-ipc.md v1.12.1 §`ClientToServer::AttachSession` (I3-004 — TUI re-attach; replaces incorrect "TUI sends DaemonToHost::Attach" description) |
 | Cross-Ref | BC-2.08.001 (SpawnSession → spawn_session()); BC-2.08.003 (KillSession → kill_session()); BC-2.08.007 (DetachSession → detach_session()) |
 | Test Name | test_BC_2_05_010_new_client_to_server_variants_routed |
 
@@ -140,8 +161,9 @@ state updates to all TUI clients.
 
 - [BC-2.08.001] — depends on: SpawnSession IPC triggers spawn_session()
 - [BC-2.08.003] — depends on: KillSession IPC triggers kill_session()
-- [BC-2.08.007] — depends on: DetachSession IPC triggers detach_session()
+- [BC-2.08.007] — depends on: DetachSession IPC triggers detach_session(); AttachSession IPC triggers attach_session()
 - [BC-2.05.002] — composes with: existing IPC connection framework carries these new variants
+- [BC-2.05.011] — depends on: AttachSession triggers ScrollbackChunk*/ScrollbackDumpComplete sequence fanned out by BC-2.05.011
 
 ## Architecture Anchors
 
@@ -154,6 +176,18 @@ S-TBD — Implement new ClientToServer IPC variants and daemon routing (filled b
 ## VP Anchors
 
 VP-TBD — IPC variant routing integration tests (filled after VP creation)
+
+## §Trace v1.2.0
+
+**Adversarial Pass 3 fix — I3-004 (AttachSession 7th variant per SS-ipc.md v1.12.1)** (2026-06-03):
+- I3-004: `ClientToServer::AttachSession { session_id }` added as the 7th variant. Daemon
+  routes to `SessionManager::attach_session()`. Used for: (a) TUI re-attach after PtyReset
+  (replaces the incorrect BC-2.05.011 PC-3c reference to "TUI sends DaemonToHost::Attach"
+  — the TUI cannot send DaemonToHost messages), (b) explicit user-initiated re-attach of a
+  Detached session from the sessions panel. Per SS-ipc.md v1.12.1 §ClientToServer::AttachSession.
+- Invariant 1: updated "six" → "seven" variants.
+- Description: updated to seven variants; clarified TUI must NOT send DaemonToHost::Attach.
+- Architecture Source updated to SS-daemon-wiring-v2-delta.md v1.3.0 and SS-ipc.md v1.12.1.
 
 ## §Trace v1.1.0
 

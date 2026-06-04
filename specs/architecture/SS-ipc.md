@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "ipc"
 subsystem: SS-05
-version: "1.11.0"
+version: "1.12.1"
 status: draft
 producer: vsdd-factory:architect
 phase: phase-1-expansion
@@ -141,9 +141,9 @@ pub const MAX_MESSAGE_BYTES: usize = 262_144;
 ```
 
 JSON is chosen over protobuf for IPC in Phase 1 because:
-1. Message types reference `EnrichedSession` and `HookEvent` structs that are already
-   serialized via `serde` for the JSONL ring. Re-using `serde_json` adds zero new
-   dependencies.
+1. Message types reference `SessionSnapshot`, `HookEventRecord`, and `HookEvent` structs that
+   are already serialized via `serde` for the JSONL ring and IPC wire boundary. Re-using
+   `serde_json` adds zero new dependencies.
 2. Human-readable wire format simplifies debugging and integration testing.
 3. The `monocle-proto` prost schemas are reserved for the Phase 4 cross-host federation
    wire format (OQ-07); local IPC does not need the protobuf serialization overhead.
@@ -165,8 +165,15 @@ and message structs carry `#[non_exhaustive]` per the SS-02 extensibility policy
 pub enum ServerToClient {
     /// Sent immediately on connect. Pushes the full current state snapshot to the
     /// newly connected TUI client so it can render without waiting for incremental updates.
+    ///
+    /// C3-004 (v1.12.0): `sessions` type changed from `Vec<EnrichedSession>` to
+    /// `Vec<SessionSnapshot>`. `SessionSnapshot` is the canonical wire boundary type for
+    /// all sessions (monocle-spawned and externally-detected). `EnrichedSession` is retained
+    /// internally for `EngineModule::detect()` but is NOT exposed on the wire. See
+    /// SS-daemon-wiring-v2-delta.md v1.3.0 §4 for the three-representation reconciliation.
     InitialState {
-        sessions: Vec<EnrichedSession>,
+        /// All sessions (monocle-spawned and externally-detected) as `SessionSnapshot`.
+        sessions: Vec<SessionSnapshot>,
         /// Last N events from the RAM ring in `HookEventRecord` format (BC-2.04.012 PC-1).
         /// The TUI renders event ribbon display from `hook_type`, `session_id`,
         /// `timestamp_micros`, and `tool_name` fields. Using the ring's native storage type
@@ -178,8 +185,11 @@ pub enum ServerToClient {
 
     /// Session roster changed: a session was added, removed, or enriched.
     /// Contains the full current session list (not a diff).
+    ///
+    /// C3-004 (v1.12.0): `sessions` type changed from `Vec<EnrichedSession>` to
+    /// `Vec<SessionSnapshot>` (same rationale as InitialState above).
     SessionListUpdate {
-        sessions: Vec<EnrichedSession>,
+        sessions: Vec<SessionSnapshot>,
     },
 
     /// A hook event was ingested by the daemon.
@@ -263,6 +273,22 @@ pub enum ClientToServer {
         decision: PermissionDecisionKind,
     },
 
+    /// TUI-initiated re-attach to an existing session-host.
+    ///
+    /// I3-004 (v1.12.0): Added to support TUI re-attach after PtyReset and explicit
+    /// user-initiated re-attach from the sessions panel (e.g., attaching to a Detached session).
+    /// The TUI cannot send `DaemonToHost::Attach` directly (that is a daemon→session-host
+    /// message). Instead the TUI sends `AttachSession` to the daemon over the shared UDS;
+    /// the daemon calls `SessionManager::attach_session()` which issues `DaemonToHost::Attach`
+    /// to the session-host and streams a fresh `ScrollbackChunk*` + `ScrollbackDumpComplete`
+    /// sequence to all connected TUI clients.
+    ///
+    /// This replaces the incorrect BC-2.05.011 PC-3c description of sending "a fresh
+    /// DaemonToHost::Attach" from the TUI (the TUI never sends DaemonToHost messages).
+    AttachSession {
+        session_id: String,
+    },
+
     /// Keepalive probe. Daemon responds with Pong.
     /// NOTE: Ping is reserved for Phase 2 keepalive detection.
     /// Phase 1 implementations MUST accept and silently discard Ping if received —
@@ -339,6 +365,46 @@ in Rust code snippets or test assertions.
 depends on `monocle-runtime` for `HookEventRecord` in the `InitialState` message; this is
 the only `monocle-runtime` dependency in `monocle-ipc`.
 
+`SessionSnapshot` is defined in `monocle-ipc` (new in v1A, C3-004):
+
+```rust
+/// Canonical wire boundary type for session data in InitialState.sessions and
+/// SessionListUpdate.sessions. Replaces Vec<EnrichedSession> on the wire.
+///
+/// Both monocle-spawned sessions (from SessionManager.session_list()) and
+/// externally-detected sessions (from EngineModule::detect()) are converted to
+/// SessionSnapshot before being placed on the wire. spawned_by_monocle distinguishes them.
+///
+/// C3-004: defined here (monocle-ipc) so both daemon and TUI share the type without
+/// the TUI needing to import monocle-runtime internal types.
+#[non_exhaustive]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionSnapshot {
+    pub session_id: String,
+    pub display_name: String,
+    pub state: SessionState,
+    pub harness_id: String,
+    pub project_root: String,
+    pub cwd: String,
+    /// Some(true) = monocle-spawned; Some(false) = externally-detected; None = legacy/unknown.
+    pub spawned_by_monocle: Option<bool>,
+    /// Unix epoch microseconds of session start.
+    pub started_at_micros: i64,
+    pub pty_rows: u16,
+    pub pty_cols: u16,
+    /// I3-009: true if session-host reported missing critical env vars (HOME, PATH, etc.).
+    #[serde(default)]
+    pub degraded: bool,
+    /// I3-009: Human-readable degraded reason, e.g. "Missing env: HOME, PATH". None when healthy.
+    #[serde(default)]
+    pub degraded_reason: Option<String>,
+}
+```
+
+`SessionState` is defined in `monocle-ipc` (or re-exported from `monocle-core`) so both the
+daemon's `SessionManager` and the TUI share the identical type with `Serialize`/`Deserialize`
+derives. The same enum powers both the internal `SessionEntry.state` and the wire `SessionSnapshot.state`.
+
 ```rust
 /// Shared payload for permission prompt data, used in both `InitialState.overlay_stack`
 /// and `PermissionPromptQueued`. Carries all fields the TUI needs to render a prompt.
@@ -410,7 +476,7 @@ signal only.
 2. TUI opens `UnixStream::connect("<runtime_dir>/monocle.sock")`.
 3. Daemon accepts the connection; spawns a dedicated Tokio task for the client session.
 4. Daemon immediately sends `ServerToClient::InitialState` containing:
-   - The full current `Vec<EnrichedSession>` roster.
+   - The full current `Vec<SessionSnapshot>` roster.
    - The last N events from the RAM ring as `Vec<HookEventRecord>` (ring's native storage
      type per BC-2.04.012 PC-1; avoids lossless-vs-lossy reconstruction; see ADR-0006).
    - Any currently queued `Vec<PermissionPromptPayload>` entries awaiting decision.
@@ -830,6 +896,45 @@ still pending in the daemon's registry (i.e., still within the 300ms timeout win
 prompts are never re-pushed.
 
 ---
+
+## §Trace v1.12.1
+
+**F-01 closure-audit: §Connection Lifecycle prose Vec<EnrichedSession>→Vec<SessionSnapshot>** (2026-06-03):
+
+- **Line ~479 (§Connection Lifecycle §Phase 1 Connect step 4):** Stale prose "The full current
+  `Vec<EnrichedSession>` roster." corrected to "The full current `Vec<SessionSnapshot>` roster."
+  This is the only place in the document where `EnrichedSession` appeared as the *wire roster type*
+  in running prose rather than in historical changelog context or internal-type references.
+  The `ServerToClient::InitialState.sessions` field and `SessionListUpdate.sessions` field were
+  already correctly typed `Vec<SessionSnapshot>` in the code blocks and §Supporting Types;
+  only this one prose line lagged.
+- **Line ~144 (§Framing Protocol — JSON rationale):** Secondary stale reference corrected.
+  "Message types reference `EnrichedSession` and `HookEvent` structs" changed to reference
+  `SessionSnapshot`, `HookEventRecord`, and `HookEvent` — the actual wire-boundary types after
+  C3-004. `EnrichedSession` is an internal `EngineModule::detect()` type and is never placed on
+  the IPC wire.
+- **Scope note:** All other `EnrichedSession` occurrences in this file are legitimate:
+  historical C3-004 changelog text, `SessionSnapshot` doc-comment (explaining what it replaces),
+  `PermissionPromptPayload` cross-reference for `session_id: String` type consistency,
+  §Dependency Graph internal-type listing, and §Trace footnote history. None of these represent
+  stale wire-type claims.
+
+## §Trace v1.12.0
+
+**C3-004/I3-004 — Adversarial Pass 3 resolution: SessionSnapshot + AttachSession** (2026-06-03):
+
+- **C3-004 (SessionSnapshot defined):** §Supporting Types: `SessionSnapshot` struct defined
+  in `monocle-ipc` with all fields (session_id, display_name, state, harness_id, project_root,
+  cwd, spawned_by_monocle, started_at_micros, pty_rows, pty_cols, degraded, degraded_reason).
+  `InitialState.sessions` and `SessionListUpdate.sessions` changed from `Vec<EnrichedSession>`
+  to `Vec<SessionSnapshot>`. `SessionState` is defined in/re-exported from `monocle-ipc`.
+  `EnrichedSession` is retained for `EngineModule::detect()` internal use but is NOT the wire
+  type. Three-representation reconciliation cross-referenced to SS-daemon-wiring-v2-delta §4.
+- **I3-004 (ClientToServer::AttachSession added):** `ClientToServer::AttachSession { session_id }`
+  added to the `ClientToServer` enum. Used for TUI-initiated re-attach after PtyReset and
+  explicit user re-attach from sessions panel. Daemon routes to `SessionManager::attach_session()`.
+  Replaces the incorrect BC-2.05.011 PC-3c reference to "fresh DaemonToHost::Attach from TUI"
+  (TUI cannot send DaemonToHost messages — that is a daemon→session-host message direction).
 
 ## §Trace v1.11.0
 

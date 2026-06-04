@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:59:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/SS-daemon-wiring-v2-delta.md]
-input-hash: ""
+input-hash: "0f0fb74"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-08
@@ -41,14 +41,16 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
 
 1. A `SessionEntry` exists in the daemon's session registry.
 2. A `SessionState` transition event occurs (process state change, kill, detach, re-discovery,
-   watchdog timeout, etc.).
-3. At least one TUI client is connected to the daemon's UDS.
+   watchdog timeout, GC of a dead session during re-discovery, etc.).
+3. Zero or more TUI clients are connected to the daemon's UDS.
 
 ## Postconditions
 
-### Emission on every transition
+### Emission on every transition (no silent transitions)
 
-1. For EVERY `SessionState` transition (complete list):
+1. `SessionStateChanged` is emitted for EVERY `SessionState` transition WITHOUT EXCEPTION —
+   including re-discovery GC paths, watchdog-forced Terminated transitions, and Detached
+   re-discovery registration. The complete transition list:
    - `Launching → Running` (session-host confirms readiness via `HostToDaemon::StateChanged`)
    - `Running → Terminating` (kill_session() called)
    - `Detached → Terminating` (kill_session() called on Detached session)
@@ -59,25 +61,42 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
    - `Launching → Terminated` (session-host startup failure)
    - `Detached → Running` (attach_session() called and `ScrollbackDumpComplete` received)
    - `* → Terminated` (any path — re-discovery GC, watchdog, crash detection)
-   
+   - Re-discovery GC (dead session): `any → Terminated`, emitted via broker before sidecar GC
+
    The daemon publishes `ServerToClient::SessionStateChanged { session_id, new_state }` to
-   the broker.
+   the broker. If no TUI clients are connected, the broker discards the message — no error.
 
 2. The broker dispatches `SessionStateChanged` to ALL connected TUI clients via their
-   per-client isolated send buffers (capacity 256, per BC-2.05.009 Invariant 3b).
+   per-client isolated send buffers (capacity 64 per SS-ipc.md §TUI IPC Read Loop Pattern,
+   per BC-2.05.009 Invariant 3b).
 
 ### Ordering relative to SessionListUpdate
 
-3. `SessionStateChanged` is emitted BEFORE or CONCURRENTLY WITH `SessionListUpdate` for the
-   same state transition. The invariant: a TUI client MUST NOT receive `SessionListUpdate`
-   with the new state BEFORE receiving `SessionStateChanged` for that same transition.
-   
-   In practice: both messages are posted to the broker in the same event-loop tick. The
-   broker dispatches them in order to each client's per-client buffer. Since both are posted
-   atomically (under the same `SessionManager` mutex hold), their order on the wire to any
-   given TUI client is deterministic: `SessionStateChanged` first, then `SessionListUpdate`.
+3. `SessionStateChanged` is enqueued BEFORE `SessionListUpdate` into each client's per-client
+   FIFO channel. The ordering mechanism is: both `.try_send()` calls are made while holding
+   the `SessionManager` mutex, into the same per-client `mpsc::Sender` in the correct sequence.
+   The per-client channel FIFO draining order then guarantees that if both messages are
+   delivered, `SessionStateChanged` is received first. The mutex provides the atomicity
+   window for both enqueues — it does NOT directly control wire order (the channel FIFO does).
+   See SS-daemon-wiring-v2-delta.md v1.3.0 §3b for the canonical emission code pattern.
 
-4. The `InitialState` push (on TUI client connect) includes the current session list with
+   **Ordered-pair split on full buffer:** If the first `.try_send()` (SessionStateChanged)
+   succeeds but the second `.try_send()` (SessionListUpdate) fails (client buffer full), the
+   pair has split. This is treated as a slow-client condition: the per-client
+   `slow_send_count` is incremented AND the client is immediately disconnected (equivalent
+   to exhausting the 3-strike threshold). The client may reconnect and receive a fresh
+   `InitialState` containing the post-transition state. Delivering a half-pair leaves the
+   TUI in an inconsistent state; disconnecting is safer than tolerating partial delivery.
+
+### Rename does NOT emit SessionStateChanged
+
+4a. **`rename_session()` does NOT emit `SessionStateChanged`.** Rename updates `display_name`
+   only — it is NOT a `SessionState` transition. `SessionStateChanged` carries
+   `new_state: SessionState` and cannot convey the updated name. Only `SessionListUpdate`
+   (carrying the full `SessionSnapshot` with updated `display_name`) is emitted for rename.
+   See SS-daemon-wiring-v2-delta.md v1.3.0 §3b emission table.
+
+4b. The `InitialState` push (on TUI client connect) includes the current session list with
    current states. TUI clients that connect after a transition has already occurred will see
    the post-transition state in `InitialState.sessions` — they do not receive a retrospective
    `SessionStateChanged` for past transitions.
@@ -102,9 +121,13 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
 
 ## Invariants
 
-1. `SessionStateChanged` is published for EVERY state transition without exception. There is
-   no "silent" state transition in the daemon. Every state change that updates
-   `SessionEntry.state` MUST be accompanied by a `SessionStateChanged` broadcast.
+1. `SessionStateChanged` is published for EVERY state transition without exception —
+   including re-discovery GC (dead session → Terminated), Terminating watchdog fires, and
+   Detached re-discovery registration. There is no silent state transition in the daemon.
+   Every code path that mutates `SessionEntry.state` MUST post `SessionStateChanged` to
+   the broker. This includes paths in `rediscover_sessions()` (where transitions occur
+   during daemon startup before any TUI client is connected — messages are discarded by
+   the broker fan-out, which is correct).
 2. The `session_id` in `SessionStateChanged` is the same UUID string used in all other IPC
    messages for the session (canonical per SS-session-manager.md §session_id type ruling).
 3. `SessionStateChanged` is NOT an acknowledgement of a TUI request — it is a fact about
@@ -112,10 +135,15 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
    when the state actually transitions (not immediately upon receipt of `KillSession`). The
    transition to `Terminating` fires `SessionStateChanged` immediately; `Terminated` fires
    when confirmed.
-4. Ordering: `SessionStateChanged` precedes `SessionListUpdate` in the per-client send buffer
-   for the same state transition (atomically posted under the same mutex hold in
-   `SessionManager`). A TUI consumer that processes messages in receipt order will always see
-   `SessionStateChanged` before the corresponding `SessionListUpdate`.
+4. Ordering: `SessionStateChanged` is enqueued BEFORE `SessionListUpdate` into each client's
+   per-client FIFO channel for the same state transition. The ordering is guaranteed by the
+   per-client channel FIFO drain order (NOT by the mutex hold itself). The mutex provides the
+   atomicity window that prevents any other actor from interleaving posts between the two
+   `.try_send()` calls. The actual received order for any client is determined by the channel
+   FIFO. A TUI consumer that processes messages in receipt order WILL always see
+   `SessionStateChanged` before the corresponding `SessionListUpdate` for the same transition.
+   If the ordered-pair splits (SessionStateChanged delivered but SessionListUpdate dropped due
+   to full buffer), the client is disconnected immediately (PC-3 split rule).
 
 ## Edge Cases
 
@@ -154,7 +182,7 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC defines the `SessionStateChanged` IPC message which is the primary notification mechanism for session lifecycle state transitions; it is the trigger for the wizard auto-advance and EmbeddedTerminal exit, both of which are core session lifecycle behaviors in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager state transitions → broker publish); monocle-ipc (`ServerToClient::SessionStateChanged` variant); monocle-tui (wizard auto-advance, EmbeddedTerminal exit handlers) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v1.3.0 §Session lifecycle state machine (state transitions); SS-embedded-pty.md v1.2.0 §TUI AppMode Extensions (SessionCreation::Launching auto-transition to EmbeddedTerminal); SS-daemon-wiring-v2-delta.md v1.2.0 §IPC handler (broker publish path) |
+| Architecture Source | SS-session-manager.md v1.4.0 §Session lifecycle state machine (state transitions, including re-discovery GC and Detached re-discovery); SS-embedded-pty.md v1.2.0 §TUI AppMode Extensions (SessionCreation::Launching auto-transition to EmbeddedTerminal); SS-daemon-wiring-v2-delta.md v1.3.0 §3b (SessionStateChanged emission rule, ordered-pair-split-on-Full disconnect rule, rename-only-SessionListUpdate rule) |
 | Cross-Ref | BC-2.09.008 (SessionCreation wizard auto-transition to EmbeddedTerminal on Running); BC-2.08.003 (kill → Terminating transition; 12s watchdog → Terminated); BC-2.05.003 (SessionListUpdate — emitted concurrently with SessionStateChanged for same transition) |
 | Test Name | test_BC_2_08_008_session_state_changed_emitted_on_every_transition |
 
@@ -178,6 +206,25 @@ S-TBD — Implement SessionStateChanged broadcast on every SessionEntry state tr
 ## VP Anchors
 
 VP-TBD — SessionStateChanged emission and TUI response integration tests (filled after VP creation)
+
+## §Trace v1.1.0
+
+**Adversarial Pass 3 fixes — C3-001 (emission completeness + ordering rationale + split rule + rename rule)** (2026-06-03):
+- C3-001 (SessionStateChanged emission obligation): PC-1 rewritten to make "no silent transitions"
+  explicit, including re-discovery GC, Terminating watchdog, and Detached re-discovery. Precondition
+  3 changed from "at least one TUI client connected" to "zero or more" (emission happens regardless;
+  broker discards when no subscribers).
+- Ordering rationale corrected (PC-3 / Invariant 4): the ordering guarantee is provided by the
+  per-client channel FIFO drain order, NOT by "the mutex hold guarantees wire order" (the mutex
+  provides atomicity for both `.try_send()` calls but does not directly control wire order).
+  Clarified in PC-3 and Invariant 4.
+- Ordered-pair-split-on-Full → disconnect rule added (PC-3): if SessionStateChanged delivered
+  but SessionListUpdate dropped (buffer full), client disconnected immediately. Rationale:
+  half-pair delivery leaves TUI in inconsistent state.
+- Rename-does-NOT-emit-SessionStateChanged added as PC-4a: rename updates display_name only;
+  SessionStateChanged carries new_state and cannot convey the new name; only SessionListUpdate
+  emitted for rename. Per SS-daemon-wiring-v2-delta.md v1.3.0 §3b.
+- Architecture Source updated to SS-session-manager.md v1.4.0, SS-daemon-wiring-v2-delta.md v1.3.0.
 
 ## §Trace v1.0.0
 

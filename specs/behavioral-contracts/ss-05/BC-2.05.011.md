@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.2.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:59:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-ipc.md, architecture/SS-session-manager.md, architecture/SS-daemon-wiring-v2-delta.md, architecture/adr/ADR-0010-pty-bytes-over-shared-uds-ipc.md]
-input-hash: ""
+input-hash: "6b8d896"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-05
@@ -30,7 +30,7 @@ removal_reason: null
 
 v1A adds three new `ServerToClient` IPC message variants for PTY scrollback streaming and
 PTY parser reset. The daemon broadcasts these to all connected TUI clients via the existing
-per-client isolated send buffer (capacity 256, per SS-daemon-wiring-v2-delta.md §5d). The
+per-client isolated send buffer (capacity 64, per SS-daemon-wiring-v2-delta.md §5d). The
 TUI accumulates `ScrollbackChunk` messages until it receives `ScrollbackDumpComplete`, then
 resets its local `vt100::Parser` and reconstructs the screen. `PtyReset` triggers a fresh
 re-attach. These three variants are core to the chunked scrollback protocol that replaces
@@ -65,11 +65,12 @@ the retired single-message `HostToDaemon::ScrollbackDump`.
    cursor_row, cursor_col, pty_rows, pty_cols }` to each connected TUI client.
 3. On receipt of `ScrollbackDumpComplete`, the TUI:
    a. Validates that the number of accumulated `ScrollbackChunk` messages equals `total_chunks`.
-      If mismatch → log WARN; send a fresh `DaemonToHost::Attach` (re-attach) to restart the dump.
+      If mismatch → log WARN; send `ClientToServer::AttachSession { session_id }` to trigger
+      a fresh scrollback dump (TUI MUST NOT send `DaemonToHost::Attach` directly — see Invariant 6).
    b. If count matches → resets the parser:
       `pty_parsers[session_id] = vt100::Parser::new(pty_rows, pty_cols, SCROLLBACK_ROWS)`.
    c. Reconstructs the vt100 screen from the accumulated `SerializedCell` rows (per
-      SS-session-manager.md v1.3.0 §Screen-state transfer on Attach reconstruction paths).
+      SS-session-manager.md v1.4.0 §Screen-state transfer on Attach reconstruction paths).
    d. Discards the accumulated wire-JSON after reconstruction (transient allocation released).
    e. Resumes processing subsequent `ServerToClient::PtyOutput` messages on the now-correctly
       initialized parser. No double-counting occurs because the parser was reset before
@@ -85,13 +86,24 @@ the retired single-message `HostToDaemon::ScrollbackDump`.
       (fresh parser state — all prior screen state discarded).
    b. Displays `[PTY reset — <session_id truncated to 8 chars>]` in the status bar for 5
       seconds. This surfaces any architectural regression (PTY byte drop) to the operator.
-   c. Sends a fresh `ClientToServer::KeyInput { session_id, bytes: b"" }` or equivalent
-      re-attach trigger to request a new `ScrollbackChunk*` + `ScrollbackDumpComplete`
-      sequence. (Specifically: the TUI sends a fresh `DaemonToHost::Attach` via the daemon's
-      attach path, NOT by re-spawning the session.)
+   c. Sends `ClientToServer::AttachSession { session_id }` to the daemon to trigger a fresh
+      `ScrollbackChunk*` + `ScrollbackDumpComplete` sequence (I3-004 fix: the TUI sends the
+      `ClientToServer::AttachSession` IPC variant — it MUST NOT send `DaemonToHost::Attach`,
+      which is a daemon→session-host message that the TUI cannot send). The daemon routes
+      `AttachSession` to `SessionManager::attach_session()` which sends `DaemonToHost::Attach`
+      to the session-host. NOT re-spawning the session — re-attaching to the existing one.
+   d. While waiting for `ScrollbackDumpComplete`, the TUI MUST buffer any `PtyOutput` messages
+      received for this session in `pending_pty_bytes[session_id]` (Invariant 6). Live PTY
+      bytes continue to arrive during the dump (I3-003 fix: session-host resumes PtyBytes
+      immediately after snapshot, does NOT pause for dump transfer).
+   e. On `ScrollbackDumpComplete` receipt: validate chunk count, reset parser, reconstruct
+      screen from accumulated `SerializedCell` rows, THEN replay all buffered
+      `pending_pty_bytes[session_id]` bytes through the now-reset parser in receipt order.
+      Clear `pending_pty_bytes[session_id]` after replay. No double-counting: parser was
+      reset before dump applied; buffered bytes are post-snapshot live output.
 4. `PtyReset` is a rare event — it fires only on an actual PTY byte drop (channel `SendError`,
    OOM, or other extreme condition). Under normal backpressure via `.send().await`, it never
-   fires. See SS-session-manager.md v1.3.0 §PTY reader thread §Forced parser-reset protocol.
+   fires. See SS-session-manager.md v1.4.0 §PTY reader thread §Forced parser-reset protocol.
 
 ## Invariants
 
@@ -107,9 +119,18 @@ the retired single-message `HostToDaemon::ScrollbackDump`.
 4. `PtyReset` receipt resets ALL accumulated state for the session: the parser is fresh; any
    partially-accumulated `ScrollbackChunk` messages awaiting `ScrollbackDumpComplete` are
    discarded. The subsequent re-attach produces a fresh scrollback dump.
-5. The three variants are dispatched via the same per-client isolated send buffer (capacity 256)
-   as `PtyOutput` (BC-2.05.009 Invariant 3b). A slow TUI client that fills its buffer during
-   a scrollback dump will be disconnected after 3 consecutive failures (per §5d isolation model).
+5. The three variants are dispatched via the same per-client isolated send buffer (capacity 64
+   per SS-ipc.md v1.12.1 §TUI IPC Read Loop Pattern) as `PtyOutput` (BC-2.05.009 Invariant 3b).
+   A slow TUI client that fills its buffer during a scrollback dump will be disconnected after
+   3 consecutive failures (per §5d isolation model).
+6. **`dump_in_progress` → buffer live PtyOutput in `pending_pty_bytes`, replay on Complete.**
+   When a scrollback dump is in progress (after `ClientToServer::AttachSession` sent; before
+   `ScrollbackDumpComplete` received), the TUI MUST buffer any `ServerToClient::PtyOutput`
+   messages for the session in `pending_pty_bytes[session_id]` rather than feeding them to
+   the parser immediately. On `ScrollbackDumpComplete`: reconstruct screen from dump, THEN
+   drain `pending_pty_bytes` through the reconstructed parser in receipt order. This prevents
+   live bytes from being applied to a stale parser state during the dump window. Per
+   SS-session-manager.md v1.4.0 §Screen-state transfer on Attach step 5e (I3-003 fix).
 
 ## Edge Cases
 
@@ -146,13 +167,13 @@ the retired single-message `HostToDaemon::ScrollbackDump`.
 | L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — the three new ServerToClient variants (ScrollbackChunk, ScrollbackDumpComplete, PtyReset) extend the session/event/prompt push capability with the chunked scrollback dump protocol and PTY reset notification, all transported over the existing shared UDS per ADR-0010 |
 | Architecture Module | monocle-ipc (`ServerToClient::ScrollbackChunk`, `ServerToClient::ScrollbackDumpComplete`, `ServerToClient::PtyReset` variants); monocle-runtime (broker fan-out §5b/§5c); monocle-tui (chunk accumulation, parser reset, status bar indicator) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-daemon-wiring-v2-delta.md v1.2.0 §5b (ScrollbackChunk/ScrollbackDumpComplete fan-out); §5c (PtyReset fan-out); SS-session-manager.md v1.3.0 §Screen-state transfer on Attach; ADR-0010 v1.2.0 §pty-bytes-over-shared-uds-ipc (shared UDS decision + chunked protocol) |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.3.0 §5b (ScrollbackChunk/ScrollbackDumpComplete fan-out; I3-003 resume-after-snapshot); §5c (PtyReset fan-out); SS-session-manager.md v1.4.0 §Screen-state transfer on Attach (step 5d-5e: buffer PtyOutput during dump, replay on Complete); SS-ipc.md v1.12.1 §`ClientToServer::AttachSession` (I3-004 — TUI sends AttachSession not DaemonToHost::Attach); ADR-0010 v1.3.0 §pty-bytes-over-shared-uds-ipc (shared UDS decision + chunked protocol) |
 | Cross-Ref | BC-2.05.009 (PtyOutput fan-out; per-client buffer; Invariant 3b — same isolation model); BC-2.08.007 (Attach → triggers ScrollbackChunk* + ScrollbackDumpComplete sequence); BC-2.09.001 (PTY output renders after parser reconstruction completes) |
 | Test Name | test_BC_2_05_011_new_server_to_client_scrollback_and_reset_variants |
 
 ## Related BCs
 
-- [BC-2.05.009] — composes with: same per-client isolated send buffer (capacity 256, §5d model)
+- [BC-2.05.009] — composes with: same per-client isolated send buffer (capacity 64, §5d model)
 - [BC-2.08.007] — depends on: attach_session() triggers the ScrollbackChunk* + ScrollbackDumpComplete sequence
 - [BC-2.09.001] — depends on: PTY output after reconstruction flows through the parser pipeline
 
@@ -171,6 +192,32 @@ S-TBD — Implement ScrollbackChunk*/ScrollbackDumpComplete/PtyReset broker fan-
 
 VP-TBD — Scrollback dump integration tests and PtyReset unit tests (filled after VP creation)
 
+## §Trace v1.2.0
+
+**F-02 closure-audit: Description per-client buffer capacity 256→64** (2026-06-03):
+- Description (line 33): "capacity 256" → "capacity 64" — aligns with Invariant 5, ADR-0010,
+  SS-daemon-wiring-v2-delta.md §5d, and BC-2.05.009 (all of which already stated 64 since v1.1.0).
+- Related BCs (BC-2.05.009 entry): "capacity 256" → "capacity 64" — same correction.
+- No functional change; stale prose brought into agreement with canonical 64-slot buffer.
+
+## §Trace v1.1.0
+
+**Adversarial Pass 3 fixes — I3-004 (AttachSession re-attach trigger) + I3-003 (snapshot-then-resume buffering)** (2026-06-03):
+- I3-004: PtyReset PC-3c corrected — the TUI sends `ClientToServer::AttachSession { session_id }`
+  to the daemon (NOT `DaemonToHost::Attach`, which is a daemon→session-host message the TUI
+  cannot send). The daemon routes `AttachSession` to `SessionManager::attach_session()` which
+  sends `DaemonToHost::Attach` to the session-host. This replaces the previous incorrect
+  "TUI sends a fresh DaemonToHost::Attach via the daemon's attach path" description. Per
+  SS-ipc.md v1.12.1 §ClientToServer::AttachSession.
+- I3-003 snapshot-then-resume: PC-3d and 3e added — TUI buffers live `PtyOutput` in
+  `pending_pty_bytes` during dump transfer (session-host resumes PtyBytes immediately after
+  snapshot, does NOT pause); replays buffered bytes after `ScrollbackDumpComplete` +
+  parser reconstruction. Invariant 6 added. Per SS-session-manager.md v1.4.0 §Screen-state
+  transfer on Attach step 5d-5e. Per-client buffer capacity updated to 64 (from 256) to
+  match SS-ipc.md v1.12.1 §TUI IPC Read Loop Pattern canonical pattern.
+- Architecture Source updated to SS-daemon-wiring-v2-delta.md v1.3.0, SS-session-manager.md
+  v1.4.0, SS-ipc.md v1.12.1, ADR-0010 v1.3.0.
+
 ## §Trace v1.0.0
 
 **Initial production — architect-delegated C2-002 BC (adversarial pass 2)** (2026-06-03T23:59:00Z):
@@ -180,7 +227,7 @@ VP-TBD — Scrollback dump integration tests and PtyReset unit tests (filled aft
   `ScrollbackChunk`, `ScrollbackDumpComplete`, `PtyReset`. These complete the chunked scrollback
   protocol that replaced the retired single-message `HostToDaemon::ScrollbackDump` (C2-002).
 - TUI receiver protocol (chunk accumulation, parser reset, reconstruction, mismatch re-attach)
-  specified from SS-session-manager.md v1.3.0 §Screen-state transfer on Attach.
-- `PtyReset` 5-second status bar indicator specified from SS-session-manager.md v1.3.0 §PTY
+  specified from SS-session-manager.md v1.4.0 §Screen-state transfer on Attach.
+- `PtyReset` 5-second status bar indicator specified from SS-session-manager.md v1.4.0 §PTY
   reader thread §TUI-surfaced PTY drop indicator.
 - SE-16d PASS: 2026-06-03T23:59:00Z (new artifact).

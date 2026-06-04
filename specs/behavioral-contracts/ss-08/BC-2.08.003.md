@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.0"
+version: "1.3.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -51,12 +51,21 @@ and sends SIGKILL directly to the session-host PID. The sidecar is not immediate
 
 ## Postconditions
 
-1. `SessionManager` sends `DaemonToHost::Kill` over the per-session UDS within 500ms of
-   `kill_session()` being invoked. Simultaneously, `SessionEntry.state` transitions to
-   `SessionState::Terminating`.
-2. A `ServerToClient::SessionListUpdate` IPC message is published to the broker immediately
-   after `SessionEntry.state` transitions to `Terminating` (to notify TUI clients that
-   termination is in progress — TUI renders `[Terminating]` indicator).
+1. `SessionManager` determines the kill path based on session state:
+   - **Running / Launching state:** Uses the existing `host_conn` (already attached); sends
+     `DaemonToHost::Kill` over the live connection. No fresh UDS connect needed.
+   - **Detached state:** `host_conn` is `None`; makes a fresh UDS connect to the session-host
+     socket; applies SO_PEERCRED peer-credential check BEFORE sending any message (Invariant 5);
+     if uid matches: sends `DaemonToHost::Kill`. This is the explicit kill-path-selection rule
+     for Detached sessions — independent of the re-discovery Detached-preservation behavior
+     (re-discovery preserves Detached; kill is still correct on a Detached session via fresh
+     connect). A Detached session has `host_conn: None`; it is alive but not currently streamed.
+   Kill is sent within 500ms of `kill_session()` being invoked. `SessionEntry.state` transitions
+   to `SessionState::Terminating` atomically with the Kill send.
+2. `ServerToClient::SessionStateChanged { session_id, new_state: Terminating }` is published
+   to the broker BEFORE `ServerToClient::SessionListUpdate` — both under the `SessionManager`
+   mutex per BC-2.08.008 Invariant 4 and SS-daemon-wiring-v2-delta.md v1.3.0 §3b. TUI renders
+   `[Terminating]` indicator on receipt of `SessionStateChanged{Terminating}`.
 3. When the session-host receives `DaemonToHost::Kill`:
    a. It sends SIGTERM to the harness child process.
    b. It monitors child exit. If child has not exited within 10 seconds, it sends SIGKILL.
@@ -70,7 +79,9 @@ and sends SIGKILL directly to the session-host PID. The sidecar is not immediate
       `SessionState::Terminated`.
    b. `session-state.json` is updated (atomically via `tempfile::persist`) to reflect
       `state: "Terminated"`.
-   c. A second `ServerToClient::SessionListUpdate` IPC message is published.
+   c. `ServerToClient::SessionStateChanged { session_id, new_state: Terminated }` is published
+      to the broker BEFORE `ServerToClient::SessionListUpdate` (both under the `SessionManager`
+      mutex per BC-2.08.008 Invariant 4).
    d. The GC timer starts (BC-2.08.005).
 5. **12-second watchdog:** If the daemon does not receive `HostToDaemon::StateChanged` within
    12 seconds of sending `DaemonToHost::Kill` (10s SIGTERM window + 2s buffer for the session-
@@ -79,7 +90,8 @@ and sends SIGKILL directly to the session-host PID. The sidecar is not immediate
    b. Sends SIGKILL directly to the session-host PID (`SpawnedHostHandle.pid`) to release PTY
       resources, since the session-host may have stalled (harness child not responding to SIGKILL).
    c. Updates `session-state.json` atomically.
-   d. Publishes `ServerToClient::SessionListUpdate`.
+   d. Publishes `ServerToClient::SessionStateChanged { session_id, new_state: Terminated }`
+      BEFORE `ServerToClient::SessionListUpdate` (per BC-2.08.008 Invariant 4).
    e. Starts GC timer (BC-2.08.005).
    The watchdog ensures `Terminating` state never persists indefinitely.
 
@@ -100,13 +112,17 @@ and sends SIGKILL directly to the session-host PID. The sidecar is not immediate
    within 10 seconds of SIGTERM, the session-host sends SIGKILL to escalate. Kill path:
    Running/Detached/Launching → Terminating → Terminated (on session-host confirmation OR
    12s watchdog).
-5. **SO_PEERCRED on kill-path fresh-connect:** `kill_session()` on a `Detached` session requires
-   a fresh UDS connect to the session-host socket (EC-164). This fresh connect MUST apply
-   SO_PEERCRED / LOCAL_PEERPID peer-credential check before sending `DaemonToHost::Kill`.
-   Failure (uid mismatch) → session treated as dead; transition to `Terminated` immediately;
-   `Ok(())` returned (sidecar updated, GC timer started). This is required per SS-session-
-   manager.md v1.3.0 §Per-session UDS security item 1: "SO_PEERCRED applies universally —
-   it is NOT restricted to attach or re-discovery."
+5. **SO_PEERCRED applies to EVERY per-session UDS fresh-connect — no coverage holes:**
+   SO_PEERCRED / LOCAL_PEERPID peer-credential check is applied on ANY per-session UDS
+   connection attempt — whether that connection is for attach, re-discovery, kill on a Detached
+   session (EC-164), or any other operation. `kill_session()` on a `Detached` session requires
+   a fresh UDS connect (since `host_conn` is `None`); this connect MUST apply SO_PEERCRED before
+   sending `DaemonToHost::Kill`. A Detached session with `host_conn: None` is still a valid,
+   alive session-host — the re-discovery Detached-preservation behavior (BC-2.08.004 I3-005)
+   does NOT exempt kill from SO_PEERCRED. Failure (uid mismatch) → session treated as dead;
+   transition to `Terminated` immediately; `Ok(())` returned (sidecar updated, GC timer
+   started). Per SS-session-manager.md v1.4.0 §Per-session UDS security item 1: "SO_PEERCRED
+   applies universally — attach, re-discovery, kill/detach re-connect. No exceptions."
 
 ## Edge Cases
 
@@ -145,7 +161,7 @@ and sends SIGKILL directly to the session-host PID. The sidecar is not immediate
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC defines the kill operation, a core session lifecycle action named explicitly in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager `kill_session()`); monocle-session-host (SIGTERM delivery) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v1.3.0 §SessionManager §Public API (kill_session signature); §Per-session UDS protocol (DaemonToHost::Kill, HostToDaemon::StateChanged, Goodbye) |
+| Architecture Source | SS-session-manager.md v1.4.0 §SessionManager §Public API (kill_session signature); §Per-session UDS protocol (DaemonToHost::Kill, HostToDaemon::StateChanged, Goodbye); §Per-session UDS security item 1 (SO_PEERCRED universal — no coverage holes); SS-daemon-wiring-v2-delta.md v1.3.0 §3b (SessionStateChanged emission rule: Terminating then SessionListUpdate) |
 | Test Name | test_BC_2_08_003_kill_session_sigterm_within_500ms |
 
 ## Related BCs
@@ -165,6 +181,21 @@ S-TBD — Implement SessionManager::kill_session() (filled by story-writer)
 ## VP Anchors
 
 VP-TBD — kill_session() timing and state transition tests (filled after VP creation)
+
+## §Trace v1.3.0
+
+**Adversarial Pass 3 fixes — C3-001 (SessionStateChanged{Terminating} before SessionListUpdate) + I3-006 (kill path-selection + SO_PEERCRED no-hole)** (2026-06-03):
+- C3-001: PC-1 updated with explicit kill-path-selection rule for Running/Launching (existing
+  host_conn) vs Detached (fresh UDS connect). PC-2 updated: `SessionStateChanged{Terminating}`
+  published BEFORE `SessionListUpdate` (ordered pair per BC-2.08.008 Invariant 4). PC-4c
+  updated: `SessionStateChanged{Terminated}` published BEFORE `SessionListUpdate` on
+  StateChanged receipt. PC-5d updated: same ordering for watchdog-forced Terminated.
+- I3-006: Invariant 5 rewritten to make SO_PEERCRED coverage explicit and gapless: applies
+  on ANY per-session UDS fresh-connect (attach, re-discovery, kill on Detached). The
+  Detached re-discovery preservation (I3-005) does NOT exempt kill from SO_PEERCRED. A
+  Detached session has host_conn:None; kill requires a fresh connect; that connect MUST apply
+  SO_PEERCRED before any message. No coverage hole.
+- Architecture Source updated to SS-session-manager.md v1.4.0 and SS-daemon-wiring-v2-delta.md v1.3.0.
 
 ## §Trace v1.2.0
 

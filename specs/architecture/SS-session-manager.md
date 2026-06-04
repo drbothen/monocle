@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "1.3.0"
+version: "1.4.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -117,6 +117,14 @@ struct SessionEntry {
     harness_id: String,                 // "claude-code", "codemachine", etc.
     profile_id: String,
     started_at: chrono::DateTime<chrono::Utc>,
+    /// I3-002: Absolute kill deadline for sessions in Terminating state.
+    /// Written to session-state.json as kill_deadline_unix_ms. None unless state == Terminating.
+    kill_deadline: Option<std::time::Instant>,
+    /// I3-009: Session-host reported missing critical env vars at startup (HOME, PATH, etc.).
+    /// false for healthy sessions; true if session-host sent degraded_env in StateChanged.
+    degraded: bool,
+    /// I3-009: Human-readable degraded reason (e.g., "Missing env: HOME, PATH").
+    degraded_reason: Option<String>,
     /// Active connection to the session-host for PTY byte proxying.
     /// None if daemon is not currently attached (e.g., session-host just discovered).
     host_conn: Option<SessionHostConnection>,
@@ -215,15 +223,49 @@ pub enum SessionState {
   `SIGTERM` session-host; mark `Terminated`; GC sidecar. If process dead → GC sidecar.
 - **Sidecar state `Running`:** Normal re-discovery path. Probe liveness; if alive, `Attach`;
   on `ScrollbackDumpComplete` → `Running`. If dead → GC.
-- **Sidecar state `Detached`:** Session-host was alive but daemon was not attached. Probe
-  liveness; if alive, attempt `Attach` (the session-host accepts Attach from Detached state);
-  on `ScrollbackDumpComplete` → `Running`. If dead → GC. Note: re-discovery always tries to
-  attach (even Detached sidecars) because the daemon needs the proxy task to maintain the
-  broker fan-out.
-- **Sidecar state `Terminating`:** Daemon crashed mid-kill-sequence. Probe liveness: if alive,
-  re-send `DaemonToHost::Kill` and register in `Terminating` state with a 12s watchdog.
-  If process dead → mark `Terminated`; GC sidecar. Re-discovery does NOT treat Terminating
-  as Running — the kill is still in progress and must be completed.
+- **Sidecar state `Detached`:** Session-host was alive but daemon was not attached. The
+  session was intentionally detached — the user's `DetachSession` request resulted in this
+  state, and re-discovery MUST respect the persisted intent.
+  **I3-005 fix:** Re-discovery restores `Detached` sidecars to `Detached` state (NOT `Running`).
+  Probe liveness: if alive, connect to the session-host socket (SO_PEERCRED check), register
+  a `SessionEntry` with `state: Detached` and `host_conn: None` (no proxy task, no force-
+  attach, no streaming). If dead → GC. The daemon does NOT call `DaemonToHost::Attach` for
+  Detached sidecars during re-discovery. The TUI can later initiate an explicit `AttachSession`
+  if the user wants to resume streaming.
+  Rationale: 8 background Detached sessions force-attached on restart would all become Running
+  streamers simultaneously, violating BC-2.08.007 Inv-1 ("Detached sessions don't stream") and
+  consuming the per-session proxy task budget unnecessarily. Respecting the persisted Detached
+  state is the production-grade behavior.
+- **Sidecar state `Terminating`:** Daemon crashed mid-kill-sequence. Probe liveness:
+  - If dead → mark `Terminated`; GC sidecar.
+  - If alive: **I3-002 fix — watchdog as post-UDS-bind background task.** The 5s re-discovery
+    budget (BC-2.08.004 PC-7, `tokio::join_all` of all sessions) MUST NOT wait for the 12s
+    Terminating watchdog. The 12s watchdog deadline is 2.4× the re-discovery budget — allowing
+    it to block re-discovery would violate BC-2.08.004 Invariant 1 (UDS bind blocked until
+    re-discovery complete). Instead:
+    1. Probe liveness, verify SO_PEERCRED, register `SessionEntry` with `state: Terminating`
+       and `host_conn: None` (no proxy task — it's being killed).
+    2. Re-send `DaemonToHost::Kill` over a fresh SO_PEERCRED-verified UDS connect (fire-and-forget,
+       do NOT wait for `StateChanged::Terminated`).
+    3. Spawn a BACKGROUND watchdog tokio task that waits up to 12s for `StateChanged::Terminated`
+       from the session-host. If Terminated received → GC sidecar. If 12s elapses → SIGKILL
+       session-host PID; GC sidecar.
+    4. Return from the re-discovery probe IMMEDIATELY (the background watchdog is now detached).
+    The re-discovery join_all counts this session as found_alive (state: Terminating) and moves on.
+    **Flapping-daemon kill-deadline persistence (I3-002):** To prevent repeated daemon restarts
+    from resetting the kill escalation indefinitely, `SessionEntry` for a `Terminating` session
+    carries a `kill_deadline: Instant` field (absolute deadline, not relative). The deadline is
+    read from the sidecar (see schema below) on re-discovery. If the sidecar's recorded
+    `kill_deadline_unix_ms` has already elapsed, the daemon immediately sends SIGKILL (skips
+    the 12s SIGTERM window — it already expired). This prevents a harness child that ignores
+    SIGTERM from surviving multiple daemon restart cycles.
+    **SessionEntry and session-state.json additions for kill_deadline:**
+    - `SessionEntry` gains `kill_deadline: Option<Instant>` — `Some` only when `state == Terminating`.
+    - `session-state.json` gains an optional `kill_deadline_unix_ms: Option<u64>` field (Unix
+      epoch milliseconds). Written by `kill_session()` when transitioning to `Terminating`; read
+      back on re-discovery. When present and elapsed at re-discovery time → immediate SIGKILL.
+      When present and not yet elapsed → 12s watchdog uses `kill_deadline_unix_ms` as the
+      absolute deadline (not a new 12s window from restart time).
 - **Sidecar state `Terminated`:** Should not appear (session-host deletes sidecar on clean
   exit; GC removes it on timer). If found: delete sidecar; skip. Treat as GC cleanup of a
   crash-leftover sidecar.
@@ -297,7 +339,12 @@ impl SessionManager {
     /// Re-attach the daemon to a running session-host (reconnect proxy).
     pub async fn attach_session(&mut self, session_id: &str) -> Result<(), SessionError>;
 
-    /// Rename a session (updates sidecar; publishes SessionStateChanged to broker).
+    /// Rename a session (updates display_name in sidecar; publishes SessionListUpdate to broker).
+    ///
+    /// Rename is NOT a SessionState transition. SessionStateChanged carries `new_state: SessionState`
+    /// only and cannot convey the updated display_name. The correct broadcast is SessionListUpdate,
+    /// which carries the full SessionSnapshot including the new display_name. SessionStateChanged
+    /// is NOT emitted. See C3-003 / SS-daemon-wiring-v2-delta §3b emission table.
     pub async fn rename_session(&mut self, session_id: &str, new_name: String) -> Result<(), SessionError>;
 
     /// Resize the PTY for a session (forwards to session-host).
@@ -381,12 +428,34 @@ share any code with the daemon's async runtime (to keep it independent). It has 
      `HOME` from the env. A missing `PATH` causes the child to fail to resolve sub-processes.
      A missing `HOME` causes node's `os.homedir()` to return `undefined` or `/root`, breaking
      hook behavior silently.
-   - **EC for missing critical env:** If the inherited env does not contain `HOME` or `PATH`
-     (edge case: the daemon was launched in a degenerate environment), the session-host MUST
-     log a WARN at startup with the list of missing critical env vars before spawning the
-     harness child. The session-host does NOT abort — it proceeds and lets the harness child
-     handle the degraded environment — but the WARN makes the root cause visible. This is an
-     observable failure mode, not a silent one.
+   - **I3-009 fix — degraded-env surfaced to daemon (not stderr-only):** If the inherited
+     env does not contain `HOME` or `PATH` (edge case: the daemon was launched in a degenerate
+     environment), the session-host MUST report the degraded environment condition to the daemon
+     as part of the `HostToDaemon` startup handshake so it appears in the sessions panel — not
+     only as a WARN to stderr (which has no TUI surface). The mechanism:
+     1. `HostToDaemon::StateChanged { new_state: SessionState }` is EXTENDED with an optional
+        `degraded_env: Option<Vec<String>>` field listing the missing critical env vars (e.g.,
+        `["HOME", "PATH"]`). When missing vars are detected, `StateChanged { new_state: Launching,
+        degraded_env: Some(vec!["HOME"]) }` is sent as the first message to the daemon.
+     2. The daemon, on receiving `StateChanged` with `degraded_env: Some(_)`, sets
+        `SessionEntry.degraded: true` and includes the degraded state in the `SessionSnapshot`
+        published via `SessionListUpdate`. The sessions panel renders a warning indicator
+        (e.g., `[!]` badge or amber state color) for degraded sessions.
+     3. The session-host also logs `WARN` to its stderr (belt-and-suspenders), but the TUI
+        surface is the PRIMARY user-visible signal.
+     **`SessionEntry` additions:** `degraded: bool` (default false) and `degraded_reason: Option<String>`.
+     **`SessionSnapshot` additions:** `degraded: bool` and `degraded_reason: Option<String>`.
+     **`HostToDaemon::StateChanged` extension:**
+     ```rust
+     StateChanged {
+         new_state: SessionState,
+         /// Missing critical env vars detected at session-host startup. None when env is healthy.
+         degraded_env: Option<Vec<String>>,
+     }
+     ```
+     This is a BACKWARD-COMPATIBLE extension: the daemon MUST treat a `StateChanged` with
+     no `degraded_env` field (from session-hosts that don't send it yet) as `degraded_env: None`.
+     The `#[serde(default)]` derive handles this. No protocol version bump required.
 5. Spawn harness child on PTY slave.
 6. Initialize `vt100::Parser` with initial size.
 7. Bind per-session UDS socket at `<runtime_dir>/session-<session_id>.sock` (mode `0o600`).
@@ -397,7 +466,7 @@ share any code with the daemon's async runtime (to keep it independent). It has 
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "session_id": "<uuid>",
   "pid": 12345,
   "socket_path": "<runtime_dir>/session-<uuid>.sock",
@@ -410,16 +479,26 @@ share any code with the daemon's async runtime (to keep it independent). It has 
   "started_at": "2026-06-03T23:00:00Z",
   "display_name": "monocle — phase0",
   "pty_rows": 24,
-  "pty_cols": 80
+  "pty_cols": 80,
+  "kill_deadline_unix_ms": null
 }
 ```
 
-`schema_version` 2 adds the `cwd` field (resolved worktree root; may equal `project_root`
-when no worktree is configured). Version 1 sidecars (no `cwd` field) MUST be treated as
-`cwd = project_root` on read (backward-compat default).
+Schema version history:
+- `schema_version` 1: original fields (no `cwd` field). Read as `cwd = project_root`.
+- `schema_version` 2: adds `cwd` field (resolved worktree root; may equal `project_root`).
+- `schema_version` 3: adds `kill_deadline_unix_ms: Option<u64>` (I3-002 fix). Written when
+  `state = "Terminating"` to record the absolute kill deadline as Unix epoch milliseconds.
+  `null` when not in Terminating state. On re-discovery of a `Terminating` sidecar: if
+  `kill_deadline_unix_ms` is present and has elapsed → immediate SIGKILL (SIGTERM window
+  expired across daemon restart); if present and not elapsed → 12s watchdog uses this as the
+  absolute deadline rather than resetting to a new 12s window.
 
-`schema_version` MUST be checked on read; version 1 sidecars treat `cwd` as `project_root`
-(backward-compat); unknown versions beyond 2 must be ignored (forward-compat).
+`schema_version` MUST be checked on read:
+- Version 1: `cwd = project_root`, `kill_deadline_unix_ms = null`.
+- Version 2: `kill_deadline_unix_ms = null`.
+- Version 3: full schema.
+- Unknown versions beyond 3: log WARN; skip sidecar (forward-compat).
 
 ### Per-session UDS security (I5)
 
@@ -518,7 +597,16 @@ pub enum HostToDaemon {
     /// Live PTY output bytes. NOT sent during an active scrollback dump transfer.
     PtyBytes { bytes: Vec<u8> },
     /// Session state changed (child exited, etc.).
-    StateChanged { new_state: SessionState },
+    /// I3-009: extended with optional degraded_env field. Serde default = None for
+    /// backward-compat with session-hosts that don't populate this field.
+    #[serde(default)]
+    StateChanged {
+        new_state: SessionState,
+        /// Missing critical env vars detected at startup (e.g., ["HOME", "PATH"]).
+        /// None when env is healthy. Some when degraded at spawn time.
+        #[serde(default)]
+        degraded_env: Option<Vec<String>>,
+    },
     /// Session-host is shutting down.
     Goodbye,
     /// PTY byte drop detected (channel sender returned Err). See §PTY reader thread.
@@ -528,6 +616,29 @@ pub enum HostToDaemon {
 
 /// A single terminal cell as serialized for scrollback dump (ScrollbackChunk rows).
 /// Sufficient to reconstruct the full styled vt100::Screen without re-parsing PTY bytes.
+///
+/// # I3-008: vt100 0.16 attribute surface — verified
+///
+/// The vt100 0.16 `Cell` struct exposes EXACTLY FIVE attribute methods:
+///   `bold()`, `dim()`, `italic()`, `underline()`, `inverse()`.
+/// The `inverse()` method corresponds to what SGR calls "reverse" (SGR 7).
+/// There is NO `blink()`, NO `hidden()`, and NO `strikethrough()` in vt100 0.16.
+/// (Verified against docs.rs/vt100/0.16.0/vt100/struct.Cell.html — 2026-06-03.)
+///
+/// The prior 6-flag u8 bitmask (bold/italic/underline/blink/reverse/dim) incorrectly named
+/// "reverse" and included "blink" which vt100 0.16 does not expose. This is corrected:
+/// the 5-bit bitmask covers the 5 actual vt100 0.16 attributes. The "full visual fidelity"
+/// claim in §O4 is accurate with respect to what vt100 0.16 exposes — no fidelity is lost
+/// by aligning to the actual API. Blink, hidden, and strikethrough are not part of vt100
+/// 0.16's observable cell attribute set.
+///
+/// # attrs bitmask layout (5 bits, low-to-high):
+///   bit 0: bold     (cell.bold())
+///   bit 1: dim      (cell.dim())
+///   bit 2: italic   (cell.italic())
+///   bit 3: underline (cell.underline())
+///   bit 4: inverse  (cell.inverse()) — SGR 7 "reverse video"
+///   bits 5–7: reserved (MUST be 0 on write; MUST be ignored on read for forward-compat)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SerializedCell {
     /// The UTF-8 character at this cell (empty string for empty/null cells).
@@ -536,7 +647,9 @@ pub struct SerializedCell {
     pub fg: SerializedColor,
     /// Background color.
     pub bg: SerializedColor,
-    /// Cell attributes: bold/italic/underline/blink/reverse/dim flags as a bitmask.
+    /// Cell attributes bitmask (5 bits used; see doc comment above for layout).
+    /// The u8 type is retained for forward-compat: if a future vt100 version exposes
+    /// additional attributes, they can be added to bits 5–7 without a wire format change.
     pub attrs: u8,
 }
 
@@ -561,8 +674,10 @@ PTY bytes.
    bg color, and attribute flags. This preserves full visual fidelity (colors, bold, etc.)
    that is lost by `String`-only row serialization.
 
-2. **Pause live PtyBytes forwarding** while the dump is in progress (see ADR-0010
-   §Interleaving of live PtyOutput during a ScrollbackDump transfer).
+2. **Resume live PtyBytes forwarding IMMEDIATELY** after taking the snapshot (I3-003 fix —
+   see SS-daemon-wiring-v2-delta §5b). Do NOT pause for the dump transfer. New PTY bytes
+   continue to flow as `HostToDaemon::PtyBytes` while the dump streams. The TUI buffers live
+   `PtyOutput` received during the dump and replays after `ScrollbackDumpComplete`.
 
 3. **Stream `HostToDaemon::ScrollbackChunk` messages**, each ≤ 256 KiB (UDS message limit).
    After all chunks, send `HostToDaemon::ScrollbackDumpComplete` with cursor position, PTY
@@ -583,12 +698,13 @@ PTY bytes.
       as a sequence of ANSI `\x1b[2J\x1b[H` (clear screen, home cursor) followed by
       cell-by-cell reconstruction using ANSI SGR sequences. This is the `scrollback-as-bytes`
       reconstruction path.
-   e. After reconstruction, subsequent `PtyBytes` events are processed by the now-correctly-
-      initialized parser. No double-counting occurs because the parser was reset before
-      applying the dump. No interleaving corruption occurs because the session-host paused
-      PtyBytes during the dump transfer.
+   e. After reconstruction, apply any buffered `PtyOutput` bytes received during the dump
+      transfer (I3-003 fix: session-host no longer pauses PtyBytes; TUI buffers live bytes
+      during dump and replays after Complete). Process buffered bytes through the now-reset
+      parser in receipt order. After replay, subsequent `PtyOutput` events are processed
+      normally. No double-counting occurs (parser was reset before dump was applied).
 
-**Scrollback memory bound (O4 — wire-JSON vs in-RAM, reconciled with SS-embedded-pty §O4):**
+**Scrollback memory bound (O4 — wire-JSON vs in-RAM, reconciled with SS-embedded-pty §O4, I3-008):**
 
 There are two distinct memory contexts to reason about. They must not be conflated:
 
@@ -621,11 +737,21 @@ parser reconstruction incrementally). The `ScrollbackDumpComplete` sentinel term
 stream. The session-host streams scrollback rows in batches; the TUI accumulates until
 Complete, then reconstructs and discards the wire-JSON.
 
-**Summary of reconciled numbers:**
+**I3-008 — attrs field impact on wire-JSON byte math:**
+`SerializedCell.attrs` remains `u8` (1 byte in Rust; serialized as a JSON integer 0–255).
+The I3-008 correction changes only the SEMANTIC interpretation of the bitmask (5 flags, not 6),
+not the wire size. The `attrs` JSON integer is still 1–3 bytes depending on value. The ~40
+bytes/cell estimate is unchanged — the "full visual fidelity" claim is now scoped correctly
+to the 5 attributes that vt100 0.16 exposes (bold, dim, italic, underline, inverse). Blink,
+hidden, and strikethrough are not observable from vt100 0.16 Cell API and therefore cannot
+be serialized — this is a property of the vt100 library, not a spec deficiency.
+
+**Summary of reconciled numbers (unchanged from v1.3.0 — attrs u8 size unaffected by I3-008):**
 - Wire-JSON per session (transient during attach): ~32 MB (10k rows × 80 cols × 40 bytes/JSON-cell)
 - In-RAM vt100::Parser per session (steady-state): ~12.8 MB (10k rows × 80 cols × 16 bytes/cell)
 - Transient attach spike (wire+TUI simultaneously): ~64 MB per session for max scrollback
 - Steady-state 8 sessions: ~102 MB (in-RAM only; wire-JSON is discarded after reconstruction)
+- Live-PtyOutput buffer during dump (I3-003): ~500 KB at 1 MB/s for 500ms dump (bounded, transient)
 
 ### Main event loop
 
@@ -722,11 +848,18 @@ runs:
 2. For each sidecar:
    a. Parse `session-state.json`; check `schema_version`.
    b. Probe liveness: `nix::sys::signal::kill(Pid::from_raw(pid), None)`.
-   c. If alive: attempt UDS connect to socket_path; immediately verify `SO_PEERCRED` / 
-      `LOCAL_PEERPID` matches sidecar pid (I5 cross-check); if mismatch: log WARN, SIGTERM
-      both pids, delete sidecar, skip. If match: send `DaemonToHost::Attach`; wait up to 5s
-      for `HostToDaemon::ScrollbackDumpComplete` (after receiving the full chunk sequence);
-      register in SessionManager as `Running`.
+   c. If alive: state-dependent handling:
+      - `Launching`, `Running`: attempt UDS connect; verify `SO_PEERCRED`; if match: send
+        `DaemonToHost::Attach`; wait up to 5s for `ScrollbackDumpComplete`; register `Running`.
+      - `Detached`: attempt UDS connect; verify `SO_PEERCRED`; register `SessionEntry` with
+        `state: Detached`, `host_conn: None`. DO NOT send `DaemonToHost::Attach`. (I3-005 fix —
+        Detached intent preserved across restart; user must explicitly re-attach.)
+      - `Terminating`: connect; verify SO_PEERCRED; send `DaemonToHost::Kill` (fire-and-forget);
+        register `SessionEntry` with `state: Terminating`, `host_conn: None`; spawn BACKGROUND
+        watchdog task (12s, absolute deadline from sidecar's `kill_deadline_unix_ms` if present
+        and not elapsed; immediate SIGKILL if deadline already elapsed). Return immediately from
+        this probe. (I3-002 fix — Terminating watchdog is a background task, not blocking the 5s
+        re-discovery budget. BC-2.08.004 PC-7 5s budget excludes Terminating watchdog wait.)
    d. If dead: delete sidecar (GC); also delete orphaned socket file if present.
 3. All re-discovered sessions are in `DaemonState.session_manager` before UDS bind (step 10).
 4. Publish re-discovered sessions in `DaemonState.sessions` before serving TUI clients.
@@ -907,6 +1040,48 @@ Daemon removes stale socket files during GC in re-discovery (alongside sidecar d
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.4.0
+
+**Adversarial Pass 3 resolution — C3-003/I3-002/I3-003/I3-005/I3-008/I3-009** (2026-06-03):
+
+- **C3-003 (rename emits wrong message):** `rename_session()` doc-comment corrected from
+  "publishes SessionStateChanged to broker" to "publishes SessionListUpdate to broker". Rationale
+  added inline: rename is not a SessionState transition; `SessionStateChanged` carries `new_state`
+  only and cannot convey `display_name`. Full justification cross-references SS-daemon-wiring-v2-delta
+  §3b emission table.
+- **I3-002 (Terminating watchdog vs 5s budget):** §Re-discovery state handling updated for
+  `Terminating` state: watchdog is spawned as a BACKGROUND background task (not blocking the
+  `tokio::join_all` 5s budget). Fire-and-forget `DaemonToHost::Kill` re-send. Absolute kill
+  deadline persisted in `session-state.json` as `kill_deadline_unix_ms` (schema_version 3).
+  Elapsed deadline → immediate SIGKILL at re-discovery. Non-elapsed → watchdog uses sidecar
+  deadline (not a new 12s window from restart). BC-2.08.004 PC-7 5s bound reconciliation note
+  added: Terminating watchdog wait is excluded from the 5s re-discovery budget.
+  `SessionEntry.kill_deadline: Option<Instant>` and `kill_deadline_reason: Option<String>` added.
+- **I3-003 (dump-pause stall):** §Screen-state transfer on Attach step 2 updated from
+  "Pause live PtyBytes forwarding" to "Resume live PtyBytes forwarding IMMEDIATELY after snapshot."
+  TUI receiver protocol step (e) updated: buffer live PtyOutput received during dump, replay after
+  ScrollbackDumpComplete. §O4 summary row added: "Live-PtyOutput buffer during dump: ~500 KB."
+  ADR-0010 §Interleaving flagged for update.
+- **I3-005 (Detached forced to Running on re-discovery):** §Re-discovery state handling for
+  `Detached` state corrected. Re-discovery now restores `Detached` sidecars to `Detached`
+  (NOT `Running`). No `DaemonToHost::Attach` sent for Detached sidecars. User must explicitly
+  request re-attach via TUI `AttachSession`. Rationale: respects persisted Detached intent;
+  prevents 8 background sessions all becoming streamers on restart; BC-2.08.007 Inv-1
+  compliance. Daemon startup re-discovery §c also updated.
+- **I3-008 (SerializedCell.attrs — vt100 0.16 attribute surface verified):** `SerializedCell`
+  doc-comment fully updated with verified vt100 0.16 Cell attribute API (5 methods: bold, dim,
+  italic, underline, inverse). Prior 6-flag description (included blink; named "reverse" not
+  "inverse") corrected. `attrs` bitmask layout table added (5 bits, bits 5–7 reserved). u8 type
+  retained for forward-compat. "Full visual fidelity" claim scoped correctly to what vt100 0.16
+  exposes. §O4 byte math unchanged (attrs remains u8). Research source: docs.rs/vt100/0.16.0
+  verified 2026-06-03.
+- **I3-009 (degraded-env surfaced to daemon):** Session-host startup step 4 EC updated: missing
+  HOME/PATH is now surfaced via `HostToDaemon::StateChanged.degraded_env: Option<Vec<String>>`
+  field (backward-compat, `#[serde(default)]`). Daemon sets `SessionEntry.degraded = true` and
+  populates `degraded_reason`. `SessionSnapshot` carries `degraded`/`degraded_reason` fields
+  so sessions panel can render warning badge. Stderr WARN retained as belt-and-suspenders.
+  `SessionEntry` gains `kill_deadline`, `degraded`, `degraded_reason` fields.
 
 ## §Trace v1.3.0
 

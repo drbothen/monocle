@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.0"
+version: "1.3.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -52,7 +52,7 @@ was removed from the state machine and spawn goes directly to `Launching`.
    initial `state` is `SessionState::Launching`.
 3. `session-state.json` is written to `<runtime_dir>/session-<session_id>.json` with the
    schema specified in SS-session-manager.md §session-state.json schema:
-   - `schema_version: 1`
+   - `schema_version: 3`
    - `session_id`: the generated UUID string
    - `pid`: the `SpawnedHostHandle.pid` returned by the spawner
    - `socket_path`: `<runtime_dir>/session-<session_id>.sock`
@@ -69,9 +69,12 @@ was removed from the state machine and spawn goes directly to `Launching`.
    - `started_at`: ISO-8601 UTC timestamp of spawn
    - `display_name`: defaults to `"<harness_id> — <project_root_basename>"`
    - `pty_rows: 24`, `pty_cols: 80` (initial default dimensions)
+   - `kill_deadline_unix_ms: null` (always `null` for a freshly spawned `Launching` session;
+     present in schema v3 for forward-compat; non-null only when `state == "Terminating"`)
 4. `spawn_session()` returns `Ok(session_id)` (the UUID string).
-5. A `ServerToClient::SessionListUpdate` IPC message is published to the broker for all
-   connected TUI clients within one broker tick of the session being added to the registry.
+5. `ServerToClient::SessionStateChanged { session_id, new_state: Launching }` is published
+   to the broker BEFORE `ServerToClient::SessionListUpdate` (both under the `SessionManager`
+   mutex per BC-2.08.008 Invariant 4 and SS-daemon-wiring-v2-delta.md v1.3.0 §3b).
 
 ## Invariants
 
@@ -123,7 +126,7 @@ was removed from the state machine and spawn goes directly to `Launching`.
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC is the primary definition of the spawn operation that launches the session-host process and creates the session registry entry |
 | L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness — the sidecar is a monocle-owned file, not a harness file; the atomic write via tempfile::persist ensures no partial writes to monocle's own state) |
 | Architecture Module | monocle-runtime (SessionManager sub-module — `monocle-runtime/src/session_manager/mod.rs`) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v1.3.0 §SessionManager §Public API (spawn_session signature); SS-session-manager.md §session-state.json schema; ADR-0009 §native-detached-session-host-process-model |
+| Architecture Source | SS-session-manager.md v1.4.0 §SessionManager §Public API (spawn_session signature); SS-session-manager.md §session-state.json schema (schema_version 3); ADR-0009 §native-detached-session-host-process-model; SS-daemon-wiring-v2-delta.md v1.3.0 §3b (SessionStateChanged emission rule) |
 | Test Name | test_BC_2_08_001_spawn_session_entry_created_within_2s |
 
 ## Related BCs
@@ -146,6 +149,21 @@ S-TBD — Implement SessionManager::spawn_session() with SessionHostSpawner (fil
 ## VP Anchors
 
 VP-TBD — Session spawn integration tests (filled after VP creation)
+
+## §Trace v1.3.0
+
+**Adversarial Pass 3 fixes — C3-002 (schema_version 3) + C3-001 (SessionStateChanged PC-5)** (2026-06-03):
+- C3-002: PC-3 `schema_version` corrected from `1` to `3` (current canonical schema per
+  SS-session-manager.md v1.4.0 §session-state.json schema). Schema v1 = no cwd field,
+  v2 = adds cwd, v3 = adds kill_deadline_unix_ms. A newly spawned sidecar always writes v3
+  (the current schema). The previous PC-3 said `schema_version: 1` while simultaneously
+  listing a `cwd` field — these are internally inconsistent (cwd was added in v2). This is
+  now corrected: v3 is the written version, and `kill_deadline_unix_ms: null` is explicitly
+  enumerated in PC-3.
+- C3-001: PC-5 updated from `SessionListUpdate` only to `SessionStateChanged{Launching}` THEN
+  `SessionListUpdate` (ordered pair per BC-2.08.008 Invariant 4). Both are published under the
+  same mutex lock in the same broker tick. Architecture Source updated to
+  SS-session-manager.md v1.4.0 and SS-daemon-wiring-v2-delta.md v1.3.0.
 
 ## §Trace v1.2.0
 

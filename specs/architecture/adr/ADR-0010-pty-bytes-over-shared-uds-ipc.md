@@ -6,7 +6,7 @@ title: "PTY Bytes Shared on Existing UDS IPC Channel (Option A)"
 status: accepted
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
-version: "1.2.0"
+version: "1.3.0"
 timestamp: 2026-06-03T23:00:00Z
 inputs:
   - research/domain-monocle-vision-synthesis.md
@@ -232,35 +232,53 @@ to existing consumers. Consumers using `..` wildcard matches on `ServerToClient`
 `ClientToServer` will silently ignore new variants at runtime; this is correct behavior for
 the forward-compatibility model (BC-2.02.003).
 
-### Interleaving of live PtyOutput during a ScrollbackDump transfer
+### Interleaving of live PtyOutput during a ScrollbackDump transfer (I3-003 fix)
 
 When a daemon attaches to a session-host (on first spawn or re-discovery), the session-host
 begins streaming ScrollbackChunk messages. During this multi-message window, the session-host's
-PTY reader may be producing new bytes concurrently. The protocol is:
+PTY reader may be producing new bytes concurrently.
 
-**Buffer-then-apply-after-Complete (mandatory).**
+**RETIRED: Buffer-then-apply-after-Complete (session-host pauses PtyBytes).**
 
-The session-host MUST pause forwarding live `HostToDaemon::PtyBytes` messages to the daemon
-for the duration of the scrollback dump sequence (from the moment `Attach` is received until
-`ScrollbackDumpComplete` is sent). Concretely:
+The prior protocol required the session-host to pause `HostToDaemon::PtyBytes` for the entire
+dump transfer duration. This is unbounded for large scrollbacks on slow consumers: if the dump
+takes > 1s (10k-row scrollback over a congested UDS), the session-host's 1024-entry PTY reader
+channel fills and `.send().await` backpressure stalls the harness child's PTY output. This is
+the I3-003 harness stall finding.
 
-1. On `DaemonToHost::Attach`: the session-host snapshots the current vt100::Screen state
-   (styled cells, cursor, PTY dimensions).
-2. The session-host streams `ScrollbackChunk` messages for the snapshot.
-3. While streaming chunks, new PTY bytes from the PTY reader continue to accumulate in the
-   session-host's PTY reader channel (the channel capacity is 1024; a typical dump completes
-   in < 100ms, well within the channel's budget at normal terminal speeds).
-4. After `ScrollbackDumpComplete` is sent, the session-host resumes forwarding
-   `HostToDaemon::PtyBytes` from where the reader left off.
-5. The TUI, after receiving `ScrollbackDumpComplete`, has a correct screen state and any
-   subsequent `PtyOutput` messages are applied to the reset parser — no double-counting,
-   no interleaving corruption.
+**Current protocol: Snapshot-then-resume; TUI buffers live PtyOutput during dump.**
 
-**Rationale:** Interleaving live PtyOutput messages DURING a multi-message ScrollbackDump
-would require the TUI to implement complex sequencing logic (apply bytes to which parser
-state? before or after the dump rows?). Buffer-then-apply-after-Complete is simpler, correct
-by construction, and the latency cost (< 100ms during attach) is acceptable. No live streaming
-is lost — bytes are buffered in the session-host PTY reader channel during the brief window.
+1. On `DaemonToHost::Attach`: the session-host atomically snapshots the current `vt100::Screen`
+   state (styled cells, cursor, PTY dimensions) into a `Vec<Vec<SerializedCell>>` capture.
+2. **The session-host IMMEDIATELY resumes forwarding `HostToDaemon::PtyBytes`** after taking
+   the snapshot — it does NOT pause PtyBytes for the dump transfer.
+3. The session-host streams `ScrollbackChunk*` + `ScrollbackDumpComplete` from the snapshot
+   asynchronously alongside live `PtyBytes`.
+4. The TUI, on receiving `ScrollbackDumpComplete`:
+   a. Resets the parser from the accumulated snapshot cells.
+   b. Replays any buffered `ServerToClient::PtyOutput` messages received during the dump
+      through the freshly-reset parser (in receipt order).
+   c. Discards the PtyOutput buffer. Processes subsequent PtyOutput messages normally.
+5. No double-counting: the parser was reset before the snapshot was applied. No stall: the
+   session-host PTY reader is never blocked by the dump transfer.
+
+**TUI PtyOutput buffer during dump:**
+The TUI MUST maintain a per-session `dump_in_progress: bool` flag and a `pending_pty_bytes:
+Vec<Vec<u8>>` buffer. While `dump_in_progress`, incoming `PtyOutput` for that session is
+appended to `pending_pty_bytes` instead of fed to the parser. On `ScrollbackDumpComplete`,
+`dump_in_progress = false`, all pending bytes are replayed, buffer cleared.
+
+**Bound:** A typical dump completes in < 500ms for a 10k-row scrollback. At 1 MB/s PTY output
+that is at most ~500 KB of buffered live bytes — well within the per-session memory budget.
+
+**Benchmark gate addition:** The pre-v1A benchmark (§Throughput sizing, benchmark gate section)
+MUST additionally verify that a 10k-row max scrollback dump completes while the harness child
+produces 1 MB/s PTY output with zero PTY channel drops. This validates the non-stall property.
+
+**Interaction with O3-004 buffer sizing:** The snapshot-then-resume protocol means that
+ScrollbackChunk messages and live PtyOutput messages are now interleaved in the per-client
+channel. The per-client channel capacity is 64 (see §Cross-Client buffer sizing O3-004 fix
+below) — adequate for the mixed stream.
 
 ## Cross-Client / Cross-Session Backpressure Isolation (I2-003)
 
@@ -308,11 +326,29 @@ asynchronously into each client's per-client buffer. A slow client watching Sess
 not affect Session 2's PTY reader because the broker fan-out task returns immediately (via
 `.try_send()`) for both sessions.
 
-**Per-client buffer sizing rationale:**
-- 256 messages × 4096 bytes/message (typical max chunk) = 1 MiB per client per session in
-  the worst case. For 8 sessions and 4 clients: 32 MiB — within the memory budget.
-- The disconnect threshold (3 consecutive full sends) gives slow clients brief leeway for
-  render pauses without disconnecting on transient lag spikes.
+**Per-client buffer sizing rationale (O3-004 fix — corrected from prior 256-message claim):**
+
+The prior sizing stated "256 × 4096 bytes = 1 MiB per client per session." This was wrong:
+the same channel carries `ScrollbackChunk` messages up to 256 KiB each. At 256 messages ×
+256 KiB = 64 MiB per session — far outside the memory budget.
+
+**Corrected capacity: `CLIENT_SEND_BUFFER_SIZE = 64` messages.**
+
+Worst case (all ScrollbackChunks at 256 KiB): 64 × 256 KiB = 16 MiB per client.
+For 4 clients: 64 MiB — within budget.
+Practical case (mixed messages, average ~16 KiB): 64 × 16 KiB = 1 MiB per client.
+
+With the I3-003 snapshot-then-resume protocol, the peak chunk pressure is reduced because
+ScrollbackChunk and live PtyOutput are interleaved; the session-host is never producing
+only ScrollbackChunk messages for the full channel capacity.
+
+The disconnect threshold (3 consecutive full sends) gives slow clients brief leeway for
+render pauses without disconnecting on transient lag spikes.
+
+**ADR-0010 benchmark target update:** The cross-client backpressure benchmark MUST validate
+that with `CLIENT_SEND_BUFFER_SIZE = 64`, Client B watching Session 2 receives no throughput
+reduction when Client A (watching Session 1) is stalled, even during a concurrent 10k-row
+scrollback dump to Client A.
 
 **Implementation location:** `monocle-runtime/src/broker.rs` fan-out task.
 **Benchmark gate constraint:** the pre-v1A benchmark MUST validate that the per-client
@@ -342,6 +378,31 @@ session ring, not any TUI client. Specific BC-2.05.009 edits required:
 - Extends: SS-ipc.md §Message Types (new variants documented in SS-05 delta).
 - Requires: SS-08 Session Manager (session-host proxy that posts to per-session PTY channel).
 - Pre-gate benchmark deliverable: routes to `vsdd-factory:performance-engineer`.
+
+## §Trace v1.3.0
+
+**I3-001/I3-003/O3-004 — Adversarial Pass 3 resolution** (2026-06-03):
+
+- **I3-001 (ordering guarantee mechanism):** The prior BC-2.08.008 Invariant 4 rationale
+  stated ordering was guaranteed by "holding the SessionManager mutex." Corrected: the mutex
+  provides the atomicity window for both posts, but the channel FIFO order is the actual
+  ordering guarantee. Added ordered-pair split behavior: if `try_send(SessionStateChanged)`
+  succeeds but `try_send(SessionListUpdate)` fails (channel full), the client is immediately
+  disconnected (split pair = 2 consecutive full-buffer failures; treated as threshold exhausted).
+  Rationale: half-pair delivery leaves TUI in inconsistent state. This is the correctness-
+  preferred outcome over tolerating a half-pair and hoping the TUI handles it.
+- **I3-003 (dump-pause → harness stall):** §Interleaving protocol RETIRED and REPLACED.
+  "Buffer-then-apply-after-Complete (session-host pauses PtyBytes)" is retired. New protocol:
+  "Snapshot-then-resume; TUI buffers live PtyOutput during dump." Session-host resumes PtyBytes
+  immediately after snapshot. TUI maintains per-session `dump_in_progress` flag and
+  `pending_pty_bytes` buffer; replays after ScrollbackDumpComplete. Harness child is never
+  stalled. Benchmark gate extended: must verify 10k-row dump completes with 1 MB/s PTY output
+  and zero PTY channel drops. Max-scrollback attach pause ADR benchmark target: complete the
+  10k-row dump in < 500ms wall-clock (client-side replay included).
+- **O3-004 (buffer sizing corrected):** `CLIENT_SEND_BUFFER_SIZE` corrected from 256 to 64.
+  Prior "256 × 4096 = 1 MiB" calculation ignored that ScrollbackChunk can be 256 KiB. Correct
+  worst-case: 64 × 256 KiB = 16 MiB per client; 4 clients = 64 MiB. Within budget. Benchmark
+  must validate 64-message capacity is sufficient under the 10k-row dump + live PtyOutput load.
 
 ## §Trace v1.2.0
 

@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.0"
+version: "1.3.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -83,17 +83,21 @@ channel fills, a drop counter is incremented and logged.
    within its own per-client send buffer and does NOT propagate backpressure to the PTY reader.
 
 3b. **Per-client send buffer isolation:** Each connected TUI client has a dedicated
-   `mpsc::channel::<ServerToClient>(256)` (capacity 256). The broker uses `.try_send()` into
-   the per-client channel (NOT `.send().await`). A dedicated per-client writer task drains
+   `mpsc::channel::<ServerToClient>(64)` (capacity 64, per SS-ipc.md v1.12.1 §TUI IPC Read
+   Loop Pattern canonical pattern — rationale: 64 covers typical burst sizes without unbounded
+   memory growth; 64×256KiB=16MiB maximum in-flight per client). The broker uses `.try_send()`
+   into the per-client channel (NOT `.send().await`). A dedicated per-client writer task drains
    this channel to the UDS socket via `.write_all().await`. Disconnection threshold: after 3
    consecutive full-buffer `.try_send()` failures for the same client, the broker disconnects
    that client and logs `WARN: slow TUI client disconnected`. Other clients are unaffected by
    the disconnected client's send-buffer pressure. This is the per-client backpressure
-   isolation model per SS-daemon-wiring-v2-delta.md v1.2.0 §5d.
+   isolation model per SS-daemon-wiring-v2-delta.md v1.3.0 §5d.
 4. **Forced parser-reset protocol on ANY PTY drop:** If a PTY byte is ever dropped (sender
    error, OOM, other extreme condition), the session-host sends `HostToDaemon::PtyReset`.
    The daemon propagates `ServerToClient::PtyReset { session_id }` to all TUI clients.
-   Each TUI client resets `pty_parsers[session_id]` and re-fetches `ScrollbackDump` (re-attach).
+   Each TUI client resets `pty_parsers[session_id]` and sends `ClientToServer::AttachSession`
+   to trigger a fresh `ScrollbackChunk*` + `ScrollbackDumpComplete` sequence (re-attach).
+   The retired single-message `ScrollbackDump` form MUST NOT be requested or expected.
 5. **TUI-surfaced PtyReset indicator:** On `PtyReset` receipt, the TUI status bar MUST
    display `[PTY reset — <session_id truncated>]` for 5 seconds. Silent terminal corruption
    is never acceptable.
@@ -108,7 +112,7 @@ channel fills, a drop counter is incremented and logged.
 |----|-------------|-------------------|
 | EC-270 | Session-host PTY produces >1024 read()s faster than daemon can consume | Session-host drops excess reads; drop counter incremented; WARN logged; consumer (daemon broker) sees slightly reduced throughput; no crash |
 | EC-271 | No TUI clients connected | Bytes posted to broker; broker fan-out has no subscribers; bytes discarded by broker; no error |
-| EC-272 | TUI client's per-client send buffer full (slow TUI) | After 3 consecutive full-buffer `.try_send()` failures for this client, the broker disconnects the client. The per-client send buffer (capacity 256) is isolated: its overflow does NOT propagate to the PTY reader or to other clients. Other clients continue to receive PtyOutput messages uninterrupted. |
+| EC-272 | TUI client's per-client send buffer full (slow TUI) | After 3 consecutive full-buffer `.try_send()` failures for this client, the broker disconnects the client. The per-client send buffer (capacity 64; 64×256KiB=16MiB maximum) is isolated: its overflow does NOT propagate to the PTY reader or to other clients. Other clients continue to receive PtyOutput messages uninterrupted. |
 | EC-273 | Large `PtyBytes` chunk (e.g., 64 KiB of output) | Sent as a single `ServerToClient::PtyOutput` IPC message; 256 KiB message size limit per BC-2.01.003; 64 KiB is within limit |
 
 ## Canonical Test Vectors
@@ -134,7 +138,7 @@ channel fills, a drop counter is incremented and logged.
 | L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — PtyOutput fan-out extends the session/event/prompt push capability of CAP-005 with real-time PTY byte streaming, which is transported over the same shared UDS per ADR-0010 |
 | Architecture Module | monocle-ipc (`ServerToClient::PtyOutput` variant); monocle-runtime (session-host proxy task, broker fan-out) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-daemon-wiring-v2-delta.md v1.2.0 §broker fan-out — PtyOutput messages; ADR-0010 §pty-bytes-over-shared-uds-ipc; SS-session-manager.md v1.3.0 §PTY reader thread |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.3.0 §broker fan-out — PtyOutput messages; ADR-0010 v1.3.0 §pty-bytes-over-shared-uds-ipc; SS-session-manager.md v1.4.0 §PTY reader thread; SS-ipc.md v1.12.1 §TUI IPC Read Loop Pattern (per-client channel capacity 64, rationale) |
 | Cross-Ref | BC-2.05.004 (fan-out semantics for slow-client disconnect); BC-2.04.011 (hook event drop counter — separate from PTY channel drop counter) |
 | Test Name | test_BC_2_05_009_pty_output_fan_out_bounded_channel |
 
@@ -155,6 +159,21 @@ S-TBD — Implement PtyOutput broker fan-out and session-host PTY reader bounded
 ## VP Anchors
 
 VP-TBD — PtyOutput fan-out integration tests (filled after VP creation)
+
+## §Trace v1.3.0
+
+**Adversarial Pass 3 fixes — O3-004 (per-client buffer capacity 64) + Invariant 4 (ScrollbackChunk*/Complete message names)** (2026-06-03):
+- O3-004 (I3-004 related): Per-client send buffer capacity corrected from 256 to **64** in
+  Invariant 3b and EC-272. The canonical capacity is 64 per SS-ipc.md v1.12.1 §TUI IPC Read
+  Loop Pattern (rationale: 64 covers typical burst sizes; 64×256KiB=16MiB maximum per client).
+  The prior value of 256 was inconsistent with the architect's canonical pattern.
+- Invariant 4: "re-fetches ScrollbackDump" replaced with "sends `ClientToServer::AttachSession`
+  to trigger a fresh `ScrollbackChunk*` + `ScrollbackDumpComplete` sequence". The retired
+  single-message `ScrollbackDump` form MUST NOT be referenced; the chunked protocol is
+  canonical per SS-session-manager.md v1.4.0. Also clarified that the TUI sends the
+  `ClientToServer::AttachSession` IPC variant (per I3-004 fix in BC-2.05.010 and BC-2.05.011).
+- Architecture Source updated to SS-daemon-wiring-v2-delta.md v1.3.0, SS-session-manager.md
+  v1.4.0, SS-ipc.md v1.12.1.
 
 ## §Trace v1.2.0
 
