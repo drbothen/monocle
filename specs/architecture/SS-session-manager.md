@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "1.7.2"
+version: "1.8.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -402,13 +402,28 @@ pub enum SessionError {
     InvalidSessionName { reason: String },
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
+    /// An EngineModule operation failed before the OS process was spawned.
+    /// Covers `EngineError::BinaryNotFound` (→ `"binary_not_found"`) and
+    /// `EngineError::InvalidPath` (→ `"invalid_spawn_arg"`).
+    /// Added by I12-001 to bridge EngineError into the SessionError taxonomy
+    /// so BC-2.03.007 PC-3/PC-7 distinct user-visible diagnostics are satisfiable.
+    #[error("engine error: {0}")]
+    EngineError(#[from] monocle_core::engine::EngineError),
 }
 ```
+
+`From<EngineError> for SessionError` is derived automatically via the `#[from]` attribute above.
+The bridge is ONLY for spawn-path use: `spawn_session()` calls `engine_module.spawn_recipe(opts)`
+and uses `?` to propagate any `EngineError` as `SessionError::EngineError`. No other lifecycle
+method calls EngineModule methods, so `SessionError::EngineError` can only be produced by
+`spawn_session()`.
 
 #### Mapping table (SessionError → ServerToClient::Error.code)
 
 | SessionError variant | Triggering lifecycle method(s) | code | Notes |
 |----------------------|-------------------------------|------|-------|
+| `EngineError(BinaryNotFound)` | `spawn_session` (via `spawn_recipe()`) | `"binary_not_found"` | Harness binary not found on PATH; `which::which()` failure |
+| `EngineError(InvalidPath)` | `spawn_session` (via `spawn_recipe()`) | `"invalid_spawn_arg"` | Non-UTF-8 or null-byte argument to `spawn_recipe()` |
 | `SessionNotFound` | `kill_session`, `detach_session`, `attach_session`, `rename_session`, `send_key_input`, `resize_session` | `"session_not_found"` | Session ID not in registry |
 | `SpawnFailed` | `spawn_session` | `"spawn_failed"` | OS process spawn failure (from spawner) |
 | `SidecarWriteFailed` | `spawn_session` | `"sidecar_write_failed"` | Sidecar write failed after OS process spawned; orphan-kill protocol runs before this error surfaces |
@@ -417,6 +432,12 @@ pub enum SessionError {
 | `SessionHostDead` (kill-path) | `kill_session` | `"kill_failed"` | Session-host PID dead when daemon attempts kill; see `session_error_to_code(Op, &SessionError)` |
 | `InvalidSessionName` | `rename_session` | `"rename_failed"` | Empty name or name exceeding length limit |
 | `Io` | Any | `"invalid_request"` | Unexpected I/O error; nearest generic failure code |
+| `EngineError` (other variants) | `spawn_session` | `"invalid_request"` | Catch-all for any future EngineError variants not explicitly mapped; `"invalid_request"` is the nearest generic code |
+
+**Exhaustiveness requirement:** `session_error_to_code()` is EXHAUSTIVE over all variants. The
+`EngineError` arm unpacks the inner `EngineError` variant to produce distinct codes for
+`BinaryNotFound` and `InvalidPath`; all other inner variants fall through to `"invalid_request"`.
+No `_ =>` wildcard swallow is permitted — any new `EngineError` variant must be consciously routed.
 
 #### IPC handler pattern (mandatory)
 
@@ -440,8 +461,18 @@ pub enum IpcOp {
 /// kill-path (`"kill_failed"`) from the attach-path (`"attach_failed"`).
 /// This function is EXHAUSTIVE over the SessionError enum — the compiler
 /// enforces coverage. Every arm must match.
+///
+/// EngineError variants are unpacked to produce distinct spawn-path codes:
+/// - `EngineError::BinaryNotFound` → `"binary_not_found"` (harness not on PATH)
+/// - `EngineError::InvalidPath` → `"invalid_spawn_arg"` (bad argument to spawn_recipe())
+/// - all other `EngineError` variants → `"invalid_request"` (generic fallback)
 fn session_error_to_code(op: IpcOp, e: &SessionError) -> &'static str {
     match e {
+        SessionError::EngineError(engine_err) => match engine_err {
+            monocle_core::engine::EngineError::BinaryNotFound(_) => "binary_not_found",
+            monocle_core::engine::EngineError::InvalidPath(_)    => "invalid_spawn_arg",
+            _                                                     => "invalid_request",
+        },
         SessionError::SessionNotFound { .. }     => "session_not_found",
         SessionError::SpawnFailed { .. }          => "spawn_failed",
         SessionError::SidecarWriteFailed { .. }   => "sidecar_write_failed",
@@ -762,7 +793,7 @@ pub enum HostToDaemon {
     PtyReset,
 }
 
-// C5-002 (SS-ipc.md v1.16.0): SerializedCell and SerializedColor are defined in
+// C5-002 (SS-ipc.md v1.17.0): SerializedCell and SerializedColor are defined in
 // monocle-ipc (crate::ipc::SerializedCell / crate::ipc::SerializedColor) so both
 // monocle-session-host (writer) and monocle-tui (reader) share the type without a
 // cross-binary dependency. The canonical definition with full field documentation
@@ -1169,6 +1200,34 @@ Daemon removes stale socket files during GC in re-discovery (alongside sidecar d
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.8.0
+
+**I12-001 — EngineError bridge: `SessionError::EngineError` variant + `session_error_to_code()` arms** (2026-06-04):
+
+- **Finding (I12-001):** `SessionError` had no `EngineError` variant. `spawn_recipe()` returns
+  `Err(EngineError::BinaryNotFound)` and `Err(EngineError::InvalidPath)`, but neither could
+  reach `ServerToClient::Error` as distinct codes. Both would have collapsed silently into the
+  generic `"spawn_failed"` code (or been lost entirely), making BC-2.03.007 PC-3/PC-7 distinct
+  user-visible diagnostics unsatisfiable.
+- **Fix (a) — `SessionError::EngineError(#[from] EngineError)` variant added:** The new variant
+  carries the inner `EngineError` verbatim via `#[from]`, giving `spawn_session()` a `?` propagation
+  path. The `#[from]` derive generates `impl From<EngineError> for SessionError` automatically.
+  This variant is spawn-path only: no other `SessionManager` lifecycle method calls `EngineModule`.
+- **Fix (b) — `session_error_to_code()` extended with EngineError arm:** The match now unpacks
+  `SessionError::EngineError(engine_err)` first and maps:
+  - `EngineError::BinaryNotFound` → `"binary_not_found"`
+  - `EngineError::InvalidPath`    → `"invalid_spawn_arg"`
+  - all other EngineError variants → `"invalid_request"` (forward-compatible catch-all)
+  The function remains EXHAUSTIVE over all `SessionError` variants; compiler enforces coverage.
+- **Fix (c) — Mapping table updated:** Two new rows added at the top:
+  `EngineError(BinaryNotFound)` → `"binary_not_found"` and `EngineError(InvalidPath)` →
+  `"invalid_spawn_arg"`. Catch-all row for other EngineError variants added at the bottom.
+- **spawn_recipe() call-site confirmed:** `spawn_session()` calls
+  `engine_module.spawn_recipe(&opts)?` as its FIRST step (before `SessionHostSpawner::spawn()`),
+  so `EngineError` failures abort the spawn before any OS process is created. No orphan-kill
+  protocol is required for `EngineError`-derived failures.
+- Semver: minor (v1.7.2 → v1.8.0) — new normative variant + function arm; BC-observable behavior change.
 
 ## §Trace v1.7.2
 

@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.0"
+version: "1.1.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -32,7 +32,8 @@ removal_reason: null
 trait method for the Claude Code harness. Given a valid `SpawnOptions`, it resolves the
 `claude` binary on `PATH`, constructs a `SpawnRecipe` with `--settings <hooks_settings_path>`
 in the args, injects `MONOCLE_SESSION_ID` into the environment, and sets the working directory
-to `opts.project_root`. The returned recipe is consumed by `SessionManager` to spawn a
+to `opts.worktree_root` (the resolved git worktree root; equal to `project_root` only when no
+per-session worktree applies). The returned recipe is consumed by `SessionManager` to spawn a
 `monocle-session-host` process.
 
 ## Preconditions
@@ -120,7 +121,7 @@ to `opts.project_root`. The returned recipe is consumed by `SessionManager` to s
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the spawn recipe assembly for the ClaudeCodeModule adapter, which is the mechanism by which the engine abstraction enables monocle to launch Claude Code sessions |
 | L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness or factory workflow system — PC-4 explicitly states spawn_recipe() writes no files; the hooks-settings.json path is passed through as a CLI arg string only) |
 | Architecture Module | monocle-runtime (ClaudeCodeModule implementation — `monocle-runtime/src/engine/claude_code.rs`) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module-v2-delta.md v1.1.0 §ClaudeCodeModule::spawn_recipe() implementation spec; SS-session-manager.md v1.7.2 §SpawnRecipe integration with EngineModule |
+| Architecture Source | SS-engine-module-v2-delta.md v1.1.0 §ClaudeCodeModule::spawn_recipe() implementation spec; SS-session-manager.md v1.8.0 §SpawnRecipe integration with EngineModule |
 | Stories | S-TBD (filled by story-writer) |
 | Test Name | test_BC_2_03_005_spawn_recipe_happy_path_binary_args_env_cwd |
 
@@ -142,6 +143,20 @@ S-TBD — Implement ClaudeCodeModule::spawn_recipe() with binary resolution, --s
 ## VP Anchors
 
 VP-TBD — spawn_recipe() happy-path unit tests (filled after VP creation)
+
+## §Trace v1.1.1
+
+**I12-002 — Description partial-fix regression corrected** (2026-06-04):
+- Finding (I12-002): The §Description prose said "sets the working directory to
+  `opts.project_root`" — this contradicts the v1.1.0 worktree_root correction applied to
+  Precondition 5, PC-1 cwd, Invariant 4, the canonical test vectors, and the VP. The
+  §Trace v1.1.0 changelog enumerated those fix targets but missed the Description, leaving a
+  partial-fix regression: an implementer reading the lead normative prose would set
+  `cwd = project_root` and silently re-break worktree-per-session (claude-squad A.1 gene).
+- Fix: Description updated — "sets the working directory to `opts.worktree_root` (the resolved
+  git worktree root; equal to `project_root` only when no per-session worktree applies)" —
+  mirroring the exact phrasing and intent of PC-1 and Invariant 4 in this file.
+- Scope: wording-coherence correction only; no behavioral change. Version bumped as patch.
 
 ## §Trace v1.1.0
 

@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "daemon-wiring-v2-delta"
 subsystem: SS-04
-version: "1.6.0"
+version: "1.7.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -144,7 +144,20 @@ branches for the new `ClientToServer` variants from ADR-0010:
 
 ```rust
 ClientToServer::SpawnSession { recipe } => {
-    // C6-001: no-silent-failure — map SessionError to ServerToClient::Error
+    // C6-001: no-silent-failure — map SessionError to ServerToClient::Error.
+    //
+    // spawn_session() internals (I12-001 call-site spec):
+    //   1. Calls engine_module.spawn_recipe(&opts)? — if this returns
+    //      EngineError::BinaryNotFound or EngineError::InvalidPath, the error is
+    //      converted to SessionError::EngineError via From<EngineError> and bubbles
+    //      to the Err(e) arm below. No OS process has been spawned at this point.
+    //   2. Calls SessionHostSpawner::spawn(&recipe) — OS process spawn.
+    //   3. Writes the sidecar file.
+    //
+    // session_error_to_code maps the EngineError-derived variants:
+    //   SessionError::EngineError(BinaryNotFound) → "binary_not_found"
+    //   SessionError::EngineError(InvalidPath)    → "invalid_spawn_arg"
+    // See SS-session-manager.md §SessionError taxonomy and §session_error_to_code().
     match state.session_manager.lock().await
         .spawn_session(recipe, /* harness_id, profile_id from recipe context */)
         .await
@@ -259,7 +272,7 @@ a `SessionError` to escape to the per-client task boundary.
 
 | Arm | Error routing | Op context | Notes |
 |-----|---------------|------------|-------|
-| `SpawnSession` | `ServerToClient::Error` | `IpcOp::Spawn` | Lifecycle op — must surface failure to requesting client |
+| `SpawnSession` | `ServerToClient::Error` | `IpcOp::Spawn` | Lifecycle op — includes EngineError-derived codes `"binary_not_found"` / `"invalid_spawn_arg"` via `SessionError::EngineError` bridge (I12-001) |
 | `KillSession` | `ServerToClient::Error` | `IpcOp::Kill` | `IpcOp::Kill` required: `SessionHostDead` → `"kill_failed"` not `"attach_failed"` |
 | `AttachSession` | `ServerToClient::Error` | `IpcOp::Attach` | `IpcOp::Attach` required: `SessionHostDead` → `"attach_failed"` |
 | `KeyInput` | `ServerToClient::Error` | `IpcOp::KeyInput` | Fire-and-forget on success; errors MUST still be surfaced (special rule) |
@@ -354,7 +367,7 @@ can use it without importing daemon-internal types.
 > was retired in v1.4.0 (I6-002 fix) because it diverged from the SS-ipc.md canonical by
 > omitting the `degraded`/`degraded_reason` fields.
 >
-> **Current canonical field summary** (SS-ipc.md v1.16.0 §Supporting Types — authoritative):
+> **Current canonical field summary** (SS-ipc.md v1.17.0 §Supporting Types — authoritative):
 > `session_id`, `display_name`, `state`, `harness_id`, `project_root`, `cwd`,
 > `spawned_by_monocle: Option<bool>`, `started_at_micros: i64`, `pty_rows: u16`,
 > `pty_cols: u16`, `degraded: bool` (`#[serde(default)]`), `degraded_reason: Option<String>`
@@ -658,6 +671,22 @@ If no in-process SessionManager stub exists in D-235 (i.e., the stub was skeleta
 implementer creates `SessionManager` from scratch per SS-08.
 
 ---
+
+## §Trace v1.7.0
+
+**I12-001 — SpawnSession arm annotated with EngineError call-site + bridge codes** (2026-06-04):
+
+- **Finding (I12-001):** The `SpawnSession` arm in §3 only cited `session_error_to_code(IpcOp::Spawn, &e)`
+  with no explanation of how `EngineError::BinaryNotFound` / `EngineError::InvalidPath` reach this
+  path. An implementer reading §3 in isolation would not know that `spawn_session()` calls
+  `spawn_recipe()` first, or that the two new EngineError-derived codes must be handled.
+- **Fix:** `SpawnSession` arm inline comment updated (I12-001 call-site spec): documents the three
+  steps inside `spawn_session()` and names the `EngineError` → `SessionError::EngineError` bridge
+  and the two resulting `session_error_to_code` mappings. References SS-session-manager.md
+  §SessionError taxonomy for the authoritative variant/code table.
+- **Summary table updated:** `SpawnSession` row Notes column updated to mention the two new
+  EngineError-derived codes and the I12-001 bridge.
+- Semver: minor (v1.6.0 → v1.7.0) — normative annotation to call-site and summary table.
 
 ## §Trace v1.6.0
 

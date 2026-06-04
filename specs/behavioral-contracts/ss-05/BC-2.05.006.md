@@ -128,7 +128,7 @@ transitions to "daemon offline" mode and polls the lock file every 5 seconds for
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability Traceability §SS-05 — this BC specifies the reconnection behavior that makes the IPC transport resilient to daemon restarts, which is a key availability property of the internal transport |
 | L2 Domain Invariants | DI-002 (lock file must be present before connections accepted — this BC's lock-file re-read after each retry enforces DI-002 from the client side: TUI only connects when a valid lock file exists) |
 | Architecture Module | monocle-ipc (UdsTransport reconnect loop, TransportEvent::Disconnected) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-ipc.md v1.16.0 §Reconnection Behavior; SS-ipc.md v1.16.0 §SOQ-3 Overlay Clear on Disconnect |
+| Architecture Source | SS-ipc.md v1.17.0 §Reconnection Behavior; SS-ipc.md v1.17.0 §SOQ-3 Overlay Clear on Disconnect |
 | Cross-Ref | BC-2.05.001 (new daemon rebinds same socket path after stale removal); BC-2.05.002 (InitialState on reconnect); BC-2.05.007 (SOQ-3 overlay clear — happens before reconnect loop); BC-2.01.005 (lock file re-read to discover new daemon) |
 | Test File | `monocle-ipc/tests/reconnect.rs` |
 | Test Name | `test_BC_2_05_006_tui_reconnects_after_daemon_restart` |

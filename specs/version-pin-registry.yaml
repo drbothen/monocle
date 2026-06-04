@@ -106,8 +106,8 @@ SS-forward-compatibility:
 
 SS-ipc:
   path: specs/architecture/SS-ipc.md
-  current_version: "1.16.0"
-  last_bump_commit: "[Pass-11 I11-001 PRONG B — doc-comment extension for multi-client future-scope boundary note]"
+  current_version: "1.17.0"
+  last_bump_commit: "[Pass-12 I12-001 — taxonomy 8→10 codes (binary_not_found, invalid_spawn_arg) + fixed banners; SessionError→ServerToClient::Error routing fix]"
   last_bump_date: "2026-06-04"
 
 SS-permissions-phase1:
@@ -124,14 +124,14 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "1.7.2"
-  last_bump_commit: "[Pass-11 S11-001 — §Trace phantom kill_deadline_reason correction]"
+  current_version: "1.8.0"
+  last_bump_commit: "[Pass-12 I12-001 — SessionError::EngineError(#[from]) bridge + session_error_to_code arm; exhaustiveness preserved]"
   last_bump_date: "2026-06-04"
 
 SS-embedded-pty:
   path: specs/architecture/SS-embedded-pty.md
-  current_version: "1.4.0"
-  last_bump_commit: "[Pass-11 I11-001 PRONG A — auto-attach-on-EmbeddedTerminal-entry mandate]"
+  current_version: "1.5.0"
+  last_bump_commit: "[Pass-12 S12-001 — App struct dump_in_progress/pending_pty_bytes fields + skeleton fix]"
   last_bump_date: "2026-06-04"
 
 SS-engine-module-v2-delta:
@@ -142,8 +142,8 @@ SS-engine-module-v2-delta:
 
 SS-daemon-wiring-v2-delta:
   path: specs/architecture/SS-daemon-wiring-v2-delta.md
-  current_version: "1.6.0"
-  last_bump_commit: "[Pass-11 I11-001 PRONG B — multi-client future-scope boundary note + deferral anchor TD-MULTI-CLIENT-ATTACH-STORM-001]"
+  current_version: "1.7.0"
+  last_bump_commit: "[Pass-12 I12-001 — spawn_recipe() call-site annotation in spawn_session() first-step]"
   last_bump_date: "2026-06-04"
 
 SS-deps-pin-manifest-v2-delta:
@@ -701,9 +701,9 @@ BC-2.07.006:
 
 BC-2.03.005:
   path: specs/behavioral-contracts/ss-03/BC-2.03.005.md
-  current_version: "1.1.0"
-  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — D-243 C2-003/I2-005]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.1.1"
+  last_bump_commit: "[Pass-12 I12-002 — Description partial-fix regression: cwd→worktree_root]"
+  last_bump_date: "2026-06-04"
 
 BC-2.03.006:
   path: specs/behavioral-contracts/ss-03/BC-2.03.006.md
@@ -713,9 +713,9 @@ BC-2.03.006:
 
 BC-2.03.007:
   path: specs/behavioral-contracts/ss-03/BC-2.03.007.md
-  current_version: "1.0.0"
-  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-03 BC: SessionManager invalid path error]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.1.0"
+  last_bump_commit: "[Pass-12 I12-001 — PC-3/PC-7 canonical error codes reconciled; inputs frontmatter added]"
+  last_bump_date: "2026-06-04"
 
 BC-2.03.008:
   path: specs/behavioral-contracts/ss-03/BC-2.03.008.md
@@ -798,7 +798,7 @@ BC-2.08.008:
 BC-2.09.001:
   path: specs/behavioral-contracts/ss-09/BC-2.09.001.md
   current_version: "1.3.0"
-  last_bump_commit: "[Pass-11 I11-001 PRONG A — new PC-6 auto-attach-on-EmbeddedTerminal-entry; Architecture Source → SS-embedded-pty v1.4.0]"
+  last_bump_commit: "[Pass-11 I11-001 PRONG A — new PC-6 auto-attach-on-EmbeddedTerminal-entry; Architecture Source → SS-embedded-pty v1.4.0]" # version-pin-historical: historical commit description; v1.4.0 was canonical at Pass-11 authoring time
   last_bump_date: "2026-06-04"
 
 BC-2.09.002:

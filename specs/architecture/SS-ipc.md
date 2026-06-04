@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "ipc"
 subsystem: SS-05
-version: "1.16.0"
+version: "1.17.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -24,11 +24,19 @@ project: monocle
 ## Scope
 
 SS-05 defines the `monocle-ipc` crate: the internal transport between TUI clients and the
-daemon. The daemon is the UDS server; TUI instances are clients. Multiple TUI clients can
-connect simultaneously — the vision §Process Topology diagram shows three clients (A, B, C)
-fanning out from the daemon's broker. The IPC layer delivers session state, hook events, and
-permission prompts from the daemon to each TUI client, and routes permission decisions from
-TUI clients back to the daemon.
+daemon. The daemon is the UDS server; TUI instances are clients. The IPC layer delivers session
+state, hook events, and permission prompts from the daemon to each TUI client, and routes
+permission decisions from TUI clients back to the daemon.
+
+**v1A client multiplicity:** v1A operates a single TUI client per daemon at any given time
+(monocle is a tmux popup — one popup per user session). The transport infrastructure is
+forward-compatible with concurrent multi-TUI-client viewing: the broker fan-out design (§5
+of SS-daemon-wiring-v2-delta.md) supports multiple subscribers, as illustrated by the
+vision §Process Topology diagram showing three clients (A, B, C) fanning out from the daemon's
+broker. Concurrent multi-TUI-client viewing of the SAME session is a FUTURE capability,
+deferred to `TD-MULTI-CLIENT-ATTACH-STORM-001` (see SS-daemon-wiring-v2-delta.md §5b scope
+note and BC-2.05.009 Inv-2). The present-tense three-client illustration is forward-compatible
+infrastructure, not a v1A concurrency guarantee.
 
 The daemon creates the UDS socket as step 10 of the daemon start sequence (SS-daemon-wiring.md
 §Daemon Start Sequence). SS-05 specifies the protocol that operates over that socket: framing,
@@ -170,7 +178,7 @@ pub enum ServerToClient {
     /// `Vec<SessionSnapshot>`. `SessionSnapshot` is the canonical wire boundary type for
     /// all sessions (monocle-spawned and externally-detected). `EnrichedSession` is retained
     /// internally for `EngineModule::detect()` but is NOT exposed on the wire. See
-    /// SS-daemon-wiring-v2-delta.md v1.6.0 §4 for the three-representation reconciliation.
+    /// SS-daemon-wiring-v2-delta.md v1.7.0 §4 for the three-representation reconciliation.
     InitialState {
         /// All sessions (monocle-spawned and externally-detected) as `SessionSnapshot`.
         sessions: Vec<SessionSnapshot>,
@@ -345,6 +353,8 @@ pub enum ServerToClient {
     /// # When emitted
     ///
     /// Emitted on failure of any `ClientToServer` lifecycle operation:
+    /// - `SpawnSession` → `EngineError::BinaryNotFound` (harness binary not on PATH; from `spawn_recipe()`)
+    /// - `SpawnSession` → `EngineError::InvalidPath` (non-UTF-8 or null-byte path arg; from `spawn_recipe()`)
     /// - `SpawnSession` → `SessionError::SpawnFailed`
     /// - `SpawnSession` → `SessionError::SidecarWriteFailed` (post-spawn sidecar write failure)
     /// - `SpawnSession` → `SessionError::SessionIdCollision` (UUID v4 collision in registry)
@@ -353,31 +363,52 @@ pub enum ServerToClient {
     /// - `KeyInput` → `SessionError::SessionNotFound` (session does not exist or is Terminated)
     /// - `RenameSession` → `SessionError::InvalidSessionName`
     ///
+    /// # spawn_recipe() call site
+    ///
+    /// `ClaudeCodeModule::spawn_recipe()` is called INSIDE `SessionManager::spawn_session()`,
+    /// BEFORE `SessionHostSpawner::spawn()`. Specifically, the first step of `spawn_session()`
+    /// is to call `engine_module.spawn_recipe(&opts)` to obtain a `SpawnRecipe`; if that call
+    /// returns `Err(EngineError::...)`, `spawn_session()` translates the `EngineError` into a
+    /// `SessionError` (via `From<EngineError>` on `SessionError` — see SS-session-manager.md
+    /// §SessionError taxonomy) and returns it to the IPC handler. The IPC `SpawnSession` arm
+    /// then maps it to the appropriate `ServerToClient::Error` code via `session_error_to_code()`.
+    /// The `SpawnRecipe` carried in `ClientToServer::SpawnSession { recipe }` is therefore
+    /// the RESULT of a prior `spawn_recipe()` call in the TUI process (the TUI calls
+    /// `engine_module.spawn_recipe()` locally to build the recipe before sending it over IPC),
+    /// but `spawn_session()` in the daemon may also call `spawn_recipe()` itself depending on
+    /// the implementation pattern chosen — either way, EngineError must be bridged to SessionError
+    /// before reaching the IPC handler.
+    ///
     /// # No-silent-failure invariant (BC-2.05.010 PC-4 / PC-3-4 obligation)
     ///
     /// The IPC handler MUST NOT silently swallow `Err(SessionError::...)` from any lifecycle
     /// operation by returning `Ok(())` to the task boundary. Every `Err` from
     /// `SessionManager` MUST produce a `ServerToClient::Error` sent to the requesting
-    /// client over its per-client channel.
+    /// client over its per-client channel. This includes EngineError-derived errors that are
+    /// bridged through `SessionError::EngineError` (see §spawn_recipe() call site above).
     ///
-    /// # v1A error code taxonomy (closed set for Phase 1)
+    /// # v1A error code taxonomy (closed set for Phase 1 — 10 codes)
     ///
     /// The `code` field carries one of the following string literals (snake_case):
     ///
-    /// | code                       | Trigger                                                              |
-    /// |----------------------------|----------------------------------------------------------------------|
-    /// | `"spawn_failed"`           | OS process spawn failure from `SessionHostSpawner::spawn()`          |
-    /// | `"sidecar_write_failed"`   | Sidecar write failed after OS process spawned (`SessionError::SidecarWriteFailed`) — orphan-kill protocol ran before error surfaces |
-    /// | `"session_id_collision"`   | UUID v4 collision in registry (`SessionError::SessionIdCollision`) — do not auto-retry |
-    /// | `"session_not_found"`      | `session_id` not in registry (any lifecycle op)                      |
-    /// | `"attach_failed"`          | `SessionError::SessionHostDead` on the attach-path                   |
-    /// | `"kill_failed"`            | `SessionError::SessionHostDead` on the kill-path (op-aware mapping via `IpcOp::Kill`) |
-    /// | `"rename_failed"`          | `SessionManager::rename_session()` returned error                    |
-    /// | `"invalid_request"`        | Validation failure before the SessionManager call                    |
+    /// | code                       | Trigger                                                              | TUI fixed banner text |
+    /// |----------------------------|----------------------------------------------------------------------|-----------------------|
+    /// | `"binary_not_found"`       | `EngineError::BinaryNotFound` — harness binary not found on PATH (e.g., `claude` not installed) | "claude binary not found — is Claude Code installed and on PATH?" |
+    /// | `"invalid_spawn_arg"`      | `EngineError::InvalidPath` — structurally invalid argument to `spawn_recipe()` (e.g., non-UTF-8 hooks settings path) | "Session spawn failed: invalid hooks settings path (non-UTF-8)" |
+    /// | `"spawn_failed"`           | OS process spawn failure from `SessionHostSpawner::spawn()`          | "Session spawn failed" |
+    /// | `"sidecar_write_failed"`   | Sidecar write failed after OS process spawned (`SessionError::SidecarWriteFailed`) — orphan-kill protocol ran before error surfaces | "Session spawn failed: sidecar write error" |
+    /// | `"session_id_collision"`   | UUID v4 collision in registry (`SessionError::SessionIdCollision`) — do not auto-retry | "Session spawn failed: internal ID collision" |
+    /// | `"session_not_found"`      | `session_id` not in registry (any lifecycle op)                      | "Session not found" |
+    /// | `"attach_failed"`          | `SessionError::SessionHostDead` on the attach-path                   | "Session attach failed" |
+    /// | `"kill_failed"`            | `SessionError::SessionHostDead` on the kill-path (op-aware mapping via `IpcOp::Kill`) | "Session kill failed" |
+    /// | `"rename_failed"`          | `SessionManager::rename_session()` returned error                    | "Session rename failed" |
+    /// | `"invalid_request"`        | Validation failure before the SessionManager call                    | "[operation failed]" |
     ///
     /// The `message` field carries a human-readable diagnostic string (not user-facing;
-    /// logged by the TUI for diagnostics). The TUI renders a fixed-text error banner keyed
-    /// to `code`; it does NOT display `message` verbatim (avoids leaking internal detail).
+    /// logged by the TUI for diagnostics). The TUI renders the FIXED banner text from the
+    /// table above keyed to `code`; it does NOT display `message` verbatim (avoids leaking
+    /// internal detail). The fixed banner texts for `"binary_not_found"` and `"invalid_spawn_arg"`
+    /// satisfy BC-2.03.007 PC-3 and PC-7 respectively (see §spawn_recipe() call site above).
     ///
     /// Future phases may add new codes. The TUI MUST handle unknown codes by rendering a
     /// generic `[operation failed]` banner without panicking (forward-compat with `#[non_exhaustive]`).
@@ -456,8 +487,13 @@ pub enum ClientToServer {
 
     /// Spawn a new harness session. The daemon calls `SessionManager::spawn_session(recipe)`.
     /// On success the daemon emits `SessionStateChanged { Launching }` + `SessionListUpdate`.
-    /// On failure the daemon sends `ServerToClient::Error { code: "spawn_failed", message }` to
-    /// the requesting client (SS-08 §Error handling; SS-05 §ServerToClient::Error taxonomy).
+    /// On failure the daemon sends `ServerToClient::Error` to the requesting client with one of
+    /// the spawn-path codes (SS-08 §Error handling; SS-05 §ServerToClient::Error taxonomy):
+    /// - `"binary_not_found"` — `EngineError::BinaryNotFound` (harness not on PATH)
+    /// - `"invalid_spawn_arg"` — `EngineError::InvalidPath` (invalid argument to spawn_recipe())
+    /// - `"spawn_failed"` — OS process spawn failure
+    /// - `"sidecar_write_failed"` — sidecar I/O failure post-spawn
+    /// - `"session_id_collision"` — UUID v4 collision (do not auto-retry)
     SpawnSession {
         /// Serialized spawn recipe from `ClaudeCodeModule::spawn_recipe()` (SS-engine-module).
         recipe: SpawnRecipe,
@@ -1183,6 +1219,34 @@ still pending in the daemon's registry (i.e., still within the 300ms timeout win
 prompts are never re-pushed.
 
 ---
+
+## §Trace v1.17.0
+
+**I12-001 / S12-002 — EngineError taxonomy bridge + spawn_recipe() call-site + multi-client scope clarification** (2026-06-04):
+
+- **I12-001 (a) — `ServerToClient::Error` taxonomy extended from 8 to 10 codes:**
+  Two new spawn-path codes added to satisfy BC-2.03.007 PC-3/PC-7 distinct diagnostics:
+  - `"binary_not_found"` — maps from `EngineError::BinaryNotFound`; fixed banner:
+    "claude binary not found — is Claude Code installed and on PATH?"
+  - `"invalid_spawn_arg"` — maps from `EngineError::InvalidPath`; fixed banner:
+    "Session spawn failed: invalid hooks settings path (non-UTF-8)"
+  These codes are added at the TOP of the taxonomy table (before `"spawn_failed"`) because
+  they occur earlier in the spawn flow (recipe validation precedes OS process spawn).
+  Total v1A codes: 10 (was 8). Taxonomy table updated with a "TUI fixed banner text" column.
+- **I12-001 (b) — spawn_recipe() call-site specified in §ServerToClient::Error doc-comment:**
+  New "# spawn_recipe() call site" subsection added documenting that `spawn_recipe()` is called
+  inside `SessionManager::spawn_session()` BEFORE `SessionHostSpawner::spawn()`, and that
+  `EngineError` is bridged via `From<EngineError> for SessionError` (see SS-session-manager.md
+  §SessionError taxonomy for the `EngineError` variant and `session_error_to_code()` arms).
+- **I12-001 (c) — SpawnSession ClientToServer doc-comment updated:** Now enumerates all five
+  spawn-path error codes (was only `"spawn_failed"`).
+- **S12-002 — §Scope multi-client boundary clarified:** The prior §Scope presented concurrent
+  multi-TUI-client as a present-tense capability. The v1A constraint (single TUI client) and the
+  multi-client deferral anchor (`TD-MULTI-CLIENT-ATTACH-STORM-001`) were only documented in
+  SS-daemon-wiring-v2-delta §5b and BC-2.05.009 Inv-2. §Scope rewritten to: (a) state v1A = one
+  TUI client; (b) describe the fan-out infrastructure as forward-compatible; (c) note the deferral
+  anchor; consistent with SS-daemon-wiring-v2-delta v1.6.0 §5b scope note.
+- Semver: minor (v1.16.0 → v1.17.0) — new normative codes + scope clarification.
 
 ## §Trace v1.16.0
 

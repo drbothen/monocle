@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "embedded-pty"
 subsystem: SS-09
-version: "1.4.0"
+version: "1.5.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -139,6 +139,34 @@ struct App {
     /// I7 fix: was a single usize shared across all sessions (incorrect; focus switch showed
     /// wrong session's scrollback position). Now per-session keyed by session_id.
     pty_scroll_offsets: HashMap<String, usize>,
+
+    /// Tracks which session IDs have received a `ScrollbackDumpComplete` in this TUI
+    /// process lifetime. Used by `enter_embedded_terminal()` to decide whether to send
+    /// `ClientToServer::AttachSession` (auto-attach mandate, I11-001).
+    /// - Insert `session_id` on receipt of `ScrollbackDumpComplete`.
+    /// - Remove on session GC (`SessionState::Terminated` + list removal) so a future
+    ///   re-entry triggers a fresh dump for a restarted session.
+    pty_dump_received: HashSet<String>,
+
+    /// Per-session in-progress scrollback dump flag (ADR-0010 §TUI PtyOutput buffer).
+    /// `true` while `ScrollbackChunk*` messages are being accumulated for `session_id`
+    /// (i.e., from the first `ScrollbackChunk` until `ScrollbackDumpComplete` is received).
+    /// Canonical type: `HashMap<String, bool>` keyed by `session_id`.
+    /// MUST be set to `true` in `enter_embedded_terminal()` when `AttachSession` is sent
+    /// (auto-attach path — live `PtyOutput` arrives before the dump completes; buffering
+    /// MUST begin immediately, not on first chunk receipt).
+    /// Set to `false` after replay on `ScrollbackDumpComplete`.
+    /// See ADR-0010 §TUI PtyOutput buffer during dump; BC-2.05.011 Inv-6; BC-2.09.001 PC-6.
+    dump_in_progress: HashMap<String, bool>,
+
+    /// Per-session buffer for `ServerToClient::PtyOutput` bytes received while a scrollback
+    /// dump is in progress for that session (ADR-0010 §TUI PtyOutput buffer).
+    /// Canonical type: `HashMap<String, Vec<Vec<u8>>>` keyed by `session_id`.
+    /// Each inner `Vec<u8>` is the raw bytes from one `PtyOutput` message, stored in receipt
+    /// order. On `ScrollbackDumpComplete`: replay all buffered vecs through the freshly-reset
+    /// `vt100::Parser` in order, then clear this buffer and set `dump_in_progress[id] = false`.
+    /// See ADR-0010 §TUI PtyOutput buffer during dump; BC-2.05.011 Inv-6; BC-2.09.001 PC-6.
+    pending_pty_bytes: HashMap<String, Vec<Vec<u8>>>,
 }
 
 /// Scrollback offset invariants (I7):
@@ -267,12 +295,18 @@ and has never been populated via a scrollback dump), the TUI MUST IMMEDIATELY se
 ```rust
 // Auto-attach mandate: send AttachSession if this parser has never been
 // populated from a scrollback dump in this process lifetime.
+// S12-001 fix: set dump_in_progress = true HERE (not on first ScrollbackChunk receipt)
+// because live PtyOutput may arrive before the first chunk — buffering must start
+// immediately when AttachSession is sent.
 if !app.pty_dump_received.contains(&session_id) {
+    // Mark dump in progress BEFORE sending AttachSession so any PtyOutput that
+    // arrives before the first ScrollbackChunk is captured in pending_pty_bytes.
+    // The completed-set (pty_dump_received) is the "done" signal; dump_in_progress
+    // is the "in-flight" signal — they serve different purposes and MUST NOT be conflated.
+    app.dump_in_progress.insert(session_id.clone(), true);
     app.ipc_tx.send(ClientToServer::AttachSession {
         session_id: session_id.clone(),
     }).await.ok();
-    // Mark dump_in_progress so live PtyOutput is buffered in pending_pty_bytes
-    // until ScrollbackDumpComplete is received (per BC-2.05.011 Invariant 6).
 }
 ```
 
@@ -280,6 +314,16 @@ if !app.pty_dump_received.contains(&session_id) {
 `ScrollbackDumpComplete` in this TUI process lifetime. On receipt of `ScrollbackDumpComplete`
 for a session, insert `session_id` into `pty_dump_received`. On session GC (`SessionState::Terminated`
 plus list removal), remove from `pty_dump_received` so a future re-entry triggers a fresh dump.
+
+`App::dump_in_progress: HashMap<String, bool>` is the in-flight signal: `true` from the moment
+`AttachSession` is sent until `ScrollbackDumpComplete` is received and the buffer is replayed.
+While `dump_in_progress[session_id] == true`, all incoming `ServerToClient::PtyOutput` for that
+session MUST be appended to `App::pending_pty_bytes[session_id]` instead of fed to the parser.
+On `ScrollbackDumpComplete`: (1) reset parser, (2) replay `pending_pty_bytes[session_id]` in
+order, (3) clear the buffer, (4) set `dump_in_progress[session_id] = false`, (5) insert into
+`pty_dump_received`. These are the **canonical ADR-0010 types** (`HashMap<String, bool>` and
+`HashMap<String, Vec<Vec<u8>>>`); the App struct field list above is the authoritative
+single-document definition. See ADR-0010 §TUI PtyOutput buffer during dump (canonical source).
 
 **Rationale:** When the TUI starts fresh (new process) and connects to a daemon that has one
 or more already-running sessions, it receives those sessions in `InitialState.sessions` (or
@@ -622,6 +666,9 @@ If spawn fails (daemon returns an error), the wizard returns to `Step 1` with an
 | `key_event_to_pty_bytes()` | Pure core | Input → bytes; no I/O; deterministic |
 | `mouse_event_to_pty_bytes()` | Pure core | Input → bytes; no I/O |
 | `App::pty_parsers` | Effectful shell | `vt100::Parser.process()` is stateful mutation |
+| `App::dump_in_progress` | Pure core | `HashMap<String, bool>` flag; in-memory state only |
+| `App::pending_pty_bytes` | Pure core | `HashMap<String, Vec<Vec<u8>>>` buffer; in-memory accumulation only |
+| `App::pty_dump_received` | Pure core | `HashSet<String>` completed-set; in-memory only |
 | PTY widget render path | Effectful shell | Ratatui render → terminal I/O |
 | Resize detection + IPC send | Effectful shell | UDS write |
 | `crossterm::execute!` keyboard/mouse setup | Effectful shell | Terminal device I/O |
@@ -670,6 +717,34 @@ Mitigation: integration tests use a PTY fixture corpus from `embedded-pty-evalua
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.5.0
+
+**S12-001 — App struct `dump_in_progress` + `pending_pty_bytes` + `pty_dump_received` added; auto-attach skeleton made normative** (2026-06-04):
+
+- **Finding (S12-001):** The App struct field list (§Parser ownership in TUI) defined `pty_parsers`
+  and `pty_scroll_offsets` but NOT `pty_dump_received`, `dump_in_progress`, or `pending_pty_bytes`.
+  These fields were mentioned in the auto-attach skeleton (~line 270) as comments or prose but
+  were absent from the authoritative struct definition, making the spec not single-document-
+  implementable. ADR-0010 §TUI PtyOutput buffer during dump defines the canonical types
+  (`dump_in_progress: bool` per session, `pending_pty_bytes: Vec<Vec<u8>>` per session) but
+  the struct definition here didn't reflect them.
+- **Fix (a) — App struct extended with three new fields:**
+  - `pty_dump_received: HashSet<String>` — completed-set tracking which sessions have received
+    `ScrollbackDumpComplete` in this process lifetime (auto-attach trigger for I11-001).
+  - `dump_in_progress: HashMap<String, bool>` — in-flight flag per session; canonical ADR-0010 type.
+  - `pending_pty_bytes: HashMap<String, Vec<Vec<u8>>>` — live PtyOutput buffer per session;
+    canonical ADR-0010 type. Doc-comments cite ADR-0010 as the canonical source for both.
+- **Fix (b) — auto-attach skeleton made normative:** The code block in §EmbeddedTerminal ENTRY
+  now EXECUTES `app.dump_in_progress.insert(session_id.clone(), true)` BEFORE sending
+  `AttachSession` (was only a comment). Normative prose added: `dump_in_progress` is the
+  in-flight signal; `pty_dump_received` is the completed signal — they serve distinct purposes
+  and MUST NOT be conflated. Setting `dump_in_progress = true` before `AttachSession` guarantees
+  that any `PtyOutput` arriving before the first `ScrollbackChunk` is buffered (not fed to the
+  blank parser), satisfying BC-2.05.011 Inv-6 / BC-2.09.001 PC-6.
+- **Fix (c) — Module Purity table updated:** Three new rows added for the new App fields
+  (all classified Pure core — in-memory state, no I/O).
+- Semver: minor (v1.4.0 → v1.5.0) — new normative struct fields + skeleton correction.
 
 ## §Trace v1.4.0
 
