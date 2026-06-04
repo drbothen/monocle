@@ -1,3 +1,5 @@
+UPDATE (D-250): pivot executed through spec delta + 9 adversarial passes; resume from NEXT-SESSION-RESUME.md -> .factory/STATE.md.
+
 # NEXT SESSION — START HERE: monocle pivots to a full Control Center
 
 > Written 2026-06-03 at the end of a long session, by the outgoing context, for the
