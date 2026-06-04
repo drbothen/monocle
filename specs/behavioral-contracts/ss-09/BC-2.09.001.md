@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.0"
+version: "1.2.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md, architecture/adr/ADR-0011-pty-stack-native-portable-pty-vt100-tui-term.md]
-input-hash: "e3f3366"
+input-hash: "e1471a8"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-09
@@ -72,12 +72,18 @@ TUI's IPC socket. This timing budget covers: IPC framing decode → `vt100::Pars
    overridden by config. Memory per parser: ~16 bytes/cell × cols × (visible_rows + scrollback_rows).
    Default: 16 × 80 × 1024 ≈ 1.3 MB/session; 8 sessions ≈ 10.4 MB. Cap at 10000 rows
    yields ~12.8 MB/session at 80 cols. See SS-embedded-pty.md §O4 for full bound analysis.
-5. **ScrollbackDump receipt — parser reset protocol (C5):** When `ServerToClient::ScrollbackDump`
-   arrives for a session, the TUI MUST:
-   a. Reset the parser: `pty_parsers[session_id] = vt100::Parser::new(pty_rows, pty_cols, SCROLLBACK_ROWS)`.
-   b. Reconstruct the screen from the `Vec<Vec<SerializedCell>>` styled-cell data WITHOUT
-      re-parsing raw PTY bytes (see SS-session-manager.md §Screen-state transfer).
-   c. After reconstruction, subsequent `PtyOutput` events are applied to the clean parser.
+5. **Chunked scrollback receipt — parser reset protocol (C5):** When the TUI receives
+   `ScrollbackChunk*` + `ServerToClient::ScrollbackDumpComplete` for a session (per
+   BC-2.05.011 §ScrollbackDumpComplete PC-3), the TUI MUST:
+   a. Reset the parser on `ScrollbackDumpComplete` receipt:
+      `pty_parsers[session_id] = vt100::Parser::new(pty_rows, pty_cols, SCROLLBACK_ROWS)`.
+   b. Reconstruct the screen from the accumulated `Vec<Vec<SerializedCell>>` styled-cell data
+      WITHOUT re-parsing raw PTY bytes (see SS-session-manager.md §Screen-state transfer).
+   c. Any `PtyOutput` messages received while waiting for `ScrollbackDumpComplete` are
+      buffered in `pending_pty_bytes[session_id]` (per BC-2.05.011 Invariant 6). After
+      reconstruction, replay buffered bytes through the reset parser in receipt order, then
+      apply all subsequent `PtyOutput` events to the clean parser.
+   The retired single-message `ServerToClient::ScrollbackDump` variant MUST NOT be used.
    The old behavior (forwarding raw bytes into an existing live parser) would double-apply
    content already in the parser's screen model — causing visual artifacts.
 6. Scroll offsets are per-session (I7). `pty_scroll_offsets[session_id]` is consulted at
@@ -115,12 +121,12 @@ TUI's IPC socket. This timing budget covers: IPC framing decode → `vt100::Pars
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — this BC defines the PTY byte pipeline performance contract: IPC → vt100 → tui-term within 100ms, which is the core of CAP-009's embedded PTY widget capability |
 | Architecture Module | monocle-tui (App::on_pty_output, pty_parsers, PseudoTerminal widget) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.2.0 §PTY Widget Pipeline; §Parser ownership in TUI; §O4 memory bound; §I7 per-session scroll offset; SS-session-manager.md v1.4.0 §Screen-state transfer (C5); ADR-0011 §PTY stack selection |
+| Architecture Source | SS-embedded-pty.md v1.2.0 §PTY Widget Pipeline; §Parser ownership in TUI; §O4 memory bound; §I7 per-session scroll offset; SS-session-manager.md v1.4.1 §Screen-state transfer (C5); ADR-0011 §PTY stack selection |
 | Test Name | test_BC_2_09_001_pty_output_renders_within_100ms |
 
 ## Related BCs
 
-- [BC-2.08.007] — depends on: attach produces ScrollbackDump which flows through this pipeline
+- [BC-2.08.007] — depends on: attach triggers the `ScrollbackChunk*` + `ScrollbackDumpComplete` chunked sequence that flows through this pipeline for parser reset + screen reconstruction
 - [BC-2.09.002] — composes with: keyboard input flows opposite direction (TUI → PTY)
 - [BC-2.09.006] — composes with: resize changes parser dimensions before PTY output is processed
 
@@ -137,16 +143,30 @@ S-TBD — Implement TUI PTY widget (vt100 parser, PseudoTerminal render, PtyOutp
 
 VP-TBD — PTY output render latency tests (filled after VP creation)
 
+## §Trace v1.2.0
+
+**CRIT-001 adversarial pass-4 fix — Invariant 5 + Related-BCs: retired ScrollbackDump → chunked protocol** (2026-06-03):
+- Invariant 5: retired `ServerToClient::ScrollbackDump` single-message name replaced throughout.
+  The TUI now correctly references `ScrollbackChunk*` + `ServerToClient::ScrollbackDumpComplete`
+  (per BC-2.05.011 §ScrollbackDumpComplete PC-3). Parser reset happens on `ScrollbackDumpComplete`
+  receipt; live `PtyOutput` arriving during the dump window is buffered in
+  `pending_pty_bytes[session_id]` (per BC-2.05.011 Invariant 6) and replayed after
+  reconstruction. The protocol invariant that the retired single-message form MUST NOT be
+  used is now stated explicitly.
+- Related-BCs [BC-2.08.007] entry: "attach produces ScrollbackDump" → "attach triggers
+  `ScrollbackChunk*` + `ScrollbackDumpComplete` chunked sequence".
+
 ## §Trace v1.1.0
 
 **C5/O4/I7 — ScrollbackDump parser reset, memory bound, per-session scroll offset** (2026-06-03):
 - Invariant 3: backpressure model clarified (`.send().await`; no drop on IPC channel).
 - Invariant 4: memory bound revised to include per-cell styled-attribute size (~16 bytes/cell).
   10000-row cap yields ~12.8 MB/session. Default yields ~1.3 MB/session.
-- Invariant 5 (new): `ScrollbackDump` receipt → parser reset protocol. Receiving styled-cell
+- Invariant 5 (new): chunked scrollback receipt (`ScrollbackChunk*` + `ScrollbackDumpComplete`) → parser reset protocol. Receiving styled-cell
   data requires resetting the parser before applying; prevents double-counting live state.
+  (Note: original trace text said "ScrollbackDump" — corrected to chunked protocol in v1.2.0.)
 - Invariant 6 (new): per-session scroll offset (I7 fix from SS-embedded-pty.md).
-- Architecture Source updated to SS-session-manager.md v1.4.0 and SS-embedded-pty.md v1.2.0.
+- Architecture Source updated to SS-session-manager.md v1.4.1 and SS-embedded-pty.md v1.2.0.
 
 ## §Trace v1.0.0
 

@@ -7,7 +7,7 @@ producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-tui.md, architecture/SS-session-manager.md]
-input-hash: "8dfb673"
+input-hash: "04e3f9e"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -144,7 +144,7 @@ pane.
 | L2 Capability | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability traceability §SS-06 |
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability traceability — this BC extends the sessions panel capability in CAP-006 with multi-session, multi-project grouping, and lifecycle actions |
 | Architecture Module | monocle-tui (sessions panel renderer, session list grouping logic, lifecycle keybindings) per ARCH-INDEX Subsystem Registry SS-06 |
-| Architecture Source | SS-ipc.md v1.12.1 §SessionSnapshot (wire boundary type; `degraded` and `degraded_reason` fields; `spawned_by_monocle: Option<bool>` field); SS-session-manager.md v1.4.0 §SessionManager §Public API (session_list() returns Vec<SessionSnapshot>); SS-embedded-pty.md v1.2.0 §Fast switching; SS-session-manager.md v1.4.0 §monocle-session-host startup sequence §I3-009 (degraded-env surfaced via HostToDaemon::StateChanged.degraded_env + SessionSnapshot.degraded) |
+| Architecture Source | SS-ipc.md v1.12.1 §SessionSnapshot (wire boundary type; `degraded` and `degraded_reason` fields; `spawned_by_monocle: Option<bool>` field); SS-session-manager.md v1.4.1 §SessionManager §Public API (session_list() returns Vec<SessionSnapshot>); SS-embedded-pty.md v1.2.0 §Fast switching; SS-session-manager.md v1.4.1 §monocle-session-host startup sequence §I3-009 (degraded-env surfaced via HostToDaemon::StateChanged.degraded_env + SessionSnapshot.degraded) |
 | Cross-Ref | BC-2.05.010 (KillSession/DetachSession/RenameSession IPC variants triggered from sessions panel); BC-2.09.008 (SessionCreation wizard and EmbeddedTerminal enter) |
 | Test Name | test_BC_2_06_025_multi_session_grouped_by_project |
 
@@ -179,7 +179,7 @@ VP-TBD — Sessions panel multi-session render tests (filled after VP creation)
 - EC-297 added: degraded session edge case.
 - VP table: added degraded badge unit test.
 - Architecture Source updated to SS-ipc.md v1.12.1 (SessionSnapshot fields) and
-  SS-session-manager.md v1.4.0 (I3-009 degraded-env mechanism).
+  SS-session-manager.md v1.4.1 (I3-009 degraded-env mechanism).
 
 ## §Trace v1.2.0
 

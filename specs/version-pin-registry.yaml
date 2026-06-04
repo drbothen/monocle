@@ -124,8 +124,8 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "1.4.0"
-  last_bump_commit: "[Adversarial Pass 3 resolution 2026-06-03 — C3-003 rename emit fix; I3-002 Terminating watchdog background task + kill_deadline sidecar; I3-003 snapshot-then-resume; I3-005 Detached re-discovery preserved; I3-008 vt100-0.16 attrs 5-flag correction; I3-009 degraded-env surfaced to daemon]"
+  current_version: "1.4.1"
+  last_bump_commit: "[Adversarial Pass 4 resolution D-245 2026-06-03 — SUG-002 spawned_by_monocle EnrichedSession→SessionSnapshot type propagated]"
   last_bump_date: "2026-06-03"
 
 SS-embedded-pty:
@@ -142,8 +142,8 @@ SS-engine-module-v2-delta:
 
 SS-daemon-wiring-v2-delta:
   path: specs/architecture/SS-daemon-wiring-v2-delta.md
-  current_version: "1.3.0"
-  last_bump_commit: "[Adversarial Pass 3 resolution 2026-06-03 — C3-001 SessionStateChanged emission rule §3b; C3-003 rename→SessionListUpdate only; C3-004 SessionSnapshot §4 + wire type change; I3-001 ordered-pair split disconnect; I3-003 snapshot-then-resume §5b; I3-004 AttachSession handler §3; O3-004 CLIENT_SEND_BUFFER_SIZE=64 §5d]"
+  current_version: "1.3.1"
+  last_bump_commit: "[Adversarial Pass 4 resolution D-245 2026-06-03 — HIGH-004 PO-edit-block §5d CLIENT_SEND_BUFFER_SIZE=256 survivor corrected to 64]"
   last_bump_date: "2026-06-03"
 
 SS-deps-pin-manifest-v2-delta:
@@ -182,8 +182,8 @@ ADR-0009:
 
 ADR-0010:
   path: specs/architecture/adr/ADR-0010-pty-bytes-over-shared-uds-ipc.md
-  current_version: "1.3.0"
-  last_bump_commit: "[Adversarial Pass 3 resolution 2026-06-03 — I3-001 ordered-pair split; I3-003 interleaving protocol replaced: snapshot-then-resume, TUI buffers live PtyOutput; O3-004 CLIENT_SEND_BUFFER_SIZE corrected to 64]"
+  current_version: "1.3.1"
+  last_bump_commit: "[Adversarial Pass 4 resolution D-245 2026-06-03 — HIGH-004 line-310 + PO-edit-block buffer 256→64 (source re-injection fixed); SUG-001 vt100 0.16 reconstruction path canonicalized]"
   last_bump_date: "2026-06-03"
 
 ADR-0011:
@@ -204,8 +204,8 @@ ARCH-INDEX:
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.37"
-  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — D-243 136→138 BCs (BC-2.05.011 + BC-2.08.008 new)]"
+  current_version: "1.38"
+  last_bump_commit: "[Adversarial Pass 4 resolution D-245 2026-06-03 — Pass-4 ScrollbackDump+buffer-256 propagation residue cleared; all findings resolved]"
   last_bump_date: "2026-06-03"
 
 STORY-INDEX:
@@ -252,8 +252,8 @@ dtu-assessment:
 
 prd:
   path: specs/prd.md
-  current_version: "1.28.0"
-  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — added §2.8 SessionManager + §2.9 EmbeddedPTY capabilities]"
+  current_version: "1.28.1"
+  last_bump_commit: "[Adversarial Pass 4 resolution D-245 2026-06-03 — HIGH-002 ScrollbackDump→chunked propagated to PRD §2.8/§2.9 capability descriptions]"
   last_bump_date: "2026-06-03"
 
 product-brief:
@@ -725,8 +725,8 @@ BC-2.03.008:
 
 BC-2.05.009:
   path: specs/behavioral-contracts/ss-05/BC-2.05.009.md
-  current_version: "1.3.0"
-  last_bump_commit: "[Adversarial Pass 3 resolution 2026-06-03 — D-244 I3-006 SO_PEERCRED universal; O3-001 dup PC]"
+  current_version: "1.4.0"
+  last_bump_commit: "[Adversarial Pass 4 resolution D-245 2026-06-03 — HIGH-003 PC-1b per-client send buffer 256→64 propagation residue]"
   last_bump_date: "2026-06-03"
 
 BC-2.05.010:
@@ -755,8 +755,8 @@ BC-2.08.001:
 
 BC-2.08.002:
   path: specs/behavioral-contracts/ss-08/BC-2.08.002.md
-  current_version: "1.1.0"
-  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — D-243 C2-005 SO_PEERCRED on kill-path UDS connect]"
+  current_version: "1.2.0"
+  last_bump_commit: "[Adversarial Pass 4 resolution D-245 2026-06-03 — HIGH-001 PC-4/PC-7/Invariant 4: retired single-message ScrollbackDump→chunked ScrollbackChunk*/ScrollbackDumpComplete]"
   last_bump_date: "2026-06-03"
 
 BC-2.08.003:
@@ -779,14 +779,14 @@ BC-2.08.005:
 
 BC-2.08.006:
   path: specs/behavioral-contracts/ss-08/BC-2.08.006.md
-  current_version: "1.1.0"
-  last_bump_commit: "[D-242 adversarial pass-1 convergence-fix 2026-06-03 — C1 shared-hooks model; Architecture Source cite updated to SS-session-manager at D-242 authoring time]"
+  current_version: "1.2.0"
+  last_bump_commit: "[Adversarial Pass 4 resolution D-245 2026-06-03 — SUG-002 PC-5: EnrichedSession→SessionSnapshot wire boundary type (C3-004 propagation)]"
   last_bump_date: "2026-06-03"
 
 BC-2.08.007:
   path: specs/behavioral-contracts/ss-08/BC-2.08.007.md
-  current_version: "1.3.0"
-  last_bump_commit: "[Adversarial Pass 3 resolution 2026-06-03 — D-244 C3-001 SessionStateChanged emission point per-method; C3-003 rename→SessionListUpdate only]"
+  current_version: "1.4.0"
+  last_bump_commit: "[Adversarial Pass 4 resolution D-245 2026-06-03 — HIGH-002 title + Description: retired ScrollbackDump→chunked; propagated to PRD+BC-INDEX]"
   last_bump_date: "2026-06-03"
 
 BC-2.08.008:
@@ -797,8 +797,8 @@ BC-2.08.008:
 
 BC-2.09.001:
   path: specs/behavioral-contracts/ss-09/BC-2.09.001.md
-  current_version: "1.1.0"
-  last_bump_commit: "[Adversarial Pass 1 resolution 2026-06-03 — C5 parser reset on ScrollbackDump; O4 styled-cell memory bound; I7 per-session scroll offset]"
+  current_version: "1.2.0"
+  last_bump_commit: "[Adversarial Pass 4 resolution D-245 2026-06-03 — CRIT-001 Invariant 5 + Related-BCs: nonexistent ServerToClient::ScrollbackDump retired→chunked ScrollbackChunk*/ScrollbackDumpComplete]"
   last_bump_date: "2026-06-03"
 
 BC-2.09.002:

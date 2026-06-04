@@ -1,13 +1,13 @@
 ---
 document_type: prd
 level: L3
-version: "1.28.0"
+version: "1.28.1"
 status: draft
 producer: vsdd-factory:product-owner
 phase: phase-1-spec-crystallization
 timestamp: 2026-06-03T12:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
-input-hash: "3b9c73b"
+input-hash: "2219e7f"
 traces_to: "product-brief.md v1.4.30; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; SS-conventions-anti-patterns.md v1.29.5; architecture/SS-permissions-phase1.md v1.5.2; architecture/SS-forward-compatibility.md v1.2.19; architecture/adr/ADR-0001-wasmtime-vs-wasmi.md v1.0.3; architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md v1.0.4; architecture/adr/ADR-0003-license-selection.md v1.0.2; architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md v1.0.4; architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md v1.0.2; architecture/ARCH-INDEX.md v1.0.10; behavioral-contracts/BC-INDEX.md v1.35; 136 BCs sharded under behavioral-contracts/ss-NN/ (ss-01 through ss-09 + ss-dtu); domain-spec/L2-INDEX.md v1.0.11; verification-properties/VP-INDEX.md v1.15" # version-pin-historical: BC-INDEX v1.17 was canonical at PRD v1.27.4; updated to v1.35 and 70→136 BCs at v1.28.0 (D-241 control-center v1A)
 project: monocle
 supplements:
@@ -246,7 +246,7 @@ daemon-owned PTY approaches.
 | BC-2.08.004 | Re-Discovery — All Alive Sessions Visible After Daemon Restart Within 5s; UDS Bind Blocked Until Complete | P0 |
 | BC-2.08.005 | Session GC — Terminated Sessions Removed from Registry After 10s Grace Period | P1 |
 | BC-2.08.006 | Hook Auto-Injection — `--settings` Arg Present in Session-Host Child Args Within 2s of Spawn | P0 |
-| BC-2.08.007 | Attach/Detach — ScrollbackDump on Attach; session-host Stays Alive on Detach | P1 |
+| BC-2.08.007 | Attach/Detach — Chunked Scrollback (ScrollbackChunk*+ScrollbackDumpComplete) on Attach; session-host Stays Alive on Detach | P1 |
 
 > Full contracts: `behavioral-contracts/ss-08/BC-2.08.NNN.md`
 > Key architecture decisions: ADR-0009 (native detached session-host process model)
@@ -1476,7 +1476,7 @@ This is a delta amendment reflecting the D-236 control-center pivot. monocle is 
 
 **New §2.8 — Session Manager (CAP-008):**
 
-7 BCs (BC-2.08.001..BC-2.08.007). Architecture source SS-session-manager.md. Covers session spawn (SessionHostSpawner 2s SLA + SessionEntry creation), session persistence across daemon restart (ADR-0009 detached process model), session kill (SIGTERM via DaemonToHost::Kill 500ms), re-discovery after daemon restart (blocks UDS bind until complete, 5s SLA), GC (10s grace period), hook auto-injection at spawn (`--settings` arg), and attach/detach (ScrollbackDump on attach; session-host stays alive on detach).
+7 BCs (BC-2.08.001..BC-2.08.007). Architecture source SS-session-manager.md. Covers session spawn (SessionHostSpawner 2s SLA + SessionEntry creation), session persistence across daemon restart (ADR-0009 detached process model), session kill (SIGTERM via DaemonToHost::Kill 500ms), re-discovery after daemon restart (blocks UDS bind until complete, 5s SLA), GC (10s grace period), hook auto-injection at spawn (`--settings` arg), and attach/detach (chunked scrollback `ScrollbackChunk*`+`ScrollbackDumpComplete` on attach; session-host stays alive on detach).
 
 **New §2.9 — Embedded PTY (CAP-009):**
 
@@ -1505,3 +1505,15 @@ Note: BC-INDEX tracks all 136 BCs (including SS-DTU 41 gene-source contracts). �
 **Changes made:** frontmatter `version` v1.27.3 → v1.28.0; `timestamp` refreshed; `traces_to:` BC-INDEX pin v1.34 → v1.35, BC count 70 → 136; §2.3 Engine Module — BC-2.03.005..008 rows added; §2.5 IPC — BC-2.05.009..010 rows added; §2.6 TUI — BC-2.06.024 (retroactive patch per v1.27.3) and BC-2.06.025 rows added; §2.8 Session Manager — new subsection with 7 BC rows; §2.9 Embedded PTY — new subsection with 9 BC rows; §Trace v1.27.3 and v1.28.0 added.
 
 SE-16d monotonicity PASS: 2026-06-03T12:00:00Z > 2026-05-28T12:00:00Z (v1.27.4 predecessor). ARITHMETICALLY TRUE. PASS.
+
+---
+
+## §Trace v1.28.1 — Adversarial pass-4 propagation fixes (BC-2.08.007 title + §2.8 summary)
+
+**Bump:** v1.28.0 → v1.28.1 (patch — BC table titles + §Trace prose corrected; no new BCs, no schema changes).
+
+**Changes made:**
+- §2.8 BC table: BC-2.08.007 title corrected from "Attach/Detach — ScrollbackDump on Attach; session-host Stays Alive on Detach" to "Attach/Detach — Chunked Scrollback (ScrollbackChunk*+ScrollbackDumpComplete) on Attach; session-host Stays Alive on Detach" — mirrors the BC file H1 update per bc_h1_is_title_source_of_truth policy (HIGH-002).
+- §Trace v1.28.0 New §2.8 description: "ScrollbackDump on attach" → "chunked scrollback `ScrollbackChunk*`+`ScrollbackDumpComplete` on attach" — stale prose aligned with canonical protocol (HIGH-002 propagation).
+
+SE-16d monotonicity PASS: 2026-06-03T12:00:00Z ≥ v1.28.0 timestamp. PASS.

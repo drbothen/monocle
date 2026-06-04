@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "1.4.0"
+version: "1.4.1"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -690,14 +690,23 @@ PTY bytes.
       If mismatch → log WARN; send a re-attach request (re-sends `SpawnSession`'s Attach)
       to restart the dump.
    b. Reset the parser: `pty_parsers[session_id] = vt100::Parser::new(pty_rows, pty_cols, SCROLLBACK_ROWS)`.
-   c. Reconstruct the screen by replaying the accumulated cells as a synthetic `DCS` or `ED`
-      clear + cursor-position + write sequence, OR by using `vt100::Parser::set_screen()` if
-      the vt100 crate exposes such an API, OR by implementing a direct screen-state injection
-      that sets each cell's content/attributes without going through byte parsing.
-   d. If the vt100 crate does not expose direct cell injection: send the scrollback dump
-      as a sequence of ANSI `\x1b[2J\x1b[H` (clear screen, home cursor) followed by
-      cell-by-cell reconstruction using ANSI SGR sequences. This is the `scrollback-as-bytes`
-      reconstruction path.
+   c. Reconstruct the screen using the **`scrollback-as-bytes` path** (the single canonical
+      reconstruction path for vt100 0.16). vt100 0.16 does NOT expose `set_screen()`,
+      `inject_cells()`, or any API to directly write screen state; `Parser::process(&[u8])` is
+      the only public input method (verified against docs.rs/vt100/0.16.0, 2026-06-03). The
+      reconstruction path encodes the `ScrollbackChunk` cells as ANSI byte sequences and feeds
+      them through the freshly-reset parser:
+      1. Emit `\x1b[2J\x1b[H` (ED2 clear screen + cursor home) into the parser.
+      2. For each row in the received cells (scrollback rows first, then visible screen rows),
+         for each cell: emit the appropriate ANSI SGR sequences for the cell's fg/bg/attrs,
+         then emit the cell's UTF-8 character. Emit `\r\n` between rows.
+      3. After all rows, emit a cursor-positioning sequence (`\x1b[{row};{col}H`) to place
+         the cursor at `cursor_row`/`cursor_col` from `ScrollbackDumpComplete`.
+      All three steps are fed through `vt100::Parser::process()` on the freshly-reset parser
+      instance. This is the only supported reconstruction path for vt100 0.16.
+   d. (No alternate path.) vt100 0.16 exposes no direct screen-state injection API. The
+      `scrollback-as-bytes` path in step (c) is unconditional; no runtime API-availability
+      check is needed.
    e. After reconstruction, apply any buffered `PtyOutput` bytes received during the dump
       transfer (I3-003 fix: session-host no longer pauses PtyBytes; TUI buffers live bytes
       during dump and replays after Complete). Process buffered bytes through the now-reset
@@ -965,7 +974,7 @@ it for all sessions is clobber-safe precisely because the content is a pure func
 **BC-HOOK-010 is the authoritative model.** BC-2.08.006 Invariant 3 and EC-182 (which
 previously mandated per-session paths to avoid clobber) were architecture-level errors: they
 misdiagnosed the clobber risk. Clobber is a problem only when content differs between writers;
-here it never differs. BC-2.08.006 v1.1.0 has been RECONCILED in place by product-owner to
+here it never differs. BC-2.08.006 v1.2.0 has been RECONCILED in place by product-owner to
 reflect the shared-file model — Invariant 3 and EC-182 have been rewritten (not removed) to
 describe the correct shared-file behavior. This reconciliation is the canonical outcome; no
 further BC-2.08.006 edits are needed.
@@ -1041,6 +1050,23 @@ BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
 
+## §Trace v1.4.1
+
+**SUG-001 — Adversarial Pass 4 residue: vt100 0.16 reconstruction path made canonical** (2026-06-03):
+
+- **SUG-001 (screen reconstruction path, steps 5c-5d):** Steps 5c and 5d in §Screen-state
+  transfer on Attach (TUI receiver protocol) previously presented three alternatives for screen
+  reconstruction: a "set_screen()" API path, a direct cell-injection path, and the
+  `scrollback-as-bytes` ANSI-encode-then-process path — with "if the crate does not expose
+  direct cell injection" deferring the implementation choice to the implementer. This is an
+  in-scope-answerable question per CLAUDE.md §Six Rules. vt100 0.16 public API verified against
+  docs.rs/vt100/0.16.0 (2026-06-03): `Parser::process(&[u8])` is the only public input method.
+  No `set_screen()`, no `inject_cells()`, no `screen_mut()` direct-write path exists in 0.16.
+  Steps 5c-5d rewritten to name the single canonical path (`scrollback-as-bytes` via
+  `Parser::process()`) with the explicit ANSI encoding algorithm (ED2 clear + SGR per-cell +
+  cursor position). Step 5d now documents that no runtime API-availability check is needed
+  because the bytes path is unconditional for vt100 0.16.
+
 ## §Trace v1.4.0
 
 **Adversarial Pass 3 resolution — C3-003/I3-002/I3-003/I3-005/I3-008/I3-009** (2026-06-03):
@@ -1096,7 +1122,7 @@ BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
   ADR-0010; SS-daemon-wiring-v2-delta §5b/§5c carry the daemon fan-out paths.
 - **C2-003 (directive-vs-outcome mismatch):** Removed stale "must be removed" directive.
   BC-2.08.006 Invariant 3 + EC-182 were RECONCILED IN PLACE by product-owner (not removed).
-  The text now correctly states "BC-2.08.006 v1.1.0 has been reconciled in place." No further
+  The text now correctly states "BC-2.08.006 v1.2.0 has been reconciled in place." No further
   BC-2.08.006 edits are needed.
 - **C2-005(a) (kill-path SO_PEERCRED):** §Per-session UDS security item 1 updated to state
   explicitly that SO_PEERCRED applies to EVERY per-session UDS connect including kill-path

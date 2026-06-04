@@ -35,7 +35,7 @@ per-session). All sessions spawned in this test share this single file.
    and contains the standard schema fields (schema_version, session_id, pid, socket_path, state,
    project_root, cwd, harness_id, profile_id, started_at, display_name, pty_rows, pty_cols).
    NOTE: The sidecar MUST NOT contain a `hook_settings_path` field — that field does not exist
-   in the session-state.json schema (SS-session-manager v1.4.0 §session-state.json schema). The
+   in the session-state.json schema (SS-session-manager v1.4.1 §session-state.json schema). The
    hooks path is a shared constant (`<runtime_dir>/hooks-settings.json`) baked into every
    session's spawn args via `SpawnOptions.hooks_settings_path`; it is not stored redundantly
    in the sidecar.
@@ -97,7 +97,7 @@ concurrent spawns (indicates spawns erroneously wrote to it); any spawn call is 
 arg or points to a per-session path; any `session-state.json` sidecar is zero-byte or absent;
 any spawn takes >2 seconds; any per-session hooks file created (violates BC-HOOK-010 PC-3);
 any `session-state.json` sidecar contains a `hook_settings_path` field (schema violation — field
-does not exist in session-state.json schema v2 per SS-session-manager v1.4.0).
+does not exist in session-state.json schema v2 per SS-session-manager v1.4.1).
 
 **NOT in any story AC:** The story implementing BC-2.08.006 will have ACs for the `--settings` arg
 presence in a single spawn. This holdout tests the **shared-file model invariant under concurrent load**:
@@ -110,7 +110,7 @@ concurrency — this cannot be validated by any single AC in the implementing st
 
 **Modification note (C2-004 adversarial pass-2 fix, 2026-06-03):** Steps A3, B9, FAIL criteria
 updated to remove the assertion that `session-state.json` contains a `hook_settings_path` field.
-That field does not exist in the session-state.json schema (SS-session-manager v1.4.0 §session-
+That field does not exist in the session-state.json schema (SS-session-manager v1.4.1 §session-
 state.json schema). The architect noted the field is redundant — the hooks path is a shared
 constant (`<runtime_dir>/hooks-settings.json`) passed via spawn args, not stored per-session in
 the sidecar. The holdout now asserts the ABSENCE of the field (schema compliance) and instead

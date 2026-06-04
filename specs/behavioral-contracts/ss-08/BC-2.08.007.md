@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.0"
+version: "1.4.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md]
-input-hash: "692beb0"
+input-hash: "71a7d29"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-08
@@ -24,12 +24,14 @@ removed: null
 removal_reason: null
 ---
 
-# Behavioral Contract BC-2.08.007: Attach/Detach — ScrollbackDump on Attach; session-host Stays Alive on Detach
+# Behavioral Contract BC-2.08.007: Attach/Detach — Chunked Scrollback (ScrollbackChunk*+ScrollbackDumpComplete) on Attach; session-host Stays Alive on Detach
 
 ## Description
 
 `SessionManager::attach_session()` re-connects the daemon to a `Detached` session-host,
-receives a `ScrollbackDump` (current vt100 screen state), and begins proxying live PTY bytes.
+receives the full `HostToDaemon::ScrollbackChunk*` + `HostToDaemon::ScrollbackDumpComplete`
+chunked scrollback sequence (current vt100 screen state as styled cells), and begins proxying
+live PTY bytes. The retired single-message `ScrollbackDump` form MUST NOT be used.
 `SessionManager::detach_session()` sends `DaemonToHost::Detach` to the session-host and
 removes the proxy task without terminating the session. The session continues running in the
 background. The TUI can re-attach at any time.
@@ -92,7 +94,7 @@ background. The TUI can re-attach at any time.
    ScrollbackDumpComplete` — styled cells `Vec<Vec<SerializedCell>>` (full fg/bg color +
    attrs). The retired single-message `ScrollbackDump` form MUST NOT be used. The TUI
    MUST reset its parser for the session BEFORE applying the dump to prevent double-counting
-   live parser state. See SS-session-manager.md v1.4.0 §Screen-state transfer for the
+   live parser state. See SS-session-manager.md v1.4.1 §Screen-state transfer for the
    full reconstruction protocol.
 4. The 5-second timeout applies to the full `ScrollbackChunk*` + `ScrollbackDumpComplete`
    sequence for both re-discovery (BC-2.08.004) and interactive attach. After 5s without
@@ -131,12 +133,12 @@ background. The TUI can re-attach at any time.
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — detach/attach are explicitly named session lifecycle operations in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager `attach_session()`, `detach_session()`) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v1.4.0 §Public API (attach_session, detach_session signatures); §Per-session UDS protocol (DaemonToHost::Attach/Detach, HostToDaemon::ScrollbackChunk/ScrollbackDumpComplete); §Screen-state transfer on Attach; §Re-discovery state handling (I3-005 Detached preservation across restart); SS-daemon-wiring-v2-delta.md v1.3.0 §3b (SessionStateChanged{Running} before SessionListUpdate on attach) |
+| Architecture Source | SS-session-manager.md v1.4.1 §Public API (attach_session, detach_session signatures); §Per-session UDS protocol (DaemonToHost::Attach/Detach, HostToDaemon::ScrollbackChunk/ScrollbackDumpComplete); §Screen-state transfer on Attach; §Re-discovery state handling (I3-005 Detached preservation across restart); SS-daemon-wiring-v2-delta.md v1.3.1 §3b (SessionStateChanged{Running} before SessionListUpdate on attach) |
 | Test Name | test_BC_2_08_007_attach_receives_scrollback_detach_keeps_session_alive |
 
 ## Related BCs
 
-- [BC-2.08.002] — composes with: re-discovery uses the same Attach → ScrollbackDump protocol
+- [BC-2.08.002] — composes with: re-discovery uses the same Attach → `ScrollbackChunk*` + `ScrollbackDumpComplete` chunked protocol
 - [BC-2.09.001] — depends on: PTY output after attach flows through the broker to the TUI renderer
 
 ## Architecture Anchors
@@ -152,6 +154,13 @@ S-TBD — Implement SessionManager attach/detach (filled by story-writer)
 
 VP-TBD — Attach/detach integration tests (filled after VP creation)
 
+## §Trace v1.4.0
+
+**HIGH-002 adversarial pass-4 fix — H1 title + Description + Related-BCs: retired ScrollbackDump → chunked protocol** (2026-06-03):
+- H1 title: "ScrollbackDump on Attach" → "Chunked Scrollback (ScrollbackChunk*+ScrollbackDumpComplete) on Attach" — aligns with the body (Invariant 3 already forbade the retired form since v1.2.0). Title propagated to prd.md §2.8 BC table and BC-INDEX.md §SS-08 table in this same burst.
+- Description: "receives a `ScrollbackDump` (current vt100 screen state)" → "receives the full `HostToDaemon::ScrollbackChunk*` + `HostToDaemon::ScrollbackDumpComplete` chunked scrollback sequence". Explicit retirement note added.
+- Related-BCs [BC-2.08.002] entry: "Attach → ScrollbackDump protocol" → "Attach → `ScrollbackChunk*` + `ScrollbackDumpComplete` chunked protocol".
+
 ## §Trace v1.3.0
 
 **Adversarial Pass 3 fixes — O3-001 (dup PC) + I3-005 (Detached survive restart) + EC-188 + C3-001 (SessionStateChanged on attach)** (2026-06-03):
@@ -166,7 +175,7 @@ VP-TBD — Attach/detach integration tests (filled after VP creation)
 - EC-188: corrected from "`ScrollbackDump` not received" to "`ScrollbackDumpComplete` (full
   `ScrollbackChunk*` + `ScrollbackDumpComplete` sequence) not received". The retired single-
   message `ScrollbackDump` form is not referenced.
-- Architecture Source updated to SS-session-manager.md v1.4.0 and SS-daemon-wiring-v2-delta.md v1.3.0.
+- Architecture Source updated to SS-session-manager.md v1.4.1 and SS-daemon-wiring-v2-delta.md v1.3.1.
 
 ## §Trace v1.2.0
 
@@ -174,7 +183,7 @@ VP-TBD — Attach/detach integration tests (filled after VP creation)
 - C2-002: updated PC-4/5/10 and Invariant 3/4 to reference `ScrollbackChunk*` +
   `ScrollbackDumpComplete` (chunked protocol) rather than the retired single-message
   `ScrollbackDump`. Added BC-2.05.011 as the authoritative spec for TUI receiver protocol.
-  Architecture Source updated to SS-session-manager.md v1.4.0.
+  Architecture Source updated to SS-session-manager.md v1.4.1.
 - Added `architecture/SS-session-manager.md#screen-state-transfer-on-attach` anchor.
 - VP table: updated from `ScrollbackDump` to `ScrollbackChunk*/ScrollbackDumpComplete`.
 

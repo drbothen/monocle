@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.0"
+version: "1.2.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/adr/ADR-0009-native-session-host-process-model.md]
-input-hash: "61ff3dc"
+input-hash: "e4f8f5c"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-08
@@ -50,14 +50,17 @@ client can connect.
    step 8b (before lock file write and before UDS bind).
 4. For the previously-running session: `nix::sys::signal::kill(pid, None)` returns `Ok(())`
    (process alive). The daemon connects to the session-host's UDS socket, sends
-   `DaemonToHost::Attach`, and receives `HostToDaemon::ScrollbackDump` within 5 seconds.
+   `DaemonToHost::Attach`, and receives the full `HostToDaemon::ScrollbackChunk*` +
+   `HostToDaemon::ScrollbackDumpComplete` chunked scrollback sequence within 5 seconds total
+   (per BC-2.08.004 PC-2b; the retired single-message `ScrollbackDump` form is NOT accepted).
 5. After re-discovery, the session appears in `DaemonState.session_manager` with
    `SessionState::Running` (re-verified via scrollback dump receipt).
 6. The first TUI client to connect after daemon restart receives an `InitialState` push that
    includes the re-discovered session in its sessions list. The session is visible to the
    user as a pre-existing running session.
 7. The TUI can immediately enter `AppMode::EmbeddedTerminal` for the re-discovered session —
-   the scrollback buffer is available (from `ScrollbackDump`) and live PTY output resumes.
+   the scrollback buffer is available (reconstructed from the `ScrollbackChunk*` +
+   `ScrollbackDumpComplete` sequence received during re-discovery) and live PTY output resumes.
 
 ## Invariants
 
@@ -72,8 +75,10 @@ client can connect.
    also results in session survival (session-host is detached) but re-discovery may need to
    handle a missing lock file. See EC-160 and BC-2.08.004 for crash recovery.
 4. The 5-second attach timeout during re-discovery (Precondition 4) is a hard deadline.
-   If `ScrollbackDump` is not received within 5s, the session-host is treated as
-   non-responsive and the session is marked `Terminated` with the sidecar deleted.
+   If the full `ScrollbackChunk*` + `ScrollbackDumpComplete` sequence is not received within
+   5s, the session-host is treated as non-responsive and the session is marked `Terminated`
+   with the sidecar deleted. The retired single-message `ScrollbackDump` form is NOT accepted —
+   only the chunked protocol terminating with `ScrollbackDumpComplete` (matching BC-2.08.004 PC-2b).
 
 ## Edge Cases
 
@@ -82,7 +87,7 @@ client can connect.
 | EC-155 | Session-host process is alive but its UDS socket file was deleted (e.g., tmpfs cleared) | `kill(pid, None)` succeeds (process alive) but `connect(socket_path)` fails; session marked `Terminated`; sidecar deleted; TUI session list omits the session |
 | EC-156 | Session-host process is alive but does not respond within 5s (stuck) | Session marked `Terminated`; sidecar deleted; `SIGTERM` sent to session-host PID to release PTY resources; TUI shows session as terminated |
 | EC-157 | Daemon exits with SIGKILL (crash); session-host survives | Session-host process survives (setsid); sidecar intact; next daemon startup re-discovers session per BC-2.08.004 |
-| EC-158 | Session was in `SessionState::Launching` when daemon exited (spawn in progress) | On re-discovery: `kill(pid, None)` probe — if alive, attempt `DaemonToHost::Attach` with 5s timeout waiting for `HostToDaemon::ScrollbackDumpComplete`; if `ScrollbackDumpComplete` received within 5s, register as Running; if no response within 5s, send SIGTERM to session-host PID, mark Terminated, GC sidecar. No exponential backoff — the 5s is a hard single-attempt timeout (canonical per SS-session-manager.md v1.4.0 §Daemon startup: session re-discovery). |
+| EC-158 | Session was in `SessionState::Launching` when daemon exited (spawn in progress) | On re-discovery: `kill(pid, None)` probe — if alive, attempt `DaemonToHost::Attach` with 5s timeout waiting for `HostToDaemon::ScrollbackDumpComplete`; if `ScrollbackDumpComplete` received within 5s, register as Running; if no response within 5s, send SIGTERM to session-host PID, mark Terminated, GC sidecar. No exponential backoff — the 5s is a hard single-attempt timeout (canonical per SS-session-manager.md v1.4.1 §Daemon startup: session re-discovery). |
 | EC-159 | Multiple sessions exist; one alive, one dead | Re-discovery marks alive session Running; dead session Terminated with GC; TUI receives SessionListUpdate with only the alive session |
 
 ## Canonical Test Vectors
@@ -108,7 +113,7 @@ client can connect.
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC defines the persistence property: sessions survive daemon restart, which is the primary differentiator of the detached session-host model (ADR-0009) |
 | L2 Domain Invariants | DI-001 (hook event durability — session survival ensures hook events from in-progress sessions continue to flow after daemon restart, because the session-host continues running; this supports DI-001 continuity) |
 | Architecture Module | monocle-runtime (SessionManager, `rediscover_sessions()`); monocle-session-host (setsid startup step) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v1.4.0 §Daemon startup: session re-discovery; SS-session-manager.md §monocle-session-host binary §startup sequence step 2; ADR-0009 §native-detached-session-host |
+| Architecture Source | SS-session-manager.md v1.4.1 §Daemon startup: session re-discovery; SS-session-manager.md §monocle-session-host binary §startup sequence step 2; ADR-0009 §native-detached-session-host |
 | Test Name | test_BC_2_08_002_session_survives_daemon_graceful_restart |
 
 ## Related BCs
@@ -131,14 +136,27 @@ S-TBD — Implement session re-discovery and setsid in monocle-session-host (fil
 
 VP-TBD — Daemon restart integration test (filled after VP creation)
 
+## §Trace v1.2.0
+
+**HIGH-001 adversarial pass-4 fix — PC-4/PC-7/Invariant 4: retired single-message ScrollbackDump → chunked protocol** (2026-06-03):
+- PC-4: "receives `HostToDaemon::ScrollbackDump` within 5 seconds" → "receives the full
+  `HostToDaemon::ScrollbackChunk*` + `HostToDaemon::ScrollbackDumpComplete` chunked scrollback
+  sequence within 5 seconds total (per BC-2.08.004 PC-2b; retired single-message form NOT accepted)".
+- PC-7: "scrollback buffer is available (from `ScrollbackDump`)" → "scrollback buffer is available
+  (reconstructed from the `ScrollbackChunk*` + `ScrollbackDumpComplete` sequence)".
+- Invariant 4: "If `ScrollbackDump` is not received within 5s" → "If the full `ScrollbackChunk*`
+  + `ScrollbackDumpComplete` sequence is not received within 5s" with explicit retirement note
+  matching BC-2.08.004 PC-2b. Closes internal inconsistency with EC-158 (which already correctly
+  referenced `ScrollbackDumpComplete`).
+
 ## §Trace v1.1.0
 
 **I2-005 adversarial pass-2 fix — EC-158 synced to canonical re-discovery procedure** (2026-06-03):
 - I2-005 finding: EC-158 described "retry with exponential backoff" for Launching-state sessions
-  on re-discovery. This contradicts the canonical procedure in SS-session-manager.md v1.4.0
+  on re-discovery. This contradicts the canonical procedure in SS-session-manager.md v1.4.1
   §Daemon startup: session re-discovery (and BC-2.08.004 PC-2), which specifies a single
   `DaemonToHost::Attach` attempt with a 5-second hard timeout — no exponential backoff.
-- EC-158: rewritten to match SS-session-manager.md v1.4.0 canonically: one Attach attempt,
+- EC-158: rewritten to match SS-session-manager.md v1.4.1 canonically: one Attach attempt,
   5s timeout for `ScrollbackDumpComplete`, then Terminated+GC. No invented retry logic.
 
 ## §Trace v1.0.0

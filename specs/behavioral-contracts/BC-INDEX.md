@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.37"
+version: "1.38"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T14:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
-input-hash: "cad5ab9"
+input-hash: "65e580b"
 traces_to: prd.md
 ---
 
@@ -195,7 +195,7 @@ traces_to: prd.md
 | BC-2.08.004 | Re-Discovery — All Alive Sessions Visible After Daemon Restart Within 5s; UDS Bind Blocked Until Complete | P0 | active | ss-08/BC-2.08.004.md | — |
 | BC-2.08.005 | Session GC — Terminated Sessions Removed from Registry After 10s Grace Period | P1 | active | ss-08/BC-2.08.005.md | — |
 | BC-2.08.006 | Hook Auto-Injection — `--settings` Arg Present in Session-Host Child Args Within 2s of Spawn | P0 | active | ss-08/BC-2.08.006.md | — |
-| BC-2.08.007 | Attach/Detach — ScrollbackDump on Attach; session-host Stays Alive on Detach | P1 | active | ss-08/BC-2.08.007.md | — |
+| BC-2.08.007 | Attach/Detach — Chunked Scrollback (ScrollbackChunk*+ScrollbackDumpComplete) on Attach; session-host Stays Alive on Detach | P1 | active | ss-08/BC-2.08.007.md | — |
 | BC-2.08.008 | SessionStateChanged — Daemon Emits on Every SessionState Transition; Delivered to All TUI Clients; Ordering Relative to SessionListUpdate | P0 | active | ss-08/BC-2.08.008.md | — |
 
 ---
@@ -1196,6 +1196,22 @@ Holdout scenario corrections:
 - HS-EXP-013: Step 8 keybinding pinned to BC-2.09.009 PC-5 exact semantics (Esc → prior → Overlay).
 
 SE-16d monotonicity: v1.36 timestamp 2026-06-03T14:00:00Z > v1.35 timestamp 2026-06-03T12:00:00Z. PASS.
+
+## §Trace v1.38
+
+**Adversarial pass-4 PO-owned propagation fixes — 5 existing BCs updated** (2026-06-03):
+
+**UPDATED BCs:**
+- BC-2.05.009 v1.3.0 → v1.4.0: HIGH-003 — PC-1b per-client send buffer "capacity 256" → "capacity 64". Propagation residue from v1.2.0 introduction (Invariant 3b/EC-272 already stated 64 since v1.3.0; PC-1b was the lone survivor).
+- BC-2.08.002 v1.1.0 → v1.2.0: HIGH-001 — PC-4/PC-7/Invariant 4: retired single-message `ScrollbackDump` → `ScrollbackChunk*` + `ScrollbackDumpComplete` chunked protocol. Fixes internal inconsistency: EC-158 already used `ScrollbackDumpComplete` since v1.1.0; PC-4/PC-7/Invariant 4 were misaligned survivors.
+- BC-2.08.006 v1.1.0 → v1.2.0: SUG-002 (PO half) — PC-5: `EnrichedSession` → `SessionSnapshot` wire boundary type (C3-004).
+- BC-2.08.007 v1.3.0 → v1.4.0: HIGH-002 — H1 title: "ScrollbackDump on Attach" → "Chunked Scrollback (ScrollbackChunk*+ScrollbackDumpComplete) on Attach"; Description + Related-BCs updated to match. Title propagated to BC-INDEX §SS-08 table and prd.md §2.8 BC table + §Trace v1.28.0 summary in same burst.
+- BC-2.09.001 v1.1.0 → v1.2.0: CRIT-001 — Invariant 5 + Related-BCs [BC-2.08.007]: retired `ServerToClient::ScrollbackDump` → chunked `ScrollbackChunk*` + `ScrollbackDumpComplete` protocol with `pending_pty_bytes` buffer-during-dump obligation (per BC-2.05.011 Invariant 6).
+
+**INDEX changes:**
+- §SS-08 table: BC-2.08.007 title updated to match BC H1 (bc_h1_is_title_source_of_truth).
+
+SE-16d monotonicity: v1.38 timestamp 2026-06-03T14:00:00Z = v1.37 timestamp. No new structural additions — patch-level fix burst. PASS.
 
 ## §Trace v1.37
 

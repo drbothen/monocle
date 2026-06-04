@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "daemon-wiring-v2-delta"
 subsystem: SS-04
-version: "1.3.0"
+version: "1.3.1"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -507,7 +507,14 @@ the correct worst-case computation (see ADR-0010 §Trace v1.3.0).
 The existing HTTP hook handlers POST bodies carry a `session_id` field. The hook handler now
 has an additional lookup path: if the `session_id` matches a monocle-spawned session in
 `SessionManager`, no change in behavior (hooks are still processed normally). The correlation
-is for metrics/labeling only (the `spawned_by_monocle` field on `EnrichedSession`).
+is for metrics/labeling only.
+
+**Wire representation (C3-004):** The `spawned_by_monocle` badge is carried on the wire as
+`SessionSnapshot.spawned_by_monocle` (the wire type used for `InitialState.sessions` and
+`SessionListUpdate.sessions` per C3-004). The hook handler reads `SessionEntry.spawned_by_monocle`
+from the daemon-internal registry to populate the `SessionSnapshot` field on outbound events.
+`EnrichedSession.spawned_by_monocle` is used only on the internal session-detect path
+(`EngineModule::detect()` → `EnrichedSession`) — not on the IPC wire.
 
 ---
 
@@ -540,6 +547,20 @@ If no in-process SessionManager stub exists in D-235 (i.e., the stub was skeleta
 implementer creates `SessionManager` from scratch per SS-08.
 
 ---
+
+## §Trace v1.3.1
+
+**SUG-002 (architect half) — Adversarial Pass 4 residue: §6 wire type corrected to SessionSnapshot** (2026-06-03):
+
+- **SUG-002 (§6 spawned_by_monocle wire source):** §6 "HTTP hook handler — session correlation"
+  previously described the `spawned_by_monocle` badge as reading from `EnrichedSession`. This
+  was inconsistent with C3-004 (SS-daemon-wiring-v2-delta §Trace v1.3.0), which changed
+  `InitialState.sessions` and `SessionListUpdate.sessions` from `Vec<EnrichedSession>` to
+  `Vec<SessionSnapshot>`. The wire type is now `SessionSnapshot`; `EnrichedSession` is the
+  internal EngineModule detect() result type only. §6 updated to name
+  `SessionSnapshot.spawned_by_monocle` as the wire field, `SessionEntry.spawned_by_monocle`
+  as the registry source (daemon-internal), and `EnrichedSession.spawned_by_monocle` as the
+  internal detect path only. Three-type provenance now consistent with §4 reconciliation table.
 
 ## §Trace v1.3.0
 

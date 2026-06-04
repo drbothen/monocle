@@ -6,7 +6,7 @@ title: "PTY Bytes Shared on Existing UDS IPC Channel (Option A)"
 status: accepted
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
-version: "1.3.0"
+version: "1.3.1"
 timestamp: 2026-06-03T23:00:00Z
 inputs:
   - research/domain-monocle-vision-synthesis.md
@@ -307,7 +307,7 @@ stalling Session 2's harness child — even though Client B (watching Session 2)
 **Required fix: per-client isolated bounded send buffer.**
 
 Each connected TUI client gets an owned `mpsc::Sender<ServerToClient>` with a bounded
-channel (capacity = `CLIENT_SEND_BUFFER_SIZE`, default 256 messages). The broker's fan-out
+channel (capacity = `CLIENT_SEND_BUFFER_SIZE`, default 64 messages). The broker's fan-out
 task sends into each client's per-client channel via `.try_send()` (non-blocking). If
 `.try_send()` returns `Err(Full)`, the broker increments a per-client `slow_client_counter`
 and (after a configurable threshold, default = 3 consecutive full-send attempts) disconnects
@@ -367,8 +367,8 @@ session ring, not any TUI client. Specific BC-2.05.009 edits required:
   the buffer to the UDS socket".
 - Invariant 3: revise backpressure description: "The PTY reader channel's backpressure source
   is the durable session-host ring, NOT individual TUI client render rate. Per-client isolated
-  send buffers (capacity 256) decouple each client's consumption rate."
-- Add new Invariant: "Each TUI client has an owned bounded send buffer (capacity 256). A slow
+  send buffers (capacity 64) decouple each client's consumption rate."
+- Add new Invariant: "Each TUI client has an owned bounded send buffer (capacity 64). A slow
   client is disconnected after 3 consecutive full-buffer `.try_send()` failures (per
   BC-2.05.004 EC-005). This isolation guarantees zero cross-client backpressure."
 - EC-272: update to reference per-client buffer mechanism.
@@ -378,6 +378,21 @@ session ring, not any TUI client. Specific BC-2.05.009 edits required:
 - Extends: SS-ipc.md §Message Types (new variants documented in SS-05 delta).
 - Requires: SS-08 Session Manager (session-host proxy that posts to per-session PTY channel).
 - Pre-gate benchmark deliverable: routes to `vsdd-factory:performance-engineer`.
+
+## §Trace v1.3.1
+
+**HIGH-004 — Adversarial Pass 4 residue: normative 256-message default corrected to 64** (2026-06-03):
+
+- **HIGH-004a (normative paragraph, line ~310):** §Cross-Client / Cross-Session Backpressure
+  Isolation — the introductory paragraph describing the per-client bounded channel stated
+  "default 256 messages." This contradicted the O3-004 correction already recorded in §Trace
+  v1.3.0. Corrected to "default 64 messages."
+- **HIGH-004b (BC sync block, lines ~370-371):** The "BC sync required (flag for product-owner)"
+  edit block instructed product-owner to write "capacity 256" in both Invariant 3 and the new
+  Invariant. These two occurrences are the downstream injection source that re-introduced 256
+  in PO-edited BCs. Both corrected to "capacity 64." The O3-004 correction is now consistent
+  across all three locations in this document: §Trace narrative (v1.3.0), normative paragraph,
+  and PO edit instructions.
 
 ## §Trace v1.3.0
 
