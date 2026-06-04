@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "embedded-pty"
 subsystem: SS-09
-version: "1.2.0"
+version: "1.3.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
-timestamp: 2026-06-03T23:00:00Z
+timestamp: 2026-06-03T00:00:00Z
 inputs:
   - research/domain-monocle-vision-synthesis.md
   - specs/product-brief.md
@@ -390,10 +390,9 @@ pub fn key_event_to_pty_bytes(event: KeyEvent) -> Option<Vec<u8>> {
 ///   1. Clip events outside the pane (return None).
 ///   2. Convert terminal-local coordinates to pane-relative 1-indexed PTY coordinates.
 ///
-/// Parameter name: `pane_area` (NOT `screen_offset` — reconciled with BC-2.09.003
-/// which uses `screen_offset: Rect`; both refer to the PTY widget's Rect; `pane_area`
-/// is more precise and is the canonical name in this spec; BC-2.09.003 will be updated
-/// by product-owner to use `pane_area`).
+/// Parameter name: `pane_area` (canonical name in this spec and in BC-2.09.003 §X, which
+/// was updated to `pane_area` in BC-2.09.003 v1.2.0 Pass-2 — see §Trace v1.1.0 I5-003 note).
+/// The earlier name `screen_offset: Rect` was the pre-Pass-1 stub name and is retired.
 pub fn mouse_event_to_pty_bytes(
     event: MouseEvent,
     pane_area: Rect,
@@ -507,8 +506,10 @@ paste text is wrapped in bracketed paste sequences and forwarded to the PTY:
 ## Scrollback navigation
 
 In `AppMode::EmbeddedTerminal`, `PtyScrollUp` and `PtyScrollDown` actions adjust
-`App::pty_scroll_offset` without sending a `ResizePane` IPC message. The vt100::Parser
-retains the scrollback buffer; the TUI passes a scrollback viewport to the widget.
+`App::pty_scroll_offsets[focused_session_id]` without sending a `ResizePane` IPC message.
+`pty_scroll_offsets` is a `HashMap<String, usize>` keyed by `session_id` (I7 fix — was
+a single shared `pty_scroll_offset: usize` before v1.1.0). The vt100::Parser retains the
+scrollback buffer; the TUI passes the per-session scrollback viewport offset to the widget.
 
 `vt100::Parser::new(rows, cols, scrollback_rows)` — the third argument is the scrollback
 line count. Default: 1000 rows. Maximum: configurable via `~/.monocle/config.json` key
@@ -617,6 +618,24 @@ BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
 
+## §Trace v1.3.0
+
+**I5-003/I5-004 — Pass-5 stale forward-instruction + stale scroll-offset reference** (2026-06-03):
+
+- **I5-003 (stale pane_area forward-instruction converted to settled cross-reference):**
+  `mouse_event_to_pty_bytes()` doc-comment and §Trace v1.1.0 I1 bullet both carried a
+  forward-looking instruction "BC-2.09.003 will be updated by product-owner to use `pane_area`."
+  That rename was applied in Pass 2 (BC-2.09.003 at v1.2.0 uses `pane_area`). The pending-action
+  language is converted to a settled cross-reference: "BC-2.09.003 was updated to `pane_area`
+  in v1.2.0 (Pass-2 closure)." No substantive behavior change; housekeeping only.
+- **I5-004 (§Scrollback navigation: `pty_scroll_offset` → `pty_scroll_offsets[focused_session_id]`):**
+  §Scrollback navigation prose referenced the retired singular `App::pty_scroll_offset` (the
+  pre-I7 single usize field). The I7 fix in §Keyboard and Input Handling replaced it with
+  `pty_scroll_offsets: HashMap<String, usize>` keyed by `session_id`. The §Scrollback navigation
+  section was not updated in sync. Updated to `App::pty_scroll_offsets[focused_session_id]`
+  with a note clarifying the I7 fix, consistent with the App struct definition (§Parser ownership
+  in TUI) and the invariants block already in the spec.
+
 ## §Trace v1.2.0
 
 **Adversarial Pass 2 resolution — S2-002** (2026-06-03):
@@ -638,8 +657,8 @@ BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
   full SGR-1006 implementation. Added Alt/Meta (`\x1b` + char prefix), Shift+Tab (`\x1b[Z`
   via `BackTab` and `Tab+SHIFT`), modified arrows (`\x1b[1;5A` etc. for Ctrl+Arrow,
   `\x1b[1;2A` etc. for Shift+Arrow) on the non-Kitty fallback path. `pane_area` parameter
-  name canonicalized (was `screen_offset` in the todo stub — product-owner must update
-  BC-2.09.003 parameter name from `screen_offset` to `pane_area` to match).
+  name canonicalized (was `screen_offset` in the todo stub). BC-2.09.003 was subsequently
+  updated to `pane_area` in v1.2.0 (Pass-2 closure — see §Trace v1.3.0 I5-003 note below).
 - **I3 (Global mouse capture scope):** `EnableMouseCapture` / `DisableMouseCapture` moved
   from global TUI startup/exit to `EmbeddedTerminal` entry/exit. Symmetric enter/exit
   lifecycle for both `EnableMouseCapture` + SGR `h/l`. Global TUI startup now enables

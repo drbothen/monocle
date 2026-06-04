@@ -106,8 +106,8 @@ SS-forward-compatibility:
 
 SS-ipc:
   path: specs/architecture/SS-ipc.md
-  current_version: "1.12.1"
-  last_bump_commit: "[F-01 closure-audit — §Connection Lifecycle prose Vec<EnrichedSession>→Vec<SessionSnapshot> + §Framing Protocol JSON rationale stale ref corrected]"
+  current_version: "1.13.0"
+  last_bump_commit: "[Pass-5 C5-001/C5-002 — 11 v1A wire variants added to enum bodies; SerializedCell/SerializedColor defined in monocle-ipc §Supporting Types]"
   last_bump_date: "2026-06-03"
 
 SS-permissions-phase1:
@@ -124,14 +124,14 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "1.4.1"
-  last_bump_commit: "[Adversarial Pass 4 resolution D-245 2026-06-03 — SUG-002 spawned_by_monocle EnrichedSession→SessionSnapshot type propagated]"
+  current_version: "1.5.0"
+  last_bump_commit: "[Pass-5 C5-002 — SerializedCell/SerializedColor moved to monocle-ipc; HostToDaemon::ScrollbackChunk references crate::ipc::SerializedCell]"
   last_bump_date: "2026-06-03"
 
 SS-embedded-pty:
   path: specs/architecture/SS-embedded-pty.md
-  current_version: "1.2.0"
-  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — S2-002 duplicate is_kitty_enhanced_key arm removed + precedence documented]"
+  current_version: "1.3.0"
+  last_bump_commit: "[Pass-5 I5-003/I5-004 — stale pane_area forward-instruction converted to settled cross-ref; §Scrollback navigation pty_scroll_offset→pty_scroll_offsets[focused_session_id]]"
   last_bump_date: "2026-06-03"
 
 SS-engine-module-v2-delta:
@@ -182,8 +182,8 @@ ADR-0009:
 
 ADR-0010:
   path: specs/architecture/adr/ADR-0010-pty-bytes-over-shared-uds-ipc.md
-  current_version: "1.3.1"
-  last_bump_commit: "[Adversarial Pass 4 resolution D-245 2026-06-03 — HIGH-004 line-310 + PO-edit-block buffer 256→64 (source re-injection fixed); SUG-001 vt100 0.16 reconstruction path canonicalized]"
+  current_version: "1.4.0"
+  last_bump_commit: "[Pass-5 I5-002 — §Throughput sizing typical/max per-message distinction; 4096-byte assumption retired; self-consistent with MAX_MESSAGE_BYTES 256 KiB]"
   last_bump_date: "2026-06-03"
 
 ADR-0011:
@@ -725,8 +725,8 @@ BC-2.03.008:
 
 BC-2.05.009:
   path: specs/behavioral-contracts/ss-05/BC-2.05.009.md
-  current_version: "1.4.0"
-  last_bump_commit: "[Adversarial Pass 4 resolution D-245 2026-06-03 — HIGH-003 PC-1b per-client send buffer 256→64 propagation residue]"
+  current_version: "1.5.0"
+  last_bump_commit: "[Adversarial Pass 5 resolution D-246 2026-06-03 — I5-001 backpressure-no-drop self-contradiction resolved; PC-2/EC-270/test-vector rewritten to match Invariants 1/3]"
   last_bump_date: "2026-06-03"
 
 BC-2.05.010:
@@ -810,7 +810,7 @@ BC-2.09.002:
 BC-2.09.003:
   path: specs/behavioral-contracts/ss-09/BC-2.09.003.md
   current_version: "1.2.0"
-  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — D-243 I2-006 env inheritance + Architecture Source cite SS-embedded-pty v1.2.0]"
+  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — D-243 I2-006 env inheritance + Architecture Source cite SS-embedded-pty v1.2.0]" # version-pin-historical: historical record of what D-243 changed
   last_bump_date: "2026-06-03"
 
 BC-2.09.004:

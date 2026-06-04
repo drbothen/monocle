@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "1.4.1"
+version: "1.5.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -614,51 +614,18 @@ pub enum HostToDaemon {
     PtyReset,
 }
 
-/// A single terminal cell as serialized for scrollback dump (ScrollbackChunk rows).
-/// Sufficient to reconstruct the full styled vt100::Screen without re-parsing PTY bytes.
-///
-/// # I3-008: vt100 0.16 attribute surface — verified
-///
-/// The vt100 0.16 `Cell` struct exposes EXACTLY FIVE attribute methods:
-///   `bold()`, `dim()`, `italic()`, `underline()`, `inverse()`.
-/// The `inverse()` method corresponds to what SGR calls "reverse" (SGR 7).
-/// There is NO `blink()`, NO `hidden()`, and NO `strikethrough()` in vt100 0.16.
-/// (Verified against docs.rs/vt100/0.16.0/vt100/struct.Cell.html — 2026-06-03.)
-///
-/// The prior 6-flag u8 bitmask (bold/italic/underline/blink/reverse/dim) incorrectly named
-/// "reverse" and included "blink" which vt100 0.16 does not expose. This is corrected:
-/// the 5-bit bitmask covers the 5 actual vt100 0.16 attributes. The "full visual fidelity"
-/// claim in §O4 is accurate with respect to what vt100 0.16 exposes — no fidelity is lost
-/// by aligning to the actual API. Blink, hidden, and strikethrough are not part of vt100
-/// 0.16's observable cell attribute set.
-///
-/// # attrs bitmask layout (5 bits, low-to-high):
-///   bit 0: bold     (cell.bold())
-///   bit 1: dim      (cell.dim())
-///   bit 2: italic   (cell.italic())
-///   bit 3: underline (cell.underline())
-///   bit 4: inverse  (cell.inverse()) — SGR 7 "reverse video"
-///   bits 5–7: reserved (MUST be 0 on write; MUST be ignored on read for forward-compat)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SerializedCell {
-    /// The UTF-8 character at this cell (empty string for empty/null cells).
-    pub ch: String,
-    /// Foreground color (ANSI 16, 256-color index, or RGB triple).
-    pub fg: SerializedColor,
-    /// Background color.
-    pub bg: SerializedColor,
-    /// Cell attributes bitmask (5 bits used; see doc comment above for layout).
-    /// The u8 type is retained for forward-compat: if a future vt100 version exposes
-    /// additional attributes, they can be added to bits 5–7 without a wire format change.
-    pub attrs: u8,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum SerializedColor {
-    Default,
-    Ansi(u8),
-    Rgb(u8, u8, u8),
-}
+// C5-002 (SS-ipc.md v1.13.0): SerializedCell and SerializedColor are defined in
+// monocle-ipc (crate::ipc::SerializedCell / crate::ipc::SerializedColor) so both
+// monocle-session-host (writer) and monocle-tui (reader) share the type without a
+// cross-binary dependency. The canonical definition with full field documentation
+// and the vt100 0.16 5-flag bitmask verification lives in SS-ipc.md §Supporting Types.
+//
+// This crate uses: use monocle_ipc::{SerializedCell, SerializedColor};
+//
+// Field summary (for inline reference; SS-ipc.md §Supporting Types is authoritative):
+//   SerializedCell { ch: String, fg: SerializedColor, bg: SerializedColor, attrs: u8 }
+//   SerializedColor { Default, Ansi(u8), Rgb(u8, u8, u8) }
+//   attrs bitmask: bit0=bold, bit1=dim, bit2=italic, bit3=underline, bit4=inverse (vt100 0.16 verified)
 ```
 
 ### Screen-state transfer on Attach (C5 — correct ScrollbackChunk protocol)
@@ -1049,6 +1016,30 @@ Daemon removes stale socket files during GC in re-discovery (alongside sidecar d
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.5.0
+
+**C5-002 — SerializedCell/SerializedColor moved to monocle-ipc** (2026-06-03):
+
+- **C5-002 (type ownership moved):** `SerializedCell` and `SerializedColor` were previously
+  defined in this file (SS-session-manager.md §HostToDaemon) as structs owned by the
+  `monocle-session-host` binary crate context. This created an incorrect dependency direction:
+  `monocle-tui` would need to import from `monocle-session-host` (a binary) to use the scrollback
+  reconstruction types — the same class of error as C3-004 (`SessionSnapshot` formerly embedded
+  in session-manager before being moved to `monocle-ipc`).
+  - **Resolution:** `SerializedCell` and `SerializedColor` are now defined canonically in
+    `SS-ipc.md` §Supporting Types (monocle-ipc v1.13.0). Field definitions are identical to
+    what was defined here: `ch: String`, `fg/bg: SerializedColor`, `attrs: u8` (5-flag vt100
+    0.16 bitmask). `SerializedColor` variants: `Default`, `Ansi(u8)`, `Rgb(u8, u8, u8)`.
+  - **This file:** The local `SerializedCell` / `SerializedColor` struct/enum definitions are
+    replaced with a reference comment: `use monocle_ipc::{SerializedCell, SerializedColor}`.
+    The `HostToDaemon::ScrollbackChunk.rows` field type remains `Vec<Vec<SerializedCell>>` —
+    now resolved to `crate::ipc::SerializedCell` via the monocle-ipc import.
+  - **SUG-001 consistency check:** The scrollback reconstruction path in §Screen-state transfer
+    on Attach uses `SerializedCell` by reference (ANSI encoding from cell fields). Moving the
+    type to `monocle-ipc` does not change the reconstruction algorithm — the field names
+    (`ch`, `fg`, `bg`, `attrs`) and bitmask layout are identical. The §Screen-state transfer
+    prose and the §Scrollback memory bound math are unchanged.
 
 ## §Trace v1.4.1
 

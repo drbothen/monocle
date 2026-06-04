@@ -99,7 +99,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
    re-attaches a `Detached` session from the sessions panel. The TUI MUST NOT send
    `DaemonToHost::Attach` directly — that is a daemon→session-host message. The TUI sends
    `ClientToServer::AttachSession` to the daemon, which routes to `SessionManager::attach_session()`.
-   Per SS-ipc.md v1.12.1 §`ClientToServer::AttachSession`.
+   Per SS-ipc.md v1.13.0 §`ClientToServer::AttachSession`.
 
 ## Invariants
 
@@ -153,7 +153,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 | L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — these ClientToServer variants extend the internal transport capability with session lifecycle control messages (spawn, kill, key input, resize, detach, rename, re-attach) — all transported over the existing UDS per the session/event/prompt push design |
 | Architecture Module | monocle-ipc (`ClientToServer` enum new variants); monocle-runtime (IPC handler routing to SessionManager) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-daemon-wiring-v2-delta.md v1.3.1 §IPC handler — new ClientToServer variants (including AttachSession); SS-ipc.md v1.12.1 §`ClientToServer::AttachSession` (I3-004 — TUI re-attach; replaces incorrect "TUI sends DaemonToHost::Attach" description) |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.3.1 §IPC handler — new ClientToServer variants (including AttachSession); SS-ipc.md v1.13.0 §`ClientToServer::AttachSession` (I3-004 — TUI re-attach; replaces incorrect "TUI sends DaemonToHost::Attach" description) |
 | Cross-Ref | BC-2.08.001 (SpawnSession → spawn_session()); BC-2.08.003 (KillSession → kill_session()); BC-2.08.007 (DetachSession → detach_session()) |
 | Test Name | test_BC_2_05_010_new_client_to_server_variants_routed |
 
@@ -179,15 +179,15 @@ VP-TBD — IPC variant routing integration tests (filled after VP creation)
 
 ## §Trace v1.2.0
 
-**Adversarial Pass 3 fix — I3-004 (AttachSession 7th variant per SS-ipc.md v1.12.1)** (2026-06-03):
+**Adversarial Pass 3 fix — I3-004 (AttachSession 7th variant per SS-ipc.md v1.13.0)** (2026-06-03):
 - I3-004: `ClientToServer::AttachSession { session_id }` added as the 7th variant. Daemon
   routes to `SessionManager::attach_session()`. Used for: (a) TUI re-attach after PtyReset
   (replaces the incorrect BC-2.05.011 PC-3c reference to "TUI sends DaemonToHost::Attach"
   — the TUI cannot send DaemonToHost messages), (b) explicit user-initiated re-attach of a
-  Detached session from the sessions panel. Per SS-ipc.md v1.12.1 §ClientToServer::AttachSession.
+  Detached session from the sessions panel. Per SS-ipc.md v1.13.0 §ClientToServer::AttachSession.
 - Invariant 1: updated "six" → "seven" variants.
 - Description: updated to seven variants; clarified TUI must NOT send DaemonToHost::Attach.
-- Architecture Source updated to SS-daemon-wiring-v2-delta.md v1.3.1 and SS-ipc.md v1.12.1.
+- Architecture Source updated to SS-daemon-wiring-v2-delta.md v1.3.1 and SS-ipc.md v1.13.0.
 
 ## §Trace v1.1.0
 

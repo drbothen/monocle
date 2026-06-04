@@ -126,7 +126,7 @@ was removed from the state machine and spawn goes directly to `Launching`.
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC is the primary definition of the spawn operation that launches the session-host process and creates the session registry entry |
 | L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness — the sidecar is a monocle-owned file, not a harness file; the atomic write via tempfile::persist ensures no partial writes to monocle's own state) |
 | Architecture Module | monocle-runtime (SessionManager sub-module — `monocle-runtime/src/session_manager/mod.rs`) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v1.4.1 §SessionManager §Public API (spawn_session signature); SS-session-manager.md §session-state.json schema (schema_version 3); ADR-0009 §native-detached-session-host-process-model; SS-daemon-wiring-v2-delta.md v1.3.1 §3b (SessionStateChanged emission rule) |
+| Architecture Source | SS-session-manager.md v1.5.0 §SessionManager §Public API (spawn_session signature); SS-session-manager.md §session-state.json schema (schema_version 3); ADR-0009 §native-detached-session-host-process-model; SS-daemon-wiring-v2-delta.md v1.3.1 §3b (SessionStateChanged emission rule) |
 | Test Name | test_BC_2_08_001_spawn_session_entry_created_within_2s |
 
 ## Related BCs
@@ -154,7 +154,7 @@ VP-TBD — Session spawn integration tests (filled after VP creation)
 
 **Adversarial Pass 3 fixes — C3-002 (schema_version 3) + C3-001 (SessionStateChanged PC-5)** (2026-06-03):
 - C3-002: PC-3 `schema_version` corrected from `1` to `3` (current canonical schema per
-  SS-session-manager.md v1.4.1 §session-state.json schema). Schema v1 = no cwd field,
+  SS-session-manager.md v1.5.0 §session-state.json schema). Schema v1 = no cwd field,
   v2 = adds cwd, v3 = adds kill_deadline_unix_ms. A newly spawned sidecar always writes v3
   (the current schema). The previous PC-3 said `schema_version: 1` while simultaneously
   listing a `cwd` field — these are internally inconsistent (cwd was added in v2). This is
@@ -163,7 +163,7 @@ VP-TBD — Session spawn integration tests (filled after VP creation)
 - C3-001: PC-5 updated from `SessionListUpdate` only to `SessionStateChanged{Launching}` THEN
   `SessionListUpdate` (ordered pair per BC-2.08.008 Invariant 4). Both are published under the
   same mutex lock in the same broker tick. Architecture Source updated to
-  SS-session-manager.md v1.4.1 and SS-daemon-wiring-v2-delta.md v1.3.1.
+  SS-session-manager.md v1.5.0 and SS-daemon-wiring-v2-delta.md v1.3.1.
 
 ## §Trace v1.2.0
 

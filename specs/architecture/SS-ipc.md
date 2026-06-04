@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "ipc"
 subsystem: SS-05
-version: "1.12.1"
+version: "1.13.0"
 status: draft
 producer: vsdd-factory:architect
-phase: phase-1-expansion
-timestamp: 2026-05-28T00:00:00Z
+phase: v1A-architecture-delta
+timestamp: 2026-06-03T00:00:00Z
 inputs:
   - {path: .factory/specs/prd-expansion-scope.md, version: "1.0"}
   - {path: .factory/specs/architecture/SS-daemon-wiring.md, version: "1.0.0"}
@@ -257,6 +257,85 @@ pub enum ServerToClient {
     /// Phase 1 implementations MUST accept and silently discard Pong if received —
     /// do NOT close the connection or return an error on receipt of an unexpected Pong.
     Pong,
+
+    // ── v1A control-center additions (C5-001, ADR-0010 §IPC Message Type Additions) ─────
+
+    /// Raw PTY bytes from a session's harness child. The TUI feeds these into
+    /// the per-session vt100::Parser.
+    ///
+    /// Sent by the daemon broker when the session-host proxy posts
+    /// `HostToDaemon::PtyBytes`. The TUI MUST buffer `PtyOutput` for a session while
+    /// a scrollback dump is in progress (`dump_in_progress = true`) and replay after
+    /// `ScrollbackDumpComplete` (ADR-0010 §Interleaving of live PtyOutput).
+    PtyOutput {
+        /// Matches `session_id: String` throughout the codebase (UUID rendered as String).
+        session_id: String,
+        /// Raw PTY output bytes; NOT pre-decoded. Fed into `vt100::Parser::process()`.
+        bytes: Vec<u8>,
+    },
+
+    /// A session's lifecycle state changed (e.g., Launching → Running,
+    /// Running → Terminated). Always emitted BEFORE `SessionListUpdate` for the same
+    /// transition (BC-2.08.008 Invariant 4 ordering guarantee;
+    /// SS-daemon-wiring-v2-delta §3b emission rule).
+    SessionStateChanged {
+        session_id: String,
+        new_state: SessionState,
+    },
+
+    /// Scrollback dump — one chunk of a multi-message scrollback transfer.
+    ///
+    /// When the daemon first attaches to (or re-discovers) a session-host, it sends
+    /// `DaemonToHost::Attach`. The session-host atomically snapshots the current
+    /// `vt100::Screen` as styled cells, then streams it as `ScrollbackChunk*` messages
+    /// terminated by `ScrollbackDumpComplete`. The session-host resumes live
+    /// `HostToDaemon::PtyBytes` immediately after the snapshot (I3-003 fix —
+    /// snapshot-then-resume protocol; ADR-0010 §Interleaving).
+    ///
+    /// Framing invariant: each `ScrollbackChunk` MUST fit within the 256 KiB
+    /// per-message limit (`MAX_MESSAGE_BYTES`). The session-host chunks rows to
+    /// respect this limit.
+    ///
+    /// TUI MUST buffer incoming `PtyOutput` for this session while
+    /// `dump_in_progress = true` and replay after receiving `ScrollbackDumpComplete`.
+    ScrollbackChunk {
+        session_id: String,
+        /// Row-major styled-cell data. Rows in this chunk, ordered oldest-to-newest
+        /// (continuing from the previous chunk). Cell type defined in §Supporting Types.
+        rows: Vec<Vec<SerializedCell>>,
+        /// Chunk sequence number (0-indexed). Non-contiguous sequence → log WARN
+        /// and re-attach to restart the dump.
+        chunk_seq: u32,
+    },
+
+    /// Sentinel terminating a scrollback dump sequence.
+    ///
+    /// On receipt, the TUI MUST:
+    ///   1. Validate `total_chunks` matches chunks received; mismatch → WARN + re-attach.
+    ///   2. Reset `pty_parsers[session_id]` (fresh `vt100::Parser::new(pty_rows, pty_cols, SCROLLBACK_ROWS)`).
+    ///   3. Reconstruct the screen via the scrollback-as-bytes path (SS-session-manager §Screen-state transfer).
+    ///   4. Replay any `PtyOutput` bytes buffered during the dump (I3-003 fix).
+    ///   5. Set `dump_in_progress = false`; process subsequent `PtyOutput` normally.
+    ScrollbackDumpComplete {
+        session_id: String,
+        /// Total number of chunks sent (for integrity validation).
+        total_chunks: u32,
+        /// Cursor position at the time the dump was taken.
+        cursor_row: u16,
+        cursor_col: u16,
+        /// PTY dimensions at the time of the dump.
+        pty_rows: u16,
+        pty_cols: u16,
+    },
+
+    /// PTY byte-sequence integrity reset. Sent when the session-host posts
+    /// `HostToDaemon::PtyReset` (PTY reader channel drop detected — mid-CSI-sequence
+    /// corruption risk). The TUI MUST reset `pty_parsers[session_id]` and re-attach
+    /// by sending `ClientToServer::AttachSession { session_id }`, triggering a new
+    /// `ScrollbackChunk*` + `ScrollbackDumpComplete` sequence from the session-host.
+    PtyReset {
+        session_id: String,
+    },
 }
 ```
 
@@ -294,6 +373,57 @@ pub enum ClientToServer {
     /// Phase 1 implementations MUST accept and silently discard Ping if received —
     /// do NOT close the connection or return an error on receipt of an unexpected Ping.
     Ping,
+
+    // ── v1A control-center additions (C5-001, ADR-0010 §IPC Message Type Additions) ─────
+
+    /// Forward keyboard input bytes to the named session's PTY.
+    /// The TUI encodes key events as terminal byte sequences (see SS-09 §Keyboard Encoding)
+    /// before sending. The daemon routes to the session-host via `DaemonToHost::KeyInput`.
+    KeyInput {
+        session_id: String,
+        /// Terminal-encoded key bytes (VT/Kitty/SGR depending on negotiated protocol).
+        bytes: Vec<u8>,
+    },
+
+    /// Inform the daemon that the TUI's PTY widget has been resized. The daemon routes
+    /// to the session-host via `DaemonToHost::Resize`, which calls `pty.resize()` and
+    /// `parser.set_size()`.
+    ResizePane {
+        session_id: String,
+        rows: u16,
+        cols: u16,
+    },
+
+    /// Spawn a new harness session. The daemon calls `SessionManager::spawn_session(recipe)`.
+    /// On success the daemon emits `SessionStateChanged { Launching }` + `SessionListUpdate`.
+    /// On failure the daemon sends an error response (SS-08 §Error handling).
+    SpawnSession {
+        /// Serialized spawn recipe from `ClaudeCodeModule::spawn_recipe()` (SS-engine-module).
+        recipe: SpawnRecipe,
+    },
+
+    /// Kill (terminate) a running or detached session. The daemon calls
+    /// `SessionManager::kill_session()`, which sends `DaemonToHost::Kill` to the
+    /// session-host and emits `SessionStateChanged { Terminating }` + `SessionListUpdate`.
+    KillSession {
+        session_id: String,
+    },
+
+    /// Detach from a session (session-host stays alive, PTY continues).
+    /// The daemon calls `SessionManager::detach_session()`, which sends
+    /// `DaemonToHost::Detach` and emits `SessionStateChanged { Detached }` + `SessionListUpdate`.
+    DetachSession {
+        session_id: String,
+    },
+
+    /// Rename a session's display label. The daemon calls `SessionManager::rename_session()`,
+    /// which updates `SessionEntry.display_name` and emits `SessionListUpdate` ONLY
+    /// (rename is not a state transition; `SessionStateChanged` is not emitted —
+    /// see SS-daemon-wiring-v2-delta §3b C3-003 rule).
+    RenameSession {
+        session_id: String,
+        new_name: String,
+    },
 }
 
 // Phase 1 note on Ping/Pong (F-P1D-011):
@@ -365,6 +495,11 @@ in Rust code snippets or test assertions.
 depends on `monocle-runtime` for `HookEventRecord` in the `InitialState` message; this is
 the only `monocle-runtime` dependency in `monocle-ipc`.
 
+`SessionSnapshot` is defined in `monocle-ipc` (new in v1A, C3-004). `SerializedCell` and
+`SerializedColor` are defined in `monocle-ipc` (new in v1A, C5-002) — see their definitions
+below. `SpawnRecipe` is defined in `monocle-ipc` (or re-exported from `monocle-core`) so the
+TUI can send `ClientToServer::SpawnSession` without importing `monocle-runtime` internals.
+
 `SessionSnapshot` is defined in `monocle-ipc` (new in v1A, C3-004):
 
 ```rust
@@ -404,6 +539,64 @@ pub struct SessionSnapshot {
 `SessionState` is defined in `monocle-ipc` (or re-exported from `monocle-core`) so both the
 daemon's `SessionManager` and the TUI share the identical type with `Serialize`/`Deserialize`
 derives. The same enum powers both the internal `SessionEntry.state` and the wire `SessionSnapshot.state`.
+
+`SerializedCell` and `SerializedColor` are defined in `monocle-ipc` (new in v1A, C5-002).
+They are the wire boundary types for styled terminal cell data carried in `ScrollbackChunk.rows`.
+The authoritative definition lives here so that both the session-host (`monocle-session-host` binary)
+and the TUI (`monocle-tui`) can share the type without either depending on the other's internal types.
+`SS-session-manager.md` references `crate::ipc::SerializedCell` rather than owning the definition.
+
+```rust
+/// A single terminal cell serialized for scrollback dump (ScrollbackChunk rows).
+/// Sufficient to reconstruct the full styled vt100::Screen without re-parsing PTY bytes.
+///
+/// # C5-002: defined in monocle-ipc (not monocle-session-host) so both daemon-side
+/// session-host and TUI-side renderer share the type through monocle-ipc without
+/// a cross-binary dependency. SS-session-manager.md §HostToDaemon references
+/// `crate::ipc::SerializedCell` for `ScrollbackChunk.rows`.
+///
+/// # vt100 0.16 attribute surface (verified I3-008):
+/// The vt100 0.16 `Cell` struct exposes EXACTLY FIVE attribute methods:
+///   `bold()`, `dim()`, `italic()`, `underline()`, `inverse()`.
+/// There is NO `blink()`, NO `hidden()`, and NO `strikethrough()` in vt100 0.16.
+/// (Verified against docs.rs/vt100/0.16.0/vt100/struct.Cell.html — 2026-06-03.)
+///
+/// # attrs bitmask layout (5 bits, low-to-high):
+///   bit 0: bold      (cell.bold())
+///   bit 1: dim       (cell.dim())
+///   bit 2: italic    (cell.italic())
+///   bit 3: underline (cell.underline())
+///   bit 4: inverse   (cell.inverse()) — SGR 7 "reverse video"
+///   bits 5–7: reserved (MUST be 0 on write; MUST be ignored on read for forward-compat)
+///
+/// The u8 type is retained for forward-compat: if a future vt100 version exposes
+/// additional attributes, they can occupy bits 5–7 without a wire format change.
+#[non_exhaustive]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SerializedCell {
+    /// The UTF-8 character at this cell (empty string for empty/null cells).
+    pub ch: String,
+    /// Foreground color.
+    pub fg: SerializedColor,
+    /// Background color.
+    pub bg: SerializedColor,
+    /// Cell attributes bitmask (5 bits used; see doc comment above for layout).
+    pub attrs: u8,
+}
+
+/// Terminal cell color as serialized for scrollback dump.
+/// Covers ANSI 16-color, 256-color, and 24-bit RGB as exposed by vt100 0.16.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SerializedColor {
+    Default,
+    Ansi(u8),
+    Rgb(u8, u8, u8),
+}
+```
+
+`SpawnRecipe` is defined in `monocle-ipc` (or re-exported from `monocle-core`) so the TUI can
+construct a `ClientToServer::SpawnSession { recipe }` without importing `monocle-runtime`
+internal types. Its fields are defined in SS-engine-module.md §spawn_recipe().
 
 ```rust
 /// Shared payload for permission prompt data, used in both `InitialState.overlay_stack`
@@ -802,10 +995,15 @@ monocle-ipc
   └── depends on uuid (prompt_id generation, serde feature)
 
 monocle-tui (SS-06, consumer)
-  └── depends on monocle-ipc (UdsTransport, ServerToClient, ClientToServer)
+  └── depends on monocle-ipc (UdsTransport, ServerToClient, ClientToServer,
+                               SessionSnapshot, SerializedCell, SerializedColor)
 
 monocle-runtime (SS-04, daemon side)
   └── depends on monocle-ipc (UdsTransport server-side, message types)
+
+monocle-session-host (SS-08 binary)
+  └── depends on monocle-ipc (SerializedCell, SerializedColor for ScrollbackChunk serialization;
+                               HostToDaemon/DaemonToHost types are defined in SS-session-manager)
 ```
 
 `monocle-ipc` depends on `monocle-runtime` for `HookEventRecord` only (the `InitialState.ring_tail`
@@ -814,12 +1012,16 @@ The daemon and TUI both depend on `monocle-ipc` as consumers. The `Transport` tr
 message types remain decoupled from ring I/O logic — `HookEventRecord` is a pure data type
 (no I/O, no async traits).
 
-Note: This introduces a `monocle-ipc → monocle-runtime` edge. The ring is in `monocle-runtime`
-because it was introduced with the daemon lifecycle (SS-01). If this dependency direction is
-undesirable for Phase 4 (e.g., TUI-only binaries importing `monocle-ipc` would transitively
-pull in `monocle-runtime`), `HookEventRecord` can be moved to `monocle-core` in a future
-refactor. That move is not needed in Phase 1 since the TUI binary (`monocle-tui`) already
-depends on `monocle-runtime` for other types.
+`SerializedCell` and `SerializedColor` are defined in `monocle-ipc` (C5-002) so that
+`monocle-session-host` can import them without depending on `monocle-runtime`, and the TUI
+can import them without depending on `monocle-session-host`. This is the same pattern as
+`SessionSnapshot` (C3-004): the wire boundary type lives in `monocle-ipc` to avoid a
+cross-process dependency chain.
+
+Note: The `monocle-ipc → monocle-runtime` edge exists for `HookEventRecord` only (SS-01 ring
+record type). If this becomes undesirable for Phase 4, `HookEventRecord` can be moved to
+`monocle-core` — `monocle-tui` already depends on `monocle-runtime`, so no new transitive
+edges are introduced in Phase 1.
 
 ---
 
@@ -831,6 +1033,9 @@ depends on `monocle-runtime` for other types.
 | `ClientToServer` enum | Pure core | Data type only. No I/O. |
 | `PermissionDecisionKind` enum | Pure core | Data type only. No I/O. |
 | `TransportEvent` enum | Pure core | Process-local signal type only; NOT serialized. No I/O. |
+| `SessionSnapshot` struct | Pure core | Wire boundary data type. `#[derive(Serialize, Deserialize)]`. No I/O. |
+| `SerializedCell` struct | Pure core | Wire boundary data type for scrollback cells. No I/O. |
+| `SerializedColor` enum | Pure core | Wire boundary data type for cell color. No I/O. |
 | `write_framed()` | Effectful shell | Async write to `UnixStream`. Integration tested with `tokio::io::duplex`. |
 | `read_framed()` | Effectful shell | Async read from `UnixStream`. Integration tested. |
 | `UdsTransport::send_message()` | Effectful shell | Serializes + calls `write_framed`. |
@@ -896,6 +1101,43 @@ still pending in the daemon's registry (i.e., still within the 300ms timeout win
 prompts are never re-pushed.
 
 ---
+
+## §Trace v1.13.0
+
+**C5-001/C5-002 — Pass-5 wire-type authority consolidation** (2026-06-03):
+
+- **C5-001 (11 v1A wire variants added):** `ServerToClient` and `ClientToServer` enum bodies
+  extended with all v1A control-center variants previously defined ONLY in ADR-0010
+  §IPC Message Type Additions and SS-daemon-wiring-v2-delta §5. SS-ipc.md is now the
+  complete IPC wire authority; BC Architecture-Source citations for SS-05 BCs resolve here.
+  - `ServerToClient` additions (5): `PtyOutput { session_id, bytes }`,
+    `SessionStateChanged { session_id, new_state }`,
+    `ScrollbackChunk { session_id, rows: Vec<Vec<SerializedCell>>, chunk_seq }`,
+    `ScrollbackDumpComplete { session_id, total_chunks, cursor_row, cursor_col, pty_rows, pty_cols }`,
+    `PtyReset { session_id }`.
+  - `ClientToServer` additions (6): `KeyInput { session_id, bytes }`,
+    `ResizePane { session_id, rows, cols }`, `SpawnSession { recipe: SpawnRecipe }`,
+    `KillSession { session_id }`, `DetachSession { session_id }`,
+    `RenameSession { session_id, new_name }`.
+  - All new variants added to existing `#[non_exhaustive]` enums — no breaking change to
+    existing consumers using `..` wildcard patterns.
+  - Field schemas match ADR-0010 and SS-daemon-wiring-v2-delta exactly. Inline doc comments
+    cross-reference ADR-0010, SS-daemon-wiring-v2-delta, and I3-003/C3-003 rules.
+- **C5-002 (SerializedCell + SerializedColor defined in monocle-ipc):** These wire types are
+  referenced by `ScrollbackChunk.rows` and must be available to both `monocle-session-host`
+  (writer) and `monocle-tui` (reader) without a cross-binary dependency. Defined in
+  `monocle-ipc` §Supporting Types (same pattern as `SessionSnapshot` in C3-004).
+  Field definitions match SS-session-manager.md v1.4.1 exactly: `ch: String`, `fg/bg:
+  SerializedColor`, `attrs: u8` with the verified vt100-0.16 5-flag bitmask
+  (bold/dim/italic/underline/inverse; NO blink, hidden, strikethrough — I3-008 verified).
+  `SerializedColor` variants: `Default`, `Ansi(u8)`, `Rgb(u8, u8, u8)`.
+  `SerializedCell` carries `#[non_exhaustive]`; `SerializedColor` does not
+  (closed variant set matching vt100 0.16 color model).
+  - SS-session-manager.md §HostToDaemon `ScrollbackChunk.rows` type updated from
+    local `SerializedCell` definition to `crate::ipc::SerializedCell` reference in v1.5.0.
+  - Dependency graph updated: `monocle-session-host` depends on `monocle-ipc` for
+    `SerializedCell`/`SerializedColor`; `monocle-tui` same.
+  - Module Purity Classification table updated: `SerializedCell` and `SerializedColor` rows added.
 
 ## §Trace v1.12.1
 

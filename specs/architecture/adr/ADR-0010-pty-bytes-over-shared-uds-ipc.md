@@ -6,8 +6,8 @@ title: "PTY Bytes Shared on Existing UDS IPC Channel (Option A)"
 status: accepted
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
-version: "1.3.1"
-timestamp: 2026-06-03T23:00:00Z
+version: "1.4.0"
+timestamp: 2026-06-03T00:00:00Z
 inputs:
   - research/domain-monocle-vision-synthesis.md
   - specs/product-brief.md
@@ -64,10 +64,31 @@ The session-host proxy inside the daemon sends `ServerToClient::PtyOutput { sess
 over the existing single UDS connection to each TUI client. `KeyInput` and `ResizePane` arrive
 as `ClientToServer` variants over the same connection.
 
-**Throughput sizing:** The per-session PTY output channel capacity is set at **1024 messages**
-(each message carries at most 4096 bytes of PTY output). This bounds the in-flight PTY backlog
-at 4 MiB per session, which is well within normal operating conditions. Terminal applications
-rarely exceed 10–50 KiB/s of text output at human-legible speeds.
+**Throughput sizing (I5-002 — reconciled with MAX_MESSAGE_BYTES):**
+
+The per-session PTY output channel capacity is set at **1024 messages** in the session-host
+PTY reader (the bounded `mpsc::channel::<Bytes>(1024)` — see SS-session-manager §PTY reader
+thread). This is the session-host-internal buffer; its backlog bound depends on the actual
+per-message size, not a fixed 4096-byte assumption.
+
+- **Typical case:** PTY output is buffered in line-buffered or page-buffered chunks. Observed
+  terminal application output is typically 256 B – 4 KiB per PTY read call. At the typical
+  4 KiB per message: 1024 × 4 KiB = **4 MiB per-session typical backlog**.
+- **Maximum case per `MAX_MESSAGE_BYTES` (BC-2.05.001):** Each `PtyOutput` message payload is
+  bounded at 256 KiB (`MAX_MESSAGE_BYTES = 262_144`). A single EC-273–class burst (e.g.,
+  BC-2.05.009 EC-273 sends 64 KiB in one message) is well within the 256 KiB ceiling.
+  At the maximum 256 KiB per message: 1024 × 256 KiB = **256 MiB per-session worst-case backlog**.
+  In practice this maximum is never reached — the PTY read syscall returns at most one kernel
+  buffer's worth of bytes per read (typically ≤ 64 KiB); no single PTY read fills a 256 KiB frame.
+- **Benchmark gate basis:** The benchmark gate (§Benchmark gate) targets `pty_drop_counter = 0`
+  at session count ≤ 8, 60Hz display refresh. The benchmark MUST be run at typical terminal
+  output rates (10–50 KiB/s) and at burst rates (up to 1 MB/s as required by the
+  scrollback-dump benchmark; see §Benchmark gate and §Interleaving of live PtyOutput).
+  The 4 MiB typical backlog provides ample headroom at human-legible rates.
+
+Terminal applications rarely exceed 10–50 KiB/s of text output at human-legible speeds.
+High-throughput scenarios (e.g., `cargo build` flooding PTY at 1 MB/s) are covered by the
+pre-v1A benchmark gate and the drop-counter convention.
 
 **Benchmark gate — BEFORE THE v1A STORY WAVE BEGINS (C3 clarification):**
 
@@ -378,6 +399,24 @@ session ring, not any TUI client. Specific BC-2.05.009 edits required:
 - Extends: SS-ipc.md §Message Types (new variants documented in SS-05 delta).
 - Requires: SS-08 Session Manager (session-host proxy that posts to per-session PTY channel).
 - Pre-gate benchmark deliverable: routes to `vsdd-factory:performance-engineer`.
+
+## §Trace v1.4.0
+
+**I5-002 — Pass-5 stale channel-sizing reconciled with MAX_MESSAGE_BYTES** (2026-06-03):
+
+- **I5-002 (§Throughput sizing arithmetic corrected):** The original text stated "each message
+  carries at most 4096 bytes of PTY output" and derived "4 MiB per session" from 1024 × 4096.
+  This is inconsistent: the protocol allows `PtyOutput` messages up to `MAX_MESSAGE_BYTES`
+  (256 KiB), and BC-2.05.009 EC-273 sends 64 KiB single-chunk messages. The 4096-byte
+  per-message assumption understated the maximum backlog by 64×.
+  - Resolution: §Throughput sizing rewritten to distinguish *typical* (4 KiB/message →
+    4 MiB typical backlog) from *maximum* (256 KiB/message → 256 MiB worst-case backlog).
+    The typical figure matches observed PTY read sizes; the maximum figure follows from
+    `MAX_MESSAGE_BYTES`. In practice the worst case is never reached because no PTY read
+    syscall fills a 256 KiB kernel buffer.
+  - The benchmark gate framing is updated to reference both typical and burst rates
+    (up to 1 MB/s per the scrollback-dump benchmark already defined in §Benchmark gate).
+  - The 1024-message channel capacity and the 60Hz / ≤8-session benchmark targets are unchanged.
 
 ## §Trace v1.3.1
 

@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.0"
+version: "1.5.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-ipc.md, architecture/SS-daemon-wiring-v2-delta.md, architecture/adr/ADR-0010-pty-bytes-over-shared-uds-ipc.md]
-input-hash: "16671f4"
+input-hash: "00a8bf9"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-05
@@ -31,9 +31,11 @@ removal_reason: null
 When a `monocle-session-host` sends `HostToDaemon::PtyBytes { bytes }`, the daemon's
 session-host proxy task posts the bytes to the broker as `Event::PtyOutput { session_id, bytes }`.
 The broker fan-out sends `ServerToClient::PtyOutput { session_id, bytes }` to all connected
-TUI clients. The PTY reader channel inside the session-host is bounded at capacity 1024 with
-a drop counter that is surfaced in the session-host's stderr log. No silent drops: if the
-channel fills, a drop counter is incremented and logged.
+TUI clients. The PTY reader channel inside the session-host is bounded at capacity 1024.
+When the channel is full the PTY reader thread BLOCKS (backpressure to the PTY read
+syscall) — it does NOT drop bytes. The `pty_drop_counter` counts only sender-error /
+OOM / receiver-gone conditions (unreachable under normal operation); it is NOT incremented
+on normal channel fullness. Under normal backpressure, PTY bytes are never dropped.
 
 ## Preconditions
 
@@ -54,7 +56,10 @@ channel fills, a drop counter is incremented and logged.
       backpressure to other clients or to the PTY reader.
 2. The per-session UDS connection has a bounded mpsc channel (capacity 1024) between the
    PTY reader blocking thread and the session-host async event loop. When the channel is
-   full, the PTY reader thread drops the bytes and increments a `drop_counter`.
+   full, the PTY reader thread BLOCKS on `.send().await` (backpressure propagates to the
+   PTY read syscall) — it does NOT drop bytes and does NOT increment the `drop_counter`.
+   The `drop_counter` is incremented only on sender errors (receiver gone / OOM), which
+   are unreachable conditions under normal operation.
 3. The `drop_counter` is NOT surfaced in the TUI status bar (session-host has no TUI). It
    is logged to the session-host's stderr at `WARN` level:
    `WARN: PTY channel drop #N for session <session_id>`.
@@ -83,7 +88,7 @@ channel fills, a drop counter is incremented and logged.
    within its own per-client send buffer and does NOT propagate backpressure to the PTY reader.
 
 3b. **Per-client send buffer isolation:** Each connected TUI client has a dedicated
-   `mpsc::channel::<ServerToClient>(64)` (capacity 64, per SS-ipc.md v1.12.1 §TUI IPC Read
+   `mpsc::channel::<ServerToClient>(64)` (capacity 64, per SS-ipc.md v1.13.0 §TUI IPC Read
    Loop Pattern canonical pattern — rationale: 64 covers typical burst sizes without unbounded
    memory growth; 64×256KiB=16MiB maximum in-flight per client). The broker uses `.try_send()`
    into the per-client channel (NOT `.send().await`). A dedicated per-client writer task drains
@@ -110,7 +115,7 @@ channel fills, a drop counter is incremented and logged.
 
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
-| EC-270 | Session-host PTY produces >1024 read()s faster than daemon can consume | Session-host drops excess reads; drop counter incremented; WARN logged; consumer (daemon broker) sees slightly reduced throughput; no crash |
+| EC-270 | Session-host PTY produces bytes faster than daemon can consume (channel at capacity 1024) | PTY reader thread BLOCKS on `.send().await` (backpressure to PTY read syscall); drop_counter NOT incremented; no bytes lost; throughput limited by consumer speed; no crash |
 | EC-271 | No TUI clients connected | Bytes posted to broker; broker fan-out has no subscribers; bytes discarded by broker; no error |
 | EC-272 | TUI client's per-client send buffer full (slow TUI) | After 3 consecutive full-buffer `.try_send()` failures for this client, the broker disconnects the client. The per-client send buffer (capacity 64; 64×256KiB=16MiB maximum) is isolated: its overflow does NOT propagate to the PTY reader or to other clients. Other clients continue to receive PtyOutput messages uninterrupted. |
 | EC-273 | Large `PtyBytes` chunk (e.g., 64 KiB of output) | Sent as a single `ServerToClient::PtyOutput` IPC message; 256 KiB message size limit per BC-2.01.003; 64 KiB is within limit |
@@ -120,7 +125,7 @@ channel fills, a drop counter is incremented and logged.
 | Scenario | Expected Output | Category |
 |----------|----------------|----------|
 | Session-host sends 10 `PtyBytes` messages; 2 TUI clients connected | Each TUI client receives 10 `PtyOutput` messages with correct bytes | happy-path |
-| PTY channel full: 1025th read arrives | Drop counter = 1; WARN logged; 1024 messages remain in channel | edge-case |
+| PTY channel at capacity (1024 messages): new read arrives | PTY reader thread BLOCKS on `.send().await`; no bytes dropped; drop_counter remains 0; send completes once consumer drains at least one slot | edge-case |
 | `PtyBytes` arrives when no TUI clients connected | Bytes discarded by broker; no error | edge-case |
 
 ## Verification Properties
@@ -129,7 +134,7 @@ channel fills, a drop counter is incremented and logged.
 |--------|----------|-------------|
 | VP-TBD | `PtyOutput` fan-out to all connected TUI clients on PtyBytes receipt | integration |
 | VP-TBD | Bytes NOT truncated (full PtyBytes content in PtyOutput) | unit |
-| VP-TBD | Drop counter incremented on channel overflow; WARN logged | unit |
+| VP-TBD | PTY reader BLOCKS (no drop) when channel at capacity; drop_counter remains 0 on normal fullness | unit |
 
 ## Traceability
 
@@ -138,7 +143,7 @@ channel fills, a drop counter is incremented and logged.
 | L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — PtyOutput fan-out extends the session/event/prompt push capability of CAP-005 with real-time PTY byte streaming, which is transported over the same shared UDS per ADR-0010 |
 | Architecture Module | monocle-ipc (`ServerToClient::PtyOutput` variant); monocle-runtime (session-host proxy task, broker fan-out) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-daemon-wiring-v2-delta.md v1.3.1 §broker fan-out — PtyOutput messages; ADR-0010 v1.3.1 §pty-bytes-over-shared-uds-ipc; SS-session-manager.md v1.4.1 §PTY reader thread; SS-ipc.md v1.12.1 §TUI IPC Read Loop Pattern (per-client channel capacity 64, rationale) |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.3.1 §broker fan-out — PtyOutput messages; ADR-0010 v1.4.0 §pty-bytes-over-shared-uds-ipc; SS-session-manager.md v1.5.0 §PTY reader thread; SS-ipc.md v1.13.0 §TUI IPC Read Loop Pattern (per-client channel capacity 64, rationale) |
 | Cross-Ref | BC-2.05.004 (fan-out semantics for slow-client disconnect); BC-2.04.011 (hook event drop counter — separate from PTY channel drop counter) |
 | Test Name | test_BC_2_05_009_pty_output_fan_out_bounded_channel |
 
@@ -160,28 +165,50 @@ S-TBD — Implement PtyOutput broker fan-out and session-host PTY reader bounded
 
 VP-TBD — PtyOutput fan-out integration tests (filled after VP creation)
 
+## §Trace v1.5.0
+
+**I5-001 Pass-5 fix — resolve DROP vs BACKPRESSURE self-contradiction** (2026-06-03):
+- Finding: Description, PC-2, EC-270, and test vector asserted the DROP model (drop_counter
+  incremented on channel fullness), contradicting Invariants 1 and 3 which assert the
+  BACKPRESSURE model (`.send().await`, never drop). The canonical resolution is BACKPRESSURE
+  per SS-session-manager.md §PTY reader thread, which uses `.send().await`.
+- Description: removed "if the channel fills, a drop counter is incremented and logged";
+  replaced with explicit statement that the PTY reader BLOCKS on `.send().await` when full
+  and that `pty_drop_counter` counts only sender-error/OOM conditions.
+- PC-2: "PTY reader thread drops the bytes and increments a `drop_counter`" → "PTY reader
+  thread BLOCKS on `.send().await` (backpressure)"; clarified that drop_counter is NOT
+  incremented on normal channel fullness — only on sender errors (receiver gone / OOM).
+- EC-270: "Session-host drops excess reads; drop counter incremented" → "PTY reader thread
+  BLOCKS on `.send().await`; drop_counter NOT incremented; no bytes lost".
+- Test vector "1025th read → Drop counter = 1" → "channel at capacity → PTY reader BLOCKS;
+  no bytes dropped; drop_counter remains 0; send completes once consumer drains a slot".
+- Verification Property: "Drop counter incremented on channel overflow" → "PTY reader BLOCKS
+  (no drop) when channel at capacity; drop_counter remains 0 on normal fullness".
+- All five locations now consistently assert the BACKPRESSURE model. Invariants 1 and 3
+  are unchanged (they were already correct).
+
 ## §Trace v1.4.0
 
 **HIGH-003 adversarial pass-4 fix — PC-1b per-client send buffer capacity 256 → 64** (2026-06-03):
 - PC-1b: "capacity 256 messages" → "capacity 64 messages". This was a propagation residue from
   the v1.2.0 introduction (which correctly stated 64 in Invariant 3b and EC-272 but missed PC-1b).
-  The canonical value is 64 per SS-ipc.md v1.12.1 §TUI IPC Read Loop Pattern; Invariant 3b,
+  The canonical value is 64 per SS-ipc.md v1.13.0 §TUI IPC Read Loop Pattern; Invariant 3b,
   EC-272, and the Architecture Source have all stated 64 since v1.3.0.
 
 ## §Trace v1.3.0
 
 **Adversarial Pass 3 fixes — O3-004 (per-client buffer capacity 64) + Invariant 4 (ScrollbackChunk*/Complete message names)** (2026-06-03):
 - O3-004 (I3-004 related): Per-client send buffer capacity corrected from 256 to **64** in
-  Invariant 3b and EC-272. The canonical capacity is 64 per SS-ipc.md v1.12.1 §TUI IPC Read
+  Invariant 3b and EC-272. The canonical capacity is 64 per SS-ipc.md v1.13.0 §TUI IPC Read
   Loop Pattern (rationale: 64 covers typical burst sizes; 64×256KiB=16MiB maximum per client).
   The prior value of 256 was inconsistent with the architect's canonical pattern.
 - Invariant 4: "re-fetches ScrollbackDump" replaced with "sends `ClientToServer::AttachSession`
   to trigger a fresh `ScrollbackChunk*` + `ScrollbackDumpComplete` sequence". The retired
   single-message `ScrollbackDump` form MUST NOT be referenced; the chunked protocol is
-  canonical per SS-session-manager.md v1.4.1. Also clarified that the TUI sends the
+  canonical per SS-session-manager.md v1.5.0. Also clarified that the TUI sends the
   `ClientToServer::AttachSession` IPC variant (per I3-004 fix in BC-2.05.010 and BC-2.05.011).
 - Architecture Source updated to SS-daemon-wiring-v2-delta.md v1.3.1, SS-session-manager.md
-  v1.4.0, SS-ipc.md v1.12.1.
+  v1.4.0, SS-ipc.md v1.13.0.
 
 ## §Trace v1.2.0
 
