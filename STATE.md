@@ -2,7 +2,7 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "7.01"
+version: "7.02"
 status: active
 producer: state-manager
 timestamp: 2026-06-03T23:59:00Z
@@ -409,133 +409,253 @@ durable_task_register:
     - "TALLY-GUARD (D-225): STATE running-tally must re-sum sprint-state per-story; summary.points_complete is a cache. Hand-increment drift produced +8 pts error + premature Phase-3-COMPLETE. L-W6-GATE-003."
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v6.99 (D-248) — 2026-06-03
-  PIVOT: monocle → full TUI control center — ADV PASS-7 CONVERGENCE-FIX COMMITTED
+  ZERO-CONTEXT RESUME CHECKPOINT v7.02 (D-251) — 2026-06-03
+  PIVOT: monocle → full TUI control center — PHASE-1D ADV CONVERGENCE IN PROGRESS
+  9 PASSES COMPLETE; CONSECUTIVE-CLEAN COUNTER = 0; PASS-10 NEXT
   ============================================================================
 
-  YOUR FIRST 3 COMMANDS (RUN IN ORDER — BEFORE ANYTHING ELSE):
+  READ THESE FIRST (in order — before anything else):
+  1. /Users/jmagady/Dev/monocle/NEXT-SESSION-RESUME.md  ← concise 1-page entry point
+  2. /Users/jmagady/Dev/monocle/CLAUDE.md               ← production-grade + agent-routing rules
+  3. This STATE.md fully                                 ← durable_task_register + PIVOT-CONTROL-CENTER
 
-  1. Read /Users/jmagady/Dev/monocle/NEXT-SESSION-PIVOT.md — pivot handoff context.
+  ============================================================================
+  WHERE WE ARE (D-250, 2026-06-03)
+  ============================================================================
 
-  2. Read /Users/jmagady/Dev/monocle/CLAUDE.md — production-grade-default + correct-agent-routing
-     override ALL agent defaults.
+  MODE: greenfield-with-reference-ingest.
+  PHASE: VSDD Phase 1d ADVERSARIAL SPEC CONVERGENCE — IN PROGRESS.
+  develop @ 8bc22a5 — UNCHANGED. All pivot work is SPEC-ONLY on factory-artifacts.
+  NO production code written yet for v1A. Do NOT write code for v1A.
+  factory-artifacts: run `git -C .factory log -1 --format='%h %s'` for live HEAD.
 
-  3. Read this STATE.md fully — especially §Trace v6.97 (D-246), durable_task_register,
-     and PIVOT-CONTROL-CENTER entry.
+  9 adversarial passes complete on the v1A control-center spec package.
+  Finding trajectory: Critical 5,5,4,1,2,2,0,0,0 / Important 8,6,9,4,4,2,4,2,1
+  Passes 7/8/9 all ZERO-Critical. Pass 9 = 0C/1I (resolved, D-250).
+  CONSECUTIVE-CLEAN COUNTER = 0 (need 3 consecutive CLEAN = zero Critical+Important).
+  NEXT = adversarial Pass 10 (clean-streak candidate 1 of 3).
+  HUMAN DIRECTIVE: strict 3-consecutive-clean (chosen at Pass-6 checkpoint over
+  the "1 more pass then decide" option — do NOT accept less than 3).
 
-  CRITICAL ORIENTATION — D-248: ADV PASS-7 CONVERGENCE-FIX COMMITTED, PASS-8 NEXT:
+  ============================================================================
+  PIVOT HISTORY (context — do not re-litigate)
+  ============================================================================
 
-  D-242: Adversarial Pass-1 ALL RESOLVED (5C/8I/5O).
-  D-243: Adversarial Pass-2 ALL RESOLVED (5C/6I/5S). BC-INDEX v1.37 (138 BCs).
-  D-244: Adversarial Pass-3 ALL RESOLVED (4C/9I/4O). SS-session-manager v1.4.0.
-  D-245: Adversarial Pass-4 ALL RESOLVED (1C/4I/3S). Novelty DECAYING (C:5→5→4→1).
-  D-246: Adversarial Pass-5 ALL RESOLVED (2C/4I). NOVEL structural: C5-001 SS-ipc.md
-  was MISSING 11 v1A wire variants — now complete IPC wire authority (v1.13.0).
-  D-248: Adversarial Pass-7 ALL RESOLVED (0C/4I/4S). FIRST zero-Critical pass.
-  I-P7-001: SidecarWriteFailed+SessionIdCollision added to SessionError (SS-session-manager v1.7.0 + SS-ipc v1.15.0).
-  I-P7-002: op-aware session_error_to_code(IpcOp) → kill_failed now reachable.
-  I-P7-003: IpcRead{Msg,Disconnected} wrapper enum replaces non-variant ServerToClient::Disconnected.
-  I-P7-004: pause-during-dump stale comments → snapshot-then-resume.
-  S-P7-001: serde-on-variant removed. S-P7-002: BC-2.09.002 stray removal_range removed.
-  S-P7-003: BC-2.05.010 v1.4.0 H1 +AttachSession (7 variants); BC-INDEX v1.39.
-  Spec package now:
-  vision v2.2 + brief v2.0.1 + ARCH-INDEX v1.0.28 + SS-ipc v1.15.0 +
-  SS-session-manager v1.7.0 + SS-embedded-pty v1.3.0 + SS-daemon-wiring-v2-delta v1.5.0 +
-  SS-engine-module-v2-delta v1.1.0 + ADR-0010 v1.4.0 + ADR-0011 v1.1.0 +
-  138 BCs + PRD v1.28.1 + BC-INDEX v1.39 + EVAL-INDEX v1.14 + BC-2.05.010 v1.4.0.
-  0 consecutive clean passes so far; need 3 for human gate.
-  HUMAN GATE ITEMS (non-blocking, required before v1A story wave):
-  CC-TUITERM-WIP-SIGNOFF: tui-term 0.3.4 WIP-upstream risk-acceptance (ADR-0011 §O2).
-  CC-GLOBAL-MOUSE-CAPTURE: mouse capture scope expansion approval if needed for monocle panels.
-  NEXT: Adversarial Pass-8 → (need 3 consecutive clean) → human spec-package approval → v1A story decomposition.
+  D-236: VISION PIVOT — observe-only RETIRED; monocle becomes full TUI control center.
+  D-237: Human ratified v1 scope (Launch + EmbeddedPTY + Multi-session/project + Tune; v1A first).
+  D-238: Vision domain-monocle-vision-synthesis.md v2.2 APPROVED (Joshua Magady).
+         session-host-owns-PTY persistence model. graceful daemon-process restart MUST survive.
+  D-239: Architecture delta COMMITTED — ADR-0009/0010/0011 + 5 SS deltas.
+  D-240: Consistency gate PASSED — ARCH-INDEX v1.0.28; vision v2.2 + brief v2.0.1 VALID.
+  D-241: BC/PRD delta — 25 new v1A BCs; PRD v1.28.1; 5 holdout scenarios HS-EXP-011..015.
+  D-242 through D-250: Adversarial Passes 1-9, all findings resolved.
 
-  DO NOT run vsdd-factory:phase-4-holdout-evaluation.
-  DO NOT resume adversarial refinement (Phase 5), formal hardening (Phase 6), or
-  convergence (Phase 7) of the old observe-only scope.
+  ============================================================================
+  CONVERGENCE LOOP PROCEDURE (how the fresh session runs Pass 10+)
+  ============================================================================
 
-  WHAT THE NEW SESSION MUST DO:
+  Step A — Dispatch adversary (vsdd-factory:adversary) FRESH-CONTEXT for Pass N.
+    Scope = the v1A control-center spec package (list below).
+    Rubric = CLAUDE.md production-grade principle.
+    Adversary must verify:
+      (a) anchor-resolution closure — every BC Architecture-Source citation resolves
+          to a symbol that EXISTS in the cited doc (C5-001 class prevention)
+      (b) full-lifecycle end-to-end consistency: SS ↔ BC ↔ ADR ↔ holdout
+      (c) no live normative survivor of retired concepts
+      (d) error-taxonomy completeness + no-silent-failure guarantee
+      (e) security (keystroke injection, auth token, SO_PEERCRED paths)
+      (f) any new design gap
+    Instruct: honest CLEAN verdict if sound; only Critical/Important block; Suggestions do not.
 
-  Step 1 (DONE): Brief delta — product-brief.md v2.0.1 committed. validate-brief VALID.
-  Step 2 (DONE): Architecture delta — ADR-0009/0010/0011 + 5 SS deltas committed (D-239).
-  Step 3a (DONE D-240): Consistency validation PASSED (12 findings resolved).
-  Step 3b (DONE D-241): BC/PRD delta — 23 new BCs + PRD v1.28.0 + 5 holdout scenarios.
-  Step 3c (IN PROGRESS): Phase-1d adversarial convergence (3 clean passes minimum).
-           Pass-1 DONE (D-242). Pass-2 DONE (D-243). Pass-3 DONE (D-244). Pass-4 DONE (D-245).
-           Pass-5 DONE (D-246). Pass-6 DONE (D-247). Pass-7 DONE (D-248). Pass-8 DONE (D-249). Pass-9 DONE (D-250). Pass-10 NEXT.
-           Spec package = vision v2.2 + brief v2.0.1 + ARCH-INDEX v1.0.28 + SS-ipc v1.15.0 +
-           SS-session-manager v1.7.0 + SS-embedded-pty v1.3.0 + SS-daemon-wiring-v2-delta v1.5.0 +
-           ADR-0010 v1.5.0 + other SS deltas + 138 BCs + PRD v1.28.1 + BC-INDEX v1.39 + EVAL-INDEX v1.15.
-  Step 4: Human spec-package approval gate (+ CC-TUITERM-WIP-SIGNOFF + CC-GLOBAL-MOUSE-CAPTURE).
-  Step 5: Story decomposition (story-writer decomposes v1A delta into new waves).
+  Step B — If CLEAN:
+    Increment consecutive-clean counter.
+    If counter < 3: run next pass (counter now N; need 3 total).
+    If counter = 3: convergence DONE. Proceed to human spec-package approval gate.
 
-  CYCLE CHECKLIST (D-245 SUG-003 CODIFIED): before each adversarial pass, after any
-  RETIRED-term or corrected-magic-number fix — run grep -rn .factory/specs for survivors;
-  every survivor must be in §Trace/changelog/enforcement context, NOT live PC/Invariant/title.
+  Step C — If FINDINGS (any Critical or Important):
+    Reset consecutive-clean counter to 0.
+    Route fixes by ownership:
+      architect (vsdd-factory:architect) — architecture specs, ADRs, wire-types, error-taxonomy
+      product-owner (vsdd-factory:product-owner) — BC files, holdout scenarios, PRD, vision, brief
+      Architect + PO may run in parallel when their fix sets are independent.
+    After fixes: orchestrator runs CLOSURE GREP (retired-term + value survivors + anchor-resolution).
+    Then state-manager commits the round atomically (see commit rules below).
+    Then dispatch Pass N+1.
 
-  WHAT IS ALREADY BUILT (REUSE — DO NOT REBUILD):
+  COMMIT RULES FOR EVERY FIX ROUND (mandatory — enforced by hooks):
+    - state-manager owns version-pin-registry.yaml; architect/PO only REPORT version bumps
+    - single atomic commit: spec files + version-pin-registry.yaml in SAME commit (POL-11/L-S027-004)
+    - TARGETED staging only: name each file explicitly; NEVER git add -A; never stage
+      code-delivery/ dirs; never broad compute-input-hash --scan
+    - run `python3 scripts/check_version_pins.py` (POL-11) and
+      `python3 scripts/check_structural_claims.py` (POL-12) from REPO ROOT before commit
+    - verify registry diff line-count matches claimed bump count + spot-check frontmatter
+    - respect all hooks; NEVER --no-verify; no AI attribution
 
-  - Daemon (now actually serves: HTTP hook ingestion + UDS socket + tracing + ring).
+  CYCLE CHECKLIST (D-245 SUG-003 CODIFIED):
+    After any RETIRED-term or corrected-magic-number fix:
+    grep -rn .factory/specs for survivors — every survivor must be in
+    §Trace/changelog/enforcement context, NOT live PC/Invariant/title/doc-comment.
+
+  ANCHOR-RESOLUTION CLOSURE (D-246 CODIFIED):
+    After any BC Architecture-Source citation fix: verify the cited symbol EXISTS
+    in the cited document before committing.
+
+  ============================================================================
+  SPEC PACKAGE (feed this exact list to the adversary for Pass 10+)
+  ============================================================================
+
+  domain-monocle-vision-synthesis.md v2.2 (APPROVED D-238)
+  product-brief.md v2.0.1 (validate-brief VALID)
+  prd.md v1.28.1 (§2.8 SessionManager + §2.9 EmbeddedPTY)
+  ARCH-INDEX v1.0.28
+
+  Architecture subsystem specs (delta docs):
+    SS-ipc v1.15.0                       (IPC wire authority — all 21 message variants)
+    SS-session-manager v1.7.0            (SS-08 — session-host coordinator)
+    SS-embedded-pty v1.3.0               (SS-09 — embedded PTY widget)
+    SS-engine-module-v2-delta v1.1.0     (spawn_recipe() + SpawnOptions)
+    SS-daemon-wiring-v2-delta v1.5.0     (daemon coordinator + IPC handler all-arms canonical)
+    SS-deps-pin-manifest-v2-delta v1.0.0 (portable-pty/vt100/tui-term pins)
+
+  ADRs:
+    ADR-0009 v1.0.0 (native detached session-host process model)
+    ADR-0010 v1.5.0 (PTY bytes on existing UDS IPC; snapshot-then-resume scrollback)
+    ADR-0011 v1.1.0 (PTY stack: portable-pty 0.9.0 + vt100 0.16.2 + tui-term 0.3.4)
+
+  Behavioral Contracts:
+    BC-INDEX v1.39 (138 BCs total; 25 new v1A BCs)
+    SS-03: BC-2.03.005-008 (spawn validation, hook auto-injection, invalid-path, re-probe)
+    SS-05: BC-2.05.009-011 (SessionCreation wizard, multi-project scope, ServerToClient variants)
+    SS-06: BC-2.06.025 (permission badge+bell guarantee during EmbeddedTerminal/SessionCreation)
+    SS-08: BC-2.08.001-008 (session spawn/kill/SIGTERM-SIGKILL-10s/re-discovery/persistence/
+                             per-session-hooks/GC/SessionStateChanged)
+    SS-09: BC-2.09.001-009 (PTY attach/detach/keyboard/output/resize/reconnect/AppMode/
+                             scrollback/overlay-integration)
+
+  Holdout scenarios:
+    EVAL-INDEX v1.15
+    HS-EXP-011..015 (5 new v1A scenarios)
+
+  version-pin-registry.yaml — source of truth for ALL version pins
+
+  ============================================================================
+  RATIFIED DECISIONS (do NOT re-litigate)
+  ============================================================================
+
+  Re-baselined v1 control-center: Launch + Embedded PTY + Multi-session/multi-project +
+  Interactive Tune (v1B) + already-built Observe + Control.
+  v1A = Launch + EmbeddedPTY + Multi-session/project (+ persistence + hook-auto-inject).
+  v1B = Interactive Tune (BCs/stories authored when v1B scheduled).
+
+  Persistence: session-host-owns-PTY (native monocle-session-host binary, setsid-detached,
+  per-session UDS, SO_PEERCRED, re-discovery before UDS bind).
+  Graceful daemon-process restart SURVIVES (D-238 human escalation — CASE 2 is now survive).
+  Hard crash → lost → re-launch (CASE 3 unchanged). NO tmux.
+
+  Full keyboard fidelity v1A: printable + control + arrows + Alt/Meta + mouse + Kitty +
+  bracketed-paste. Permission badge + per-prompt bell during EmbeddedTerminal.
+  PTY backpressure: per-client buffers cap 64 (no silent drop); PtyReset recovery.
+  Terminating state + 12s watchdog. SessionSnapshot/SerializedCell/SerializedColor in monocle-ipc.
+  ClientToServer::AttachSession re-attach. schema_version 3.
+  Chunked scrollback: snapshot-then-resume (session-host NOT paused during dump).
+  Native PTY stack: portable-pty 0.9.0 + vt100 0.16.2 + tui-term 0.3.4
+  (ratatui 0.30 compatible; MSRV 1.88). Decision lineage D-236..D-250.
+
+  ============================================================================
+  REMAINING TASKS (in order)
+  ============================================================================
+
+  1. FINISH Phase-1d adversarial convergence (current step):
+     Passes 10/11/12+ → need 3 CONSECUTIVE clean (counter currently 0).
+     Drive to strict 3-clean per human directive. See convergence loop above.
+
+  2. Human spec-package APPROVAL GATE (after convergence):
+     Run /vsdd-factory:check-input-drift first.
+     Present with structured review questions: scope completeness, anchor correctness,
+     coverage gaps, convention consistency.
+     Gate items (non-blocking until story wave): CC-TUITERM-WIP-SIGNOFF (tui-term 0.3.4
+     WIP risk-acceptance, ADR-0011 §O2) + CC-GLOBAL-MOUSE-CAPTURE (mouse scope expansion).
+
+  3. Phase 2 STORY DECOMPOSITION (vsdd-factory:story-writer):
+     Decompose v1A delta into stories + waves + dependency graph.
+     RESOLVE all S-TBD story anchors in the 25 BCs + holdout stories_tested fields.
+     If >8 artifacts: split create-stories / integrate-stories across two dispatches.
+
+  4. VP AUTHORING (vsdd-factory:architect) — DEFERRED to formal-hardening per VP-DTU-001
+     pattern: all 25 v1A BCs cite VP-TBD; create VPs + VP-INDEX coverage at hardening.
+
+  5. Pre-Phase-3 prerequisites:
+     DTU clone check (S-DTU-001 dtu-claude-code-hooks-v1 EXISTS, fidelity 1.0 — D-234).
+     CI/CD verification (ci.yml + branch protection — PROC-BRANCH-PROTECTION-CONTEXTS open).
+
+  6. Phase 3 TDD IMPLEMENTATION of v1A stories (per-story-delivery.md + wave gates).
+     v1B Tune BCs/stories authored when v1B scheduled.
+
+  7. PARKED HUMAN ITEMS (must happen before v1A story wave begins):
+     CC-TUITERM-WIP-SIGNOFF — tui-term 0.3.4 WIP risk acceptance (ADR-0011 §O2).
+     CC-GLOBAL-MOUSE-CAPTURE — if a future story needs clickable monocle panels.
+     v1B: embedded-terminal→overlay PRE-EMPTION needs human ratification before BC authoring.
+
+  8. Pre-existing durable_task_register backlog (ADV-W5GATE-HIGH-002 dead code,
+     ADV-W5GATE-MED-001/003, etc.) — non-blocking, subordinate to pivot; revisit during
+     v1A implementation waves.
+
+  ============================================================================
+  CODIFIED LESSONS (enforce every pass)
+  ============================================================================
+
+  L-S027-004 REGISTRY ATOMICITY (recurred 3x): architect/PO REPORT version bumps,
+  NEVER edit version-pin-registry.yaml; state-manager owns it + verifies diff line-count
+  + frontmatter spot-check before every commit.
+
+  PROPAGATION-CLOSURE AUDIT: after every split architect+PO fix round, run a closure
+  check (consistency-validator or targeted grep) confirming every delegated sync landed
+  in EVERY target file, BEFORE the next adversarial pass.
+
+  ANCHOR-RESOLUTION CLOSURE: every BC Architecture-Source citation must resolve to a
+  symbol that EXISTS in the cited doc (prevents C5-001 class).
+
+  RETIRED-CONCEPT GREP SWEEP: after any RETIRED-term / corrected-value fix, grep
+  .factory/specs for survivors; each must be §Trace/enforcement context, not a live
+  PC/Invariant/title/doc-comment.
+
+  TARGETED STAGING ONLY: D-249 commit accidentally broad-swept 144 files + code-delivery
+  dirs. Always name files explicitly. Never git add -A for factory-artifacts commits.
+
+  DELTA-VS-CANONICAL DRIFT: SS-*-v2-delta inline copies of patterns canonical elsewhere
+  drift (recurred — SessionSnapshot in §4, §3 handler arms). Prefer reference-pointers
+  + canonical-pattern-lock notes over inline copies.
+
+  ============================================================================
+  ALREADY BUILT (REUSE — DO NOT REBUILD)
+  ============================================================================
+
+  - Daemon (actually serves: HTTP hook ingestion + UDS socket + tracing + ring — D-235).
   - Hook ingestion (5 endpoints, proto, JSONL ring, dtu-claude-code-hooks-v1 clone).
   - Permission overlay (VecDeque<PromptModal>, Ctrl-\ popup, y/n/A resolve, IPC write-back).
-  - EngineModule / FactoryAdapter traits — the seam to extend with launch/spawn/attach/kill.
+  - EngineModule / FactoryAdapter traits — seam to extend with launch/spawn/attach/kill.
   - monocle-proto wire schemas, monocle-ipc, monocle-config, monocle-core.
-  - TUI rendering (ratatui + crossterm, sessions panel, event ribbon, profile picker, status bar).
-  - 1514 passing tests. 9 workspace crates on develop.
+  - TUI (ratatui + crossterm): sessions panel, event ribbon, profile picker, status bar.
+  - 1514 passing tests. 9 workspace crates. develop @ 8bc22a5.
 
-  PIPELINE STATE (as of 2026-06-03 D-247):
+  ============================================================================
+  FACTORY INFRASTRUCTURE
+  ============================================================================
 
-  Phase 3 TDD Implementation COMPLETE (D-232). All 7 waves delivered and gated.
-  D-235: Daemon-wiring CONVERGED (feat/daemon-wire-serve merged as PR #39 @ fcd42f0).
-  develop: check git log -1 for live HEAD.
-  factory-artifacts: run git -C .factory log -1 --format='%h %s' for live HEAD.
-  32/33 stories done (192/195 pts, 98%). Phase 4-7 SUSPENDED per D-236 pivot.
-  Vision v2.2 APPROVED (D-238/D-240). product-brief.md v2.0.1 (consistency-gate-passed D-240).
-  Architecture delta COMMITTED (D-239): ADR-0009/0010/0011 + 5 SS deltas.
-  Consistency gate PASSED (D-240): ARCH-INDEX v1.0.28.
-  BC/PRD delta COMMITTED (D-241): 23 new BCs, PRD v1.28.0 (§2.8/§2.9), EVAL-INDEX v1.10.
-  Adv Pass-1 convergence-fix COMMITTED (D-242): BC-INDEX v1.36, EVAL-INDEX v1.11.
-  Adv Pass-2 convergence-fix COMMITTED (D-243): BC-INDEX v1.37 (138 BCs), EVAL-INDEX v1.12,
-  SS-session-manager v1.3.0, SS-embedded-pty v1.2.0, SS-daemon-wiring-v2-delta v1.2.0,
-  SS-engine-module-v2-delta v1.1.0, ADR-0010 v1.2.0. NEW: BC-2.05.011 + BC-2.08.008.
-  Adv Pass-3 convergence-fix COMMITTED (D-244): SS-session-manager v1.4.0, ADR-0010 v1.3.0,
-  SS-daemon-wiring-v2-delta v1.3.0, SS-ipc v1.12.1. 13 registry bumps.
-  Adv Pass-4 convergence-fix COMMITTED (D-245): SS-session-manager v1.4.1, ADR-0010 v1.3.1,
-  SS-daemon-wiring-v2-delta v1.3.1, PRD v1.28.1, BC-INDEX v1.38. 10 registry bumps.
-  Adv Pass-5 convergence-fix COMMITTED (D-246): SS-ipc v1.13.0, SS-session-manager v1.5.0,
-  SS-embedded-pty v1.3.0, ADR-0010 v1.4.0, BC-2.05.009 v1.5.0. 5 registry bumps.
-  Adv Pass-6 convergence-fix COMMITTED (D-247): SS-ipc v1.14.0, SS-session-manager v1.6.0,
-  SS-daemon-wiring-v2-delta v1.4.0, BC-2.05.010 v1.3.0, EVAL-INDEX v1.13. 5 registry bumps.
-  Adv Pass-7 convergence-fix COMMITTED (D-248): SS-ipc v1.15.0, SS-session-manager v1.7.0,
-  BC-2.05.010 v1.4.0, BC-2.09.002 v1.0.1, BC-INDEX v1.39. 5 registry bumps.
-  NEXT: Adversarial Pass-8 → human gate → story decomposition.
-  Factory worktree: /Users/jmagady/Dev/monocle/.factory/ (orphan branch factory-artifacts)
+  .factory/ mounted at factory-artifacts orphan branch.
+  Verify worktree health: `git -C .factory rev-parse --git-dir` must succeed.
+  Run factory-worktree-health via devops-engineer FIRST on session start.
+  Commit hooks: block-ai-attribution, validate-input-hash, validate-table-cell-count.
+  NEVER --no-verify. NEVER add Co-Authored-By: Claude or robot emoji.
 
-  KEY ARTIFACTS FOR ADVERSARIAL REVIEW:
-
-  - /Users/jmagady/Dev/monocle/NEXT-SESSION-PIVOT.md — pivot handoff (read FIRST)
-  - .factory/specs/product-brief.md v2.0.1 — control-center re-baseline (consistency-gate-passed)
-  - .factory/specs/research/domain-monocle-vision-synthesis.md v2.2 — APPROVED canonical basis
-  - .factory/specs/architecture/ARCH-INDEX.md v1.0.28 — index of all architecture artifacts
-  - .factory/specs/architecture/adr/ADR-0009/0010/0011 — PTY persistence, UDS routing, stack
-  - .factory/specs/architecture/SS-session-manager.md v1.6.0 — SS-08 (session-host coordinator)
-  - .factory/specs/architecture/SS-embedded-pty.md v1.3.0 — SS-09 (embedded PTY widget)
-  - .factory/specs/behavioral-contracts/BC-INDEX.md v1.39 — 138 BCs
-  - .factory/specs/prd.md v1.28.1 — PRD with §2.8/§2.9 (D-241/D-245)
-  - .factory/STATE.md durable_task_register entry PIVOT-CONTROL-CENTER
-
-  WAVE-8 BACKLOG (valid, subordinate to pivot):
+  WAVE-8 BACKLOG (valid, subordinate to pivot — do not block on these):
     S-032 (5 pts, Wave 8, EPIC-05) — daemon fan-out (BC-2.05.004 v1.1.0 PC-2 obligation)
     S-DAEMON-WIRE-FIX-001 (Wave 8, P1, 5pts) — second-signal exit codes 143/130
 
-  KNOWN-FLAKY (DO NOT FLAG):
-    cli_daemon_stop, factory_self_referential, test_BC_2_07_006, wit-bindgen unmatched-skip,
-    PATH isolation flake.
-
-  FACTORY INFRASTRUCTURE:
-    .factory/ mounted at factory-artifacts orphan branch.
-    Run factory-worktree-health via devops-engineer FIRST on session start.
-    Commit hooks: block-ai-attribution, validate-input-hash, validate-table-cell-count — must pass.
-    NEVER use --no-verify. NEVER add Co-Authored-By: Claude or robot emoji.
+  KNOWN-FLAKY (DO NOT FLAG as new findings):
+    cli_daemon_stop, factory_self_referential, test_BC_2_07_006,
+    wit-bindgen unmatched-skip, PATH isolation flake.
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: 2026-05-28
@@ -556,7 +676,7 @@ current_cycle: cycle-001
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4. D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). |
 | 3 TDD Implementation | COMPLETE — Wave-7 GATE PASSED (D-232) | 2026-06-03 | Wave 1+2+3 DONE (83 pts). Wave 4 GATE PASSED (D-175). Wave 5 GATE PASSED (D-182). Wave 6 GATE PASSED (D-224) @ 2a51a91. Wave 7 GATE PASSED (D-232): S-027 (D-226), S-031 (D-227), S-028 (D-228), S-029 (D-230). F-W7G3-MED-001 fixed PR #37 @ 6811103. 1514 tests, 0 failures. HS-EXP-008 score 1.0. 32/33 done (192/195 pts). develop @ 6811103. NEXT: Phase 3→4 transition gate → Phase 4. |
 | 4-7 | SUSPENDED — vision pivot D-236 | — | Old observe-only scope retired. Do NOT run phase-4-holdout-evaluation until vision revision complete. |
-| PIVOT | ADV-PASS-7-DONE (D-248) | 2026-06-03 | D-242: Adv Pass-1 ALL resolved (5C/8I/5O). D-243: Adv Pass-2 ALL resolved (5C/6I/5S). D-244: Adv Pass-3 ALL resolved (4C/9I/4O). D-245: Adv Pass-4 ALL resolved (1C/4I/3S — novelty DECAYING C:5→5→4→1). D-246: Adv Pass-5 ALL resolved (2C/4I — NOVEL C5-001: SS-ipc.md census consolidation). D-247: Adv Pass-6 ALL resolved (2C/2I — dangling-reference homing; C:5→5→4→1→2→2). D-248: Adv Pass-7 ALL resolved (0C/4I/4S — FIRST zero-Critical; C:5→5→4→1→2→2→0). SS-ipc v1.15.0, SS-session-manager v1.7.0, BC-2.05.010 v1.4.0, BC-2.09.002 v1.0.1, BC-INDEX v1.39. NEXT: Adv Pass-8 (need first of 3 consecutive clean) → human approval → story decomposition. |
+| PIVOT | ADV-PASS-9-DONE (D-250); Pass-10 NEXT | 2026-06-03 | D-242..D-250: Passes 1-9 ALL resolved. C trajectory: 5→5→4→1→2→2→0→0→0. I trajectory: 8→6→9→4→4→2→4→2→1. Passes 7/8/9 ZERO-Critical. Pass-9 (D-250): ADR-0010 v1.5.0 snapshot-then-resume doc-comments; EVAL-INDEX v1.15. Consecutive-clean counter = 0; need 3. D-251: durable resume checkpoint written. NEXT: Pass-10 (candidate 1-of-3 for clean streak) → human approval → story decomposition. |
 
 develop @ fcd42f04 (NEXT-SESSION-PIVOT.md + CLAUDE.md D-236 banner). Phase 3 COMPLETE (D-232). 32/33 stories done, 192/195 pts (98%). D-236: PRODUCT-VISION PIVOT — monocle becomes full TUI control center. D-238: Vision v2.1 APPROVED. D-239: Architecture delta COMMITTED (ADR-0009/0010/0011 + 5 SS deltas; ARCH-INDEX v1.0.27). D-240: Consistency gate PASSED — vision v2.2 + brief v2.0.1 + arch fixes (ARCH-INDEX v1.0.28). VSDD Phases 4-7 (old scope) SUSPENDED. NEXT: BC/PRD delta → adversarial review (3 clean passes) → human gate → story decomposition.
 
@@ -590,6 +710,7 @@ D-047 through D-221 archived at: `cycles/cycle-001/decisions-archive.md`, `cycle
 | D-238-delta | product-brief.md v2.0.0 COMMITTED to factory-artifacts (control-center re-baseline, status draft; validate-brief v6.0 verdict VALID). input-hash 7e4f4f4 written. planning/brief-validation.md v6.0 (input-hash 1659922) committed alongside. Draft-commit: spec package goes through adversarial + human gate during/after architecture delta. Part of the D-238 delta progression (no new heavyweight D-number). STATE v6.87→v6.88. | 2026-06-03 | state-manager |
 | D-239 | Control-center architecture delta COMMITTED. 3 ADRs: ADR-0009 (native detached session-host process model for PTY ownership — Q-8 resolved native; monocle-session-host binary owns PTY masters + harness child, daemon re-attaches over UDS on restart), ADR-0010 (PTY bytes shared on existing UDS IPC channel — Q-1 resolved Option A), ADR-0011 (PTY stack: native portable-pty 0.9 + vt100 0.16 + tui-term 0.3.4 — Q-7 fork posture: exact-pin, no fork). 5 SS deltas: SS-session-manager 1.0.0 (SS-08, CAP-008 — SessionManager coordinator, monocle-session-host binary, session-state.json, re-discovery, GC), SS-embedded-pty 1.0.0 (SS-09, CAP-009 — EmbeddedTerminal AppMode, PTY widget, keyboard encoding, SessionCreation wizard), SS-engine-module-v2-delta 1.0.0 (Q-2 resolved — spawn_recipe() method, SpawnRecipe/SpawnOptions), SS-daemon-wiring-v2-delta 1.0.0 (D-235 rework scope — DaemonState.session_manager, daemon_start_sequence step 8b, PtyOutput fan-out), SS-deps-pin-manifest-v2-delta 1.0.0 (portable-pty/vt100/tui-term pins, monocle-session-host crate). ARCH-INDEX bumped to v1.0.27 (SS-08/SS-09, CAP-008/009, ADR-0009/0010/0011 rows). 8 version-pin-registry entries added atomically. input-hashes computed. POL-11 PASS, POL-12 PASS. NEXT: adversarial review (3 clean passes) → human gate → story decomposition. STATE v6.88→v6.89. | 2026-06-03 | state-manager |
 | D-241 | v1A control-center BC/PRD/holdout delta — 23 new BCs authored: SS-03 BC-2.03.005-008 (spawn validation, hook auto-injection, invalid-path error, re-probe), SS-05 BC-2.05.009-010 (SessionCreation wizard, multi-project scope), SS-06 BC-2.06.025 (permission badge+bell guarantee during EmbeddedTerminal/SessionCreation), SS-08 NEW BC-2.08.001-007 (session spawn/kill/SIGTERM-SIGKILL-10s-escalation/parallel-re-discovery/state-persistence/per-session-hooks-file/GC), SS-09 NEW BC-2.09.001-009 (PTY attach/detach/keyboard/output/resize/reconnect/AppMode/scrollback/overlay-integration). BC-INDEX v1.34→v1.35 (113→136 BCs). PRD v1.27.4→v1.28.0 (§2.8 SessionManager + §2.9 EmbeddedPTY). 5 holdout scenarios HS-EXP-011..015 (EVAL-INDEX v1.9→v1.10, 24→29 scenarios). Registry atomicity (L-S027-004): 26 new/updated entries in same atomic commit. POL-11 PASS (271 active), POL-12 PASS. In-scope production-grade design decisions: SIGTERM→SIGKILL 10s escalation (BC-2.08.003); parallel re-discovery probing (BC-2.08.004); per-session hooks file to prevent concurrent-spawn clobber (BC-2.08.006). DEFERRED (architect task, VP-DTU-001 pattern): VP authoring for SS-08/SS-09 BCs (all 16 cite VP-TBD) — formal-hardening scheduling. v1B Tune BCs + embedded-terminal pre-emption BC remain out of scope (v1B scheduling; pre-emption needs human ratification). NEXT = Phase-1d adversarial convergence (3 clean passes) on full control-center spec package, then human approval gate, then v1A story decomposition. STATE v6.90→v6.91. | 2026-06-03 | state-manager |
+| D-251 | Durable zero-context resume checkpoint written (next_session_resume_protocol rewritten to v7.02; NEXT-SESSION-RESUME.md created on develop) at human request — convergence paused at Pass-9-done / consecutive-clean counter = 0 / Pass-10-next. STATE v7.01→v7.02. | 2026-06-03 | state-manager |
 | D-250 | Adversarial Pass-9 (control-center spec package) convergence-fix — 0 Critical / 1 Important / 1 Suggestion ALL resolved. 3rd consecutive zero-Critical pass (C:5→5→4→1→2→2→0→0→0; I:8→6→9→4→4→2→4→2→1). I-P9-001: ADR-0010 §IPC-Message-Type-Additions ScrollbackChunk/ScrollbackDumpComplete doc-comments carried the RETIRED pause-during-dump model — the last live normative I3-003 propagation residue (I-P7-004 fixed SS-session-manager lines ~717/843 but missed ADR-0010's own variant doc-comments). ScrollbackChunk doc-comment rewritten: RETIRED "TUI MUST NOT begin rendering PTY bytes until ScrollbackDumpComplete" → snapshot-then-resume with pending_pty_bytes buffer; cross-ref to §Interleaving added. ScrollbackDumpComplete doc-comment rewritten: three-step TUI procedure added (reset parser from snapshot rows; replay pending_pty_bytes in receipt order; clear buffer + set dump_in_progress=false); explicit note: session-host NOT paused during dump. Comprehensive architecture-wide sweep confirmed sole normative survivor (SS-session-manager lines ~717/793 already correct; SS-daemon-wiring-v2-delta §I3-003 fix narrative = legitimate historical §Trace; SS-session-manager line ~980 watchdog timeout = operational, unrelated; SS-engine-module "paused awaiting user decision" = permission overlay, unrelated; SS-daemon-wiring-impl "pause before writing body" = HTTP test prose, unrelated). ADR-0010 v1.4.0→v1.5.0. Stale-literal sweep: BC-2.05.009 Architecture Source row + BC-2.05.011 Architecture Source row updated v1.4.0→v1.5.0 (2 active literals). BC-2.05.011 §Trace v1.1.0 line 219 is historical anchor per ADR-0007 §Historical Anchor Classification — exempt from update, confirmed. S-P9-001: HS-EXP-014 FAIL criterion + C2-004 modification note "schema v2 per SS-session-manager v1.7.0" → "schema v3 (schema_version: 3) per SS-session-manager v1.7.0" (cosmetic stale label; assertion correct in both). EVAL-INDEX v1.14→v1.15. Adversary confirmed: anchor-resolution PASS, security PASS, no design gaps; expects Pass-10 CLEAN. STREAK: Pass-9 non-clean (Important present) → consecutive-clean counter remains 0; need 3. 2 registry entries bumped atomically (L-S027-004): ADR-0010→1.5.0, EVAL-INDEX→1.15. POL-11 PASS. POL-12 PASS. STATE v7.00→v7.01. | 2026-06-03 | state-manager |
 | D-249 | Adversarial Pass-8 (control-center spec package) convergence-fix — 0 Critical / 2 Important / 1 Suggestion ALL resolved. 2nd consecutive zero-Critical pass (C:5→5→4→1→2→2→0→0; I:8→6→9→4→4→2→4→2). Both Importants were partial-fix propagation in SS-daemon-wiring-v2-delta §3 IPC handler — Pass-7 op-aware/no-silent-failure pattern landed in SS-session-manager+SS-ipc but not the delta's inline handler copy: I-P8-001 §3 KillSession/AttachSession used single-arg session_error_to_code → op-aware IpcOp::Kill/Attach; architect also caught SpawnSession hardcoding 'spawn_failed' → session_error_to_code(IpcOp::Spawn,&e). I-P8-002 §3 KeyInput/Detach/Rename bare ?-propagation (silent connection-drop) → ServerToClient::Error routing; ResizePane → WARN-continue. All 9 §3 arms now canonical; zero bare-? SessionError escapes. STRUCTURAL: canonical-pattern-lock note added to §3 (2nd delta-vs-canonical drift occurrence; cf I6-002). S-P8-001 HS-EXP-015 input-class count 5→6. SS-daemon-wiring-v2-delta v1.4.0→v1.5.0. EVAL-INDEX v1.13→v1.14. Adversary confirmed: retired-concept sweep clean, security PASS, no design gaps. STREAK: Pass-8 non-clean (Important present) → consecutive-clean counter remains 0; need 3. 2 registry entries bumped atomically (L-S027-004). Stale-literal propagation sweep: 14 active literals fixed across 9 files (SS-daemon-wiring-v2-delta v1.4.0→v1.5.0 in BC-2.05.009/010/011, BC-2.08.001/003/004/007/008, SS-ipc). POL-11 PASS. POL-12 PASS. STATE v6.99→v7.00. | 2026-06-03 | state-manager |
 | D-248 | Adversarial Pass-7 (control-center spec package) convergence-fix — 0 Critical / 4 Important / 4 Suggestions ALL resolved. FIRST zero-Critical pass (C:5→5→4→1→2→2→0). Findings were side-effects of Pass-6 §Error-handling addition + I3-003 residue: I-P7-001 SessionError taxonomy gap (BC-2.08.001 EC-151/152 referenced SidecarWriteFailed/SessionIdCollision not in enum) → both added + distinct codes (sidecar_write_failed/session_id_collision; taxonomy 6→8 codes in SS-session-manager v1.6.0→v1.7.0 + SS-ipc v1.14.0→v1.15.0); I-P7-002 kill_failed dead code → op-aware session_error_to_code(IpcOp,&SessionError) so kill-path SessionHostDead→kill_failed reachable; I-P7-003 ServerToClient::Disconnected non-variant in canonical reader → IpcRead{Msg,Disconnected} wrapper enum matching shipped S-025 impl; I-P7-004 retired pause-during-dump survivors (SS-session-manager L668/L843) → snapshot-then-resume; S-P7-001 serde-on-variant removed; S-P7-002 BC-2.09.002 stray removal_range field (v1.0.0→v1.0.1); S-P7-003 BC-2.05.010 H1 +AttachSession (7 variants, v1.3.0→v1.4.0); BC-INDEX v1.38→v1.39 title sync. Adversary confirmed: anchor-resolution PASS, security PASS, no design gaps. STREAK: Pass-7 non-clean (Important present) → consecutive-clean counter remains 0; need 3. 5 registry entries bumped atomically (L-S027-004). Stale-literal propagation sweep: 50 active literals fixed across 22 files (SS-ipc v1.14.0→v1.15.0 in 15 files + SS-session-manager v1.6.0→v1.7.0 in 15 files). POL-11 PASS. POL-12 PASS. NEXT = adversarial Pass-8. STATE v6.98→v6.99. | 2026-06-03 | state-manager |
@@ -631,6 +752,15 @@ MSRV: Rust 1.88 (Phase 1-2); Rust 1.92 (Phase 3, wasmtime 44).
 | Adversary reports | `cycles/cycle-001/S-025/adversarial-pass-*.md` |
 | Resolved blocking issues | `cycles/cycle-001/blocking-issues-resolved.md` |
 | CODIFY-001 sweep protocol reference (Categories 1-11) | `cycles/cycle-001/burst-log.md` (D-207 archive) |
+
+## §Trace v7.02 (D-251 — Durable resume checkpoint written; Pass-10 next)
+
+**D-251 (2026-06-03):** Durable zero-context resume checkpoint written at human request.
+STATE.md `next_session_resume_protocol` rewritten to v7.02 with full convergence-loop
+procedure, complete spec package version list, ratified decisions, remaining tasks, and
+codified lessons. NEXT-SESSION-RESUME.md created on develop as the "read first" entry
+point. NEXT-SESSION-PIVOT.md updated with a D-250 status banner. Convergence paused at
+Pass-9-done / consecutive-clean counter = 0 / Pass-10 is next. STATE v7.01→v7.02.
 
 ## §Trace v7.01 (D-250 — Adv Pass-9 convergence-fix COMMITTED; Pass-10 next)
 
