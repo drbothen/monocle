@@ -1,7 +1,7 @@
 ---
 document_type: prd
 level: L3
-version: "1.28.1"
+version: "1.28.2"
 status: draft
 producer: vsdd-factory:product-owner
 phase: phase-1-spec-crystallization
@@ -171,7 +171,8 @@ Per vision §Explicit Non-Goals (hard boundaries):
 | BC-2.05.007 | Overlay Stack Cleared on Daemon Disconnect (SOQ-3) | P0 |
 | BC-2.05.008 | UDS-Only in Phase 1 (No Shared-Memory Transport) | P1 |
 | BC-2.05.009 | PtyOutput Fan-Out — Per-Session Bounded Channel (1024) with Surfaced Drop Counter | P0 |
-| BC-2.05.010 | New ClientToServer IPC Variants — SpawnSession, KillSession, KeyInput, ResizePane, DetachSession, RenameSession | P0 |
+| BC-2.05.010 | New ClientToServer IPC Variants — SpawnSession, KillSession, KeyInput, ResizePane, DetachSession, RenameSession, AttachSession | P0 |
+| BC-2.05.011 | New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset | P0 |
 
 > Full contracts: `behavioral-contracts/ss-05/BC-2.05.NNN.md`
 
@@ -1485,7 +1486,7 @@ This is a delta amendment reflecting the D-236 control-center pivot. monocle is 
 **Existing subsection additions:**
 
 - §2.3 Engine Module (CAP-003): 4 new BCs (BC-2.03.005..BC-2.03.008) — spawn_recipe() happy path, CCR injection, error cases, and default UnsupportedOperation.
-- §2.5 IPC (CAP-005): 2 new BCs (BC-2.05.009..BC-2.05.010) — PtyOutput fan-out (per-session bounded channel 1024 with surfaced drop counter); new ClientToServer variants (SpawnSession, KillSession, KeyInput, ResizePane, DetachSession, RenameSession).
+- §2.5 IPC (CAP-005): 3 new BCs (BC-2.05.009..BC-2.05.011) — PtyOutput fan-out (per-session bounded channel 1024 with surfaced drop counter); new ClientToServer variants (SpawnSession, KillSession, KeyInput, ResizePane, DetachSession, RenameSession, AttachSession — 7 total); new ServerToClient variants (ScrollbackChunk, ScrollbackDumpComplete, PtyReset).
 - §2.6 TUI (CAP-006): 1 new BC (BC-2.06.025) — multi-session / multi-project sessions panel grouped by project with fast switching and TUI lifecycle actions.
 
 **BC count change:**
@@ -1517,3 +1518,44 @@ SE-16d monotonicity PASS: 2026-06-03T12:00:00Z > 2026-05-28T12:00:00Z (v1.27.4 p
 - §Trace v1.28.0 New §2.8 description: "ScrollbackDump on attach" → "chunked scrollback `ScrollbackChunk*`+`ScrollbackDumpComplete` on attach" — stale prose aligned with canonical protocol (HIGH-002 propagation).
 
 SE-16d monotonicity PASS: 2026-06-03T12:00:00Z ≥ v1.28.0 timestamp. PASS.
+
+---
+
+## §Trace v1.28.2 — I15-001/I15-002 adversarial pass-15 fixes (BC-2.05.010 title, BC-2.05.011 missing row, §Trace prose)
+
+**Bump:** v1.28.1 → v1.28.2 (patch — §2.5 BC table titles + missing row corrected; §Trace v1.28.0 prose corrected; no new BCs, no schema changes).
+
+**Changes made:**
+
+- §2.5 IPC BC table: BC-2.05.010 title corrected from 6-variant form ("SpawnSession, KillSession,
+  KeyInput, ResizePane, DetachSession, RenameSession") to 7-variant form ("SpawnSession, KillSession,
+  KeyInput, ResizePane, DetachSession, RenameSession, AttachSession") — mirrors the BC file H1 per
+  bc_h1_is_title_source_of_truth policy (I15-002). AttachSession was added in BC-2.05.010 v1.2.0
+  (I3-004); H1 was updated in v1.4.0 (S-P7-003); PRD §2.5 table was not updated at that time.
+
+- §2.5 IPC BC table: BC-2.05.011 row added ("New ServerToClient IPC Variants — ScrollbackChunk,
+  ScrollbackDumpComplete, PtyReset", P0) — this BC existed in the v1A burst (BC file at
+  ss-05/BC-2.05.011.md) but was omitted from the §2.5 table and §Trace v1.28.0 "BC-2.05.009..010"
+  enumeration. BC-2.05.011 is load-bearing (ScrollbackChunk* protocol consumed by BC-2.05.010 and
+  BC-2.08.007). Classified as straggler found during I15-002 class-close sweep.
+
+- §Trace v1.28.0 "Existing subsection additions" prose: updated to enumerate 3 new §2.5 BCs
+  (BC-2.05.009..BC-2.05.011), add AttachSession to the ClientToServer variant list (7 total), and
+  add the ServerToClient variants (ScrollbackChunk, ScrollbackDumpComplete, PtyReset).
+
+**PRD §2.5 cross-check result (I15-002 class-close):**
+
+| BC | PRD §2.5 title | H1 canonical title | Status |
+|----|---------------|-------------------|--------|
+| BC-2.03.005 | ClaudeCodeModule.spawn_recipe() — Happy-Path Recipe Assembly | MATCHES | CLEAN |
+| BC-2.03.006 | ClaudeCodeModule.spawn_recipe() — CCR Base URL Injection | MATCHES | CLEAN |
+| BC-2.03.007 | spawn_recipe() Error Cases — BinaryNotFound and InvalidPath | MATCHES | CLEAN |
+| BC-2.03.008 | Default spawn_recipe() Returns UnsupportedOperation | MATCHES | CLEAN |
+| BC-2.05.009 | PtyOutput Fan-Out — Per-Session Bounded Channel (1024) with Surfaced Drop Counter | MATCHES | CLEAN |
+| BC-2.05.010 | (stale 6-variant) | 7-variant with AttachSession | FIXED |
+| BC-2.05.011 | (absent — row missing) | New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset | ADDED |
+| BC-2.06.025 | Multi-Session / Multi-Project Sessions Panel — Grouped by Project, Fast Switching, TUI Lifecycle Actions | MATCHES | CLEAN |
+| BC-2.08.001..007 | all 7 rows | MATCHES | CLEAN |
+| BC-2.09.001..009 | all 9 rows | MATCHES | CLEAN |
+
+SE-16d monotonicity PASS: 2026-06-04T00:00:00Z > 2026-06-03T12:00:00Z (v1.28.1 predecessor). PASS.

@@ -252,9 +252,9 @@ dtu-assessment:
 
 prd:
   path: specs/prd.md
-  current_version: "1.28.1"
-  last_bump_commit: "[Adversarial Pass 4 resolution D-245 2026-06-03 — HIGH-002 ScrollbackDump→chunked propagated to PRD §2.8/§2.9 capability descriptions]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.28.2"
+  last_bump_commit: "[Pass-15 I15-002 2026-06-04 — PRD §2.5 BC-2.05.010 title 6→7 variants +AttachSession; added missing BC-2.05.011 row]"
+  last_bump_date: "2026-06-04"
 
 product-brief:
   path: specs/product-brief.md
@@ -731,8 +731,8 @@ BC-2.05.009:
 
 BC-2.05.010:
   path: specs/behavioral-contracts/ss-05/BC-2.05.010.md
-  current_version: "1.5.0"
-  last_bump_commit: "[Pass-10 S10-002 — success POs now name ordered SessionStateChanged→SessionListUpdate emission sequence]"
+  current_version: "1.5.1"
+  last_bump_commit: "[Pass-15 I15-001 2026-06-04 — EC-283 code invalid_request→rename_failed per canonical session_error_to_code; §Trace rationale corrected]"
   last_bump_date: "2026-06-04"
 
 BC-2.05.011:

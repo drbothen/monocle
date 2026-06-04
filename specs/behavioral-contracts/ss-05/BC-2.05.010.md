@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.0"
+version: "1.5.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:45:00Z
@@ -135,7 +135,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 | EC-280 | `SpawnSession` with a `SpawnRecipe` where `binary` is empty path | `SessionError::SpawnFailed`; `ServerToClient::Error { code: "spawn_failed", message: ... }` sent back |
 | EC-281 | `KeyInput` for unknown `session_id` | `SessionError::SessionNotFound`; `ServerToClient::Error { code: "session_not_found", message: ... }` sent to requesting client |
 | EC-282 | `ResizePane` with `rows=0` or `cols=0` | The daemon's IPC handler MUST clamp each dimension to a minimum of 1 BEFORE forwarding to `resize_session()`. `rows = max(rows, 1); cols = max(cols, 1)`. The PTY and parser are resized to the clamped values. No `SessionError` is returned; the operation succeeds with clamped dimensions. Clamping is consistent with BC-2.09.006 EC-237 and the resize behavior in the TUI. A zero-dimension PTY is undefined by POSIX; clamping to 1 is the most robust behavior. |
-| EC-283 | `RenameSession` with empty `new_name` | `SessionError::InvalidSessionName`; `ServerToClient::Error { code: "invalid_request", message: ... }` sent to requesting client |
+| EC-283 | `RenameSession` with empty `new_name` | `SessionError::InvalidSessionName`; `ServerToClient::Error { code: "rename_failed", message: ... }` sent to requesting client |
 | EC-284 | Concurrent `KeyInput` messages from the same TUI client | Processed in order of arrival; each forwarded to session-host in receipt order |
 
 ## Canonical Test Vectors
@@ -187,6 +187,27 @@ S-TBD — Implement new ClientToServer IPC variants and daemon routing (filled b
 
 VP-TBD — IPC variant routing integration tests (filled after VP creation)
 
+## §Trace v1.5.1
+
+**I15-001 — Correct EC-283 error code from `invalid_request` to `rename_failed`** (2026-06-04):
+- I15-001 (Phase-1d Pass 15 IMPORTANT): EC-283 specified `SessionError::InvalidSessionName` →
+  `ServerToClient::Error { code: "invalid_request" }`. This is internally impossible: the canonical
+  exhaustive `session_error_to_code()` function in SS-session-manager.md (line ~484) maps
+  `SessionError::InvalidSessionName { .. } => "rename_failed"` UNCONDITIONALLY — no op-aware or
+  content-aware branch routes any `InvalidSessionName` to `"invalid_request"`. Additionally,
+  SS-ipc.md line ~405 defines `"invalid_request"` as "Validation failure BEFORE the SessionManager
+  call", but an empty-name failure surfaces as `SessionError::InvalidSessionName` returned BY
+  `rename_session()` — a post-call result, not a pre-call validation failure.
+- **EC-283:** `code: "invalid_request"` corrected to `code: "rename_failed"`.
+- **§Trace v1.3.0:** The rationale claiming `"invalid_request"` was correct for validation failures
+  has been corrected. It now accurately states that `session_error_to_code()` maps `InvalidSessionName`
+  unconditionally to `"rename_failed"` and that no pre-call validation layer exists that could route
+  to `"invalid_request"`.
+- Whole-file sweep performed: no other EC/PC/Invariant carries an inconsistent `invalid_request`/
+  `rename_failed` mapping for `InvalidSessionName`. Architecture Source line (line ~166) correctly
+  enumerates both `rename_failed` and `invalid_request` as codes in the taxonomy — this is accurate
+  (both codes exist in the taxonomy; only the EC-283 assignment of `invalid_request` was wrong).
+
 ## §Trace v1.5.0
 
 **S10-002 — Add ordered SessionStateChanged→SessionListUpdate emission to SpawnSession-PC-3, KillSession-PC-3, DetachSession-PC-3** (2026-06-04):
@@ -230,10 +251,8 @@ VP-TBD — IPC variant routing integration tests (filled after VP creation)
   unknown or dead session (matches architect taxonomy + SessionError::SessionNotFound).
 - **EC-280:** Added `code: "spawn_failed"` to `ServerToClient::Error` — previously omitted code string.
 - **EC-281:** Added `code: "session_not_found"` to `ServerToClient::Error` — previously omitted code string.
-- **EC-283:** Added `code: "invalid_request"` to `ServerToClient::Error` — previously omitted code string.
-  `rename_failed` in the architect's taxonomy covers operational rename failures (e.g., session-host
-  unreachable); `invalid_request` covers input-validation failures such as an empty `new_name`.
-  EC-283 is a validation failure, so `invalid_request` is the correct code.
+- **EC-283:** Added `code: "rename_failed"` to `ServerToClient::Error` — previously omitted code string.
+  Per SS-session-manager.md §`session_error_to_code()` and mapping table (line ~433): `SessionError::InvalidSessionName { .. }` maps **unconditionally** to `"rename_failed"` — there is no op-aware or content-aware branch that routes to `"invalid_request"`. Per SS-ipc.md line ~405: `"invalid_request"` is reserved for "Validation failure BEFORE the SessionManager call"; an empty-name failure surfaces as `SessionError::InvalidSessionName` returned BY `rename_session()`, making it an operational (post-call) result, not a pre-call validation failure. Therefore `"rename_failed"` is the correct and only possible code for this edge case. (Note: the original v1.3.0 rationale incorrectly stated `"invalid_request"` was the correct code based on a validation/operational distinction that is NOT implemented in the canonical exhaustive `session_error_to_code()` function — corrected in v1.5.1 per I15-001.)
 - **Architecture Source:** Added SS-ipc.md v1.14.0+ citation for the Error variant and code taxonomy.
   (v1.13.0 does NOT define `ServerToClient::Error`; the architect adds it in Pass-6 in parallel.)
 
