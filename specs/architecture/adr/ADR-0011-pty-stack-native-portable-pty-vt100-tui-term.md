@@ -6,7 +6,7 @@ title: "PTY Stack: Native portable-pty + vt100 + tui-term (Q-7 tui-term posture)
 status: accepted
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
-version: "1.2.0"
+version: "1.2.1"
 timestamp: 2026-06-04T00:00:00Z
 inputs:
   - research/embedded-pty-evaluation.md
@@ -70,7 +70,7 @@ portable-pty = "0.9"
 vt100        = "0.16"
 
 # crates/monocle-tui/Cargo.toml (renderer; renders vt100::Screen)
-tui-term     = "0.3"
+tui-term     = "=0.3.4"
 vt100        = "0.16"
 ```
 
@@ -155,6 +155,25 @@ review gate on each upgrade upgrade compensates for the WIP status.
 - Extends: SS-deps-pin-manifest.md (adds three crates to Phase 1 Pin Manifest; see SS-deps-pin-manifest delta in this architecture delta batch).
 - Requires: SS-08 Session Manager — monocle-session-host binary (uses `portable-pty` + `vt100`; see SS-session-manager.md).
 - Requires: SS-09 Embedded PTY — monocle-tui renderer (uses `tui-term` + `vt100`; see SS-embedded-pty.md).
+
+## §Trace v1.2.1
+
+**I19-001 — §Decision Cargo.toml block tui-term caret form corrected to exact pin** (2026-06-04T00:00:00Z):
+- NORMATIVE (I19-001, Phase-1d Pass 19, IMPORTANT): The §Decision Cargo.toml block (monocle-tui
+  section) showed `tui-term = "0.3"` — the caret form — which contradicts the exact-pin contract
+  established in this same ADR at §Q-7 Resolution ("`tui-term = "=0.3.4"` in
+  `monocle-tui/Cargo.toml`"), the MSRV table (`"=0.3.4"` (exact)), the Pin policy justification
+  ("tui-term receives an exact pin"), and SS-deps-pin-manifest-v2-delta.md lines ~43/81/88
+  (`"=0.3.4"` exact-pinned per ADR-0011). The caret form silently absorbs tui-term 0.3.5+,
+  defeating the WIP-risk mitigation that is the substance of the Q-7 decision.
+  This was a partial-fix regression: the exact-pin correction reached all other artifacts but
+  not the §Decision code block.
+  - SE-17c BEFORE: `tui-term     = "0.3"`
+  - SE-17c AFTER:  `tui-term     = "=0.3.4"`
+  portable-pty and vt100 in the same block correctly retain their caret forms (`"0.9"` and
+  `"0.16"` respectively) — these are ratified CARET per §Pin policy justification and are
+  unchanged.
+- SE-16d PASS: 2026-06-04T00:00:00Z > chain high-water 2026-06-04T00:00:00Z (monotonic).
 
 ## §Trace v1.1.0
 

@@ -188,8 +188,8 @@ ADR-0010:
 
 ADR-0011:
   path: specs/architecture/adr/ADR-0011-pty-stack-native-portable-pty-vt100-tui-term.md
-  current_version: "1.2.0"
-  last_bump_commit: "[Pass-13 I13-002 sibling sweep — inverted SS-08/SS-09 cross-refs corrected]"
+  current_version: "1.2.1"
+  last_bump_commit: "[Pass-19 I19-001 — tui-term pin FORM drift: §Decision '0.3'→'=0.3.4' exact-pin form; within-document contradiction with §Q-7/deps-manifest CLOSED]"
   last_bump_date: "2026-06-04"
 
 # ───────────────────────────────────────────────────────────────────────────────
@@ -258,8 +258,8 @@ prd:
 
 product-brief:
   path: specs/product-brief.md
-  current_version: "2.0.2"
-  last_bump_commit: "[D-260 Pass-18 I18-001 2026-06-04 — §Out-of-Scope daemon-owned→session-host-owned framing; consistency correction to ratified D-238 model; no scope change]"
+  current_version: "2.0.3"
+  last_bump_commit: "[Pass-19 I19-001 2026-06-04 — §Tech Stack table tui-term '0.3'→'=0.3.4' exact-pin form; pin-form propagation from ADR-0011 v1.2.1]"
   last_bump_date: "2026-06-04"
 
 # ───────────────────────────────────────────────────────────────────────────────
@@ -798,7 +798,7 @@ BC-2.08.008:
 BC-2.09.001:
   path: specs/behavioral-contracts/ss-09/BC-2.09.001.md
   current_version: "1.3.1"
-  last_bump_commit: "[Pass-17 I17-001/S17-002 — pin ADR-0011 v1.2.0 §Decision in Architecture-Source cell]"
+  last_bump_commit: "[Pass-17 I17-001/S17-002 — pin ADR-0011 v1.2.0 §Decision in Architecture-Source cell]" # version-pin-historical: changelog description of Pass-17 bump; v1.2.0 is the ADR version at time of that fix
   last_bump_date: "2026-06-04"
 
 BC-2.09.002:

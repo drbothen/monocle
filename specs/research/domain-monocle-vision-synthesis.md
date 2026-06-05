@@ -1,7 +1,7 @@
 ---
 document_type: vision-synthesis
 level: ops
-version: "2.2.1"
+version: "2.2.2"
 status: approved
 producer: product-owner
 phase: pre-phase-0-vision
@@ -603,7 +603,7 @@ Setup: three sessions running. Two permission prompts arrive concurrently from d
 |-------|---------|----------|------|---------|---------|
 | `portable-pty` | `"0.9"` | `monocle-session-host` | PTY pair creation, child spawn, master read/write | MIT | none (2026-06-03) |
 | `vt100` | `"0.16"` | `monocle-session-host`, `monocle-tui` | ANSI/VT100 parse → in-memory screen state | MIT | none (2026-06-03) |
-| `tui-term` | `"0.3"` | `monocle-tui` | ratatui widget rendering `vt100::Screen` | MIT | none (2026-06-03) |
+| `tui-term` | `"=0.3.4"` | `monocle-tui` | ratatui widget rendering `vt100::Screen` | MIT | none (2026-06-03) |
 
 Compatibility notes:
 - `tui-term 0.3.4` depends on `ratatui-core ^0.1.0` and `ratatui-widgets ^0.3.0` — exactly what `ratatui 0.30.0` pins. Unifies to a single copy in the dependency graph (verified at manifest level on deps.rs 2026-06-03). Cargo-init spike required at architecture delta step: `cargo tree -d` must show zero duplicate `ratatui-core`/`ratatui-widgets`/`vt100` versions before committing.
@@ -720,6 +720,8 @@ v1.1.2 (2026-05-12): Surgical path fix — `/hooks/prompt-submit` wire correctio
 - Status at v2.0: DRAFT — pending human approval gate.
 
 **v2.1 (2026-06-03):** D-238 escalation applied by product-owner agent. Persistence model escalated: CASE 2 (graceful daemon-process restart) now REQUIRES session survival via native detached session-host processes (session-host-owns-PTY model). Persistence principle renamed from DAEMON-OWNS-PTY to session-host-owns-PTY; daemon coordinates/re-attaches. No-tmux default preserved; external supervisor only as architect-surfaced fallback for human decision. Q-8 (HIGH priority) added to §Open Questions for architect. Doc **APPROVED** by Joshua Magady (2026-06-03) to proceed to brief → architecture → story delta.
+
+**v2.2.2 (2026-06-04):** I19-001 consistency correction — §Tech Stack table tui-term version form corrected from caret `"0.3"` to exact-pin `"=0.3.4"`. The exact-pin contract was already ratified in ADR-0011 §Q-7 and recorded in SS-deps-pin-manifest-v2-delta; the table row was a stale caret form contradicting the §Tech Stack compatibility note "Decision-of-record: Pin it exactly." No decision change — consistency correction only. Status: APPROVED (consistency-only; no scope change).
 
 **v2.2.1 (2026-06-04):** I18-001 consistency correction — aligns §Non-Goals and §Five Planes with the already-approved §Process Topology (ADR-0009 / D-238 session-host-owns-PTY model). Three surviving stale assertions fixed: (1) §Five Planes Runtime row "daemon-owned" → "owned by a detached monocle-session-host process (session-host-owned; daemon coordinates)"; (2) §Explicit Non-Goals line 588 "daemon-owned PTYs" → "session-host-owned PTYs (daemon-coordinated)"; (3) §Explicit Non-Goals line 592 "portable-pty native in-process PTY is the chosen approach; tmux control-mode is a documented fallback if daemon-owned persistence proves insufficient" → "native detached per-session monocle-session-host PTY ownership (portable-pty inside each session-host process) is the chosen approach; tmux control-mode is a documented fallback if native session-host persistence proves insufficient". This is a consistency correction to already-ratified decisions; it does NOT change any approved decision. Status: APPROVED (consistency-only; no scope change).
 

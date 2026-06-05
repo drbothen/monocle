@@ -1,7 +1,7 @@
 ---
 document_type: product-brief
 level: L1
-version: "2.0.2"
+version: "2.0.3"
 status: draft
 producer: product-owner
 phase: pivot-delta-brief
@@ -60,6 +60,7 @@ supplements:
 | **2.0.0** | **2026-06-03** | **product-owner** | **D-236/D-237/D-238 CONTROL-CENTER RE-BASELINE.** Retired: observe-only constraint and all residual "observe-only" framing in scope/non-goals/roadmap. Retired: Phase 1–4 observe-only roadmap. Added: LAUNCH, EMBEDDED PTY, MULTI-SESSION/MULTI-PROJECT, INTERACTIVE TUNE as first-class v1 capabilities. Replaced roadmap with v1A/v1B wave plan. Replaced success criteria with control-center bar. Replaced competitive positioning. session-host-owns-PTY persistence model (D-238). Hook auto-injection on spawn. Preserved: all normative decisions from v1.4.x lineage that remain valid (OQ resolutions, forward-compatibility contracts, non-goals that are still non-goals). Traces to vision-synthesis v2.1 (approved D-238 by Joshua Magady 2026-06-03). Status: draft — pending adversarial review and human gate before architecture delta proceeds. |
 | **2.0.1** | **2026-06-03** | **product-owner** | **Consistency propagation of v2.1 session-host model + architect rulings; no scope change.** Applied ADR-0009 and SS-08: `portable-pty` and `vt100` crate locations corrected to `monocle-session-host` in §Tech Direction table (CRIT-2); `PtySpawner`/`MockPtySpawner` replaced with `SessionHostSpawner`/`MockSessionHostSpawner` throughout (CRIT-3), including §Success Criteria "verified via integration test with MockSessionHostSpawner"; `VsddFactoryAdapter`/`FactoryAdapter` extraction source corrected to `monocle-core` in §Crate Workspace Layout (IMP-1); `monocle-session-host` added as v1A new crate in §Crate Workspace Layout; permission badge+bell guarantee for EmbeddedTerminal mode added with BC-pending note; v1B pre-emption open item recorded (SUG-3). Status: draft (consistency-only; no scope change). |
 | **2.0.2** | **2026-06-04** | **product-owner** | **I18-001 consistency correction — §Out-of-Scope daemon-owned framing aligned with ratified D-238 session-host-owns-PTY model; no scope change.** §Out of Scope "Does NOT replace the user's general-purpose terminal multiplexer" bullet: "daemon-owned PTYs" → "session-host-owned PTYs (daemon-coordinated)". This is a consistency correction to the already-ratified session-host-owns-PTY decision (ADR-0009, D-238); it does NOT change any approved decision. Status: draft (consistency-only; no scope change). |
+| **2.0.3** | **2026-06-04** | **product-owner** | **I19-001 consistency correction — §Tech Direction PTY Stack table tui-term version form corrected from caret `"0.3"` to exact-pin `"=0.3.4"`.** The exact-pin contract was already ratified in ADR-0011 §Q-7 and recorded in SS-deps-pin-manifest-v2-delta; the table row was stale caret form contradicting the brief's own line ~339 "Decision-of-record: exact-pin." No decision change — this is a consistency correction only. Status: draft (consistency-only; no scope change). |
 
 ---
 
@@ -328,7 +329,7 @@ New crates added in v2.0 (from `embedded-pty-evaluation.md` v1.0 §7.1, confirme
 |-------|---------|----------|------|---------|---------|
 | `portable-pty` | `"0.9"` | `monocle-session-host` | PTY pair creation, child spawn, master read/write | MIT | none (2026-06-03) |
 | `vt100` | `"0.16"` | `monocle-session-host`, `monocle-tui` | ANSI/VT100 parse → in-memory screen state | MIT | none (2026-06-03) |
-| `tui-term` | `"0.3"` | `monocle-tui` | ratatui widget rendering `vt100::Screen` | MIT | none (2026-06-03) |
+| `tui-term` | `"=0.3.4"` | `monocle-tui` | ratatui widget rendering `vt100::Screen` | MIT | none (2026-06-03) |
 
 Compatibility notes:
 - `tui-term 0.3.4` depends on `ratatui-core ^0.1.0` and `ratatui-widgets ^0.3.0` — exactly what
