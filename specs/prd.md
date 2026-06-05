@@ -170,7 +170,7 @@ Per vision §Explicit Non-Goals (hard boundaries):
 | BC-2.05.006 | TUI Reconnects After Daemon Restart | P1 |
 | BC-2.05.007 | Overlay Stack Cleared on Daemon Disconnect (SOQ-3) | P0 |
 | BC-2.05.008 | UDS-Only in Phase 1 (No Shared-Memory Transport) | P1 |
-| BC-2.05.009 | PtyOutput Fan-Out — Per-Session Bounded Channel (1024) with Surfaced Drop Counter | P0 |
+| BC-2.05.009 | PtyOutput Fan-Out — Per-Session Bounded Channel (1024) with Drop Counter (stderr WARN) + PtyReset TUI Recovery | P0 |
 | BC-2.05.010 | New ClientToServer IPC Variants — SpawnSession, KillSession, KeyInput, ResizePane, DetachSession, RenameSession, AttachSession | P0 |
 | BC-2.05.011 | New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset | P0 |
 
@@ -1554,7 +1554,7 @@ SE-16d monotonicity PASS: 2026-06-03T12:00:00Z ≥ v1.28.0 timestamp. PASS.
 | BC-2.03.006 | ClaudeCodeModule.spawn_recipe() — CCR Base URL Injection | MATCHES | CLEAN |
 | BC-2.03.007 | spawn_recipe() Error Cases — BinaryNotFound and InvalidPath | MATCHES | CLEAN |
 | BC-2.03.008 | Default spawn_recipe() Returns UnsupportedOperation | MATCHES | CLEAN |
-| BC-2.05.009 | PtyOutput Fan-Out — Per-Session Bounded Channel (1024) with Surfaced Drop Counter | MATCHES | CLEAN |
+| BC-2.05.009 | PtyOutput Fan-Out — Per-Session Bounded Channel (1024) with Drop Counter (stderr WARN) + PtyReset TUI Recovery | MATCHES | CLEAN (retitled S20-001) |
 | BC-2.05.010 | (stale 6-variant) | 7-variant with AttachSession | FIXED |
 | BC-2.05.011 | (absent — row missing) | New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset | ADDED |
 | BC-2.06.025 | Multi-Session / Multi-Project Sessions Panel — Grouped by Project, Fast Switching, TUI Lifecycle Actions | MATCHES | CLEAN |

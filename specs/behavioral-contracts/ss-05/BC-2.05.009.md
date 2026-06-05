@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.0"
+version: "1.5.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -24,7 +24,7 @@ removed: null
 removal_reason: null
 ---
 
-# Behavioral Contract BC-2.05.009: PtyOutput Fan-Out — Per-Session Bounded Channel (1024) with Surfaced Drop Counter
+# Behavioral Contract BC-2.05.009: PtyOutput Fan-Out — Per-Session Bounded Channel (1024) with Drop Counter (stderr WARN) + PtyReset TUI Recovery
 
 ## Description
 
@@ -164,6 +164,21 @@ S-TBD — Implement PtyOutput broker fan-out and session-host PTY reader bounded
 ## VP Anchors
 
 VP-TBD — PtyOutput fan-out integration tests (filled after VP creation)
+
+## §Trace v1.5.1
+
+**S20-001 Phase-1d Pass-20 fix — H1 title precision (title↔body agreement)** (2026-06-04):
+- Finding: H1 title contained "Surfaced Drop Counter", which a fresh adversary read as the
+  `drop_counter` being surfaced in the TUI status bar. PC-3 explicitly contradicts this:
+  "The `drop_counter` is NOT surfaced in the TUI status bar (session-host has no TUI). It is
+  logged to the session-host's stderr at WARN level." Actual PTY drops surface to the TUI via
+  the separate PtyReset 5s indicator (Invariant 5), not via the drop_counter.
+- Old title: "PtyOutput Fan-Out — Per-Session Bounded Channel (1024) with Surfaced Drop Counter"
+- New title: "PtyOutput Fan-Out — Per-Session Bounded Channel (1024) with Drop Counter (stderr WARN) + PtyReset TUI Recovery"
+- Change: title-only precision fix; NO behavioral change. PC-3 wording unchanged. Invariant 5
+  wording unchanged. The new title encodes exactly where the counter goes (stderr WARN) and how
+  actual drops reach the TUI (PtyReset recovery path).
+- Propagated to: BC-INDEX.md line 125; prd.md §2.5 line 173.
 
 ## §Trace v1.5.0
 

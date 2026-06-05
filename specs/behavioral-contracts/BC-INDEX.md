@@ -122,7 +122,7 @@ traces_to: prd.md
 | BC-2.05.006 | TUI Reconnects After Daemon Restart | P1 | active | ss-05/BC-2.05.006.md | — |
 | BC-2.05.007 | Overlay Stack Cleared on Daemon Disconnect (SOQ-3) | P0 | active | ss-05/BC-2.05.007.md | — |
 | BC-2.05.008 | UDS-Only in Phase 1 (No Shared-Memory Transport) | P1 | active | ss-05/BC-2.05.008.md | — |
-| BC-2.05.009 | PtyOutput Fan-Out — Per-Session Bounded Channel (1024) with Surfaced Drop Counter | P0 | active | ss-05/BC-2.05.009.md | — |
+| BC-2.05.009 | PtyOutput Fan-Out — Per-Session Bounded Channel (1024) with Drop Counter (stderr WARN) + PtyReset TUI Recovery | P0 | active | ss-05/BC-2.05.009.md | — |
 | BC-2.05.010 | New ClientToServer IPC Variants — SpawnSession, KillSession, KeyInput, ResizePane, DetachSession, RenameSession, AttachSession | P0 | active | ss-05/BC-2.05.010.md | — |
 | BC-2.05.011 | New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset | P0 | active | ss-05/BC-2.05.011.md | — |
 
