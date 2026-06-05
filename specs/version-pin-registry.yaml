@@ -252,8 +252,8 @@ dtu-assessment:
 
 prd:
   path: specs/prd.md
-  current_version: "1.28.2"
-  last_bump_commit: "[Pass-15 I15-002 2026-06-04 — PRD §2.5 BC-2.05.010 title 6→7 variants +AttachSession; added missing BC-2.05.011 row]"
+  current_version: "1.28.3"
+  last_bump_commit: "[Pass-16 I16-001 2026-06-04 — PRD §2.8 add missing P0 BC-2.08.008 SessionStateChanged/ordering row; correct false §Trace line-1558 SS-08=7→8 attestation; add derived count cross-check]"
   last_bump_date: "2026-06-04"
 
 product-brief:

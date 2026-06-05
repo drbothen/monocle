@@ -1,11 +1,11 @@
 ---
 document_type: prd
 level: L3
-version: "1.28.2"
+version: "1.28.3"
 status: draft
 producer: vsdd-factory:product-owner
 phase: phase-1-spec-crystallization
-timestamp: 2026-06-03T12:00:00Z
+timestamp: 2026-06-04T00:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, architecture/SS-daemon-lifecycle.md, architecture/SS-core-types-and-abi.md, architecture/SS-engine-module.md, architecture/SS-deps-pin-manifest.md, architecture/SS-permissions-phase1.md, architecture/SS-conventions-anti-patterns.md, architecture/SS-forward-compatibility.md, dtu-assessment.md, architecture/adr/ADR-0001-wasmtime-vs-wasmi.md, architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, architecture/adr/ADR-0003-license-selection.md, architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
 input-hash: "1832f42"
 traces_to: "product-brief.md v1.4.30; vision-synthesis v1.1.2; SS-daemon-lifecycle.md v1.0.32; SS-core-types-and-abi.md v1.2.13; SS-engine-module.md v1.1.20; SS-deps-pin-manifest.md v1.1.17; SS-conventions-anti-patterns.md v1.29.5; architecture/SS-permissions-phase1.md v1.5.2; architecture/SS-forward-compatibility.md v1.2.19; architecture/adr/ADR-0001-wasmtime-vs-wasmi.md v1.0.3; architecture/adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md v1.0.4; architecture/adr/ADR-0003-license-selection.md v1.0.2; architecture/adr/ADR-0004-exhaustive-enums-phase1-permission-and-claude-code-tool.md v1.0.4; architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md v1.0.2; architecture/ARCH-INDEX.md v1.0.10; behavioral-contracts/BC-INDEX.md v1.35; 136 BCs sharded under behavioral-contracts/ss-NN/ (ss-01 through ss-09 + ss-dtu); domain-spec/L2-INDEX.md v1.0.11; verification-properties/VP-INDEX.md v1.15" # version-pin-historical: BC-INDEX v1.17 was canonical at PRD v1.27.4; updated to v1.35 and 70→136 BCs at v1.28.0 (D-241 control-center v1A)
@@ -234,10 +234,12 @@ Session Manager governs the complete lifecycle of monocle-managed harness sessio
 `monocle-session-host` child processes via `SessionHostSpawner`, maintaining the `SessionEntry`
 registry and `session-state.json` sidecars, killing sessions via `DaemonToHost::Kill`, re-discovering
 alive sessions after daemon restart (blocking UDS bind until complete), garbage-collecting terminated
-sessions after a 10-second grace period, and auto-injecting the `--settings` hook argument at spawn
-time. The detached session-host process model (ADR-0009) means sessions survive daemon restart and
-their PTY streams are re-attached by the new daemon instance, which is the primary differentiator vs.
-daemon-owned PTY approaches.
+sessions after a 10-second grace period, auto-injecting the `--settings` hook argument at spawn
+time, and broadcasting `SessionStateChanged` to all connected TUI clients on every `SessionState`
+transition (driving wizard auto-advance and `EmbeddedTerminal` exit; ordered before
+`SessionListUpdate`). The detached session-host process model (ADR-0009) means sessions survive daemon
+restart and their PTY streams are re-attached by the new daemon instance, which is the primary
+differentiator vs. daemon-owned PTY approaches.
 
 | BC ID | Title | Priority |
 |-------|-------|----------|
@@ -248,6 +250,7 @@ daemon-owned PTY approaches.
 | BC-2.08.005 | Session GC — Terminated Sessions Removed from Registry After 10s Grace Period | P1 |
 | BC-2.08.006 | Hook Auto-Injection — `--settings` Arg Present in Session-Host Child Args Within 2s of Spawn | P0 |
 | BC-2.08.007 | Attach/Detach — Chunked Scrollback (ScrollbackChunk*+ScrollbackDumpComplete) on Attach; session-host Stays Alive on Detach | P1 |
+| BC-2.08.008 | SessionStateChanged — Daemon Emits on Every SessionState Transition; Delivered to All TUI Clients; Ordering Relative to SessionListUpdate | P0 |
 
 > Full contracts: `behavioral-contracts/ss-08/BC-2.08.NNN.md`
 > Key architecture decisions: ADR-0009 (native detached session-host process model)
@@ -1555,7 +1558,39 @@ SE-16d monotonicity PASS: 2026-06-03T12:00:00Z ≥ v1.28.0 timestamp. PASS.
 | BC-2.05.010 | (stale 6-variant) | 7-variant with AttachSession | FIXED |
 | BC-2.05.011 | (absent — row missing) | New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset | ADDED |
 | BC-2.06.025 | Multi-Session / Multi-Project Sessions Panel — Grouped by Project, Fast Switching, TUI Lifecycle Actions | MATCHES | CLEAN |
-| BC-2.08.001..007 | all 7 rows | MATCHES | CLEAN |
+| BC-2.08.001..007 | all 7 rows present | MATCHED (7 of 8) | STALE — BC-2.08.008 missing; corrected in I16-001 (v1.28.3) |
+| BC-2.08.008 | (absent — row missing) | SessionStateChanged — Daemon Emits on Every SessionState Transition; Delivered to All TUI Clients; Ordering Relative to SessionListUpdate | ADDED (I16-001) |
 | BC-2.09.001..009 | all 9 rows | MATCHES | CLEAN |
 
 SE-16d monotonicity PASS: 2026-06-04T00:00:00Z > 2026-06-03T12:00:00Z (v1.28.1 predecessor). PASS.
+
+## §Trace v1.28.3 — I16-001 BC-2.08.008 missing row (§2.8 completeness fix)
+
+**Bump:** v1.28.2 → v1.28.3 (patch — §2.8 BC-table completeness; BC-2.08.008 row added).
+
+**Finding:** I16-001 (Phase-1d Pass 16, IMPORTANT). PRD §2.8 Session Manager BC table listed only BC-2.08.001..BC-2.08.007 (7 rows). BC-INDEX v1.35 line 199 and BC-INDEX §Summary line 290 record SS-08 = 8 active BCs. BC-2.08.008 (v1.1.0, P0, active) was absent from the §2.8 table. The Pass-15 §Trace cross-check entry at v1.28.2 line 1558 recorded "BC-2.08.001..007 | all 7 rows | MATCHES | CLEAN" — this was a false attestation: it hand-typed cardinality 7 instead of verifying against BC-INDEX SS-08 count of 8, causing the omission to survive that pass.
+
+**Root cause (S16-001 process lesson):** The Pass-15 cross-check used hand-typed enumerations ("001..007") rather than deriving row counts from BC-INDEX Summary. Hand-typed ranges are opaque to off-by-one errors. Future cross-checks must derive counts from BC-INDEX Summary and compare numerically.
+
+**Changes made:**
+
+- §2.8 BC table: BC-2.08.008 row added after BC-2.08.007, with title verbatim from BC-INDEX/H1 and priority P0.
+- §2.8 intro prose: `SessionStateChanged` broadcast behavior added to the enumeration (driving wizard auto-advance and `EmbeddedTerminal` exit; ordered before `SessionListUpdate`). BC-2.08.008 is the behavioral contract for this.
+- §Trace v1.28.2 cross-check entry (line 1558): corrected from false-green "BC-2.08.001..007 | all 7 rows | MATCHES | CLEAN" to two rows reflecting the actual state — STALE at 7 of 8, and the ADDED BC-2.08.008 row.
+- frontmatter `version`: v1.28.2 → v1.28.3; `timestamp`: updated to 2026-06-04T00:00:00Z.
+
+**Count cross-check (derived from BC-INDEX §Summary, not hand-typed enumerations):**
+
+Counts derived from `behavioral-contracts/BC-INDEX.md` Summary table (line 290 area):
+
+| Subsystem | BC-INDEX active count | PRD §2.NN row count | Match? |
+|-----------|----------------------|---------------------|--------|
+| SS-03 Engine Module | 8 | 8 | PASS |
+| SS-05 IPC | 11 | 11 | PASS |
+| SS-06 TUI | 25 | 25 | PASS |
+| SS-08 Session Manager | 8 | 8 (was 7 before I16-001) | PASS (fixed) |
+| SS-09 Embedded PTY | 9 | 9 | PASS |
+
+All in-scope subsystems now match. No other cardinality gap exists.
+
+SE-16e monotonicity PASS: 2026-06-04T00:00:00Z >= 2026-06-04T00:00:00Z (v1.28.2 predecessor). PASS.

@@ -2312,3 +2312,27 @@ Each prior fix wrote a changelog entry claiming propagation was complete, but di
 **Recurrence threshold:** This pattern recurred 3+ times in a single file, crossing the 3-instance codification threshold per the factory's S-7.02 rule.
 
 **Guard:** Mandatory whole-file grep step for ANY fix that replaces a term/value in a spec file. The grep must be part of the fix procedure, not a post-hoc check. Apply equally to BC files, SS files, ADR files, and holdout scenarios.
+
+---
+
+## Phase-1d Adversarial Pass-16 Process Lessons (D-258)
+
+### L-VERIFICATION-ARTIFACT-FALSE-GREEN: cross-check artifacts must derive expected counts from BC-INDEX §Summary, never hand-enumerate them [process-gap, codified]
+
+**Date:** 2026-06-04
+**Severity:** process-gap (verification discipline failure — hand-typed expected set was off by one, producing a self-falsifying false-green that hid a real omission for 15 adversarial passes)
+**Origin:** D-258 Pass-16 I16-001. PRD §2.8 omitted the active P0 BC-2.08.008 (SessionStateChanged emission ordering contract). This went undetected for 15 adversarial passes. The Pass-15 cross-check verification artifact hand-typed the expected SS-08 BC set as 'BC-2.08.001..007' (7 rows). The true count derived from BC-INDEX §Summary was 8 active BCs for SS-08. The off-by-one in the hand-typed enumeration made the cross-check pass as CLEAN — the expected set was wrong, so the check confirmed a state that did not match reality.
+
+**Root cause:** The cross-check artifact was self-falsifying. The expected set was authored by the same process that produced the artifact under review, using the same enumeration approach that caused the omission in the first place. An agent that hand-enumerates "BC-2.08.001..007" and then checks whether the PRD has 7 rows will always pass — even if the real count is 8.
+
+**The only correct procedure:** Cross-check artifacts MUST derive expected counts and sets from the source-of-truth index (BC-INDEX §Summary active counts per subsystem), not from hand-typed enumerations. A verification record asserting CLEAN for §2.NN must be checked against the index-derived count, not a hand-counted expected set.
+
+**Codify (L-VERIFICATION-ARTIFACT-FALSE-GREEN):**
+1. For PRD §2 sync sweeps: PO must query BC-INDEX §Summary for each subsystem's active BC count and assert that PRD §2.NN has exactly that many rows — never count PRD rows and compare to a hand-typed expected list.
+2. For any verification/cross-check artifact claiming completeness: the expected set must be sourced from the authoritative index (BC-INDEX, SS-INDEX, or EVAL-INDEX), not manually derived.
+3. A CLEAN verdict is only trustworthy if the expected set was derived from an index that the adversary has not yet seen, not from a re-enumeration of the artifact under review.
+4. TOOLING TARGET: a structural-claim check (PRD-COUNT-CROSSCHECK-RULE, S16-001) should enforce this mechanically — for each SS-NN, assert PRD §2.NN row count equals BC-INDEX §Summary active count for that subsystem.
+
+**Recurrence class:** This is a sibling of L-CWD-PROPAGATION-ATTESTATION (false changelog attestation class). Both patterns share the same root cause: an agent asserts completeness without verifying against the authoritative source. The difference is that L-CWD-PROPAGATION-ATTESTATION involves fix-completeness attestation within a file, while L-VERIFICATION-ARTIFACT-FALSE-GREEN involves completeness attestation about a different file's conformance to an index.
+
+**Guard:** PRD-COUNT-CROSSCHECK-RULE in durable_task_register (devops-engineer tooling task). Until the mechanical check exists: PO must manually query BC-INDEX §Summary counts for each affected SS-NN and assert PRD §2.NN row counts match before declaring any §2 sync sweep CLEAN.
