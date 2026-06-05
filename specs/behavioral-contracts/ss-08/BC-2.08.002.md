@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.0"
+version: "1.2.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -113,7 +113,7 @@ client can connect.
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC defines the persistence property: sessions survive daemon restart, which is the primary differentiator of the detached session-host model (ADR-0009) |
 | L2 Domain Invariants | DI-001 (hook event durability — session survival ensures hook events from in-progress sessions continue to flow after daemon restart, because the session-host continues running; this supports DI-001 continuity) |
 | Architecture Module | monocle-runtime (SessionManager, `rediscover_sessions()`); monocle-session-host (setsid startup step) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v1.8.1 §Daemon startup: session re-discovery; SS-session-manager.md §monocle-session-host binary §startup sequence step 2; ADR-0009 §native-detached-session-host |
+| Architecture Source | SS-session-manager.md v1.8.1 §Daemon startup: session re-discovery; SS-session-manager.md v1.8.1 §monocle-session-host binary §startup sequence step 2; ADR-0009 v1.0.2 §Decision |
 | Test Name | test_BC_2_08_002_session_survives_daemon_graceful_restart |
 
 ## Related BCs
@@ -135,6 +135,14 @@ S-TBD — Implement session re-discovery and setsid in monocle-session-host (fil
 ## VP Anchors
 
 VP-TBD — Daemon restart integration test (filled after VP creation)
+
+## §Trace v1.2.1
+
+**I17-001 + S17-002 — Pin-symmetry fix: ADR-0009 and second SS-session-manager.md ref in Architecture Source; §-anchor corrected to exact heading** (2026-06-04):
+- Architecture Source: two violations fixed:
+  1. Second `SS-session-manager.md §monocle-session-host binary §startup sequence step 2` (no version pin) → `SS-session-manager.md v1.8.1 §monocle-session-host binary §startup sequence step 2`. Pin-symmetry rule: all refs in a multi-doc cell must carry explicit version pins.
+  2. `ADR-0009 §native-detached-session-host` → `ADR-0009 v1.0.2 §Decision`. Fixes I17-001 (unpinned ADR) and S17-002 (loose paraphrase §-anchor; ADR-0009's decision section heading is `## Decision` per ADR-0009 file line 92).
+- No behavioral content changed; version bumped as patch 1.2.0→1.2.1.
 
 ## §Trace v1.2.0
 

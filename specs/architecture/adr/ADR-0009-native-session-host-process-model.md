@@ -6,7 +6,7 @@ title: "Native Detached Session-Host Process Model for PTY Ownership"
 status: accepted
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
-version: "1.0.1"
+version: "1.0.2"
 timestamp: 2026-06-04T00:00:00Z
 inputs:
   - research/domain-monocle-vision-synthesis.md
@@ -152,7 +152,7 @@ operational safety net.
 | Risk | Mitigation |
 |------|-----------|
 | Session-host binary not found on PATH at spawn time | Resolved at build time: `monocle-session-host` is built in the same workspace and packaged in the same release bundle as `monocle`; the daemon resolves its path relative to the daemon binary location using `std::env::current_exe()` parent |
-| Race: daemon restarts before session-host socket is ready | Session-host writes socket path to sidecar ONLY after the UDS listener is bound; daemon startup reads sidecar and attempts connect with 5s backoff |
+| Race: daemon restarts before session-host socket is ready | Session-host writes socket path to sidecar ONLY after the UDS listener is bound; daemon startup reads sidecar and attempts connect with a 5s hard deadline (one attempt, no retry — per BC-2.08.004 Invariant 2) |
 | Orphaned session-state sidecars | Daemon startup GC sweep: for each sidecar, verify PID liveness via `nix::sys::signal::kill(pid, None)`; delete stale sidecars |
 | Multiple daemon instances probing same session-host | Lock-file liveness check (existing SOQ-2 invariant) prevents multiple live daemons |
 
@@ -171,6 +171,18 @@ operational safety net.
   external supervisor rejected as primary (no-tmux constraint).
 - Q-8 VERDICT: **Native feasible at acceptable cost for v1A.** Design proceeds.
 - SE-16d PASS: 2026-06-03T23:00:00Z (new artifact, no prior chain entry).
+
+## §Trace v1.0.2
+
+**S17-001 — Risk table "5s backoff" ambiguity resolved** (2026-06-04T00:00:00Z):
+- SUGGESTION (S17-001, Phase-1d Pass 17, fixed in-scope per production-grade):
+  Risk table row "Race: daemon restarts before session-host socket is ready" used the phrase
+  "5s backoff" which numerically matches the canonical connect timeout but could be misread
+  as "retry with backoff up to 5s" — contradicting the canonical no-retry contract.
+- Fixed: "5s backoff" → "5s hard deadline (one attempt, no retry — per BC-2.08.004 Invariant 2)"
+  Exact phrasing mirrors BC-2.08.004 Invariant 2: "No exponential backoff or retry — one attempt,
+  5s hard deadline." Numeric value (5s) unchanged.
+- SE-16d PASS: 2026-06-04T00:00:00Z > chain high-water 2026-06-04T00:00:00Z (monotonic).
 
 ## §Trace v1.0.1
 

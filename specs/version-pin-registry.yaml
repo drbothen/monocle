@@ -176,8 +176,8 @@ ADR-0008-structural-claim-discipline:
 
 ADR-0009:
   path: specs/architecture/adr/ADR-0009-native-session-host-process-model.md
-  current_version: "1.0.1"
-  last_bump_commit: "[Pass-13 I13-002 — line 165 mis-anchor SS-09→SS-08 corrected]"
+  current_version: "1.0.2"
+  last_bump_commit: "[Pass-17 S17-001 — risk-table '5s backoff' → '5s hard deadline, one attempt, no retry per BC-2.08.004 Inv-2']"
   last_bump_date: "2026-06-04"
 
 ADR-0010:
@@ -749,15 +749,15 @@ BC-2.06.025:
 
 BC-2.08.001:
   path: specs/behavioral-contracts/ss-08/BC-2.08.001.md
-  current_version: "1.3.0"
-  last_bump_commit: "[Adversarial Pass 3 resolution 2026-06-03 — D-244 C3-001 SessionStateChanged emission; I3-004 AttachSession variant; I3-005 Detached re-discovery]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.3.1"
+  last_bump_commit: "[Pass-17 I17-001/S17-002 — pin ADR-0009 v1.0.2 §Decision + 2nd SS-session-manager v1.8.1 ref in Architecture-Source cell]"
+  last_bump_date: "2026-06-04"
 
 BC-2.08.002:
   path: specs/behavioral-contracts/ss-08/BC-2.08.002.md
-  current_version: "1.2.0"
-  last_bump_commit: "[Adversarial Pass 4 resolution D-245 2026-06-03 — HIGH-001 PC-4/PC-7/Invariant 4: retired single-message ScrollbackDump→chunked ScrollbackChunk*/ScrollbackDumpComplete]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.2.1"
+  last_bump_commit: "[Pass-17 I17-001/S17-002 — pin ADR-0009 v1.0.2 §Decision + 2nd SS-session-manager v1.8.1 ref in Architecture-Source cell]"
+  last_bump_date: "2026-06-04"
 
 BC-2.08.003:
   path: specs/behavioral-contracts/ss-08/BC-2.08.003.md
@@ -797,8 +797,8 @@ BC-2.08.008:
 
 BC-2.09.001:
   path: specs/behavioral-contracts/ss-09/BC-2.09.001.md
-  current_version: "1.3.0"
-  last_bump_commit: "[Pass-11 I11-001 PRONG A — new PC-6 auto-attach-on-EmbeddedTerminal-entry; Architecture Source → SS-embedded-pty v1.4.0]" # version-pin-historical: historical commit description; v1.4.0 was canonical at Pass-11 authoring time
+  current_version: "1.3.1"
+  last_bump_commit: "[Pass-17 I17-001/S17-002 — pin ADR-0011 v1.2.0 §Decision in Architecture-Source cell]"
   last_bump_date: "2026-06-04"
 
 BC-2.09.002:
