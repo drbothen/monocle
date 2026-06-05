@@ -44,6 +44,24 @@ traces_to: NEXT-SESSION-PIVOT.md §4 items 1-3 (D-236 control-center pivot)
 > Authoritative PTY stack: ADR-0011 + SS-deps-pin-manifest-v2-delta.md.
 > Authoritative session persistence model: ADR-0009 + SS-session-manager.md.
 
+> **SR-003 SUPERSESSION NOTE (2026-06-04 — S18-001 Phase-1d adversarial finding, ADR-0009):**
+>
+> This research evaluation was produced BEFORE the D-238 persistence escalation and the
+> ratification of ADR-0009 (session-host-owns-PTY). One ownership-model position in this
+> document is SUPERSEDED:
+>
+> **The "native in-process PTY embedding" / daemon-owned recommendation** (Executive Summary,
+> §3.5 daemon-owned children, §7.1) assumed monocle-runtime (the in-process daemon) would own
+> PTY masters and harness children. This model is SUPERSEDED by ADR-0009, which retired
+> in-process/daemon-owned PTY in favor of **session-host-owns-PTY**: PTY masters and harness
+> child processes live in detached, per-session `monocle-session-host` processes that survive
+> TUI restarts independently. See ADR-0009 §Decision and the canonical vision §Process Topology.
+>
+> **What remains valid:** The PTY stack selection (portable-pty 0.9.0 + vt100 0.16.2 +
+> tui-term 0.3.4) is confirmed by ADR-0011 and is unchanged. The multi-session architecture
+> patterns (§6), compatibility analysis (§2), and approach trade-off table (§4.3) remain
+> informative. Only the in-process OWNERSHIP assumption is superseded — not the crate stack.
+
 ## Executive Summary
 
 The D-236 pivot requires that a user "never leave the TUI" while a running Claude Code
@@ -54,6 +72,7 @@ crossterm 0.29 + tokio 1.52 + Rust 1.88 MSRV), the finding is decisive:
 > **Primary recommendation: native in-process PTY embedding using `portable-pty` 0.9.0
 > (spawn) + `vt100` 0.16.2 (parse) + `tui-term` 0.3.4 (render as a ratatui widget), with a
 > blocking PTY-reader thread bridged into the tokio event loop over a bounded channel.**
+> _(Stack confirmed; in-process OWNERSHIP superseded by ADR-0009 — see SR-003 above.)_
 
 This stack is **version-verified compatible** with monocle's pinned ratatui 0.30: `tui-term`
 0.3.4 depends on `ratatui-core ^0.1.0` and `ratatui-widgets ^0.3.0`, which are **exactly the
@@ -385,6 +404,7 @@ existing bounded-channel conventions. No new external moving parts as session co
 Adopt **`portable-pty` 0.9.0 + `vt100` 0.16.2 + `tui-term` 0.3.4** for in-process embedded PTY
 rendering. Make the **daemon (`monocle-runtime`) the PTY/session owner**; the TUI is a client
 that streams PTY output over the existing UDS IPC and forwards keystrokes back.
+<!-- [SUPERSEDED by ADR-0009 — session-host-owns-PTY: PTY masters + harness children live in detached per-session monocle-session-host processes, not in monocle-runtime. Stack selection (portable-pty/vt100/tui-term) remains valid.] -->
 
 Cargo.toml additions (to be ratified by architect; caret pins per Patch-Pinning Policy — none
 of these are on the 9-crate exact-pin security list, all are MIT, none touch the untrusted-input

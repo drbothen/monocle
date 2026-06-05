@@ -1,7 +1,7 @@
 ---
 document_type: product-brief
 level: L1
-version: "2.0.1"
+version: "2.0.2"
 status: draft
 producer: product-owner
 phase: pivot-delta-brief
@@ -44,7 +44,7 @@ supplements:
   - /Users/jmagady/Dev/monocle/.factory/semport/DISPOSITION-V2-CONTROL-CENTER-ROLLUP.md
 ---
 
-# Product Brief: Monocle (v2.0.1 — Consistency Propagation of v2.1 Session-Host Model)
+# Product Brief: Monocle (v2.0.2 — I18-001 §Out-of-Scope Consistency Correction)
 
 > **D-236/D-237/D-238 RE-BASELINE (2026-06-03).**  
 > The observe-only framing of v1.4.x is RETIRED. Monocle is now a full TUI control center.
@@ -59,6 +59,7 @@ supplements:
 | 1.1–1.4.34 | 2026-05-12–2026-05-30 | product-owner + architect | Incremental tightening: OQ/SOQ resolutions, forward-compatibility contracts, DTU clone, adversary finding closures, version-pin back-cascades. Full history preserved in git (factory-artifacts branch). Normative decisions from this lineage that survive into v2.0 are cited in §Preserved Substrate below. |
 | **2.0.0** | **2026-06-03** | **product-owner** | **D-236/D-237/D-238 CONTROL-CENTER RE-BASELINE.** Retired: observe-only constraint and all residual "observe-only" framing in scope/non-goals/roadmap. Retired: Phase 1–4 observe-only roadmap. Added: LAUNCH, EMBEDDED PTY, MULTI-SESSION/MULTI-PROJECT, INTERACTIVE TUNE as first-class v1 capabilities. Replaced roadmap with v1A/v1B wave plan. Replaced success criteria with control-center bar. Replaced competitive positioning. session-host-owns-PTY persistence model (D-238). Hook auto-injection on spawn. Preserved: all normative decisions from v1.4.x lineage that remain valid (OQ resolutions, forward-compatibility contracts, non-goals that are still non-goals). Traces to vision-synthesis v2.1 (approved D-238 by Joshua Magady 2026-06-03). Status: draft — pending adversarial review and human gate before architecture delta proceeds. |
 | **2.0.1** | **2026-06-03** | **product-owner** | **Consistency propagation of v2.1 session-host model + architect rulings; no scope change.** Applied ADR-0009 and SS-08: `portable-pty` and `vt100` crate locations corrected to `monocle-session-host` in §Tech Direction table (CRIT-2); `PtySpawner`/`MockPtySpawner` replaced with `SessionHostSpawner`/`MockSessionHostSpawner` throughout (CRIT-3), including §Success Criteria "verified via integration test with MockSessionHostSpawner"; `VsddFactoryAdapter`/`FactoryAdapter` extraction source corrected to `monocle-core` in §Crate Workspace Layout (IMP-1); `monocle-session-host` added as v1A new crate in §Crate Workspace Layout; permission badge+bell guarantee for EmbeddedTerminal mode added with BC-pending note; v1B pre-emption open item recorded (SUG-3). Status: draft (consistency-only; no scope change). |
+| **2.0.2** | **2026-06-04** | **product-owner** | **I18-001 consistency correction — §Out-of-Scope daemon-owned framing aligned with ratified D-238 session-host-owns-PTY model; no scope change.** §Out of Scope "Does NOT replace the user's general-purpose terminal multiplexer" bullet: "daemon-owned PTYs" → "session-host-owned PTYs (daemon-coordinated)". This is a consistency correction to the already-ratified session-host-owns-PTY decision (ADR-0009, D-238); it does NOT change any approved decision. Status: draft (consistency-only; no scope change). |
 
 ---
 
@@ -256,8 +257,8 @@ survived the D-236 pivot intact — monocle observes factory state but never mut
 - **Does NOT route LLM API requests** — CCR integration is detect-on-PATH + config-write +
   env-inject; monocle does not proxy or modify LLM traffic (integrate-external, D-010).
 - **Does NOT replace the user's general-purpose terminal multiplexer** — monocle runs inside
-  the user's tmux session; it manages AI coding sessions via its own daemon-owned PTYs; it does
-  not attempt to multiplex the user's non-AI terminal work.
+  the user's tmux session; it manages AI coding sessions via its own session-host-owned PTYs
+  (daemon-coordinated); it does not attempt to multiplex the user's non-AI terminal work.
 - **Does NOT include PM/Worker multi-agent orchestration** — human is always the coordinator;
   sessions are independent (no inter-session bus, no automated handoff).
 - **Does NOT own session transcripts** — monocle reads hook events (fine-grained, ephemeral);

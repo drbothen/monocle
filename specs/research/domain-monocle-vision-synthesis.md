@@ -1,7 +1,7 @@
 ---
 document_type: vision-synthesis
 level: ops
-version: "2.2"
+version: "2.2.1"
 status: approved
 producer: product-owner
 phase: pre-phase-0-vision
@@ -119,7 +119,7 @@ The following constraints appeared in v1.1.2 and are **explicitly retired** as o
 
 | Plane | Source genes | What it does (v2.0 — control-center model) |
 |-------|-------------|---------------------------------------------|
-| Runtime | any-context/lazyclaude + zellij + claude-squad | **Session lifecycle center**: spawn, attach, detach, kill, and rename harness sessions from the TUI. One PTY per session, daemon-owned. Streams terminal output into the embedded PTY pane. Shows live session roster: token burn rate, cost, wall-time, phase tag. Rust IPC via Unix domain socket (PTY bytes + hook events + control messages) + axum HTTP (hook ingestion). WASM plugin SDK (zellij-tile model) deferred to Phase 3 (suspended). |
+| Runtime | any-context/lazyclaude + zellij + claude-squad | **Session lifecycle center**: spawn, attach, detach, kill, and rename harness sessions from the TUI. One PTY per session, owned by a detached `monocle-session-host` process (session-host-owned; daemon coordinates). Streams terminal output into the embedded PTY pane. Shows live session roster: token burn rate, cost, wall-time, phase tag. Rust IPC via Unix domain socket (PTY bytes + hook events + control messages) + axum HTTP (hook ingestion). WASM plugin SDK (zellij-tile model) deferred to Phase 3 (suspended). |
 | Static | NikiforovAll/lazyclaude | **Interactive customization center** (v1B Tune wave): reads AND edits CLAUDE.md files, settings.json permission blocks, hook scripts, keybindings.json. Shows which customizations are active for the focused session. Edit bindings in-place, apply profiles, manage CCR routing slots — interactive, not just browse. Trigger-trace from popup to the defining file — jump to the line that granted or denied a tool. |
 | Workflow | vsdd-factory | Factory-awareness (observe-only, unchanged): detects `.factory/STATE.md` + `document_type: pipeline-state` discriminator; surfaces phase, wave, blocking issues, and convergence trajectory for the focused session's project. Pre-populated from session launch `project_root` (new trigger path). Multi-repo signal: `.factory-project/`. First concrete adapter: VsddFactoryAdapter. Third-party adapters via WASM plugin (Phase 3, suspended). |
 | Harness | codemachine-cli + claude-squad + claude-code-router | EngineModule abstraction: each harness (Claude Code, CodeMachine, future) registers a profile and implements `spawn_recipe()` — the binary, args, and env needed to launch a session. worktree-per-session isolation (claude-squad gene). CCR integration: detect on PATH, write per-session JSON, set `ANTHROPIC_BASE_URL` — integrate-external, not build-in. Hook auto-injection on spawn: `--settings <hooks_settings_path>` in the launch args; no manual copy required. |
@@ -585,11 +585,11 @@ Setup: three sessions running. Two permission prompts arrive concurrently from d
 - Does NOT execute vsdd-factory workflows — monocle observes factory state (reads STATE.md); it never writes STATE.md, never triggers factory phases, never dispatches factory agents
 - Does NOT write STATE.md — the FactoryAdapter reads STATE.md; monocle never mutates it
 - Does NOT route LLM API requests — CCR integration is detect-on-PATH + config-write + env-inject; monocle does not proxy or modify LLM traffic
-- Does NOT replace the user's general-purpose terminal multiplexer — monocle runs inside the user's tmux session; it manages AI coding sessions via its own daemon-owned PTYs; it does not attempt to multiplex the user's non-AI terminal work
+- Does NOT replace the user's general-purpose terminal multiplexer — monocle runs inside the user's tmux session; it manages AI coding sessions via its own session-host-owned PTYs (daemon-coordinated); it does not attempt to multiplex the user's non-AI terminal work
 - Does NOT include PM/Worker multi-agent orchestration — human is always the coordinator; sessions are independent (no inter-session bus, no automated handoff)
 - Does NOT own session transcripts — monocle reads hook events (fine-grained, ephemeral); full transcript storage belongs to Claude Code's own persistence layer
 - Does NOT build its own LLM provider abstraction — CCR is the external router; monocle integrates by detecting it, not by reimplementing it
-- Does NOT use tmux as the PRIMARY session multiplexer — portable-pty native in-process PTY is the chosen approach; tmux control-mode is a documented fallback if daemon-owned persistence proves insufficient (not a v1 default)
+- Does NOT use tmux as the PRIMARY session multiplexer — native detached per-session `monocle-session-host` PTY ownership (portable-pty inside each session-host process) is the chosen approach; tmux control-mode is a documented fallback if native session-host persistence proves insufficient (not a v1 default)
 
 ---
 
@@ -720,6 +720,8 @@ v1.1.2 (2026-05-12): Surgical path fix — `/hooks/prompt-submit` wire correctio
 - Status at v2.0: DRAFT — pending human approval gate.
 
 **v2.1 (2026-06-03):** D-238 escalation applied by product-owner agent. Persistence model escalated: CASE 2 (graceful daemon-process restart) now REQUIRES session survival via native detached session-host processes (session-host-owns-PTY model). Persistence principle renamed from DAEMON-OWNS-PTY to session-host-owns-PTY; daemon coordinates/re-attaches. No-tmux default preserved; external supervisor only as architect-surfaced fallback for human decision. Q-8 (HIGH priority) added to §Open Questions for architect. Doc **APPROVED** by Joshua Magady (2026-06-03) to proceed to brief → architecture → story delta.
+
+**v2.2.1 (2026-06-04):** I18-001 consistency correction — aligns §Non-Goals and §Five Planes with the already-approved §Process Topology (ADR-0009 / D-238 session-host-owns-PTY model). Three surviving stale assertions fixed: (1) §Five Planes Runtime row "daemon-owned" → "owned by a detached monocle-session-host process (session-host-owned; daemon coordinates)"; (2) §Explicit Non-Goals line 588 "daemon-owned PTYs" → "session-host-owned PTYs (daemon-coordinated)"; (3) §Explicit Non-Goals line 592 "portable-pty native in-process PTY is the chosen approach; tmux control-mode is a documented fallback if daemon-owned persistence proves insufficient" → "native detached per-session monocle-session-host PTY ownership (portable-pty inside each session-host process) is the chosen approach; tmux control-mode is a documented fallback if native session-host persistence proves insufficient". This is a consistency correction to already-ratified decisions; it does NOT change any approved decision. Status: APPROVED (consistency-only; no scope change).
 
 **v2.2 (2026-06-03):** Consistency propagation of v2.1 session-host model + architect rulings; no scope change. Applied ADR-0009 and SS-08 (SS-session-manager.md): §Process Topology ASCII diagram and §SessionManager description rewritten from in-process PTY ownership to session-host coordinator model. `PtySpawner`/`RealPtySpawner`/`MockPtySpawner` replaced with `SessionHostSpawner`/`RealSessionHostSpawner`/`MockSessionHostSpawner` (SS-08 canonical). `portable-pty` and `vt100` crate locations corrected to `monocle-session-host` per SS-deps-pin-manifest-v2-delta. `VsddFactoryAdapter`/`FactoryAdapter` extraction source corrected to `monocle-core` per live codebase (IMP-1). `EmbeddedTerminal { session_id }` typed as `String` per SS-08 ruling (IMP-2). `Detached` state comment updated for session-host ownership (SUG-1). §Wave Plan now names `monocle-session-host` binary as the v1A crate deliverable (SUG-2). Permission badge+bell guarantee documented; v1B embedded-terminal pre-emption open item recorded (SUG-3). Status: APPROVED (no scope change; consistency-only propagation).
 

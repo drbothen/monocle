@@ -258,9 +258,9 @@ prd:
 
 product-brief:
   path: specs/product-brief.md
-  current_version: "2.0.1"
-  last_bump_commit: "[D-240 consistency-convergence 2026-06-03 — CRIT-1/2/3 v2.1 session-host model + IMP-1 + SUG-1/2 propagated from vision v2.2]"
-  last_bump_date: "2026-06-03"
+  current_version: "2.0.2"
+  last_bump_commit: "[D-260 Pass-18 I18-001 2026-06-04 — §Out-of-Scope daemon-owned→session-host-owned framing; consistency correction to ratified D-238 model; no scope change]"
+  last_bump_date: "2026-06-04"
 
 # ───────────────────────────────────────────────────────────────────────────────
 # Behavioral Contract files (BC-N.NN.NNN)
