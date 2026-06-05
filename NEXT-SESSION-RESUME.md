@@ -10,7 +10,7 @@ Read this file first, then CLAUDE.md, then `.factory/STATE.md`
 The D-236 control-center pivot has been executed through:
 
 - Vision revised and approved (domain-monocle-vision-synthesis.md v2.2, D-238, Joshua Magady).
-- Brief delta complete (product-brief.md v2.0.1, validate-brief VALID).
+- Brief delta complete (product-brief.md v2.0.2, validate-brief VALID).
 - Architecture delta complete — 3 ADRs + 5 subsystem specs (D-239, D-240).
 - 25 new v1A behavioral contracts authored + PRD v1.28.1 + 5 holdout scenarios (D-241).
 - 9 adversarial passes complete on the full spec package (D-242 through D-250).
@@ -40,8 +40,8 @@ for the complete convergence-loop procedure.
 
 | Document | Version |
 |----------|---------|
-| domain-monocle-vision-synthesis.md | v2.2 (APPROVED) |
-| product-brief.md | v2.0.1 |
+| domain-monocle-vision-synthesis.md | v2.2.1 (APPROVED) |
+| product-brief.md | v2.0.2 |
 | prd.md | v1.28.1 |
 | ARCH-INDEX | v1.0.28 |
 | SS-ipc | v1.15.0 |
