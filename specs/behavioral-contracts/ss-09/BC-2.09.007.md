@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -30,8 +30,10 @@ removal_reason: null
 
 `vt100::Parser` is initialized with a scrollback buffer of 1000 rows by default. In
 `AppMode::EmbeddedTerminal`, `PtyScrollUp` and `PtyScrollDown` actions adjust
-`App::pty_scroll_offset` without sending `ResizePane` IPC messages. The TUI passes the
-viewport offset to the PTY widget renderer. Scrollback capacity is configurable via
+`App::pty_scroll_offsets[focused_session_id]` without sending `ResizePane` IPC messages.
+`pty_scroll_offsets` is a `HashMap<String, usize>` keyed by `session_id`; each session's
+offset is independent. The TUI passes the per-session scrollback viewport offset to the PTY
+widget renderer. Scrollback capacity is configurable via
 `~/.monocle/config.json:pty_scrollback_rows`, capped at 10000.
 
 ## Preconditions
@@ -47,19 +49,22 @@ viewport offset to the PTY widget renderer. Scrollback capacity is configurable 
    (default 1000). The scrollback buffer stores up to `scrollback_rows` lines of output
    beyond the current visible screen.
 2. In `AppMode::EmbeddedTerminal`:
-   a. `Action::PtyScrollUp` decrements `App::pty_scroll_offset` by 1 (scroll toward older
-      output). Minimum offset is 0 (no scroll; bottom of buffer shown).
-      Wait — scroll up shows older lines, which means offset increases. Clarification:
-      `pty_scroll_offset` = number of rows scrolled BACK from the current bottom.
-      `PtyScrollUp`: `pty_scroll_offset += scroll_step` (scroll toward older lines).
-      `PtyScrollDown`: `pty_scroll_offset -= scroll_step` (scroll toward newer lines; min 0).
-   b. `Action::PtyScrollDown` increments toward 0 (toward current output).
-   c. Both actions clamp: `pty_scroll_offset` cannot exceed the number of available scrollback
-      rows in the parser, and cannot go below 0.
+   a. `Action::PtyScrollUp` increments `App::pty_scroll_offsets[focused_session_id]` by one
+      scroll step (scroll toward older output).
+      `pty_scroll_offsets[focused_session_id]` = number of rows scrolled BACK from the current
+      bottom (0 = live tail).
+      `PtyScrollUp`: `pty_scroll_offsets[focused_session_id] += scroll_step` (toward older lines).
+      `PtyScrollDown`: `pty_scroll_offsets[focused_session_id] -= scroll_step` (toward newer lines; min 0).
+   b. `Action::PtyScrollDown` decrements `pty_scroll_offsets[focused_session_id]` toward 0
+      (toward current output).
+   c. Both actions clamp: `pty_scroll_offsets[focused_session_id]` cannot exceed the number of
+      available scrollback rows in the parser, and cannot go below 0.
+   d. Each session's offset is independent. Switching focus preserves each session's offset in its
+      own `pty_scroll_offsets` entry; focus switch does NOT reset the incoming session's offset.
 3. No `ResizePane` or `KeyInput` IPC message is sent for scroll actions — scrollback is a
    TUI-side viewport operation only.
-4. When `pty_scroll_offset > 0`, a visual indicator is shown in the status bar
-   (`[scrolled back N rows]` or equivalent).
+4. When `pty_scroll_offsets[focused_session_id] > 0`, a visual indicator is shown in the status
+   bar (`[scrolled back N rows]` or equivalent).
 5. New PTY output received while scrolled back does NOT force the viewport to jump to the
    bottom. The user must explicitly `PtyScrollDown` to return to live output.
 
@@ -68,20 +73,30 @@ viewport offset to the PTY widget renderer. Scrollback capacity is configurable 
 1. Default `scrollback_rows = 1000`. The configured value is read from
    `~/.monocle/config.json:pty_scrollback_rows`; if missing or invalid, 1000 is used.
 2. Maximum `scrollback_rows = 10000`. Values above this cap are silently clamped.
-   Memory bound: `10000 × 80 × ~4 bytes/cell ≈ 3.2 MB per session × 8 sessions ≈ 25 MB`
-   — acceptable for typical workloads.
-3. `pty_scroll_offset` is reset to 0 when:
-   a. The user exits `AppMode::EmbeddedTerminal` (resets on next entry).
-   b. The session is killed or terminates.
+   Memory bound (per SS-embedded-pty.md §O4): the `vt100` crate stores each cell as
+   `(char, fg_color, bg_color, attrs_bitmask)` — approximately `1 (char) + 4 (fg color enum) +
+   4 (bg color enum) + 1 (attrs bitmask) + padding ≈ 16 bytes/cell` on 64-bit systems.
+   `10000 × 80 × ~16 bytes/cell ≈ 12.8 MB per session × 8 sessions ≈ 102 MB`
+   — acceptable on a workstation with ≥ 8 GB RAM.
+   See BC-2.09.001 Invariant 4 for the same bound with default (1000-row) analysis.
+3. `pty_scroll_offsets[session_id]` is reset to 0 when:
+   a. A `ResizePane` IPC event fires for that session (resize reflows content; old offset is
+      meaningless against new layout; snapping to live tail is least-surprising behavior).
+   b. The session transitions to `Terminated` (`pty_scroll_offsets.remove(session_id)` per
+      SS-embedded-pty.md §Parser ownership in TUI §Scrollback offset invariants).
 4. Scrollback is a TUI-local operation. The session-host's `vt100::Parser` (which owns the
    PTY master side) is independent. Scrollback in the TUI does not affect the harness child.
+5. `pty_scroll_offsets` is a `HashMap<String, usize>` keyed by `session_id` (NOT a singular
+   shared field). This is the I7 fix per SS-embedded-pty.md §Parser ownership in TUI: a
+   shared single offset caused focus-switch to show the wrong session's scrollback position.
+   Per-session offsets are initialized to 0 when a session is added to `pty_parsers`.
 
 ## Edge Cases
 
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
-| EC-240 | Scroll up past beginning of scrollback buffer | `pty_scroll_offset` clamped to max available rows; no error |
-| EC-241 | Scroll down when already at bottom (offset = 0) | `pty_scroll_offset` stays at 0; no error |
+| EC-240 | Scroll up past beginning of scrollback buffer | `pty_scroll_offsets[focused_session_id]` clamped to max available rows; no error |
+| EC-241 | Scroll down when already at bottom (offset = 0) | `pty_scroll_offsets[focused_session_id]` stays at 0; no error |
 | EC-242 | `pty_scrollback_rows: 20000` in config | Clamped to 10000 at parser initialization |
 | EC-243 | `pty_scrollback_rows: 0` in config | Clamped to 1 (minimum 1-row scrollback; 0 would mean no scrollback which is confusing) |
 | EC-244 | New output arrives while scrolled back | Parser updates; viewport stays scrolled; user sees `[scrolled back N rows]` indicator |
@@ -90,8 +105,9 @@ viewport offset to the PTY widget renderer. Scrollback capacity is configurable 
 
 | Input | Expected Output | Category |
 |-------|----------------|----------|
-| 1100 lines of output; PtyScrollUp × 10 | `pty_scroll_offset = 10`; rows 1090-1100 visible (scrolled 10 rows back) | happy-path |
-| PtyScrollDown when at offset=0 | Offset stays 0; no error | edge-case |
+| 1100 lines of output; PtyScrollUp × 10 (session "s1" focused) | `pty_scroll_offsets["s1"] = 10`; rows 1090-1100 visible (scrolled 10 rows back); `pty_scroll_offsets` for other sessions unchanged | happy-path |
+| PtyScrollDown when `pty_scroll_offsets[focused_session_id] = 0` | Offset stays 0; no error | edge-case |
+| Focus switch from "s1" (offset=10) to "s2" (offset=0) | `pty_scroll_offsets["s1"] = 10` preserved; `pty_scroll_offsets["s2"] = 0`; render uses `pty_scroll_offsets["s2"]` for new focused session | happy-path |
 | Config `pty_scrollback_rows: 500` | Parser initialized with `scrollback_rows = 500` | happy-path |
 | Config `pty_scrollback_rows: 15000` | Parser initialized with `scrollback_rows = 10000` (clamped) | edge-case |
 
@@ -100,7 +116,8 @@ viewport offset to the PTY widget renderer. Scrollback capacity is configurable 
 | VP-NNN | Property | Proof Method |
 |--------|----------|-------------|
 | VP-TBD | `vt100::Parser` initialized with configured scrollback_rows | unit |
-| VP-TBD | `PtyScrollUp/Down` adjusts `pty_scroll_offset` and clamps correctly | unit |
+| VP-TBD | `PtyScrollUp/Down` adjusts `pty_scroll_offsets[focused_session_id]` and clamps correctly | unit |
+| VP-TBD | Focus switch preserves per-session scroll offsets (I7: no cross-session contamination) | unit |
 | VP-TBD | No IPC message sent for scroll actions | unit |
 
 ## Traceability
@@ -109,7 +126,7 @@ viewport offset to the PTY widget renderer. Scrollback capacity is configurable 
 |-------|-------|
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — scrollback is part of the embedded PTY widget capability; it enables users to review previous output without leaving EmbeddedTerminal mode |
-| Architecture Module | monocle-tui (`App::pty_scroll_offset`, `pty_parsers`, PtyScrollUp/Down action handlers) per ARCH-INDEX Subsystem Registry SS-09 |
+| Architecture Module | monocle-tui (`App::pty_scroll_offsets`, `pty_parsers`, PtyScrollUp/Down action handlers) per ARCH-INDEX Subsystem Registry SS-09 |
 | Architecture Source | SS-embedded-pty.md v1.5.0 §Scrollback navigation; §Parser ownership in TUI |
 | Test Name | test_BC_2_09_007_scrollback_1000_default_configurable |
 
@@ -128,6 +145,40 @@ S-TBD — Implement scrollback navigation in monocle-tui (filled by story-writer
 ## VP Anchors
 
 VP-TBD — Scrollback offset unit tests (filled after VP creation)
+
+## §Trace v1.1.0
+
+**I22-001 + I22-003 — Per-session HashMap scroll offsets (I7 fix propagation) + ~16 bytes/cell memory bound** (2026-06-13):
+- I22-001 (Phase-1d Pass 22 IMPORTANT): The entire normative body used `App::pty_scroll_offset: usize`,
+  a retired singular field that caused focus-switch to show the wrong session's scrollback position.
+  The correct field is `pty_scroll_offsets: HashMap<String, usize>` keyed by `session_id`.
+  SS-embedded-pty.md v1.5.0 (canonical reference, read-only) had already specified the per-session
+  HashMap form; BC-2.09.001 Invariant 6 explicitly states "not a shared pty_scroll_offset field;
+  per-session HashMap". This BC was authored before those canonical references were final and
+  retained the stale singular form.
+  - Description: `App::pty_scroll_offset` → `App::pty_scroll_offsets[focused_session_id]`;
+    added per-session semantics paragraph and HashMap type declaration.
+  - PC-2a/b/c: all `pty_scroll_offset` → `pty_scroll_offsets[focused_session_id]`; added PC-2d
+    for focus-switch offset preservation (the bug that I7 fixed).
+  - PC-4: `pty_scroll_offset > 0` → `pty_scroll_offsets[focused_session_id] > 0`.
+  - Invariant 3: renamed from `pty_scroll_offset` to `pty_scroll_offsets[session_id]`; reset
+    condition changed from "user exits EmbeddedTerminal" to ResizePane-per-session (per
+    SS-embedded-pty.md §Scrollback offset invariants) and Terminated (with remove() call).
+  - Invariant 5 (new): explicitly names the HashMap type and the I7 semantic fix, consistent
+    with BC-2.09.001 Invariant 6.
+  - EC-240/241: `pty_scroll_offset` → `pty_scroll_offsets[focused_session_id]`.
+  - Canonical Test Vectors: `pty_scroll_offset = 10` → `pty_scroll_offsets["s1"] = 10`;
+    added cross-session focus-switch vector.
+  - VP table: updated property description; added per-session isolation VP.
+  - Architecture Module: `App::pty_scroll_offset` → `App::pty_scroll_offsets`.
+- I22-003 (Phase-1d Pass 22 IMPORTANT): Invariant 2 stated `10000 × 80 × ~4 bytes/cell ≈ 3.2 MB
+  per session × 8 sessions ≈ 25 MB`. This figure severely underestimates real memory use.
+  Per SS-embedded-pty.md §O4 (canonical source): the `vt100` crate Cell struct stores
+  `(char, fg_color, bg_color, attrs_bitmask)` — approximately 16 bytes/cell on 64-bit systems.
+  Updated to: `10000 × 80 × ~16 bytes/cell ≈ 12.8 MB per session × 8 sessions ≈ 102 MB`,
+  with §O4 rationale quoted inline. This matches BC-2.09.001 Invariant 4 exactly.
+- Version bump: 1.0.0 → 1.1.0 (minor: materially changed Invariants 2/3/5, PC-2, VP table;
+  addition of per-session semantics is a normative behavioral specification enhancement).
 
 ## §Trace v1.0.0
 

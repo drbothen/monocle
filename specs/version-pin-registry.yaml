@@ -731,8 +731,8 @@ BC-2.05.009:
 
 BC-2.05.010:
   path: specs/behavioral-contracts/ss-05/BC-2.05.010.md
-  current_version: "1.5.1"
-  last_bump_commit: "[Pass-15 I15-001 2026-06-04 — EC-283 code invalid_request→rename_failed per canonical session_error_to_code; §Trace rationale corrected]"
+  current_version: "1.6.0"
+  last_bump_commit: "[Pass-22 S22-001 2026-06-04 — PC-4 full 6-code spawn-path set; EC-280 spawn_failed→binary_not_found]"
   last_bump_date: "2026-06-04"
 
 BC-2.05.011:
@@ -773,9 +773,9 @@ BC-2.08.004:
 
 BC-2.08.005:
   path: specs/behavioral-contracts/ss-08/BC-2.08.005.md
-  current_version: "1.0.0"
-  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-08 SessionManager BC: state persistence across daemon restart]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.0.1"
+  last_bump_commit: "[Pass-22 S22-002 2026-06-04 — Related-BCs prose Killed→Terminating→Terminated]"
+  last_bump_date: "2026-06-04"
 
 BC-2.08.006:
   path: specs/behavioral-contracts/ss-08/BC-2.08.006.md
@@ -833,15 +833,15 @@ BC-2.09.006:
 
 BC-2.09.007:
   path: specs/behavioral-contracts/ss-09/BC-2.09.007.md
-  current_version: "1.0.0"
-  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-09 EmbeddedPTY BC: EmbeddedTerminal AppMode entry/exit]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.1.0"
+  last_bump_commit: "[Pass-22 I22-001+I22-003 2026-06-04 — pty_scroll_offset→pty_scroll_offsets[session_id] HashMap throughout; ~4→~16 bytes/cell memory bound]"
+  last_bump_date: "2026-06-04"
 
 BC-2.09.008:
   path: specs/behavioral-contracts/ss-09/BC-2.09.008.md
-  current_version: "1.0.0"
-  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-09 EmbeddedPTY BC: PTY scrollback]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.1.0"
+  last_bump_commit: "[Pass-22 I22-002 2026-06-04 — Inv-1 remove retired Killed, add Terminating, reconcile Detached-attachable vs PC-2, align no-op set; PC-4 pty_scroll_offsets[session_id]]"
+  last_bump_date: "2026-06-04"
 
 BC-2.09.009:
   path: specs/behavioral-contracts/ss-09/BC-2.09.009.md

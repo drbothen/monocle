@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -104,7 +104,7 @@ immediately (no grace period for sidecars without a live process).
 
 ## Related BCs
 
-- [BC-2.08.003] — depends on: session kill transitions to Killed → Terminated, which triggers GC
+- [BC-2.08.003] — depends on: session kill transitions to Terminating → Terminated, which triggers GC
 - [BC-2.08.004] — composes with: orphaned sidecars are GC'd immediately during re-discovery (instant GC path)
 
 ## Architecture Anchors
@@ -118,6 +118,17 @@ S-TBD — Implement SessionManager GC task (filled by story-writer)
 ## VP Anchors
 
 VP-TBD — GC timing tests using tokio::time::pause (filled after VP creation)
+
+## §Trace v1.0.1
+
+**S22-002 — Related-BCs: retired Killed state corrected to Terminating→Terminated kill path** (2026-06-13):
+- S22-002 (Phase-1d Pass 22 SUGGESTION): Related-BCs entry for [BC-2.08.003] read
+  "session kill transitions to Killed → Terminated". `SessionState::Killed` was REMOVED per
+  SS-session-manager.md v1.3.0 §Session lifecycle state machine I4 audit (superseded by
+  `Terminating`). The canonical kill path per BC-2.08.003 Invariant 1 is
+  `Running | Detached | Launching → Terminating → Terminated`.
+  Updated prose: "Killed → Terminated" → "Terminating → Terminated".
+- Version bump: 1.0.0 → 1.0.1 (patch: prose correction only; no behavioral content change).
 
 ## §Trace v1.0.0
 

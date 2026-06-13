@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.1"
+version: "1.6.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:45:00Z
@@ -53,7 +53,16 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
    PC-3 / SS-daemon-wiring-v2-delta.md v1.7.0 §3b). The `SessionStateChanged` event reflects
    the `Launching → Running` transition; the ordering is atomically guaranteed under the
    `SessionManager` mutex hold into each client's per-client `mpsc::Sender`.
-4. On failure: `ServerToClient::Error { code: "spawn_failed", message: ... }` sent to the requesting client.
+4. On failure: `ServerToClient::Error { code: <spawn-path-code>, message: ... }` sent to the
+   requesting client. The specific code depends on the `SessionError` variant returned by
+   `spawn_session()`, mapped via `session_error_to_code(IpcOp::Spawn, &e)` (per
+   SS-session-manager.md §session_error_to_code):
+   - `"binary_not_found"` — `EngineError::BinaryNotFound` (harness binary not on PATH)
+   - `"invalid_spawn_arg"` — `EngineError::InvalidPath` (bad argument in SpawnRecipe)
+   - `"spawn_failed"` — `SessionError::SpawnFailed` (OS-level spawn failure after PATH resolve)
+   - `"sidecar_write_failed"` — `SessionError::SidecarWriteFailed` (session-state.json write failed)
+   - `"session_id_collision"` — `SessionError::SessionIdCollision` (UUID collision; exceedingly rare)
+   - `"invalid_request"` — any other `EngineError` variant (generic fallback)
 
 ### KillSession
 
@@ -132,7 +141,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
-| EC-280 | `SpawnSession` with a `SpawnRecipe` where `binary` is empty path | `SessionError::SpawnFailed`; `ServerToClient::Error { code: "spawn_failed", message: ... }` sent back |
+| EC-280 | `SpawnSession` with a `SpawnRecipe` where `binary` is empty path | `EngineError::BinaryNotFound`; `ServerToClient::Error { code: "binary_not_found", message: ... }` sent back. Note: an empty-string binary path is not found on PATH, triggering `BinaryNotFound`, NOT the generic `SpawnFailed`. |
 | EC-281 | `KeyInput` for unknown `session_id` | `SessionError::SessionNotFound`; `ServerToClient::Error { code: "session_not_found", message: ... }` sent to requesting client |
 | EC-282 | `ResizePane` with `rows=0` or `cols=0` | The daemon's IPC handler MUST clamp each dimension to a minimum of 1 BEFORE forwarding to `resize_session()`. `rows = max(rows, 1); cols = max(cols, 1)`. The PTY and parser are resized to the clamped values. No `SessionError` is returned; the operation succeeds with clamped dimensions. Clamping is consistent with BC-2.09.006 EC-237 and the resize behavior in the TUI. A zero-dimension PTY is undefined by POSIX; clamping to 1 is the most robust behavior. |
 | EC-283 | `RenameSession` with empty `new_name` | `SessionError::InvalidSessionName`; `ServerToClient::Error { code: "rename_failed", message: ... }` sent to requesting client |
@@ -186,6 +195,30 @@ S-TBD — Implement new ClientToServer IPC variants and daemon routing (filled b
 ## VP Anchors
 
 VP-TBD — IPC variant routing integration tests (filled after VP creation)
+
+## §Trace v1.6.0
+
+**S22-001 — SpawnSession PC-4 + EC-280: complete spawn-path error code set** (2026-06-13):
+- S22-001 (Phase-1d Pass 22 SUGGESTION): SpawnSession PC-4 listed only `code: "spawn_failed"`
+  as the failure response. This is incomplete. The 10-code taxonomy introduced in Pass-12
+  (Per BC-2.03.007 PC-3/PC-7 and SS-session-manager.md §session_error_to_code) added distinct
+  spawn-path codes: `"binary_not_found"` (EngineError::BinaryNotFound) and `"invalid_spawn_arg"`
+  (EngineError::InvalidPath), plus `"sidecar_write_failed"` (SidecarWriteFailed) and
+  `"session_id_collision"` (SessionIdCollision). The canonical `session_error_to_code(IpcOp::Spawn, &e)`
+  function in SS-session-manager.md (line ~469) maps each SessionError variant exhaustively.
+  - **SpawnSession PC-4**: updated from single `"spawn_failed"` to the full spawn-path code
+    enumeration cross-referenced to `session_error_to_code(IpcOp::Spawn, &e)`. All 6 spawn-path
+    codes documented with their triggering SessionError/EngineError variants.
+  - **EC-280**: `SpawnSession` with empty `binary` path was mapped to `SessionError::SpawnFailed`
+    / `"spawn_failed"`. This is incorrect: an empty binary path fails at the PATH-lookup stage
+    (`which("")` → not found) → `EngineError::BinaryNotFound` → `"binary_not_found"`.
+    `SessionError::SpawnFailed` is for OS-level spawn failures AFTER the binary is located on
+    PATH (e.g., permission denied). Corrected: EC-280 now maps to `"binary_not_found"` with
+    explanatory note.
+  - Verified against SS-session-manager.md §session_error_to_code (line ~469): the exhaustive
+    match for `EngineError::BinaryNotFound(_) => "binary_not_found"` is canonical and unambiguous.
+- Version bump: 1.5.1 → 1.6.0 (minor: normative spawn-path code set extended and EC-280
+  behavior corrected).
 
 ## §Trace v1.5.1
 

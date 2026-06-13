@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -74,13 +74,26 @@ AppMode. A `Ctrl-D` or session termination also exits `EmbeddedTerminal` automat
    `Terminated`, AppMode auto-exits to `prior`.
 3. `SessionStateChanged { new_state: Terminated }` received while in `EmbeddedTerminal`:
    AppMode auto-transitions to `prior`; status bar shows `[Session terminated]`.
-4. On any exit: `pty_scroll_offset` for this session is reset to 0.
+4. On any exit: `pty_scroll_offsets[session_id]` for this session is reset to 0.
 
 ## Invariants
 
-1. `EmbeddedTerminal` entry requires `SessionState::Running`. Attempting to enter
-   `EmbeddedTerminal` for a `Launching`, `Detached`, `Terminated`, or `Killed` session
-   is a no-op with a status bar message: `"Session not running (state: <state>)"`.
+1. `EmbeddedTerminal` entry requires `SessionState::Running` as a direct-entry precondition.
+   The behavior for other session states is defined per-state as follows (per SS-embedded-pty.md
+   lines ~101-102 and BC-2.09.001 PC-6; `SessionState::Killed` is RETIRED and does NOT exist):
+   - **`Terminated`:** No-op with status bar message `"Session not running (state: Terminated)"`.
+     The terminal and its process no longer exist; no attach is possible.
+   - **`Terminating`:** No-op with status bar message `"Session not running (state: Terminating)"`.
+     The kill is in-flight; attaching is not safe. User must wait for `Terminated`.
+   - **`Launching`:** No-op with status bar message `"Session launching — please wait"`. The
+     session-host UDS socket is not yet connectable; entry is deferred until `Running` is received.
+   - **`Detached`:** NOT a no-op. A `Detached` session is alive and attachable. Per PC-2,
+     `attach_session()` is triggered automatically when a `Detached` session is selected.
+     `AppMode::EmbeddedTerminal` is entered after `SessionStateChanged { new_state: Running }`
+     is received confirming the re-attach. See BC-2.08.007 for `attach_session()` behavior.
+   `SessionState::Killed` does NOT exist in the reachable state set (removed per
+   SS-session-manager.md §Session lifecycle state machine I4 audit — superseded by
+   `Terminating`). Any reference to `Killed` in this context is a retroactive error.
 2. `SessionCreation` is mutually exclusive with `Overlay` — permission overlays cannot
    appear while the wizard is active (they are held in the daemon overlay_stack and visible
    only via the status bar badge per BC-2.09.009).
@@ -147,6 +160,29 @@ S-TBD — Implement EmbeddedTerminal/SessionCreation AppMode transitions in mono
 ## VP Anchors
 
 VP-TBD — AppMode transition tests (filled after VP creation)
+
+## §Trace v1.1.0
+
+**I22-002 — Invariant 1: remove Killed (retired state), reconcile Detached (attachable, not no-op), add Terminating; PC-4: per-session scroll offset** (2026-06-13):
+- I22-002 (Phase-1d Pass 22 IMPORTANT): Invariant 1 had three defects:
+  (a) Listed `SessionState::Killed` as a no-op state. `Killed` was REMOVED from the reachable
+      state set in SS-session-manager.md v1.3.0 (I4 audit) — it is superseded by `Terminating`.
+      Listing it as a state that produces a no-op is incorrect; the variant does not compile.
+  (b) Listed `Detached` as a no-op. This directly contradicted PC-2 (same file, line ~51)
+      which states: "If the session-host is `Detached`, `attach_session()` is triggered
+      automatically". Per SS-embedded-pty.md v1.5.0 lines ~101-102, ONLY `Terminated` is a
+      no-op entry path; `Detached` is explicitly attachable (auto-attach). BC-2.08.007
+      AttachSession PC-5 confirms Detached → Running via attach_session().
+  (c) Made no mention of `Terminating` — a reachable state (SS-session-manager.md §Session
+      lifecycle state machine) that IS a no-op for entry. Without an explicit rule, an
+      implementer could attempt to enter EmbeddedTerminal for a Terminating session.
+  Resolution: Invariant 1 now enumerates per-state semantics for all five reachable states
+  (Launching, Running, Detached, Terminating, Terminated). `Killed` is explicitly named as
+  RETIRED with cross-reference to SS-session-manager.md I4 audit.
+- PC-4 (exit postconditions): `pty_scroll_offset` (singular, retired) → `pty_scroll_offsets[session_id]`
+  per I7 fix (SS-embedded-pty.md §Parser ownership in TUI; BC-2.09.007 v1.1.0 Invariant 5).
+- Version bump: 1.0.0 → 1.1.0 (minor: Invariant 1 semantically restructured with normative
+  per-state rules; Detached handling is a behavioral correction not just a term fix).
 
 ## §Trace v1.0.0
 
