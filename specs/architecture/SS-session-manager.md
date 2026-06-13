@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "1.8.1"
+version: "1.9.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -156,6 +156,7 @@ struct SessionHostConnection {
 /// ignores SIGTERM stays in Running state for up to 10 seconds after the user presses kill.
 /// This violates production-grade observability: the user cannot tell whether the kill was
 /// sent or is still pending. The Terminating state closes this gap.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SessionState {
     /// session-host process spawned; waiting for its UDS socket to become connectable.
@@ -793,7 +794,7 @@ pub enum HostToDaemon {
     PtyReset,
 }
 
-// C5-002 (SS-ipc.md v1.17.0): SerializedCell and SerializedColor are defined in
+// C5-002 (SS-ipc.md v1.18.0): SerializedCell and SerializedColor are defined in
 // monocle-ipc (crate::ipc::SerializedCell / crate::ipc::SerializedColor) so both
 // monocle-session-host (writer) and monocle-tui (reader) share the type without a
 // cross-binary dependency. The canonical definition with full field documentation
@@ -1201,6 +1202,33 @@ BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
 
+## §Trace v1.9.0
+
+**S26-001 — `SessionState` missing `#[non_exhaustive]` (exhaustive wire-type class sweep)** (2026-06-13):
+
+- **Finding (S26-001 exhaustive sweep):** `SessionState` was declared
+  `#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]` without `#[non_exhaustive]`.
+  `SessionState` is a wire-crossing type in multiple directions:
+  (a) It is the value type of `ServerToClient::SessionStateChanged.new_state` — sent from daemon
+      to TUI over the shared UDS IPC channel.
+  (b) It appears in `SessionSnapshot.state`, which is carried in `ServerToClient::InitialState`
+      and `ServerToClient::SessionListUpdate` over the same UDS channel.
+  (c) It is serialized to the `session-state.json` sidecar file (schema_version 3) via
+      `Serialize`/`Deserialize`.
+  The SS-ipc.md §Message Types blanket policy ("All public enums and message structs carry
+  `#[non_exhaustive]` per BC-2.02.003") requires it. Future session lifecycle phases (e.g., a
+  `Suspending` state for future harness suspend/resume support) would benefit from forward-compat
+  without a breaking match-arm change at all TUI consumers.
+- **Fix — `#[non_exhaustive]` added above `#[derive(...)]` on `SessionState`.**
+- **sidecar-file forward-compat note:** `#[non_exhaustive]` on `SessionState` ensures that a
+  future daemon reading a sidecar written by an older binary with an unknown state string receives
+  a serde deserialization error rather than a silent default. Combined with the existing unknown-state
+  forward-compat rule ("Log WARN; skip; delete sidecar"), this is the correct behavior.
+- **Module Purity Classification table:** No change needed — `SessionState` is already classified
+  Pure core (data type, no I/O).
+- Semver: minor (v1.8.1 → v1.9.0) — normative attribute addition; affects exhaustiveness rules <!-- version-pin-historical: changelog semver bump description; v1.8.1 is the prior version superseded by this entry -->
+  at all Rust match sites on `SessionState` across the codebase.
+
 ## §Trace v1.8.1
 
 **I14-001 fix — stale `portable-pty 0.8.x` version literal corrected to `0.9.x`** (2026-06-04):
@@ -1214,7 +1242,7 @@ BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
   overlay) is version-independent and unchanged.
 - SE-17c BEFORE: `(check the \`portable-pty\` 0.8.x API)`
 - SE-17c AFTER:  `(check the \`portable-pty\` 0.9.x API)`
-- Semver: patch (v1.8.0 → v1.8.1) — version-literal correction only; no normative behavior change.
+- Semver: patch (v1.8.0 → v1.8.1) — version-literal correction only; no normative behavior change. <!-- version-pin-historical: changelog semver bump description; v1.8.1 is the version created by this §Trace entry -->
 - Root-cause: POL-11 enforcement keys on artifact-ID version pins (SS-x vN.M.P, BC-x vN.M.P),
   not crates.io version literals in prose, so this stale literal escaped CI enforcement.
   Durable follow-up DEP-PIN-SWEEP-RULE recommended for state-manager.

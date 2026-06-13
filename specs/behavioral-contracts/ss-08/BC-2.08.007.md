@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.0"
+version: "1.4.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -94,7 +94,7 @@ background. The TUI can re-attach at any time.
    ScrollbackDumpComplete` — styled cells `Vec<Vec<SerializedCell>>` (full fg/bg color +
    attrs). The retired single-message `ScrollbackDump` form MUST NOT be used. The TUI
    MUST reset its parser for the session BEFORE applying the dump to prevent double-counting
-   live parser state. See SS-session-manager.md v1.8.1 §Screen-state transfer for the
+   live parser state. See SS-session-manager.md v1.9.0 §Screen-state transfer for the
    full reconstruction protocol.
 4. The 5-second timeout applies to the full `ScrollbackChunk*` + `ScrollbackDumpComplete`
    sequence for both re-discovery (BC-2.08.004) and interactive attach. After 5s without
@@ -106,10 +106,10 @@ background. The TUI can re-attach at any time.
 
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
-| EC-185 | `attach_session()` on a `Running` session (already attached) | Returns `Err(SessionError::AlreadyAttached { session_id })`; no duplicate connection created |
+| EC-185 | `attach_session()` on a `Running` session (already attached) | Returns `Ok(())` — idempotent; no duplicate `proxy_task` created (Invariant 2 mutex serialization prevents duplicate connection); re-attach to an already-Running session is treated as a no-op success (matching the sibling idempotency pattern: `kill_session` on Terminated/Terminating → `Ok(())` per BC-2.08.003 EC-165; `detach_session` on Detached → `Ok(())` per EC-186). `AlreadyAttached` does not exist in the canonical `SessionError` taxonomy. |
 | EC-186 | `detach_session()` on a `Detached` session | Returns `Ok(())` — idempotent; no duplicate Detach sent |
-| EC-187 | Session-host process died between detach and re-attach | `connect(socket_path)` fails; `kill(pid, None)` confirms dead; `SessionEntry.state` → `Terminated`; `attach_session()` returns `Err(SessionError::SessionHostDead)` |
-| EC-188 | `ScrollbackDumpComplete` (full `ScrollbackChunk*` + `ScrollbackDumpComplete` sequence) not received within 5s | Session treated as non-responsive; `Err(SessionError::AttachTimeout)`; session-host sent SIGTERM. The retired single-message `ScrollbackDump` form is NOT accepted — only the chunked protocol terminating with `ScrollbackDumpComplete`. |
+| EC-187 | Session-host process died between detach and re-attach | `connect(socket_path)` fails; `kill(pid, None)` confirms dead; `SessionEntry.state` → `Terminated`; `attach_session()` returns `Err(SessionError::SessionHostDead { session_id })` |
+| EC-188 | `ScrollbackDumpComplete` (full `ScrollbackChunk*` + `ScrollbackDumpComplete` sequence) not received within 5s | Session treated as non-responsive (Invariant 4); `attach_session()` returns `Err(SessionError::SessionHostDead { session_id })`; maps to `"attach_failed"` via `session_error_to_code(IpcOp::Attach, SessionHostDead)` per SS-session-manager.md §session_error_to_code attach-path arm. Session-host sent SIGTERM (same non-responsive handling as re-discovery 5s timeout in BC-2.08.004). The retired single-message `ScrollbackDump` form is NOT accepted — only the chunked protocol terminating with `ScrollbackDumpComplete`. `AttachTimeout` does not exist in the canonical `SessionError` taxonomy. |
 
 ## Canonical Test Vectors
 
@@ -133,7 +133,7 @@ background. The TUI can re-attach at any time.
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — detach/attach are explicitly named session lifecycle operations in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager `attach_session()`, `detach_session()`) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v1.8.1 §Public API (attach_session, detach_session signatures); §Per-session UDS protocol (DaemonToHost::Attach/Detach, HostToDaemon::ScrollbackChunk/ScrollbackDumpComplete); §Screen-state transfer on Attach; §Re-discovery state handling (I3-005 Detached preservation across restart); SS-daemon-wiring-v2-delta.md v1.7.0 §3b (SessionStateChanged{Running} before SessionListUpdate on attach) |
+| Architecture Source | SS-session-manager.md v1.9.0 §Public API (attach_session, detach_session signatures); §Per-session UDS protocol (DaemonToHost::Attach/Detach, HostToDaemon::ScrollbackChunk/ScrollbackDumpComplete); §Screen-state transfer on Attach; §Re-discovery state handling (I3-005 Detached preservation across restart); SS-daemon-wiring-v2-delta.md v1.7.0 §3b (SessionStateChanged{Running} before SessionListUpdate on attach) |
 | Test Name | test_BC_2_08_007_attach_receives_scrollback_detach_keeps_session_alive |
 
 ## Related BCs
@@ -153,6 +153,26 @@ S-TBD — Implement SessionManager attach/detach (filled by story-writer)
 ## VP Anchors
 
 VP-TBD — Attach/detach integration tests (filled after VP creation)
+
+## §Trace v1.4.1
+
+**I26-001 adversarial pass-26 fix — EC-185 + EC-188: reconcile phantom SessionError variants to canonical taxonomy** (2026-06-13):
+- EC-185: removed `SessionError::AlreadyAttached { session_id }` — variant does not exist in
+  the canonical 8-variant `SessionError` enum (SS-session-manager.md lines ~382-412). Reconciled
+  to `Ok(())` idempotent success, matching the sibling idempotency pattern:
+  `kill_session` on Terminated/Terminating → `Ok(())` (BC-2.08.003 EC-165);
+  `detach_session` on Detached → `Ok(())` (EC-186). No "wrong-state" variant exists in the
+  closed `SessionError` taxonomy; the mutex serialization (Invariant 2) prevents duplicate
+  proxy tasks, making `Ok(())` the correct production-grade return.
+- EC-188: removed `SessionError::AttachTimeout` — variant does not exist in the canonical
+  `SessionError` enum. Reconciled to `SessionError::SessionHostDead { session_id }`, which
+  maps to `"attach_failed"` via `session_error_to_code(IpcOp::Attach, SessionHostDead)` per
+  the exhaustive mapping table in SS-session-manager.md §session_error_to_code (attach-path arm:
+  `SessionHostDead { .. } => match op { IpcOp::Kill => "kill_failed", _ => "attach_failed" }`).
+  This aligns with Invariant 4's "session treated as non-responsive" language and the identical
+  5-second non-responsive handling in BC-2.08.004 re-discovery.
+- Version: 1.4.0 → 1.4.1 (patch — normative error-return correction; no behavioral semantics
+  change, only correct variant names that implement already-specified behavior).
 
 ## §Trace v1.4.0
 

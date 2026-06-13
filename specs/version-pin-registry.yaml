@@ -106,9 +106,9 @@ SS-forward-compatibility:
 
 SS-ipc:
   path: specs/architecture/SS-ipc.md
-  current_version: "1.17.0"
-  last_bump_commit: "[Pass-12 I12-001 — taxonomy 8→10 codes (binary_not_found, invalid_spawn_arg) + fixed banners; SessionError→ServerToClient::Error routing fix]"
-  last_bump_date: "2026-06-04"
+  current_version: "1.18.0"
+  last_bump_commit: "[Pass-26 S26-001 — #[non_exhaustive] added to PermissionDecisionKind wire enum; exhaustive wire-struct sweep]"
+  last_bump_date: "2026-06-13"
 
 SS-permissions-phase1:
   path: specs/architecture/SS-permissions-phase1.md
@@ -124,9 +124,9 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "1.8.1"
-  last_bump_commit: "[Pass-14 I14-001 — portable-pty 0.9.x normative literal in env-inheritance prose; exhaustive crate-pin sweep confirmed lone stale straggler (class closed)]"
-  last_bump_date: "2026-06-04"
+  current_version: "1.9.0"
+  last_bump_commit: "[Pass-26 S26-001 — #[non_exhaustive] added to SessionState wire enum; exhaustive wire-struct sweep]"
+  last_bump_date: "2026-06-13"
 
 SS-embedded-pty:
   path: specs/architecture/SS-embedded-pty.md
@@ -136,9 +136,9 @@ SS-embedded-pty:
 
 SS-engine-module-v2-delta:
   path: specs/architecture/SS-engine-module-v2-delta.md
-  current_version: "1.1.0"
-  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — I2-002 worktree_root field added to SpawnOptions; cwd uses worktree_root not project_root]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.1.1"
+  last_bump_commit: "[Pass-26 S26-001 — #[non_exhaustive] added to SpawnRecipe; §Phase-Compat prose narrowed re SpawnOptions daemon-internal]"
+  last_bump_date: "2026-06-13"
 
 SS-daemon-wiring-v2-delta:
   path: specs/architecture/SS-daemon-wiring-v2-delta.md
@@ -750,13 +750,13 @@ BC-2.06.025:
 BC-2.08.001:
   path: specs/behavioral-contracts/ss-08/BC-2.08.001.md
   current_version: "1.3.1"
-  last_bump_commit: "[Pass-17 I17-001/S17-002 — pin ADR-0009 v1.0.2 §Decision + 2nd SS-session-manager v1.8.1 ref in Architecture-Source cell]"
+  last_bump_commit: "[Pass-17 I17-001/S17-002 — pin ADR-0009 v1.0.2 §Decision + 2nd SS-session-manager v1.8.1 ref in Architecture-Source cell]" # version-pin-historical: changelog description; v1.8.1 is the SS-session-manager version at Pass-17 bump time
   last_bump_date: "2026-06-04"
 
 BC-2.08.002:
   path: specs/behavioral-contracts/ss-08/BC-2.08.002.md
   current_version: "1.2.1"
-  last_bump_commit: "[Pass-17 I17-001/S17-002 — pin ADR-0009 v1.0.2 §Decision + 2nd SS-session-manager v1.8.1 ref in Architecture-Source cell]"
+  last_bump_commit: "[Pass-17 I17-001/S17-002 — pin ADR-0009 v1.0.2 §Decision + 2nd SS-session-manager v1.8.1 ref in Architecture-Source cell]" # version-pin-historical: changelog description; v1.8.1 is the SS-session-manager version at Pass-17 bump time
   last_bump_date: "2026-06-04"
 
 BC-2.08.003:
@@ -785,9 +785,9 @@ BC-2.08.006:
 
 BC-2.08.007:
   path: specs/behavioral-contracts/ss-08/BC-2.08.007.md
-  current_version: "1.4.0"
-  last_bump_commit: "[Adversarial Pass 4 resolution D-245 2026-06-03 — HIGH-002 title + Description: retired ScrollbackDump→chunked; propagated to PRD+BC-INDEX]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.4.1"
+  last_bump_commit: "[Pass-26 I26-001 — EC-185 AlreadyAttached→idempotent Ok(()); EC-188 AttachTimeout→SessionError::SessionHostDead/attach_failed; reconcile-to-existing 8-variant taxonomy]"
+  last_bump_date: "2026-06-13"
 
 BC-2.08.008:
   path: specs/behavioral-contracts/ss-08/BC-2.08.008.md

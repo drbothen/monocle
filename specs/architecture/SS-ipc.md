@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "ipc"
 subsystem: SS-05
-version: "1.17.0"
+version: "1.18.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -538,6 +538,7 @@ pub enum ClientToServer {
 /// Named `PermissionDecisionKind` (not `PermissionDecision`) to avoid a name collision
 /// with the `ClientToServer::PermissionDecision` variant — see §PermissionDecisionKind
 /// Naming section below for the full rationale and BC-name mapping table.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PermissionDecisionKind {
     /// Allow this invocation once.
@@ -1219,6 +1220,32 @@ still pending in the daemon's registry (i.e., still within the 300ms timeout win
 prompts are never re-pushed.
 
 ---
+
+## §Trace v1.18.0
+
+**S26-001 — `PermissionDecisionKind` missing `#[non_exhaustive]` (exhaustive wire-type class sweep)** (2026-06-13):
+
+- **Finding (S26-001 exhaustive sweep):** `PermissionDecisionKind` was declared
+  `#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]` without `#[non_exhaustive]`.
+  The §Message Types blanket policy in this file states: "All public enums and message structs
+  carry `#[non_exhaustive]` per the SS-02 extensibility policy (BC-2.02.003)."
+  `PermissionDecisionKind` is a public wire enum: it is carried in
+  `ClientToServer::PermissionDecision { decision: PermissionDecisionKind }`, which crosses the UDS
+  IPC boundary. No documented exclusion analogous to `TransportEvent` (closed transport-state set
+  requiring exhaustive TUI handling) or `SerializedColor` (closed vt100 0.16 color model) exists
+  for `PermissionDecisionKind`. Future Claude Code protocol versions could introduce additional
+  decision kinds (e.g., a permanent-deny variant); `#[non_exhaustive]` is the correct forward-
+  compat mechanism.
+- **Fix — `#[non_exhaustive]` added above `#[derive(...)]` on `PermissionDecisionKind`.**
+- **Closed-set claim assessed:** The current variants (`Allow`, `AcceptAlways`, `Deny`) match the
+  Phase 1 Claude Code hook protocol values, but the set is NOT guaranteed closed by that protocol.
+  Unlike `SerializedColor` (whose variants are structurally determined by the vt100 0.16 Cell color
+  API and cannot grow without a library version change) and `TransportEvent` (whose exhaustiveness
+  is intentional by design to force TUI-side handling of new transport states), `PermissionDecisionKind`
+  is a semantic policy set that can expand without a library constraint. `#[non_exhaustive]` is
+  correct here. Consumers using exhaustive match on `PermissionDecisionKind` must add a `_ =>` arm.
+- Semver: minor (v1.17.0 → v1.18.0) — normative attribute addition; affects exhaustiveness rules
+  at all Rust match sites on `PermissionDecisionKind`.
 
 ## §Trace v1.17.0
 

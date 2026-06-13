@@ -126,7 +126,7 @@ was removed from the state machine and spawn goes directly to `Launching`.
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC is the primary definition of the spawn operation that launches the session-host process and creates the session registry entry |
 | L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness — the sidecar is a monocle-owned file, not a harness file; the atomic write via tempfile::persist ensures no partial writes to monocle's own state) |
 | Architecture Module | monocle-runtime (SessionManager sub-module — `monocle-runtime/src/session_manager/mod.rs`) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v1.8.1 §SessionManager §Public API (spawn_session signature); SS-session-manager.md v1.8.1 §session-state.json schema (schema_version 3); ADR-0009 v1.0.2 §Decision; SS-daemon-wiring-v2-delta.md v1.7.0 §3b (SessionStateChanged emission rule) |
+| Architecture Source | SS-session-manager.md v1.9.0 §SessionManager §Public API (spawn_session signature); SS-session-manager.md v1.9.0 §session-state.json schema (schema_version 3); ADR-0009 v1.0.2 §Decision; SS-daemon-wiring-v2-delta.md v1.7.0 §3b (SessionStateChanged emission rule) |
 | Test Name | test_BC_2_08_001_spawn_session_entry_created_within_2s |
 
 ## Related BCs
@@ -154,7 +154,7 @@ VP-TBD — Session spawn integration tests (filled after VP creation)
 
 **I17-001 + S17-002 — Pin-symmetry fix: ADR-0009 in Architecture Source; unpinned SS-session-manager.md ref pinned; §-anchor corrected to exact heading** (2026-06-04):
 - Architecture Source: two violations fixed:
-  1. Second `SS-session-manager.md §session-state.json schema` (no version pin) → `SS-session-manager.md v1.8.1 §session-state.json schema`. Pin-symmetry rule: all refs in a multi-doc cell must carry explicit version pins.
+  1. Second `SS-session-manager.md §session-state.json schema` (no version pin) → `SS-session-manager.md v1.8.1 §session-state.json schema`. Pin-symmetry rule: all refs in a multi-doc cell must carry explicit version pins. <!-- version-pin-historical: §Trace I17-001 fix record; v1.8.1 is SS-session-manager at Pass-17 fix time -->
   2. `ADR-0009 §native-detached-session-host-process-model` → `ADR-0009 v1.0.2 §Decision`. Fixes I17-001 (unpinned ADR) and S17-002 (loose paraphrase §-anchor; ADR-0009's decision section heading is `## Decision` per ADR-0009 file line 92).
 - No behavioral content changed; version bumped as patch 1.3.0→1.3.1.
 

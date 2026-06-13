@@ -121,7 +121,7 @@ per-session worktree applies). The returned recipe is consumed by `SessionManage
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the spawn recipe assembly for the ClaudeCodeModule adapter, which is the mechanism by which the engine abstraction enables monocle to launch Claude Code sessions |
 | L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness or factory workflow system — PC-4 explicitly states spawn_recipe() writes no files; the hooks-settings.json path is passed through as a CLI arg string only) |
 | Architecture Module | monocle-runtime (ClaudeCodeModule implementation — `monocle-runtime/src/engine/claude_code.rs`) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module-v2-delta.md v1.1.0 §ClaudeCodeModule::spawn_recipe() implementation spec; SS-session-manager.md v1.8.1 §SpawnRecipe integration with EngineModule |
+| Architecture Source | SS-engine-module-v2-delta.md v1.1.1 §ClaudeCodeModule::spawn_recipe() implementation spec; SS-session-manager.md v1.9.0 §SpawnRecipe integration with EngineModule |
 | Stories | S-TBD (filled by story-writer) |
 | Test Name | test_BC_2_03_005_spawn_recipe_happy_path_binary_args_env_cwd |
 
@@ -209,5 +209,5 @@ VP-TBD — spawn_recipe() happy-path unit tests (filled after VP creation)
 - BC-2.03.005 authored for SS-03 as part of the v1A control-center pivot BC burst.
 - Covers: spawn_recipe() happy-path — binary resolution, --settings arg construction,
   MONOCLE_SESSION_ID injection, cwd from project_root.
-- Architecture source: SS-engine-module-v2-delta.md v1.1.0 (IMP-5 InvalidPath fix applied).
+- Architecture source: SS-engine-module-v2-delta.md v1.1.0 (IMP-5 InvalidPath fix applied). <!-- version-pin-historical: §Trace initial-production record; v1.1.0 is the spec version at BC authoring time -->
 - SE-16d PASS: 2026-06-03T23:30:00Z (new artifact).

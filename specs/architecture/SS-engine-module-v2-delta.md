@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "engine-module-v2-delta"
 subsystem: SS-03
-version: "1.1.0"
+version: "1.1.1"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -61,6 +61,7 @@ These types are added to `monocle-core/src/engine.rs` alongside the trait:
 /// The spawn recipe produced by an EngineModule.
 /// SessionManager uses this to build the monocle-session-host command line.
 /// All fields MUST be set by the implementing module (no Optional fields except where noted).
+#[non_exhaustive]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpawnRecipe {
     /// Absolute path to the harness binary.
@@ -230,7 +231,11 @@ All Phase-1 `EngineModule` behavioral contracts (BC-2.03.*) remain in effect:
   existing implementations.
 - The `#[non_exhaustive]` policy (ADR-0004) does not apply to trait methods; adding a
   method with a default impl is non-breaking for existing trait objects.
-- `SpawnRecipe` and `SpawnOptions` carry `#[non_exhaustive]` where applicable per BC-2.02.003.
+- `SpawnRecipe` carries `#[non_exhaustive]` per BC-2.02.003 — it is a wire type (carried in
+  `ClientToServer::SpawnSession { recipe: SpawnRecipe }` across the UDS IPC boundary).
+- `SpawnOptions` does NOT carry `#[non_exhaustive]` — it is daemon-internal (`#[derive(Debug, Clone)]`
+  only, no `Serialize`/`Deserialize`), is never placed on any IPC message, and crosses no wire
+  boundary. The `#[non_exhaustive]` extensibility policy applies to wire types only (BC-2.02.003).
 
 ---
 
@@ -246,6 +251,31 @@ All Phase-1 `EngineModule` behavioral contracts (BC-2.03.*) remain in effect:
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.1.1
+
+**S26-001 — `SpawnRecipe` missing `#[non_exhaustive]` (exhaustive wire-type class sweep)** (2026-06-13):
+
+- **Finding (S26-001 adversarial suggestion / in-scope fix):** `SpawnRecipe` struct was declared
+  `#[derive(Debug, Clone, Serialize, Deserialize)]` without `#[non_exhaustive]`. This contradicted:
+  (a) the §Phase Compatibility prose in this file ("SpawnRecipe … carr[ies] `#[non_exhaustive]`
+  where applicable per BC-2.02.003"), and (b) SS-ipc.md §Message Types blanket policy ("All public
+  enums and message structs carry `#[non_exhaustive]` per the SS-02 extensibility policy"). As a
+  wire type carried in `ClientToServer::SpawnSession { recipe: SpawnRecipe }` over the shared UDS,
+  `SpawnRecipe` must carry `#[non_exhaustive]` to permit additive field evolution without breaking
+  existing struct-literal constructors at callers.
+- **Fix — `#[non_exhaustive]` added above `#[derive(...)]` on `SpawnRecipe`:** Attribute placed
+  above the derive line per Rust convention (attribute order: outer attributes ordered
+  non_exhaustive → derive).
+- **§Phase Compatibility prose narrowed:** The vague "where applicable" language is replaced with
+  an explicit two-bullet statement: `SpawnRecipe` carries `#[non_exhaustive]` (wire type);
+  `SpawnOptions` does NOT (daemon-internal, no Serialize/Deserialize, never on any IPC message).
+- **`SpawnOptions` determination:** `SpawnOptions` derives `#[derive(Debug, Clone)]` only — no
+  `Serialize`/`Deserialize`. It is NOT placed on any IPC message in the in-scope docs. It is
+  daemon-internal: constructed by `SessionManager`, passed to `EngineModule::spawn_recipe()`, and
+  consumed entirely within the daemon process. The `#[non_exhaustive]` policy (BC-2.02.003)
+  applies to wire types; `SpawnOptions` is definitively NOT a wire type. No attribute change needed.
+- Semver: patch (v1.1.0 → v1.1.1) — attribute addition + prose narrowing; no behavioral change.
 
 ## §Trace v1.1.0
 

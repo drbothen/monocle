@@ -53,8 +53,8 @@ matters for diagnostic accuracy.
    `SessionError::EngineError` → `ServerToClient::Error { code: "binary_not_found", message }`.
    The TUI MUST display the fixed banner: `"claude binary not found — is Claude Code installed
    and on PATH?"`. The session spawn fails; no `monocle-session-host` process is started.
-   Canonical code: `"binary_not_found"` (SS-ipc.md v1.17.0 §ServerToClient::Error taxonomy;
-   SS-session-manager.md v1.8.1 §session_error_to_code spawn-path arms).
+   Canonical code: `"binary_not_found"` (SS-ipc.md v1.18.0 §ServerToClient::Error taxonomy;
+   SS-session-manager.md v1.9.0 §session_error_to_code spawn-path arms).
 4. `BinaryNotFound` is NOT returned for any other failure mode. It is reserved exclusively
    for `which::which` failures.
 
@@ -70,8 +70,8 @@ matters for diagnostic accuracy.
    `SessionError::EngineError` → `ServerToClient::Error { code: "invalid_spawn_arg", message }`.
    The TUI MUST display the fixed banner: `"Session spawn failed: invalid hooks settings path
    (non-UTF-8)"`. The session spawn fails; no `monocle-session-host` process is started.
-   Canonical code: `"invalid_spawn_arg"` (SS-ipc.md v1.17.0 §ServerToClient::Error taxonomy;
-   SS-session-manager.md v1.8.1 §session_error_to_code spawn-path arms).
+   Canonical code: `"invalid_spawn_arg"` (SS-ipc.md v1.18.0 §ServerToClient::Error taxonomy;
+   SS-session-manager.md v1.9.0 §session_error_to_code spawn-path arms).
 8. `InvalidPath` is NOT used for binary-not-found. The two variants MUST NOT be conflated.
 
 ## Invariants
@@ -120,7 +120,7 @@ matters for diagnostic accuracy.
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the error taxonomy for spawn_recipe(), which is a method on the ClaudeCodeModule adapter; typed errors are essential for diagnostic accuracy in the engine abstraction layer |
 | L2 Domain Invariants | DI-006 (EngineModule implementations must be stateless — error variants carry no shared state; both errors are pure value returns) |
 | Architecture Module | monocle-runtime (ClaudeCodeModule — `monocle-runtime/src/engine/claude_code.rs`); monocle-core (`EngineError` type) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module-v2-delta.md v1.1.0 §EngineError additions + §Semantic contract (IMP-5 InvalidPath correction); SS-ipc.md v1.17.0 §ServerToClient::Error taxonomy (codes `"binary_not_found"` and `"invalid_spawn_arg"` — I12-001); SS-session-manager.md v1.8.1 §session_error_to_code spawn-path arms (EngineError bridge — I12-001) |
+| Architecture Source | SS-engine-module-v2-delta.md v1.1.1 §EngineError additions + §Semantic contract (IMP-5 InvalidPath correction); SS-ipc.md v1.18.0 §ServerToClient::Error taxonomy (codes `"binary_not_found"` and `"invalid_spawn_arg"` — I12-001); SS-session-manager.md v1.9.0 §session_error_to_code spawn-path arms (EngineError bridge — I12-001) |
 | Test Name | test_BC_2_03_007_spawn_recipe_binary_not_found_and_invalid_path |
 
 ## Related BCs
@@ -146,7 +146,7 @@ VP-TBD — spawn_recipe() error path unit tests (filled after VP creation)
 **I12-001 — PC-3/PC-7 now cite canonical IPC error codes; Architecture Source extended** (2026-06-04):
 - Finding (I12-001): BC-2.03.007 PC-3 and PC-7 specified the correct user-facing banners but did
   not cite the canonical `ServerToClient::Error` codes through which those banners are delivered.
-  The architect extended the `ServerToClient::Error` taxonomy (SS-ipc.md v1.17.0, 8→10 codes)
+  The architect extended the `ServerToClient::Error` taxonomy (SS-ipc.md v1.17.0, 8→10 codes) <!-- version-pin-historical: §Trace I12-001 record; v1.17.0 is SS-ipc at Pass-12 fix time -->
   and added the `SessionError::EngineError` bridge (SS-session-manager.md v1.8.0
   `session_error_to_code()`) so that both distinct user messages are now satisfiable via the
   IPC wire protocol.
@@ -158,13 +158,13 @@ VP-TBD — spawn_recipe() error path unit tests (filled after VP creation)
   `EngineError::InvalidPath` → `SessionError::EngineError` →
   `ServerToClient::Error { code: "invalid_spawn_arg", message }`. Canonical code
   `"invalid_spawn_arg"` cited with source.
-- Architecture Source row extended to cite SS-ipc.md v1.17.0 §ServerToClient::Error taxonomy
-  AND SS-session-manager.md v1.8.0 §session_error_to_code spawn-path arms.
+- Architecture Source row extended to cite SS-ipc.md v1.17.0 §ServerToClient::Error taxonomy <!-- version-pin-historical: §Trace I12-001 record; v1.17.0 is SS-ipc at Pass-12 fix time -->
+  AND SS-session-manager.md v1.8.0 §session_error_to_code spawn-path arms. <!-- version-pin-historical: §Trace I12-001 record; v1.8.0 is SS-session-manager at Pass-12 fix time -->
 - inputs frontmatter extended to include SS-ipc.md and SS-session-manager.md.
 - Cross-reference verification confirmed:
-  - SS-ipc.md v1.17.0 lines 396-397: `"binary_not_found"` and `"invalid_spawn_arg"` present
+  - SS-ipc.md v1.17.0 lines 396-397: `"binary_not_found"` and `"invalid_spawn_arg"` present <!-- version-pin-historical: §Trace cross-reference verification at Pass-12; v1.17.0 is SS-ipc at that time -->
     in `ServerToClient::Error` taxonomy table.
-  - SS-session-manager.md v1.8.0 lines 411, 471-473: `SessionError::EngineError(#[from]
+  - SS-session-manager.md v1.8.0 lines 411, 471-473: `SessionError::EngineError(#[from] <!-- version-pin-historical: §Trace cross-reference verification at Pass-12; v1.8.0 is SS-session-manager at that time -->
     EngineError)` variant and `session_error_to_code()` match arms confirmed present.
 
 ## §Trace v1.0.0
