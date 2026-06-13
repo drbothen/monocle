@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.0"
+version: "1.1.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -140,6 +140,19 @@ S-TBD — Implement permission badge + bell in EmbeddedTerminal status bar (fill
 
 VP-TBD — Badge + bell unit tests (filled after VP creation)
 
+## §Trace v1.1.1
+
+**S24-002 stale §Trace annotation fix** (2026-06-13):
+- Finding S24-002 (Phase-1d Pass 24, SUGGESTION): §Trace v1.0.0 "Design decision" bullet stated
+  "Bell emitted once per new prompt (not per second prompt in rapid succession)" — the once-only
+  rule that v1.1.0 C2-001 superseded. The normative body (PC-3, Invariant 2, EC-260, test
+  vectors) was already correct at v1.1.0. Only the historical §Trace v1.0.0 bullet retained
+  the superseded framing, creating a misleading audit trail for readers scanning §Trace chronology.
+- Fix: Appended superseded marker to the §Trace v1.0.0 design decision bullet:
+  "(SUPERSEDED by v1.1.0 C2-001 — the canonical rule is per-prompt: every prompt rings,
+  including the second in rapid succession)".
+- No normative body changes. Patch version bump to 1.1.1.
+
 ## §Trace v1.1.0
 
 **C2-001 adversarial pass-2 fix — per-prompt bell rule** (2026-06-03):
@@ -171,5 +184,6 @@ VP-TBD — Badge + bell unit tests (filled after VP creation)
   human sign-off is required before v1B BC authoring.
 - Design decision (in-scope): Bell emitted once per new prompt (not per second prompt in rapid
   succession) per Invariant 2. This is production-grade UX; per-prompt bells for rapid-fire
-  prompts would be disruptive.
+  prompts would be disruptive. **(SUPERSEDED by v1.1.0 C2-001 — the canonical rule is
+  per-prompt: every prompt rings, including the second in rapid succession)**
 - SE-16d PASS: 2026-06-03T23:30:00Z (new artifact).

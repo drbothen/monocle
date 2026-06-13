@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.0"
+version: "1.0.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -78,7 +78,7 @@ the enhancement flags silently no-op and standard VT sequences are used as fallb
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
 | EC-225 | `Ctrl+Shift+Enter` on Kitty-capable terminal | CSI u sequence; harness receives enhanced encoding |
-| EC-226 | `Shift+Tab` on Kitty-capable terminal | CSI u sequence `\x1b[9;2u` (tab=9, modifier=shift+1=2) |
+| EC-226 | `Shift+Tab` on Kitty-capable terminal | CSI u sequence `\x1b[9;2u` (tab codepoint=9; Kitty modifier = 1 + shift(1) = 2) |
 | EC-227 | `Alt+F3` on Kitty-capable terminal | CSI u sequence; harness receives alt+F3 correctly |
 | EC-228 | `Ctrl+Shift+Enter` on non-Kitty terminal | `is_kitty_enhanced_key()` returns false; falls through to standard key table (Enter → `\r`; Ctrl+Shift modifier not distinguishable); best-effort |
 | EC-229 | TUI exits without `PopKeyboardEnhancementFlags` (panic/crash) | Terminal left in Kitty-enhanced mode; user sees raw Kitty sequences in their shell; next TUI launch will `Pop` on clean exit; acceptable for crash recovery |
@@ -87,7 +87,7 @@ the enhancement flags silently no-op and standard VT sequences are used as fallb
 
 | Input | Expected PTY bytes | Category |
 |-------|-------------------|----------|
-| `Ctrl+Shift+Enter` (Kitty-enhanced) | `\x1b[13;6u` (Enter=13, modifier=shift(2)+ctrl(4)+1=7 → but Kitty encodes 1-based: ctrl+shift = (4+2)=6) | happy-path |
+| `Ctrl+Shift+Enter` (Kitty-enhanced) | `\x1b[13;6u` (Enter codepoint=13; Kitty modifier = 1 + shift(1) + ctrl(4) = 6) | happy-path |
 | Any key on non-Kitty terminal | Standard VT sequence per BC-2.09.002 table | happy-path |
 
 ## Verification Properties
@@ -123,6 +123,20 @@ S-TBD — Same story as BC-2.09.002 (keyboard encoding includes Kitty branch; fi
 ## VP Anchors
 
 VP-TBD — Kitty encoding unit tests (filled after VP creation)
+
+## §Trace v1.0.1
+
+**I24-001 annotation correction — Kitty modifier bitfield coherence** (2026-06-13):
+- Finding I24-001 (Phase-1d Pass 24, IMPORTANT): Canonical Test Vectors row for `Ctrl+Shift+Enter`
+  used `shift(2)` in the annotation, contradicting PC-2's canonical bitfield `shift=1, alt=2, ctrl=4`.
+  The byte literal `\x1b[13;6u` was CORRECT; only the derivation annotation was wrong.
+- Fix: Rewrote Ctrl+Shift+Enter annotation to `(Enter codepoint=13; Kitty modifier = 1 + shift(1) + ctrl(4) = 6)`.
+- Sweep: EC-226 annotation `modifier=shift+1=2` also clarified to canonical form
+  `(tab codepoint=9; Kitty modifier = 1 + shift(1) = 2)` — result unchanged, notation now
+  unambiguously matches PC-2 and the `1 + sum(bits)` formula.
+- All other Kitty derivation annotations in this file verified against canonical bitfield: no
+  further annotation errors found. All byte literals confirmed correct.
+- No normative postconditions, invariants, or byte literals changed. Patch version bump only.
 
 ## §Trace v1.0.0
 

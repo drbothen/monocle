@@ -815,14 +815,14 @@ BC-2.09.003:
 
 BC-2.09.004:
   path: specs/behavioral-contracts/ss-09/BC-2.09.004.md
-  current_version: "1.0.0"
-  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-09 EmbeddedPTY BC: PTY output rendering]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.0.1"
+  last_bump_commit: "[Pass-24 I24-001 2026-06-13 — Kitty CSI-u keyboard protocol BC: line-90 modifier derivation annotation corrected to canonical bitfield]"
+  last_bump_date: "2026-06-13"
 
 BC-2.09.005:
   path: specs/behavioral-contracts/ss-09/BC-2.09.005.md
   current_version: "1.0.0"
-  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-09 EmbeddedPTY BC: PTY resize]"
+  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-09 EmbeddedPTY BC: bracketed paste]"
   last_bump_date: "2026-06-03"
 
 BC-2.09.006:
@@ -845,9 +845,9 @@ BC-2.09.008:
 
 BC-2.09.009:
   path: specs/behavioral-contracts/ss-09/BC-2.09.009.md
-  current_version: "1.1.0"
-  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — D-243 S2-004 zero-dim resize clamp]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.1.1"
+  last_bump_commit: "[Pass-24 S24-002 2026-06-13 — permission badge+bell BC: §Trace v1.0.0 per-prompt bell reversal superseded marker appended]"
+  last_bump_date: "2026-06-13"
 
 BC-HOOK-039:
   path: specs/behavioral-contracts/ss-dtu/BC-HOOK-039.md
