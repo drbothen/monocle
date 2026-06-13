@@ -6,7 +6,7 @@ title: "PTY Bytes Shared on Existing UDS IPC Channel (Option A)"
 status: accepted
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
-version: "1.5.0"
+version: "1.6.0"
 timestamp: 2026-06-03T00:00:00Z
 inputs:
   - research/domain-monocle-vision-synthesis.md
@@ -241,7 +241,8 @@ ResizePane {
     cols: u16,
 },
 SpawnSession {
-    recipe: SpawnRecipe, // serialized spawn recipe from ClaudeCodeModule::spawn_recipe()
+    opts: SpawnOptions,  // spawn intent parameters from TUI; daemon builds SpawnRecipe daemon-side
+                         // (I27-001 Model A: spawn_recipe() runs in SessionManager::spawn_session())
 },
 KillSession {
     session_id: String,
@@ -406,6 +407,14 @@ session ring, not any TUI client. Specific BC-2.05.009 edits required:
 - Extends: SS-ipc.md §Message Types (new variants documented in SS-05 delta).
 - Requires: SS-08 Session Manager (session-host proxy that posts to per-session PTY channel).
 - Pre-gate benchmark deliverable: routes to `vsdd-factory:performance-engineer`.
+
+## §Trace v1.6.0
+
+**I27-001 — `ClientToServer::SpawnSession` payload corrected: `recipe: SpawnRecipe` → `opts: SpawnOptions`** (2026-06-13):
+
+- **Finding (I27-001):** The `SpawnSession` variant in the §IPC Message Type Additions code block carried `recipe: SpawnRecipe` with the comment "serialized spawn recipe from `ClaudeCodeModule::spawn_recipe()`". Under the correct Model A architecture (`spawn_recipe()` runs daemon-side inside `SessionManager::spawn_session()`), the wire payload must be `SpawnOptions` (user intent parameters), not a pre-built `SpawnRecipe`. This is one of three occurrences of the I27-001 contradiction (the others are in SS-ipc.md and SS-daemon-wiring-v2-delta.md).
+- **Fix:** `recipe: SpawnRecipe` → `opts: SpawnOptions` with updated comment: "spawn intent parameters from TUI; daemon builds `SpawnRecipe` daemon-side (I27-001 Model A: `spawn_recipe()` runs in `SessionManager::spawn_session()`)".
+- Semver: minor (v1.5.0 → v1.6.0) — normative wire-type correction.
 
 ## §Trace v1.5.0
 

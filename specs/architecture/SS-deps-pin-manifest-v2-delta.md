@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "deps-pin-manifest-v2-delta"
 subsystem: cross-cutting
-version: "1.0.0"
+version: "1.0.1"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -193,9 +193,17 @@ ADR-0011:
   last_bump_date: "2026-06-03"
 ```
 
-ARCH-INDEX must also be bumped in the same commit (from v1.0.26 → v1.0.27).
+<!-- version-pin-historical: S27-001 fix — this authoring-time instruction was completed at D-239/D-240; ARCH-INDEX was bumped to v1.0.27 at that time. This line is retained as a historical record only and must NOT be actioned again. -->
 
 ---
+
+## §Trace v1.0.1
+
+**S27-001 — stale authoring-time ARCH-INDEX bump instruction annotated as completed** (2026-06-13):
+
+- **Finding (S27-001):** Line ~196 contained `"ARCH-INDEX must also be bumped in the same commit (from v1.0.26 → v1.0.27)."` — an authoring-time instruction for state-manager, sitting outside the `version-pin-historical` comment block. The current ARCH-INDEX is v1.0.28, so the instruction has been completed. Leaving it as live instruction text risks a future agent misreading it as an open action item.
+- **Fix:** Line annotated with `<!-- version-pin-historical: ... completed at D-239/D-240 -->` to mark it as a historical record. No behavioral change; no version bump to ARCH-INDEX is triggered by this patch.
+- Semver: patch (v1.0.0 → v1.0.1) — comment annotation only; no normative content change.
 
 ## §Trace v1.0.0
 

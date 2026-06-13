@@ -1,12 +1,12 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.6.0"
+version: "1.7.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:45:00Z
 phase: v1A-prd-delta
-inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-ipc.md, architecture/SS-daemon-wiring-v2-delta.md]
+inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-ipc.md, architecture/SS-daemon-wiring-v2-delta.md, architecture/SS-session-manager.md, architecture/SS-engine-module-v2-delta.md]
 input-hash: "f01604c"
 traces_to: prd.md
 origin: greenfield
@@ -46,11 +46,15 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 
 ### SpawnSession
 
-1. `ClientToServer::SpawnSession { recipe: SpawnRecipe }` is received.
-2. Daemon calls `SessionManager::spawn_session(recipe, ...)` (BC-2.08.001).
+1. `ClientToServer::SpawnSession { opts: SpawnOptions }` is received. The TUI populates
+   `project_root`, `worktree_root`, `harness_id`, `profile_id`, and `ccr_base_url`;
+   the daemon IPC handler fills `session_id` and `hooks_settings_path` before calling
+   `spawn_session()`. `SpawnRecipe` is daemon-internal — built inside `spawn_session()` by
+   `engine_module.spawn_recipe(&opts)?` as its first step (Model A — I27-001).
+2. Daemon calls `SessionManager::spawn_session(opts)` (BC-2.08.001).
 3. On success: `ServerToClient::SessionStateChanged { session_id, new_state }` broadcast BEFORE
    `ServerToClient::SessionListUpdate` broadcast (ordered pair, per-client FIFO, per BC-2.08.008
-   PC-3 / SS-daemon-wiring-v2-delta.md v1.7.0 §3b). The `SessionStateChanged` event reflects
+   PC-3 / SS-daemon-wiring-v2-delta.md v1.8.0 §3b). The `SessionStateChanged` event reflects
    the `Launching → Running` transition; the ordering is atomically guaranteed under the
    `SessionManager` mutex hold into each client's per-client `mpsc::Sender`.
 4. On failure: `ServerToClient::Error { code: <spawn-path-code>, message: ... }` sent to the
@@ -70,7 +74,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 2. Daemon calls `SessionManager::kill_session(&session_id)` (BC-2.08.003).
 3. On success: `ServerToClient::SessionStateChanged { session_id, new_state }` broadcast BEFORE
    `ServerToClient::SessionListUpdate` broadcast (ordered pair, per-client FIFO, per BC-2.08.008
-   PC-3 / SS-daemon-wiring-v2-delta.md v1.7.0 §3b). The `SessionStateChanged` event reflects
+   PC-3 / SS-daemon-wiring-v2-delta.md v1.8.0 §3b). The `SessionStateChanged` event reflects
    the `Running → Terminating` transition (emitted immediately; `Terminating → Terminated`
    follows when the session-host confirms exit per BC-2.08.003).
 4. On failure (not found): `ServerToClient::Error { code: "session_not_found", message: ... }`.
@@ -94,7 +98,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 2. Daemon calls `SessionManager::detach_session(&session_id)` (BC-2.08.007).
 3. On success: `ServerToClient::SessionStateChanged { session_id, new_state: Detached }` broadcast
    BEFORE `ServerToClient::SessionListUpdate` broadcast (ordered pair, per-client FIFO, per
-   BC-2.08.008 PC-3 / SS-daemon-wiring-v2-delta.md v1.7.0 §3b).
+   BC-2.08.008 PC-3 / SS-daemon-wiring-v2-delta.md v1.8.0 §3b).
 
 ### RenameSession
 
@@ -118,7 +122,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
    re-attaches a `Detached` session from the sessions panel. The TUI MUST NOT send
    `DaemonToHost::Attach` directly — that is a daemon→session-host message. The TUI sends
    `ClientToServer::AttachSession` to the daemon, which routes to `SessionManager::attach_session()`.
-   Per SS-ipc.md v1.18.0 §`ClientToServer::AttachSession`.
+   Per SS-ipc.md v1.19.0 §`ClientToServer::AttachSession`.
 
 ## Invariants
 
@@ -141,7 +145,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
-| EC-280 | `SpawnSession` with a `SpawnRecipe` where `binary` is empty path | `EngineError::BinaryNotFound`; `ServerToClient::Error { code: "binary_not_found", message: ... }` sent back. Note: an empty-string binary path is not found on PATH, triggering `BinaryNotFound`, NOT the generic `SpawnFailed`. |
+| EC-280 | `SpawnSession` where the harness binary (`claude`) is not on `PATH` (e.g., not installed, or `PATH` misconfigured) | Inside `spawn_session()`, `engine_module.spawn_recipe(&opts)?` calls `which::which("claude")`, which fails → `EngineError::BinaryNotFound("claude")` → `SessionError::EngineError(BinaryNotFound)` → `ServerToClient::Error { code: "binary_not_found", message: ... }` sent back. No OS process is spawned. `SpawnFailed` is NOT triggered — `SpawnFailed` is reserved for OS-level spawn failures after the binary is located on PATH (Model A — I27-001). |
 | EC-281 | `KeyInput` for unknown `session_id` | `SessionError::SessionNotFound`; `ServerToClient::Error { code: "session_not_found", message: ... }` sent to requesting client |
 | EC-282 | `ResizePane` with `rows=0` or `cols=0` | The daemon's IPC handler MUST clamp each dimension to a minimum of 1 BEFORE forwarding to `resize_session()`. `rows = max(rows, 1); cols = max(cols, 1)`. The PTY and parser are resized to the clamped values. No `SessionError` is returned; the operation succeeds with clamped dimensions. Clamping is consistent with BC-2.09.006 EC-237 and the resize behavior in the TUI. A zero-dimension PTY is undefined by POSIX; clamping to 1 is the most robust behavior. |
 | EC-283 | `RenameSession` with empty `new_name` | `SessionError::InvalidSessionName`; `ServerToClient::Error { code: "rename_failed", message: ... }` sent to requesting client |
@@ -151,7 +155,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 
 | Message | Expected Daemon Response | Category |
 |---------|-------------------------|----------|
-| `SpawnSession { recipe: valid }` | `SessionListUpdate` broadcast; `spawn_session()` called | happy-path |
+| `SpawnSession { opts: valid SpawnOptions, claude on PATH }` | `SessionStateChanged{Launching}` then `SessionListUpdate` broadcast; `spawn_session(opts)` called | happy-path |
 | `KillSession { session_id: "existing" }` | `SessionListUpdate` broadcast | happy-path |
 | `KillSession { session_id: "nonexistent" }` | `Error { code: "session_not_found" }` to requesting client | error |
 | `KeyInput { session_id: "running", bytes: [0x61] }` | `send_key_input()` called; no broadcast | happy-path |
@@ -172,7 +176,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 | L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — these ClientToServer variants extend the internal transport capability with session lifecycle control messages (spawn, kill, key input, resize, detach, rename, re-attach) — all transported over the existing UDS per the session/event/prompt push design |
 | Architecture Module | monocle-ipc (`ClientToServer` enum new variants); monocle-runtime (IPC handler routing to SessionManager) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-daemon-wiring-v2-delta.md v1.7.0 §IPC handler — new ClientToServer variants (including AttachSession); SS-ipc.md v1.18.0 §`ClientToServer::AttachSession` (I3-004 — TUI re-attach; replaces incorrect "TUI sends DaemonToHost::Attach" description); SS-ipc.md v1.18.0 §`ServerToClient::Error` — Error variant + code taxonomy (`spawn_failed`, `session_not_found`, `attach_failed`, `kill_failed`, `rename_failed`, `invalid_request`) added by architect in Pass-6 parallel track (C6-001) |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.8.0 §IPC handler — new ClientToServer variants (including AttachSession; `ClientToServer::SpawnSession { opts: SpawnOptions }` wire variant under Model A — I27-001); SS-ipc.md v1.19.0 §`ClientToServer::SpawnSession { opts: SpawnOptions }` (Model A wire variant — I27-001); SS-ipc.md v1.19.0 §`ClientToServer::AttachSession` (I3-004 — TUI re-attach; replaces incorrect "TUI sends DaemonToHost::Attach" description); SS-ipc.md v1.19.0 §`ServerToClient::Error` — Error variant + code taxonomy (`spawn_failed`, `binary_not_found`, `invalid_spawn_arg`, `sidecar_write_failed`, `session_id_collision`, `session_not_found`, `attach_failed`, `kill_failed`, `rename_failed`, `invalid_request`) added by architect in Pass-6 parallel track (C6-001); SS-session-manager.md v2.0.0 §session_error_to_code (spawn-path arms — Model A reachability for binary_not_found/invalid_spawn_arg confirmed I27-001) |
 | Cross-Ref | BC-2.08.001 (SpawnSession → spawn_session()); BC-2.08.003 (KillSession → kill_session()); BC-2.08.007 (DetachSession → detach_session()) |
 | Test Name | test_BC_2_05_010_new_client_to_server_variants_routed |
 
@@ -195,6 +199,37 @@ S-TBD — Implement new ClientToServer IPC variants and daemon routing (filled b
 ## VP Anchors
 
 VP-TBD — IPC variant routing integration tests (filled after VP creation)
+
+## §Trace v1.7.0
+
+**I27-001 (Model A) — SpawnSession wire variant: SpawnOptions replaces SpawnRecipe on the wire** (2026-06-13):
+
+Under the I27-001 Model A adjudication, `ClientToServer::SpawnSession` carries
+`opts: SpawnOptions` (not `recipe: SpawnRecipe`). `SpawnRecipe` is now daemon-internal —
+built inside `SessionManager::spawn_session()` by `engine_module.spawn_recipe(&opts)?` as
+its first step. This BC is updated to reflect the wire variant change and remove all residual
+Model B (TUI-builds-recipe) text.
+
+**Changes in this version:**
+
+- **SpawnSession PC-1 (normative):** Updated from `ClientToServer::SpawnSession { recipe: SpawnRecipe }` to `ClientToServer::SpawnSession { opts: SpawnOptions }`. Added explicit field population split: TUI populates `project_root`, `worktree_root`, `harness_id`, `profile_id`, `ccr_base_url`; daemon IPC handler fills `session_id` and `hooks_settings_path`. Added Model A note that `SpawnRecipe` is daemon-internal.
+
+- **SpawnSession PC-2 (normative):** Updated from `SessionManager::spawn_session(recipe, ...)` to `SessionManager::spawn_session(opts)`.
+
+- **EC-280 (normative):** Description updated from "SpawnSession with a SpawnRecipe where binary is empty path" to "SpawnSession where the harness binary (claude) is not on PATH." Under Model A there is no `binary` field in the TUI-sent message; binary discovery happens entirely daemon-side via `which::which("claude")` inside `spawn_recipe()`. The expected behavior (`"binary_not_found"`) remains unchanged and correct.
+
+- **Canonical Test Vectors:** SpawnSession happy-path row updated from `SpawnSession { recipe: valid }` to `SpawnSession { opts: valid SpawnOptions, claude on PATH }`. Expected output updated to note `SessionStateChanged{Launching}` precedes `SessionListUpdate` (per §Trace v1.5.0 / BC-2.08.008 PC-3).
+
+- **Architecture Source:** Version pins updated to current canonical versions:
+  SS-daemon-wiring-v2-delta.md `v1.7.0` → `v1.8.0`;
+  SS-ipc.md `v1.18.0` → `v1.19.0`;
+  Added SS-ipc.md v1.19.0 §`ClientToServer::SpawnSession { opts: SpawnOptions }` citation;
+  Added SS-session-manager.md v2.0.0 §session_error_to_code citation confirming spawn-path
+  code reachability under Model A.
+  Full spawn-path code set already enumerated correctly (per §Trace v1.6.0); no code change needed.
+
+- PC-4 spawn-path error table and EC-280 behavior (both `"binary_not_found"`) already
+  correct from §Trace v1.6.0; only the trigger description was updated (not the behavior).
 
 ## §Trace v1.6.0
 

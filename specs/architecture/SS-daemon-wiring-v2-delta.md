@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "daemon-wiring-v2-delta"
 subsystem: SS-04
-version: "1.7.0"
+version: "1.8.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -143,23 +143,33 @@ The IPC client message handler (`monocle-runtime/src/ipc_handler.rs` or equivale
 branches for the new `ClientToServer` variants from ADR-0010:
 
 ```rust
-ClientToServer::SpawnSession { recipe } => {
+ClientToServer::SpawnSession { opts } => {
     // C6-001: no-silent-failure — map SessionError to ServerToClient::Error.
     //
-    // spawn_session() internals (I12-001 call-site spec):
-    //   1. Calls engine_module.spawn_recipe(&opts)? — if this returns
-    //      EngineError::BinaryNotFound or EngineError::InvalidPath, the error is
-    //      converted to SessionError::EngineError via From<EngineError> and bubbles
-    //      to the Err(e) arm below. No OS process has been spawned at this point.
+    // I27-001 (Model A): The TUI sends SpawnOptions (user intent). The daemon fills
+    // opts.session_id and opts.hooks_settings_path here, before calling spawn_session().
+    // spawn_session() internals:
+    //   1. Calls engine_module.spawn_recipe(&opts)? — DAEMON-SIDE recipe construction.
+    //      If this returns EngineError::BinaryNotFound or EngineError::InvalidPath, the
+    //      error is converted to SessionError::EngineError via From<EngineError> and
+    //      bubbles to the Err(e) arm below. No OS process has been spawned at this point.
+    //      These EngineError codes are REACHABLE because spawn_recipe() runs daemon-side.
     //   2. Calls SessionHostSpawner::spawn(&recipe) — OS process spawn.
     //   3. Writes the sidecar file.
+    //
+    // Fill daemon-owned fields on opts before passing to spawn_session():
+    let opts = SpawnOptions {
+        session_id: uuid::Uuid::new_v4().to_string(),
+        hooks_settings_path: state.hooks_settings_path.clone(), // pre-written at step 9
+        ..opts  // project_root, worktree_root, harness_id, profile_id, ccr_base_url from TUI
+    };
     //
     // session_error_to_code maps the EngineError-derived variants:
     //   SessionError::EngineError(BinaryNotFound) → "binary_not_found"
     //   SessionError::EngineError(InvalidPath)    → "invalid_spawn_arg"
     // See SS-session-manager.md §SessionError taxonomy and §session_error_to_code().
     match state.session_manager.lock().await
-        .spawn_session(recipe, /* harness_id, profile_id from recipe context */)
+        .spawn_session(opts)
         .await
     {
         Ok(_session_id) => {
@@ -367,7 +377,7 @@ can use it without importing daemon-internal types.
 > was retired in v1.4.0 (I6-002 fix) because it diverged from the SS-ipc.md canonical by
 > omitting the `degraded`/`degraded_reason` fields.
 >
-> **Current canonical field summary** (SS-ipc.md v1.18.0 §Supporting Types — authoritative):
+> **Current canonical field summary** (SS-ipc.md v1.19.0 §Supporting Types — authoritative):
 > `session_id`, `display_name`, `state`, `harness_id`, `project_root`, `cwd`,
 > `spawned_by_monocle: Option<bool>`, `started_at_micros: i64`, `pty_rows: u16`,
 > `pty_cols: u16`, `degraded: bool` (`#[serde(default)]`), `degraded_reason: Option<String>`
@@ -671,6 +681,14 @@ If no in-process SessionManager stub exists in D-235 (i.e., the stub was skeleta
 implementer creates `SessionManager` from scratch per SS-08.
 
 ---
+
+## §Trace v1.8.0
+
+**I27-001 — `SpawnSession` arm: `recipe: SpawnRecipe` → `opts: SpawnOptions`; daemon fills session_id + hooks_settings_path** (2026-06-13):
+
+- **Finding (I27-001):** The `SpawnSession` handler arm destructured `{ recipe }` (a pre-built `SpawnRecipe`) and called `spawn_session(recipe, ...)`. Under Model A (daemon-side `spawn_recipe()` execution), the wire payload is `SpawnOptions` (intent), not `SpawnRecipe` (built artifact). Additionally, the signature `spawn_session(recipe: SpawnRecipe, harness_id: String, profile_id: String)` was incoherent: `SpawnRecipe` carries no `harness_id`/`profile_id` fields, and `spawn_session()` cannot call `spawn_recipe()` without `SpawnOptions`. The comment `/* harness_id, profile_id from recipe context */` was a placeholder for a genuinely unresolvable architectural gap.
+- **Fix — `SpawnSession` arm updated:** Destructures `{ opts: SpawnOptions }`. The daemon IPC handler fills `opts.session_id` (new UUID) and `opts.hooks_settings_path` (pre-written shared path from `DaemonState`) on receipt using struct update syntax, then calls `SessionManager::spawn_session(opts)`. The three-step `spawn_session()` internals comment is updated to label step 1 "DAEMON-SIDE recipe construction" and explain that `EngineError` codes are REACHABLE because `spawn_recipe()` runs daemon-side.
+- Semver: minor (v1.7.0 → v1.8.0) — normative IPC handler pattern change; wire payload type change.
 
 ## §Trace v1.7.0
 

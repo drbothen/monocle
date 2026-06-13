@@ -52,7 +52,7 @@ All coordinate examples in this BC (and in BC-2.09.002 EC-213) assume:
 1. `AppMode::EmbeddedTerminal { session_id }` is active.
 2. `crossterm::event::EnableMouseCapture` was called during `App::enter_embedded_terminal()`
    — mouse capture is scoped to `EmbeddedTerminal` entry, NOT globally active at TUI startup
-   (I3 fix per SS-embedded-pty.md v1.5.0: global mouse capture is NOT used; it would steal
+   (I3 fix per SS-embedded-pty.md v1.5.1: global mouse capture is NOT used; it would steal
    text selection from monocle's own panels).
 3. SGR mouse mode (`ESC [ ? 1006 h`) has been written to the terminal on EmbeddedTerminal entry
    (immediately after `EnableMouseCapture`).
@@ -85,7 +85,7 @@ All coordinate examples in this BC (and in BC-2.09.002 EC-213) assume:
    - `EnableMouseCapture` is NOT called at TUI startup; it is NOT globally active outside
      `EmbeddedTerminal` mode. Rationale: global mouse capture would steal terminal text
      selection from monocle's sessions panel, event ribbon, and other panels. See
-     SS-embedded-pty.md v1.5.0 §I3 UX tradeoff.
+     SS-embedded-pty.md v1.5.1 §I3 UX tradeoff.
 2. `mouse_event_to_pty_bytes(event, pane_area: Rect)` is a PURE function — no I/O or state mutation.
 3. Mouse motion events (`MouseEventKind::Moved`) are forwarded only if button 1/2/3 tracking
    is active (i.e., the harness's TUI has requested motion reporting). monocle always forwards
@@ -125,7 +125,7 @@ All coordinate examples in this BC (and in BC-2.09.002 EC-213) assume:
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — mouse forwarding is explicitly named in CAP-009 ("mouse") as part of the full-fidelity keyboard forwarding capability |
 | Architecture Module | monocle-core (`mouse_event_to_pty_bytes()` pure function); monocle-tui (EmbeddedTerminal event handler, SGR mode write) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.5.0 §Mouse support (SGR mode); §I3 UX tradeoff (scoped mouse capture) |
+| Architecture Source | SS-embedded-pty.md v1.5.1 §Mouse support (SGR mode); §I3 UX tradeoff (scoped mouse capture) |
 | Test Name | test_BC_2_09_003_mouse_events_sgr_encoded |
 
 ## Related BCs

@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.0"
+version: "1.2.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -53,8 +53,8 @@ matters for diagnostic accuracy.
    `SessionError::EngineError` → `ServerToClient::Error { code: "binary_not_found", message }`.
    The TUI MUST display the fixed banner: `"claude binary not found — is Claude Code installed
    and on PATH?"`. The session spawn fails; no `monocle-session-host` process is started.
-   Canonical code: `"binary_not_found"` (SS-ipc.md v1.18.0 §ServerToClient::Error taxonomy;
-   SS-session-manager.md v1.9.0 §session_error_to_code spawn-path arms).
+   Canonical code: `"binary_not_found"` (SS-ipc.md v1.19.0 §ServerToClient::Error taxonomy;
+   SS-session-manager.md v2.0.0 §session_error_to_code spawn-path arms).
 4. `BinaryNotFound` is NOT returned for any other failure mode. It is reserved exclusively
    for `which::which` failures.
 
@@ -70,8 +70,8 @@ matters for diagnostic accuracy.
    `SessionError::EngineError` → `ServerToClient::Error { code: "invalid_spawn_arg", message }`.
    The TUI MUST display the fixed banner: `"Session spawn failed: invalid hooks settings path
    (non-UTF-8)"`. The session spawn fails; no `monocle-session-host` process is started.
-   Canonical code: `"invalid_spawn_arg"` (SS-ipc.md v1.18.0 §ServerToClient::Error taxonomy;
-   SS-session-manager.md v1.9.0 §session_error_to_code spawn-path arms).
+   Canonical code: `"invalid_spawn_arg"` (SS-ipc.md v1.19.0 §ServerToClient::Error taxonomy;
+   SS-session-manager.md v2.0.0 §session_error_to_code spawn-path arms).
 8. `InvalidPath` is NOT used for binary-not-found. The two variants MUST NOT be conflated.
 
 ## Invariants
@@ -120,7 +120,7 @@ matters for diagnostic accuracy.
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the error taxonomy for spawn_recipe(), which is a method on the ClaudeCodeModule adapter; typed errors are essential for diagnostic accuracy in the engine abstraction layer |
 | L2 Domain Invariants | DI-006 (EngineModule implementations must be stateless — error variants carry no shared state; both errors are pure value returns) |
 | Architecture Module | monocle-runtime (ClaudeCodeModule — `monocle-runtime/src/engine/claude_code.rs`); monocle-core (`EngineError` type) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module-v2-delta.md v1.1.1 §EngineError additions + §Semantic contract (IMP-5 InvalidPath correction); SS-ipc.md v1.18.0 §ServerToClient::Error taxonomy (codes `"binary_not_found"` and `"invalid_spawn_arg"` — I12-001); SS-session-manager.md v1.9.0 §session_error_to_code spawn-path arms (EngineError bridge — I12-001) |
+| Architecture Source | SS-engine-module-v2-delta.md v1.2.0 §EngineError additions + §Semantic contract (IMP-5 InvalidPath correction) + §Phase Compatibility (I27-001 Model A: spawn_recipe() called daemon-side inside spawn_session()); SS-ipc.md v1.19.0 §ServerToClient::Error taxonomy (codes `"binary_not_found"` and `"invalid_spawn_arg"` — I12-001); SS-session-manager.md v2.0.0 §session_error_to_code spawn-path arms (EngineError bridge — I12-001; Model A reachability confirmed — I27-001) |
 | Test Name | test_BC_2_03_007_spawn_recipe_binary_not_found_and_invalid_path |
 
 ## Related BCs
@@ -140,6 +140,30 @@ S-TBD — Same story as BC-2.03.005 (error handling in spawn_recipe(); filled by
 ## VP Anchors
 
 VP-TBD — spawn_recipe() error path unit tests (filled after VP creation)
+
+## §Trace v1.2.0
+
+**I27-001 (Model A) — reachability confirmation: PC-3/PC-7 propagation chain verified under daemon-side spawn_recipe()** (2026-06-13):
+
+- **Reachability under Model A:** Under the I27-001 Model A adjudication,
+  `ClientToServer::SpawnSession { opts: SpawnOptions }` is the wire message. The daemon's
+  IPC handler calls `SessionManager::spawn_session(opts)`, which calls
+  `engine_module.spawn_recipe(&opts)?` as its FIRST step (before any OS process is spawned).
+  `BinaryNotFound` and `InvalidPath` errors produced by `spawn_recipe()` propagate via `?`
+  as `SessionError::EngineError(...)` and are mapped by `session_error_to_code(IpcOp::Spawn,
+  &e)` to `"binary_not_found"` / `"invalid_spawn_arg"` respectively. This confirms PC-3 and
+  PC-7 are FULLY REACHABLE in Model A — the propagation chains they specify are the live paths.
+- **Content verified correct:** No residual Model B (TUI-builds-recipe) assumptions found in
+  PC-3, PC-7, Invariants, or Edge Cases. The BC's description of `spawn_recipe()` as a method
+  on `ClaudeCodeModule` returning typed errors is independent of which caller invokes it.
+- **Architecture Source updated:** Version pins advanced to current canonical versions:
+  SS-engine-module-v2-delta.md `v1.1.1` → `v1.2.0`; SS-ipc.md `v1.18.0` → `v1.19.0`;
+  SS-session-manager.md `v1.9.0` → `v2.0.0`. SS-engine-module-v2-delta.md v1.2.0 citation
+  updated to include §Phase Compatibility reference (which documents Model A wire-type
+  assignments). <!-- version-pin-historical: §Trace I27-001 record; prior pins v1.1.1/v1.18.0/v1.9.0 in §Trace v1.1.0 are preserved as historical annotations -->
+- No behavioral content changed (PC-3/PC-7/Invariants/Edge Cases unchanged).
+- Version bump: 1.1.0 → 1.2.0 (minor: Architecture Source version citations updated;
+  reachability confirmation added to §Trace).
 
 ## §Trace v1.1.0
 

@@ -94,7 +94,7 @@ that must be explicitly opted into, not accidentally inherited.
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the capability boundary for the engine abstraction: spawn is opt-in, not universal; the default Err impl enforces that boundary for all engines that do not explicitly support monocle-controlled session spawning |
 | L2 Domain Invariants | DI-006 (EngineModule implementations must be stateless — the default impl performs no I/O and returns a constant error value, satisfying stateless detection requirement; spawn_recipe() is not a detection method but the same stateless principle applies to non-overriding impls) |
 | Architecture Module | monocle-core (`EngineModule` trait default impl) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module-v2-delta.md v1.1.1 §spawn_recipe() — new trait method (default impl signature) |
+| Architecture Source | SS-engine-module-v2-delta.md v1.2.0 §spawn_recipe() — new trait method (default impl signature) |
 | Cross-Ref | BC-2.03.005 (ClaudeCodeModule overrides this default with the real spawn_recipe() implementation) |
 | Test Name | test_BC_2_03_008_default_spawn_recipe_unsupported_operation |
 

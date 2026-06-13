@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "engine-module-v2-delta"
 subsystem: SS-03
-version: "1.1.1"
+version: "1.2.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -81,8 +81,16 @@ pub struct SpawnRecipe {
     pub cwd: PathBuf,
 }
 
-/// Options passed from SessionManager to EngineModule::spawn_recipe().
-#[derive(Debug, Clone)]
+/// Options passed from the TUI via `ClientToServer::SpawnSession { opts }` to the daemon,
+/// and then from the daemon's IPC handler to `SessionManager::spawn_session(opts)` and
+/// from there to `EngineModule::spawn_recipe(&opts)`.
+///
+/// I27-001 (Model A): `SpawnOptions` is the IPC wire type. `SpawnRecipe` is daemon-internal.
+/// The TUI populates `project_root`, `worktree_root`, `harness_id`, `profile_id`, and
+/// `ccr_base_url`. The daemon IPC handler fills `session_id` and `hooks_settings_path` on
+/// receipt before calling `SessionManager::spawn_session(opts)`.
+#[non_exhaustive]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpawnOptions {
     /// Project root directory (user-selected in the wizard; used for display grouping).
     pub project_root: PathBuf,
@@ -231,11 +239,20 @@ All Phase-1 `EngineModule` behavioral contracts (BC-2.03.*) remain in effect:
   existing implementations.
 - The `#[non_exhaustive]` policy (ADR-0004) does not apply to trait methods; adding a
   method with a default impl is non-breaking for existing trait objects.
-- `SpawnRecipe` carries `#[non_exhaustive]` per BC-2.02.003 — it is a wire type (carried in
-  `ClientToServer::SpawnSession { recipe: SpawnRecipe }` across the UDS IPC boundary).
-- `SpawnOptions` does NOT carry `#[non_exhaustive]` — it is daemon-internal (`#[derive(Debug, Clone)]`
-  only, no `Serialize`/`Deserialize`), is never placed on any IPC message, and crosses no wire
-  boundary. The `#[non_exhaustive]` extensibility policy applies to wire types only (BC-2.02.003).
+- `SpawnOptions` carries `#[non_exhaustive]` per BC-2.02.003 — it is a wire type (carried in
+  `ClientToServer::SpawnSession { opts: SpawnOptions }` across the UDS IPC boundary, per
+  I27-001 Model A resolution). `SpawnOptions` gains `Serialize`/`Deserialize` derives to
+  support wire transmission. The TUI populates `project_root`, `worktree_root`, `harness_id`,
+  `profile_id`, and `ccr_base_url`; the daemon IPC handler fills `session_id` and
+  `hooks_settings_path` on receipt before passing to `SessionManager::spawn_session(opts)`.
+- `SpawnRecipe` is DAEMON-INTERNAL after I27-001 (Model A). It is built by
+  `engine_module.spawn_recipe(&opts)` inside `SessionManager::spawn_session()` and is
+  never transmitted over IPC. The `Serialize`/`Deserialize` derives on `SpawnRecipe` are
+  retained for potential diagnostic serialization but carry no wire-protocol obligation.
+  `SpawnRecipe` does NOT require `#[non_exhaustive]` from a wire-type perspective (it is
+  not on the IPC boundary); however the attribute is harmless and is retained for the
+  forward-compat guarantee within daemon-internal code that struct-literal constructs
+  `SpawnRecipe` values.
 
 ---
 
@@ -251,6 +268,17 @@ All Phase-1 `EngineModule` behavioral contracts (BC-2.03.*) remain in effect:
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.2.0
+
+**I27-001 — wire-type reconciliation: `SpawnOptions` becomes wire type; `SpawnRecipe` becomes daemon-internal** (2026-06-13):
+
+- **Finding (I27-001):** The §Phase Compatibility section incorrectly stated that "`SpawnRecipe` carries `#[non_exhaustive]` per BC-2.02.003 — it is a wire type (carried in `ClientToServer::SpawnSession { recipe: SpawnRecipe }`)." Under the correct Model A architecture (daemon-side `spawn_recipe()` execution), `SpawnRecipe` is daemon-internal and `SpawnOptions` is the wire type. The prior S26-001 §Phase Compatibility prose had the wire/internal assignments exactly backwards.
+- **Fix (a) — `SpawnOptions` promoted to wire type:** `SpawnOptions` gains `#[non_exhaustive]` (BC-2.02.003 wire-type extensibility policy) and `Serialize`/`Deserialize` derives. It is carried in `ClientToServer::SpawnSession { opts: SpawnOptions }`. The TUI populates `project_root`, `worktree_root`, `harness_id`, `profile_id`, `ccr_base_url`; the daemon IPC handler fills `session_id` and `hooks_settings_path` on receipt.
+- **Fix (b) — `SpawnRecipe` demoted to daemon-internal:** `SpawnRecipe` is no longer a wire type. Its `Serialize`/`Deserialize` derives are retained as optional (for diagnostic serialization), but it is never transmitted over IPC. `#[non_exhaustive]` on `SpawnRecipe` is retained as harmless forward-compat on a daemon-internal struct.
+- **Fix (c) — §Phase Compatibility prose corrected:** Two-bullet statement now correctly reads: `SpawnOptions` carries `#[non_exhaustive]` (wire type); `SpawnRecipe` does NOT carry mandatory wire-type obligations (daemon-internal).
+- **Fix (d) — `SpawnOptions` doc-comment and struct header updated:** Added I27-001 Model A rationale; added `harness_id: String` field (needed for `SessionEntry` recording; previously implicit in `profile_id`/`harness_id` on the old `spawn_session()` signature).
+- Semver: minor (v1.1.1 → v1.2.0) — normative wire-type assignment change; `SpawnOptions` derive change.
 
 ## §Trace v1.1.1
 

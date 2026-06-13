@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "ipc"
 subsystem: SS-05
-version: "1.18.0"
+version: "1.19.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -178,7 +178,7 @@ pub enum ServerToClient {
     /// `Vec<SessionSnapshot>`. `SessionSnapshot` is the canonical wire boundary type for
     /// all sessions (monocle-spawned and externally-detected). `EnrichedSession` is retained
     /// internally for `EngineModule::detect()` but is NOT exposed on the wire. See
-    /// SS-daemon-wiring-v2-delta.md v1.7.0 §4 for the three-representation reconciliation.
+    /// SS-daemon-wiring-v2-delta.md v1.8.0 §4 for the three-representation reconciliation.
     InitialState {
         /// All sessions (monocle-spawned and externally-detected) as `SessionSnapshot`.
         sessions: Vec<SessionSnapshot>,
@@ -363,21 +363,27 @@ pub enum ServerToClient {
     /// - `KeyInput` → `SessionError::SessionNotFound` (session does not exist or is Terminated)
     /// - `RenameSession` → `SessionError::InvalidSessionName`
     ///
-    /// # spawn_recipe() call site
+    /// # spawn_recipe() call site (Model A — daemon-side; I27-001 resolution)
     ///
     /// `ClaudeCodeModule::spawn_recipe()` is called INSIDE `SessionManager::spawn_session()`,
-    /// BEFORE `SessionHostSpawner::spawn()`. Specifically, the first step of `spawn_session()`
-    /// is to call `engine_module.spawn_recipe(&opts)` to obtain a `SpawnRecipe`; if that call
-    /// returns `Err(EngineError::...)`, `spawn_session()` translates the `EngineError` into a
-    /// `SessionError` (via `From<EngineError>` on `SessionError` — see SS-session-manager.md
-    /// §SessionError taxonomy) and returns it to the IPC handler. The IPC `SpawnSession` arm
-    /// then maps it to the appropriate `ServerToClient::Error` code via `session_error_to_code()`.
-    /// The `SpawnRecipe` carried in `ClientToServer::SpawnSession { recipe }` is therefore
-    /// the RESULT of a prior `spawn_recipe()` call in the TUI process (the TUI calls
-    /// `engine_module.spawn_recipe()` locally to build the recipe before sending it over IPC),
-    /// but `spawn_session()` in the daemon may also call `spawn_recipe()` itself depending on
-    /// the implementation pattern chosen — either way, EngineError must be bridged to SessionError
-    /// before reaching the IPC handler.
+    /// DAEMON-SIDE, BEFORE `SessionHostSpawner::spawn()`. Specifically, the first step of
+    /// `spawn_session()` is to call `engine_module.spawn_recipe(&opts)` to obtain a
+    /// `SpawnRecipe`; if that call returns `Err(EngineError::...)`, `spawn_session()` translates
+    /// the `EngineError` into a `SessionError` (via `From<EngineError>` on `SessionError` —
+    /// see SS-session-manager.md §SessionError taxonomy) and returns it to the IPC handler.
+    /// The IPC `SpawnSession` arm then maps it to the appropriate `ServerToClient::Error` code
+    /// via `session_error_to_code()`.
+    ///
+    /// The TUI sends `ClientToServer::SpawnSession { opts: SpawnOptions }` carrying user-intent
+    /// spawn parameters (project root, worktree root, harness ID, profile ID, CCR URL). The
+    /// daemon IPC handler fills `SpawnOptions.session_id` (pre-generated UUID) and
+    /// `SpawnOptions.hooks_settings_path` (shared hooks-settings.json) upon receipt, then
+    /// passes the completed `SpawnOptions` to `SessionManager::spawn_session(opts)`. The
+    /// `SpawnRecipe` is built daemon-side inside `spawn_session()` via `spawn_recipe()` and
+    /// is never transmitted over IPC. This is the ONLY path on which `EngineError::BinaryNotFound`
+    /// and `EngineError::InvalidPath` can reach `ServerToClient::Error` as distinct codes
+    /// (BC-2.03.007 PC-3/PC-7 diagnostic guarantee). The TUI is a thin client — it sends
+    /// intent (SpawnOptions), not a pre-built harness command line.
     ///
     /// # No-silent-failure invariant (BC-2.05.010 PC-4 / PC-3-4 obligation)
     ///
@@ -485,18 +491,29 @@ pub enum ClientToServer {
         cols: u16,
     },
 
-    /// Spawn a new harness session. The daemon calls `SessionManager::spawn_session(recipe)`.
+    /// Spawn a new harness session.
+    ///
+    /// The TUI sends spawn intent parameters (`SpawnOptions`). The daemon IPC handler fills
+    /// `SpawnOptions.session_id` and `SpawnOptions.hooks_settings_path` on receipt, then
+    /// calls `SessionManager::spawn_session(opts)`. Inside `spawn_session()`, the daemon
+    /// calls `engine_module.spawn_recipe(&opts)` FIRST to build the `SpawnRecipe`
+    /// (I27-001 Model A: daemon-side recipe construction). The `SpawnRecipe` is never sent
+    /// over IPC; only `SpawnOptions` crosses the wire.
+    ///
     /// On success the daemon emits `SessionStateChanged { Launching }` + `SessionListUpdate`.
     /// On failure the daemon sends `ServerToClient::Error` to the requesting client with one of
     /// the spawn-path codes (SS-08 §Error handling; SS-05 §ServerToClient::Error taxonomy):
-    /// - `"binary_not_found"` — `EngineError::BinaryNotFound` (harness not on PATH)
+    /// - `"binary_not_found"` — `EngineError::BinaryNotFound` (harness not on PATH; reachable
+    ///   because `spawn_recipe()` runs daemon-side via Model A)
     /// - `"invalid_spawn_arg"` — `EngineError::InvalidPath` (invalid argument to spawn_recipe())
     /// - `"spawn_failed"` — OS process spawn failure
     /// - `"sidecar_write_failed"` — sidecar I/O failure post-spawn
     /// - `"session_id_collision"` — UUID v4 collision (do not auto-retry)
     SpawnSession {
-        /// Serialized spawn recipe from `ClaudeCodeModule::spawn_recipe()` (SS-engine-module).
-        recipe: SpawnRecipe,
+        /// Spawn intent parameters from the TUI (SS-08 §SpawnOptions).
+        /// `session_id` and `hooks_settings_path` are filled by the daemon IPC handler
+        /// upon receipt, before passing to `SessionManager::spawn_session()`.
+        opts: SpawnOptions,
     },
 
     /// Kill (terminate) a running or detached session. The daemon calls
@@ -692,9 +709,18 @@ pub enum SerializedColor {
 }
 ```
 
-`SpawnRecipe` is defined in `monocle-ipc` (or re-exported from `monocle-core`) so the TUI can
-construct a `ClientToServer::SpawnSession { recipe }` without importing `monocle-runtime`
-internal types. Its fields are defined in SS-engine-module.md §spawn_recipe().
+`SpawnOptions` is defined in `monocle-ipc` (or re-exported from `monocle-core`) so the TUI can
+construct a `ClientToServer::SpawnSession { opts }` without importing `monocle-runtime` internal
+types. Its fields are defined in SS-session-manager.md §SpawnOptions. `SpawnOptions` carries
+`#[non_exhaustive]`, `Serialize`, `Deserialize` as a wire boundary type (I27-001 Model A).
+
+`SpawnRecipe` is DAEMON-INTERNAL after I27-001 (Model A). It is built by
+`engine_module.spawn_recipe(&opts)` inside `SessionManager::spawn_session()` and never
+transmitted over IPC. The `Serialize`/`Deserialize` derives on `SpawnRecipe` in
+SS-engine-module-v2-delta.md are redundant for a non-wire type (retained for potential
+diagnostic serialization but carry no wire-protocol obligation). `SpawnRecipe` does NOT
+need to be in `monocle-ipc`; it lives in `monocle-core` (alongside the `EngineModule` trait)
+as a daemon-internal type. Its fields are defined in SS-engine-module-v2-delta.md §spawn_recipe().
 
 ```rust
 /// Shared payload for permission prompt data, used in both `InitialState.overlay_stack`
@@ -1220,6 +1246,18 @@ still pending in the daemon's registry (i.e., still within the 300ms timeout win
 prompts are never re-pushed.
 
 ---
+
+## §Trace v1.19.0
+
+**I27-001 — spawn-path wire-type correction: `ClientToServer::SpawnSession` now carries `SpawnOptions`, not `SpawnRecipe`** (2026-06-13):
+
+- **Finding (I27-001):** `ClientToServer::SpawnSession { recipe: SpawnRecipe }` was the wire payload, but under the correct Model A architecture the `SpawnRecipe` is built daemon-side (by `engine_module.spawn_recipe(&opts)` inside `spawn_session()`). Sending a pre-built `SpawnRecipe` over IPC implies the TUI calls `spawn_recipe()` locally — which requires TUI-side access to the `EngineModule`, contradicts the thin-client principle, and makes `EngineError::BinaryNotFound`/`InvalidPath` TUI-local errors with no wire bridge to `ServerToClient::Error`. The §spawn_recipe() call-site doc-comment also contained a false "either way" hedge that acknowledged both Model A and Model B as valid — this is incorrect; only Model A is architecturally valid.
+- **Fix (a) — `ClientToServer::SpawnSession` payload changed:** `recipe: SpawnRecipe` → `opts: SpawnOptions`. `SpawnOptions` is the wire type. The daemon IPC handler fills `session_id` and `hooks_settings_path` upon receipt, then passes the completed `SpawnOptions` to `SessionManager::spawn_session(opts)`.
+- **Fix (b) — §spawn_recipe() call-site doc-comment rewritten:** The false "either way" hedge is removed. The section now unambiguously states: `spawn_recipe()` runs DAEMON-SIDE inside `spawn_session()`; the TUI sends `SpawnOptions` (intent); `SpawnRecipe` is daemon-internal and never transmitted over IPC. The reachability of `"binary_not_found"` and `"invalid_spawn_arg"` codes is explicitly justified: they are reachable ONLY because `spawn_recipe()` runs daemon-side (I27-001 Model A).
+- **Fix (c) — `SpawnSession` variant doc-comment updated:** States daemon-side recipe construction, lists all spawn-path error codes with updated `"binary_not_found"` note ("reachable because `spawn_recipe()` runs daemon-side via Model A"), and documents the `session_id`/`hooks_settings_path` daemon-fill step.
+- **Fix (d) — §Supporting Types updated:** `SpawnOptions` documented as the wire boundary type for `SpawnSession`. `SpawnRecipe` documented as daemon-internal (no longer a wire type; lives in `monocle-core` not `monocle-ipc`).
+- **Wire-type reconciliation:** `SpawnOptions` acquires `#[non_exhaustive]`, `Serialize`, `Deserialize` (wire boundary per BC-2.02.003). `SpawnRecipe` loses its wire-type status; its `Serialize`/`Deserialize` derives are now optional (retained in SS-engine-module-v2-delta.md for potential diagnostic use, but carry no wire-protocol obligation).
+- Semver: minor (v1.18.0 → v1.19.0) — breaking wire-format change to `ClientToServer::SpawnSession` payload type.
 
 ## §Trace v1.18.0
 

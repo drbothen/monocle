@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "embedded-pty"
 subsystem: SS-09
-version: "1.5.0"
+version: "1.5.1"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -647,7 +647,10 @@ The `AppMode::SessionCreation` wizard delegates to existing components where pos
   (3) project_root for non-git projects. The wizard MUST validate the resolved path (exists
   + git work-tree check) before allowing Confirm. Validation failures display an inline error
   and keep the wizard on Step 3. The resolved path populates `SpawnOptions.worktree_root`.
-- **Step 4 (Launching):** the TUI sends `ClientToServer::SpawnSession { recipe }` to the daemon.
+- **Step 4 (Launching):** the TUI sends `ClientToServer::SpawnSession { opts }` to the daemon,
+  where `opts` is a `SpawnOptions` populated from the wizard steps (project_root, worktree_root,
+  harness_id, profile_id, ccr_base_url). The daemon fills session_id and hooks_settings_path
+  on receipt (I27-001 Model A — SpawnRecipe is built daemon-side in spawn_session()).
   SessionCreation.step transitions to `Launching`. When the TUI receives
   `ServerToClient::SessionStateChanged { new_state: Running }` for the new session, the
   wizard auto-transitions to `AppMode::EmbeddedTerminal { session_id }`.
@@ -717,6 +720,14 @@ Mitigation: integration tests use a PTY fixture corpus from `embedded-pty-evalua
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.5.1
+
+**I27-001 — Step 4 (Launching) wizard prose: `SpawnSession { recipe }` → `SpawnSession { opts }`** (2026-06-13):
+
+- **Finding (I27-001 propagation):** §SessionCreation wizard Step 4 stated "the TUI sends `ClientToServer::SpawnSession { recipe }` to the daemon" — using the old `SpawnRecipe` wire payload. Under Model A (I27-001), the wire payload is `SpawnOptions` (user intent), not a pre-built `SpawnRecipe`.
+- **Fix:** Step 4 prose updated: `{ recipe }` → `{ opts }` with `SpawnOptions` context (fields from wizard steps; daemon fills session_id and hooks_settings_path on receipt; SpawnRecipe built daemon-side in spawn_session()).
+- Semver: patch (v1.5.0 → v1.5.1) — prose correction to match wire-type change; no new behavioral spec.
 
 ## §Trace v1.5.0
 
