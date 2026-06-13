@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.39"
+version: "1.39.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-03T14:00:00Z
+timestamp: 2026-06-13T00:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "cbf13d5"
@@ -168,7 +168,7 @@ traces_to: prd.md
 
 > Architecture source: `architecture/SS-config.md`
 > ARCH-INDEX subsystem: SS-07
-> Capability: CAP-007 ("Config file schema; atomic write; harness profile; profile picker; CCR path detection")
+> Capability: CAP-007 ("Configuration persistence; harness profile management; profile picker; CCR detection")
 
 | BC ID | Title | Priority | Status | File | Old ID (historical) |
 |-------|-------|----------|--------|------|---------------------|
@@ -1213,6 +1213,45 @@ SE-16d monotonicity: v1.36 timestamp 2026-06-03T14:00:00Z > v1.35 timestamp 2026
 - BC-2.05.010 title updated from 6-variant to 7-variant form (bc_h1_is_title_source_of_truth).
 
 SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. PASS.
+
+## §Trace v1.39.1
+
+**S21-001 — SS-07 capability-text source-of-truth alignment: BC-INDEX header verbatim-matched to ARCH-INDEX** (2026-06-13T00:00:00Z):
+
+**S21-001 SUGGESTION — Exhaustive capability-text sweep (all SS-NN headers); SS-07 fixed:**
+
+Adversarial Pass 21 (S21-001) found that the BC-INDEX SS-07 section header cited a paraphrased
+capability text rather than the ARCH-INDEX canonical verbatim. Exhaustive class-sweep performed
+across all 9 subsystem section headers (SS-01 through SS-09).
+
+**Sweep results:**
+
+| SS-NN | CAP-NNN | ARCH-INDEX canonical text (source of truth) | BC-INDEX before | Result |
+|-------|---------|---------------------------------------------|-----------------|--------|
+| SS-01 | CAP-001 | Daemon ingestion of Claude Code hook events; lifecycle management | Daemon ingestion of Claude Code hook events; lifecycle management | MATCH |
+| SS-02 | CAP-002 | Forward-compatible ABI; wire format stability; factory-state abstraction | Forward-compatible ABI; wire format stability; factory-state abstraction | MATCH |
+| SS-03 | CAP-003 | Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter | Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter | MATCH |
+| SS-04 | CAP-004 | Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation | Binary composition root; CLI surface; daemon auto-start; bounded event bus; hook tmpfile generation | MATCH |
+| SS-05 | CAP-005 | Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear | Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear | MATCH |
+| SS-06 | CAP-006 | User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration | User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration | MATCH |
+| SS-07 | CAP-007 | Configuration persistence; harness profile management; profile picker; CCR detection | Config file schema; atomic write; harness profile; profile picker; CCR path detection | **FIXED** |
+| SS-08 | CAP-008 | Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn | Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn | MATCH |
+| SS-09 | CAP-009 | Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard | Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard | MATCH |
+
+**Fix applied (SS-07 only):**
+- SE-17c BEFORE: `CAP-007 ("Config file schema; atomic write; harness profile; profile picker; CCR path detection")`
+- SE-17c AFTER: `CAP-007 ("Configuration persistence; harness profile management; profile picker; CCR detection")`
+- Source authority: ARCH-INDEX.md §Capability Traceability table SS-07 row (line ~97).
+- Root cause: SS-07 section header was authored with paraphrased text ("Config file schema; atomic write; harness profile; profile picker; CCR path detection") that captured partial semantics but diverged from the canonical ARCH-INDEX formulation on three axes: (1) "Config file schema" vs "Configuration persistence"; (2) "atomic write" is an implementation detail not in the capability title; (3) "harness profile" vs "harness profile management"; (4) "CCR path detection" vs "CCR detection".
+
+**CAP-NNN ID mismatch check:** No CAP-NNN ID mismatches found across any SS-NN header — all IDs are structurally correct. Only the SS-07 descriptive text diverged.
+
+BC-INDEX H1 titles: unchanged. No BC retirements or removals.
+Version bump: 1.39 → 1.39.1 (patch — capability-text source-of-truth alignment; cosmetic text only).
+
+**For state-manager:** BC-INDEX is cited by version literal in version-pin-registry.yaml (key `BC-INDEX`) and in CLAUDE.md Pipeline State (historical pin `BC-INDEX v1.34` — exempt per ADR-0007 v1.0.8 CLAUDE.md exemption). The version-pin-registry.yaml entry for `BC-INDEX` must be updated from `1.39` to `1.39.1` in the same factory-artifacts commit that includes this BC-INDEX edit (REGISTRY ATOMICITY per CLAUDE.md CI-PARITY rule 4). State-manager owns that registry update.
+
+SE-16d monotonicity: v1.39.1 timestamp 2026-06-13T00:00:00Z > v1.39 timestamp 2026-06-03. PASS.
 
 ## §Trace v1.38
 

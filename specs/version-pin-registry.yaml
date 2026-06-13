@@ -204,9 +204,9 @@ ARCH-INDEX:
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.39"
-  last_bump_commit: "[Pass-7 S-P7-003 — BC-2.05.010 H1 title sync +AttachSession (7 variants); BC-INDEX v1.38→v1.39]" # version-pin-historical: changelog description of bump, not a live pin
-  last_bump_date: "2026-06-03"
+  current_version: "1.39.1"
+  last_bump_commit: "[Pass-21 S21-001 D-263 2026-06-04 — SS-07 header CAP-007 text aligned to ARCH-INDEX canonical verbatim; exhaustive sweep of all 9 subsystem headers; BC-INDEX 1.39→1.39.1]" # version-pin-historical: changelog description of bump, not a live pin
+  last_bump_date: "2026-06-04"
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
