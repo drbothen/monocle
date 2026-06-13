@@ -488,7 +488,7 @@ pub fn key_event_to_pty_bytes(event: KeyEvent) -> Option<Vec<u8>> {
 ///   2. Convert terminal-local coordinates to pane-relative 1-indexed PTY coordinates.
 ///
 /// Parameter name: `pane_area` (canonical name in this spec and in BC-2.09.003 §X, which
-/// was updated to `pane_area` in BC-2.09.003 v1.2.0 Pass-2 — see §Trace v1.1.0 I5-003 note).
+/// was updated to `pane_area` at BC-2.09.003 Pass-2 authoring time — see BC-2.09.003 §Trace v1.1.0 I5-003 note).
 /// The earlier name `screen_offset: Rect` was the pre-Pass-1 stub name and is retired.
 pub fn mouse_event_to_pty_bytes(
     event: MouseEvent,

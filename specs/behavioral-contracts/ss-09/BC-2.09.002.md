@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.1"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -84,7 +84,7 @@ mouse events in SGR encoding, and bracketed paste. No keyboard class is deferred
    | F11 | `\x1b[23~` |
    | F12 | `\x1b[24~` |
    | Kitty-enhanced key (modifier combo) | CSI u sequence per Kitty keyboard protocol spec |
-   | Mouse event (in EmbeddedTerminal) | SGR sequence: `\x1b[<Ps;Px;Py M` or `m` |
+   | Mouse event (in EmbeddedTerminal) | SGR sequence: `\x1b[<Ps;Px;Py M` or `m` (Px = col+1, Py = row+1 at pane origin; see BC-2.09.003 §Coordinate Convention) |
    | Bracketed paste text | `\x1b[200~<text>\x1b[201~` |
 
 3. `KeyEventKind::Release` events are DISCARDED — they are NOT forwarded to the PTY.
@@ -112,7 +112,7 @@ mouse events in SGR encoding, and bracketed paste. No keyboard class is deferred
 | EC-210 | Esc pressed in EmbeddedTerminal mode | Intercepted as `Action::ExitEmbeddedTerminal` by dispatch layer; NOT forwarded to PTY via key_event_to_pty_bytes() |
 | EC-211 | Esc pressed TWICE in EmbeddedTerminal mode | First Esc exits EmbeddedTerminal; second Esc is processed in the restored prior AppMode (not in EmbeddedTerminal) — so second Esc is NOT forwarded to PTY via this path; it is processed by the prior AppMode's keybinding table |
 | EC-212 | `Ctrl-D` in EmbeddedTerminal | Forwarded as `\x04`; Claude Code session ends; session-host sends `StateChanged::Terminated`; TUI transitions out of `AppMode::EmbeddedTerminal` automatically |
-| EC-213 | Mouse click at (row=5, col=10) in EmbeddedTerminal | SGR sequence `\x1b[<0;10;5M` (button 0, col 10, row 5, press) sent as `KeyInput` bytes |
+| EC-213 | Mouse click at crossterm (row=5, col=10) in EmbeddedTerminal (pane at terminal origin, pane_area.x=0, pane_area.y=0) | SGR sequence `\x1b[<0;11;6M` (button 0, Px=col+1=11, Py=row+1=6, press) sent as `KeyInput` bytes. Matches HS-EXP-015 step 15-16. |
 | EC-214 | Paste of 500-byte text via bracketed paste | `\x1b[200~` + 500 bytes + `\x1b[201~` forwarded as single `KeyInput` message |
 | EC-215 | `KeyEventKind::Release` for any key | `None` returned; NOT forwarded; 0 bytes sent |
 | EC-216 | Kitty protocol unsupported by terminal (flags silently ignored) | `is_kitty_enhanced_key()` returns false for modifier combos; standard VT sequences used for regular keys; no panic; no silent key loss |
@@ -166,6 +166,22 @@ S-TBD — Implement key_event_to_pty_bytes() and KeyInput IPC send in monocle-tu
 ## VP Anchors
 
 VP-TBD — Keyboard translation unit tests (filled after VP creation)
+
+## §Trace v1.1.0
+
+**I23-001 — EC-213 mouse coordinate off-by-one corrected; SGR convention cross-reference added** (2026-06-13):
+- Finding: EC-213 claimed `\x1b[<0;10;5M` for crossterm `(row=5, col=10)`. The canonical
+  formula is `px = col - pane_area.x + 1`, `py = row - pane_area.y + 1` (SS-embedded-pty.md
+  lines 511-512). At pane origin (pane_area.x=0, pane_area.y=0): px = col+1 = 11, py = row+1 = 6.
+  Correct output is `\x1b[<0;11;6M`. This matches HS-EXP-015 step 15-16 exactly (the holdout's
+  reference was CORRECT; the EC was wrong).
+- EC-213: corrected byte sequence from `\x1b[<0;10;5M` → `\x1b[<0;11;6M`; added pane-origin
+  assumption annotation and cross-reference to HS-EXP-015.
+- PC-2 mouse row: added parenthetical cross-reference to BC-2.09.003 §Coordinate Convention
+  to make the +1 indexing rule discoverable from this BC.
+- S23-001 (SUGGESTION root-cause): explicit convention cross-reference added to the key
+  translation table so readers of this BC encounter the coordinate-encoding rule directly.
+- Version bump: 1.0.1 → 1.1.0 (minor: normative EC corrected; behavioral example was wrong).
 
 ## §Trace v1.0.1
 

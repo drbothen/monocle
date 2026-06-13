@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.39.1"
+version: "1.40.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-13T00:00:00Z
@@ -1213,6 +1213,36 @@ SE-16d monotonicity: v1.36 timestamp 2026-06-03T14:00:00Z > v1.35 timestamp 2026
 - BC-2.05.010 title updated from 6-variant to 7-variant form (bc_h1_is_title_source_of_truth).
 
 SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. PASS.
+
+## §Trace v1.40.0
+
+**I23-001 + I23-002 + S23-001 (Phase-1d Pass 23) — Mouse coordinate off-by-one class-sweep; convention statement added** (2026-06-13):
+
+Findings from Pass 23 adversarial review — coordinate-encoding off-by-one contradiction across SS-09 BC family:
+
+- **I23-001 (IMPORTANT) — BC-2.09.002 EC-213:** Claimed `\x1b[<0;10;5M` for crossterm (row=5, col=10).
+  Canonical formula (SS-embedded-pty.md lines 511-512): `px = col+1 = 11`, `py = row+1 = 6`.
+  Corrected to `\x1b[<0;11;6M`. Now matches HS-EXP-015 step 15-16 exactly.
+  BC-2.09.002 v1.0.1 → v1.1.0.
+- **I23-002 (IMPORTANT) — BC-2.09.003 Canonical Test Vectors:** All three mouse coordinate
+  examples omitted the +1 offset, contradicting EC-220 (row=0,col=0 → Px=1,Py=1) and PC-2 (1-indexed):
+    - (row=3, col=5) press: `\x1b[<0;5;3M` → `\x1b[<0;6;4M`
+    - (row=3, col=5) release: `\x1b[<0;5;3m` → `\x1b[<0;6;4m`
+    - (row=10, col=20) scroll up: `\x1b[<64;20;10M` → `\x1b[<64;21;11M`
+  BC-2.09.003 v1.2.0 → v1.3.0.
+- **S23-001 (SUGGESTION) — Root cause:** No explicit coordinate-encoding convention statement existed.
+  Fix: §Coordinate Convention section added to BC-2.09.003 as the authoritative convention for
+  the entire SS-09 family. States pane-origin assumption (pane_area.x=0, pane_area.y=0),
+  crossterm 0-indexed input, SGR 1-indexed output, canonical formula, and authoritative example
+  cross-referencing HS-EXP-015 step 15-16.
+- **HS-EXP-015 VERIFIED CORRECT:** step 15-16 already showed `\x1b[<0;11;6M` (col=10+1=11,
+  row=5+1=6) — no change needed.
+- **Exhaustive sweep of SS-09 BCs (001-009) and HS-EXP-011-015:** Only BC-2.09.002 EC-213
+  and BC-2.09.003 test vectors contained incorrect mouse coordinate examples.
+  BC-2.09.001/004/005/006/007/008/009 and HS-EXP-011-014 have no mouse coordinate byte-sequence
+  examples — no changes needed there.
+
+BC-INDEX version: 1.39.1 → 1.40.0. BC H1 titles unchanged. No BC ID additions or retirements.
 
 ## §Trace v1.39.1
 

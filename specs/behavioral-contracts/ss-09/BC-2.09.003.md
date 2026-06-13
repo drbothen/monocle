@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.0"
+version: "1.3.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -34,6 +34,18 @@ translated to SGR (1006) mouse encoding sequences and forwarded to the PTY stdin
 terminal when entering `EmbeddedTerminal` mode. Mouse events include button press/release,
 scroll (wheel), and motion events. This enables mouse-driven Claude Code TUI features
 (e.g., clicking on file paths, scrolling output) to work inside monocle's embedded terminal.
+
+## Coordinate Convention (S23-001 fix — authoritative for all SS-09 mouse examples)
+
+All coordinate examples in this BC (and in BC-2.09.002 EC-213) assume:
+- The EmbeddedTerminal pane is at terminal origin: `pane_area.x = 0`, `pane_area.y = 0`.
+- `crossterm::event::MouseEvent` provides 0-indexed `(column, row)` coordinates relative to
+  the terminal window.
+- SGR output is 1-indexed via the canonical formula (SS-embedded-pty.md lines 511-512):
+  `px = col - pane_area.x + 1`, `py = row - pane_area.y + 1`.
+- At origin: `px = col + 1`, `py = row + 1`.
+- Example: crossterm `(column: 10, row: 5)` → `\x1b[<0;11;6M` (11 = 10+1, 6 = 5+1).
+  This matches HS-EXP-015 step 15-16 exactly (the authoritative reference).
 
 ## Preconditions
 
@@ -94,9 +106,9 @@ scroll (wheel), and motion events. This enables mouse-driven Claude Code TUI fea
 
 | Input | Expected PTY bytes | Category |
 |-------|-------------------|----------|
-| Left button press at (row=3, col=5) | `\x1b[<0;5;3M` | happy-path |
-| Left button release at (row=3, col=5) | `\x1b[<0;5;3m` | happy-path |
-| Scroll up at (row=10, col=20) | `\x1b[<64;20;10M` | happy-path |
+| Left button press at crossterm (row=3, col=5) — pane at origin | `\x1b[<0;6;4M` (Px=5+1=6, Py=3+1=4) | happy-path |
+| Left button release at crossterm (row=3, col=5) — pane at origin | `\x1b[<0;6;4m` (Px=5+1=6, Py=3+1=4) | happy-path |
+| Scroll up at crossterm (row=10, col=20) — pane at origin | `\x1b[<64;21;11M` (Px=20+1=21, Py=10+1=11) | happy-path |
 | Click outside PTY pane area | `None` — not forwarded | edge-case |
 
 ## Verification Properties
@@ -131,6 +143,29 @@ S-TBD — Implement mouse_event_to_pty_bytes() and SGR mode entry (filled by sto
 ## VP Anchors
 
 VP-TBD — Mouse event SGR encoding unit tests (filled after VP creation)
+
+## §Trace v1.3.0
+
+**I23-001 + I23-002 + S23-001 — Coordinate convention added; test vectors corrected for +1 indexing** (2026-06-13):
+- Finding I23-002: Canonical Test Vectors at lines ~97-99 all omitted the +1 offset required
+  by the canonical formula `px = col - pane_area.x + 1`, `py = row - pane_area.y + 1`
+  (SS-embedded-pty.md lines 511-512). The test vectors contradicted EC-220 (which correctly
+  states (row=0, col=0) → Px=1, Py=1) and PC-2 (which states Px/Py are 1-indexed).
+  Three examples were wrong:
+    - `(row=3, col=5)` press: `\x1b[<0;5;3M` → `\x1b[<0;6;4M` (Px=6, Py=4)
+    - `(row=3, col=5)` release: `\x1b[<0;5;3m` → `\x1b[<0;6;4m` (Px=6, Py=4)
+    - `(row=10, col=20)` scroll up: `\x1b[<64;20;10M` → `\x1b[<64;21;11M` (Px=21, Py=11)
+- Finding S23-001 root-cause: no explicit convention statement caused readers to assume
+  crossterm's 0-indexed coordinates mapped directly to SGR output without the +1.
+- Fix: Added §Coordinate Convention section (authoritative for the entire SS-09 family)
+  stating the pane-origin assumption, 0-indexed crossterm input, 1-indexed SGR output,
+  and canonical formula. Cross-references HS-EXP-015 step 15-16 as the authoritative example.
+- Test vectors: all three coordinate-bearing rows corrected to apply the +1 convention with
+  inline derivation annotations (Px=col+1=N, Py=row+1=N) for implementer clarity.
+- EC-220 verified CORRECT (already states Px=1, Py=1 for row=0, col=0 — no change needed).
+- PC-2 verified CORRECT (already states Px/Py are 1-indexed — no change needed).
+- HS-EXP-015 verified CORRECT (step 15-16: col=10+1=11, row=5+1=6 → `\x1b[<0;11;6M` — no change needed).
+- Version bump: 1.2.0 → 1.3.0 (minor: new normative section + corrected test vectors).
 
 ## §Trace v1.2.0
 
