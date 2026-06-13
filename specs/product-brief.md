@@ -1,7 +1,7 @@
 ---
 document_type: product-brief
 level: L1
-version: "2.0.3"
+version: "2.0.4"
 status: draft
 producer: product-owner
 phase: pivot-delta-brief
@@ -44,7 +44,7 @@ supplements:
   - /Users/jmagady/Dev/monocle/.factory/semport/DISPOSITION-V2-CONTROL-CENTER-ROLLUP.md
 ---
 
-# Product Brief: Monocle (v2.0.2 — I18-001 §Out-of-Scope Consistency Correction)
+# Product Brief: Monocle (v2.0.4 — I25-001 SessionState Lifecycle Consistency Correction)
 
 > **D-236/D-237/D-238 RE-BASELINE (2026-06-03).**  
 > The observe-only framing of v1.4.x is RETIRED. Monocle is now a full TUI control center.
@@ -61,6 +61,7 @@ supplements:
 | **2.0.1** | **2026-06-03** | **product-owner** | **Consistency propagation of v2.1 session-host model + architect rulings; no scope change.** Applied ADR-0009 and SS-08: `portable-pty` and `vt100` crate locations corrected to `monocle-session-host` in §Tech Direction table (CRIT-2); `PtySpawner`/`MockPtySpawner` replaced with `SessionHostSpawner`/`MockSessionHostSpawner` throughout (CRIT-3), including §Success Criteria "verified via integration test with MockSessionHostSpawner"; `VsddFactoryAdapter`/`FactoryAdapter` extraction source corrected to `monocle-core` in §Crate Workspace Layout (IMP-1); `monocle-session-host` added as v1A new crate in §Crate Workspace Layout; permission badge+bell guarantee for EmbeddedTerminal mode added with BC-pending note; v1B pre-emption open item recorded (SUG-3). Status: draft (consistency-only; no scope change). |
 | **2.0.2** | **2026-06-04** | **product-owner** | **I18-001 consistency correction — §Out-of-Scope daemon-owned framing aligned with ratified D-238 session-host-owns-PTY model; no scope change.** §Out of Scope "Does NOT replace the user's general-purpose terminal multiplexer" bullet: "daemon-owned PTYs" → "session-host-owned PTYs (daemon-coordinated)". This is a consistency correction to the already-ratified session-host-owns-PTY decision (ADR-0009, D-238); it does NOT change any approved decision. Status: draft (consistency-only; no scope change). |
 | **2.0.3** | **2026-06-04** | **product-owner** | **I19-001 consistency correction — §Tech Direction PTY Stack table tui-term version form corrected from caret `"0.3"` to exact-pin `"=0.3.4"`.** The exact-pin contract was already ratified in ADR-0011 §Q-7 and recorded in SS-deps-pin-manifest-v2-delta; the table row was stale caret form contradicting the brief's own line ~339 "Decision-of-record: exact-pin." No decision change — this is a consistency correction only. Status: draft (consistency-only; no scope change). |
+| **2.0.4** | **2026-06-13** | **product-owner** | **I25-001 consistency correction — §LAUNCH prose lifecycle enumeration aligned to the ratified SessionState enum (`SS-session-manager.md` / ADR-0009 / BC-2.08.001 v1.1.0); no decision change.** Retired `Created` and missing `Terminating` survived in §LAUNCH Wave body text (line ~131): `Created → Launching → Running → Detached → Terminated` → `Launching → Running → Detached → Terminating → Terminated`. `Created` was removed (spawn_session() goes directly to Launching); `Terminating` was added (transient kill-in-progress state; closes the observability gap for in-flight kills). This is a consistency correction only — the ratified enum was already correct at the BC/SS/ADR layer; this propagates to L1 prose. Status: draft (consistency-only; no scope change). |
 
 ---
 
@@ -128,7 +129,7 @@ opens a `portable-pty` PTY pair, builds a CommandBuilder from `EngineModule::spa
 (binary + args including `--settings <hooks_settings_path>` for hook auto-injection + cwd as
 git worktree root + CCR env vars if applicable), and owns the harness child process. The daemon
 coordinator tracks session-host processes and proxies PTY bytes to TUI clients. Session
-lifecycle: `Created → Launching → Running → Detached → Terminated`.
+lifecycle: `Launching → Running → Detached → Terminating → Terminated`.
 
 The `EngineModule` trait is extended with:
 

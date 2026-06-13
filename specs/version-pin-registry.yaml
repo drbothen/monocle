@@ -258,9 +258,9 @@ prd:
 
 product-brief:
   path: specs/product-brief.md
-  current_version: "2.0.3"
-  last_bump_commit: "[Pass-19 I19-001 2026-06-04 — §Tech Stack table tui-term '0.3'→'=0.3.4' exact-pin form; pin-form propagation from ADR-0011 v1.2.1]"
-  last_bump_date: "2026-06-04"
+  current_version: "2.0.4"
+  last_bump_commit: "[Pass-25 I25-001 2026-06-13 — §LAUNCH lifecycle prose Created→Terminated retired; ratified Launching→Running→Detached→Terminating→Terminated; consistency correction only]"
+  last_bump_date: "2026-06-13"
 
 # ───────────────────────────────────────────────────────────────────────────────
 # Behavioral Contract files (BC-N.NN.NNN)
