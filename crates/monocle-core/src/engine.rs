@@ -1,7 +1,7 @@
 /// EngineModule trait and supporting types (BC-2.03.001; S-014).
 ///
 /// Tests in `engine_module_surface.rs` (VP-019 AST audit suite) verify structural
-/// conformance to BC-2.03.001 and SS-engine-module.md v1.1.26.
+/// conformance to BC-2.03.001 and SS-engine-module.md v1.1.27.
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -140,7 +140,7 @@ impl ProcessSnapshot {
 /// enum by `monocle-ipc::framing::write_framed`.
 ///
 /// All four display fields (`project_name`, `started_at`, `token_count`, `cost_usd`) are
-/// specified in SS-engine-module.md v1.1.26 and BC-2.06.005 PC-2. Phase 1 daemon populates
+/// specified in SS-engine-module.md v1.1.27 and BC-2.06.005 PC-2. Phase 1 daemon populates
 /// these with zero-value defaults (`None`/`0`) until a richer enrichment story provides real
 /// values. The TUI renders `None`/`0` as `"—"` per BC-2.06.005 Invariant 3.
 ///
