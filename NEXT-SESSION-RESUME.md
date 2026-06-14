@@ -1,91 +1,100 @@
-# monocle — Resume From Here (D-251, 2026-06-03)
+# monocle — Resume From Here (D-270, 2026-06-13)
 
 Read this file first, then CLAUDE.md, then `.factory/STATE.md`
-(`next_session_resume_protocol` block for the full checkpoint).
+(`next_session_resume_protocol` block, v7.21, for the full checkpoint).
 
 ---
 
 ## Status at Pause
 
-The D-236 control-center pivot has been executed through:
-
-- Vision revised and approved (domain-monocle-vision-synthesis.md v2.2, D-238, Joshua Magady).
-- Brief delta complete (product-brief.md v2.0.2, validate-brief VALID).
-- Architecture delta complete — 3 ADRs + 5 subsystem specs (D-239, D-240).
-- 25 new v1A behavioral contracts authored + PRD v1.28.1 + 5 holdout scenarios (D-241).
-- 9 adversarial passes complete on the full spec package (D-242 through D-250).
+**Phase-1d adversarial spec convergence is in progress.** 28 passes complete.
+Consecutive-clean counter = 0. Pass-29 is the next dispatch (clean candidate 1 of 3).
 
 develop branch is UNCHANGED at 8bc22a5. No production code has been written for v1A.
 All pivot work lives on the factory-artifacts branch under `.factory/`.
 
 ---
 
-## Next Action: Adversarial Pass 10
+## The Most Recent Major Change: Model-A Spawn Path (Pass-27, D-269)
 
-The Phase-1d adversarial spec convergence is in progress. The human's directive is
-strict 3-consecutive-clean passes (zero Critical + zero Important).
+Pass-27 adjudicated the SPAWN-PATH MODEL A decision — the most significant architectural
+decision of the convergence cycle:
 
-- Finding trajectory: Critical 5,5,4,1,2,2,0,0,0 / Important 8,6,9,4,4,2,4,2,1
-- Passes 7/8/9 are all zero-Critical. Pass 9 had 1 Important (resolved, D-250).
-- Consecutive-clean counter = 0. Need 3 to declare convergence.
-- Pass 10 is the next dispatch (candidate 1-of-3).
+- `spawn_session(opts: SpawnOptions)` is the canonical signature (SS-session-manager v2.0.0 MAJOR)
+- `SpawnOptions` is the IPC wire type (`#[non_exhaustive]` + Serialize/Deserialize)
+- `SpawnRecipe` is daemon-internal only (never on the wire, never at the call site)
+- `ClientToServer::SpawnSession` carries `opts: SpawnOptions`
+- Daemon calls `spawn_recipe()` internally inside `spawn_session()`
+- `EngineError::BinaryNotFound`→`binary_not_found` / `InvalidPath`→`invalid_spawn_arg` are reachable via `SessionError::EngineError #[from]` bridge (BC-2.03.007 PC-3/PC-7)
 
-Do NOT accept fewer than 3 consecutive clean passes. Do NOT resume Phase 4-7 of
-the old observe-only scope. See `.factory/STATE.md next_session_resume_protocol`
-for the complete convergence-loop procedure.
+Pass-28 (D-270) fixed a survivor of this change: HS-EXP-014 Step 1 still used the retired
+Model-B `spawn_session(recipe_A, harness_A, profile_A)` signature. Fixed to `spawn_session(opts_A)`.
+Sibling holdouts HS-EXP-011/012/013/015 confirmed clean.
 
 ---
 
-## Spec Package (feed to adversary for Pass 10+)
+## Next Action: Adversarial Pass 29
+
+Dispatch `vsdd-factory:adversary` in a fresh context for Pass 29.
+Feed the full spec package (section D of `next_session_resume_protocol` in STATE.md).
+
+The human's directive: **strict 3 consecutive clean passes** (zero Critical + zero Important).
+Do NOT accept fewer than 3. Do NOT resume Phase 4-7 of the old observe-only scope.
+
+Finding trajectory summary (C/I counts per pass):
+- Passes 1-6: Critical present (5/8, 5/6, 4/9, 1/4, 2/4, 2/2)
+- Passes 7-28: ALL zero-Critical (22 consecutive)
+- Pass 20: 0C/0I — FIRST CLEAN
+- Pass 21: 0C/0I — SECOND CLEAN
+- Pass 22: 0C/3I — RESET counter 2→0 (sibling-BC cluster caught)
+- Passes 23-28: 0C/1I each — counter stays 0
+
+---
+
+## Current Spec Package Headline Versions
 
 | Document | Version |
 |----------|---------|
-| domain-monocle-vision-synthesis.md | v2.2.1 (APPROVED) |
-| product-brief.md | v2.0.2 |
-| prd.md | v1.28.1 |
+| domain-monocle-vision-synthesis.md | v2.2.3 (APPROVED) |
+| product-brief.md | v2.0.4 |
+| prd.md | v1.28.3 |
 | ARCH-INDEX | v1.0.28 |
-| SS-ipc | v1.15.0 |
-| SS-session-manager | v1.7.0 |
-| SS-embedded-pty | v1.3.0 |
-| SS-engine-module-v2-delta | v1.1.0 |
-| SS-daemon-wiring-v2-delta | v1.5.0 |
-| SS-deps-pin-manifest-v2-delta | v1.0.0 |
-| ADR-0009 | v1.0.0 |
-| ADR-0010 | v1.5.0 |
-| ADR-0011 | v1.1.0 |
-| BC-INDEX | v1.39 (138 BCs; 25 new v1A) |
-| EVAL-INDEX | v1.15 (29 scenarios; HS-EXP-011..015 new) |
-| version-pin-registry.yaml | source of truth for all pins |
+| SS-ipc | v1.19.0 |
+| SS-session-manager | v2.0.0 (MAJOR — spawn_session(opts)) |
+| SS-embedded-pty | v1.5.1 |
+| SS-engine-module-v2-delta | v1.2.0 |
+| SS-daemon-wiring-v2-delta | v1.8.0 |
+| SS-deps-pin-manifest-v2-delta | v1.0.1 |
+| ADR-0009 | v1.0.2 |
+| ADR-0010 | v1.6.0 |
+| ADR-0011 | v1.2.1 |
+| BC-INDEX | v1.40.0 (138 BCs) |
+| EVAL-INDEX | v1.15 |
+| version-pin-registry.yaml | source of truth |
 
 ---
 
 ## Remaining Tasks (in order)
 
-1. Finish Phase-1d convergence: Pass 10/11/12+ until 3 consecutive clean (counter = 0 now).
+1. Finish Phase-1d convergence: Pass 29/30/31+ until 3 consecutive clean (counter = 0 now).
 2. Human spec-package approval gate (run check-input-drift first; present review questions;
    gate items: CC-TUITERM-WIP-SIGNOFF + CC-GLOBAL-MOUSE-CAPTURE).
 3. Phase 2 story decomposition (vsdd-factory:story-writer): v1A delta into stories + waves;
    resolve all S-TBD anchors in 25 BCs + holdout stories_tested fields.
 4. VP authoring (vsdd-factory:architect) — deferred to formal-hardening (VP-TBD pattern).
-5. Pre-Phase-3: DTU clone check (S-DTU-001 fidelity 1.0 — D-234); CI/CD verification.
+5. Pre-Phase-3: DTU clone check (S-DTU-001 fidelity 1.0 — D-234; UNBLOCKED); CI/CD verify.
 6. Phase 3 TDD implementation of v1A stories (wave gates). v1B stories authored later.
-
----
-
-## Parked Human Items (required before v1A story wave, not before convergence)
-
-- CC-TUITERM-WIP-SIGNOFF: tui-term 0.3.4 WIP-upstream risk acceptance (ADR-0011 §O2).
-- CC-GLOBAL-MOUSE-CAPTURE: approval if a future story needs clickable monocle panels.
-- v1B: embedded-terminal→overlay pre-emption needs human ratification before BC authoring.
 
 ---
 
 ## Full Checkpoint
 
-See `.factory/STATE.md` block `next_session_resume_protocol` (version 7.02, D-251) for:
+See `.factory/STATE.md` block `next_session_resume_protocol` (version 7.21, D-270) for:
 
 - The complete convergence-loop procedure (Steps A/B/C + commit rules + cycle checklist).
-- Ratified decisions (persistence model, keyboard fidelity, PTY stack, schema_version 3, etc.).
+- The full 28-pass finding trajectory with per-pass detail.
+- The full spec package list with all current versions (derived from registry).
+- Ratified decisions: Model-A spawn path, session-host-owns-PTY, keyboard fidelity, etc.
 - All codified lessons (registry atomicity, propagation-closure, anchor-resolution, etc.).
-- The durable_task_register for non-blocking open items.
+- The durable_task_register for all non-blocking open items (including S28-001).
 - Already-built substrate inventory (1514 tests, 9 workspace crates, daemon, TUI, IPC).
