@@ -324,6 +324,7 @@ logic (steps 1–2) is performed by `monocle-config`. This is the clean separati
 
 ---
 
+<a id="ccr-detection-bc-2-07-006"></a>
 ## CCR Detection (BC-2.07.006)
 
 Claude Code Router (`ccr`) is an integrate-external dependency (D-010 in

@@ -31,6 +31,7 @@ version becomes SUPERSEDED and should be marked as such in ARCH-INDEX.**
 
 ---
 
+<a id="spawn_recipe-new-trait-method"></a>
 ## spawn_recipe() — new trait method
 
 The following method is added to the `EngineModule` trait in `monocle-core/src/engine.rs`:
@@ -299,6 +300,7 @@ pub enum EngineError {
 }
 ```
 
+<a id="semantic-contract"></a>
 **Semantic contract:**
 - `BinaryNotFound` is reserved exclusively for the case where `which::which("claude")`
   (or the equivalent for other harnesses) fails — i.e., the harness binary cannot be
@@ -361,6 +363,7 @@ impl EngineModule for ClaudeCodeModule {
 }
 ```
 
+<a id="hook-auto-injection-invariant"></a>
 **Hook auto-injection invariant:** The `--settings <hooks_settings_path>` argument is the
 hook injection mechanism. The hooks-settings.json at that path contains:
 ```json

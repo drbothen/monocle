@@ -34,6 +34,7 @@ monocle starts correctly on macOS without operator intervention. All lifecycle s
 (port, pid, auth token, start time) is written to a single lock file at
 `<runtime_dir>/monocle.lock` using `tempfile::persist` for atomic write.
 
+<a id="health-and-status-endpoints"></a>
 ## Health and Status Endpoints (F-NEW-05)
 
 Both endpoints are registered on the same axum router as the 5 hook endpoints.
@@ -115,6 +116,7 @@ access to `/status` is not warranted given the richer payload.
 **Use:** Developer debugging, observability, CI integration tests. Read-only; no
 state mutations.
 
+<a id="body-size-limit"></a>
 ## Body Size Limit (F-NEW-06)
 
 **Contract (BC-2.01.003):** All hook POST endpoints (`/hooks/*`) and `/status`
@@ -176,6 +178,7 @@ let authed_router = Router::new()
 let app = public_router.merge(authed_router);
 ```
 
+<a id="daemon-lifecycle-protocol"></a>
 ## Daemon Lifecycle Protocol (F-NEW-09)
 
 ### Start Sequence
@@ -531,10 +534,12 @@ On receiving any shutdown signal:
    `/hooks/*` routes. `/healthz` returns 503 `{"status":"shutting_down"}`.
    `/status` continues to serve (read-only; useful during drain monitoring).
 
+<a id="drain"></a>
 ### Drain (10-Second Timeout)
 
 3. Wait up to 10 seconds for in-flight hook POSTs to complete
    (`tokio::time::timeout(Duration::from_secs(10), drain_inflight())`).
+<a id="jsonl-ring-buffer"></a>
 4. If `--persistent-events` flag is set, flush the JSONL ring buffer to disk at
    `<runtime_dir>/monocle-events.jsonl`. The flush uses a two-phase write: read
    the existing file content (if any) into memory, append the in-memory ring

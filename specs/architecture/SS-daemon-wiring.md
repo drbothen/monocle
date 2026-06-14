@@ -107,6 +107,7 @@ decision sequence is specified in §Daemon Auto-Start Logic below.
 
 This logic runs when `monocle` is invoked without a subcommand (TUI mode).
 
+<a id="monocle_no_autostart-check-bc-2"></a>
 ### MONOCLE_NO_AUTOSTART Check (BC-2.04.003)
 
 Before any daemon liveness check, `monocle` reads the environment variable
@@ -143,6 +144,8 @@ a UDS connection.
 
 ---
 
+<a id="daemon-start-sequence-bc-2"></a>
+<a id="daemon-start-sequence"></a>
 ## Daemon Start Sequence (BC-2.04.001)
 
 When `monocle daemon start` runs (or when the auto-start path triggers the daemon entrypoint
@@ -237,6 +240,7 @@ completion signal.
 
 ---
 
+<a id="hook-endpoint-routing"></a>
 ## Hook Endpoint Routing (BC-2.04.007, BC-2.04.008, BC-2.04.009)
 
 Hook POST requests arrive at the axum router registered in `build_server()`. The routing
@@ -289,6 +293,7 @@ BC-HOOK-002 for PreToolUse. For Notification, Stop, SessionStart, and PromptSubm
 are fire-and-forget from Claude Code's perspective), a 2000ms / 300ms timeout still applies
 to ensure the daemon does not hold open HTTP connections indefinitely.
 
+<a id="pretooluse-permission-decision-hold"></a>
 ### PreToolUse — Permission Decision Hold
 
 When `ClaudeCodeModule::on_hook()` returns a `HookResponse` with `decision: HookDecision::Defer` on a `PreToolUse` event,
@@ -311,6 +316,7 @@ contracts.
 
 ---
 
+<a id="bounded-event-bus"></a>
 ## Bounded Event Bus (BC-2.04.011)
 
 The bounded event bus is the central fan-out mechanism that connects incoming hook events
@@ -363,6 +369,7 @@ saturation.
 
 ---
 
+<a id="hook-tmpfile-generation"></a>
 ## Hook Tmpfile Generation (BC-2.04.010)
 
 The daemon generates `hooks-settings.json` at `<runtime_dir>/hooks-settings.json` to enable

@@ -133,7 +133,7 @@ verifies correct `--settings` arg injection for all concurrent sessions.
 - **Finding (I28-001 — IMPORTANT):** Part A Step 1 (line ~31) contained the RETIRED Model-B
   three-argument `spawn_session()` signature: `SessionManager::spawn_session(recipe_A, harness_A, profile_A)`.
   Model B was superseded by Model A (I27-001 adjudication, SS-session-manager v2.0.0 <!-- version-pin-historical: v2.0.0 was canonical at Pass-28 authoring time --> §Public API,
-  BC-2.08.001 v1.4.0). Under Model A, `spawn_session()` accepts a single `SpawnOptions` struct;
+  BC-2.08.001 v1.4.0 <!-- version-pin-historical: v1.4.0 was canonical at Pass-28 authoring time -->). Under Model A, `spawn_session()` accepts a single `SpawnOptions` struct;
   `SpawnRecipe` is daemon-internal and never appears on the call site.
 - **Fix:** Step 1 rewritten to the Model A call: construct `opts_A: SpawnOptions` with
   `harness_id`, `profile_id`, `project_root`, `worktree_root`, `session_id`,

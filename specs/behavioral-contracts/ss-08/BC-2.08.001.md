@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.0"
+version: "1.4.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-03T23:30:00Z
+timestamp: 2026-06-13T00:00:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/SS-engine-module-v2-delta.md, architecture/adr/ADR-0009-native-session-host-process-model.md]
 input-hash: "4419632"
@@ -154,7 +154,7 @@ goes directly to `Launching`.
 
 - `architecture/SS-session-manager.md#sessionmanager` (v2.0.0) — struct definition, public API (`spawn_session(opts: SpawnOptions)` — Model A), session lifecycle state machine
 - `architecture/SS-session-manager.md#session-statejson-schema` (v2.0.0) — sidecar schema specification (schema_version 3)
-- `architecture/SS-session-manager.md#error-handling-sessionerror-servertocommand-error-mapping` (v2.0.0) — `session_error_to_code()` spawn-path arms for EngineError bridge
+- `architecture/SS-session-manager.md#error-handling-sessionerror-servertoclient-error-mapping` (v2.0.0) — `session_error_to_code()` spawn-path arms for EngineError bridge
 - `architecture/SS-engine-module-v2-delta.md#spawnrecipe-and-spawnoptions-types` (v1.2.0) — SpawnOptions as wire type; SpawnRecipe as daemon-internal (I27-001 Model A)
 - `architecture/adr/ADR-0009-native-session-host-process-model.md` — process model decision
 
@@ -216,6 +216,17 @@ changes from `spawn_session(recipe: SpawnRecipe, harness_id, profile_id, ...)` t
 
 - No changes to Invariants, PC-1 through PC-5, EC-151, EC-152, EC-153, or Verification Properties
   (spawner call, sidecar schema, UUID invariants, publication ordering remain unchanged).
+
+## §Trace v1.4.1
+
+**ANCHOR-LINT-TOOL D-275 — Dead anchor citation corrected: `servertocommand` typo** (2026-06-13T00:00:00Z):
+- Architecture Anchors line: `#error-handling-sessionerror-servertocommand-error-mapping` →
+  `#error-handling-sessionerror-servertoclient-error-mapping`.
+- Cause: typo introduced in v1.4.0 burst — "servertocommand" vs. the actual heading
+  "SessionError → ServerToClient::Error mapping". Architect added the explicit `<a id>` anchor
+  to SS-session-manager.md in the same D-275 pass; this corrects the BC side of the citation.
+- No behavioral content changed; version bumped as patch 1.4.0→1.4.1.
+- SE-16d monotonicity: v1.4.1 timestamp 2026-06-13T00:00:00Z > v1.4.0 timestamp 2026-06-03T23:30:00Z. PASS.
 
 ## §Trace v1.3.1
 

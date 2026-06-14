@@ -24,6 +24,7 @@ project: monocle
 | Total clone story points | 3 |
 | Estimated Wave 1 capacity needed | 3 points |
 
+<a id="endpoint-matrix"></a>
 ## Integration Surface Inventory (MANDATORY — all categories required)
 
 Categorized by data flow direction and business criticality. All six categories assessed per DTU methodology.
@@ -41,6 +42,7 @@ Systems monocle reads from: APIs polled, feeds consumed, webhooks received.
 
 None identified — rationale: monocle is observe-only for workflow state and transcripts. It does not write to external services, send notifications, trigger ticketing, or process payments. Hook POST response bodies are echo/pass-through, not outbound operations to external systems.
 
+<a id="auth-header"></a>
 ### Identity & Access (Bidirectional — auth flow)
 
 | # | Service | Protocol | Fidelity | DTU? | Justification |

@@ -564,6 +564,7 @@ impl HookResponse {
 ///   may reintroduce event rewriting.
 ///
 /// All types appearing in IPC message variants MUST derive `Serialize, Deserialize`.
+<a id="hook-decision"></a>
 /// `HookDecision` is carried inside `HookResponse` which appears on the IPC wire;
 /// the serde derives below are required for IPC transport.
 #[non_exhaustive]
@@ -715,6 +716,7 @@ impl EngineModule for ClaudeCodeModule {
 }
 ```
 
+<a id="struct-level-inherent-operations"></a>
 ### Struct-level inherent operations (NOT trait methods)
 
 `ClaudeCodeModule` exposes engine-specific operational methods as inherent (struct)

@@ -60,6 +60,7 @@ pub struct DaemonState {
 `SessionManager` is wrapped in `Arc<Mutex<>>` because it is accessed from multiple tokio tasks
 (IPC handler, HTTP hook handler, session-host proxy tasks).
 
+<a id="daemon_start_sequence-session-re-discovery-step"></a>
 ### 2. daemon_start_sequence() — session re-discovery step
 
 **Current step numbering in SS-daemon-wiring.md (authoritative):**
@@ -124,6 +125,7 @@ step 8b is inserted before both.
 a pre-existing session sidecar is discovered and the session appears in the initial state push
 to a TUI client that connects after the daemon starts.
 
+<a id="ipc-handler-new-clienttoserver-variants"></a>
 ### 3. IPC handler — new ClientToServer variants
 
 > **CANONICAL PATTERN LOCK (P8-STRUCTURAL):** The error-routing discipline in this handler
@@ -430,6 +432,7 @@ SessionListUpdate {
 and `SessionListUpdate.sessions: Vec<EnrichedSession>`. These must be updated to
 `Vec<SessionSnapshot>` in SS-ipc.md (see §Trace and downstream PO BC change list).
 
+<a id="broker-fan-out-ptyoutput-messages"></a>
 ### 5. broker fan-out — PtyOutput, ScrollbackChunk, ScrollbackDumpComplete, PtyReset
 
 The broker fan-out task (`monocle-runtime/src/broker.rs`) gains the following new event types.
@@ -451,6 +454,7 @@ The broker fan-out dispatches `ServerToClient::PtyOutput { session_id, bytes }` 
 client's per-client send buffer via `.try_send()`. A dedicated per-client writer task drains
 the buffer to the UDS socket.
 
+<a id="broker-fan-out-scrollbackchunk-scrollbackdumpcomplete"></a>
 #### 5b. ScrollbackChunk + ScrollbackDumpComplete fan-out (I3-003 fix: resume after snapshot)
 
 When a daemon attaches to a session-host (on spawn or re-discovery) and receives the
@@ -569,6 +573,7 @@ is REPLACED by this two-message protocol. `ScrollbackDump` is RETIRED from `Host
 (the name was misleading for large scrollbacks). Session-hosts MUST NOT send `ScrollbackDump`
 in v1A; they MUST send `ScrollbackChunk*` + `ScrollbackDumpComplete`.
 
+<a id="broker-fan-out-ptyreset"></a>
 #### 5c. PtyReset fan-out
 
 When the session-host proxy receives `HostToDaemon::PtyReset`, it posts:

@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.0"
+version: "1.1.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-01T14:00:00Z
+timestamp: 2026-06-13T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
 input-hash: "bfb91e5"
@@ -192,7 +192,7 @@ S-TBD — Implement daemon disconnect handler: clear overlay stack, reset AppMod
   `queued_prompts` was a stale fabrication.
 - Cross-Ref table (BC-2.05.002 entry): `fresh queued_prompts` → `fresh overlay_stack`.
 - Related BCs (BC-2.05.002 bullet): `fresh queued_prompts` → `fresh overlay_stack`.
-- Architecture Anchors (SS-tui.md#ctrl-integration): `queued_prompts` → `overlay_stack`.
+- Architecture Anchors (architecture/SS-tui.md#ctrl-integration): `queued_prompts` → `overlay_stack`.
 - SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.
 
 ## §Trace v1.0.3
@@ -263,6 +263,19 @@ The implementer fabricated this citation.
 - No other substantive changes. The overlay-clear behavior, mode transition, and all other
   postconditions are unchanged.
 - SE-16d monotonicity: v1.1.0 timestamp 2026-06-01T14:00:00Z > v1.0.9. PASS.
+
+## §Trace v1.1.1
+
+**ANCHOR-LINT-TOOL D-275 — Dead citation corrected: missing `architecture/` path prefix** (2026-06-13T00:00:00Z):
+- §Trace v1.0.4 prose (line ~195): `SS-tui.md#ctrl-integration` →
+  `architecture/SS-tui.md#ctrl-integration`.
+- Cause: the prose in §Trace v1.0.4 recorded the anchor without the directory prefix; the
+  anchor lint tool scans all markdown in BC files including §Trace prose. The target file
+  is `architecture/SS-tui.md`; the bare `SS-tui.md` form resolves to file-not-found from the
+  `.factory/specs/behavioral-contracts/ss-06/` context. Architect added the explicit
+  `<a id="ctrl-integration"></a>` anchor to `architecture/SS-tui.md` in the same D-275 pass.
+- No behavioral content changed; version bumped as patch 1.1.0→1.1.1.
+- SE-16d monotonicity: v1.1.1 timestamp 2026-06-13T00:00:00Z > v1.1.0 timestamp 2026-06-01T14:00:00Z. PASS.
 
 ## §Trace v1.0.7
 

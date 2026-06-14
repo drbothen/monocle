@@ -37,6 +37,7 @@ FC-04 (`FactoryAdapter` trait), and FC-05 (prost wire schemas).
 
 ---
 
+<a id="abi-version-constant"></a>
 ## §ABI Version Constant (FC-03 resolution)
 
 ### Declaration
@@ -102,6 +103,7 @@ the constant is exactly `1` and publicly accessible.
 
 ---
 
+<a id="enum-extensibility"></a>
 ## §Enum Extensibility — `#[non_exhaustive]` Markers (FC-02 resolution)
 
 ### Mandatory Non-Exhaustive Enums
@@ -311,6 +313,7 @@ the attribute; CI enforces this via the `--deny warnings` flag.
 
 ---
 
+<a id="factoryadapter-trait"></a>
 ## §FactoryAdapter Trait (FC-04 resolution — CRITICAL)
 
 ### Module Location
@@ -881,6 +884,7 @@ asserting `cycle` is `None` or `Some(_)` (not a hardcoded `"unknown"` string).
 
 ---
 
+<a id="prost-wire-schemas"></a>
 ## §Prost Wire Schemas (FC-05 resolution)
 
 ### Crate

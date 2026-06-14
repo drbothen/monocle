@@ -611,9 +611,9 @@ BC-2.06.015:
 
 BC-2.06.016:
   path: specs/behavioral-contracts/ss-06/BC-2.06.016.md
-  current_version: "1.1.0"
-  last_bump_commit: "f8cf600875cda80d231de0d259468f831f80508f"
-  last_bump_date: "2026-06-01"
+  current_version: "1.1.1"
+  last_bump_commit: "[D-275 ANCHOR-LINT-TOOL remediation — missing architecture/ path prefix fix in §Architecture-Source cross-reference]"
+  last_bump_date: "2026-06-13"
 
 BC-2.06.017:
   path: specs/behavioral-contracts/ss-06/BC-2.06.017.md
@@ -749,8 +749,8 @@ BC-2.06.025:
 
 BC-2.08.001:
   path: specs/behavioral-contracts/ss-08/BC-2.08.001.md
-  current_version: "1.4.0"
-  last_bump_commit: "[Pass-27 I27-001 — Precondition-2 updated to opts/daemon-side recipe; EC-150 binary-not-found→binary_not_found; Model-A reconciliation]"
+  current_version: "1.4.1"
+  last_bump_commit: "[D-275 ANCHOR-LINT-TOOL remediation — servertocommand→servertoclient anchor typo fix in §Architecture-Source cross-reference]"
   last_bump_date: "2026-06-13"
 
 BC-2.08.002:

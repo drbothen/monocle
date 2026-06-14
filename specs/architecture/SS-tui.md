@@ -280,6 +280,7 @@ function.
 
 ---
 
+<a id="action-enum"></a>
 ## Action Enum and 5-Level Binding Precedence
 
 ### Action Enum (monocle-core)
@@ -702,6 +703,7 @@ in green (`Color::Green`). Context lines render in the default terminal color.
 The diff area is height-capped to `(overlay_height - 8)` rows to preserve room for
 the prompt header and action hint line.
 
+<a id="trace-to-source-stub"></a>
 ### Trace-to-Source Stub (`[t]`)
 
 In Phase 1, pressing `[t]` in `Overlay` mode renders a placeholder message in the
@@ -716,6 +718,7 @@ discoverable from the hint line. No navigation occurs. This ensures the keybindi
 exists in Phase 1 so Phase 2 stories can implement the behavior without a keybinding
 conflict.
 
+<a id="hook-timeout-budget"></a>
 ### Hook Timeout Budget (BC-2.06.017)
 
 The daemon holds the Claude Code HTTP response open until either a decision arrives
@@ -744,6 +747,8 @@ acts.
 
 ---
 
+<a id="ctrl-backslash-integration"></a>
+<a id="ctrl-integration"></a>
 ## Ctrl-\ Integration
 
 ### tmux Popup Command

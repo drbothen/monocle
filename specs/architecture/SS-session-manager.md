@@ -374,6 +374,7 @@ impl SessionManager {
 }
 ```
 
+<a id="error-handling-sessionerror-servertoclient-error-mapping"></a>
 ### §Error handling — SessionError → ServerToClient::Error mapping
 
 Every `SessionManager` method in the Public API returns `Result<_, SessionError>`. The daemon IPC
@@ -844,6 +845,7 @@ pub enum HostToDaemon {
 //   attrs bitmask: bit0=bold, bit1=dim, bit2=italic, bit3=underline, bit4=inverse (vt100 0.16 verified)
 ```
 
+<a id="screen-state-transfer-on-attach"></a>
 ### Screen-state transfer on Attach (C5 — correct ScrollbackChunk protocol)
 
 When the session-host handles `DaemonToHost::Attach`, it MUST transfer the vt100 screen

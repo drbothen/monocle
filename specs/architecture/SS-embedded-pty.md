@@ -65,6 +65,7 @@ pub enum SessionCreationStep {
 }
 ```
 
+<a id="state-machine-invariants"></a>
 **State machine invariants:**
 
 - **Permission prompts while in `EmbeddedTerminal`:** Permission prompts are time-sensitive
@@ -231,11 +232,13 @@ only sends when the pending size differs AND a 50ms debounce window has elapsed.
 
 ---
 
+<a id="full-fidelity-keyboard-encoding"></a>
 ## Full-Fidelity Keyboard Encoding (v1A scope — D-237 ratification)
 
 Full keyboard fidelity is IN v1A scope (human-ratified at D-237, 2026-06-03). This section
 is the authoritative implementation specification. No input class is deferred.
 
+<a id="crossterm-setup"></a>
 ### Crossterm to PTY byte translation
 
 When `AppMode::EmbeddedTerminal` is active, crossterm `KeyEvent` values are intercepted by
@@ -555,6 +558,7 @@ pub fn mouse_event_to_pty_bytes(
 }
 ```
 
+<a id="esc-key-handling-contract"></a>
 **Esc key handling contract:** In `AppMode::EmbeddedTerminal`, the Action dispatch layer
 MUST intercept `KeyCode::Esc` with no modifiers as `Action::ExitEmbeddedTerminal` BEFORE
 calling `key_event_to_pty_bytes`. A bare Esc that was meant for the PTY (e.g., vim's escape

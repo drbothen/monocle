@@ -249,6 +249,7 @@ pub enum ServerToClient {
     /// 1. A TUI client sent PermissionDecision for this prompt_id (another client resolved it).
     /// 2. The daemon's hook timeout expired for this prompt_id (PreToolUse 300ms budget).
     ///
+<a id="servertoclient-permissionpromptresolved"></a>
     /// TUI clients treat PermissionPromptResolved identically regardless of source —
     /// pop the matching PromptModal from the VecDeque<PromptModal> if present; no-op if absent.
     PermissionPromptResolved {
@@ -1194,6 +1195,7 @@ The clearing must happen before any reconnect attempt — not after. The sequenc
 
 ---
 
+<a id="phase-1-transport-constraint"></a>
 ## Phase 1 Transport Constraint (BC-2.05.008)
 
 The `monocle-ipc` crate MUST NOT import `libc::mmap`, `nix::sys::mman`, `shared_memory`,
