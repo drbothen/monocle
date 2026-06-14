@@ -43,8 +43,8 @@ at 5d9d603). All pivot spec work on factory-artifacts.
 - **Pass-44 FINDINGS** (D-287): F-P44-IMP-001 EngineError::UnsupportedOperation collapsed to generic
   invalid_request wire code — fixed with new spawn_unsupported (11th code); taxonomy 10→11;
   all 3 EngineError variants now map to dedicated codes; EngineError→wire-code class fully closed;
-  SS-ipc v1.22.0, SS-session-manager v2.4.0, SS-engine-module-v2-delta v1.5.0,
-  SS-daemon-wiring-v2-delta v1.11.0, BC-2.03.008 v1.0.2, BC-2.05.010 v1.8.1; counter stays 0.
+  SS-ipc v1.23.0, SS-session-manager v2.5.0, SS-engine-module-v2-delta v1.6.0,
+  SS-daemon-wiring-v2-delta v1.11.1, BC-2.03.008 v1.0.2 at D-287 authoring time, BC-2.05.010 v1.8.1 at D-287 authoring time; counter stays 0.
 - **Pass-45 CLEAN** (D-288): breadth sweep (PTY/scrollback/persistence/hooks/permission-overlay/
   SessionState/holdouts) sound; 2 LOW suggestions S-P45-001/S-P45-002 deferred to Phase-4
   holdout-prep (OBS-HS-PROSE-PHASE4-PREP); no spec change; counter ADVANCES 0→1.
