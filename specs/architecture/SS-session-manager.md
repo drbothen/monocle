@@ -16,7 +16,7 @@ inputs:
   - specs/architecture/SS-daemon-lifecycle.md
   - specs/architecture/SS-ipc.md
   - specs/architecture/SS-engine-module.md
-input-hash: "13e1215"
+input-hash: "042e8f5"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---

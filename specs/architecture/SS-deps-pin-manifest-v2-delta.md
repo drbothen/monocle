@@ -13,7 +13,7 @@ inputs:
   - specs/research/embedded-pty-evaluation.md
   - specs/architecture/adr/ADR-0011-pty-stack-native-portable-pty-vt100-tui-term.md
   - research/domain-monocle-vision-synthesis.md
-input-hash: "10c134b"
+input-hash: "7d806f1"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---

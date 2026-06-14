@@ -13,7 +13,7 @@ producer: architect
 phase: pre-phase-1-architecture
 timestamp: 2026-05-17T19:00:00Z
 inputs: [product-brief.md, architecture/SS-daemon-lifecycle.md, behavioral-contracts/ss-01/BC-2.01.009.md, semport/any-context-lazyclaude/any-context-lazyclaude-pass-B-deep-hooks-r1.md]
-input-hash: "d31d981"
+input-hash: "d00045a"
 traces_to: "T-128m dispatch; BC-HOOK-016 deep ingest; CAP-001 v1.2 §P2; F-R105-6 + GAP-R44-2 BA closure"
 project: monocle
 ---

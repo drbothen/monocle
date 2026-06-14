@@ -13,7 +13,7 @@ inputs:
   - specs/product-brief.md
   - specs/architecture/SS-deps-pin-manifest.md
   - semport/DISPOSITION-V2-CONTROL-CENTER-ROLLUP.md
-input-hash: "e2b7eab"
+input-hash: "803d6d6"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---

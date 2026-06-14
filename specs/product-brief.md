@@ -20,7 +20,7 @@ inputs:
   - semport/DISPOSITION-V2-CONTROL-CENTER-ROLLUP.md
   - specs/research/embedded-pty-evaluation.md
   - STATE.md
-input-hash: "13e1215"
+input-hash: "042e8f5"
 traces_to: >
   factory-artifacts 2737bfd (vision-synthesis v1.0 approved); 2c2b676 (8-repo full ingest);
   b3c68ca (OQ research); vision-synthesis v2.1 (D-238 approved 2026-06-03);

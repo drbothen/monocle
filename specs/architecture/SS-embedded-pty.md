@@ -16,7 +16,7 @@ inputs:
   - specs/architecture/adr/ADR-0011-pty-stack-native-portable-pty-vt100-tui-term.md
   - specs/architecture/SS-ipc.md
   - specs/architecture/SS-tui.md
-input-hash: "13e1215"
+input-hash: "042e8f5"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---

@@ -8,7 +8,7 @@ phase: pivot-delta-brief
 timestamp: 2026-06-03T22:30:00Z
 inputs:
   - specs/product-brief.md
-input-hash: "a236f34"
+input-hash: "3252554"
 traces_to: "product-brief.md v2.0.0 (D-236/D-237/D-238 control-center re-baseline)"
 project: monocle
 verdict: VALID

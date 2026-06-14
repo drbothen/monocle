@@ -13,7 +13,7 @@ inputs:
   - STATE.md
   - specs/product-brief.md
   - specs/research/domain-monocle-vision-synthesis.md
-input-hash: "3e4fab8"
+input-hash: "6f634b9"
 traces_to: "round-19 fix burst commits 4e386d9 + 33b5a0a + 1b26c54"
 project: monocle
 ---
