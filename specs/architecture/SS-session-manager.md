@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.1.0"
+version: "2.2.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -805,7 +805,7 @@ pub enum HostToDaemon {
     PtyReset,
 }
 
-// C5-002 (SS-ipc.md v1.20.0): SerializedCell and SerializedColor are defined in
+// C5-002 (SS-ipc.md v1.20.1): SerializedCell and SerializedColor are defined in
 // monocle-ipc (crate::ipc::SerializedCell / crate::ipc::SerializedColor) so both
 // monocle-session-host (writer) and monocle-tui (reader) share the type without a
 // cross-binary dependency. The canonical definition with full field documentation
@@ -1060,6 +1060,11 @@ a live session-host survives a daemon restart and its session appears in the re-
 `EngineModule::spawn_recipe(opts)` returns:
 
 ```rust
+/// The spawn recipe produced by an EngineModule.
+/// SessionManager uses this to build the monocle-session-host command line.
+/// All fields MUST be set by the implementing module (no Optional fields except where noted).
+#[non_exhaustive]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpawnRecipe {
     /// Absolute path to the harness binary (e.g., /usr/local/bin/claude).
     pub binary: PathBuf,
@@ -1075,6 +1080,30 @@ pub struct SpawnRecipe {
     /// (or project_root when no worktree applies). See SpawnOptions.worktree_root
     /// for resolution rules. NEVER hardcoded to project_root.
     pub cwd: PathBuf,
+}
+
+impl SpawnRecipe {
+    /// ADR-0006 constructor: required because `SpawnRecipe` is `#[non_exhaustive]` and
+    /// constructed cross-crate inside `ClaudeCodeModule::spawn_recipe()`, which lives in
+    /// `monocle-runtime`. `SpawnRecipe` is defined in `monocle-core`; `monocle-runtime`
+    /// depends on `monocle-core` as an external crate, so E0639 applies. All 4 fields are
+    /// required positional parameters (no optional fields on `SpawnRecipe`).
+    ///
+    /// # Construction path
+    /// - `monocle-runtime` (`src/engine/claude_code.rs`, `ClaudeCodeModule::spawn_recipe()`):
+    ///   the ONLY production construction site. Daemon-internal; never transmitted over IPC.
+    /// - `monocle-runtime/tests/`: integration test binaries that exercise `spawn_recipe()`
+    ///   outcomes call `new(...)` for assertion fixtures.
+    ///
+    /// # ADR-0006 criteria
+    /// (1) Internal workspace scope: `monocle-core` and `monocle-runtime` are both workspace
+    ///     crates, never published to crates.io.
+    /// (2) External protocol anchor: field additions (e.g., new harness CLI flags) arise from
+    ///     Claude Code version bumps requiring coordinated BC revisions; not organic refactoring.
+    /// (3) All 4 fields are required positional parameters.
+    pub fn new(binary: PathBuf, args: Vec<String>, env: HashMap<String, String>, cwd: PathBuf) -> Self {
+        Self { binary, args, env, cwd }
+    }
 }
 
 /// Options sent from the TUI to the daemon via `ClientToServer::SpawnSession { opts }`.
@@ -1311,6 +1340,16 @@ Daemon removes stale socket files during GC in re-discovery (alongside sidecar d
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v2.2.0
+
+**P31-HIGH-001 — `SpawnRecipe` in SS-session-manager.md missing `#[non_exhaustive]`, derives, and `impl new()` (Pass-31 sibling regression)** (2026-06-13):
+
+- **Finding (P31-HIGH-001 IMPORTANT):** `SpawnRecipe` at line ~1063 was declared as a bare `pub struct SpawnRecipe { ... }` with no `#[non_exhaustive]`, no `#[derive(...)]`, and no `impl SpawnRecipe { pub fn new(...) }`. The canonical definition in `SS-engine-module-v2-delta.md §SpawnRecipe` carries all three (`#[non_exhaustive]` + `#[derive(Debug, Clone, Serialize, Deserialize)]` + `SpawnRecipe::new(binary, args, env, cwd)`). The audit table row (SS-engine-module.md §Cross-Crate Constructor Audit Table) also confirms the constructor exists. This was a Pass-30 sibling regression: `SpawnOptions` was made byte-for-byte consistent in v2.1.0 but `SpawnRecipe` was omitted from that propagation.
+- **Fix:** Applied the same discipline as Pass-30 for `SpawnOptions`: `SpawnRecipe` struct declaration in §SpawnRecipe integration now carries the same `#[non_exhaustive]` + `#[derive(Debug, Clone, Serialize, Deserialize)]` + struct doc-comment + `impl SpawnRecipe::new(binary, args, env, cwd) -> Self` block as the canonical v2-delta definition — byte-for-byte consistent. The full ADR-0006 criteria rationale and construction path doc-comment are included (identical to SS-engine-module-v2-delta.md).
+- **Byte-for-byte consistency verified:** Both the `struct SpawnRecipe` body and the `impl SpawnRecipe::new(...)` constructor are identical between this file (SS-session-manager.md) and SS-engine-module-v2-delta.md §SpawnRecipe. C29-001 lesson applied: both copies must remain identical; SS-engine-module-v2-delta.md is the canonical owner.
+- **Audit table consistency:** The existing `SpawnRecipe` row in SS-engine-module.md §Cross-Crate Constructor Audit Table (v1.1.27) already records `new(binary: PathBuf, args: Vec<String>, env: HashMap<String, String>, cwd: PathBuf) -> Self` — this §Trace entry confirms the propagation of that constructor into the SS-session-manager.md mirror copy is now complete.
+- Semver: minor (v2.1.0 → v2.2.0) — `SpawnRecipe` struct definition completed with `#[non_exhaustive]`, derives, and constructor; no behavioral change.
 
 ## §Trace v2.1.0
 

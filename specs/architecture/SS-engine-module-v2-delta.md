@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "engine-module-v2-delta"
 subsystem: SS-03
-version: "1.3.0"
+version: "1.4.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -207,23 +207,96 @@ impl SpawnOptions {
 }
 ```
 
-### EngineError additions
+### EngineError (new in v1A)
 
-The following variants are added to `EngineError` in `monocle-core/src/engine.rs`:
+`EngineError` is a **new type introduced by the v1A control-center pivot**. No base
+`EngineError` exists in the current source (`crates/monocle-runtime/src/engine/claude_code.rs`
+has `SpawnError`; `monocle-core/src/engine.rs` has `EngineMetadataError` and `PreflightError`).
+This delta introduces `EngineError` as the return type for the new `spawn_recipe()` trait method.
+
+**Canonical location:** `monocle_core::engine::EngineError` (co-located with `EngineModule` in
+`monocle-core/src/engine.rs`). This is the correct owner because: (a) `EngineModule::spawn_recipe()`
+is defined in `monocle-core`; (b) the `SessionError::EngineError` bridge in SS-session-manager.md
+cites `monocle_core::engine::EngineError`; (c) keeping the error with its trait avoids a cross-crate
+import cycle.
+
+**Relationship to existing error types (no subsumption):**
+
+| Error type | Location | Trait method | Status |
+|------------|----------|-------------|--------|
+| `EngineError` | `monocle-core::engine` | `spawn_recipe()` | NEW — introduced by v1A |
+| `EngineMetadataError` | `monocle-core::engine` | `metadata()` + `enrich()` | Existing Phase 1 |
+| `SpawnError` | `monocle-runtime::engine::claude_code` | `spawn()` (legacy) | Existing Phase 1 (OLD spawn path) |
+| `PreflightError` | `monocle-runtime::engine::claude_code` | `preflight()` | Existing Phase 1 |
+
+`EngineError` does NOT subsume `SpawnError`. They serve different paths: `SpawnError` is the
+error type for the legacy `ClaudeCodeModule::spawn()` inherent method (Phase 1, pre-pivot, still
+present for backward compat in Wave 7). `EngineError` is the error type for the new
+`EngineModule::spawn_recipe()` TRAIT method (v1A control-center). An implementer seeing both
+types should understand: `spawn()` → `SpawnError`; `spawn_recipe()` → `EngineError`. They
+will coexist during the transition wave; `spawn()` may be deprecated in a future wave once
+all callers migrate to the `spawn_recipe()` + `SessionManager` path.
+
+**`#[non_exhaustive]` decision — YES (recommended):**
+`EngineError` carries `#[non_exhaustive]` for Phase 3 forward-compatibility: future WASM engine
+modules (Phase 3 plugin SDK) may return additional error variants from their `spawn_recipe()`
+implementations (e.g., `WasmModuleError(String)`, `PluginPermissionDenied`). Without
+`#[non_exhaustive]`, adding a variant would require a SemVer-major bump and break every
+downstream match arm. With `#[non_exhaustive]`, callers need a `_ =>` arm — which is already
+present in `session_error_to_code()` (the `_ => "invalid_request"` catch-all in the inner
+`EngineError` match). The `#[non_exhaustive]` attribute on an ENUM does NOT require an ADR-0006
+constructor row (variant construction within the defining crate `monocle-core` is unrestricted;
+`#[non_exhaustive]` only blocks exhaustive pattern-matching downstream). `EngineError` therefore
+does NOT appear in the §Cross-Crate Constructor Audit Table — it is an enum, not a struct, and
+the audit table explicitly covers only structs (see SS-engine-module.md §Cross-Crate Constructor
+Audit introductory note: "Enums with `#[non_exhaustive]` are governed by BC-2.02.003 and ADR-0004
+(separate concern — match pattern completeness vs struct literal construction); they do not
+appear here.").
+
+**"10-code" conflation resolved:**
+The phrase "10-code EngineError taxonomy" that appeared in earlier review sessions referred to the
+`ServerToClient::Error.code` WIRE CODE SET (the 10 string literals in SS-ipc.md §ServerToClient::Error
+taxonomy), NOT to the `EngineError` enum variant count. The `EngineError` enum has exactly 3 variants
+(Phase 1). The 10-code taxonomy is the IPC wire layer; `EngineError` is the daemon-internal error
+representation. These are distinct concepts: `EngineError` produces 2 of the 10 wire codes when
+unwrapped in `session_error_to_code()` (`BinaryNotFound` → `"binary_not_found"`;
+`InvalidPath` → `"invalid_spawn_arg"`); unknown future variants → `"invalid_request"`.
+
+**Complete canonical declaration:**
 
 ```rust
-#[error("unsupported operation: {0}")]
-UnsupportedOperation(&'static str),
+/// Error returned by `EngineModule::spawn_recipe()`.
+///
+/// Introduced by the v1A control-center pivot. Distinct from:
+/// - `EngineMetadataError` — returned by `metadata()` and `enrich()`.
+/// - `SpawnError` — returned by the legacy `ClaudeCodeModule::spawn()` inherent method.
+/// - `PreflightError` — returned by `preflight()`.
+///
+/// `#[non_exhaustive]` for Phase 3 forward-compatibility: future WASM engine modules
+/// may return additional error variants. Downstream match arms MUST have a `_ =>` catch-all.
+/// The `session_error_to_code()` inner match in `monocle-runtime` already satisfies this.
+#[non_exhaustive]
+#[derive(Debug, Clone, thiserror::Error)]
+pub enum EngineError {
+    /// The operation requested via `spawn_recipe()` is not supported by this engine module.
+    /// Default impl returns this variant with `"spawn_recipe"` as the operation name.
+    #[error("unsupported operation: {0}")]
+    UnsupportedOperation(&'static str),
 
-#[error("harness binary not found: {0}")]
-BinaryNotFound(String),
+    /// The harness binary could not be located on PATH.
+    /// Produced when `which::which("claude")` (or equivalent) fails.
+    /// RESERVED for binary-not-found-on-PATH only — do not use for argument validation failures.
+    #[error("harness binary not found: {0}")]
+    BinaryNotFound(String),
 
-/// Invalid argument supplied to spawn_recipe() — e.g., a hooks_settings_path that
-/// cannot be converted to a valid UTF-8 string, or a path that contains null bytes.
-/// Distinct from BinaryNotFound: the harness binary may exist but the argument is
-/// structurally invalid and cannot be passed as a CLI arg.
-#[error("invalid argument: {0}")]
-InvalidPath(String),
+    /// A structurally invalid argument was supplied to `spawn_recipe()`.
+    /// Covers `hooks_settings_path` values that cannot be converted to a valid UTF-8 string
+    /// (required for CLI arg passing) or that contain embedded null bytes.
+    /// DISTINCT from `BinaryNotFound`: the harness binary may exist but the argument is
+    /// structurally invalid and cannot be passed as a CLI arg.
+    #[error("invalid argument: {0}")]
+    InvalidPath(String),
+}
 ```
 
 **Semantic contract:**
@@ -233,10 +306,14 @@ InvalidPath(String),
 - `InvalidPath` is used for structurally invalid arguments to `spawn_recipe()`, including
   `hooks_settings_path` values that cannot be converted to a UTF-8 string (required for
   CLI arg passing), or that contain embedded null bytes.
-- These two failure modes are categorically different: `BinaryNotFound` means "the harness
-  is not installed"; `InvalidPath` means "the supplied configuration is invalid." Conflating
-  them (as the original draft did) misrepresents the error cause to callers and produces
-  incorrect diagnostic messages.
+- `UnsupportedOperation` is the default-impl sentinel: the default `spawn_recipe()` trait
+  implementation returns `Err(EngineError::UnsupportedOperation("spawn_recipe"))`. Engine
+  modules that do not support monocle-controlled spawning return this variant; callers should
+  not treat it as a user-visible error (the TUI wizard only surfaces `spawn_recipe()` for
+  harnesses that support it).
+- These three failure modes are categorically distinct. `BinaryNotFound` means "the harness
+  is not installed"; `InvalidPath` means "the supplied configuration is invalid";
+  `UnsupportedOperation` means "this engine does not implement spawn_recipe."
 
 ---
 
@@ -366,6 +443,17 @@ All Phase-1 `EngineModule` behavioral contracts (BC-2.03.*) remain in effect:
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.4.0
+
+**P31-CRIT-001 — `EngineError` declared completely as a canonical enum (Pass-31)** (2026-06-13):
+
+- **Finding (P31-CRIT-001 CRITICAL):** `EngineError` was referenced at `Result<SpawnRecipe, EngineError>` (trait signature) and `SessionError::EngineError(#[from] monocle_core::engine::EngineError)` (bridge) but never formally declared as a `pub enum`. The `### EngineError additions` section mis-framed the type as "variants added to an existing EngineError" — but no base `EngineError` exists in the current source. An implementer reading the spec would not know the enum header, derives, `#[non_exhaustive]` decision, or relationship to other error types.
+- **Fix — Full canonical `pub enum EngineError` declaration:** Replaced the fragment section with a complete declaration including: (1) enum header with `#[non_exhaustive]` + `#[derive(Debug, Clone, thiserror::Error)]`; (2) all 3 variants with `#[error("...")]` messages; (3) per-variant doc-comments; (4) semantic contract for each variant. Section renamed from "### EngineError additions" to "### EngineError (new in v1A)" to accurately reflect that this is a new type, not an extension.
+- **Design decisions documented:** (a) Canonical location: `monocle_core::engine` (co-located with `EngineModule` trait); (b) `#[non_exhaustive]`: YES, for Phase 3 WASM engine forward-compat; downstream match arms need `_ =>` catch-all (already present in `session_error_to_code()`); (c) Audit table: EngineError is an ENUM — exempt from §Cross-Crate Constructor Audit Table per existing policy; (d) No ADR-0006 row needed (variant construction within defining crate is unrestricted by `#[non_exhaustive]`).
+- **Relationship to existing error types clarified:** `EngineError` (spawn_recipe) is INDEPENDENT of `SpawnError` (legacy spawn()), `EngineMetadataError` (metadata/enrich), `PreflightError` (preflight). Disambiguation table added; no subsumption between them.
+- **"10-code" conflation resolved:** The phrase referred to the 10 IPC wire codes in `ServerToClient::Error.code` (SS-ipc.md), NOT the `EngineError` variant count. `EngineError` has 3 variants (Phase 1). The 10-code taxonomy is the wire layer; `EngineError` is daemon-internal. `BinaryNotFound` → `"binary_not_found"`; `InvalidPath` → `"invalid_spawn_arg"`; future variants → `"invalid_request"` catch-all.
+- Semver: minor (v1.3.0 → v1.4.0) — normative type declaration added (was incomplete fragment); no behavioral change to existing specs (variant semantics unchanged).
 
 ## §Trace v1.3.0
 

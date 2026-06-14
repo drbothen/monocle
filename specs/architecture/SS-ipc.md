@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "ipc"
 subsystem: SS-05
-version: "1.20.0"
+version: "1.20.1"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -839,8 +839,10 @@ impl PermissionPromptPayload {
     /// (2) External protocol anchor: fields are driven by the Claude Code PreToolUse hook
     ///     payload; new optional fields (e.g., `preview_diff`) arise from Claude Code version
     ///     bumps requiring coordinated BC revisions.
-    /// (3) All required fields are positional parameters; optional fields (`old_content`,
-    ///     `new_content`) default to `None` and may be set after construction.
+    /// (3) All fields are positional parameters, including the optional fields (`old_content`,
+    ///     `new_content`). The daemon knows their values at construction time from the
+    ///     PreToolUse hook body — they are passed as `Option<String>` positional arguments,
+    ///     NOT set after construction. There is no post-construction setter for these fields.
     pub fn new(
         prompt_id: Uuid,
         session_id: String,
@@ -1359,6 +1361,14 @@ still pending in the daemon's registry (i.e., still within the 300ms timeout win
 prompts are never re-pushed.
 
 ---
+
+## §Trace v1.20.1
+
+**P31-LOW-001 — `PermissionPromptPayload::new()` doc-comment criterion (3) contradicted the constructor signature** (2026-06-13):
+
+- **Finding (P31-LOW-001):** ADR-0006 criterion (3) in `PermissionPromptPayload::new()` stated: "optional fields (`old_content`, `new_content`) default to `None` and may be set after construction." This was inaccurate: the constructor DOES take `old_content: Option<String>` and `new_content: Option<String>` as positional arguments (as confirmed by the constructor body immediately below the comment). There is no post-construction setter. The audit table row in SS-engine-module.md (v1.1.27) correctly documented these as positional parameters ("all current fields positional (including the two Option<String> which are known at construction time)"). The doc-comment was the only incorrect site.
+- **Fix:** Criterion (3) rewritten to state: "All fields are positional parameters, including the optional fields (`old_content`, `new_content`). The daemon knows their values at construction time from the PreToolUse hook body — they are passed as `Option<String>` positional arguments, NOT set after construction. There is no post-construction setter for these fields." This matches the audit table and the actual constructor signature.
+- Semver: patch (v1.20.0 → v1.20.1) — doc-comment accuracy fix; no behavioral change.
 
 ## §Trace v1.20.0
 

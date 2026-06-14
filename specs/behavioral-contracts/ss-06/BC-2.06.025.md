@@ -39,14 +39,14 @@ pane.
 
 1. `AppMode::Dashboard` (or `AppMode::Sessions` if sessions panel is fullscreen) is active.
 2. The TUI has received `ServerToClient::InitialState` or `ServerToClient::SessionListUpdate`
-   with session data from the daemon as `Vec<SessionSnapshot>` (SS-ipc.md v1.20.0 — the wire
+   with session data from the daemon as `Vec<SessionSnapshot>` (SS-ipc.md v1.20.1 — the wire
    boundary type is `SessionSnapshot`, not `EnrichedSession`; `EnrichedSession` is internal
    to `EngineModule::detect()` and never crosses the UDS wire).
 
 ## Postconditions
 
 1. The sessions panel renders a grouped list from `Vec<SessionSnapshot>` received via
-   `InitialState.sessions` or `SessionListUpdate.sessions` (SS-ipc.md v1.20.0 `SessionSnapshot`
+   `InitialState.sessions` or `SessionListUpdate.sessions` (SS-ipc.md v1.20.1 `SessionSnapshot`
    wire type — NOT `EnrichedSession`; rendering reads `SessionSnapshot` fields directly):
    - Sessions are sorted by `SessionSnapshot.project_root` (alphabetical by project path).
    - Each unique `project_root` has a header row showing the project's basename
@@ -81,7 +81,7 @@ pane.
 4. Monocle-launched sessions show a `[M]` badge. Externally-detected sessions show `[E]`.
    Sessions with `spawned_by_monocle: None` (pre-v1A forward-compat or legacy sidecars) show `[?]`.
    This tri-state reflects the `SessionSnapshot.spawned_by_monocle: Option<bool>` field
-   (SS-ipc.md v1.20.0 `SessionSnapshot` type): `Some(true)` → `[M]`, `Some(false)` → `[E]`,
+   (SS-ipc.md v1.20.1 `SessionSnapshot` type): `Some(true)` → `[M]`, `Some(false)` → `[E]`,
    `None` → `[?]`. Sessions with `SessionSnapshot.degraded == true` additionally show a `[!]`
    badge (PC-1 degraded badge rule).
 
@@ -144,7 +144,7 @@ pane.
 | L2 Capability | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability traceability §SS-06 |
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability traceability — this BC extends the sessions panel capability in CAP-006 with multi-session, multi-project grouping, and lifecycle actions |
 | Architecture Module | monocle-tui (sessions panel renderer, session list grouping logic, lifecycle keybindings) per ARCH-INDEX Subsystem Registry SS-06 |
-| Architecture Source | SS-ipc.md v1.20.0 §SessionSnapshot (wire boundary type; `degraded` and `degraded_reason` fields; `spawned_by_monocle: Option<bool>` field); SS-session-manager.md v2.1.0 §SessionManager §Public API (session_list() returns Vec<SessionSnapshot>); SS-embedded-pty.md v1.5.1 §Fast switching; SS-session-manager.md v2.1.0 §monocle-session-host startup sequence §I3-009 (degraded-env surfaced via HostToDaemon::StateChanged.degraded_env + SessionSnapshot.degraded) |
+| Architecture Source | SS-ipc.md v1.20.1 §SessionSnapshot (wire boundary type; `degraded` and `degraded_reason` fields; `spawned_by_monocle: Option<bool>` field); SS-session-manager.md v2.2.0 §SessionManager §Public API (session_list() returns Vec<SessionSnapshot>); SS-embedded-pty.md v1.5.1 §Fast switching; SS-session-manager.md v2.2.0 §monocle-session-host startup sequence §I3-009 (degraded-env surfaced via HostToDaemon::StateChanged.degraded_env + SessionSnapshot.degraded) |
 | Cross-Ref | BC-2.05.010 (KillSession/DetachSession/RenameSession IPC variants triggered from sessions panel); BC-2.09.008 (SessionCreation wizard and EmbeddedTerminal enter) |
 | Test Name | test_BC_2_06_025_multi_session_grouped_by_project |
 

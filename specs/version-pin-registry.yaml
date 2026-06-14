@@ -106,8 +106,8 @@ SS-forward-compatibility:
 
 SS-ipc:
   path: specs/architecture/SS-ipc.md
-  current_version: "1.20.0"
-  last_bump_commit: "[Pass-30 C30-002/I30-001 — ADR-0006 constructors added: SessionSnapshot::new(), SerializedCell::new(), PermissionPromptPayload::new()]"
+  current_version: "1.20.1"
+  last_bump_commit: "[Pass-31 P31-LOW-001 — PermissionPromptPayload::new() doc-comment corrected (positional params) D-273]"
   last_bump_date: "2026-06-13"
 
 SS-permissions-phase1:
@@ -124,8 +124,8 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "2.1.0"
-  last_bump_commit: "[Pass-30 C30-001 — SpawnOptions::for_spawn_request() + with_daemon_fields() constructors added (ADR-0006 gap fix)]"
+  current_version: "2.2.0"
+  last_bump_commit: "[Pass-31 P31-HIGH-001 — SpawnRecipe byte-for-byte parity with v2-delta canonical (#[non_exhaustive]+derives+new()) D-273]"
   last_bump_date: "2026-06-13"
 
 SS-embedded-pty:
@@ -136,8 +136,8 @@ SS-embedded-pty:
 
 SS-engine-module-v2-delta:
   path: specs/architecture/SS-engine-module-v2-delta.md
-  current_version: "1.3.0"
-  last_bump_commit: "[Pass-30 C30-001 — SpawnOptions::for_spawn_request()+with_daemon_fields() + SpawnRecipe::new() constructors; Phase Compatibility prose corrected re E0639]"
+  current_version: "1.4.0"
+  last_bump_commit: "[Pass-31 P31-CRIT-001 — EngineError declared as canonical #[non_exhaustive] pub enum (3 variants, thiserror) D-273]"
   last_bump_date: "2026-06-13"
 
 SS-daemon-wiring-v2-delta:
