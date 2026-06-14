@@ -51,3 +51,13 @@ pre-commit:
         Fix: update cited type to match SS-tui.md §App struct declaration, or add
         <!-- structural-claim-historical --> annotation (ADR-0008 §Decision).
         See 'python3 scripts/check_structural_claims.py --help' for options.
+
+    pol-13-cross-ref-anchors:
+      run: |
+        python3 scripts/check_cross_ref_anchors.py \
+          --factory-root .factory \
+          --workspace-root .
+      fail_text: |
+        POL-13 FAIL: unresolved cross-reference anchor(s). Fix the citation slug, add an
+        explicit <a id> to the target, or fix the target path.
+        See 'python3 scripts/check_cross_ref_anchors.py --help' for options.

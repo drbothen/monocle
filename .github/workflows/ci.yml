@@ -295,6 +295,17 @@ jobs:
             --factory-root .factory-spec \
             --workspace-root .
 
+      - name: POL-13 — cross-reference anchor integrity
+        # Verifies every path/to/file.md#anchor cross-reference in .factory/specs/
+        # resolves to a valid heading slug or explicit <a id> anchor in the target file.
+        # Dead anchors indicate heading renames not propagated to citing documents.
+        # Exit 1 on any unresolved anchor. Exit 0 on all-resolved or all-exempt.
+        run: |
+          set -euo pipefail
+          python3 scripts/check_cross_ref_anchors.py \
+            --factory-root .factory-spec \
+            --workspace-root .
+
   # Per-platform build + test matrix. Explicit `include:` -- NOT a Cartesian product
   # (matches story AC-003 exactly).
   build-and-test:

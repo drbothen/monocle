@@ -20,7 +20,7 @@ All pivot work lives on the factory-artifacts branch under `.factory/`.
 Pass-27 adjudicated the SPAWN-PATH MODEL A decision — the most significant architectural
 decision of the convergence cycle:
 
-- `spawn_session(opts: SpawnOptions)` is the canonical signature (SS-session-manager v2.1.0, SpawnOptions constructors added)
+- `spawn_session(opts: SpawnOptions)` is the canonical signature (SS-session-manager at Pass-27 authoring time, SpawnOptions constructors added)
 - `SpawnOptions` is the IPC wire type (`#[non_exhaustive]` + Serialize/Deserialize)
 - `SpawnRecipe` is daemon-internal only (never on the wire, never at the call site)
 - `ClientToServer::SpawnSession` carries `opts: SpawnOptions`
