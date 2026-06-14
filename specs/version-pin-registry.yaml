@@ -106,8 +106,8 @@ SS-forward-compatibility:
 
 SS-ipc:
   path: specs/architecture/SS-ipc.md
-  current_version: "1.22.0"
-  last_bump_commit: "[Pass-44 F-P44-IMP-001 D-287 — new spawn_unsupported wire code (11th in taxonomy); session_error_to_code UnsupportedOperation arm; banner 'Session spawn not supported for this harness'; all 3 EngineError variants now mapped to dedicated codes]"
+  current_version: "1.23.0"
+  last_bump_commit: "[Pass-50 F-P50-001 D-293 — host_conn.writer established during Launching via post-spawn monitor; proxy_task now Option<JoinHandle<()>>; SessionError::SessionNotReady (9th variant); session_not_ready wire code (12th in taxonomy); kill-during-Launching PID-fallback path; 11->12 / 8->9 cascade swept]"
   last_bump_date: "2026-06-14"
 
 SS-permissions-phase1:
@@ -124,8 +124,8 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "2.4.0"
-  last_bump_commit: "[Pass-44 F-P44-IMP-001 D-287 — UnsupportedOperation match arm added to session_error_to_code; maps to spawn_unsupported; defense-in-depth comment on EC-112 reachable path]"
+  current_version: "2.5.0"
+  last_bump_commit: "[Pass-50 F-P50-001 D-293 — host_conn.writer (CONTROL connection) established during Launching via post-spawn monitor; distinct from proxy_task (PTY streaming, established at Running); proxy_task now Option<JoinHandle<()>>; kill-during-Launching PID-fallback; SessionNotReady arm in session_error_to_code]"
   last_bump_date: "2026-06-14"
 
 SS-embedded-pty:
@@ -136,14 +136,14 @@ SS-embedded-pty:
 
 SS-engine-module-v2-delta:
   path: specs/architecture/SS-engine-module-v2-delta.md
-  current_version: "1.5.0"
-  last_bump_commit: "[Pass-44 F-P44-IMP-001 D-287 — best-effort ProfilePicker capability filtering note (EC-112 REACHABLE defensive path); spawn_unsupported count note for harnesses reporting 0-capable profiles; Lines 333-334 reconciled]"
+  current_version: "1.6.0"
+  last_bump_commit: "[Pass-50 F-P50-001 D-293 — SessionError::SessionNotReady rationale note; 9-variant SessionError cascade; session_not_ready wire code cross-reference updated]"
   last_bump_date: "2026-06-14"
 
 SS-daemon-wiring-v2-delta:
   path: specs/architecture/SS-daemon-wiring-v2-delta.md
-  current_version: "1.11.0"
-  last_bump_commit: "[Pass-44 F-P44-IMP-001 D-287 — §3 error table updated: UnsupportedOperation→spawn_unsupported row added; spawn comment updated to note UnsupportedOperation path; all 3 EngineError variants now in table]"
+  current_version: "1.11.1"
+  last_bump_commit: "[Pass-50 F-P50-001 D-293 — errata: SessionNotReady row added to §3 error table; session_not_ready (12th wire code) cross-reference; errata-level patch (no normative protocol change)]"
   last_bump_date: "2026-06-14"
 
 SS-deps-pin-manifest-v2-delta:
@@ -204,8 +204,8 @@ ARCH-INDEX:
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.40.7"
-  last_bump_commit: "[Pass-49 F-P49-001 D-292 — BC-INDEX Canonical SS version table converted to registry pointer; POL-11 blind spot closed; §Trace v1.40.7 added]" # version-pin-historical: changelog description of bump, not a live pin
+  current_version: "1.40.8"
+  last_bump_commit: "[Pass-50 F-P50-001 D-293 — BC-2.08.003 v1.3.1→v1.4.0, BC-2.05.010 v1.8.1→v1.9.0, BC-2.08.007 v1.4.2→v1.5.0, BC-2.03.008 v1.0.2→v1.0.3 version rows updated; §Summary SS-08 SessionError variant count 8→9 updated; §Trace v1.40.8 added]" # version-pin-historical: changelog description of bump, not a live pin
   last_bump_date: "2026-06-14"
 
 STORY-INDEX:
@@ -719,8 +719,8 @@ BC-2.03.007:
 
 BC-2.03.008:
   path: specs/behavioral-contracts/ss-03/BC-2.03.008.md
-  current_version: "1.0.2"
-  last_bump_commit: "[Pass-44 F-P44-IMP-001 D-287 — PC-3 added: UnsupportedOperation must emit spawn_unsupported wire code with distinct banner; EC-112 authored; test vector for spawn-not-supported path; arch-source pins bumped to SS-ipc v1.22.0/SS-session-manager v2.4.0/SS-engine-module-v2-delta v1.5.0]"
+  current_version: "1.0.3"
+  last_bump_commit: "[Pass-50 F-P50-001 D-293 — arch-source pins bumped to SS-ipc v1.23.0/SS-session-manager v2.5.0/SS-engine-module-v2-delta v1.6.0; SessionNotReady taxonomy note updated; 12-code taxonomy propagation]"
   last_bump_date: "2026-06-14"
 
 BC-2.05.009:
@@ -731,8 +731,8 @@ BC-2.05.009:
 
 BC-2.05.010:
   path: specs/behavioral-contracts/ss-05/BC-2.05.010.md
-  current_version: "1.8.1"
-  last_bump_commit: "[Pass-44 F-P44-IMP-001 D-287 — PC-4 added: SpawnSession must emit spawn_unsupported banner when harness does not support session creation; arch-source pins bumped to SS-ipc v1.22.0/SS-session-manager v2.4.0/SS-engine-module-v2-delta v1.5.0/SS-daemon-wiring-v2-delta v1.11.0]"
+  current_version: "1.9.0"
+  last_bump_commit: "[Pass-50 F-P50-001 D-293 — session_not_ready error path documented for AttachSession/DetachSession/KillSession on not-ready sessions; arch-source pins bumped to SS-ipc v1.23.0/SS-session-manager v2.5.0/SS-engine-module-v2-delta v1.6.0/SS-daemon-wiring-v2-delta v1.11.1]"
   last_bump_date: "2026-06-14"
 
 BC-2.05.011:
@@ -761,9 +761,9 @@ BC-2.08.002:
 
 BC-2.08.003:
   path: specs/behavioral-contracts/ss-08/BC-2.08.003.md
-  current_version: "1.3.1"
-  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.4.0"
+  last_bump_commit: "[Pass-50 F-P50-001 D-293 — PC-1 confirmed correct; kill-during-Launching-race PID-fallback path (→kill_failed) documented; host_conn.writer established during Launching via post-spawn monitor; arch-source pins bumped to SS-session-manager v2.5.0/SS-daemon-wiring-v2-delta v1.11.1]"
+  last_bump_date: "2026-06-14"
 
 BC-2.08.004:
   path: specs/behavioral-contracts/ss-08/BC-2.08.004.md
@@ -785,9 +785,9 @@ BC-2.08.006:
 
 BC-2.08.007:
   path: specs/behavioral-contracts/ss-08/BC-2.08.007.md
-  current_version: "1.4.2"
-  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.5.0"
+  last_bump_commit: "[Pass-50 F-P50-001 D-293 — proxy_task now Option<JoinHandle<()>> (established at Running, not Launching); arch-source pins bumped to SS-session-manager v2.5.0/SS-daemon-wiring-v2-delta v1.11.1; session_not_ready variant reference added]"
+  last_bump_date: "2026-06-14"
 
 BC-2.08.008:
   path: specs/behavioral-contracts/ss-08/BC-2.08.008.md

@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "engine-module-v2-delta"
 subsystem: SS-03
-version: "1.5.0"
+version: "1.6.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -254,11 +254,12 @@ Audit introductory note: "Enums with `#[non_exhaustive]` are governed by BC-2.02
 (separate concern — match pattern completeness vs struct literal construction); they do not
 appear here.").
 
-**Wire-code count note (updated F-P44-IMP-001):**
+**Wire-code count note (updated F-P50-001):**
 The `ServerToClient::Error.code` WIRE CODE SET (SS-ipc.md §ServerToClient::Error taxonomy) grew
-from 10 to 11 codes in v1.22.0 of SS-ipc.md (F-P44-IMP-001). The `EngineError` enum has exactly 3
-variants (Phase 1). The 11-code taxonomy is the IPC wire layer; `EngineError` is the daemon-internal
-error representation. These are distinct concepts: `EngineError` produces 3 of the 11 wire codes when
+from 10 to 11 codes in v1.22.0 of SS-ipc.md (F-P44-IMP-001), then to 12 codes in v1.23.0
+(F-P50-001: `"session_not_ready"` added). The `EngineError` enum has exactly 3
+variants (Phase 1). The 12-code taxonomy is the IPC wire layer; `EngineError` is the daemon-internal
+error representation. These are distinct concepts: `EngineError` produces 3 of the 12 wire codes when
 unwrapped in `session_error_to_code()`:
 - `BinaryNotFound` → `"binary_not_found"`
 - `InvalidPath` → `"invalid_spawn_arg"`
@@ -488,6 +489,19 @@ BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
 
+## §Trace v1.6.0
+
+**F-P50-001 — Wire-code count propagated from 11 to 12 codes; SS-ipc.md pin updated v1.22.0 → v1.23.0** (2026-06-14):
+
+- **Finding (F-P50-001, sibling-propagation sweep):** SS-ipc.md v1.23.0 (F-P50-001) added `"session_not_ready"` as the 12th wire code, extending the IPC error taxonomy from 11 to 12 codes. The `§Wire-code count note` in this document (§EngineError section) still stated "11 codes" (referencing SS-ipc.md v1.22.0), making the live-body count stale.
+- **Fix (a) — §Wire-code count note updated:** Label changed from "updated F-P44-IMP-001" to "updated F-P50-001". Count updated: "11 codes in v1.22.0 (F-P44-IMP-001), then to 12 codes in v1.23.0 (F-P50-001: `"session_not_ready"` added)". Taxonomy descriptor updated from "11-code" to "12-code" in both the taxonomy-description sentence and the EngineError-produces-3-of-N sentence.
+- **Fix (b) — §Trace v1.5.0 historical annotation:** The §Trace v1.5.0 wire-code-count bullet annotated with "[Subsequently updated to 12-code taxonomy by F-P50-001 — see §Trace v1.6.0]" to prevent future confusion between the historical 11-code state (v1.5.0 moment) and the current 12-code state.
+- **Note on EngineError scope:** `EngineError` itself has not changed — it still has 3 variants producing 3 wire codes. The taxonomy extension (`"session_not_ready"`) is driven by `SessionError::SessionNotReady` in SS-session-manager.md v2.5.0, which is NOT a bridge through `EngineError`. The EngineError-to-wire-code relationship is unchanged; only the total taxonomy count changed.
+- **Semver: minor (v1.5.0 → v1.6.0)** — wire-code count and SS-ipc.md pin updated; no behavioral change to `EngineError` itself. Minor (not patch) because the taxonomy pin references a normative IPC contract document at a new version.
+- **Registry bump required:** `version-pin-registry.yaml` entry for `SS-engine-module-v2-delta.md` must be updated to v1.6.0 by state-manager in the same factory-artifacts commit as this spec file bump (REGISTRY ATOMICITY rule).
+
+---
+
 ## §Trace v1.5.0
 
 **F-P44-IMP-001 — `UnsupportedOperation` semantic contract reconciled: best-effort filtering + EC-112 reachable defensive path** (2026-06-14):
@@ -508,10 +522,11 @@ BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
   reachable at spawn-time despite filtering; (c) state that the daemon MUST surface
   `"spawn_unsupported"` wire code + fixed banner `"Session spawn not supported for this harness"`.
   Cross-reference to BC-2.03.008 PC-3 and F-P44-IMP-001 added.
-- **Wire-code count updated:** The "10-code" note in §EngineError (new in v1A) updated to reflect
+- **Wire-code count updated (original):** The "10-code" note in §EngineError (new in v1A) updated to reflect
   the 11-code taxonomy (SS-ipc.md v1.22.0) and the corrected mapping:
   `EngineError` now produces 3 of the 11 wire codes (`BinaryNotFound`→`"binary_not_found"`;
   `InvalidPath`→`"invalid_spawn_arg"`; `UnsupportedOperation`→`"spawn_unsupported"`).
+  [Subsequently updated to 12-code taxonomy by F-P50-001 — see §Trace v1.6.0.]
 - Semver: minor (v1.4.1 → v1.5.0) — normative semantic-contract change for `UnsupportedOperation`;
   EC-112 reachability stance established.
 

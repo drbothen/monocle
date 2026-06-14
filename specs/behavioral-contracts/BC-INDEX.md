@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.40.7"
+version: "1.40.8"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-14T22:00:00Z
@@ -1225,6 +1225,21 @@ SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. 
 - BC-INDEX version: 1.40.4 → 1.40.5. No BC ID additions or retirements. No H1 title changes.
 
 SE-16d monotonicity: v1.40.5 timestamp 2026-06-14T20:00:00Z > v1.40.4 timestamp 2026-06-14T19:00:00Z. PASS.
+
+## §Trace v1.40.8
+
+**F-P50-001 — Pass-50: wire taxonomy 12 codes (session_not_ready); SessionError 9 variants; SS-ipc v1.23.0 / SS-session-manager v2.5.0 / SS-daemon-wiring-v2-delta v1.11.1 / SS-engine-module-v2-delta v1.6.0** (2026-06-14):
+
+- **Wire taxonomy now 12 codes (session_not_ready added):** `ServerToClient::Error` code taxonomy grows from 11 to 12. `"session_not_ready"` is the new 12th code (SS-ipc.md v1.23.0). The 11-code "F-P44-IMP-001" entries in §Trace v1.40.5 are correctly dated history — they reflect the count at v1.22.0. `kill_session()` does NOT use `"session_not_ready"` — kill on a not-yet-connected Launching session uses PID fallback → `"kill_failed"` (BC-2.08.003 v1.4.0).
+- **SessionError now 9 variants:** `SessionNotReady` added F-P50-001. The "canonical 8-variant" reference in BC-2.08.007 §Trace v1.4.1 is correctly-dated history (8 variants at time of Pass-26).
+- **BC version bumps this burst:**
+  - BC-2.08.003 v1.3.1 → v1.4.0: Precondition 3 rewritten (post-spawn monitor distinction; Launching race window); PC-1 expanded with three named kill-path cases (Running/Launching host_conn established; Launching race window PID fallback; Detached fresh-connect). Architecture Source: SS-session-manager.md v2.4.0 → v2.5.0 (§Kill-path host_conn rules); SS-daemon-wiring-v2-delta.md v1.11.0 → v1.11.1.
+  - BC-2.05.010 v1.8.1 → v1.9.0: Architecture Source taxonomy updated (12 codes; session_not_ready enumerated); SS-ipc.md v1.22.0 → v1.23.0 (all three citations); SS-session-manager.md v2.4.0 → v2.5.0; SS-daemon-wiring-v2-delta.md v1.11.0 → v1.11.1; SS-engine-module-v2-delta.md v1.6.0 added.
+  - BC-2.08.007 v1.4.2 → v1.5.0: Detach PC-2 proxy_task.abort() → proxy_task.take().map(|t| t.abort()) (Option<JoinHandle<()>> type); Attach PC-5 host_conn struct proxy_task field clarified; Architecture Source: SS-session-manager.md v2.4.0 → v2.5.0; SS-daemon-wiring-v2-delta.md v1.11.0 → v1.11.1.
+  - BC-2.03.008 v1.0.2 → v1.0.3: Architecture Source pins SS-session-manager.md v2.4.0 → v2.5.0; SS-ipc.md v1.22.0 → v1.23.0; 12th code forward annotation added; spawn_unsupported positional rank (11th) confirmed unchanged.
+- BC-INDEX version: 1.40.7 → 1.40.8. No BC ID additions or retirements. No H1 title changes.
+
+SE-16d monotonicity: v1.40.8 timestamp 2026-06-14 > v1.40.7 timestamp 2026-06-14T22:00:00Z. PASS.
 
 ## §Trace v1.40.7
 

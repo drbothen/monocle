@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.4.0"
+version: "2.5.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -125,17 +125,57 @@ struct SessionEntry {
     degraded: bool,
     /// I3-009: Human-readable degraded reason (e.g., "Missing env: HOME, PATH").
     degraded_reason: Option<String>,
-    /// Active connection to the session-host for PTY byte proxying.
-    /// None if daemon is not currently attached (e.g., session-host just discovered).
+    /// Live CONTROL connection to the session-host's per-session UDS socket.
+    ///
+    /// **When populated:**
+    /// - `Some(_)` from the moment the daemon's background post-spawn monitor connects to
+    ///   the session-host socket (after the session-host binds its UDS at startup step 7),
+    ///   through the end of the session-host's life. This means `host_conn` is `Some(_)`
+    ///   during BOTH `Launching` and `Running` states for freshly-spawned sessions.
+    /// - `None` ONLY in two cases:
+    ///   (a) Detached sessions — the daemon has explicitly disconnected the control
+    ///       connection via `detach_session()`; session-host remains alive.
+    ///   (b) Sessions registered from sidecar during re-discovery with `state: Detached`
+    ///       or `state: Terminating` — the control connection is not pre-established for
+    ///       these (see §Re-discovery state handling for details).
+    ///
+    /// **CONTROL connection vs PTY-STREAMING proxy task (F-P50-001 distinction):**
+    /// These are two separate mechanisms:
+    /// - The CONTROL connection (this field) carries `DaemonToHost::Kill/Attach/Detach/Resize`
+    ///   commands and receives `HostToDaemon::StateChanged/Goodbye`. It is established
+    ///   DURING `Launching` state by the background post-spawn monitor, so that the daemon
+    ///   can receive the session-host's `StateChanged { new_state: Launching, degraded_env }`
+    ///   startup handshake and the subsequent `StateChanged { new_state: Running }` readiness
+    ///   signal before transitioning to `Running`. The `SessionHostConnection.proxy_task`
+    ///   is `None` during `Launching` — only the writer half is active.
+    /// - The PTY-STREAMING proxy task (`SessionHostConnection.proxy_task`) forwards
+    ///   `HostToDaemon::PtyBytes` from the session-host to the daemon's broker. It is started
+    ///   ONLY after `StateChanged { new_state: Running }` is received from the session-host
+    ///   (i.e., the transition from `Launching → Running`). Before `Running`, no PTY streaming
+    ///   occurs. The state transition table note "proxy task started" at `Launching → Running`
+    ///   refers exclusively to the PTY-streaming proxy task, NOT the control connection.
     host_conn: Option<SessionHostConnection>,
 }
 
 /// Per-session connection to the session-host process.
+///
+/// The `writer` is the CONTROL connection write half — active from the end of `Launching`
+/// onward (i.e., after the post-spawn monitor connects to the session-host socket).
+/// The `proxy_task` is the PTY-streaming task — started ONLY at the `Launching → Running`
+/// transition when `StateChanged { new_state: Running }` is received. During `Launching`
+/// state, `writer` is `Some(...)` but `proxy_task` is not yet started; both are live during
+/// `Running` state.
+///
+/// This distinction resolves F-P50-001: `kill_session()` on a `Launching` session uses the
+/// existing `host_conn.writer` (control connection already present) to send `DaemonToHost::Kill`.
+/// No fresh UDS connect is needed for Launching kill — only for Detached kill.
 struct SessionHostConnection {
-    /// Write half of the per-session UDS connection.
+    /// Write half of the per-session UDS control connection.
+    /// Present from post-spawn monitor connect (during Launching) through session end.
     writer: Arc<Mutex<UnixStream>>,
     /// Background task proxying session-host PTY output to daemon broker.
-    proxy_task: JoinHandle<()>,
+    /// None during Launching state; started at the Launching → Running transition.
+    proxy_task: Option<JoinHandle<()>>,
 }
 ```
 
@@ -159,7 +199,11 @@ struct SessionHostConnection {
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SessionState {
-    /// session-host process spawned; waiting for its UDS socket to become connectable.
+    /// session-host process spawned; waiting for `StateChanged { new_state: Running }` from
+    /// the session-host. The daemon's post-spawn monitor polls for the session-host's UDS
+    /// socket to become connectable; once connected + SO_PEERCRED verified, `host_conn`
+    /// transitions from `None` to `Some(_)` (control connection established) while this
+    /// state remains `Launching`. The PTY-streaming proxy task is NOT started until `Running`.
     /// Initial state written to sidecar at spawn time.
     Launching,
     /// session-host alive, daemon attached, PTY streaming to broker.
@@ -196,8 +240,9 @@ pub enum SessionState {
 
 | From | Event | To | Notes |
 |------|-------|----|-------|
-| *(none)* | `spawn_session()` called | `Launching` | OS process spawned; sidecar written |
-| `Launching` | Daemon receives `StateChanged::Running` from session-host | `Running` | Session-host UDS connectable; proxy task started |
+| *(none)* | `spawn_session()` called | `Launching` | OS process spawned; sidecar written; background post-spawn monitor started (polls for socket connectable) |
+| `Launching` | Post-spawn monitor: session-host UDS socket becomes connectable | *(still Launching)* | Daemon connects (SO_PEERCRED), stores `host_conn: Some(_)` (control connection established; PTY proxy NOT yet started) |
+| `Launching` | Daemon receives `StateChanged::Running` from session-host over control connection | `Running` | PTY-streaming proxy task started; `host_conn.proxy_task` populated |
 | `Launching` | `ScrollbackDumpComplete` received on re-discovery | `Running` | Re-discovery path: host was already up |
 | `Launching` | PID dead on re-discovery probe | `Terminated` | GC sidecar |
 | `Launching` | `StateChanged::Terminated` (spawn failed inside session-host) | `Terminated` | GC sidecar |
@@ -305,6 +350,24 @@ saving state, removing temp files. These two kill paths are fundamentally differ
 - **Pre-socket-bind orphan kill (2s):** no user workload; clean shutdown irrelevant.
 - **Normal kill via DaemonToHost::Kill (10s):** harness child is running; clean shutdown needed.
 
+**Kill-path host_conn rules (F-P50-001 — no ambiguity):**
+- **Running state:** `host_conn` is `Some(_)` (control connection + PTY proxy both active).
+  `kill_session()` uses the existing `host_conn.writer` to send `DaemonToHost::Kill`.
+  No fresh UDS connect.
+- **Launching state:** `host_conn` is `Some(_)` (control connection active; PTY proxy not yet
+  started). `kill_session()` uses the existing `host_conn.writer` to send `DaemonToHost::Kill`.
+  No fresh UDS connect. The session-host aborts any partially-started harness child.
+  **Special sub-case — kill-before-socket-bind:** If `kill_session()` is called before the
+  post-spawn monitor has established `host_conn` (i.e., `host_conn` is still `None` during
+  the brief window between `spawn_session()` returning and the monitor connecting), the daemon
+  MUST use the PID-based SIGTERM/SIGKILL fallback (same as the §Pre-socket-bind orphan kill
+  mechanism). This window is typically milliseconds but MUST be handled. The kill_session()
+  implementation MUST check `host_conn.is_none() && state == Launching` and branch to PID-kill.
+  Error code on PID-kill failure: `SessionError::SessionHostDead` → `"kill_failed"`.
+- **Detached state:** `host_conn` is `None` (daemon explicitly disconnected). `kill_session()`
+  makes a fresh UDS connect to the session-host socket, applies SO_PEERCRED, sends Kill.
+  This is the only state where a fresh connect is needed on the kill path.
+
 Both deadlines are explicit and justified. There is no inconsistency.
 
 This is the only correct path when the socket is not yet bound. This fallback applies
@@ -317,6 +380,99 @@ but before `spawn_session()` returns to the caller:
 **Integration test:** `test_spawn_session_orphan_kill_on_sidecar_failure` — verifies that
 if `MockSessionHostSpawner::spawn()` succeeds but the sidecar write is injected to fail,
 the mock session-host PID is SIGTERMed and no `SessionEntry` leaks into the registry.
+
+### Post-spawn monitor (F-P50-001 — control connection establishment during Launching)
+
+`spawn_session()` returns `Ok(session_id)` immediately after OS process spawn and sidecar
+write, leaving the `SessionEntry` in `state: Launching` with `host_conn: None`. The session
+transitions to `Running` ASYNCHRONOUSLY. To bridge the Launching state:
+
+`spawn_session()` MUST spawn a `tokio::spawn` background task (the **post-spawn monitor**)
+that:
+
+1. **Polls for UDS socket connectable** — retries `UnixStream::connect(socket_path)` with a
+   short backoff (e.g., 20ms intervals) until the session-host binds its socket (startup step 7).
+   Timeout: 30 seconds (allows for slow harness binary startup on constrained machines).
+
+2. **Applies SO_PEERCRED** — immediately after connect, verifies peer uid matches daemon uid
+   (same as every other per-session UDS connect per §Per-session UDS security). On mismatch:
+   mark session `Terminated`, GC sidecar, publish `SessionStateChanged{Terminated}` +
+   `SessionListUpdate`. This is `EC-163` (UDS connect fails / socket spoofed).
+
+3. **Stores `host_conn: Some(SessionHostConnection { writer, proxy_task: None })`** — inside
+   the `SessionManager` mutex. The control connection is now live. `proxy_task` is `None` at
+   this point; only the writer is active. Kill/Resize/Detach commands are now deliverable over
+   the control connection.
+
+4. **Receives `StateChanged` messages** from the session-host over the control connection.
+   The session-host may send `StateChanged { new_state: Launching, degraded_env: Some(...) }`
+   as its first message (I3-009 degraded-env handshake). The daemon handles this by setting
+   `SessionEntry.degraded: true` and `degraded_reason`. This message does NOT change the
+   session's `SessionState` — it remains `Launching`.
+
+5. **On `StateChanged { new_state: Running }`**: inside the mutex, starts the PTY-streaming
+   proxy task (`host_conn.proxy_task = Some(tokio::spawn(...))`), transitions `SessionEntry.state`
+   to `Running`, emits `SessionStateChanged{Running}` + `SessionListUpdate` to the broker.
+
+6. **On `StateChanged { new_state: Terminated }` (spawn-path failure)**: transitions to
+   `Terminated`, GC sidecar. This covers the case where the session-host fails during startup
+   (e.g., harness binary not executable — distinct from `EngineError::BinaryNotFound` which
+   catches it earlier; or PTY open failure).
+
+7. **Kill-during-Launching (race with post-spawn monitor):**
+   - If `kill_session()` is called while `host_conn` is `Some(_)` (monitor has connected):
+     sends `DaemonToHost::Kill` over `host_conn.writer`. The monitor task, on seeing the
+     connection close or receiving no further StateChanged, exits cleanly.
+   - If `kill_session()` is called while `host_conn` is still `None` (monitor has not yet
+     connected to the socket): uses PID-based SIGTERM/SIGKILL fallback (same as §Pre-socket-bind
+     orphan kill, but with 10s SIGTERM window since the harness child may have already started).
+     The daemon sets `SessionEntry.state = Terminating` immediately and publishes
+     `SessionStateChanged{Terminating}` + `SessionListUpdate`. The post-spawn monitor, if it
+     later connects to the socket, detects the session is already `Terminating` and exits.
+     Error code on PID-kill failure: `SessionError::SessionHostDead` → `"kill_failed"` (mapped
+     via `session_error_to_code(IpcOp::Kill, e)`).
+
+8. **Resize/Detach-during-Launching:** These operations require `host_conn: Some(_)`. If
+   called while `host_conn` is `None` (monitor not yet connected), they MUST return
+   `Err(SessionError::SessionNotReady)` → mapped to `"session_not_ready"` error code. The TUI
+   MUST NOT send `ResizePane` or `DetachSession` before receiving `SessionStateChanged{Running}`.
+   The state machine at the TUI level (BC-2.06.025 + BC-2.05.010) prevents this by only
+   enabling Detach/Resize for `Running` or `Detached` sessions. `SessionError::SessionNotReady`
+   is a defensive invariant; normal TUI behavior never reaches it.
+
+**`SessionError` taxonomy addition (F-P50-001):**
+```rust
+/// Operation called on a session in Launching state before the control connection was
+/// established. Normally unreachable from correct TUI (TUI only enables resize/detach for
+/// Running/Detached). Defensive invariant for race conditions or protocol bugs.
+/// Error code: "session_not_ready".
+#[error("session not ready: {session_id} (state: Launching, control connection pending)")]
+SessionNotReady { session_id: String },
+```
+
+Add `SessionNotReady` to the SessionError taxonomy mapping table with code `"session_not_ready"`.
+
+**Why `session_not_ready` is a dedicated code rather than reusing `invalid_request`:**
+
+Three compounding reasons make a distinct code mandatory:
+
+(a) **Untrusted-client wire posture.** The IPC socket is Unix-domain but not exclusively controlled by the official TUI — any process with socket access can connect. The daemon MUST NOT assume the client is the canonical TUI or that TUI-side state guards are active. A control operation (`DetachSession`, `ResizePane`) arriving for a session in `Launching` state (with `host_conn: None`) is a well-formed IPC message that the daemon MUST route defensively. Relying on TUI guards to make this path unreachable would be a safety invariant violation.
+
+(b) **Semantically distinct from `invalid_request`.** The `invalid_request` catch-all covers structurally malformed or unsupported messages — requests that cannot be fulfilled because they are syntactically wrong or reference a capability the daemon does not implement. A `DetachSession` or `ResizePane` for a Launching session is fully valid and supported; it is merely MISTIMED. The session exists and is in a known transient state. Classifying this as `"invalid_request"` would misrepresent the failure class and prevent the TUI from distinguishing "bad message format" (unrecoverable without code fix) from "session not yet ready" (transient, retry-eligible after `SessionStateChanged{Running}` arrives).
+
+(c) **No-silent-failure invariant without misclassification.** BC-2.05.010 Invariant 6 mandates that every `SessionError` path on user-initiated IPC operations produces a `ServerToClient::Error` with a specific, typed code. A typed `"session_not_ready"` code satisfies this invariant (client receives actionable signal: wait for Running state) without collapsing the error into the generic catch-all. If `invalid_request` were returned instead, the TUI banner would display `"[operation failed]"` — a misleading, unactionable message for a transient state condition.
+
+**Why no explicit `SessionNotReady` for kill-during-Launching:** Kill on a `Launching` session
+is explicitly ALLOWED (BC-2.06.025 EC-293; BC-2.08.003 Invariant 3). It MUST succeed — either
+via the control connection (if established) or via PID fallback (if not yet established).
+`SessionNotReady` is NOT returned by `kill_session()`.
+
+**Integration test:** `test_kill_during_launching_before_socket_bind` — verifies that
+`kill_session()` on a Launching session whose post-spawn monitor has not yet connected
+falls back to PID-based SIGTERM and the session transitions to Terminating.
+`test_kill_during_launching_after_socket_bind` — verifies that `kill_session()` on a
+Launching session whose post-spawn monitor HAS connected sends `DaemonToHost::Kill` over the
+control connection and the session transitions to Terminating.
 
 ### Public API
 
@@ -413,6 +569,12 @@ pub enum SessionError {
     SessionHostDead { session_id: String },
     #[error("invalid session name: {reason}")]
     InvalidSessionName { reason: String },
+    /// Operation requires an established control connection but session is in Launching state
+    /// with the post-spawn monitor not yet connected. Defensive invariant — normally unreachable
+    /// from correct TUI (TUI only enables resize/detach for Running/Detached).
+    /// See §Post-spawn monitor step 8 (F-P50-001). Error code: "session_not_ready".
+    #[error("session not ready: {session_id} (state: Launching, control connection pending)")]
+    SessionNotReady { session_id: String },
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
     /// An EngineModule operation failed before the OS process was spawned.
@@ -446,6 +608,7 @@ method calls EngineModule methods, so `SessionError::EngineError` can only be pr
 | `SessionHostDead` (attach-path) | `attach_session` | `"attach_failed"` | Session-host PID dead when daemon attempts attach |
 | `SessionHostDead` (kill-path) | `kill_session` | `"kill_failed"` | Session-host PID dead when daemon attempts kill; see `session_error_to_code(Op, &SessionError)` |
 | `InvalidSessionName` | `rename_session` | `"rename_failed"` | Empty name or name exceeding length limit |
+| `SessionNotReady` | `detach_session`, `resize_session` | `"session_not_ready"` | Session in Launching state; control connection not yet established; defensive invariant — correct TUI never reaches this (only enables Detach/Resize for Running/Detached) (F-P50-001) |
 | `Io` | Any | `"invalid_request"` | Unexpected I/O error; nearest generic failure code |
 | `EngineError` (other/future variants) | `spawn_session` | `"invalid_request"` | Catch-all for any future `EngineError` variants not yet explicitly mapped (mandatory `_ =>` forward-compat arm); `"invalid_request"` is the nearest generic code. `UnsupportedOperation` now has its own arm and no longer falls through here (F-P44-IMP-001). |
 
@@ -528,6 +691,7 @@ fn session_error_to_code(op: IpcOp, e: &SessionError) -> &'static str {
             _                         => "attach_failed",
         },
         SessionError::InvalidSessionName { .. }  => "rename_failed",
+        SessionError::SessionNotReady { .. }      => "session_not_ready",
         SessionError::Io(_)                       => "invalid_request",
     }
 }
@@ -674,7 +838,12 @@ share any code with the daemon's async runtime (to keep it independent). It has 
      1. `HostToDaemon::StateChanged { new_state: SessionState }` is EXTENDED with an optional
         `degraded_env: Option<Vec<String>>` field listing the missing critical env vars (e.g.,
         `["HOME", "PATH"]`). When missing vars are detected, `StateChanged { new_state: Launching,
-        degraded_env: Some(vec!["HOME"]) }` is sent as the first message to the daemon.
+        degraded_env: Some(vec!["HOME"]) }` is sent as the first message to the daemon over the
+        control connection (established by the daemon's post-spawn monitor after the session-host
+        binds its UDS socket at startup step 7). This message is deliverable DURING `Launching`
+        state because `host_conn` is `Some(_)` by the time the session-host sends its first message
+        — the control connection is established before the session-host enters its event loop.
+        See §SessionEntry.host_conn doc-comment for the full control-vs-proxy distinction (F-P50-001).
      2. The daemon, on receiving `StateChanged` with `degraded_env: Some(_)`, sets
         `SessionEntry.degraded: true` and includes the degraded state in the `SessionSnapshot`
         published via `SessionListUpdate`. The sessions panel renders a warning indicator
@@ -856,7 +1025,7 @@ pub enum HostToDaemon {
     PtyReset,
 }
 
-// C5-002 (SS-ipc.md v1.22.0): SerializedCell and SerializedColor are defined in
+// C5-002 (SS-ipc.md v1.23.0): SerializedCell and SerializedColor are defined in
 // monocle-ipc (crate::ipc::SerializedCell / crate::ipc::SerializedColor) so both
 // monocle-session-host (writer) and monocle-tui (reader) share the type without a
 // cross-binary dependency. The canonical definition with full field documentation
@@ -1074,7 +1243,12 @@ runs:
    b. Probe liveness: `nix::sys::signal::kill(Pid::from_raw(pid), None)`.
    c. If alive: state-dependent handling:
       - `Launching`, `Running`: attempt UDS connect; verify `SO_PEERCRED`; if match: send
-        `DaemonToHost::Attach`; wait up to 5s for `ScrollbackDumpComplete`; register `Running`.
+        `DaemonToHost::Attach`; wait up to 5s for `ScrollbackDumpComplete`; register `Running`
+        with `host_conn: Some(SessionHostConnection { writer, proxy_task: Some(...) })`.
+        (Re-discovery does NOT replay the post-spawn monitor path — it connects directly and
+        sends Attach, treating the session-host as already running. The result is always either
+        Running or Terminated, never Launching. This is correct because the daemon crashed and
+        the session-host is already in its event loop.)
       - `Detached`: attempt UDS connect; verify `SO_PEERCRED`; register `SessionEntry` with
         `state: Detached`, `host_conn: None`. DO NOT send `DaemonToHost::Attach`. (I3-005 fix —
         Detached intent preserved across restart; user must explicitly re-attach.)
@@ -1084,6 +1258,9 @@ runs:
         and not elapsed; immediate SIGKILL if deadline already elapsed). Return immediately from
         this probe. (I3-002 fix — Terminating watchdog is a background task, not blocking the 5s
         re-discovery budget. BC-2.08.004 PC-7 5s budget excludes Terminating watchdog wait.)
+        NOTE: `host_conn: None` for re-discovered Terminating sessions is intentional — the
+        kill is fire-and-forget; no streaming or further control messages are needed; the
+        watchdog uses a fresh connect for re-sends if needed.
    d. If dead: delete sidecar (GC); also delete orphaned socket file if present.
 3. All re-discovered sessions are in `DaemonState.session_manager` before UDS bind (step 10).
 4. Publish re-discovered sessions in `DaemonState.sessions` before serving TUI clients.
@@ -1396,6 +1573,43 @@ Daemon removes stale socket files during GC in re-discovery (alongside sidecar d
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v2.5.0
+
+**F-P50-001 — host_conn lifecycle during Launching is contradictory: post-spawn monitor + control-vs-proxy distinction + kill-during-Launching semantics** (2026-06-14):
+
+- **Finding (F-P50-001, IMPORTANT/behavioral):** `SessionEntry.host_conn` doc-comment said "None if daemon is not currently attached (e.g., session-host just discovered)" — implying `host_conn` is `None` during `Launching`. But BC-2.08.003 PC-1 ("Running/Launching: uses existing host_conn") requires `host_conn: Some(_)` during Launching. The state transition table note "proxy task started" conflated the CONTROL connection (established during Launching) with the PTY-STREAMING proxy task (started at Launching→Running). BC-2.06.025 EC-293 makes kill-during-Launching reachable; if `host_conn` is genuinely `None`, the "use existing host_conn" path panics or silently fails. The degraded-env mechanism (`StateChanged { new_state: Launching, degraded_env }` as "first message to daemon") also requires a connection to exist during Launching.
+
+- **Decision — canonical model (F-P50-001 adjudication):**
+  `spawn_session()` starts a background **post-spawn monitor** task that polls for the session-host's UDS socket to become connectable (after session-host startup step 7 — socket bind). On connect + SO_PEERCRED verification, the daemon stores `host_conn: Some(SessionHostConnection { writer, proxy_task: None })`. This is the CONTROL connection — active during Launching and Running. The PTY-STREAMING proxy task (`host_conn.proxy_task: Some(...)`) is started ONLY at the Launching→Running transition (`StateChanged { new_state: Running }` received). BC-2.08.003 PC-1 ("Running/Launching: uses existing host_conn") is CORRECT. The state transition table note "proxy task started" referred to the PTY proxy task only — not the control connection. SessionEntry.host_conn "None" is correct for Detached and for re-discovered Terminating sessions only.
+
+- **Fix (a) — `SessionEntry.host_conn` doc-comment rewritten:** Precise semantics for when `Some` vs `None`. Documents the CONTROL vs PTY-STREAMING distinction explicitly. References F-P50-001.
+
+- **Fix (b) — `SessionHostConnection` doc-comment rewritten:** Notes `proxy_task: Option<JoinHandle<()>>` — `None` during Launching, `Some` after Running. Explains F-P50-001 kill-path use of writer during Launching.
+
+- **Fix (b2) — `SessionHostConnection.proxy_task` type changed:** `JoinHandle<()>` → `Option<JoinHandle<()>>`. This is a normative change: `proxy_task` is `None` during Launching (control connection established but PTY streaming not yet started) and `Some(...)` during Running. Implementations MUST NOT unwrap `proxy_task` unconditionally.
+
+- **Fix (c) — State transition table:** Two new rows: (1) "Post-spawn monitor: session-host UDS socket becomes connectable" → control connection established, `host_conn: Some(_)`, state still Launching; (2) "Daemon receives `StateChanged::Running`" → PTY proxy started, state → Running. The conflated single-row "proxy task started" entry is replaced by these two precise rows.
+
+- **Fix (d) — §Pre-socket-bind orphan kill section extended:** Added "Kill-path host_conn rules" subsection disambiguating all three kill paths: Running (existing writer), Launching (existing writer OR PID-fallback if monitor not yet connected), Detached (fresh UDS connect). The Launching kill-before-socket-bind sub-case explicitly calls for PID fallback with `"kill_failed"` error code on failure.
+
+- **Fix (e) — §Post-spawn monitor section added:** New subsection specifying all post-spawn monitor steps (poll/connect/SO_PEERCRED/host_conn population/StateChanged handling/kill-race/resize-detach-race). Includes two new integration test specs.
+
+- **Fix (f) — `SessionNotReady` variant added to `SessionError`:** Defensive error for resize/detach called during Launching before control connection established. Mapped to `"session_not_ready"` error code. NOT returned by kill_session(). Compiler-enforced: must add arm to `session_error_to_code()`.
+
+- **Fix (g) — `session_error_to_code()` extended:** New arm `SessionError::SessionNotReady { .. } => "session_not_ready"` added. Outer `SessionError` match remains compiler-enforced exhaustive.
+
+- **Fix (h) — Mapping table row added:** `SessionNotReady` → `"session_not_ready"`, triggered by `detach_session`, `resize_session`.
+
+- **Fix (i) — Re-discovery Launching/Running prose clarified:** Added note that re-discovery does NOT replay the post-spawn monitor path; it connects and sends `DaemonToHost::Attach` directly (treating the session-host as already in Running). Also added `host_conn: Some(...)` to the re-discovery Running registration.
+
+- **Fix (j) — degraded-env "first message" prose clarified:** Added explicit statement that the `StateChanged { Launching, degraded_env }` message is deliverable during Launching because the control connection is established before the session-host enters its event loop. References F-P50-001.
+
+- **Semver: minor (v2.4.0 → v2.5.0)** — normative new `post-spawn monitor` mechanism; `SessionHostConnection.proxy_task` type change from `JoinHandle` to `Option<JoinHandle>`; new `SessionNotReady` variant; `"session_not_ready"` error code. Multiple normative behavior additions.
+
+- **BC impact (report to product-owner for dispatch):**
+  - **BC-2.08.003 PC-1 + Precondition 3:** Model is confirmed correct; exact reconciliation text provided in architect report F-P50-001 response.
+  - **BC-2.05.010 (no-silent-failure):** `"session_not_ready"` must be added to the SS-ipc.md §ServerToClient::Error closed error-code set.
 
 ## §Trace v2.4.0
 

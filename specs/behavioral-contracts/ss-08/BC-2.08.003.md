@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.1"
+version: "1.4.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -45,15 +45,15 @@ and sends SIGKILL directly to the session-host PID. The sidecar is not immediate
 1. A `SessionEntry` exists in the registry for `session_id` with state `Running`, `Detached`,
    or `Launching`.
 2. The session-host process is alive.
-3. `SessionManager.sessions[session_id].host_conn` is `Some(_)` (daemon is attached) OR the
-   daemon can re-attach (Detached sessions require a fresh UDS connect + SO_PEERCRED check
-   before sending Kill — see EC-164 and Invariant 5).
+3. `SessionManager.sessions[session_id].host_conn` is `Some(_)` (control connection established — true for Running and Launching sessions after the post-spawn monitor has connected) OR the session is `Detached` (where `host_conn` is `None`; a fresh UDS connect + SO_PEERCRED check is required before sending Kill — see EC-164 and Invariant 5). For Launching sessions in the brief window before the post-spawn monitor has connected (`host_conn: None`), `kill_session()` falls back to PID-based SIGTERM/SIGKILL (see SS-session-manager.md §Kill-path host_conn rules).
 
 ## Postconditions
 
 1. `SessionManager` determines the kill path based on session state:
-   - **Running / Launching state:** Uses the existing `host_conn` (already attached); sends
-     `DaemonToHost::Kill` over the live connection. No fresh UDS connect needed.
+   **Running / Launching state (host_conn established):** Uses the existing `host_conn.writer` (control connection already live); sends `DaemonToHost::Kill` over the control connection. No fresh UDS connect needed. `proxy_task` may be `None` (Launching) or `Some(_)` (Running) — kill uses the writer only.
+
+   **Launching state (host_conn not yet established — rare race):** If `kill_session()` is called during the brief window before the post-spawn monitor has connected to the session-host UDS socket (`host_conn` is still `None`), the daemon falls back to PID-based SIGTERM/SIGKILL. This is the same mechanism as the pre-socket-bind orphan kill but with a 10s SIGTERM window (harness child may be starting). Transition: `Launching → Terminating` is immediate; `SessionStateChanged{Terminating}` + `SessionListUpdate` published. Failure code: `kill_failed`.
+
    - **Detached state:** `host_conn` is `None`; makes a fresh UDS connect to the session-host
      socket; applies SO_PEERCRED peer-credential check BEFORE sending any message (Invariant 5);
      if uid matches: sends `DaemonToHost::Kill`. This is the explicit kill-path-selection rule
@@ -64,7 +64,7 @@ and sends SIGKILL directly to the session-host PID. The sidecar is not immediate
    to `SessionState::Terminating` atomically with the Kill send.
 2. `ServerToClient::SessionStateChanged { session_id, new_state: Terminating }` is published
    to the broker BEFORE `ServerToClient::SessionListUpdate` — both under the `SessionManager`
-   mutex per BC-2.08.008 Invariant 4 and SS-daemon-wiring-v2-delta.md v1.11.0 §3b. TUI renders
+   mutex per BC-2.08.008 Invariant 4 and SS-daemon-wiring-v2-delta.md v1.11.1 §3b. TUI renders
    `[Terminating]` indicator on receipt of `SessionStateChanged{Terminating}`.
 3. When the session-host receives `DaemonToHost::Kill`:
    a. It sends SIGTERM to the harness child process.
@@ -121,7 +121,7 @@ and sends SIGKILL directly to the session-host PID. The sidecar is not immediate
    alive session-host — the re-discovery Detached-preservation behavior (BC-2.08.004 I3-005)
    does NOT exempt kill from SO_PEERCRED. Failure (uid mismatch) → session treated as dead;
    transition to `Terminated` immediately; `Ok(())` returned (sidecar updated, GC timer
-   started). Per SS-session-manager.md v2.4.0 §Per-session UDS security item 1: "SO_PEERCRED
+   started). Per SS-session-manager.md v2.5.0 §Per-session UDS security item 1: "SO_PEERCRED
    applies universally — attach, re-discovery, kill/detach re-connect. No exceptions."
 
 ## Edge Cases
@@ -161,7 +161,7 @@ and sends SIGKILL directly to the session-host PID. The sidecar is not immediate
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC defines the kill operation, a core session lifecycle action named explicitly in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager `kill_session()`); monocle-session-host (SIGTERM delivery) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.4.0 §SessionManager §Public API (kill_session signature); §Per-session UDS protocol (DaemonToHost::Kill, HostToDaemon::StateChanged, Goodbye); §Per-session UDS security item 1 (SO_PEERCRED universal — no coverage holes); SS-daemon-wiring-v2-delta.md v1.11.0 §3b (SessionStateChanged emission rule: Terminating then SessionListUpdate) |
+| Architecture Source | SS-session-manager.md v2.5.0 §SessionManager §Public API (kill_session signature); §Kill-path host_conn rules (post-spawn monitor; PID fallback for Launching race window); §Per-session UDS protocol (DaemonToHost::Kill, HostToDaemon::StateChanged, Goodbye); §Per-session UDS security item 1 (SO_PEERCRED universal — no coverage holes); SS-daemon-wiring-v2-delta.md v1.11.1 §3b (SessionStateChanged emission rule: Terminating then SessionListUpdate) |
 | Test Name | test_BC_2_08_003_kill_session_sigterm_within_500ms |
 
 ## Related BCs
@@ -181,6 +181,17 @@ S-TBD — Implement SessionManager::kill_session() (filled by story-writer)
 ## VP Anchors
 
 VP-TBD — kill_session() timing and state transition tests (filled after VP creation)
+
+## §Trace v1.4.0
+
+**F-P50-001 — host_conn lifecycle resolution: post-spawn monitor; Launching race-window PID fallback** (2026-06-14):
+- Precondition 3 rewritten: `host_conn` is `Some(_)` for Running and Launching sessions after the post-spawn monitor has connected. For Detached sessions `host_conn` is `None`. For Launching sessions in the brief window before the post-spawn monitor has connected, `kill_session()` falls back to PID-based SIGTERM/SIGKILL per SS-session-manager.md §Kill-path host_conn rules.
+- PC-1 rewritten into three named cases: (1) Running/Launching (host_conn established) — uses `host_conn.writer`; notes `proxy_task` may be `None` (Launching) or `Some(_)` (Running); (2) Launching (host_conn not yet established — rare race) — PID fallback with 10s SIGTERM window; Launching → Terminating immediate; failure code `kill_failed`; (3) Detached — fresh UDS connect + SO_PEERCRED (unchanged).
+- Architecture Source pins bumped: SS-session-manager.md v2.4.0 → v2.5.0 (adds §Kill-path host_conn rules); SS-daemon-wiring-v2-delta.md v1.11.0 → v1.11.1.
+- Cited symbols verified: EC-164 (line 133 of this BC), Invariant 5 (line 115), SS-session-manager.md §Kill-path host_conn rules (new in v2.5.0 per architect).
+- Minor bump: v1.3.1 → v1.4.0 (normative addition — new kill sub-path for Launching race window).
+
+SE-16d monotonicity: v1.4.0 timestamp 2026-06-14 > v1.3.1 timestamp 2026-06-13. PASS.
 
 ## §Trace v1.3.1
 

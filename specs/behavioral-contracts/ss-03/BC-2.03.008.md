@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.2"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -53,9 +53,9 @@ that must be explicitly opted into, not accidentally inherited.
    an error to the TUI: `"Session spawn not supported for this harness"`. This banner is
    delivered via `ServerToClient::Error { code: "spawn_unsupported", message: "Session spawn not supported for this harness" }`
    — the `"spawn_unsupported"` wire code is the 11th entry in the `ServerToClient::Error`
-   code taxonomy (SS-ipc v1.22.0), mapped from `EngineError::UnsupportedOperation` via
+   code taxonomy (SS-ipc v1.23.0; now 12 codes as of v1.23.0 with `session_not_ready` added F-P50-001 — `spawn_unsupported` remains the 11th), mapped from `EngineError::UnsupportedOperation` via
    `session_error_to_code(IpcOp::Spawn, EngineError::UnsupportedOperation)` →
-   `"spawn_unsupported"` (SS-session-manager v2.4.0 §session_error_to_code). The session
+   `"spawn_unsupported"` (SS-session-manager v2.5.0 §session_error_to_code). The session
    creation wizard MUST present this error in the UI and return to the ProfilePicker step.
 4. The default impl is defined in the `EngineModule` trait body in `monocle-core/src/engine.rs`.
    It does NOT require any overriding `impl EngineModule for X` block — the default fires
@@ -105,7 +105,7 @@ that must be explicitly opted into, not accidentally inherited.
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the capability boundary for the engine abstraction: spawn is opt-in, not universal; the default Err impl enforces that boundary for all engines that do not explicitly support monocle-controlled session spawning |
 | L2 Domain Invariants | DI-006 (EngineModule implementations must be stateless — the default impl performs no I/O and returns a constant error value, satisfying stateless detection requirement; spawn_recipe() is not a detection method but the same stateless principle applies to non-overriding impls) |
 | Architecture Module | monocle-core (`EngineModule` trait default impl) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module-v2-delta.md v1.5.0 §spawn_recipe() — new trait method (default impl signature); SS-session-manager.md v2.4.0 §session_error_to_code — `EngineError::UnsupportedOperation` → `"spawn_unsupported"` arm (F-P44-IMP-001); SS-ipc.md v1.22.0 §`ServerToClient::Error` — `"spawn_unsupported"` as 11th wire code in taxonomy |
+| Architecture Source | SS-engine-module-v2-delta.md v1.6.0 §spawn_recipe() — new trait method (default impl signature); SS-session-manager.md v2.5.0 §session_error_to_code — `EngineError::UnsupportedOperation` → `"spawn_unsupported"` arm (F-P44-IMP-001); SS-ipc.md v1.23.0 §`ServerToClient::Error` — `"spawn_unsupported"` as 11th wire code in taxonomy (12 total as of v1.23.0; `session_not_ready` is the 12th — F-P50-001; `spawn_unsupported` positional rank unchanged) |
 | Cross-Ref | BC-2.03.005 (ClaudeCodeModule overrides this default with the real spawn_recipe() implementation) |
 | Test Name | test_BC_2_03_008_default_spawn_recipe_unsupported_operation |
 
@@ -125,6 +125,16 @@ S-TBD — Same story as BC-2.03.005 (EngineModule trait extension with spawn_rec
 ## VP Anchors
 
 VP-TBD — Default UnsupportedOperation unit test (filled after VP creation)
+
+## §Trace v1.0.3
+
+**F-P50-001 — SS-ipc v1.22.0→v1.23.0 pin; 12th wire code (session_not_ready); spawn_unsupported positional rank confirmed; SS-session-manager v2.4.0→v2.5.0** (2026-06-14):
+- **PC-3 (annotation):** `"spawn_unsupported"` is the 11th wire code; taxonomy now has 12 codes in v1.23.0 with `"session_not_ready"` added F-P50-001. `spawn_unsupported` positional rank (11th) is unchanged. Note added inline.
+- **Architecture Source pins:** SS-session-manager.md v2.4.0 → v2.5.0; SS-ipc.md v1.22.0 → v1.23.0. SS-engine-module-v2-delta.md v1.5.0 unchanged (spawn_recipe() default impl is unaffected by taxonomy expansion).
+- §Trace v1.0.2 "11th entry in the `ServerToClient::Error` taxonomy per SS-ipc.md v1.22.0" annotated with forward note: taxonomy grows to 12 codes in v1.23.0; `spawn_unsupported` rank unchanged.
+- Patch bump: v1.0.2 → v1.0.3 (pin refresh + forward annotation; no behavioral content change).
+
+SE-16d monotonicity: v1.0.3 timestamp 2026-06-14 > v1.0.2 timestamp 2026-06-14. PASS.
 
 ## §Trace v1.0.2 (errata)
 
@@ -146,7 +156,7 @@ VP-TBD — Default UnsupportedOperation unit test (filled after VP creation)
 
 - **PC-3 (normative update):** The "Session spawn not supported for this harness" banner is now
   backed by the dedicated `"spawn_unsupported"` wire code (11th entry in the `ServerToClient::Error`
-  taxonomy per SS-ipc.md v1.22.0). PC-3 now cites the complete wire path:
+  taxonomy per SS-ipc.md v1.22.0; taxonomy grows to 12 codes in v1.23.0 with `session_not_ready` — F-P50-001; `spawn_unsupported` positional rank unchanged). PC-3 now cites the complete wire path:
   `EngineError::UnsupportedOperation` → `session_error_to_code(IpcOp::Spawn, …)` →
   `"spawn_unsupported"` (SS-session-manager.md v2.4.0 §session_error_to_code) →
   `ServerToClient::Error { code: "spawn_unsupported", … }`. Previously PC-3 cited only the

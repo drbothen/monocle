@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.2"
+version: "1.5.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -56,7 +56,7 @@ background. The TUI can re-attach at any time.
    chunked scrollback sequence within 5 seconds total. (C5/C2-002 fix: chunked protocol
    replaces the retired single-message `ScrollbackDump` form. Styled-cell serialization
    `Vec<Vec<SerializedCell>>` preserves full visual fidelity.)
-5. Stores `host_conn: Some(SessionHostConnection { writer, proxy_task })` on the `SessionEntry`.
+5. Stores `host_conn: Some(SessionHostConnection { writer, proxy_task: Some(handle) })` on the `SessionEntry`. `proxy_task` is typed `Option<JoinHandle<()>>`; it is `Some(_)` after attach completes (Running state). `None` only in the Launching pre-proxy window (not applicable during attach which only runs on Detached sessions).
 6. `SessionEntry.state` transitions to `Running`.
 7. The proxy task begins forwarding `HostToDaemon::PtyBytes` to the daemon broker as
    `Event::PtyOutput { session_id, bytes }`.
@@ -73,7 +73,7 @@ background. The TUI can re-attach at any time.
 ## Postconditions (detach)
 
 1. `SessionManager` sends `DaemonToHost::Detach` over the connection.
-2. The proxy task for this session is terminated (`proxy_task.abort()`).
+2. The proxy task for this session is terminated (`proxy_task.take().map(|t| t.abort())`). `proxy_task` is typed `Option<JoinHandle<()>>` as of SS-session-manager.md v2.5.0; `.take()` clears the field and `.map(|t| t.abort())` aborts the task if present.
 3. `SessionEntry.host_conn` is set to `None`.
 4. `SessionEntry.state` transitions to `Detached`.
 5. `session-state.json` is updated to `state: "Detached"` (atomically).
@@ -94,7 +94,7 @@ background. The TUI can re-attach at any time.
    ScrollbackDumpComplete` — styled cells `Vec<Vec<SerializedCell>>` (full fg/bg color +
    attrs). The retired single-message `ScrollbackDump` form MUST NOT be used. The TUI
    MUST reset its parser for the session BEFORE applying the dump to prevent double-counting
-   live parser state. See SS-session-manager.md v2.4.0 §Screen-state transfer for the
+   live parser state. See SS-session-manager.md v2.5.0 §Screen-state transfer for the
    full reconstruction protocol.
 4. The 5-second timeout applies to the full `ScrollbackChunk*` + `ScrollbackDumpComplete`
    sequence for both re-discovery (BC-2.08.004) and interactive attach. After 5s without
@@ -133,7 +133,7 @@ background. The TUI can re-attach at any time.
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — detach/attach are explicitly named session lifecycle operations in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager `attach_session()`, `detach_session()`) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.4.0 §Public API (attach_session, detach_session signatures); §Per-session UDS protocol (DaemonToHost::Attach/Detach, HostToDaemon::ScrollbackChunk/ScrollbackDumpComplete); §Screen-state transfer on Attach; §Re-discovery state handling (I3-005 Detached preservation across restart); SS-daemon-wiring-v2-delta.md v1.11.0 §3b (SessionStateChanged{Running} before SessionListUpdate on attach) |
+| Architecture Source | SS-session-manager.md v2.5.0 §Public API (attach_session, detach_session signatures); §Per-session UDS protocol (DaemonToHost::Attach/Detach, HostToDaemon::ScrollbackChunk/ScrollbackDumpComplete); §Screen-state transfer on Attach; §Re-discovery state handling (I3-005 Detached preservation across restart); §host_conn type (proxy_task: Option<JoinHandle<()>> — F-P50-001); SS-daemon-wiring-v2-delta.md v1.11.1 §3b (SessionStateChanged{Running} before SessionListUpdate on attach) |
 | Test Name | test_BC_2_08_007_attach_receives_scrollback_detach_keeps_session_alive |
 
 ## Related BCs
@@ -154,6 +154,17 @@ S-TBD — Implement SessionManager attach/detach (filled by story-writer)
 
 VP-TBD — Attach/detach integration tests (filled after VP creation)
 
+## §Trace v1.5.0
+
+**F-P50-001 — proxy_task type Option<JoinHandle<()>>; SessionError 9-variant forward annotation; SS pins** (2026-06-14):
+- **Detach PC-2 (normative):** `proxy_task.abort()` → `proxy_task.take().map(|t| t.abort())`. `proxy_task` is typed `Option<JoinHandle<()>>` per SS-session-manager.md v2.5.0. `.take()` clears the field; `.map(|t| t.abort())` aborts if present.
+- **Attach PC-5 (normative):** `host_conn: Some(SessionHostConnection { writer, proxy_task })` → `host_conn: Some(SessionHostConnection { writer, proxy_task: Some(handle) })` with explanatory note that `proxy_task` is `Option<JoinHandle<()>>`, `Some(_)` after attach (Running state), `None` only in Launching pre-proxy window.
+- **§Trace v1.4.1 (historical annotation):** "canonical 8-variant `SessionError` enum" annotated: 8 variants at time of Pass-26; 9 variants as of F-P50-001 (SessionNotReady added). Historical count preserved per DF-030 history immutability; forward annotation added.
+- **Architecture Source pins:** SS-session-manager.md v2.4.0 → v2.5.0 (adds proxy_task Option type); SS-daemon-wiring-v2-delta.md v1.11.0 → v1.11.1.
+- Minor bump: v1.4.2 → v1.5.0 (normative: two live PC lines updated for Option<JoinHandle<()>> type).
+
+SE-16d monotonicity: v1.5.0 timestamp 2026-06-14 > v1.4.2 timestamp 2026-06-13. PASS.
+
 ## §Trace v1.4.2
 
 **Arch-source pin v1.9.0→v1.9.1** (2026-06-13 / D-277):
@@ -164,7 +175,8 @@ VP-TBD — Attach/detach integration tests (filled after VP creation)
 
 **I26-001 adversarial pass-26 fix — EC-185 + EC-188: reconcile phantom SessionError variants to canonical taxonomy** (2026-06-13):
 - EC-185: removed `SessionError::AlreadyAttached { session_id }` — variant does not exist in
-  the canonical 8-variant `SessionError` enum (SS-session-manager.md lines ~382-412). Reconciled
+  the canonical `SessionError` enum (SS-session-manager.md lines ~382-412; 8 variants at time of
+  Pass-26; 9 variants as of F-P50-001 which adds SessionNotReady — see BC-INDEX §Trace v1.40.8). Reconciled
   to `Ok(())` idempotent success, matching the sibling idempotency pattern:
   `kill_session` on Terminated/Terminating → `Ok(())` (BC-2.08.003 EC-165);
   `detach_session` on Detached → `Ok(())` (EC-186). No "wrong-state" variant exists in the

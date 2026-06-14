@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "ipc"
 subsystem: SS-05
-version: "1.22.0"
+version: "1.23.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -399,7 +399,7 @@ pub enum ServerToClient {
     /// client over its per-client channel. This includes EngineError-derived errors that are
     /// bridged through `SessionError::EngineError` (see §spawn_recipe() call site above).
     ///
-    /// # v1A error code taxonomy (closed set for Phase 1 — 11 codes)
+    /// # v1A error code taxonomy (closed set for Phase 1 — 12 codes)
     ///
     /// The `code` field carries one of the following string literals (snake_case):
     ///
@@ -415,6 +415,7 @@ pub enum ServerToClient {
     /// | `"attach_failed"`          | `SessionError::SessionHostDead` on the attach-path                   | "Session attach failed" |
     /// | `"kill_failed"`            | `SessionError::SessionHostDead` on the kill-path (op-aware mapping via `IpcOp::Kill`) | "Session kill failed" |
     /// | `"rename_failed"`          | `SessionManager::rename_session()` returned error                    | "Session rename failed" |
+    /// | `"session_not_ready"`      | `SessionError::SessionNotReady` — operation requires control connection but session is in Launching state before post-spawn monitor has connected; normally unreachable from correct TUI (F-P50-001) | "Session not ready — please wait for launch to complete" |
     /// | `"invalid_request"`        | Generic/catch-all post-call code: `SessionError::Io` (unexpected I/O error) and any future `EngineError` variant not explicitly mapped (`_ =>` forward-compat arm in `session_error_to_code()` — after `UnsupportedOperation` gets its own arm, the catch-all covers only truly novel future variants); also reserved for any future pre-call validation failure path | "[operation failed]" |
     ///
     /// The `message` field carries a human-readable diagnostic string (not user-facing;
@@ -1448,6 +1449,16 @@ Mitigation: SOQ-3 (overlay clear on disconnect) removes all `VecDeque<PromptModa
 on TUI-side disconnect. The `InitialState` push on reconnect contains only prompts that are
 still pending in the daemon's registry (i.e., still within the 300ms timeout window). Stale
 prompts are never re-pushed.
+
+---
+
+## §Trace v1.23.0
+
+**F-P50-001 — `session_not_ready` wire code added; taxonomy extended from 11 to 12 codes** (2026-06-14):
+
+- **Finding (F-P50-001, IMPORTANT/behavioral):** `SessionError::SessionNotReady` was added in SS-session-manager.md v2.5.0 §Post-spawn monitor (F-P50-001) to handle the defensive case where `detach_session()` or `resize_session()` is called during `Launching` state before the post-spawn monitor has established the control connection (`host_conn: None`). This variant had no corresponding wire code in the v1A taxonomy, leaving `session_error_to_code()` with a compile-time exhaustiveness gap (the outer `SessionError` match is compiler-enforced exhaustive — `SessionNotReady` would be a compile error without a mapping arm).
+- **Fix — `"session_not_ready"` code added to taxonomy:** New row in the closed error-code set. Maps `SessionError::SessionNotReady` → `"session_not_ready"`. TUI fixed banner: "Session not ready — please wait for launch to complete". This error is normally unreachable from correct TUI behavior (BC-2.06.025 only enables Detach/Resize for Running/Detached sessions), but MUST be handled defensively. Count: 11 → 12 codes.
+- **Semver: minor (v1.22.0 → v1.23.0)** — new wire code `"session_not_ready"` added to the closed error-code set. Normative addition; TUI must add a match arm for this code (forward-compat: renders `[operation failed]` for unknown codes, so old TUI is safe; new TUI shows the specific banner).
 
 ---
 

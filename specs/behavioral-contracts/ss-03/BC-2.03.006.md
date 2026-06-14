@@ -95,7 +95,7 @@ the `SpawnRecipe.env` fields on top. The env map does NOT replace the full envir
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC governs the CCR routing injection that enables monocle to transparently route spawned Claude Code sessions through CCR, a key capability of the engine abstraction |
 | L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness — CCR injection is purely via environment variable; no config file is written to the harness's configuration directory) |
 | Architecture Module | monocle-runtime (ClaudeCodeModule — `monocle-runtime/src/engine/claude_code.rs`) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module-v2-delta.md v1.5.0 §ClaudeCodeModule::spawn_recipe() implementation spec (env injection block) |
+| Architecture Source | SS-engine-module-v2-delta.md v1.6.0 §ClaudeCodeModule::spawn_recipe() implementation spec (env injection block) |
 | Cross-Ref | BC-2.07.006 (CCR Detection via `ccr_path` Config Field — source of the CCR URL that becomes opts.ccr_base_url) |
 | Test Name | test_BC_2_03_006_spawn_recipe_ccr_base_url_injected |
 

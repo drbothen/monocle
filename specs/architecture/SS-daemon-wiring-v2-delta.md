@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "daemon-wiring-v2-delta"
 subsystem: SS-04
-version: "1.11.0"
+version: "1.11.1"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -350,7 +350,7 @@ channel — `SessionStateChanged` is enqueued before `SessionListUpdate` for eve
 | Method | SessionState transition | Emits |
 |--------|------------------------|-------|
 | `spawn_session()` | (none) → `Launching` | `SessionStateChanged{Launching}` then `SessionListUpdate` |
-| On `StateChanged::Running` from session-host | `Launching` → `Running` | `SessionStateChanged{Running}` then `SessionListUpdate` |
+| On `StateChanged::Running` from session-host (received by post-spawn monitor over control connection) | `Launching` → `Running` | `SessionStateChanged{Running}` then `SessionListUpdate` |
 | `kill_session()` | `Running/Detached/Launching` → `Terminating` | `SessionStateChanged{Terminating}` then `SessionListUpdate` |
 | On `StateChanged::Terminated` or 12s watchdog | `Terminating` → `Terminated` | `SessionStateChanged{Terminated}` then `SessionListUpdate` |
 | `detach_session()` | `Running` → `Detached` | `SessionStateChanged{Detached}` then `SessionListUpdate` |
@@ -404,7 +404,7 @@ can use it without importing daemon-internal types.
 > was retired in v1.4.0 (I6-002 fix) because it diverged from the SS-ipc.md canonical by
 > omitting the `degraded`/`degraded_reason` fields.
 >
-> **Current canonical field summary** (SS-ipc.md v1.22.0 §Supporting Types — authoritative):
+> **Current canonical field summary** (SS-ipc.md v1.23.0 §Supporting Types — authoritative):
 > `session_id`, `display_name`, `state`, `harness_id`, `project_root`, `cwd`,
 > `spawned_by_monocle: Option<bool>`, `started_at_micros: i64`, `pty_rows: u16`,
 > `pty_cols: u16`, `degraded: bool` (`#[serde(default)]`), `degraded_reason: Option<String>`
@@ -726,6 +726,16 @@ implementer creates `SessionManager` from scratch per SS-08.
   note updated from "These EngineError codes" to "All three EngineError variants".
 - **Semver:** ERRATA-NO-BUMP. Normative mapping comment at lines 185-188 was already correct.
   This is a doc-comment-only correction. Version remains v1.11.0.
+
+---
+
+## §Trace v1.11.1
+
+**F-P50-001 — §3b emission table: clarify that Launching→Running is triggered by post-spawn monitor (control connection), not PTY proxy start** (2026-06-14):
+
+- **Finding (F-P50-001, IMPORTANT/behavioral):** The §3b emission table row "On `StateChanged::Running` from session-host | `Launching` → `Running`" was silent on HOW the daemon receives that message. Readers of this file in isolation could misread it as the PTY proxy task being the connection point — but the PTY proxy task is NOT started until after Running is confirmed. The actual mechanism is the background post-spawn monitor (specified in SS-session-manager.md v2.5.0 §Post-spawn monitor) which establishes the CONTROL connection during Launching, then receives `StateChanged::Running` over that connection before starting the PTY proxy task.
+- **Fix — §3b table row updated:** "On `StateChanged::Running` from session-host" → "On `StateChanged::Running` from session-host (received by post-spawn monitor over control connection)". Clarifies that this is the post-spawn monitor's output, not the PTY-streaming path.
+- **Semver: ERRATA-NO-BUMP (v1.11.0 → v1.11.1):** No behavioral change. The state-machine transitions were always correct. This is a prose clarification that aligns with SS-session-manager.md v2.5.0 §State transition table (which adds explicit rows for monitor-connect and proxy-task-start). No normative obligation changed.
 
 ---
 
