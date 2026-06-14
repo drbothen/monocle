@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.40.0"
+version: "1.40.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-13T00:00:00Z
+timestamp: 2026-06-14T00:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "cbf13d5"
@@ -1213,6 +1213,17 @@ SE-16d monotonicity: v1.36 timestamp 2026-06-03T14:00:00Z > v1.35 timestamp 2026
 - BC-2.05.010 title updated from 6-variant to 7-variant form (bc_h1_is_title_source_of_truth).
 
 SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. PASS.
+
+## §Trace v1.40.1
+
+**S38-001 — BC-2.09.008 PC-4/PC-1: complete scoped mouse-capture sequences; whole-class sweep confirms no other survivors** (2026-06-14 / Pass-38):
+
+- BC-2.09.008 v1.1.1 → v1.2.0: Pass-38 IMPORTANT finding S38-001. PC-4 (entering EmbeddedTerminal) and PC-1 (exiting EmbeddedTerminal) each named only the SGR write/disable (`ESC [ ? 1006 h` / `ESC [ ? 1006 l`), omitting the paired `EnableMouseCapture` / `DisableMouseCapture` crossterm calls. Both postconditions now state the complete two-step sequences in correct order (EnableMouseCapture → SGR h on entry; SGR l → DisableMouseCapture on exit) with explicit non-authoritative restatement labels and cross-references to BC-2.09.002 Invariant-5 (the owning authoritative contract).
+- Whole-class sweep: SS-09 BCs 001-009 and SS-05 BCs 001-011 fully scanned for partial-restatement pattern. No other live instances found. BC-2.09.002 and BC-2.09.003 are authoritative and correct — not modified.
+
+BC-INDEX version: 1.40.0 → 1.40.1. BC H1 title unchanged. No BC ID additions or retirements.
+
+SE-16d monotonicity: v1.40.1 timestamp 2026-06-14 > v1.40.0 timestamp 2026-06-13. PASS.
 
 ## §Trace v1.40.0
 

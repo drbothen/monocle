@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.1"
+version: "1.2.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -52,7 +52,7 @@ AppMode. A `Ctrl-D` or session termination also exits `EmbeddedTerminal` automat
    begin receiving PTY output before rendering.
 3. Keyboard enhancement context switches: `Action::PtyScrollUp`, `Action::PtyScrollDown`,
    and the Esc intercept are active. All other keystrokes are forwarded to PTY.
-4. SGR mouse mode is written to the terminal (`ESC [ ? 1006 h`).
+4. The scoped mouse-capture entry sequence executes in order: (a) `crossterm::execute!(stdout(), EnableMouseCapture)?` (enables button-event tracking mode 1002), then (b) `print!("\x1b[?1006h")` (enables SGR 1006 extended encoding). Both steps are required; SGR 1006 alone is insufficient without the preceding `EnableMouseCapture` call. Non-authoritative restatement — authoritative contract is **BC-2.09.002 Invariant-5** (entry/exit sequence, ordering, and rationale are defined there).
 5. A status bar indicator shows `[EmbeddedTerminal: <session_display_name>]`.
 
 ## Postconditions (entering SessionCreation)
@@ -69,7 +69,7 @@ AppMode. A `Ctrl-D` or session termination also exits `EmbeddedTerminal` automat
 ## Postconditions (exiting EmbeddedTerminal)
 
 1. Esc in `EmbeddedTerminal`: `Action::ExitEmbeddedTerminal` fires. AppMode transitions
-   to `prior` AppMode (typically `Dashboard`). SGR mouse mode disabled (`ESC [ ? 1006 l`).
+   to `prior` AppMode (typically `Dashboard`). The scoped mouse-capture exit sequence executes in order: (a) `print!("\x1b[?1006l")` (disables SGR 1006 encoding), then (b) `crossterm::execute!(stdout(), DisableMouseCapture)?` (disables button-event tracking mode 1002). Ordering is critical — SGR `l` BEFORE `DisableMouseCapture`. Non-authoritative restatement — authoritative contract is **BC-2.09.002 Invariant-5** (exit sequence, ordering, and rationale are defined there).
 2. `Ctrl-D` in `EmbeddedTerminal`: forwarded to PTY as `\x04`; when session transitions to
    `Terminated`, AppMode auto-exits to `prior`.
 3. `SessionStateChanged { new_state: Terminated }` received while in `EmbeddedTerminal`:
@@ -160,6 +160,16 @@ S-TBD — Implement EmbeddedTerminal/SessionCreation AppMode transitions in mono
 ## VP Anchors
 
 VP-TBD — AppMode transition tests (filled after VP creation)
+
+## §Trace v1.2.0
+
+**S38-001 — PC-4/PC-1: complete scoped mouse-capture sequences; add BC-2.09.002 Invariant-5 cross-references** (2026-06-14 / Pass-38 adversarial finding):
+
+- S38-001 (Pass-38 IMPORTANT): PC-4 (entering EmbeddedTerminal, postcondition 4) named only `ESC [ ? 1006 h` (the SGR write), omitting the paired `EnableMouseCapture` step that must precede it. PC-1 (exiting EmbeddedTerminal, postcondition 1) named only `ESC [ ? 1006 l` (the SGR disable), omitting the paired `DisableMouseCapture` step that must follow it. Both restatements were partial — they implied the SGR writes alone are sufficient, which contradicts the authoritative scoped model in BC-2.09.002 Invariant-5 and SS-embedded-pty.md §EmbeddedTerminal ENTRY/EXIT (lines 278-288 / 349-360).
+- PC-4 rewritten: full two-step entry sequence (EnableMouseCapture → SGR 1006 h), with explicit cross-reference to BC-2.09.002 Invariant-5 as the authoritative owning contract. Non-authoritative restatement label added.
+- PC-1 rewritten: full two-step exit sequence (SGR 1006 l → DisableMouseCapture), with explicit cross-reference to BC-2.09.002 Invariant-5 as the authoritative owning contract. Critical ordering preserved (SGR `l` BEFORE DisableMouseCapture). Non-authoritative restatement label added.
+- Whole-class sweep: all SS-09 BCs (001-009) and all SS-05 BCs (001-011) scanned for same partial-restatement pattern. No other live instances found. BC-2.09.002 and BC-2.09.003 are authoritative and were NOT modified (already correct).
+- Version bump: 1.1.1 → 1.2.0 (minor: new normative postcondition content — full sequences specified where only SGR codes appeared previously).
 
 ## §Trace v1.1.1
 

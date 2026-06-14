@@ -204,9 +204,9 @@ ARCH-INDEX:
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.40.0"
-  last_bump_commit: "[Pass-23 D-265 2026-06-13 — §Trace v1.40.0 logs Pass-23 SS-09 mouse-coordinate sweep; BC-2.09.002 1.0.1→1.1.0 + BC-2.09.003 1.2.0→1.3.0]" # version-pin-historical: changelog description of bump, not a live pin
-  last_bump_date: "2026-06-13"
+  current_version: "1.40.1"
+  last_bump_commit: "[Pass-38 S38-001 D-280 2026-06-14 — BC-2.09.008 PC-4/PC-1 full mouse-capture sequences + BC-2.09.002 Inv-5 cross-refs; §Trace row added]" # version-pin-historical: changelog description of bump, not a live pin
+  last_bump_date: "2026-06-14"
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
@@ -839,9 +839,9 @@ BC-2.09.007:
 
 BC-2.09.008:
   path: specs/behavioral-contracts/ss-09/BC-2.09.008.md
-  current_version: "1.1.1"
-  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.2.0"
+  last_bump_commit: "[Pass-38 S38-001 D-280 2026-06-14 — PC-4/PC-1 full mouse-capture sequences; EnableMouseCapture+SGR-entry / SGR-exit+DisableMouseCapture; BC-2.09.002 Inv-5 cross-refs; whole-class SS-09/SS-05 swept zero survivors]"
+  last_bump_date: "2026-06-14"
 
 BC-2.09.009:
   path: specs/behavioral-contracts/ss-09/BC-2.09.009.md
