@@ -204,8 +204,8 @@ ARCH-INDEX:
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.40.2"
-  last_bump_commit: "[Pass-41 F-P41-IMP-001 D-283 — BC-2.08.001 v1.5.0 / BC-2.08.008 v1.2.0 / BC-2.09.008 v1.3.0 rows updated; §Trace row added]" # version-pin-historical: changelog description of bump, not a live pin
+  current_version: "1.40.4"
+  last_bump_commit: "[D-285 CV-SS-005 — BC-2.08.008 v1.2.1 / BC-2.09.008 v1.3.1 rows updated; §Trace v1.40.3 + v1.40.4 rows added]" # version-pin-historical: changelog description of bump, not a live pin
   last_bump_date: "2026-06-14"
 
 STORY-INDEX:
@@ -791,8 +791,8 @@ BC-2.08.007:
 
 BC-2.08.008:
   path: specs/behavioral-contracts/ss-08/BC-2.08.008.md
-  current_version: "1.2.0"
-  last_bump_commit: "[Pass-41 F-P41-IMP-001 D-283 — PC-5 destructure corrected to SessionStateChanged{Running, session_id} with launching_session_id match guard; EC-303 SpawnAck mechanism added; SS-embedded-pty+SS-ipc added to inputs]"
+  current_version: "1.2.1"
+  last_bump_commit: "[D-285 CV-SS-005 — PC-5 causal step-ordering + FIFO completeness; SpawnAck-before-Launching ordering guarantee documented (IPC handler sends SpawnAck step 2, before spawn_session() step 4, before broker emits Launching step 5)]"
   last_bump_date: "2026-06-14"
 
 BC-2.09.001:
@@ -839,8 +839,8 @@ BC-2.09.007:
 
 BC-2.09.008:
   path: specs/behavioral-contracts/ss-09/BC-2.09.008.md
-  current_version: "1.3.0"
-  last_bump_commit: "[Pass-41 F-P41-IMP-001 D-283 — PC Step 4/5 SpawnAck wiring added: TUI stores launching_session_id from SpawnAck, auto-advance matches against it; SS-ipc added to inputs]"
+  current_version: "1.3.1"
+  last_bump_commit: "[D-285 CV-SS-005 sibling — PC Step 4 causal-ordering expansion: same two-property guarantee (IPC handler sends SpawnAck step 2, spawn_session() step 4, broker emits Launching step 5) + per-client FIFO]"
   last_bump_date: "2026-06-14"
 
 BC-2.09.009:

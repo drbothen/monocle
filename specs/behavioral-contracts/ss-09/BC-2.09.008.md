@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.0"
+version: "1.3.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-14T12:00:00Z
+timestamp: 2026-06-14T19:00:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md, architecture/SS-ipc.md]
 input-hash: "d0b3854"
@@ -66,7 +66,14 @@ AppMode. A `Ctrl-D` or session termination also exits `EmbeddedTerminal` automat
    stores it: `AppMode::SessionCreation { launching_session_id: Some(session_id.clone()), .. }`.
    This is a point-to-point message to the requesting client only — it is NOT broadcast.
    `SpawnAck` is guaranteed to arrive before any broker-published
-   `ServerToClient::SessionStateChanged { new_state: Launching }` (per-client FIFO ordering).
+   `ServerToClient::SessionStateChanged { new_state: Launching }` by TWO complementary
+   properties: (1) **Causal step ordering** — in the daemon IPC handler, `SpawnAck` is sent at
+   step 2 (before `spawn_session()` is called at step 4, which is before the broker emits
+   `SessionStateChanged { Launching }` at step 5); and (2) **Per-client FIFO** — the requesting
+   client's per-client `mpsc` channel delivers messages in send order, guaranteeing that
+   `SpawnAck` (step 2) arrives at the TUI before any broker-published
+   `SessionStateChanged { Launching }` (step 5).
+   Canonical source: SS-ipc.md §ServerToClient::SpawnAck §Delivery ordering steps 1-5.
 6. Step 5 (auto-advance): When `ServerToClient::SessionStateChanged { session_id: <matching launching_session_id>, new_state: Running }` is received, `AppMode` auto-transitions to `EmbeddedTerminal { session_id, prior: Dashboard }`. The match is against `launching_session_id` (deterministic — populated from `SpawnAck`), NOT a broadcast heuristic. `SessionStateChanged` events whose `session_id` does not match `launching_session_id` are ignored by the wizard.
 7. If spawn fails (daemon returns `ServerToClient::Error`): wizard clears `launching_session_id` to `None` and returns to `ProfilePicker` with an error banner.
 
@@ -165,6 +172,43 @@ S-TBD — Implement EmbeddedTerminal/SessionCreation AppMode transitions in mono
 ## VP Anchors
 
 VP-TBD — AppMode transition tests (filled after VP creation)
+
+## §Trace v1.3.1
+
+**CV-SS-005-SIBLING — PC Step 4 (Launching): expand FIFO-only ordering claim to state BOTH causal step ordering AND per-client FIFO (mirroring BC-2.08.008 v1.2.1 fix)** (2026-06-14):
+
+- **Finding:** PC Step 4 (Launching) contained the same incomplete ordering claim that was fixed
+  in BC-2.08.008 PC-5 during this burst (CV-SS-005). The claim cited only "per-client FIFO ordering"
+  without stating WHY that is sufficient — specifically, without naming the causal step ordering
+  that makes FIFO alone meaningful: `SpawnAck` is sent at step 2 in the daemon IPC handler,
+  BEFORE `spawn_session()` is called at step 4, and the broker does not emit
+  `SessionStateChanged { Launching }` until step 5. The FIFO channel then guarantees arrival
+  order, but FIFO alone cannot guarantee the invariant without the causal step ordering
+  establishing the enqueue order in the first place.
+
+- **Fix:** PC Step 4 Launching ordering claim expanded to state both properties explicitly:
+  (1) **Causal step ordering** — IPC handler sequence steps 2, 4, 5; and
+  (2) **Per-client FIFO** — requesting client's `mpsc` channel delivers in send order.
+  Canonical source citation added: SS-ipc.md §ServerToClient::SpawnAck §Delivery ordering steps 1-5.
+  Wording mirrors BC-2.08.008 PC-5 v1.2.1 fix verbatim for class consistency.
+
+- **Whole-class check:** All FIFO/ordering/SpawnAck-arrival claims in BC-2.09.008 scanned.
+  Two instances of "FIFO ordering" language found:
+  1. PC Step 4 (Launching) live postcondition — FIXED in this patch.
+  2. §Trace v1.3.0 historical narrative (lines ~176-178) — this is a historical record of
+     the v1.3.0 understanding at the time of that patch; it is preserved verbatim as immutable
+     historical trace. The §Trace v1.3.1 entry (this entry) supersedes it for the live claim.
+  Zero remaining FIFO-only-without-causal survivors in the live postconditions of BC-2.09.008.
+
+- **No wire/contract change.** No field names, variant names, step labels, or wire behaviors
+  changed. This is a precision/completeness fix to the ordering justification only.
+
+- **Semver decision:** PATCH bump (1.3.0 → 1.3.1). The fix adds justification precision to an
+  existing ordering claim; the claim itself (SpawnAck arrives before SessionStateChanged{Launching})
+  was already correct. No behavioral content changed. Mirrors the PATCH decision in BC-2.08.008
+  v1.2.1 for the same class of fix.
+
+- SE-16d monotonicity: v1.3.1 timestamp 2026-06-14T19:00:00Z > v1.3.0 timestamp 2026-06-14T12:00:00Z. PASS.
 
 ## §Trace v1.3.0
 

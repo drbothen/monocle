@@ -703,7 +703,7 @@ The `AppMode::SessionCreation` wizard delegates to existing components where pos
   the wizard matches against `launching_session_id` (not a broadcast-race heuristic) and
   auto-transitions to `AppMode::EmbeddedTerminal { session_id, prior: Dashboard }`.
 
-If spawn fails (daemon returns an error), the wizard returns to `Step 1` with an error banner.
+If spawn fails (daemon returns `ServerToClient::Error`), the wizard clears `launching_session_id` to `None` and returns to `ProfilePicker` with an error banner.
 
 ---
 
@@ -801,6 +801,30 @@ BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 - **PO work-list:** See §Trace note — product-owner must update BC-2.08.008 PC-5, EC-303;
   BC-2.09.008 PC Step 4/Step 5; BC-2.08.001 PC-1 UUID-locus wording.
 - Semver: minor (v1.5.2 → v1.6.0) — new struct field + new normative mechanism in wizard prose.
+
+**CV-SS-003 + CV-SS-004 errata — §Session Creation Wizard Step 4 spawn-fail path** (2026-06-14):
+
+- **Finding (CV-SS-003, IMPORTANT):** The spawn-fail sentence at §Session Creation Wizard Step 4
+  said "the wizard returns to `Step 1` with an error banner." The canonical term across this feature
+  (BC-2.09.008 §Postconditions item 7, BC-2.08.008 EC-303, SS-ipc line ~591-594, SS-session-manager
+  lines ~548-549) is the named step `ProfilePicker`, not the numeric label "Step 1".
+- **Fix (CV-SS-003):** "Step 1" → "`ProfilePicker`".
+- **Finding (CV-SS-004, IMPORTANT):** The same sentence omitted the normative obligation to clear
+  `launching_session_id` to `None` before returning to ProfilePicker. This obligation is canonical
+  in BC-2.09.008 §Postconditions (entering SessionCreation) item 7 ("wizard clears `launching_session_id`
+  to `None` and returns to `ProfilePicker` with an error banner"), BC-2.08.008 EC-303, SS-ipc
+  lines ~591-594 (`The TUI MUST clear AppMode::SessionCreation.launching_session_id (set to None) on
+  receipt of ServerToClient::Error`), and SS-session-manager lines ~548-549. SS-embedded-pty.md was
+  the primary TUI spec site omitting this obligation.
+- **Fix (CV-SS-004):** Spawn-fail sentence rewritten to: "If spawn fails (daemon returns
+  `ServerToClient::Error`), the wizard clears `launching_session_id` to `None` and returns to
+  `ProfilePicker` with an error banner." Also precised "daemon returns an error" → "daemon returns
+  `ServerToClient::Error`" for unambiguous cross-reference.
+- **Semver:** Errata-no-bump for both CV-SS-003 and CV-SS-004. CV-SS-003 is a terminology
+  reconciliation (named step replaces numeric label; no behavioral change). CV-SS-004 adds
+  normative text to SS-embedded-pty.md, but the obligation is already canonical in the BC set and
+  SS-ipc/SS-session-manager — this is a cross-doc completeness reconciliation, NOT invention of a
+  new obligation. No POL-11 Architecture-Source propagation cascade triggered. Version remains v1.6.0.
 
 ## §Trace v1.5.2
 

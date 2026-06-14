@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.40.2"
+version: "1.40.4"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-14T12:00:00Z
+timestamp: 2026-06-14T19:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "cbf13d5"
@@ -1213,6 +1213,47 @@ SE-16d monotonicity: v1.36 timestamp 2026-06-03T14:00:00Z > v1.35 timestamp 2026
 - BC-2.05.010 title updated from 6-variant to 7-variant form (bc_h1_is_title_source_of_truth).
 
 SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. PASS.
+
+## §Trace v1.40.4
+
+**CV-SS-005-SIBLING — BC-2.09.008 v1.3.1: PC Step 4 (Launching) SpawnAck ordering guarantee expanded with causal step ordering** (2026-06-14):
+
+- BC-2.09.008 v1.3.0 → v1.3.1: PC Step 4 (Launching) ordering statement was incomplete —
+  it cited only "per-client FIFO ordering" to explain why `SpawnAck` arrives before
+  broker-published `SessionStateChanged { Launching }`. This is the same FIFO-only
+  incompleteness fixed in BC-2.08.008 PC-5 v1.2.1 (§Trace v1.40.3 same burst). The fix
+  adds the causal step ordering property: (1) SpawnAck is sent at IPC-handler step 2,
+  before `spawn_session()` is called at step 4, which is before the broker emits
+  `SessionStateChanged { Launching }` at step 5; (2) the per-client FIFO then guarantees
+  in-order delivery to the requesting client. Canonical source cited:
+  SS-ipc.md §ServerToClient::SpawnAck §Delivery ordering steps 1-5. No wire/field-name
+  change. No change to any other postcondition, invariant, edge case, or test vector.
+  Whole-class check: zero remaining FIFO-only-without-causal survivors in live postconditions
+  of BC-2.09.008 (§Trace v1.3.0 historical narrative preserved verbatim as immutable history).
+
+- BC-INDEX version: 1.40.3 → 1.40.4. BC H1 title unchanged. No BC ID additions or
+  retirements.
+
+SE-16d monotonicity: v1.40.4 timestamp 2026-06-14T19:00:00Z > v1.40.3 timestamp 2026-06-14T18:00:00Z. PASS.
+
+## §Trace v1.40.3
+
+**CV-SS-005 — BC-2.08.008 v1.2.1: PC-5 SpawnAck ordering guarantee expanded with causal step ordering** (2026-06-14):
+
+- BC-2.08.008 v1.2.0 → v1.2.1: PC-5 ordering statement was incomplete — it cited only
+  the per-client FIFO ordering guarantee to explain why `SpawnAck` arrives before
+  broker-published `SessionStateChanged { Launching }`. The fix adds the causal step
+  ordering property: (1) SpawnAck is sent at IPC-handler step 2, before `spawn_session()`
+  is called at step 4, which is before the broker emits `SessionStateChanged { Launching }`
+  at step 5; (2) the per-client FIFO then guarantees in-order delivery to the requesting
+  client. Canonical source cited: SS-ipc.md §ServerToClient::SpawnAck §Delivery ordering
+  steps 1-5. No wire/field-name change. No change to any other postcondition, invariant,
+  edge case, or test vector.
+
+- BC-INDEX version: 1.40.2 → 1.40.3. BC H1 title unchanged. No BC ID additions or
+  retirements.
+
+SE-16d monotonicity: v1.40.3 timestamp 2026-06-14T18:00:00Z > v1.40.2 timestamp 2026-06-14T12:00:00Z. PASS.
 
 ## §Trace v1.40.2
 

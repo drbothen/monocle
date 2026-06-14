@@ -591,7 +591,7 @@ pub enum ClientToServer {
     /// The `SpawnAck` session_id is therefore NOT guaranteed to correspond to a successfully
     /// spawned session. The TUI MUST clear `AppMode::SessionCreation.launching_session_id`
     /// (set to `None`) on receipt of `ServerToClient::Error` from the spawn path (treat as
-    /// spawn failure; wizard returns to ProfilePicker per BC-2.09.008 PC-5 / BC-2.09.008 EC-252).
+    /// spawn failure; wizard returns to ProfilePicker per BC-2.09.008 §Postconditions (entering SessionCreation) item 7 / EC-252).
     SpawnSession {
         /// Spawn intent parameters from the TUI (SS-08 §SpawnOptions).
         /// `session_id` and `hooks_settings_path` are filled by the daemon IPC handler
@@ -1469,6 +1469,30 @@ prompts are never re-pushed.
   correction matching the precedent of SS-ipc:412 (Pass-37) and SS-embedded-pty:250 (S39-001 Pass-39).
   Version remains v1.21.0.
 
+**CV-SS-001 — §Trace v1.21.0 Fix-(c) description used orphan name `wizard_session_id`** (2026-06-14):
+
+- **Finding (CV-SS-001, BLOCKER):** The Fix-(c) description within §Trace v1.21.0 (the present-tense
+  statement of what the fix does) said "TUI must clear `wizard_session_id` on spawn error even though
+  SpawnAck has been received." This used the same orphan name corrected in F-P42-IMP-001 above. The
+  §Trace text in this line is a present-tense description of canonical behavior, NOT an explicit
+  BEFORE/AFTER quotation of old text, so it must use the canonical field name.
+- **Fix:** Corrected to "TUI must clear `AppMode::SessionCreation.launching_session_id` (set to `None`)
+  on spawn error even though SpawnAck has been received."
+- **Semver:** Errata-no-bump. §Trace prose accuracy fix; no behavioral content change. Version remains
+  v1.21.0.
+
+**CV-SS-002 — `SpawnSession` variant doc-comment cited non-existent BC-2.09.008 PC-5** (2026-06-14):
+
+- **Finding (CV-SS-002, IMPORTANT):** The live `ClientToServer::SpawnSession` variant doc-comment
+  (line ~594) cited the spawn-failure path as "per BC-2.09.008 PC-5 / BC-2.09.008 EC-252". BC-2.09.008
+  has no "PC-5" label — its postconditions (entering SessionCreation) are numbered items 1–7 and the
+  spawn-fail path is item 7. "PC-5" does not resolve to any real anchor in BC-2.09.008 as structured.
+  EC-252 does exist (correct).
+- **Fix:** Citation corrected to "per BC-2.09.008 §Postconditions (entering SessionCreation) item 7 /
+  EC-252", matching BC-2.09.008's actual postcondition structure.
+- **Semver:** Errata-no-bump. Cross-reference accuracy fix; no behavioral content change. Version remains
+  v1.21.0.
+
 ## §Trace v1.21.0
 
 **F-P41-IMP-001 — `ServerToClient::SpawnAck` added; UUID-locus prose corrected throughout** (2026-06-14):
@@ -1501,7 +1525,7 @@ prompts are never re-pushed.
   step described in the call chain.
 - **Fix (c) — `ClientToServer::SpawnSession` variant doc-comment rewritten:** Full 4-step
   IPC handler sequence documented. SpawnAck added as step 3. Spawn-failure case clarified:
-  TUI must clear `wizard_session_id` on spawn error even though SpawnAck has been received.
+  TUI must clear `AppMode::SessionCreation.launching_session_id` (set to `None`) on spawn error even though SpawnAck has been received.
 - Semver: minor (v1.20.1 → v1.21.0) — new `ServerToClient::SpawnAck` wire variant;
   normative IPC handler behavior added.
 

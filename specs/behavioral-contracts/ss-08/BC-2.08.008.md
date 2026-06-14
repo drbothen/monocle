@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.0"
+version: "1.2.1"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-14T12:00:00Z
+timestamp: 2026-06-14T18:00:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/SS-embedded-pty.md, architecture/SS-ipc.md, architecture/SS-daemon-wiring-v2-delta.md]
 input-hash: "1d2bd94"
@@ -115,8 +115,15 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
      `launching_session_id` are ignored by the wizard.
    - This auto-transition requires that `SessionStateChanged` is delivered before or at the
      same time as `SessionListUpdate` (so the wizard can act on the exact transition event,
-     not just the list update). `SpawnAck` is delivered before any broker-published
-     `SessionStateChanged { Launching }` per the per-client FIFO ordering guarantee.
+     not just the list update). `SpawnAck` is guaranteed to arrive before any
+     broker-published `SessionStateChanged { Launching }` by TWO complementary properties:
+     (1) **Causal step ordering** — in the daemon IPC handler, `SpawnAck` is sent at
+     step 2 (before `spawn_session()` is called at step 4, which is before the broker
+     emits `SessionStateChanged { Launching }` at step 5); and
+     (2) **Per-client FIFO** — the requesting client's per-client `mpsc` channel delivers
+     messages in send order, guaranteeing that `SpawnAck` (step 2) arrives at the TUI
+     before any broker-published `SessionStateChanged { Launching }` (step 5).
+     Canonical source: SS-ipc.md §ServerToClient::SpawnAck §Delivery ordering steps 1-5.
 
 6. When the TUI is in `AppMode::EmbeddedTerminal { session_id }` and receives
    `SessionStateChanged { session_id: <matching>, new_state: Terminated }`:
@@ -213,6 +220,38 @@ S-TBD — Implement SessionStateChanged broadcast on every SessionEntry state tr
 ## VP Anchors
 
 VP-TBD — SessionStateChanged emission and TUI response integration tests (filled after VP creation)
+
+## §Trace v1.2.1
+
+**CV-SS-005 — PC-5 SpawnAck ordering guarantee completed with causal step ordering** (2026-06-14):
+
+- **Finding (CV-SS-005):** PC-5 stated that `SpawnAck` is delivered before any
+  broker-published `SessionStateChanged { Launching }` citing only "the per-client FIFO
+  ordering guarantee." This is incomplete. The guarantee is causal, not merely channel-FIFO:
+  the per-client FIFO property only ensures in-order delivery to the requesting client; it
+  is the IPC handler's step ordering that guarantees `SpawnAck` is produced before the
+  broadcast even exists. An implementer reading only PC-5 could wrongly conclude that FIFO
+  alone is the mechanism — a misreading that would permit implementations that send `SpawnAck`
+  AFTER `spawn_session()` returns and still rely on FIFO to save them (FIFO cannot guarantee
+  ordering across the broker's fan-out vs. the client channel).
+
+- **Fix — PC-5 ordering statement expanded to two properties:**
+  (1) Causal step ordering: `SpawnAck` is sent in IPC-handler step 2 (before
+  `spawn_session()` in step 4, which is before the broker emits
+  `SessionStateChanged { Launching }` in step 5). The step sequence is defined in
+  SS-ipc.md §ServerToClient::SpawnAck §Delivery ordering and enforced in the IPC handler
+  skeleton in SS-session-manager.md §IPC handler pattern.
+  (2) Per-client FIFO: the requesting client's per-client `mpsc` channel delivers messages
+  in send order, guaranteeing in-order delivery of `SpawnAck` (step 2) ahead of any
+  broker-published `SessionStateChanged { Launching }` (step 5).
+
+- **Scope:** PC-5 ordering sentence only. No change to: PC-5 destructure pattern,
+  auto-advance match logic, EC-303, emission completeness (PC-1), broker dispatch (PC-2),
+  ordering/split rule (PC-3), rename rule (PC-4a), PC-4b, PC-6, Invariants 1-4,
+  EC-300/301/302/304, Canonical Test Vectors, or wire contract/field names.
+
+- **SE-16d monotonicity:** v1.2.1 timestamp 2026-06-14T18:00:00Z > v1.2.0 timestamp
+  2026-06-14T12:00:00Z. PASS.
 
 ## §Trace v1.2.0
 
