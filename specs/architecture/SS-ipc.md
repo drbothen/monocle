@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "ipc"
 subsystem: SS-05
-version: "1.23.0"
+version: "1.23.1"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -1449,6 +1449,15 @@ Mitigation: SOQ-3 (overlay clear on disconnect) removes all `VecDeque<PromptModa
 on TUI-side disconnect. The `InitialState` push on reconnect contains only prompts that are
 still pending in the daemon's registry (i.e., still within the 300ms timeout window). Stale
 prompts are never re-pushed.
+
+---
+
+## §Trace v1.23.1
+
+**F-P51-001 — `session_not_ready` wire producer clarified: DetachSession arm only; ResizePane excluded** (2026-06-14):
+
+- **Finding (F-P51-001, IMPORTANT/errata):** The §Trace v1.23.0 finding text (line below) described `SessionNotReady` as covering both `detach_session()` and `resize_session()` calls during Launching. This is accurate at the session-manager level (both methods may return `Err(SessionNotReady)`) but misleading for the wire-code producer question: the ResizePane IPC arm WARN-drops ALL `resize_session()` errors (SS-daemon-wiring-v2-delta.md §3 ResizePane arm; BC-2.05.010 Invariant 6 Exception). `"session_not_ready"` can only appear on the wire from the DetachSession IPC arm, which surfaces errors via `ServerToClient::Error`. No wire-code taxonomy change — 12 codes remain correct.
+- **Semver: patch (v1.23.0 → v1.23.1)** — errata prose correction; no wire-code set change.
 
 ---
 

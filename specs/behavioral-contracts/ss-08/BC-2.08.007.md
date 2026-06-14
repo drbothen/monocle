@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.0"
+version: "1.5.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -44,6 +44,16 @@ background. The TUI can re-attach at any time.
 ## Preconditions (detach)
 
 1. `SessionEntry` exists with `state: Running` and `host_conn: Some(_)`.
+
+   **Defensive note (F-P51-001):** These preconditions are the logical preconditions for a
+   successful detach. The daemon IPC handler does NOT enforce them as a pre-call gate — it calls
+   `detach_session()` for any `DetachSession` wire message. If the session is in Launching state
+   with `host_conn: None` (possible from untrusted clients), `detach_session()` returns
+   `Err(SessionError::SessionNotReady)` and the IPC handler emits
+   `ServerToClient::Error { code: "session_not_ready" }`. The official TUI never sends
+   `DetachSession` during Launching (BC-2.06.025 guards; Precondition 1 enforced at TUI level).
+   See BC-2.05.010 §DetachSession PC-4.
+
 2. The session-host process is alive.
 
 ## Postconditions (attach)
@@ -73,7 +83,7 @@ background. The TUI can re-attach at any time.
 ## Postconditions (detach)
 
 1. `SessionManager` sends `DaemonToHost::Detach` over the connection.
-2. The proxy task for this session is terminated (`proxy_task.take().map(|t| t.abort())`). `proxy_task` is typed `Option<JoinHandle<()>>` as of SS-session-manager.md v2.5.0; `.take()` clears the field and `.map(|t| t.abort())` aborts the task if present.
+2. The proxy task for this session is terminated (`proxy_task.take().map(|t| t.abort())`). `proxy_task` is typed `Option<JoinHandle<()>>` as of SS-session-manager.md v2.5.1; `.take()` clears the field and `.map(|t| t.abort())` aborts the task if present.
 3. `SessionEntry.host_conn` is set to `None`.
 4. `SessionEntry.state` transitions to `Detached`.
 5. `session-state.json` is updated to `state: "Detached"` (atomically).
@@ -94,7 +104,7 @@ background. The TUI can re-attach at any time.
    ScrollbackDumpComplete` — styled cells `Vec<Vec<SerializedCell>>` (full fg/bg color +
    attrs). The retired single-message `ScrollbackDump` form MUST NOT be used. The TUI
    MUST reset its parser for the session BEFORE applying the dump to prevent double-counting
-   live parser state. See SS-session-manager.md v2.5.0 §Screen-state transfer for the
+   live parser state. See SS-session-manager.md v2.5.1 §Screen-state transfer for the
    full reconstruction protocol.
 4. The 5-second timeout applies to the full `ScrollbackChunk*` + `ScrollbackDumpComplete`
    sequence for both re-discovery (BC-2.08.004) and interactive attach. After 5s without
@@ -133,7 +143,7 @@ background. The TUI can re-attach at any time.
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — detach/attach are explicitly named session lifecycle operations in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager `attach_session()`, `detach_session()`) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.5.0 §Public API (attach_session, detach_session signatures); §Per-session UDS protocol (DaemonToHost::Attach/Detach, HostToDaemon::ScrollbackChunk/ScrollbackDumpComplete); §Screen-state transfer on Attach; §Re-discovery state handling (I3-005 Detached preservation across restart); §host_conn type (proxy_task: Option<JoinHandle<()>> — F-P50-001); SS-daemon-wiring-v2-delta.md v1.11.1 §3b (SessionStateChanged{Running} before SessionListUpdate on attach) |
+| Architecture Source | SS-session-manager.md v2.5.1 §Public API (attach_session, detach_session signatures); §Per-session UDS protocol (DaemonToHost::Attach/Detach, HostToDaemon::ScrollbackChunk/ScrollbackDumpComplete); §Screen-state transfer on Attach; §Re-discovery state handling (I3-005 Detached preservation across restart); §host_conn type (proxy_task: Option<JoinHandle<()>> — F-P50-001); §Mapping table (SessionNotReady → "session_not_ready" on DetachSession arm; defensive precondition note — F-P51-001); SS-daemon-wiring-v2-delta.md v1.11.2 §3b (SessionStateChanged{Running} before SessionListUpdate on attach) |
 | Test Name | test_BC_2_08_007_attach_receives_scrollback_detach_keeps_session_alive |
 
 ## Related BCs
@@ -153,6 +163,16 @@ S-TBD — Implement SessionManager attach/detach (filled by story-writer)
 ## VP Anchors
 
 VP-TBD — Attach/detach integration tests (filled after VP creation)
+
+## §Trace v1.5.1
+
+**F-P51-001 — Defensive note added to §Preconditions (detach) Precondition 1; Architecture Source pins bumped** (2026-06-14):
+
+- **§Preconditions (detach) Precondition 1 — defensive note (F-P51-001):** Added explicit note that the daemon IPC handler does NOT enforce Precondition 1 as a pre-call gate — it calls `detach_session()` for any `DetachSession` wire message. If the session is in Launching state with `host_conn: None` (possible from untrusted clients with socket access), `detach_session()` returns `Err(SessionError::SessionNotReady)` and the IPC handler emits `ServerToClient::Error { code: "session_not_ready" }`. The official TUI never sends `DetachSession` during Launching: BC-2.06.025 guards and Precondition 1 is enforced at TUI level. Canonical cross-reference: BC-2.05.010 §DetachSession PC-4.
+- **Architecture Source pins bumped:** SS-session-manager.md v2.5.0 → v2.5.1 (SessionNotReady producer-set errata: DetachSession arm only; mapping table updated); SS-daemon-wiring-v2-delta.md v1.11.1 → v1.11.2 (citation staleness fix; no behavioral change to this document).
+- Patch bump: v1.5.0 → v1.5.1.
+
+SE-16d monotonicity: v1.5.1 timestamp 2026-06-14 > v1.5.0 timestamp 2026-06-14. PASS.
 
 ## §Trace v1.5.0
 

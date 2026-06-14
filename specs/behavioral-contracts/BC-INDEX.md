@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.40.8"
+version: "1.40.9"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-14T22:00:00Z
+timestamp: 2026-06-14T23:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "cbf13d5"
@@ -1225,6 +1225,34 @@ SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. 
 - BC-INDEX version: 1.40.4 → 1.40.5. No BC ID additions or retirements. No H1 title changes.
 
 SE-16d monotonicity: v1.40.5 timestamp 2026-06-14T20:00:00Z > v1.40.4 timestamp 2026-06-14T19:00:00Z. PASS.
+
+## §Trace v1.40.9
+
+**F-P51-001 — BC-2.06.025 v1.4.0: Explicit Launching-state action rules close cite-to-unbacked-guarantee gap** (2026-06-14):
+
+- **BC-2.06.025 v1.3.1 → v1.4.0 (minor — normative addition):**
+  BC-2.05.010 §DetachSession PC-4 and BC-2.08.007 §Preconditions (detach) defensive note both
+  cited "BC-2.06.025 guards" as the TUI-side guarantee that the official TUI never dispatches
+  `ClientToServer::DetachSession` during `Launching`. No such rule existed in BC-2.06.025 —
+  the existing PC-3 listed `D` → DetachSession unconditionally and Invariant 4 only blocked
+  actions for Terminating sessions. Gap closed by:
+  - **PC-3 Launching-state keybinding rules subsection (new):** Three explicit dispositions:
+    kill (`k`/`d`) ALLOWED; detach (`D`) BLOCKED at TUI (no-op + status hint); rename (`r`) ALLOWED.
+  - **Invariant 5 (new):** Formalizes Launching-state rules as MUST-level invariants. Explicitly
+    states this is NOT a blanket disable (unlike Invariant 4 for Terminating). Names Invariant 5
+    as the normative target of all "BC-2.06.025 guards" cites in BC-2.05.010 and BC-2.08.007.
+  - **EC-298 (new):** `D` on Launching → no DetachSession IPC; status bar hint.
+  - **EC-299 (new):** `r` on Launching → RenameSession IPC; ALLOWED.
+  - **VP table:** Three new unit test VPs for Launching-state action rules.
+  - **Traceability Cross-Ref expanded:** BC-2.05.010 §DetachSession PC-4, BC-2.08.003 Invariant 3,
+    BC-2.08.007 §Preconditions (detach) defensive note added as bidirectional cross-references.
+  - **Cited symbols verified:** BC-2.08.003 Invariant 3 (kill on Launching: allowed);
+    BC-2.05.010 §DetachSession PC-4 (session_not_ready defensive path);
+    BC-2.08.007 §Preconditions (detach) defensive note. All resolve.
+
+- BC-INDEX version: 1.40.8 → 1.40.9. BC H1 title unchanged. No BC ID additions or retirements.
+
+SE-16d monotonicity: v1.40.9 timestamp 2026-06-14T23:00:00Z > v1.40.8 timestamp 2026-06-14. PASS.
 
 ## §Trace v1.40.8
 

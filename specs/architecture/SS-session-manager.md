@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.5.0"
+version: "2.5.1"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -432,20 +432,31 @@ that:
      Error code on PID-kill failure: `SessionError::SessionHostDead` → `"kill_failed"` (mapped
      via `session_error_to_code(IpcOp::Kill, e)`).
 
-8. **Resize/Detach-during-Launching:** These operations require `host_conn: Some(_)`. If
-   called while `host_conn` is `None` (monitor not yet connected), they MUST return
-   `Err(SessionError::SessionNotReady)` → mapped to `"session_not_ready"` error code. The TUI
-   MUST NOT send `ResizePane` or `DetachSession` before receiving `SessionStateChanged{Running}`.
-   The state machine at the TUI level (BC-2.06.025 + BC-2.05.010) prevents this by only
-   enabling Detach/Resize for `Running` or `Detached` sessions. `SessionError::SessionNotReady`
-   is a defensive invariant; normal TUI behavior never reaches it.
+8. **Detach-during-Launching (F-P51-001):** `detach_session()` requires `host_conn: Some(_)`.
+   If called while `host_conn` is `None` (monitor not yet connected), it MUST return
+   `Err(SessionError::SessionNotReady)` → mapped to `"session_not_ready"` error code on the
+   IPC Detach arm. The official TUI never sends `DetachSession` before receiving
+   `SessionStateChanged{Running}` (BC-2.06.025 + BC-2.08.007 Precondition 1 require
+   `state: Running`). `SessionError::SessionNotReady` is a defensive invariant for untrusted
+   clients sending `DetachSession` against a Launching session. It IS a live reachable wire code
+   via the `DetachSession` arm.
+
+   **ResizePane carve-out (no change):** `resize_session()` errors are WARN-logged and dropped
+   by the IPC handler regardless of variant (SS-daemon-wiring-v2-delta.md §3 ResizePane arm;
+   BC-2.05.010 Invariant 6 Exception). `resize_session()` MUST NOT be claimed to produce
+   `"session_not_ready"` on the wire. If `resize_session()` returns `Err(SessionNotReady)` at
+   the session-manager level (session in Launching, host_conn: None), the IPC handler WARN-drops
+   it — no `ServerToClient::Error` is sent. The wire code `"session_not_ready"` is only reachable
+   via the `DetachSession` arm.
 
 **`SessionError` taxonomy addition (F-P50-001):**
 ```rust
 /// Operation called on a session in Launching state before the control connection was
-/// established. Normally unreachable from correct TUI (TUI only enables resize/detach for
-/// Running/Detached). Defensive invariant for race conditions or protocol bugs.
-/// Error code: "session_not_ready".
+/// established. Defensive invariant for untrusted clients — correct TUI never sends
+/// DetachSession during Launching (TUI only enables detach for Running/Detached).
+/// Wire producer: DetachSession IPC arm only. ResizePane IPC arm WARN-drops ALL
+/// resize_session() errors (never reaches wire). Error code: "session_not_ready".
+/// (F-P50-001; resize excluded F-P51-001)
 #[error("session not ready: {session_id} (state: Launching, control connection pending)")]
 SessionNotReady { session_id: String },
 ```
@@ -456,11 +467,11 @@ Add `SessionNotReady` to the SessionError taxonomy mapping table with code `"ses
 
 Three compounding reasons make a distinct code mandatory:
 
-(a) **Untrusted-client wire posture.** The IPC socket is Unix-domain but not exclusively controlled by the official TUI — any process with socket access can connect. The daemon MUST NOT assume the client is the canonical TUI or that TUI-side state guards are active. A control operation (`DetachSession`, `ResizePane`) arriving for a session in `Launching` state (with `host_conn: None`) is a well-formed IPC message that the daemon MUST route defensively. Relying on TUI guards to make this path unreachable would be a safety invariant violation.
+(a) **Untrusted-client wire posture.** The IPC socket is Unix-domain but not exclusively controlled by the official TUI — any process with socket access can connect. The daemon MUST NOT assume the client is the canonical TUI or that TUI-side state guards are active. A `DetachSession` message arriving for a session in `Launching` state (with `host_conn: None`) is a well-formed IPC message that the daemon MUST route defensively. Relying on TUI guards to make this path unreachable would be a safety invariant violation. (Note: `ResizePane` arriving during Launching IS handled defensively by `resize_session()` returning `SessionNotReady` at the session-manager level, but the IPC handler WARN-drops that error per the ResizePane carve-out — no wire code is emitted.)
 
-(b) **Semantically distinct from `invalid_request`.** The `invalid_request` catch-all covers structurally malformed or unsupported messages — requests that cannot be fulfilled because they are syntactically wrong or reference a capability the daemon does not implement. A `DetachSession` or `ResizePane` for a Launching session is fully valid and supported; it is merely MISTIMED. The session exists and is in a known transient state. Classifying this as `"invalid_request"` would misrepresent the failure class and prevent the TUI from distinguishing "bad message format" (unrecoverable without code fix) from "session not yet ready" (transient, retry-eligible after `SessionStateChanged{Running}` arrives).
+(b) **Semantically distinct from `invalid_request`.** The `invalid_request` catch-all covers structurally malformed or unsupported messages. A `DetachSession` for a Launching session is fully valid and supported; it is merely MISTIMED. The session exists and is in a known transient state. Classifying this as `"invalid_request"` would prevent the TUI from distinguishing "bad message format" (unrecoverable) from "session not yet ready" (transient, retry-eligible after `SessionStateChanged{Running}` arrives).
 
-(c) **No-silent-failure invariant without misclassification.** BC-2.05.010 Invariant 6 mandates that every `SessionError` path on user-initiated IPC operations produces a `ServerToClient::Error` with a specific, typed code. A typed `"session_not_ready"` code satisfies this invariant (client receives actionable signal: wait for Running state) without collapsing the error into the generic catch-all. If `invalid_request` were returned instead, the TUI banner would display `"[operation failed]"` — a misleading, unactionable message for a transient state condition.
+(c) **No-silent-failure invariant without misclassification.** BC-2.05.010 Invariant 6 mandates that every `SessionError` path on user-initiated IPC operations (DetachSession is user-initiated) produces a `ServerToClient::Error` with a specific, typed code. A typed `"session_not_ready"` code satisfies this invariant without collapsing the error into the generic catch-all. If `invalid_request` were returned instead, the TUI banner would display `"[operation failed]"` — a misleading, unactionable message for a transient state condition.
 
 **Why no explicit `SessionNotReady` for kill-during-Launching:** Kill on a `Launching` session
 is explicitly ALLOWED (BC-2.06.025 EC-293; BC-2.08.003 Invariant 3). It MUST succeed — either
@@ -570,9 +581,10 @@ pub enum SessionError {
     #[error("invalid session name: {reason}")]
     InvalidSessionName { reason: String },
     /// Operation requires an established control connection but session is in Launching state
-    /// with the post-spawn monitor not yet connected. Defensive invariant — normally unreachable
-    /// from correct TUI (TUI only enables resize/detach for Running/Detached).
-    /// See §Post-spawn monitor step 8 (F-P50-001). Error code: "session_not_ready".
+    /// with the post-spawn monitor not yet connected. Defensive invariant — correct TUI never
+    /// sends DetachSession during Launching (only enables detach for Running/Detached).
+    /// Wire producer: DetachSession IPC arm. ResizePane IPC arm WARN-drops this variant.
+    /// See §Post-spawn monitor step 8 (F-P50-001; resize excluded F-P51-001). Error code: "session_not_ready".
     #[error("session not ready: {session_id} (state: Launching, control connection pending)")]
     SessionNotReady { session_id: String },
     #[error("I/O error: {0}")]
@@ -608,7 +620,7 @@ method calls EngineModule methods, so `SessionError::EngineError` can only be pr
 | `SessionHostDead` (attach-path) | `attach_session` | `"attach_failed"` | Session-host PID dead when daemon attempts attach |
 | `SessionHostDead` (kill-path) | `kill_session` | `"kill_failed"` | Session-host PID dead when daemon attempts kill; see `session_error_to_code(Op, &SessionError)` |
 | `InvalidSessionName` | `rename_session` | `"rename_failed"` | Empty name or name exceeding length limit |
-| `SessionNotReady` | `detach_session`, `resize_session` | `"session_not_ready"` | Session in Launching state; control connection not yet established; defensive invariant — correct TUI never reaches this (only enables Detach/Resize for Running/Detached) (F-P50-001) |
+| `SessionNotReady` | `detach_session` | `"session_not_ready"` | Session in Launching state; `host_conn: None` (monitor not yet connected); defensive invariant for untrusted clients — correct TUI never sends DetachSession during Launching (BC-2.06.025 + BC-2.08.007 Precondition 1). `resize_session()` may also return this variant internally but the ResizePane IPC arm WARN-drops ALL resize errors (never sends ServerToClient::Error). Wire producer: DetachSession arm only. (F-P50-001; resize excluded F-P51-001) |
 | `Io` | Any | `"invalid_request"` | Unexpected I/O error; nearest generic failure code |
 | `EngineError` (other/future variants) | `spawn_session` | `"invalid_request"` | Catch-all for any future `EngineError` variants not yet explicitly mapped (mandatory `_ =>` forward-compat arm); `"invalid_request"` is the nearest generic code. `UnsupportedOperation` now has its own arm and no longer falls through here (F-P44-IMP-001). |
 
@@ -1025,7 +1037,7 @@ pub enum HostToDaemon {
     PtyReset,
 }
 
-// C5-002 (SS-ipc.md v1.23.0): SerializedCell and SerializedColor are defined in
+// C5-002 (SS-ipc.md v1.23.1): SerializedCell and SerializedColor are defined in
 // monocle-ipc (crate::ipc::SerializedCell / crate::ipc::SerializedColor) so both
 // monocle-session-host (writer) and monocle-tui (reader) share the type without a
 // cross-binary dependency. The canonical definition with full field documentation
@@ -1574,6 +1586,16 @@ BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
 
+## §Trace v2.5.1
+
+**F-P51-001 — session_not_ready producer-set corrected: detach-only; resize excluded** (2026-06-14):
+
+- **Finding (F-P51-001, IMPORTANT/cross-doc normative contradiction):** §Post-spawn monitor step 8 and the Mapping table (v2.5.0) listed `resize_session` as a co-producer of `session_not_ready` alongside `detach_session`. This contradicts BC-2.05.010 Invariant 6 Exception (ResizePane carve-out): the ResizePane IPC arm WARN-drops ALL `resize_session()` errors and never sends `ServerToClient::Error`. `resize_session()` may return `Err(SessionNotReady)` at the session-manager level, but that result is WARN-dropped by the handler — `"session_not_ready"` can never appear on the wire from a resize. The v2.5.0 wording also implied both resize and detach were live wire producers, which is wrong.
+- **Fix:** Step 8 rewritten to `Detach-during-Launching` only (resize carve-out rule restated inline). Mapping table row corrected to `detach_session` only, with explicit note that resize is excluded as a wire producer. Doc-comment in `SessionError::SessionNotReady` and the taxonomy-addition prose updated. Inline rationale (a)/(c) updated to be detach-only where wire-emission is the claim. Fix labels (f)/(h) in §Trace v2.5.0 updated to reflect detach-only wire producer.
+- **Semver: patch (v2.5.0 → v2.5.1)** — errata correction of producer-set claim; no behavior change (the ResizePane WARN-drop carve-out was always normative; this pass simply aligns the prose to it).
+
+---
+
 ## §Trace v2.5.0
 
 **F-P50-001 — host_conn lifecycle during Launching is contradictory: post-spawn monitor + control-vs-proxy distinction + kill-during-Launching semantics** (2026-06-14):
@@ -1595,11 +1617,11 @@ BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 - **Fix (e) — §Post-spawn monitor section added:** New subsection specifying all post-spawn monitor steps (poll/connect/SO_PEERCRED/host_conn population/StateChanged handling/kill-race/resize-detach-race). Includes two new integration test specs.
 
-- **Fix (f) — `SessionNotReady` variant added to `SessionError`:** Defensive error for resize/detach called during Launching before control connection established. Mapped to `"session_not_ready"` error code. NOT returned by kill_session(). Compiler-enforced: must add arm to `session_error_to_code()`.
+- **Fix (f) — `SessionNotReady` variant added to `SessionError`:** Defensive error for `detach_session()` called during Launching before control connection established (`host_conn: None`). Also returned by `resize_session()` at the session-manager level for the same condition, but the ResizePane IPC arm WARN-drops ALL resize errors — `SessionNotReady` is never emitted on the wire from resize. Wire producer: DetachSession arm only. NOT returned by `kill_session()`. Compiler-enforced: must add arm to `session_error_to_code()`. (F-P51-001: resize excluded from wire-producer claim.)
 
 - **Fix (g) — `session_error_to_code()` extended:** New arm `SessionError::SessionNotReady { .. } => "session_not_ready"` added. Outer `SessionError` match remains compiler-enforced exhaustive.
 
-- **Fix (h) — Mapping table row added:** `SessionNotReady` → `"session_not_ready"`, triggered by `detach_session`, `resize_session`.
+- **Fix (h) — Mapping table row added:** `SessionNotReady` → `"session_not_ready"`, triggered by `detach_session` (wire producer). `resize_session` may return this variant internally but it is WARN-dropped by the IPC handler — not a wire producer. (F-P51-001.)
 
 - **Fix (i) — Re-discovery Launching/Running prose clarified:** Added note that re-discovery does NOT replay the post-spawn monitor path; it connects and sends `DaemonToHost::Attach` directly (treating the session-host as already in Running). Also added `host_conn: Some(...)` to the re-discovery Running registration.
 

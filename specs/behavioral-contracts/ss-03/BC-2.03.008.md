@@ -53,9 +53,9 @@ that must be explicitly opted into, not accidentally inherited.
    an error to the TUI: `"Session spawn not supported for this harness"`. This banner is
    delivered via `ServerToClient::Error { code: "spawn_unsupported", message: "Session spawn not supported for this harness" }`
    — the `"spawn_unsupported"` wire code is the 11th entry in the `ServerToClient::Error`
-   code taxonomy (SS-ipc v1.23.0; now 12 codes as of v1.23.0 with `session_not_ready` added F-P50-001 — `spawn_unsupported` remains the 11th), mapped from `EngineError::UnsupportedOperation` via
+   code taxonomy (SS-ipc v1.23.1; now 12 codes as of v1.23.0 with `session_not_ready` added F-P50-001 — `spawn_unsupported` remains the 11th), mapped from `EngineError::UnsupportedOperation` via
    `session_error_to_code(IpcOp::Spawn, EngineError::UnsupportedOperation)` →
-   `"spawn_unsupported"` (SS-session-manager v2.5.0 §session_error_to_code). The session
+   `"spawn_unsupported"` (SS-session-manager v2.5.1 §session_error_to_code). The session
    creation wizard MUST present this error in the UI and return to the ProfilePicker step.
 4. The default impl is defined in the `EngineModule` trait body in `monocle-core/src/engine.rs`.
    It does NOT require any overriding `impl EngineModule for X` block — the default fires

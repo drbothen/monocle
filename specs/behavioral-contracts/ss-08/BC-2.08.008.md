@@ -79,7 +79,7 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
    The per-client channel FIFO draining order then guarantees that if both messages are
    delivered, `SessionStateChanged` is received first. The mutex provides the atomicity
    window for both enqueues — it does NOT directly control wire order (the channel FIFO does).
-   See SS-daemon-wiring-v2-delta.md v1.11.1 §3b for the canonical emission code pattern.
+   See SS-daemon-wiring-v2-delta.md v1.11.2 §3b for the canonical emission code pattern.
 
    **Ordered-pair split on full buffer:** If the first `.try_send()` (SessionStateChanged)
    succeeds but the second `.try_send()` (SessionListUpdate) fails (client buffer full), the
@@ -96,7 +96,7 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
    only — it is NOT a `SessionState` transition. `SessionStateChanged` carries
    `new_state: SessionState` and cannot convey the updated name. Only `SessionListUpdate`
    (carrying the full `SessionSnapshot` with updated `display_name`) is emitted for rename.
-   See SS-daemon-wiring-v2-delta.md v1.11.1 §3b emission table.
+   See SS-daemon-wiring-v2-delta.md v1.11.2 §3b emission table.
 
 4b. The `InitialState` push (on TUI client connect) includes the current session list with
    current states. TUI clients that connect after a transition has already occurred will see
@@ -197,7 +197,7 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC defines the `SessionStateChanged` IPC message which is the primary notification mechanism for session lifecycle state transitions; it is the trigger for the wizard auto-advance and EmbeddedTerminal exit, both of which are core session lifecycle behaviors in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager state transitions → broker publish); monocle-ipc (`ServerToClient::SessionStateChanged` variant); monocle-tui (wizard auto-advance, EmbeddedTerminal exit handlers) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.5.0 §Session lifecycle state machine (state transitions, including re-discovery GC and Detached re-discovery; IPC handler generates UUID + sends SpawnAck before spawn_session()); SS-embedded-pty.md v1.6.0 §TUI AppMode Extensions (SessionCreation::Launching auto-transition to EmbeddedTerminal; `launching_session_id: Option<String>` field added — F-P41-IMP-001); SS-ipc.md v1.23.0 §ServerToClient::SpawnAck (new variant; per-client point-to-point delivery before SessionStateChanged{Launching}); SS-daemon-wiring-v2-delta.md v1.11.1 §3b (SessionStateChanged emission rule, ordered-pair-split-on-Full disconnect rule, rename-only-SessionListUpdate rule) |
+| Architecture Source | SS-session-manager.md v2.5.1 §Session lifecycle state machine (state transitions, including re-discovery GC and Detached re-discovery; IPC handler generates UUID + sends SpawnAck before spawn_session()); SS-embedded-pty.md v1.6.0 §TUI AppMode Extensions (SessionCreation::Launching auto-transition to EmbeddedTerminal; `launching_session_id: Option<String>` field added — F-P41-IMP-001); SS-ipc.md v1.23.1 §ServerToClient::SpawnAck (new variant; per-client point-to-point delivery before SessionStateChanged{Launching}); SS-daemon-wiring-v2-delta.md v1.11.2 §3b (SessionStateChanged emission rule, ordered-pair-split-on-Full disconnect rule, rename-only-SessionListUpdate rule) |
 | Cross-Ref | BC-2.09.008 (SessionCreation wizard auto-transition to EmbeddedTerminal on Running); BC-2.08.003 (kill → Terminating transition; 12s watchdog → Terminated); BC-2.05.003 (SessionListUpdate — emitted concurrently with SessionStateChanged for same transition) |
 | Test Name | test_BC_2_08_008_session_state_changed_emitted_on_every_transition |
 

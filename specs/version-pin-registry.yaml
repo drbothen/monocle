@@ -106,8 +106,8 @@ SS-forward-compatibility:
 
 SS-ipc:
   path: specs/architecture/SS-ipc.md
-  current_version: "1.23.0"
-  last_bump_commit: "[Pass-50 F-P50-001 D-293 — host_conn.writer established during Launching via post-spawn monitor; proxy_task now Option<JoinHandle<()>>; SessionError::SessionNotReady (9th variant); session_not_ready wire code (12th in taxonomy); kill-during-Launching PID-fallback path; 11->12 / 8->9 cascade swept]"
+  current_version: "1.23.1"
+  last_bump_commit: "[Pass-51 F-P51-001 D-294 — errata trace: session_not_ready producer = DetachSession arm only; resize WARN-dropped per BC-2.05.010 Invariant 6 Exception; SS-ipc §DetachSession IPC handler comment updated]"
   last_bump_date: "2026-06-14"
 
 SS-permissions-phase1:
@@ -124,8 +124,8 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "2.5.0"
-  last_bump_commit: "[Pass-50 F-P50-001 D-293 — host_conn.writer (CONTROL connection) established during Launching via post-spawn monitor; distinct from proxy_task (PTY streaming, established at Running); proxy_task now Option<JoinHandle<()>>; kill-during-Launching PID-fallback; SessionNotReady arm in session_error_to_code]"
+  current_version: "2.5.1"
+  last_bump_commit: "[Pass-51 F-P51-001 D-294 — mapping table + step-8 + doc-comments corrected to detach-only session_not_ready producer; resize explicitly excluded (WARN-drop per BC-2.05.010 Invariant 6 Exception)]"
   last_bump_date: "2026-06-14"
 
 SS-embedded-pty:
@@ -142,8 +142,8 @@ SS-engine-module-v2-delta:
 
 SS-daemon-wiring-v2-delta:
   path: specs/architecture/SS-daemon-wiring-v2-delta.md
-  current_version: "1.11.1"
-  last_bump_commit: "[Pass-50 F-P50-001 D-293 — errata: SessionNotReady row added to §3 error table; session_not_ready (12th wire code) cross-reference; errata-level patch (no normative protocol change)]"
+  current_version: "1.11.2"
+  last_bump_commit: "[Pass-51 F-P51-001 D-294 — errata trace: session_not_ready producer clarified to DetachSession arm only; SS-ipc errata note added]"
   last_bump_date: "2026-06-14"
 
 SS-deps-pin-manifest-v2-delta:
@@ -204,8 +204,8 @@ ARCH-INDEX:
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.40.8"
-  last_bump_commit: "[Pass-50 F-P50-001 D-293 — BC-2.08.003 v1.3.1→v1.4.0, BC-2.05.010 v1.8.1→v1.9.0, BC-2.08.007 v1.4.2→v1.5.0, BC-2.03.008 v1.0.2→v1.0.3 version rows updated; §Summary SS-08 SessionError variant count 8→9 updated; §Trace v1.40.8 added]" # version-pin-historical: changelog description of bump, not a live pin
+  current_version: "1.40.9"
+  last_bump_commit: "[Pass-51 F-P51-001 D-294 — SS-session-manager v2.5.1, SS-ipc v1.23.1, SS-daemon-wiring-v2-delta v1.11.2, BC-2.05.010 v1.9.1, BC-2.08.007 v1.5.1, BC-2.06.025 v1.4.0 version rows updated; §Trace v1.40.9 added]" # version-pin-historical: changelog description of bump, not a live pin
   last_bump_date: "2026-06-14"
 
 STORY-INDEX:
@@ -720,7 +720,7 @@ BC-2.03.007:
 BC-2.03.008:
   path: specs/behavioral-contracts/ss-03/BC-2.03.008.md
   current_version: "1.0.3"
-  last_bump_commit: "[Pass-50 F-P50-001 D-293 — arch-source pins bumped to SS-ipc v1.23.0/SS-session-manager v2.5.0/SS-engine-module-v2-delta v1.6.0; SessionNotReady taxonomy note updated; 12-code taxonomy propagation]"
+  last_bump_commit: "[Pass-50 F-P50-001 D-293 — arch-source pins bumped to SS-ipc v1.23.0/SS-session-manager v2.5.0/SS-engine-module-v2-delta v1.6.0; SessionNotReady taxonomy note updated; 12-code taxonomy propagation]" # version-pin-historical: changelog description of Pass-50 bump; those were canonical versions at Pass-50 time
   last_bump_date: "2026-06-14"
 
 BC-2.05.009:
@@ -731,8 +731,8 @@ BC-2.05.009:
 
 BC-2.05.010:
   path: specs/behavioral-contracts/ss-05/BC-2.05.010.md
-  current_version: "1.9.0"
-  last_bump_commit: "[Pass-50 F-P50-001 D-293 — session_not_ready error path documented for AttachSession/DetachSession/KillSession on not-ready sessions; arch-source pins bumped to SS-ipc v1.23.0/SS-session-manager v2.5.0/SS-engine-module-v2-delta v1.6.0/SS-daemon-wiring-v2-delta v1.11.1]"
+  current_version: "1.9.1"
+  last_bump_commit: "[Pass-51 F-P51-001 D-294 — §DetachSession PC-4 gains session_not_ready bullet; §ResizePane rationale expanded (carve-out strengthened; WARN-drop all errors per Invariant 6 Exception); §Trace S-P51-001 copy-paste duplicate fixed; arch-source pins bumped to SS-ipc v1.23.1/SS-session-manager v2.5.1/SS-daemon-wiring-v2-delta v1.11.2]"
   last_bump_date: "2026-06-14"
 
 BC-2.05.011:
@@ -743,9 +743,9 @@ BC-2.05.011:
 
 BC-2.06.025:
   path: specs/behavioral-contracts/ss-06/BC-2.06.025.md
-  current_version: "1.3.1"
-  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.4.0"
+  last_bump_commit: "[Pass-51 F-P51-001 D-294 SIBLING — added explicit Launching action rules (Invariant 5): kill ALLOWED per F-P50-001, detach BLOCKED/no-op, rename allowed; EC-298 (kill-during-Launching) + EC-299 (detach-during-Launching); VP references backing 'BC-2.06.025 guards' cites]"
+  last_bump_date: "2026-06-14"
 
 BC-2.08.001:
   path: specs/behavioral-contracts/ss-08/BC-2.08.001.md
@@ -762,7 +762,7 @@ BC-2.08.002:
 BC-2.08.003:
   path: specs/behavioral-contracts/ss-08/BC-2.08.003.md
   current_version: "1.4.0"
-  last_bump_commit: "[Pass-50 F-P50-001 D-293 — PC-1 confirmed correct; kill-during-Launching-race PID-fallback path (→kill_failed) documented; host_conn.writer established during Launching via post-spawn monitor; arch-source pins bumped to SS-session-manager v2.5.0/SS-daemon-wiring-v2-delta v1.11.1]"
+  last_bump_commit: "[Pass-50 F-P50-001 D-293 — PC-1 confirmed correct; kill-during-Launching-race PID-fallback path (→kill_failed) documented; host_conn.writer established during Launching via post-spawn monitor; arch-source pins bumped to SS-session-manager v2.5.0/SS-daemon-wiring-v2-delta v1.11.1]" # version-pin-historical: changelog description of Pass-50 bump; those were canonical versions at Pass-50 time
   last_bump_date: "2026-06-14"
 
 BC-2.08.004:
@@ -785,8 +785,8 @@ BC-2.08.006:
 
 BC-2.08.007:
   path: specs/behavioral-contracts/ss-08/BC-2.08.007.md
-  current_version: "1.5.0"
-  last_bump_commit: "[Pass-50 F-P50-001 D-293 — proxy_task now Option<JoinHandle<()>> (established at Running, not Launching); arch-source pins bumped to SS-session-manager v2.5.0/SS-daemon-wiring-v2-delta v1.11.1; session_not_ready variant reference added]"
+  current_version: "1.5.1"
+  last_bump_commit: "[Pass-51 F-P51-001 D-294 — detach defensive-branch note: when session not ready, detach BLOCKED/session_not_ready per BC-2.05.010 PC-4; arch-source pins bumped to SS-session-manager v2.5.1/SS-daemon-wiring-v2-delta v1.11.2/SS-ipc v1.23.1]"
   last_bump_date: "2026-06-14"
 
 BC-2.08.008:

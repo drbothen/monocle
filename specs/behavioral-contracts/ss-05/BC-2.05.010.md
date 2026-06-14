@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.9.0"
+version: "1.9.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:45:00Z
@@ -54,7 +54,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 2. Daemon calls `SessionManager::spawn_session(opts)` (BC-2.08.001).
 3. On success: `ServerToClient::SessionStateChanged { session_id, new_state }` broadcast BEFORE
    `ServerToClient::SessionListUpdate` broadcast (ordered pair, per-client FIFO, per BC-2.08.008
-   PC-3 / SS-daemon-wiring-v2-delta.md v1.11.1 §3b). The `SessionStateChanged` event reflects
+   PC-3 / SS-daemon-wiring-v2-delta.md v1.11.2 §3b). The `SessionStateChanged` event reflects
    the `Launching → Running` transition; the ordering is atomically guaranteed under the
    `SessionManager` mutex hold into each client's per-client `mpsc::Sender`.
 4. On failure: `ServerToClient::Error { code: <spawn-path-code>, message: ... }` sent to the
@@ -81,7 +81,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 2. Daemon calls `SessionManager::kill_session(&session_id)` (BC-2.08.003).
 3. On success: `ServerToClient::SessionStateChanged { session_id, new_state }` broadcast BEFORE
    `ServerToClient::SessionListUpdate` broadcast (ordered pair, per-client FIFO, per BC-2.08.008
-   PC-3 / SS-daemon-wiring-v2-delta.md v1.11.1 §3b). The `SessionStateChanged` event reflects
+   PC-3 / SS-daemon-wiring-v2-delta.md v1.11.2 §3b). The `SessionStateChanged` event reflects
    the `Running → Terminating` transition (emitted immediately; `Terminating → Terminated`
    follows when the session-host confirms exit per BC-2.08.003).
 4. On failure: `ServerToClient::Error { code: <kill-path-code>, message: ... }` sent to the
@@ -115,11 +115,17 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
    `ClientToServer` variant exempt from the No-silent-failure invariant (see §No-silent-failure
    invariant below). Failures from `resize_session()` are WARN-logged and dropped — no
    `ServerToClient::Error` is sent to the requesting client. Rationale: after the zero-dimension
-   clamp, the only remaining failure path is `SessionError::SessionNotFound` — a benign race
-   condition where the session terminated between the TUI sending the resize and the daemon
-   processing it. This race is expected at session teardown; surfacing it as a TUI error would
-   create spurious "Session not found" popups during normal session exit. Per
-   SS-session-manager.md §ResizePane special rule (lines 572-576).
+   clamp, the reachable `resize_session()` failure paths are (F-P51-001):
+   - `SessionError::SessionNotFound` — benign race: the session terminated between the TUI sending
+     the resize and the daemon processing it. Expected at session teardown; surfacing it would
+     create spurious "Session not found" popups during normal session exit.
+   - `SessionError::SessionNotReady` — session is in Launching state with `host_conn: None`
+     (post-spawn monitor not yet connected). This is an untrusted-client path; the official TUI
+     prevents sending `ResizePane` during Launching via state guards. Surfacing it would create
+     spurious popups during normal session startup.
+   Both paths are WARN-dropped. The WARN-drop carve-out covers ALL `resize_session()` errors
+   without enumeration — F-P51-001 strengthens, not narrows, this invariant. Per
+   SS-session-manager.md v2.5.1 §ResizePane special rule (lines 572-576).
 
 ### DetachSession
 
@@ -127,14 +133,18 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 2. Daemon calls `SessionManager::detach_session(&session_id)` (BC-2.08.007).
 3. On success: `ServerToClient::SessionStateChanged { session_id, new_state: Detached }` broadcast
    BEFORE `ServerToClient::SessionListUpdate` broadcast (ordered pair, per-client FIFO, per
-   BC-2.08.008 PC-3 / SS-daemon-wiring-v2-delta.md v1.11.1 §3b).
+   BC-2.08.008 PC-3 / SS-daemon-wiring-v2-delta.md v1.11.2 §3b).
 4. On failure: `ServerToClient::Error { code: <detach-path-code>, message: ... }` sent to the
    requesting client. `DetachSession` is user-initiated — failures MUST surface (not dropped) per
-   the No-silent-failure invariant below. The reachable failure code, per
-   `session_error_to_code(IpcOp::Detach, &e)` (SS-session-manager.md §Mapping table line 440):
+   the No-silent-failure invariant below. The reachable failure codes, per
+   `session_error_to_code(IpcOp::Detach, &e)` (SS-session-manager.md v2.5.1 §Mapping table line 440):
    - `"session_not_found"` — `SessionError::SessionNotFound` (session_id not in registry or
      already terminated). Note: `SessionHostDead` is NOT reachable on the detach-path; `detach_session()`
      aborts the proxy task rather than attempting a new connection to the session-host.
+   - `"session_not_ready"` — `SessionError::SessionNotReady` (session in Launching state; `host_conn: None`;
+     post-spawn monitor not yet connected). Defensive: the official TUI never sends `DetachSession`
+     during Launching (BC-2.08.007 Precondition 1 requires `state: Running`; BC-2.06.025 guards).
+     Reachable from untrusted clients with socket access. (F-P51-001)
    See EC-284b.
 
 ### RenameSession
@@ -170,7 +180,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
    re-attaches a `Detached` session from the sessions panel. The TUI MUST NOT send
    `DaemonToHost::Attach` directly — that is a daemon→session-host message. The TUI sends
    `ClientToServer::AttachSession` to the daemon, which routes to `SessionManager::attach_session()`.
-   Per SS-ipc.md v1.23.0 §`ClientToServer::AttachSession`.
+   Per SS-ipc.md v1.23.1 §`ClientToServer::AttachSession`.
 
 ## Invariants
 
@@ -199,7 +209,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
    clamp (Invariant 5), the only remaining `resize_session()` failure is `SessionNotFound` —
    a benign race where the session terminated between the TUI sending the resize and the daemon
    processing it. These failures are WARN-logged and dropped; no `ServerToClient::Error` is sent.
-   Per SS-ipc.md v1.23.0 lines 1515/389 (normative citation) and SS-session-manager.md lines
+   Per SS-ipc.md v1.23.1 lines 1515/389 (normative citation) and SS-session-manager.md v2.5.1 lines
    572-576 (ResizePane special rule rationale). Also cited by SS-session-manager.md line 385
    as "BC-2.05.010 §No-silent-failure invariant" — this section is the named target of that
    forward-reference.
@@ -241,7 +251,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 | L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — these ClientToServer variants extend the internal transport capability with session lifecycle control messages (spawn, kill, key input, resize, detach, rename, re-attach) — all transported over the existing UDS per the session/event/prompt push design |
 | Architecture Module | monocle-ipc (`ClientToServer` enum new variants); monocle-runtime (IPC handler routing to SessionManager) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-daemon-wiring-v2-delta.md v1.11.1 §IPC handler — new ClientToServer variants (including AttachSession; `ClientToServer::SpawnSession { opts: SpawnOptions }` wire variant under Model A — I27-001); SS-ipc.md v1.23.0 §`ClientToServer::SpawnSession { opts: SpawnOptions }` (Model A wire variant — I27-001); SS-ipc.md v1.23.0 §`ClientToServer::AttachSession` (I3-004 — TUI re-attach; replaces incorrect "TUI sends DaemonToHost::Attach" description); SS-ipc.md v1.23.0 §`ServerToClient::Error` — Error variant + code taxonomy (`spawn_failed`, `binary_not_found`, `invalid_spawn_arg`, `spawn_unsupported`, `sidecar_write_failed`, `session_id_collision`, `session_not_found`, `attach_failed`, `kill_failed`, `rename_failed`, `invalid_request`, `session_not_ready`) — 12 codes as of v1.23.0; `spawn_unsupported` added F-P44-IMP-001; `session_not_ready` added F-P50-001; added by architect in Pass-6 parallel track (C6-001); SS-session-manager.md v2.5.0 §session_error_to_code (spawn-path arms — Model A reachability for binary_not_found/invalid_spawn_arg confirmed I27-001; UnsupportedOperation → "spawn_unsupported" arm added F-P44-IMP-001); SS-engine-module-v2-delta.md v1.6.0 §SessionError (9-variant enum including SessionNotReady — F-P50-001) |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.11.2 §IPC handler — new ClientToServer variants (including AttachSession; `ClientToServer::SpawnSession { opts: SpawnOptions }` wire variant under Model A — I27-001); SS-ipc.md v1.23.1 §`ClientToServer::SpawnSession { opts: SpawnOptions }` (Model A wire variant — I27-001); SS-ipc.md v1.23.1 §`ClientToServer::AttachSession` (I3-004 — TUI re-attach; replaces incorrect "TUI sends DaemonToHost::Attach" description); SS-ipc.md v1.23.1 §`ServerToClient::Error` — Error variant + code taxonomy (`spawn_failed`, `binary_not_found`, `invalid_spawn_arg`, `spawn_unsupported`, `sidecar_write_failed`, `session_id_collision`, `session_not_found`, `attach_failed`, `kill_failed`, `rename_failed`, `invalid_request`, `session_not_ready`) — 12 codes as of v1.23.1; `spawn_unsupported` added F-P44-IMP-001; `session_not_ready` added F-P50-001; wire producer is DetachSession arm only (F-P51-001); added by architect in Pass-6 parallel track (C6-001); SS-session-manager.md v2.5.1 §session_error_to_code (spawn-path arms — Model A reachability for binary_not_found/invalid_spawn_arg confirmed I27-001; UnsupportedOperation → "spawn_unsupported" arm added F-P44-IMP-001; SessionNotReady producer-set: DetachSession arm only, resize excluded F-P51-001); SS-engine-module-v2-delta.md v1.6.0 §SessionError (9-variant enum including SessionNotReady — F-P50-001) |
 | Cross-Ref | BC-2.08.001 (SpawnSession → spawn_session()); BC-2.08.003 (KillSession → kill_session()); BC-2.08.007 (DetachSession → detach_session()) |
 | Test Name | test_BC_2_05_010_new_client_to_server_variants_routed |
 
@@ -270,12 +280,25 @@ VP-TBD — IPC variant routing integration tests (filled after VP creation)
 **F-P50-001 — SessionNotReady (9th SessionError variant); 12th wire code session_not_ready; SS-ipc v1.23.0 / SS-session-manager v2.5.0 pins** (2026-06-14):
 
 - **SessionError 9th variant (SessionNotReady):** `SessionError` now has 9 variants (SessionNotReady added F-P50-001). SessionNotReady is for defensive control-ops on not-ready sessions. `kill_session()` does NOT use it — kill on a not-yet-connected Launching session uses PID fallback → `kill_failed` (see BC-2.08.003 v1.4.0). No KillSession PC update needed for this variant.
-- **12th wire code (session_not_ready):** `ServerToClient::Error` code taxonomy grows from 11 to 12 codes. `"session_not_ready"` added to the Architecture Source enumerated code list alongside `"session_not_ready"` (SS-ipc.md v1.23.0 §`ServerToClient::Error`). `"invalid_request"` forward-compat arm can also produce `"session_not_ready"` via `SessionNotReady` variant until it gets a dedicated arm — but the variant exists for future defensive control-ops paths; no existing IPC handler branch in this BC currently produces it.
+- **12th wire code (session_not_ready):** `ServerToClient::Error` code taxonomy grows from 11 to 12 codes. `"session_not_ready"` added to the Architecture Source enumerated code list alongside `"invalid_request"` (SS-ipc.md v1.23.1 §`ServerToClient::Error`). Wire producer is the DetachSession IPC arm ONLY — see F-P51-001 errata note below.
 - **Architecture Source pins bumped:** SS-daemon-wiring-v2-delta.md v1.11.0 → v1.11.1; SS-ipc.md v1.22.0 → v1.23.0 (all three inline citations); SS-session-manager.md v2.4.0 → v2.5.0; SS-engine-module-v2-delta.md v1.6.0 added (SessionError 9-variant enum source).
 - §Trace v1.8.1 "now 11 codes total" annotated as historical (11 codes at v1.8.1; 12 codes at v1.9.0).
 - Minor bump: v1.8.1 → v1.9.0 (normative: new wire code enumerated in Architecture Source; new SS pin citations).
 
 SE-16d monotonicity: v1.9.0 timestamp 2026-06-14 > v1.8.1 timestamp 2026-06-14. PASS.
+
+## §Trace v1.9.1
+
+**F-P51-001 — session_not_ready wire producer corrected: DetachSession arm only; resize excluded; §DetachSession PC-4 and §ResizePane rationale expanded** (2026-06-14):
+
+- **Errata (F-P51-001):** The v1.9.0 trace implied both `detach_session()` and `resize_session()` were wire producers of `session_not_ready`. This is incorrect. The wire producer is the DetachSession IPC arm ONLY: when `detach_session()` returns `Err(SessionError::SessionNotReady)`, the IPC handler emits `ServerToClient::Error { code: "session_not_ready" }`. `resize_session()` may also return `Err(SessionNotReady)` at the session-manager level when the session is in Launching state with `host_conn: None`; however, the ResizePane IPC arm WARN-drops ALL `resize_session()` errors (Invariant 6 Exception — §No-silent-failure invariant carve-out). No `ServerToClient::Error` is ever emitted from the ResizePane arm regardless of which `SessionError` variant is returned. SS-session-manager.md v2.5.0 → v2.5.1 (producer-set errata).
+- **§DetachSession PC-4 expanded:** Added `"session_not_ready"` bullet covering `SessionError::SessionNotReady` (session in Launching state; `host_conn: None`; post-spawn monitor not yet connected). Defensive path — the official TUI never sends `DetachSession` during Launching (BC-2.08.007 Precondition 1 requires `state: Running`; BC-2.06.025 guards). Reachable from untrusted clients with socket access. (F-P51-001.)
+- **§ResizePane rationale expanded:** PC-5 rationale updated to cover BOTH `SessionNotFound` (benign race — session terminated between TUI dispatch and daemon processing) AND `SessionNotReady` (session in Launching state, `host_conn: None` — untrusted-client path; the official TUI prevents this via state guards). Both are WARN-dropped. Surfacing either would create spurious popups during normal session teardown or startup. (F-P51-001.) WARN-drop carve-out (Invariant 6 Exception) preserved and strengthened, not narrowed.
+- **Architecture Source pins bumped:** SS-session-manager.md v2.5.0 → v2.5.1; SS-daemon-wiring-v2-delta.md v1.11.1 → v1.11.2; SS-ipc.md v1.23.0 → v1.23.1 (all three inline citations).
+- **§Trace v1.9.0 12th wire code bullet:** Second "session_not_ready" duplicate corrected to "invalid_request" (copy-paste error; `invalid_request` is the 11th code, `session_not_ready` the 12th).
+- Patch bump: v1.9.0 → v1.9.1.
+
+SE-16d monotonicity: v1.9.1 timestamp 2026-06-14 > v1.9.0 timestamp 2026-06-14. PASS.
 
 ## §Trace v1.8.1
 

@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "daemon-wiring-v2-delta"
 subsystem: SS-04
-version: "1.11.1"
+version: "1.11.2"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -404,7 +404,7 @@ can use it without importing daemon-internal types.
 > was retired in v1.4.0 (I6-002 fix) because it diverged from the SS-ipc.md canonical by
 > omitting the `degraded`/`degraded_reason` fields.
 >
-> **Current canonical field summary** (SS-ipc.md v1.23.0 §Supporting Types — authoritative):
+> **Current canonical field summary** (SS-ipc.md v1.23.1 §Supporting Types — authoritative):
 > `session_id`, `display_name`, `state`, `harness_id`, `project_root`, `cwd`,
 > `spawned_by_monocle: Option<bool>`, `started_at_micros: i64`, `pty_rows: u16`,
 > `pty_cols: u16`, `degraded: bool` (`#[serde(default)]`), `degraded_reason: Option<String>`
@@ -726,6 +726,15 @@ implementer creates `SessionManager` from scratch per SS-08.
   note updated from "These EngineError codes" to "All three EngineError variants".
 - **Semver:** ERRATA-NO-BUMP. Normative mapping comment at lines 185-188 was already correct.
   This is a doc-comment-only correction. Version remains v1.11.0.
+
+---
+
+## §Trace v1.11.2
+
+**F-P51-001 — SS-session-manager citation updated to v2.5.1; §3 ResizePane WARN-drop already correct** (2026-06-14):
+
+- **Finding (F-P51-001, errata):** §Trace v1.11.1 references `SS-session-manager.md v2.5.0`; that document is now v2.5.1 (producer-set errata: `session_not_ready` wire producer is DetachSession arm only; resize excluded). No behavioral change to this document: the §3 ResizePane arm (`WARN-log-and-continue; NO ServerToClient::Error`) was already correct and required no edit. The §3 per-arm summary table was already correct. Citation staleness only.
+- **Semver: ERRATA-NO-BUMP (v1.11.1 → v1.11.2):** No behavioral change. Citation staleness corrected in this trace; no normative text changed.
 
 ---
 

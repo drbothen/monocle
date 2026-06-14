@@ -130,7 +130,7 @@ which the TUI's event ribbon panel is populated with live hook event data.
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability Traceability §SS-05 — this BC specifies the hook event push that populates the TUI's event ribbon panel, which is the live-event-stream component of the internal transport |
 | L2 Domain Invariants | DI-001 (every hook event must be written to the JSONL ring before ACK — Precondition 3 requires ring write before IPC broadcast; this BC's fan-out happens after DI-001 is satisfied) |
 | Architecture Module | monocle-ipc (ServerToClient::HookEventReceived, fan-out broadcaster) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-ipc.md v1.23.0 §Message Types §Server-to-Client Messages; SS-ipc.md v1.23.0 §Connection Lifecycle §Phase 2 Streaming Updates |
+| Architecture Source | SS-ipc.md v1.23.1 §Message Types §Server-to-Client Messages; SS-ipc.md v1.23.1 §Connection Lifecycle §Phase 2 Streaming Updates |
 | Cross-Ref | BC-2.01.003 (256 KiB body limit at HTTP layer; this BC's 256-byte excerpt is the IPC-layer bounding, not the HTTP-layer limit); BC-2.04.011 (bounded event bus — drop counter increments on bus-full; this BC's fan-out only sees events that cleared the bus); BC-2.02.003 (non-exhaustive HookType enum) |
 | Test File | `monocle-ipc/tests/hook_event_received.rs` |
 | Test Name | `test_BC_2_05_004_hook_event_received_broadcast` |

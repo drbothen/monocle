@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.1"
+version: "1.4.0"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-03T23:30:00Z
+timestamp: 2026-06-14T00:00:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-tui.md, architecture/SS-session-manager.md]
 input-hash: "5a58f52"
@@ -39,14 +39,14 @@ pane.
 
 1. `AppMode::Dashboard` (or `AppMode::Sessions` if sessions panel is fullscreen) is active.
 2. The TUI has received `ServerToClient::InitialState` or `ServerToClient::SessionListUpdate`
-   with session data from the daemon as `Vec<SessionSnapshot>` (SS-ipc.md v1.23.0 — the wire
+   with session data from the daemon as `Vec<SessionSnapshot>` (SS-ipc.md v1.23.1 — the wire
    boundary type is `SessionSnapshot`, not `EnrichedSession`; `EnrichedSession` is internal
    to `EngineModule::detect()` and never crosses the UDS wire).
 
 ## Postconditions
 
 1. The sessions panel renders a grouped list from `Vec<SessionSnapshot>` received via
-   `InitialState.sessions` or `SessionListUpdate.sessions` (SS-ipc.md v1.23.0 `SessionSnapshot`
+   `InitialState.sessions` or `SessionListUpdate.sessions` (SS-ipc.md v1.23.1 `SessionSnapshot`
    wire type — NOT `EnrichedSession`; rendering reads `SessionSnapshot` fields directly):
    - Sessions are sorted by `SessionSnapshot.project_root` (alphabetical by project path).
    - Each unique `project_root` has a header row showing the project's basename
@@ -79,10 +79,39 @@ pane.
    - `k` or `d`: kill/terminate the focused session (`KillSession` IPC sent).
    - `r`: rename focused session (inline edit or modal).
    - `D`: detach focused session (`DetachSession` IPC sent).
+
+   **Launching-state keybinding rules (F-P51-001 / action-specific, NOT a blanket disable):**
+   Pressing a lifecycle key while the focused session has `SessionState::Launching` is governed
+   by these rules. Launching is a transient state (post-spawn monitor connects within ~ms); the
+   rules are action-specific because the feasibility of each operation differs:
+
+   - **Kill (`k`/`d`) on Launching — ALLOWED:** `KillSession` IPC is sent normally; the daemon
+     handles the Launching kill path (uses `host_conn.writer` if post-spawn monitor has connected,
+     or PID-based SIGTERM/SIGKILL fallback if not yet connected). Transition:
+     `Launching → Terminating`. Sessions panel updates on receipt of `SessionStateChanged{Terminating}`.
+     (Rationale: kill is always valid; the daemon has defined kill semantics for every session state.
+     See BC-2.08.003 Precondition 1 and Invariant 3: kill on Launching is explicitly allowed.)
+
+   - **Detach (`D`) on Launching — BLOCKED at TUI (no-op + status hint):** Pressing `D` on a
+     `Launching` session is a no-op. No `ClientToServer::DetachSession` message is dispatched.
+     The status bar shows "Session launching — please wait". A Launching session has no live
+     session-host connection to detach from (the post-spawn monitor is in the process of
+     connecting); dispatching `DetachSession` would cause the daemon to return
+     `SessionError::SessionNotReady` (BC-2.05.010 §DetachSession PC-4 / BC-2.08.007 Precondition
+     1). The TUI guard here ensures `session_not_ready` is a defensive/untrusted-client-only path,
+     not a normal user-facing error. (Cross-reference: BC-2.05.010 §DetachSession PC-4;
+     BC-2.08.007 §Preconditions (detach) defensive note.)
+
+   - **Rename (`r`) on Launching — ALLOWED:** `RenameSession` IPC is sent normally. Rename is
+     a metadata operation (`display_name` update); it does not require an active session-host
+     connection (`host_conn`) and the daemon's `rename_session()` path succeeds on any non-
+     Terminated session. The session transitions through Launching → Running normally; the rename
+     takes effect immediately in the session registry and is reflected in the next
+     `SessionListUpdate` broadcast.
 4. Monocle-launched sessions show a `[M]` badge. Externally-detected sessions show `[E]`.
    Sessions with `spawned_by_monocle: None` (pre-v1A forward-compat or legacy sidecars) show `[?]`.
    This tri-state reflects the `SessionSnapshot.spawned_by_monocle: Option<bool>` field
-   (SS-ipc.md v1.23.0 `SessionSnapshot` type): `Some(true)` → `[M]`, `Some(false)` → `[E]`,
+   (SS-ipc.md v1.23.1 `SessionSnapshot` type): `Some(true)` → `[M]`, `Some(false)` → `[E]`,
    `None` → `[?]`. Sessions with `SessionSnapshot.degraded == true` additionally show a `[!]`
    badge (PC-1 degraded badge rule).
 
@@ -104,6 +133,22 @@ pane.
    confirmation or 12s watchdog). See BC-2.08.003 Invariant 4 for the Terminating state
    definition and transition rules.
 
+5. **Launching-state lifecycle action invariant (F-P51-001):** For sessions with
+   `SessionState::Launching`, lifecycle actions are governed individually — this is NOT a blanket
+   disable like the Terminating rule in Invariant 4:
+   - **Kill (`k`/`d`)**: ALLOWED. `KillSession` IPC MUST be dispatched (daemon handles Launching
+     kill path per BC-2.08.003 Invariant 3). The TUI MUST NOT suppress kill on Launching sessions.
+   - **Detach (`D`)**: BLOCKED. The TUI MUST NOT dispatch `ClientToServer::DetachSession` for a
+     Launching session. `D` is a no-op; status bar shows "Session launching — please wait". This
+     ensures `SessionError::SessionNotReady` / `ServerToClient::Error { code: "session_not_ready" }`
+     is a defensive/untrusted-client path only — never reachable from the official TUI.
+     (Backing guarantee for BC-2.05.010 §DetachSession PC-4 and BC-2.08.007 §Preconditions (detach)
+     defensive note.)
+   - **Rename (`r`)**: ALLOWED. `RenameSession` IPC MUST be dispatched (rename is metadata-only;
+     does not require `host_conn`; succeeds on any non-Terminated session).
+   This invariant is the normative target of all cites of "BC-2.06.025 guards" in BC-2.05.010
+   §DetachSession PC-4 and BC-2.08.007 §Preconditions (detach) defensive note.
+
 ## Edge Cases
 
 | ID | Description | Expected Behavior |
@@ -116,6 +161,8 @@ pane.
 | EC-294 | Rename with empty string | `RenameSession` with empty `new_name` → `ServerToClient::Error`; inline editor shows error indicator |
 | EC-295 | `spawned_by_monocle: None` (pre-v1A forward-compat session — sidecar has no `spawned_by_monocle` field) | Session row renders `[?]` badge; treated as "external" for lifecycle purposes (Kill/Detach/Rename all available); NOT treated as monocle-launched for hook injection purposes |
 | EC-297 | `SessionSnapshot.degraded == true` received in InitialState or SessionListUpdate | Session row renders `[!]` badge (amber/warning style) alongside normal state indicator. When user navigates to the session, status bar shows the `degraded_reason` (e.g., "Missing env: HOME, PATH"). Lifecycle actions remain enabled — the session is running in a degraded environment but is not terminated. |
+| EC-298 | `D` key on a `Launching` session | No-op — `ClientToServer::DetachSession` is NOT dispatched. Status bar shows "Session launching — please wait". Launching session has no established `host_conn` to detach from; dispatching `DetachSession` would yield `session_not_ready` from the daemon (BC-2.05.010 §DetachSession PC-4; BC-2.08.007 Precondition 1 defensive note). Per Invariant 5. |
+| EC-299 | `r` key on a `Launching` session | Rename is ALLOWED — `RenameSession` IPC dispatched normally. Rename is metadata-only (display_name); does not require an active host_conn. Per Invariant 5. |
 
 ## Canonical Test Vectors
 
@@ -137,6 +184,9 @@ pane.
 | VP-TBD | `k` on `Terminating` session → no KillSession IPC sent; status bar hint shown | unit |
 | VP-TBD | `spawned_by_monocle: None` session renders `[?]` badge (not blank, not `[M]`, not `[E]`) | unit |
 | VP-TBD | `SessionSnapshot.degraded == true` → `[!]` badge rendered; `degraded_reason` in status bar on focus | unit |
+| VP-TBD | `D` on Launching session → no DetachSession IPC sent; status bar shows "Session launching — please wait" | unit |
+| VP-TBD | `k`/`d` on Launching session → KillSession IPC sent; session → Terminating (kill ALLOWED during Launching) | unit |
+| VP-TBD | `r` on Launching session → RenameSession IPC sent; rename ALLOWED during Launching | unit |
 
 ## Traceability
 
@@ -145,8 +195,8 @@ pane.
 | L2 Capability | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability traceability §SS-06 |
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability traceability — this BC extends the sessions panel capability in CAP-006 with multi-session, multi-project grouping, and lifecycle actions |
 | Architecture Module | monocle-tui (sessions panel renderer, session list grouping logic, lifecycle keybindings) per ARCH-INDEX Subsystem Registry SS-06 |
-| Architecture Source | SS-ipc.md v1.23.0 §SessionSnapshot (wire boundary type; `degraded` and `degraded_reason` fields; `spawned_by_monocle: Option<bool>` field); SS-session-manager.md v2.5.0 §SessionManager §Public API (session_list() returns Vec<SessionSnapshot>); SS-embedded-pty.md v1.6.0 §Fast switching; SS-session-manager.md v2.5.0 §monocle-session-host startup sequence §I3-009 (degraded-env surfaced via HostToDaemon::StateChanged.degraded_env + SessionSnapshot.degraded) |
-| Cross-Ref | BC-2.05.010 (KillSession/DetachSession/RenameSession IPC variants triggered from sessions panel); BC-2.09.008 (SessionCreation wizard and EmbeddedTerminal enter) |
+| Architecture Source | SS-ipc.md v1.23.1 §SessionSnapshot (wire boundary type; `degraded` and `degraded_reason` fields; `spawned_by_monocle: Option<bool>` field); SS-session-manager.md v2.5.1 §SessionManager §Public API (session_list() returns Vec<SessionSnapshot>); SS-embedded-pty.md v1.6.0 §Fast switching; SS-session-manager.md v2.5.1 §monocle-session-host startup sequence §I3-009 (degraded-env surfaced via HostToDaemon::StateChanged.degraded_env + SessionSnapshot.degraded) |
+| Cross-Ref | BC-2.05.010 §DetachSession PC-4 (session_not_ready is defensive/untrusted-client-only; official TUI never sends DetachSession during Launching — this BC's Invariant 5 is the normative target); BC-2.08.003 Invariant 3 (kill on Launching is explicitly allowed; kill path uses host_conn.writer or PID fallback); BC-2.08.007 §Preconditions (detach) defensive note (TUI guard enforced here prevents session_not_ready on official TUI path); BC-2.09.008 (SessionCreation wizard and EmbeddedTerminal enter) |
 | Test Name | test_BC_2_06_025_multi_session_grouped_by_project |
 
 ## Related BCs
@@ -166,6 +216,59 @@ S-TBD — Implement multi-session grouped sessions panel with lifecycle actions 
 ## VP Anchors
 
 VP-TBD — Sessions panel multi-session render tests (filled after VP creation)
+
+## §Trace v1.4.0
+
+**F-P51-001 — Explicit Launching-state action rules: DetachSession BLOCKED, Kill ALLOWED, Rename ALLOWED** (2026-06-14):
+
+- **Gap closed (F-P51-001):** BC-2.05.010 §DetachSession PC-4 and BC-2.08.007 §Preconditions
+  (detach) defensive note both cite "BC-2.06.025 guards" as the TUI-side guarantee that the
+  official TUI never dispatches `ClientToServer::DetachSession` during `Launching`. Prior to
+  this version, BC-2.06.025 had no explicit Launching-state action rule for `D` (DetachSession).
+  The existing PC-3 listed `D` → DetachSession as an unconditional keybinding, and the existing
+  Invariant 4 only blocked actions for Terminating sessions. As written, an implementer following
+  the spec literally WOULD dispatch DetachSession during Launching, making `session_not_ready`
+  a normal user-facing path — contradicting the "defensive/untrusted-client-only" framing in
+  BC-2.05.010 and BC-2.08.007.
+
+- **PC-3 extended — Launching-state keybinding rules subsection (normative):** Added
+  "Launching-state keybinding rules" block with three explicit action dispositions:
+  - Kill (`k`/`d`): ALLOWED — `KillSession` IPC dispatched normally (daemon handles
+    Launching kill per BC-2.08.003 Invariant 3 / PC-1 three-case logic).
+  - Detach (`D`): BLOCKED at TUI — `DetachSession` NOT dispatched; status bar shows
+    "Session launching — please wait". No-op. Backing guarantee for the "defensive/
+    untrusted-client-only" framing in BC-2.05.010 §DetachSession PC-4 and BC-2.08.007
+    §Preconditions (detach) defensive note.
+  - Rename (`r`): ALLOWED — `RenameSession` IPC dispatched normally (rename is metadata
+    only; does not require `host_conn`; succeeds on any non-Terminated session).
+
+- **Invariant 5 (new — Launching-state lifecycle action invariant):** Formalizes the three
+  Launching-state dispositions as normative invariants. Explicitly states that this is NOT
+  a blanket disable (unlike Invariant 4 for Terminating). States that Invariant 5 is the
+  normative target of all "BC-2.06.025 guards" cites in BC-2.05.010 and BC-2.08.007.
+
+- **EC-298 (new):** `D` on Launching → no DetachSession IPC; status bar hint. Per Invariant 5.
+
+- **EC-299 (new):** `r` on Launching → RenameSession IPC dispatched; ALLOWED. Per Invariant 5.
+
+- **VP table:** Added three new unit test VPs covering the Launching-state action rules
+  (detach no-op, kill allowed, rename allowed).
+
+- **Traceability Cross-Ref:** Expanded to include BC-2.05.010 §DetachSession PC-4,
+  BC-2.08.003 Invariant 3, and BC-2.08.007 §Preconditions (detach) defensive note
+  as bidirectional cross-references. These resolve the dangling "BC-2.06.025 guards" cites.
+
+- **Cited symbols verified:** BC-2.08.003 Invariant 3 (line 107: kill on Launching allowed;
+  Launching → Terminating). BC-2.08.003 PC-1 three-case structure (lines 53-55: Launching
+  with/without host_conn kill sub-paths). BC-2.05.010 §DetachSession PC-4 (lines 139-148:
+  session_not_ready defensive path). BC-2.08.007 §Preconditions (detach) defensive note
+  (lines 47-55: official TUI never sends DetachSession during Launching). All resolve.
+
+- **Minor bump: v1.3.1 → v1.4.0** (normative addition: new Launching-state action rules —
+  PC-3 subsection + Invariant 5 + EC-298/299 + VP entries; behavioral obligation added for
+  all three lifecycle actions during Launching state).
+
+SE-16d monotonicity: v1.4.0 timestamp 2026-06-14 > v1.3.1 timestamp 2026-06-14. PASS.
 
 ## §Trace v1.3.1 (errata)
 
