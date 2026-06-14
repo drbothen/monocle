@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.2.0"
+version: "2.2.1"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -446,10 +446,27 @@ method calls EngineModule methods, so `SessionError::EngineError` can only be pr
 | `Io` | Any | `"invalid_request"` | Unexpected I/O error; nearest generic failure code |
 | `EngineError` (other variants) | `spawn_session` | `"invalid_request"` | Catch-all for any future EngineError variants not explicitly mapped; `"invalid_request"` is the nearest generic code |
 
-**Exhaustiveness requirement:** `session_error_to_code()` is EXHAUSTIVE over all variants. The
-`EngineError` arm unpacks the inner `EngineError` variant to produce distinct codes for
-`BinaryNotFound` and `InvalidPath`; all other inner variants fall through to `"invalid_request"`.
-No `_ =>` wildcard swallow is permitted — any new `EngineError` variant must be consciously routed.
+**Exhaustiveness and forward-compatibility:** `session_error_to_code()` has two match layers with
+distinct exhaustiveness guarantees:
+
+- **OUTER `SessionError` match — compiler-enforced exhaustive:** `SessionError` is defined in
+  `monocle-runtime` (same crate as `session_error_to_code()`). It does NOT carry `#[non_exhaustive]`.
+  The compiler enforces full variant coverage; no `_ =>` arm exists on the outer match. Any new
+  `SessionError` variant added in the future will produce a compile error here, forcing conscious
+  routing.
+
+- **INNER `EngineError` match — `_ =>` arm is MANDATORY and CORRECT:** `EngineError` is defined
+  in `monocle-core` and carries `#[non_exhaustive]` for Phase 3 WASM engine forward-compatibility
+  (see SS-engine-module-v2-delta.md §EngineError). Because `session_error_to_code()` lives in
+  `monocle-runtime` — a DIFFERENT crate — Rust requires a `_ =>` arm on any match over a
+  `#[non_exhaustive]` enum from another crate; the compiler will reject the code without it. The
+  `_ => "invalid_request"` arm is therefore not a silent swallow: it is a deliberate,
+  forward-compatible fallback that maps any future `EngineError` variants (added in Phase 3 for
+  WASM engine modules) to the well-defined `"invalid_request"` wire code. No diagnostic information
+  is silently lost: `BinaryNotFound` and `InvalidPath` — the only variants that carry
+  spawn-meaningful distinction — are explicitly routed before the catch-all. Any truly unknown
+  future variant produces a deterministic, observable `ServerToClient::Error { code: "invalid_request" }`
+  that is logged and sent to the requesting client (never dropped).
 
 #### IPC handler pattern (mandatory)
 
@@ -471,13 +488,21 @@ pub enum IpcOp {
 /// Maps a SessionError to its v1A IPC error code.
 /// The `op` context is required to distinguish `SessionHostDead` on the
 /// kill-path (`"kill_failed"`) from the attach-path (`"attach_failed"`).
-/// This function is EXHAUSTIVE over the SessionError enum — the compiler
-/// enforces coverage. Every arm must match.
+///
+/// **Exhaustiveness model (two layers):**
+/// - OUTER `SessionError` match: compiler-enforced exhaustive (no `_ =>`).
+///   `SessionError` is same-crate; Rust requires full coverage. Any new
+///   `SessionError` variant added in the future will produce a compile error here.
+/// - INNER `EngineError` match: `_ =>` arm is MANDATORY. `EngineError` is
+///   `#[non_exhaustive]` (defined in `monocle-core`); Rust requires a `_ =>` arm
+///   on any cross-crate match over a `#[non_exhaustive]` enum. The
+///   `_ => "invalid_request"` arm is a deliberate, documented forward-compat
+///   fallback for future WASM engine variants — not a silent swallow.
 ///
 /// EngineError variants are unpacked to produce distinct spawn-path codes:
 /// - `EngineError::BinaryNotFound` → `"binary_not_found"` (harness not on PATH)
 /// - `EngineError::InvalidPath` → `"invalid_spawn_arg"` (bad argument to spawn_recipe())
-/// - all other `EngineError` variants → `"invalid_request"` (generic fallback)
+/// - all other `EngineError` variants → `"invalid_request"` (mandatory `_=>` forward-compat fallback)
 fn session_error_to_code(op: IpcOp, e: &SessionError) -> &'static str {
     match e {
         SessionError::EngineError(engine_err) => match engine_err {
@@ -1338,6 +1363,42 @@ Daemon removes stale socket files during GC in re-discovery (alongside sidecar d
 | BC-2.08.007 | SpawnRecipe: binary path resolved; cwd is project root; env carries CCR URL if applicable | P0 |
 
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
+
+---
+
+## §Trace v2.2.1
+
+**IMP-001 — `session_error_to_code()` prose self-contradiction about the `_ =>` arm on inner `EngineError` match** (2026-06-13):
+
+- **Finding (IMP-001 IMPORTANT):** Lines ~449-452 prose and lines ~474-475 doc-comment were internally
+  contradictory and factually wrong regarding the `_ =>` arm in `session_error_to_code()`.
+  (a) The prose stated "all other inner variants fall through to `"invalid_request"`" and then
+      immediately said "No `_ =>` wildcard swallow is permitted" — the "fall through" IS the `_ =>`
+      arm, making the two sentences directly contradictory.
+  (b) The doc-comment said "This function is EXHAUSTIVE over the SessionError enum — the compiler
+      enforces coverage. Every arm must match." — overbroad; this exhaustiveness guarantee applies
+      only to the OUTER `SessionError` match, not to the INNER `EngineError` match.
+  (c) The actual code at line ~486 has `_ => "invalid_request"` inside the inner `EngineError` match
+      — this arm is MANDATORY and CORRECT.
+- **Root cause:** `EngineError` is defined in `monocle-core` and carries `#[non_exhaustive]` (confirmed
+  in SS-engine-module-v2-delta.md §EngineError, lines 240-249). `session_error_to_code()` lives in
+  `monocle-runtime` — a DIFFERENT crate. Rust requires a `_ =>` arm on any cross-crate match over a
+  `#[non_exhaustive]` enum; the compiler WILL NOT compile without it. This is not a weakness in the
+  design: the `_ => "invalid_request"` arm is a deliberate, forward-compatible fallback for future WASM
+  engine variants (Phase 3). The `BinaryNotFound` and `InvalidPath` variants — the only ones that
+  carry spawn-meaningful distinction — are explicitly routed before the catch-all.
+- **Fix (a) — prose rewritten (§Exhaustiveness and forward-compatibility):** The prose now correctly
+  describes the TWO-LAYER exhaustiveness model: (1) OUTER `SessionError` match is compiler-enforced
+  exhaustive (no `_ =>`, same-crate); (2) INNER `EngineError` match requires a mandatory `_ =>` arm
+  because `EngineError` is `#[non_exhaustive]` from `monocle-core`. The `_ => "invalid_request"` arm
+  is documented as a deliberate, observable, audit-clean fallback — not a silent swallow.
+- **Fix (b) — doc-comment rewritten:** Scopes "compiler-enforced exhaustive" to the OUTER
+  `SessionError` match only. Notes the mandatory `_ =>` on the inner `EngineError` match and its
+  `#[non_exhaustive]` cross-crate reason. No behavioral change; the actual code was already correct.
+- Cross-reference: SS-engine-module-v2-delta.md §EngineError lines 245-246 states this correctly:
+  "callers need a `_ =>` arm — which is already present in `session_error_to_code()`". This fix
+  brings SS-session-manager.md into alignment with that reference.
+- Semver: patch (v2.2.0 → v2.2.1) — prose/doc-comment correction only; no normative behavioral change.
 
 ---
 

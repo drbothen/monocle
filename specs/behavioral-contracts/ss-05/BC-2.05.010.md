@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.7.0"
+version: "1.7.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:45:00Z
@@ -62,7 +62,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
    `spawn_session()`, mapped via `session_error_to_code(IpcOp::Spawn, &e)` (per
    SS-session-manager.md §session_error_to_code):
    - `"binary_not_found"` — `EngineError::BinaryNotFound` (harness binary not on PATH)
-   - `"invalid_spawn_arg"` — `EngineError::InvalidPath` (bad argument in SpawnRecipe)
+   - `"invalid_spawn_arg"` — `EngineError::InvalidPath` (bad argument to spawn_recipe())
    - `"spawn_failed"` — `SessionError::SpawnFailed` (OS-level spawn failure after PATH resolve)
    - `"sidecar_write_failed"` — `SessionError::SidecarWriteFailed` (session-state.json write failed)
    - `"session_id_collision"` — `SessionError::SessionIdCollision` (UUID collision; exceedingly rare)
@@ -176,7 +176,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 | L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — these ClientToServer variants extend the internal transport capability with session lifecycle control messages (spawn, kill, key input, resize, detach, rename, re-attach) — all transported over the existing UDS per the session/event/prompt push design |
 | Architecture Module | monocle-ipc (`ClientToServer` enum new variants); monocle-runtime (IPC handler routing to SessionManager) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-daemon-wiring-v2-delta.md v1.9.0 §IPC handler — new ClientToServer variants (including AttachSession; `ClientToServer::SpawnSession { opts: SpawnOptions }` wire variant under Model A — I27-001); SS-ipc.md v1.20.1 §`ClientToServer::SpawnSession { opts: SpawnOptions }` (Model A wire variant — I27-001); SS-ipc.md v1.20.1 §`ClientToServer::AttachSession` (I3-004 — TUI re-attach; replaces incorrect "TUI sends DaemonToHost::Attach" description); SS-ipc.md v1.20.1 §`ServerToClient::Error` — Error variant + code taxonomy (`spawn_failed`, `binary_not_found`, `invalid_spawn_arg`, `sidecar_write_failed`, `session_id_collision`, `session_not_found`, `attach_failed`, `kill_failed`, `rename_failed`, `invalid_request`) added by architect in Pass-6 parallel track (C6-001); SS-session-manager.md v2.2.0 §session_error_to_code (spawn-path arms — Model A reachability for binary_not_found/invalid_spawn_arg confirmed I27-001) |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.9.0 §IPC handler — new ClientToServer variants (including AttachSession; `ClientToServer::SpawnSession { opts: SpawnOptions }` wire variant under Model A — I27-001); SS-ipc.md v1.20.1 §`ClientToServer::SpawnSession { opts: SpawnOptions }` (Model A wire variant — I27-001); SS-ipc.md v1.20.1 §`ClientToServer::AttachSession` (I3-004 — TUI re-attach; replaces incorrect "TUI sends DaemonToHost::Attach" description); SS-ipc.md v1.20.1 §`ServerToClient::Error` — Error variant + code taxonomy (`spawn_failed`, `binary_not_found`, `invalid_spawn_arg`, `sidecar_write_failed`, `session_id_collision`, `session_not_found`, `attach_failed`, `kill_failed`, `rename_failed`, `invalid_request`) added by architect in Pass-6 parallel track (C6-001); SS-session-manager.md v2.2.1 §session_error_to_code (spawn-path arms — Model A reachability for binary_not_found/invalid_spawn_arg confirmed I27-001) |
 | Cross-Ref | BC-2.08.001 (SpawnSession → spawn_session()); BC-2.08.003 (KillSession → kill_session()); BC-2.08.007 (DetachSession → detach_session()) |
 | Test Name | test_BC_2_05_010_new_client_to_server_variants_routed |
 
@@ -199,6 +199,21 @@ S-TBD — Implement new ClientToServer IPC variants and daemon routing (filled b
 ## VP Anchors
 
 VP-TBD — IPC variant routing integration tests (filled after VP creation)
+
+## §Trace v1.7.1
+
+**Pass-32 — SUG-001: imprecise InvalidPath parenthetical corrected** (2026-06-13):
+
+- **SUG-001 (SpawnSession PC-4 error table):** The `"invalid_spawn_arg"` row described
+  `EngineError::InvalidPath` as "(bad argument in SpawnRecipe)". `SpawnRecipe` is the
+  daemon-internal output struct built by `spawn_recipe()` — `InvalidPath` is not "in" it.
+  `InvalidPath` is produced from a bad argument TO `spawn_recipe()`, specifically when
+  `opts.hooks_settings_path.to_str()` returns `None` (non-UTF-8 / null bytes in the
+  `SpawnOptions` field before the recipe can be built). Corrected to "(bad argument to
+  spawn_recipe())" for precision.
+
+- No behavioral content changed (the error code, triggering condition, and propagation
+  chain are unchanged). Patch bump only.
 
 ## §Trace v1.7.0
 

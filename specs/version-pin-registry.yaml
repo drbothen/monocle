@@ -124,8 +124,8 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "2.2.0"
-  last_bump_commit: "[Pass-31 P31-HIGH-001 — SpawnRecipe byte-for-byte parity with v2-delta canonical (#[non_exhaustive]+derives+new()) D-273]"
+  current_version: "2.2.1"
+  last_bump_commit: "[Pass-32 IMP-001 — session_error_to_code() EngineError _=> arm prose reconciled: outer SessionError match compiler-exhaustive; inner EngineError _=> mandatory #[non_exhaustive] forward-compat fallback (D-274)]"
   last_bump_date: "2026-06-13"
 
 SS-embedded-pty:
@@ -713,8 +713,8 @@ BC-2.03.006:
 
 BC-2.03.007:
   path: specs/behavioral-contracts/ss-03/BC-2.03.007.md
-  current_version: "1.2.0"
-  last_bump_commit: "[Pass-27 I27-001 — PC-3/PC-7 confirmed reachable under Model-A; citation updates; EngineError taxonomy fully reachable]"
+  current_version: "1.2.1"
+  last_bump_commit: "[Pass-32 IMP-002/IMP-003 — dead anchor #engineerror-additions→#engineerror-new-in-v1a; EngineError variants presented as 'new-type framing' not 'extensions' (D-274)]"
   last_bump_date: "2026-06-13"
 
 BC-2.03.008:
@@ -731,8 +731,8 @@ BC-2.05.009:
 
 BC-2.05.010:
   path: specs/behavioral-contracts/ss-05/BC-2.05.010.md
-  current_version: "1.7.0"
-  last_bump_commit: "[Pass-27 I27-001 — SpawnSession PC-1/PC-2/EC-280 Model-B residue→opts; Model-A reconciliation]"
+  current_version: "1.7.1"
+  last_bump_commit: "[Pass-32 SUG-001 — InvalidPath wording tightened (D-274)]"
   last_bump_date: "2026-06-13"
 
 BC-2.05.011:
