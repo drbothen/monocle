@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "daemon-wiring-v2-delta"
 subsystem: SS-04
-version: "1.9.1"
+version: "1.10.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -148,29 +148,45 @@ branches for the new `ClientToServer` variants from ADR-0010:
 ClientToServer::SpawnSession { opts } => {
     // C6-001: no-silent-failure — map SessionError to ServerToClient::Error.
     //
-    // I27-001 (Model A): The TUI sends SpawnOptions (user intent). The daemon fills
-    // opts.session_id and opts.hooks_settings_path here, before calling spawn_session().
-    // spawn_session() internals:
-    //   1. Calls engine_module.spawn_recipe(&opts)? — DAEMON-SIDE recipe construction.
+    // F-P41-IMP-001 resolution: UUID generation and SpawnAck happen in the IPC handler,
+    // BEFORE spawn_session() is called. This is the canonical UUID-generation locus.
+    // The canonical 4-step sequence (matches SS-session-manager.md §IPC handler lines
+    // ~534-544 and SS-ipc.md §ServerToClient::SpawnAck §Delivery ordering lines ~452-464):
+    //
+    // Step 1: Generate session_id (canonical locus: IPC handler, not spawn_session()).
+    let session_id = uuid::Uuid::new_v4().to_string();
+    // Step 2: Send SpawnAck to the REQUESTING client ONLY (point-to-point, NOT broadcast).
+    // Causal ordering requirement: SpawnAck MUST reach the TUI before the broker emits
+    // SessionStateChanged{Launching}. The per-client FIFO channel guarantees ordering
+    // because both use the same client_tx channel — this send precedes spawn_session()
+    // which precedes the broker fan-out.
+    // The TUI stores this id in AppMode::SessionCreation::launching_session_id for
+    // deterministic EC-303 session_id filtering (see SS-embedded-pty.md §Session Creation Wizard).
+    let _ = client_tx.send(ServerToClient::SpawnAck {
+        session_id: session_id.clone(),
+    }).await;
+    // Step 3: Fill daemon-owned fields on opts before passing to spawn_session().
+    // C30-001: SpawnOptions is #[non_exhaustive]; functional-update (`..opts`) is E0639
+    // outside the defining crate. Use the consuming builder `with_daemon_fields()` instead.
+    // project_root, worktree_root, harness_id, profile_id, ccr_base_url came from TUI.
+    let opts = opts.with_daemon_fields(
+        session_id,
+        state.hooks_settings_path.clone(), // pre-written at step 9
+    );
+    // I27-001 (Model A): The TUI sends SpawnOptions (user intent). spawn_session() internals:
+    //   a. Calls engine_module.spawn_recipe(&opts)? — DAEMON-SIDE recipe construction.
     //      If this returns EngineError::BinaryNotFound or EngineError::InvalidPath, the
     //      error is converted to SessionError::EngineError via From<EngineError> and
     //      bubbles to the Err(e) arm below. No OS process has been spawned at this point.
     //      These EngineError codes are REACHABLE because spawn_recipe() runs daemon-side.
-    //   2. Calls SessionHostSpawner::spawn(&recipe) — OS process spawn.
-    //   3. Writes the sidecar file.
-    //
-    // Fill daemon-owned fields on opts before passing to spawn_session().
-    // C30-001: SpawnOptions is #[non_exhaustive]; functional-update (`..opts`) is E0639
-    // outside the defining crate. Use the consuming builder `with_daemon_fields()` instead.
-    let opts = opts.with_daemon_fields(
-        uuid::Uuid::new_v4().to_string(),
-        state.hooks_settings_path.clone(), // pre-written at step 9
-    ); // project_root, worktree_root, harness_id, profile_id, ccr_base_url came from TUI
+    //   b. Calls SessionHostSpawner::spawn(&recipe) — OS process spawn.
+    //   c. Writes the sidecar file.
     //
     // session_error_to_code maps the EngineError-derived variants:
     //   SessionError::EngineError(BinaryNotFound) → "binary_not_found"
     //   SessionError::EngineError(InvalidPath)    → "invalid_spawn_arg"
     // See SS-session-manager.md §SessionError taxonomy and §session_error_to_code().
+    // Step 4: Call spawn_session() with the completed SpawnOptions.
     match state.session_manager.lock().await
         .spawn_session(opts)
         .await
@@ -180,6 +196,9 @@ ClientToServer::SpawnSession { opts } => {
             // SessionListUpdate to the broker (see §SessionStateChanged emission rule below).
         }
         Err(e) => {
+            // NOTE: TUI has already received SpawnAck; it MUST clear launching_session_id
+            // (set to None in AppMode::SessionCreation) on receipt of this Error —
+            // spawn failed; wizard returns to ProfilePicker with an error banner.
             let _ = client_tx.send(ServerToClient::Error {
                 code: session_error_to_code(IpcOp::Spawn, &e).to_string(),
                 message: e.to_string(),
@@ -690,6 +709,24 @@ If no in-process SessionManager stub exists in D-235 (i.e., the stub was skeleta
 implementer creates `SessionManager` from scratch per SS-08.
 
 ---
+
+## §Trace v1.10.0
+
+**F-P43-IMP-001 — §3 SpawnSession arm: insert canonical 4-step SpawnAck sequence; add spawn-fail clearing obligation** (2026-06-14):
+
+- **Finding (F-P43-IMP-001, IMPORTANT):** The §3 `SpawnSession` handler arm generated the UUID inline via `opts.with_daemon_fields(uuid::Uuid::new_v4().to_string(), ...)` and immediately called `spawn_session(opts)` with NO intervening `SpawnAck` send. This contradicted:
+  - SS-session-manager.md §IPC handler (lines ~534-544): canonical 4-step sequence (UUID → SpawnAck → with_daemon_fields → spawn_session).
+  - SS-ipc.md §ServerToClient::SpawnAck §Delivery ordering (lines ~452-464): normative requirement that Step 2 (SpawnAck send) MUST precede Step 4 (spawn_session call) so SpawnAck reaches the TUI before SessionStateChanged{Launching}.
+  - The §3 preamble's own **CANONICAL PATTERN LOCK (P8-STRUCTURAL)** blockquote, which requires changes to the canonical handler pattern to propagate to this document in the same burst — the F-P41 spawn-handshake sweep (2026-06-14) updated SS-session-manager and SS-ipc but this propagation failed for §3.
+- **Fix:** §3 `SpawnSession` arm updated with the canonical 4-step sequence:
+  1. `let session_id = uuid::Uuid::new_v4().to_string();`
+  2. `client_tx.send(ServerToClient::SpawnAck { session_id: session_id.clone() }).await` — point-to-point to requesting client, NOT broadcast.
+  3. `let opts = opts.with_daemon_fields(session_id, state.hooks_settings_path.clone());`
+  4. `state.session_manager.lock().await.spawn_session(opts).await` — match block unchanged.
+  The causal ordering invariant (SpawnAck before SessionStateChanged{Launching}) is documented in the inline comment.
+- **Spawn-fail note added:** The `Err(e)` arm now carries the obligation note: TUI MUST clear `AppMode::SessionCreation.launching_session_id` to `None` and return to `ProfilePicker` on receipt of the Error message (consistent with SS-session-manager.md lines ~548-550 and SS-ipc.md §ServerToClient::SpawnAck TUI consumption).
+- **Field/type names verified identical to canonical docs:** `SpawnAck`, `launching_session_id`, `ProfilePicker`, `SessionStateChanged` — no `wizard_session_id` or "Step N" labels introduced.
+- Semver: minor (v1.9.1 → v1.10.0) — new normative handler step (SpawnAck insert); behavioral change to IPC handler skeleton.
 
 ## §Trace v1.9.1
 

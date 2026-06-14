@@ -142,9 +142,9 @@ SS-engine-module-v2-delta:
 
 SS-daemon-wiring-v2-delta:
   path: specs/architecture/SS-daemon-wiring-v2-delta.md
-  current_version: "1.9.1"
-  last_bump_commit: "[Pass-35 S35-001 D-277 — split-pair rationale de-contradicted: immediate disconnect independent of slow-client 3-strike counter]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.10.0"
+  last_bump_commit: "[Pass-43 F-P43-IMP-001 D-286 — §3 SpawnSession arm now carries 4-step SpawnAck sequence + spawn-fail clear-launching_session_id note; syncs duplicate IPC-handler skeleton to canonical SS-session-manager/SS-ipc sequence]"
+  last_bump_date: "2026-06-14"
 
 SS-deps-pin-manifest-v2-delta:
   path: specs/architecture/SS-deps-pin-manifest-v2-delta.md

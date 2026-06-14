@@ -64,7 +64,7 @@ and sends SIGKILL directly to the session-host PID. The sidecar is not immediate
    to `SessionState::Terminating` atomically with the Kill send.
 2. `ServerToClient::SessionStateChanged { session_id, new_state: Terminating }` is published
    to the broker BEFORE `ServerToClient::SessionListUpdate` — both under the `SessionManager`
-   mutex per BC-2.08.008 Invariant 4 and SS-daemon-wiring-v2-delta.md v1.9.1 §3b. TUI renders
+   mutex per BC-2.08.008 Invariant 4 and SS-daemon-wiring-v2-delta.md v1.10.0 §3b. TUI renders
    `[Terminating]` indicator on receipt of `SessionStateChanged{Terminating}`.
 3. When the session-host receives `DaemonToHost::Kill`:
    a. It sends SIGTERM to the harness child process.
@@ -161,7 +161,7 @@ and sends SIGKILL directly to the session-host PID. The sidecar is not immediate
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC defines the kill operation, a core session lifecycle action named explicitly in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager `kill_session()`); monocle-session-host (SIGTERM delivery) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.3.0 §SessionManager §Public API (kill_session signature); §Per-session UDS protocol (DaemonToHost::Kill, HostToDaemon::StateChanged, Goodbye); §Per-session UDS security item 1 (SO_PEERCRED universal — no coverage holes); SS-daemon-wiring-v2-delta.md v1.9.1 §3b (SessionStateChanged emission rule: Terminating then SessionListUpdate) |
+| Architecture Source | SS-session-manager.md v2.3.0 §SessionManager §Public API (kill_session signature); §Per-session UDS protocol (DaemonToHost::Kill, HostToDaemon::StateChanged, Goodbye); §Per-session UDS security item 1 (SO_PEERCRED universal — no coverage holes); SS-daemon-wiring-v2-delta.md v1.10.0 §3b (SessionStateChanged emission rule: Terminating then SessionListUpdate) |
 | Test Name | test_BC_2_08_003_kill_session_sigterm_within_500ms |
 
 ## Related BCs
