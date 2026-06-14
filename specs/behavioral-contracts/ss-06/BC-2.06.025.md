@@ -58,8 +58,9 @@ pane.
      existed; `[?]` indicates "origin unknown, treat as external"), `display_name`,
      `SessionState` indicator (`Running`, `Launching`, `Detached`, `Terminating`, `Terminated`).
    - Sessions with `SessionState::Terminating` render a `[Terminating]` indicator (e.g.,
-     a spinner or dimmed name). Lifecycle actions (`k`, `D`, `r`) are DISABLED for
-     `Terminating` sessions — the kill is already in progress.
+     a spinner or dimmed name). Lifecycle actions (`k`/`d`, `D`, `r`) are DISABLED for
+     `Terminating` sessions — the kill is already in progress. (`d` is the kill alias
+     per PC-3; both `k` and `d` trigger the same `KillSession` IPC and are equally disabled.)
    - Sessions with `SessionSnapshot.degraded == true` render a `[!]` degraded badge (amber
      or warning color) alongside the session row. The `SessionSnapshot.degraded_reason`
      (e.g., `"Missing env: HOME, PATH"`) is displayed in the status bar when the degraded
@@ -97,7 +98,7 @@ pane.
 4. Sessions with `SessionState::Terminated` are shown in the list with a `[X]` indicator
    until GC removes them (BC-2.08.005 10-second grace period).
    Sessions with `SessionState::Terminating` are shown with a `[Terminating]` indicator (a
-   spinner or dimmed style) and MUST NOT allow lifecycle actions (`k`, `D`, `r` are no-ops
+   spinner or dimmed style) and MUST NOT allow lifecycle actions (`k`/`d`, `D`, `r` are no-ops
    or explicitly blocked with a status bar hint). The `[Terminating]` state persists until
    the daemon broadcasts `SessionListUpdate` with `state: Terminated` (on session-host
    confirmation or 12s watchdog). See BC-2.08.003 Invariant 4 for the Terminating state
@@ -166,7 +167,18 @@ S-TBD — Implement multi-session grouped sessions panel with lifecycle actions 
 
 VP-TBD — Sessions panel multi-session render tests (filled after VP creation)
 
-## §Trace v1.3.1
+## §Trace v1.3.1 (errata)
+
+**S-P47-001 — Add `d` kill-alias to Terminating disabled-action lists** (2026-06-14):
+- **Finding (S-P47-001):** PC-1 and Invariant 4 disabled-action lists enumerated `k`, `D`, `r`
+  for Terminating sessions but omitted the lowercase `d` kill-alias. PC-3 defines kill as
+  "`k` or `d`", making the omission an intra-document contradiction: a literal implementer
+  could permit `d`-triggered kill on a Terminating session, contradicting EC-296.
+- **PC-1 (clarifying errata):** `(`k`, `D`, `r`)` → `(`k`/`d`, `D`, `r`)` with a parenthetical
+  noting `d` is the kill alias per PC-3.
+- **Invariant 4 (clarifying errata):** Same substitution.
+- **Bump disposition:** Errata-no-bump — this is clarification of clear existing intent;
+  no normative obligation changes. (`d`≡`k` was already implied by PC-3.) Version stays v1.3.1.
 
 **Arch-source pin v1.5.1→v1.5.2** (2026-06-13 / D-277):
 - Arch-source pin: SS-embedded-pty.md v1.5.1 → v1.5.2 (Architecture Source row).

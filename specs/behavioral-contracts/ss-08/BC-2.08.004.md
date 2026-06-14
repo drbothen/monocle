@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.1"
+version: "1.3.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -67,7 +67,9 @@ seconds for the typical case of up to 8 sessions.
         `SessionEntry` with `state: Detached` and `host_conn: None`. DO NOT send
         `DaemonToHost::Attach` — the session was intentionally detached; the user's detach
         intent MUST be preserved. The TUI may later send `ClientToServer::AttachSession` if
-        the user chooses to resume. Emit `SessionStateChanged{Detached}` then `SessionListUpdate`.
+        the user chooses to resume. Do NOT emit `SessionStateChanged` — re-discovery registration
+        of an unchanged persisted state is NOT a state-value transition. The first TUI client's
+        initial `InitialState` / `SessionListUpdate` conveys the Detached session; nothing is lost.
       - **State `Terminating` (I3-002 fix):** Verify SO_PEERCRED; if uid matches:
         (i) Check `kill_deadline_unix_ms` from sidecar: if present and already elapsed →
             immediate SIGKILL to session-host PID; transition to `Terminated`; GC sidecar;
@@ -138,7 +140,7 @@ seconds for the typical case of up to 8 sessions.
 | EC-169 | Session-host process alive but socket file missing | Process alive (`kill(pid, None)` OK) but `connect(socket_path)` fails; session treated as non-responsive; sidecar deleted; `SIGTERM` sent to orphaned process |
 | EC-170 | `runtime_dir` is unreadable | Log ERROR; `rediscover_sessions()` returns `Ok(RediscoveryReport { found_alive: 0, found_dead: 0, errors: [RuntimeDirUnreadable] })`; startup proceeds with empty registry |
 | EC-171 | 8 sessions: 4 alive, 4 dead | All 8 probed in parallel; 4 dead sidecars deleted; 4 alive `SessionEntry` records added; total time ≤ 5s |
-| EC-172 | Sidecar with `state: "Detached"` and alive session-host | SO_PEERCRED verified; `SessionEntry` registered with `state: Detached`, `host_conn: None`; NO `DaemonToHost::Attach` sent; `SessionStateChanged{Detached}` then `SessionListUpdate` published; TUI shows session as Detached; user must explicitly AttachSession to resume streaming |
+| EC-172 | Sidecar with `state: "Detached"` and alive session-host | SO_PEERCRED verified; `SessionEntry` registered with `state: Detached`, `host_conn: None`; NO `DaemonToHost::Attach` sent; NO `SessionStateChanged` emitted (re-discovery of unchanged state is not a transition; pre-UDS-bind, no client connected to receive it); TUI sees the Detached session in `InitialState` on first connect; user must explicitly AttachSession to resume streaming |
 | EC-173 | Sidecar with `state: "Terminating"` and `kill_deadline_unix_ms` elapsed at re-discovery time | Immediate SIGKILL to session-host PID; no `SessionEntry` registered; sidecar deleted; `SessionStateChanged{Terminated}` then `SessionListUpdate` published (dead session GC path) |
 
 ## Canonical Test Vectors
@@ -193,6 +195,33 @@ S-TBD — Implement daemon_start_sequence step 8b: rediscover_sessions() (filled
 ## VP Anchors
 
 VP-TBD — Re-discovery integration tests including timing (filled after VP creation)
+
+## §Trace v1.3.0
+
+**F-P47-001 — Detached re-discovery MUST NOT emit SessionStateChanged (Option B decision)** (2026-06-14):
+
+- **Finding (F-P47-001):** PC-2b `State Detached` case mandated `Emit \`SessionStateChanged{Detached}\`
+  then \`SessionListUpdate\`` after re-discovery registration. This was asymmetric with the
+  `Launching`/`Running` re-discovery cases which register `SessionEntry` without emitting anything.
+  Re-discovery registration of an unchanged persisted state (Detached→Detached) is NOT a state-value
+  transition and MUST NOT emit `SessionStateChanged`.
+- **Decision (Option B, adjudicated):** `SessionStateChanged` is emitted ONLY on a genuine
+  state-VALUE change. Re-discovery of a Detached session that is still Detached is not a transition.
+  The Terminated-GC re-discovery emission stays (persisted Terminating → Terminated IS a real value
+  change). Re-discovery occurs before any TUI client connects (broker discards messages); the first
+  client's `InitialState` conveys the Detached session — nothing is functionally lost.
+- **PC-2b (normative change):** Removed `Emit \`SessionStateChanged{Detached}\` then \`SessionListUpdate\`.`
+  Replaced with: "Do NOT emit `SessionStateChanged` — re-discovery registration of an unchanged
+  persisted state is NOT a state-value transition. The first TUI client's initial `InitialState` /
+  `SessionListUpdate` conveys the Detached session; nothing is lost."
+- **EC-172 (normative change):** Removed `SessionStateChanged{Detached}` and `SessionListUpdate
+  published` from expected behavior. Now: "NO `SessionStateChanged` emitted (re-discovery of
+  unchanged state is not a transition; pre-UDS-bind, no client connected to receive it); TUI sees
+  the Detached session in `InitialState` on first connect."
+- **Symmetry:** Detached re-discovery now matches Launching/Running re-discovery cases — all three
+  register `SessionEntry` without emitting SessionStateChanged or SessionListUpdate. The emission
+  asymmetry was the defect.
+- Minor bump: v1.2.1 → v1.3.0.
 
 ## §Trace v1.2.1
 

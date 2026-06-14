@@ -204,8 +204,8 @@ ARCH-INDEX:
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.40.5"
-  last_bump_commit: "[Pass-44 F-P44-IMP-001 D-287 — BC-2.03.008 v1.0.2 + BC-2.05.010 v1.8.1 rows updated in BC-INDEX; §Trace v1.40.5 row added]" # version-pin-historical: changelog description of bump, not a live pin
+  current_version: "1.40.6"
+  last_bump_commit: "[Pass-47 F-P47-001 D-290 — BC-2.08.004 v1.3.0 + BC-2.08.008 v1.3.0 rows updated in BC-INDEX; §Trace v1.40.6 row added]" # version-pin-historical: changelog description of bump, not a live pin
   last_bump_date: "2026-06-14"
 
 STORY-INDEX:
@@ -767,9 +767,9 @@ BC-2.08.003:
 
 BC-2.08.004:
   path: specs/behavioral-contracts/ss-08/BC-2.08.004.md
-  current_version: "1.2.1"
-  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.3.0"
+  last_bump_commit: "[Pass-47 F-P47-001 D-290 — Detached re-discovery MUST NOT emit SessionStateChanged (Option B); removed over-specified emission from PC-2b + EC-172; symmetry with Running/Launching re-discovery restored]"
+  last_bump_date: "2026-06-14"
 
 BC-2.08.005:
   path: specs/behavioral-contracts/ss-08/BC-2.08.005.md
@@ -791,8 +791,8 @@ BC-2.08.007:
 
 BC-2.08.008:
   path: specs/behavioral-contracts/ss-08/BC-2.08.008.md
-  current_version: "1.2.1"
-  last_bump_commit: "[D-285 CV-SS-005 — PC-5 causal step-ordering + FIFO completeness; SpawnAck-before-Launching ordering guarantee documented (IPC handler sends SpawnAck step 2, before spawn_session() step 4, before broker emits Launching step 5)]"
+  current_version: "1.3.0"
+  last_bump_commit: "[Pass-47 F-P47-001 D-290 — re-discovery of unchanged persisted state is NOT a transition; removed 'Detached re-discovery registration' from PC-1 emission list + Invariant 1 no-exception clause; genuine-value-change rule enforced]"
   last_bump_date: "2026-06-14"
 
 BC-2.09.001:

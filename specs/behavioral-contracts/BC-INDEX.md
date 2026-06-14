@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.40.5"
+version: "1.40.6"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-14T20:00:00Z
+timestamp: 2026-06-14T21:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "cbf13d5"
@@ -1234,6 +1234,44 @@ SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. 
 - BC-INDEX version: 1.40.4 → 1.40.5. No BC ID additions or retirements. No H1 title changes.
 
 SE-16d monotonicity: v1.40.5 timestamp 2026-06-14T20:00:00Z > v1.40.4 timestamp 2026-06-14T19:00:00Z. PASS.
+
+## §Trace v1.40.6
+
+**F-P47-001 + S-P47-001 + S-P47-002 — Pass-47 adversarial findings: Detached re-discovery over-emission; `d` kill-alias in disabled list; PC-2 wire-wrap note** (2026-06-14):
+
+- **BC-2.08.004 v1.2.1 → v1.3.0 (minor — normative obligation removed):**
+  PC-2b Detached case previously mandated `Emit \`SessionStateChanged{Detached}\` then
+  \`SessionListUpdate\`` on re-discovery registration. Removed per F-P47-001 decision (Option B):
+  re-discovery of an unchanged persisted state is NOT a state-value transition; MUST NOT emit
+  `SessionStateChanged`. EC-172 updated: removed emission assertion; now correctly states
+  TUI sees Detached session in `InitialState` on first connect. Symmetry achieved with
+  Launching/Running re-discovery cases (none emit SessionStateChanged or SessionListUpdate).
+
+- **BC-2.08.008 v1.2.1 → v1.3.0 (minor — normative obligation corrected):**
+  PC-1 introductory sentence removed "Detached re-discovery registration" from the
+  no-exception emission list; added explicit clarification that re-discovery registration of
+  an unchanged persisted state MUST NOT emit. Invariant 1 tightened: "mutates
+  `SessionEntry.state` TO A DIFFERENT VALUE" — initial re-discovery registration of an
+  unchanged persisted state is excluded. No change to the transition bullet list (which never
+  listed Detached re-discovery; only `Running → Detached` via `detach_session()` — a real
+  value change — appears there).
+
+- **BC-2.06.025 v1.3.1 (errata-no-bump — S-P47-001):**
+  PC-1 and Invariant 4 disabled-action lists for Terminating sessions now enumerate `k`/`d`
+  instead of bare `k`. The `d` kill-alias was defined in PC-3 but omitted from the disabled
+  lists, creating an intra-document contradiction with EC-296. Clarification of clear intent;
+  no normative obligation changes.
+
+- **BC-2.03.008 v1.0.2 (errata-no-bump — S-P47-002):**
+  PC-2 now includes a one-line note distinguishing the raw `EngineError::UnsupportedOperation`
+  Display value (`"unsupported operation: spawn_recipe"`) from the wire-level
+  `ServerToClient::Error.message` produced by `SessionError::EngineError` wrapping
+  (`"engine error: unsupported operation: spawn_recipe"`). Diagnostic-only; the fixed banner
+  from PC-3 is what the user sees. Contract behavior unchanged.
+
+- BC-INDEX version: 1.40.5 → 1.40.6. BC H1 titles unchanged. No BC ID additions or retirements.
+
+SE-16d monotonicity: v1.40.6 timestamp 2026-06-14T21:00:00Z > v1.40.5 timestamp 2026-06-14T20:00:00Z. PASS.
 
 ## §Trace v1.40.4
 

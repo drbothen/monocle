@@ -43,7 +43,12 @@ that must be explicitly opted into, not accidentally inherited.
 
 1. Returns `Err(EngineError::UnsupportedOperation("spawn_recipe"))` immediately. No I/O,
    no filesystem access, no `PATH` lookup is performed.
-2. The error message format is: `"unsupported operation: spawn_recipe"`.
+2. The error message format is: `"unsupported operation: spawn_recipe"`. Note: this is the
+   raw inner string (the `EngineError::UnsupportedOperation` `Display` value). On the IPC wire,
+   `SessionError::EngineError` wraps it via `#[error("engine error: {0}")]`, yielding
+   `"engine error: unsupported operation: spawn_recipe"` in `ServerToClient::Error.message`.
+   This is diagnostic-only — the TUI renders the FIXED banner ("Session spawn not supported
+   for this harness") from PC-3 and NEVER displays `message` verbatim to the user.
 3. When the daemon receives `UnsupportedOperation` from `spawn_recipe()`, it MUST surface
    an error to the TUI: `"Session spawn not supported for this harness"`. This banner is
    delivered via `ServerToClient::Error { code: "spawn_unsupported", message: "Session spawn not supported for this harness" }`
@@ -121,7 +126,21 @@ S-TBD — Same story as BC-2.03.005 (EngineModule trait extension with spawn_rec
 
 VP-TBD — Default UnsupportedOperation unit test (filled after VP creation)
 
-## §Trace v1.0.2
+## §Trace v1.0.2 (errata)
+
+**S-P47-002 — PC-2 clarifying note: raw EngineError Display vs wire-wrapped SessionError message** (2026-06-14):
+- **Finding (S-P47-002):** PC-2 stated the error message as `"unsupported operation: spawn_recipe"`
+  without distinguishing the raw `EngineError::UnsupportedOperation` Display value from the
+  `SessionError::EngineError` wrapper that produces the wire-level `ServerToClient::Error.message`
+  value (`"engine error: unsupported operation: spawn_recipe"`). This is harmless because
+  SS-ipc mandates the TUI render the FIXED banner from PC-3 and never display `message` verbatim,
+  but a reader could misunderstand which string appears on the wire.
+- **PC-2 (clarifying errata):** Added one-line note explaining: the raw inner string is the
+  `EngineError::UnsupportedOperation` Display value; on the wire, `SessionError::EngineError`
+  wraps it via `#[error("engine error: {0}")]`; the fixed banner (not `message`) is
+  what the user sees.
+- **Bump disposition:** Errata-no-bump — contract behavior unchanged; note clarifies existing
+  wire semantics already specified in SS-ipc. Version stays v1.0.2.
 
 **F-P44-IMP-001 resolution — `spawn_unsupported` wire code; EC-112 reachability; integration test vector** (2026-06-14):
 

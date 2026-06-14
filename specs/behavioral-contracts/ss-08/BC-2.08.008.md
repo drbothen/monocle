@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.1"
+version: "1.3.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-14T18:00:00Z
@@ -49,8 +49,9 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
 ### Emission on every transition (no silent transitions)
 
 1. `SessionStateChanged` is emitted for EVERY `SessionState` transition WITHOUT EXCEPTION —
-   including re-discovery GC paths, watchdog-forced Terminated transitions, and Detached
-   re-discovery registration. The complete transition list:
+   including re-discovery GC paths and watchdog-forced Terminated transitions. Re-discovery
+   registration of an unchanged persisted state (e.g., Detached re-discovery) is NOT a
+   transition and does NOT emit `SessionStateChanged`. The complete transition list:
    - `Launching → Running` (session-host confirms readiness via `HostToDaemon::StateChanged`)
    - `Running → Terminating` (kill_session() called)
    - `Detached → Terminating` (kill_session() called on Detached session)
@@ -134,13 +135,14 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
 
 ## Invariants
 
-1. `SessionStateChanged` is published for EVERY state transition without exception —
-   including re-discovery GC (dead session → Terminated), Terminating watchdog fires, and
-   Detached re-discovery registration. There is no silent state transition in the daemon.
-   Every code path that mutates `SessionEntry.state` MUST post `SessionStateChanged` to
-   the broker. This includes paths in `rediscover_sessions()` (where transitions occur
-   during daemon startup before any TUI client is connected — messages are discarded by
-   the broker fan-out, which is correct).
+1. `SessionStateChanged` is published for EVERY code path that mutates `SessionEntry.state`
+   TO A DIFFERENT VALUE — including re-discovery GC (dead session → Terminated) and
+   Terminating watchdog fires. There is no silent state transition in the daemon. Initial
+   re-discovery registration of an unchanged persisted state (e.g., Detached sidecar
+   re-registered as Detached) is NOT a transition and MUST NOT emit `SessionStateChanged` —
+   only genuine state-value changes emit. This applies to all paths in `rediscover_sessions()`
+   (which runs before any TUI client is connected; broker fan-out discards messages when no
+   subscribers are present, which is correct).
 2. The `session_id` in `SessionStateChanged` is the same UUID string used in all other IPC
    messages for the session (canonical per SS-session-manager.md §session_id type ruling).
 3. `SessionStateChanged` is NOT an acknowledgement of a TUI request — it is a fact about
@@ -220,6 +222,27 @@ S-TBD — Implement SessionStateChanged broadcast on every SessionEntry state tr
 ## VP Anchors
 
 VP-TBD — SessionStateChanged emission and TUI response integration tests (filled after VP creation)
+
+## §Trace v1.3.0
+
+**F-P47-001 — Detached re-discovery registration is NOT a transition; remove from PC-1 and Invariant 1** (2026-06-14):
+
+- **Finding (F-P47-001):** PC-1 introductory sentence listed "Detached re-discovery registration"
+  as a case requiring `SessionStateChanged` emission. Invariant 1 also listed it. Re-discovery
+  registration of an unchanged persisted state (Detached→Detached) is NOT a state-value
+  transition and emitting `SessionStateChanged` for it was asymmetric with how Running and
+  Launching re-discovery cases are handled (they register `SessionEntry` without emitting).
+- **PC-1 (normative change):** Introductory sentence updated: removed "and Detached re-discovery
+  registration"; added explicit clarification that re-discovery registration of an unchanged
+  persisted state is NOT a transition and MUST NOT emit `SessionStateChanged`. The bullet list
+  is unchanged — it never contained a "Detached re-discovery" bullet; only `Running → Detached`
+  (detach_session() — a real value change) and Re-discovery GC (dead → Terminated — a real
+  value change) appear there, both correct.
+- **Invariant 1 (normative tightening):** Reworded from "mutates `SessionEntry.state`" to
+  "mutates `SessionEntry.state` TO A DIFFERENT VALUE". Removed "Detached re-discovery
+  registration" from the no-exception clause. Added explicit: "Initial re-discovery
+  registration of an unchanged persisted state … is NOT a transition and MUST NOT emit."
+- Minor bump: v1.2.1 → v1.3.0.
 
 ## §Trace v1.2.1
 
