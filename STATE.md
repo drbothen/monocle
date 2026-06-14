@@ -2,7 +2,7 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "7.53"
+version: "7.54"
 status: active
 producer: state-manager
 timestamp: 2026-06-14T00:00:00Z
@@ -499,18 +499,106 @@ durable_task_register:
     - "TALLY-GUARD (D-225): STATE running-tally must re-sum sprint-state per-story; summary.points_complete is a cache. Hand-increment drift produced +8 pts error + premature Phase-3-COMPLETE. L-W6-GATE-003."
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v7.53 (D-271..D-303) — 2026-06-14
+  ZERO-CONTEXT RESUME CHECKPOINT v7.54 (D-271..D-303) — 2026-06-14
   PIVOT: monocle → full TUI control center — PHASE-1D FULLY COMPLETE (D-303)
+  PHASE-2 STORY DECOMPOSITION IS THE NEXT ACTION (human approved "Begin Phase-2 now")
   57 PASSES COMPLETE; CONVERGENCE COMPLETE; CONSISTENCY AUDIT DONE; HUMAN GATE PASSED; INPUT-HASH REBASELINED
   CC-TUITERM-WIP-SIGNOFF SIGNED; CC-GLOBAL-MOUSE-CAPTURE SIGNED; INPUT-HASH CONTENT-REVIEW DONE (0 semantic drift)
-  NEXT: Phase-2 story decomposition (vsdd-factory:story-writer — resolve S-TBD anchors; decompose v1A delta → stories + waves)
-  143 orphaned pre-pivot stories deferred to Phase-2 disposition.
+  NEXT: Phase-2 DELTA story decomposition (vsdd-factory:story-writer) — resolve ALL S-TBD anchors in 25 v1A BCs;
+        decompose v1A BCs → new stories; integrate into existing STORY-INDEX v5.32 + sprint-state.yaml;
+        new epics (EPIC-07 SS-08, EPIC-08 SS-09), new waves (Wave 8+); 3-clean adversarial + consistency audit before gate.
+  143 orphaned pre-pivot observe-only stories: deferred to Phase-2 disposition (retire/archive/mark-done-historical).
+  ADVERSARIAL COUNTER RESET: Phase-1d convergence counter is MOOT. Phase-2 starts a NEW convergence cycle (0 of 3 clean).
+  factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'` (do NOT trust a literal SHA here).
+  develop HEAD: 122eed5 (no v1A production code; last v1A-relevant doc commit per recent history).
   ============================================================================
 
   READ THESE FIRST (in order — before anything else):
-  1. /Users/jmagady/Dev/monocle/NEXT-SESSION-RESUME.md  ← concise 1-page entry point (updated)
+  1. /Users/jmagady/Dev/monocle/NEXT-SESSION-RESUME.md  ← concise 1-page entry point (this doc)
   2. /Users/jmagady/Dev/monocle/CLAUDE.md               ← production-grade + agent-routing rules
-  3. This STATE.md fully                                 ← durable_task_register + all deferreds
+  3. This STATE.md fully                                 ← durable_task_register + section E ratified decisions + all deferreds
+
+  ============================================================================
+  PHASE-2 PLAN — DELTA STORY DECOMPOSITION
+  ============================================================================
+
+  Phase-2 is a DELTA decomposition: the v1A pivot adds new scope on top of the existing
+  pre-pivot story corpus (STORY-INDEX v5.32, EPIC-01..06, S-001..S-032, sprint-state v1.40).
+
+  STEP 1 — story-writer maps the 25 v1A BCs → implementable stories, resolving every S-TBD anchor.
+  v1A BCs needing stories, by subsystem (each `S-TBD` in the BC becomes a real story ID):
+
+  SS-03 (engine-module):
+    BC-2.03.001  EngineModule trait + monocle-core crate wiring
+    BC-2.03.002  ClaudeCodeModule strict-basename detect
+    BC-2.03.003  HomeUnresolvable error path
+    BC-2.03.004  ClaudeCodeModule inherent methods / hook_paths
+    BC-2.03.005  ClaudeCodeModule::spawn_recipe() + default
+    BC-2.03.006  spawn_recipe() error handling — NOTE: .006/.007/.008 may resolve to the same story as .005
+
+  SS-05 (IPC):
+    BC-2.05.001  UDS server bind 0o600 + dir 0o700
+    BC-2.05.002  TUI UDS connect + InitialState
+    BC-2.05.003  SessionListUpdate fan-out
+    BC-2.05.005  PermissionPromptQueued
+    BC-2.05.006  TUI reconnect backoff
+    BC-2.05.007  TransportEvent::Disconnected
+    BC-2.05.008  Transport trait / UdsTransport
+    BC-2.05.009  PtyOutput broker fan-out
+    BC-2.05.010  new ClientToServer IPC variants + routing
+    BC-2.05.011  ScrollbackChunk* / ScrollbackComplete / PtyReset
+    NOTE: BC-2.05.004 already resolved → S-021 / S-032.
+
+  SS-06 (TUI sessions panel):
+    BC-2.06.025  multi-session grouped sessions panel + lifecycle actions
+
+  SS-08 (session-manager):
+    BC-2.08.001  spawn_session / SessionHostSpawner
+    BC-2.08.002  re-discovery + setsid in monocle-session-host
+    BC-2.08.003  kill_session
+    BC-2.08.004  daemon_start_sequence 8b rediscover_sessions
+    BC-2.08.005  GC task
+    BC-2.08.006  hook auto-injection in spawn path
+    BC-2.08.007  attach / detach
+    BC-2.08.008  SessionStateChanged broadcast
+
+  SS-09 (embedded-pty):
+    BC-2.09.001  TUI PTY widget: vt100 parser / PseudoTerminal render / PtyOutput handler
+    BC-2.09.002  key_event_to_pty_bytes + KeyInput IPC
+    BC-2.09.003  mouse_event_to_pty_bytes + SGR
+    BC-2.09.004  Kitty keyboard branch (same feature cluster as .002)
+    BC-2.09.005  bracketed paste (same feature cluster as .002)
+    BC-2.09.007  scrollback navigation
+    BC-2.09.008  EmbeddedTerminal / SessionCreation AppMode transitions
+    BC-2.09.009  permission badge + bell
+
+  Holdouts with S-TBD anchors (resolve to the new story IDs):
+    HS-EXP-011  stories_tested=[S-TBD-session-manager]
+    HS-EXP-012  stories_tested=[S-TBD]
+    HS-EXP-013  stories_tested=[S-TBD]
+    HS-EXP-014  stories_tested=[S-TBD]
+    HS-EXP-015  stories_tested=[S-TBD]
+
+  STEP 2 — integrate new stories into existing dependency graph + wave schedule.
+  Existing: STORY-INDEX v5.32 (EPIC-01..06, S-001..S-032), sprint-state.yaml v1.40.
+  Expected NEW epics: EPIC-07 (Session Manager / SS-08), EPIC-08 (Embedded PTY / SS-09),
+  + additions to EPIC-03 (engine-module SS-03), EPIC-05 (IPC SS-05), EPIC-06 (TUI SS-06).
+  New waves: Wave 8+ (WAVE 7 is DONE). story-writer must avoid dependency cycles.
+  Continuous numbering: next story is S-033+.
+
+  STEP 3 — adversarial STORY convergence (3 consecutive clean minimum; mandatory per orchestrator).
+  Follow-up: fresh consistency audit before any Phase-2 human gate.
+
+  ORCHESTRATOR REMINDER: when dispatching story-writer to create >8 stories, SPLIT into
+  "create" and "integrate" sub-bursts to avoid context-overflow.
+
+  PRE-EXISTING STORIES DISPOSITION (143 orphaned pre-pivot observe-only stories):
+  Human deferred decision to Phase-2. story-writer must decide:
+    - Archive / retire / mark-done-historical (these were authored under the observe-only scope).
+    - They are the source of the 143 UNRESOLVABLE input-hash entries (circular-dep residual).
+    - Do NOT carry them into the v1A story wave as active development targets.
+
+  ============================================================================
 
   ============================================================================
   A. WHERE WE ARE (D-271..D-303, 2026-06-14)
@@ -1237,9 +1325,24 @@ next_session_resume_protocol: |
      Circular-dependency STALE residual documented (INPUT-HASH-CHILD-RECOMPUTE — non-blocking).
      POL-11 GREEN. POL-12 GREEN.
 
-  3. Phase 2 STORY DECOMPOSITION (vsdd-factory:story-writer) — NEXT:
-     Decompose v1A delta into stories + waves + dependency graph.
-     RESOLVE all S-TBD story anchors in the 25 v1A BCs + holdout stories_tested fields.
+  3. Phase-2 STORY DECOMPOSITION (vsdd-factory:story-writer) — NEXT (human approved "Begin Phase-2 now"):
+     THIS IS THE CURRENT ENTRY POINT FOR A FRESH SESSION.
+     a. Dispatch story-writer to resolve all S-TBD anchors in 25 v1A BCs + holdout stories_tested fields.
+     b. story-writer creates new stories S-033+ for all v1A BCs listed in the PHASE-2 PLAN section above.
+     c. story-writer adds new epics (EPIC-07 SS-08, EPIC-08 SS-09) + additions to EPIC-03/05/06.
+     d. story-writer integrates into STORY-INDEX v5.32 (continuous numbering S-033+) + sprint-state.yaml.
+     e. story-writer defines Wave 8+ wave schedule.
+     f. story-writer disposes of 143 orphaned pre-pivot observe-only stories (retire/archive/mark-done).
+     g. Adversarial story convergence: 3 consecutive clean passes (new cycle; counter starts at 0).
+     h. Fresh consistency audit before Phase-2 human gate.
+     ORCHESTRATOR SPLIT RULE: >8 stories → split into "create" + "integrate" sub-bursts.
+
+  3a. Tooling tasks (devops-engineer, before Phase-4, non-blocking for Phase-2):
+     POL-11-PINFORMAT-BLIND-SPOT: extend check_version_pins.py with Pattern for 'path.md vX.Y.Z §section'
+       form in live Architecture-Source cells (D-301; 3rd POL blind-spot recurrence). Add CI + lefthook.
+     INPUT-HASH-CHILD-RECOMPUTE: pre-commit hook on factory-artifacts should run compute-input-hash
+       --scan --update whenever a shared parent spec is edited, preventing re-accumulation of drift.
+       Also document that circular-input-dep STALE is expected/non-blocking (tool design limitation).
 
   4. VP AUTHORING (vsdd-factory:architect) — DEFERRED to formal-hardening per VP-DTU-001
      pattern: all 25 v1A BCs cite VP-TBD; create VPs + VP-INDEX coverage at hardening.
