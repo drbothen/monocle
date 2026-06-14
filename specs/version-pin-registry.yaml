@@ -204,8 +204,8 @@ ARCH-INDEX:
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.40.6"
-  last_bump_commit: "[Pass-47 F-P47-001 D-290 — BC-2.08.004 v1.3.0 + BC-2.08.008 v1.3.0 rows updated in BC-INDEX; §Trace v1.40.6 row added]" # version-pin-historical: changelog description of bump, not a live pin
+  current_version: "1.40.7"
+  last_bump_commit: "[Pass-49 F-P49-001 D-292 — BC-INDEX Canonical SS version table converted to registry pointer; POL-11 blind spot closed; §Trace v1.40.7 added]" # version-pin-historical: changelog description of bump, not a live pin
   last_bump_date: "2026-06-14"
 
 STORY-INDEX:

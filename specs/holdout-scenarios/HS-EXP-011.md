@@ -13,7 +13,7 @@ timestamp: 2026-06-03T12:00:00Z
 # HS-EXP-011: Session Survives Graceful Daemon Restart — PTY Stream Re-Attached, SessionEntry Visible
 
 **Wave:** 8
-**Source BC:** BC-2.08.002 (postconditions PC-1, PC-3), BC-2.08.004 (PC-1, PC-3), BC-2.05.006 (PC-1)
+**Source BC:** BC-2.08.002 (postconditions PC-1, PC-3), BC-2.08.004 (PC-1, PC-6 + Invariant 1), BC-2.05.006 (PC-1)
 **Stories Tested:** S-TBD-session-manager
 
 ## Setup
@@ -38,7 +38,8 @@ A `ratatui::TestBackend` is connected to the TUI for frame inspection.
 4. The daemon completes shutdown and exits.
 
 5. Start a new daemon instance. The new daemon must NOT bind its UDS socket until re-discovery
-   completes (BC-2.08.004 postcondition PC-3: UDS bind blocked until re-discovery complete).
+   completes (BC-2.08.004 PC-6 + Invariant 1: UDS bind proceeds only after `rediscover_sessions()`
+   returns; ordering is mandatory to prevent TUI from receiving an incomplete session list).
 
 6. The new daemon performs re-discovery: scans `runtime_dir/session-*.json` (flat glob per SS-session-manager.md
    §re-discovery algorithm), finds `session-S1.json`, verifies PID liveness, and adds S1 back to

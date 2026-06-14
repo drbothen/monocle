@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.40.6"
+version: "1.40.7"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-14T21:00:00Z
+timestamp: 2026-06-14T22:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "cbf13d5"
@@ -473,20 +473,11 @@ BC test function names use stable legacy-form prefixes (e.g., `test_BC_AUTH_002_
 
 When a BC Traceability `Architecture Source` cell references **multiple** architecture documents (semicolon-separated), ALL referenced documents MUST carry explicit version pins in the form `SS-name.md vN.M.P` or `ADR-NNNN vN.M.P`. A cell where some references are pinned and others are unpinned is a **pin-symmetry violation** — MED severity per F-R110-8 (originally codified for VP Architecture Source cells; extended to BC Architecture Source cells via SE-17e sibling-propagation in R16C).
 
-**Canonical SS version table** (authoritative per R16C; update when architect bumps):
-
-| SS Document | Canonical Version |
-|-------------|-------------------|
-| SS-daemon-lifecycle.md | v1.0.33 |
-| SS-forward-compatibility.md | v1.2.19 |
-| SS-engine-module.md | v1.1.20 |
-| SS-core-types-and-abi.md | v1.2.13 |
-| SS-deps-pin-manifest.md | v1.1.17 |
-| SS-conventions-anti-patterns.md | v1.29.5 |
+**Canonical SS versions** — see `.factory/specs/version-pin-registry.yaml` (single source of truth per ADR-0007). When writing a multi-reference Architecture Source cell, look up the `current_version` field for each `SS-*` artifact ID in that file. Do NOT hardcode version literals here; this table was previously a hand-maintained mirror and drifted silently (F-P49-001 Pass-49). The pin-symmetry oracle is the registry, not a literal table in this file.
 
 **Single-reference cells** (one SS doc) have no symmetry requirement — a single-reference cell is trivially symmetric. Pin-symmetry only activates for two-or-more references.
 
-**Enforcement:** The adversary is instructed to flag any BC Architecture Source cell where ≥2 architecture documents are cited and at least one lacks a `vN.M.P` pin. Such findings are MED severity. This convention is also propagated to `architecture/SS-conventions-anti-patterns.md §BC-INDEX Conventions` (add at next architect dispatch).
+**Enforcement:** The adversary is instructed to flag any BC Architecture Source cell where ≥2 architecture documents are cited and at least one lacks a `vN.M.P` pin. Such findings are MED severity. This convention is also codified in `architecture/SS-conventions-anti-patterns.md §BC-INDEX Conventions`.
 
 ---
 
@@ -1234,6 +1225,36 @@ SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. 
 - BC-INDEX version: 1.40.4 → 1.40.5. No BC ID additions or retirements. No H1 title changes.
 
 SE-16d monotonicity: v1.40.5 timestamp 2026-06-14T20:00:00Z > v1.40.4 timestamp 2026-06-14T19:00:00Z. PASS.
+
+## §Trace v1.40.7
+
+**F-P49-001 — Pass-49: Canonical SS version table converted from literal mirror to registry pointer; holdout cite-precision fix (S-P49-001)** (2026-06-14):
+
+- **Architecture Source Pin-Symmetry Convention (§Conventions ~line 476):** Removed the hand-maintained
+  literal "Canonical SS version table" (6 rows: SS-daemon-lifecycle, SS-forward-compatibility,
+  SS-engine-module, SS-core-types-and-abi, SS-deps-pin-manifest, SS-conventions-anti-patterns).
+  This table was a POL-11 blind spot — its version literals were not in the `ID (vX.Y.Z)`
+  parenthetical form the linter scans, so drift accumulated silently across 4 rows:
+  SS-forward-compatibility v1.2.19→1.2.20, SS-engine-module v1.1.20→1.1.27,
+  SS-deps-pin-manifest v1.1.17→1.2.1, SS-conventions-anti-patterns v1.29.5→1.32.6.
+  Root cause: hand-maintained duplicate of the source-of-truth (version-pin-registry.yaml) is
+  the anti-pattern. Replaced with an explicit registry pointer: "see version-pin-registry.yaml
+  (single source of truth per ADR-0007)". Enforcement prose updated to name the registry as
+  the oracle. No literal version rows remain in this file.
+
+- **HS-EXP-011 + HS-EXP-012 cite-precision (S-P49-001):** Holdout files referenced
+  "BC-2.08.004 PC-3" for the UDS-bind-blocked guarantee. PC-3 (line ~90) is about all
+  SessionEntry records being in DaemonState before any TUI can connect — a derived consequence
+  of the guarantee, not its specification. The primary normative specification is **PC-6**
+  (UDS socket bind proceeds only after `rediscover_sessions()` returns) and **Invariant 1**
+  (ordering is mandatory; re-discovery MUST complete before UDS bind). HS-EXP-011 Step 5 /
+  Expected Outcome step 5 citation and HS-EXP-012 header / body now cite "PC-6 + Invariant 1".
+  Errata-no-bump on both holdout files (cite-precision only; no scenario behavior changed).
+
+- BC-INDEX version: 1.40.6 → 1.40.7. No BC ID additions or retirements. No H1 title changes.
+  BC-INDEX canonical-version-table removal does not affect BC bodies or BC IDs.
+
+SE-16d monotonicity: v1.40.7 timestamp 2026-06-14T22:00:00Z > v1.40.6 timestamp 2026-06-14T21:00:00Z. PASS.
 
 ## §Trace v1.40.6
 

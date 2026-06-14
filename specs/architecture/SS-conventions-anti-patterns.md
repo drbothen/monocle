@@ -1594,16 +1594,7 @@ When a BC Traceability `Architecture Source` cell or a VP Traceability `Architec
 
 **Single-reference cells** (one SS doc) have no symmetry requirement — a single-reference cell is trivially symmetric. Pin-symmetry only activates for two-or-more references.
 
-**Canonical SS version table** (authoritative per R17D; update when architect bumps any SS document):
-
-| SS Document | Canonical Version |
-|-------------|-------------------|
-| SS-daemon-lifecycle.md | v1.0.32 |
-| SS-forward-compatibility.md | v1.2.19 |
-| SS-engine-module.md | v1.1.20 |
-| SS-core-types-and-abi.md | v1.2.13 |
-| SS-deps-pin-manifest.md | v1.1.17 |
-| SS-conventions-anti-patterns.md | v1.30.2 |
+**Canonical SS versions** — see `.factory/specs/version-pin-registry.yaml` (single source of truth per ADR-0007). When writing a multi-reference Architecture Source cell, look up the `current_version` field for each `SS-*` artifact ID in that registry file. Do NOT hardcode version literals here; the previous literal table was a hand-maintained mirror that drifted silently (F-P49-001 Pass-49; sibling cleanup in BC-INDEX applied simultaneously via errata). The pin-symmetry oracle is the registry, not a literal table in this file.
 
 **Enforcement:** The adversary is instructed to flag any BC or VP Architecture Source cell where ≥2 architecture documents are cited and at least one lacks a `vN.M.P` pin. Such findings are MED severity. A pre-commit grep for `SS-[a-z-]+\.md(?!\s+v\d)` patterns within Architecture Source cell contexts provides automated detection.
 
@@ -2903,3 +2894,23 @@ v1.4 changes (round-24 fix F-R24-adv-5):
 - INFORMATIONAL: Production scope confirmation — `allow-*-in-tests` flags have no effect on non-test compilation units. A bare `x.unwrap()` in a non-test `src/` function still triggers `error: used 'unwrap()' on an Option value` under `-D warnings`. Empirically verified 2026-05-31.
 - SE-22 v2 sibling-sweep: `clippy.toml`, `Cargo.toml [workspace.lints.clippy]`, and CI step `cargo clippy --workspace --all-targets -- -D warnings` are the three consumers of this policy. No other spec files cite `allow-unwrap-in-tests` or `allow-expect-in-tests`. Zero cascade write-backs required.
 - SE-16d PASS: 2026-05-31T00:00:00Z > 2026-05-30T00:00:00Z (v1.32.5). ARITHMETICALLY TRUE.
+
+## ERRATA under v1.32.6 — F-P49-001 sibling: Canonical SS version literal table converted to registry pointer (2026-06-14)
+
+**Errata-no-bump:** Non-normative doc-hygiene; SS-conventions-anti-patterns is heavily cited — a standalone version bump for a mirror-table removal would force a disproportionate POL-11 cascade sweep. Consistent with errata-no-bump precedent from Pass-37/39/48. Version stays 1.32.6.
+**Scope (F-P49-001 Pass-49 sibling sweep — recurrence prevention):**
+- NORMATIVE: §Architecture Source Pin-Symmetry Convention `**Canonical SS version table**` removed.
+  The hand-maintained 6-row literal table (SS-daemon-lifecycle, SS-forward-compatibility,
+  SS-engine-module, SS-core-types-and-abi, SS-deps-pin-manifest, SS-conventions-anti-patterns)
+  was a silent-drift mirror of `version-pin-registry.yaml`. The stale values present at Pass-49
+  (historical record of values at time of F-P49-001 authoring; not active pins):
+  SS-daemon-lifecycle v1.0.32 <!-- version-pin-historical: stale value in retired mirror table at Pass-49 authoring time --> (had drifted from registry v1.0.33), SS-forward-compatibility v1.2.19 <!-- version-pin-historical: stale value in retired mirror table at Pass-49 authoring time --> (registry v1.2.20),
+  SS-engine-module v1.1.20 <!-- version-pin-historical: stale value in retired mirror table at Pass-49 authoring time --> (registry v1.1.27), SS-deps-pin-manifest v1.1.17 <!-- version-pin-historical: stale value in retired mirror table at Pass-49 authoring time --> (registry v1.2.1),
+  SS-conventions-anti-patterns v1.30.2 <!-- version-pin-historical: stale value in retired mirror table at Pass-49 authoring time --> (registry v1.32.6). Replaced with explicit registry pointer:
+  "see `.factory/specs/version-pin-registry.yaml` (single source of truth per ADR-0007)".
+  This is the same recurrence-prevention conversion applied to BC-INDEX.md §Conventions
+  simultaneously in v1.40.7 (F-P49-001 primary fix).
+- SE-22 v2 sibling-sweep: BC-INDEX.md §Conventions is the only other consumer/mirror of this
+  table — it received the same treatment. ARCH-INDEX has no SS-version literal table
+  (confirmed by Pass-49 adversary sweep + grep). Zero further cascade write-backs required.
+- SE-16d PASS: 2026-06-14T22:00:00Z > 2026-05-31T00:00:00Z (v1.32.6). ARITHMETICALLY TRUE.

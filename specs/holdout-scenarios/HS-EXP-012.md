@@ -13,7 +13,7 @@ timestamp: 2026-06-03T12:00:00Z
 # HS-EXP-012: Re-Discovery Completes Before UDS Bind — No TUI Connection Accepted During Discovery Window
 
 **Wave:** 8
-**Source BC:** BC-2.08.004 (postcondition PC-3: UDS bind MUST NOT precede re-discovery completion)
+**Source BC:** BC-2.08.004 (PC-6 + Invariant 1: UDS bind MUST NOT precede re-discovery completion)
 **Stories Tested:** S-TBD-session-manager
 
 ## Setup
