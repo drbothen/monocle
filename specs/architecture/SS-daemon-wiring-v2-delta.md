@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "daemon-wiring-v2-delta"
 subsystem: SS-04
-version: "1.9.0"
+version: "1.9.1"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -346,16 +346,19 @@ channel — `SessionStateChanged` is enqueued before `SessionListUpdate` for eve
 
 The two posts (SessionStateChanged then SessionListUpdate) are enqueued via `.try_send()` into
 each client's per-client channel. If the first `.try_send()` succeeds but the second fails
-(channel full), the pair has SPLIT for that client. The split is treated as a slow-client
-condition: the per-client `slow_send_count` is incremented AND the client is immediately treated
-as having exhausted its 3-strike threshold for this pair (a split pair is equivalent to 2
-consecutive full-buffer failures). The client is disconnected. The client may reconnect and
-receive a fresh `InitialState` containing the post-transition state.
+(channel full), the pair has SPLIT for that client. A split pair triggers **immediate client
+disconnect**, independent of the slow-client 3-strike counter (ADR-0010 §Cross-Client /
+Cross-Session Backpressure Isolation). The `slow_send_count` metric is incremented for
+telemetry purposes, but the disconnect does NOT require the counter to reach any threshold —
+it is unconditional on the first split. The client may reconnect and receive a fresh
+`InitialState` containing the post-transition state.
 
 Rationale: delivering a half-pair (SessionStateChanged without SessionListUpdate, or vice versa)
-leaves the TUI in an inconsistent state. Disconnecting is safer than tolerating partial delivery.
-This extends the existing 3-strike slow-client disconnect model (ADR-0010 §Cross-Client /
-Cross-Session Backpressure Isolation) with an explicit ordered-pair invariant.
+leaves the TUI in an inconsistent state — the session state and session list would be
+inconsistent with each other. Partial delivery is unsafe; immediate disconnect is the only
+correct response. The 3-strike slow-client counter applies to consecutive full-buffer failures
+on individual messages; the ordered-pair split is a distinct, more severe condition that
+does not participate in that counter's threshold logic.
 
 **Real ordering guarantee statement:** The ordering guarantee is: for a given TUI client, if both
 messages are delivered, `SessionStateChanged` always precedes `SessionListUpdate` in the
@@ -687,6 +690,16 @@ If no in-process SessionManager stub exists in D-235 (i.e., the stub was skeleta
 implementer creates `SessionManager` from scratch per SS-08.
 
 ---
+
+## §Trace v1.9.1
+
+**S35-001 — §3b broker fan-out ordered-pair split rationale: remove arithmetically inconsistent "2 consecutive failures ≡ 3-strike threshold" analogy** (D-277, 2026-06-13):
+
+- **Finding (S35-001):** The §3b ordered-pair split paragraph stated that a split pair is "immediately treated as having exhausted its 3-strike threshold for this pair (a split pair is equivalent to 2 consecutive full-buffer failures)." This is arithmetically inconsistent: 2 consecutive failures does not exhaust a 3-strike threshold. It also conflates two distinct mechanisms — the ordered-pair split disconnect (which is unconditional on the first split) and the slow-client 3-strike counter (which tracks consecutive individual full-buffer failures over multiple messages).
+- **Fix:** Reworded to state the normative rule cleanly: a split pair triggers immediate client disconnect, independent of the slow-client 3-strike counter. The `slow_send_count` metric is incremented for telemetry, but the disconnect does not require the counter to reach any threshold. The rationale paragraph now explicitly contrasts the ordered-pair split (distinct, more severe, counter does not apply) with the 3-strike slow-client mechanism (consecutive full-buffer failures on individual messages).
+- **Normative outcome unchanged:** immediate disconnect + reconnect → fresh `InitialState`. Only the explanatory rationale text is corrected.
+- **BC mirror required:** PO to update BC-2.08.008 §Invariant and BC-2.05.009 §Postconditions to reflect the corrected rationale (no threshold equation).
+- Semver: patch (v1.9.0 → v1.9.1) — rationale clarification; no normative behavior change.
 
 ## §Trace v1.9.0
 

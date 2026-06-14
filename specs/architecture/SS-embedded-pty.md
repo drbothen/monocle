@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "embedded-pty"
 subsystem: SS-09
-version: "1.5.1"
+version: "1.5.2"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -514,12 +514,25 @@ pub fn mouse_event_to_pty_bytes(
     let px = (col - pane_area.x + 1) as u32;
     let py = (row - pane_area.y + 1) as u32;
 
-    // SGR mouse mode (1006): CSI < Ps ; Px ; Py M (press) / m (release)
-    // Ps (button) encoding:
-    //   0 = left press, 1 = middle press, 2 = right press
-    //   64 = scroll up, 65 = scroll down
-    //   32 = motion (button held)
-    //   Release uses the same Ps as press but 'm' terminator.
+    // SGR mouse mode (1006): CSI < Ps ; Px ; Py M (press/motion) / m (release)
+    //
+    // Mouse tracking mode: crossterm's EnableMouseCapture enables button-event tracking
+    // (xterm mode 1002) + SGR encoding (1006). It does NOT enable any-event tracking
+    // (mode 1003). The additional explicit `\x1b[?1006h` write at EmbeddedTerminal entry
+    // ensures SGR mode is active regardless of crossterm internals.
+    //
+    // Consequence for Moved: in mode 1002 (no 1003), terminals do NOT report no-button
+    // motion events on Unix. MouseEventKind::Moved is therefore unreachable on Unix in
+    // EmbeddedTerminal. It may be reachable on Windows (WinAPI console mouse input).
+    // The arm is retained for exhaustiveness and encoded correctly as 35 (3+32).
+    //
+    // Complete Ps encoding table (base values before modifier bits):
+    //   Buttons:   0 = left,   1 = middle,  2 = right   (Down/Up)
+    //   Drag:     32 = left,  33 = middle, 34 = right   (Drag; btn_base + 32)
+    //   Motion:   35 = no-button motion                  (Moved; 3+32; unreachable on Unix)
+    //   Scroll:   64 = up, 65 = down, 66 = left, 67 = right
+    //   Modifier bits added to Ps: Shift|=4, Alt|=8, Ctrl|=16
+    //   Terminator: 'M' for press/drag/scroll/motion, 'm' for release
     let (ps, terminator) = match event.kind {
         MouseEventKind::Down(btn) => {
             let ps = match btn {
@@ -537,9 +550,21 @@ pub fn mouse_event_to_pty_bytes(
             };
             (ps, b'm')
         }
+        // Drag: button held + motion. Ps = button_base + 32.
+        // Delivered by 1002 button-event tracking when the mouse moves while a button is pressed.
+        MouseEventKind::Drag(btn) => {
+            let ps = match btn {
+                MouseButton::Left   => 32u32,  // 0 + 32
+                MouseButton::Middle => 33u32,  // 1 + 32
+                MouseButton::Right  => 34u32,  // 2 + 32
+            };
+            (ps, b'M')
+        }
         MouseEventKind::ScrollUp   => (64u32, b'M'),
         MouseEventKind::ScrollDown => (65u32, b'M'),
-        MouseEventKind::Moved      => (32u32, b'M'),
+        // Moved: no-button motion. Ps = 3 + 32 = 35.
+        // Unreachable on Unix in 1002 mode (no 1003); retained for exhaustiveness + Windows.
+        MouseEventKind::Moved      => (35u32, b'M'),
         // Horizontal scroll: encode as left (66) / right (67) per xterm convention.
         MouseEventKind::ScrollLeft  => (66u32, b'M'),
         MouseEventKind::ScrollRight => (67u32, b'M'),
@@ -724,6 +749,17 @@ Mitigation: integration tests use a PTY fixture corpus from `embedded-pty-evalua
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.5.2
+
+**S35-003 — `mouse_event_to_pty_bytes`: add `Drag(btn)` arm, fix `Moved` Ps (32→35), document mouse tracking mode and full Ps table** (D-277, 2026-06-13):
+
+- **Finding S35-003a — missing `Drag(MouseButton)` arm:** The match on `MouseEventKind` covered `Down/Up/ScrollUp/ScrollDown/Moved/ScrollLeft/ScrollRight` but had NO `Drag(MouseButton)` arm. `Drag` is a non-`#[non_exhaustive]` variant of `MouseEventKind` — omitting it is a compile error (non-exhaustive match). Additionally, `Drag` is the primary motion event delivered under xterm 1002 button-event tracking (motion while a button is held), so it is functionally critical. **Fix:** Added `MouseEventKind::Drag(btn)` arm encoding Ps = btn_base + 32 (left=32, middle=33, right=34) with terminator `M`.
+- **Finding S35-003b — incorrect `Moved` Ps (32 instead of 35):** `MouseEventKind::Moved => (32u32, b'M')` encoded no-button motion as Ps=32, which is left-button drag (0+32). Correct SGR encoding for no-button motion is Ps = 3+32 = 35. **Fix:** Changed to `(35u32, b'M')`.
+- **Finding S35-003c — undocumented mouse tracking mode:** The spec did not state which xterm mouse modes `EnableMouseCapture` activates, creating ambiguity about which `MouseEventKind` variants are reachable. **Fix:** Added normative comment: `EnableMouseCapture` enables 1002 (button-event) + 1006 (SGR), NOT 1003 (any-event). Consequence: `Moved` is unreachable on Unix in 1002 mode (no no-button motion reports); `Drag` is the only motion variant. `Moved` arm retained for exhaustiveness and Windows correctness.
+- **Complete Ps + modifier table added to spec:** Base: Down/Up: 0/1/2; Drag: 32/33/34; Moved: 35; Scroll: 64/65/66/67. Modifier bits: Shift|=4, Alt|=8, Ctrl|=16. Terminator: M for press/drag/scroll/motion, m for release.
+- **BC mirror required:** PO to update BC-2.09.003 PC-2/Invariant-4 to enumerate the complete Ps table including Drag Ps values and the corrected Moved Ps (35), and to note that `Moved` is unreachable on Unix under the enabled tracking modes.
+- Semver: patch (v1.5.1 → v1.5.2) — correctness fix (missing Drag arm was a compile error; Moved Ps was wrong) with no change to the externally visible SGR byte sequences for Down/Up/Scroll variants.
 
 ## §Trace v1.5.1
 

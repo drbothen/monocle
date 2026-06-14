@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.1"
+version: "1.5.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -96,7 +96,7 @@ on normal channel fullness. Under normal backpressure, PTY bytes are never dropp
    consecutive full-buffer `.try_send()` failures for the same client, the broker disconnects
    that client and logs `WARN: slow TUI client disconnected`. Other clients are unaffected by
    the disconnected client's send-buffer pressure. This is the per-client backpressure
-   isolation model per SS-daemon-wiring-v2-delta.md v1.9.0 §5d.
+   isolation model per SS-daemon-wiring-v2-delta.md v1.9.1 §5d.
 4. **Forced parser-reset protocol on ANY PTY drop:** If a PTY byte is ever dropped (sender
    error, OOM, other extreme condition), the session-host sends `HostToDaemon::PtyReset`.
    The daemon propagates `ServerToClient::PtyReset { session_id }` to all TUI clients.
@@ -143,7 +143,7 @@ on normal channel fullness. Under normal backpressure, PTY bytes are never dropp
 | L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — PtyOutput fan-out extends the session/event/prompt push capability of CAP-005 with real-time PTY byte streaming, which is transported over the same shared UDS per ADR-0010 |
 | Architecture Module | monocle-ipc (`ServerToClient::PtyOutput` variant); monocle-runtime (session-host proxy task, broker fan-out) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-daemon-wiring-v2-delta.md v1.9.0 §broker fan-out — PtyOutput messages; ADR-0010 v1.6.0 §pty-bytes-over-shared-uds-ipc; SS-session-manager.md v2.2.1 §PTY reader thread; SS-ipc.md v1.20.1 §TUI IPC Read Loop Pattern (per-client channel capacity 64, rationale) |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.9.1 §broker fan-out — PtyOutput messages; ADR-0010 v1.6.0 §pty-bytes-over-shared-uds-ipc; SS-session-manager.md v2.2.1 §PTY reader thread; SS-ipc.md v1.20.1 §TUI IPC Read Loop Pattern (per-client channel capacity 64, rationale) |
 | Cross-Ref | BC-2.05.004 (fan-out semantics for slow-client disconnect); BC-2.04.011 (hook event drop counter — separate from PTY channel drop counter) |
 | Test Name | test_BC_2_05_009_pty_output_fan_out_bounded_channel |
 
@@ -164,6 +164,16 @@ S-TBD — Implement PtyOutput broker fan-out and session-host PTY reader bounded
 ## VP Anchors
 
 VP-TBD — PtyOutput fan-out integration tests (filled after VP creation)
+
+## §Trace v1.5.2
+
+**S35-001 (no body change — no matching framing) + arch-source pin v1.9.0→v1.9.1** (2026-06-13 / D-277):
+- S35-001 sweep: searched BC-2.05.009 for "equivalent to exhausting the 3-strike threshold"
+  or similar ordered-pair-split language. NOT FOUND. The "3 consecutive full-buffer
+  `.try_send()` failures" text in Invariant 3b and EC-272 describes the correct normal
+  slow-client disconnection policy — this is NOT the split-pair path and requires no change.
+- Arch-source pin: SS-daemon-wiring-v2-delta.md v1.9.0 → v1.9.1 (all active citations).
+- Patch bump: 1.5.1 → 1.5.2.
 
 ## §Trace v1.5.1
 

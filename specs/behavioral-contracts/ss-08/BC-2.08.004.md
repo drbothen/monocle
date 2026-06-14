@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.0"
+version: "1.2.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -172,7 +172,7 @@ seconds for the typical case of up to 8 sessions.
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — re-discovery on daemon restart is explicitly named in CAP-008; this BC defines the complete re-discovery algorithm including the ordering guarantee |
 | Architecture Module | monocle-runtime (SessionManager `rediscover_sessions()`; `daemon_start_sequence` step 8b) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.2.1 §Daemon startup: session re-discovery (including §Re-discovery state handling — I4 all states covered; I3-002 Terminating watchdog; I3-005 Detached preservation); §session-state.json schema (schema_version history 1/2/3); SS-daemon-wiring-v2-delta.md v1.9.0 §daemon_start_sequence() — session re-discovery step (step 8b placement and insertion invariant) |
+| Architecture Source | SS-session-manager.md v2.2.1 §Daemon startup: session re-discovery (including §Re-discovery state handling — I4 all states covered; I3-002 Terminating watchdog; I3-005 Detached preservation); §session-state.json schema (schema_version history 1/2/3); SS-daemon-wiring-v2-delta.md v1.9.1 §daemon_start_sequence() — session re-discovery step (step 8b placement and insertion invariant) |
 | Test Name | test_BC_2_08_004_rediscovery_completes_before_uds_bind |
 
 ## Related BCs
@@ -193,6 +193,12 @@ S-TBD — Implement daemon_start_sequence step 8b: rediscover_sessions() (filled
 ## VP Anchors
 
 VP-TBD — Re-discovery integration tests including timing (filled after VP creation)
+
+## §Trace v1.2.1
+
+**Arch-source pin v1.9.0→v1.9.1** (2026-06-13 / D-277):
+- Arch-source pin: SS-daemon-wiring-v2-delta.md v1.9.0 → v1.9.1 (Architecture Source row).
+- No behavioral content changed. Patch bump only.
 
 ## §Trace v1.2.0
 

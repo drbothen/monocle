@@ -130,8 +130,8 @@ SS-session-manager:
 
 SS-embedded-pty:
   path: specs/architecture/SS-embedded-pty.md
-  current_version: "1.5.1"
-  last_bump_commit: "[Pass-27 I27-001 — Launching step opts reference updated; Model-A reconciliation]"
+  current_version: "1.5.2"
+  last_bump_commit: "[Pass-35 S35-003 D-277 — mouse encoding corrected: Drag(MouseButton) arm added, Moved Ps 32→35, full Ps+modifier table]"
   last_bump_date: "2026-06-13"
 
 SS-engine-module-v2-delta:
@@ -142,8 +142,8 @@ SS-engine-module-v2-delta:
 
 SS-daemon-wiring-v2-delta:
   path: specs/architecture/SS-daemon-wiring-v2-delta.md
-  current_version: "1.9.0"
-  last_bump_commit: "[Pass-30 C30-001 — SpawnSession arm: ..opts functional-update replaced with opts.with_daemon_fields(uuid, path) (E0639 fix)]"
+  current_version: "1.9.1"
+  last_bump_commit: "[Pass-35 S35-001 D-277 — split-pair rationale de-contradicted: immediate disconnect independent of slow-client 3-strike counter]"
   last_bump_date: "2026-06-13"
 
 SS-deps-pin-manifest-v2-delta:
@@ -725,32 +725,32 @@ BC-2.03.008:
 
 BC-2.05.009:
   path: specs/behavioral-contracts/ss-05/BC-2.05.009.md
-  current_version: "1.5.1"
-  last_bump_commit: "[Adversarial Pass 20 S20-001 D-262 2026-06-04 — H1 title precision: 'with Drop Counter (stderr WARN) + PtyReset TUI Recovery'; title↔body tension vs PC-3 resolved; propagated to BC-INDEX row + PRD §2.5 row]"
-  last_bump_date: "2026-06-04"
+  current_version: "1.5.2"
+  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
+  last_bump_date: "2026-06-13"
 
 BC-2.05.010:
   path: specs/behavioral-contracts/ss-05/BC-2.05.010.md
-  current_version: "1.7.1"
-  last_bump_commit: "[Pass-32 SUG-001 — InvalidPath wording tightened (D-274)]"
+  current_version: "1.7.2"
+  last_bump_commit: "[Pass-35 S35-002 D-277 — KeyInput reachable error path SessionHostDead→attach_failed documented]"
   last_bump_date: "2026-06-13"
 
 BC-2.05.011:
   path: specs/behavioral-contracts/ss-05/BC-2.05.011.md
-  current_version: "1.2.0"
-  last_bump_commit: "[Adversarial Pass 3 closure F-02 2026-06-03 — D-244 buffer 256→64 propagation fix]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.2.1"
+  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
+  last_bump_date: "2026-06-13"
 
 BC-2.06.025:
   path: specs/behavioral-contracts/ss-06/BC-2.06.025.md
-  current_version: "1.3.0"
-  last_bump_commit: "[Adversarial Pass 3 resolution 2026-06-03 — D-244 I3-006 SO_PEERCRED on UDS permission sub-channel]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.3.1"
+  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
+  last_bump_date: "2026-06-13"
 
 BC-2.08.001:
   path: specs/behavioral-contracts/ss-08/BC-2.08.001.md
-  current_version: "1.4.2"
-  last_bump_commit: "[Pass-34 I34-001 — stale anchor version labels v2.0.0/v1.2.0 refreshed to v2.2.1/v1.4.1 (D-276)]"
+  current_version: "1.4.3"
+  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
   last_bump_date: "2026-06-13"
 
 BC-2.08.002:
@@ -761,15 +761,15 @@ BC-2.08.002:
 
 BC-2.08.003:
   path: specs/behavioral-contracts/ss-08/BC-2.08.003.md
-  current_version: "1.3.0"
-  last_bump_commit: "[Adversarial Pass 3 resolution 2026-06-03 — D-244 I3-002 Terminating watchdog post-bind bg task + kill_deadline persistence (schema_version 3)]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.3.1"
+  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
+  last_bump_date: "2026-06-13"
 
 BC-2.08.004:
   path: specs/behavioral-contracts/ss-08/BC-2.08.004.md
-  current_version: "1.2.0"
-  last_bump_commit: "[Adversarial Pass 3 resolution 2026-06-03 — D-244 C3-002 schema_version 3 consistent; self-deleting-sidecar bug closed]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.2.1"
+  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
+  last_bump_date: "2026-06-13"
 
 BC-2.08.005:
   path: specs/behavioral-contracts/ss-08/BC-2.08.005.md
@@ -785,68 +785,68 @@ BC-2.08.006:
 
 BC-2.08.007:
   path: specs/behavioral-contracts/ss-08/BC-2.08.007.md
-  current_version: "1.4.1"
-  last_bump_commit: "[Pass-26 I26-001 — EC-185 AlreadyAttached→idempotent Ok(()); EC-188 AttachTimeout→SessionError::SessionHostDead/attach_failed; reconcile-to-existing 8-variant taxonomy]"
+  current_version: "1.4.2"
+  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
   last_bump_date: "2026-06-13"
 
 BC-2.08.008:
   path: specs/behavioral-contracts/ss-08/BC-2.08.008.md
-  current_version: "1.1.0"
-  last_bump_commit: "[Adversarial Pass 3 resolution 2026-06-03 — D-244 C3-001 emission point rule; C3-004 SessionSnapshot wire boundary type; O3-004 per-client buffer 64]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.1.1"
+  last_bump_commit: "[Pass-35 S35-001 D-277 — ordered-pair-split rationale aligned with SS-daemon-wiring-v2-delta v1.9.1]"
+  last_bump_date: "2026-06-13"
 
 BC-2.09.001:
   path: specs/behavioral-contracts/ss-09/BC-2.09.001.md
-  current_version: "1.3.1"
-  last_bump_commit: "[Pass-17 I17-001/S17-002 — pin ADR-0011 v1.2.0 §Decision in Architecture-Source cell]" # version-pin-historical: changelog description of Pass-17 bump; v1.2.0 is the ADR version at time of that fix
-  last_bump_date: "2026-06-04"
+  current_version: "1.3.2"
+  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
+  last_bump_date: "2026-06-13"
 
 BC-2.09.002:
   path: specs/behavioral-contracts/ss-09/BC-2.09.002.md
-  current_version: "1.1.0"
-  last_bump_commit: "[Pass-23 I23-001 — EC-213 mouse SGR off-by-one corrected \x1b[<0;10;5M→\x1b[<0;11;6M; +1 1-indexing convention cross-ref added]"
+  current_version: "1.1.1"
+  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
   last_bump_date: "2026-06-13"
 
 BC-2.09.003:
   path: specs/behavioral-contracts/ss-09/BC-2.09.003.md
-  current_version: "1.3.0"
-  last_bump_commit: "[Pass-23 I23-002+S23-001 — test vectors +1-corrected (col+1/row+1); §Coordinate Convention section added as authoritative SS-09 pane-origin convention]"
+  current_version: "1.4.0"
+  last_bump_commit: "[Pass-35 S35-003 D-277 — mouse Ps enumeration synced with SS-embedded-pty v1.5.2: Drag(MouseButton) arm + full Ps+modifier table]"
   last_bump_date: "2026-06-13"
 
 BC-2.09.004:
   path: specs/behavioral-contracts/ss-09/BC-2.09.004.md
-  current_version: "1.0.1"
-  last_bump_commit: "[Pass-24 I24-001 2026-06-13 — Kitty CSI-u keyboard protocol BC: line-90 modifier derivation annotation corrected to canonical bitfield]"
+  current_version: "1.0.2"
+  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
   last_bump_date: "2026-06-13"
 
 BC-2.09.005:
   path: specs/behavioral-contracts/ss-09/BC-2.09.005.md
-  current_version: "1.0.0"
-  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-09 EmbeddedPTY BC: bracketed paste]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.0.1"
+  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
+  last_bump_date: "2026-06-13"
 
 BC-2.09.006:
   path: specs/behavioral-contracts/ss-09/BC-2.09.006.md
-  current_version: "1.1.0"
-  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — D-243 S2-003 scrollback memory bound]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.1.1"
+  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
+  last_bump_date: "2026-06-13"
 
 BC-2.09.007:
   path: specs/behavioral-contracts/ss-09/BC-2.09.007.md
-  current_version: "1.1.0"
-  last_bump_commit: "[Pass-22 I22-001+I22-003 2026-06-04 — pty_scroll_offset→pty_scroll_offsets[session_id] HashMap throughout; ~4→~16 bytes/cell memory bound]"
-  last_bump_date: "2026-06-04"
+  current_version: "1.1.1"
+  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
+  last_bump_date: "2026-06-13"
 
 BC-2.09.008:
   path: specs/behavioral-contracts/ss-09/BC-2.09.008.md
-  current_version: "1.1.0"
-  last_bump_commit: "[Pass-22 I22-002 2026-06-04 — Inv-1 remove retired Killed, add Terminating, reconcile Detached-attachable vs PC-2, align no-op set; PC-4 pty_scroll_offsets[session_id]]"
-  last_bump_date: "2026-06-04"
+  current_version: "1.1.1"
+  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
+  last_bump_date: "2026-06-13"
 
 BC-2.09.009:
   path: specs/behavioral-contracts/ss-09/BC-2.09.009.md
-  current_version: "1.1.1"
-  last_bump_commit: "[Pass-24 S24-002 2026-06-13 — permission badge+bell BC: §Trace v1.0.0 per-prompt bell reversal superseded marker appended]"
+  current_version: "1.1.2"
+  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
   last_bump_date: "2026-06-13"
 
 BC-HOOK-039:

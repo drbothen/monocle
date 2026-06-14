@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.1"
+version: "1.4.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -133,7 +133,7 @@ background. The TUI can re-attach at any time.
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — detach/attach are explicitly named session lifecycle operations in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager `attach_session()`, `detach_session()`) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.2.1 §Public API (attach_session, detach_session signatures); §Per-session UDS protocol (DaemonToHost::Attach/Detach, HostToDaemon::ScrollbackChunk/ScrollbackDumpComplete); §Screen-state transfer on Attach; §Re-discovery state handling (I3-005 Detached preservation across restart); SS-daemon-wiring-v2-delta.md v1.9.0 §3b (SessionStateChanged{Running} before SessionListUpdate on attach) |
+| Architecture Source | SS-session-manager.md v2.2.1 §Public API (attach_session, detach_session signatures); §Per-session UDS protocol (DaemonToHost::Attach/Detach, HostToDaemon::ScrollbackChunk/ScrollbackDumpComplete); §Screen-state transfer on Attach; §Re-discovery state handling (I3-005 Detached preservation across restart); SS-daemon-wiring-v2-delta.md v1.9.1 §3b (SessionStateChanged{Running} before SessionListUpdate on attach) |
 | Test Name | test_BC_2_08_007_attach_receives_scrollback_detach_keeps_session_alive |
 
 ## Related BCs
@@ -153,6 +153,12 @@ S-TBD — Implement SessionManager attach/detach (filled by story-writer)
 ## VP Anchors
 
 VP-TBD — Attach/detach integration tests (filled after VP creation)
+
+## §Trace v1.4.2
+
+**Arch-source pin v1.9.0→v1.9.1** (2026-06-13 / D-277):
+- Arch-source pin: SS-daemon-wiring-v2-delta.md v1.9.0 → v1.9.1 (all active citations).
+- No behavioral content changed. Patch bump only.
 
 ## §Trace v1.4.1
 

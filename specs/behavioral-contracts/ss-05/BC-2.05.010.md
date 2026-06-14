@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.7.1"
+version: "1.7.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:45:00Z
@@ -54,7 +54,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 2. Daemon calls `SessionManager::spawn_session(opts)` (BC-2.08.001).
 3. On success: `ServerToClient::SessionStateChanged { session_id, new_state }` broadcast BEFORE
    `ServerToClient::SessionListUpdate` broadcast (ordered pair, per-client FIFO, per BC-2.08.008
-   PC-3 / SS-daemon-wiring-v2-delta.md v1.9.0 §3b). The `SessionStateChanged` event reflects
+   PC-3 / SS-daemon-wiring-v2-delta.md v1.9.1 §3b). The `SessionStateChanged` event reflects
    the `Launching → Running` transition; the ordering is atomically guaranteed under the
    `SessionManager` mutex hold into each client's per-client `mpsc::Sender`.
 4. On failure: `ServerToClient::Error { code: <spawn-path-code>, message: ... }` sent to the
@@ -74,7 +74,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 2. Daemon calls `SessionManager::kill_session(&session_id)` (BC-2.08.003).
 3. On success: `ServerToClient::SessionStateChanged { session_id, new_state }` broadcast BEFORE
    `ServerToClient::SessionListUpdate` broadcast (ordered pair, per-client FIFO, per BC-2.08.008
-   PC-3 / SS-daemon-wiring-v2-delta.md v1.9.0 §3b). The `SessionStateChanged` event reflects
+   PC-3 / SS-daemon-wiring-v2-delta.md v1.9.1 §3b). The `SessionStateChanged` event reflects
    the `Running → Terminating` transition (emitted immediately; `Terminating → Terminated`
    follows when the session-host confirms exit per BC-2.08.003).
 4. On failure (not found): `ServerToClient::Error { code: "session_not_found", message: ... }`.
@@ -84,7 +84,12 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 1. `ClientToServer::KeyInput { session_id: String, bytes: Vec<u8> }` is received.
 2. Daemon calls `SessionManager::send_key_input(&session_id, bytes)`.
 3. No broadcast — key input is fire-and-forget; no acknowledgement message sent back.
-4. On failure (session not found or dead): `ServerToClient::Error { code: "session_not_found", message: ... }` sent to requesting client.
+4. On failure, the error code depends on the `SessionError` variant returned by `send_key_input()`,
+   mapped via `session_error_to_code(IpcOp::KeyInput, &e)` per SS-session-manager.md §session_error_to_code:
+   - `"session_not_found"` — `SessionError::SessionNotFound` (session_id unknown)
+   - `"attach_failed"` — `SessionError::SessionHostDead` (session exists but its session-host
+     process died; `session_error_to_code(IpcOp::KeyInput, SessionHostDead)` routes to
+     `"attach_failed"` per the exhaustive mapping table §session_error_to_code attach-path arm)
 
 ### ResizePane
 
@@ -98,7 +103,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 2. Daemon calls `SessionManager::detach_session(&session_id)` (BC-2.08.007).
 3. On success: `ServerToClient::SessionStateChanged { session_id, new_state: Detached }` broadcast
    BEFORE `ServerToClient::SessionListUpdate` broadcast (ordered pair, per-client FIFO, per
-   BC-2.08.008 PC-3 / SS-daemon-wiring-v2-delta.md v1.9.0 §3b).
+   BC-2.08.008 PC-3 / SS-daemon-wiring-v2-delta.md v1.9.1 §3b).
 
 ### RenameSession
 
@@ -147,6 +152,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 |----|-------------|-------------------|
 | EC-280 | `SpawnSession` where the harness binary (`claude`) is not on `PATH` (e.g., not installed, or `PATH` misconfigured) | Inside `spawn_session()`, `engine_module.spawn_recipe(&opts)?` calls `which::which("claude")`, which fails → `EngineError::BinaryNotFound("claude")` → `SessionError::EngineError(BinaryNotFound)` → `ServerToClient::Error { code: "binary_not_found", message: ... }` sent back. No OS process is spawned. `SpawnFailed` is NOT triggered — `SpawnFailed` is reserved for OS-level spawn failures after the binary is located on PATH (Model A — I27-001). |
 | EC-281 | `KeyInput` for unknown `session_id` | `SessionError::SessionNotFound`; `ServerToClient::Error { code: "session_not_found", message: ... }` sent to requesting client |
+| EC-281b | `KeyInput` for a session whose session-host process has died (session exists in registry but host dead) | `SessionError::SessionHostDead { session_id }`; `session_error_to_code(IpcOp::KeyInput, SessionHostDead)` → `"attach_failed"`; `ServerToClient::Error { code: "attach_failed", message: ... }` sent to requesting client. The session subsequently transitions to `Terminated` via the daemon's dead-host detection path. |
 | EC-282 | `ResizePane` with `rows=0` or `cols=0` | The daemon's IPC handler MUST clamp each dimension to a minimum of 1 BEFORE forwarding to `resize_session()`. `rows = max(rows, 1); cols = max(cols, 1)`. The PTY and parser are resized to the clamped values. No `SessionError` is returned; the operation succeeds with clamped dimensions. Clamping is consistent with BC-2.09.006 EC-237 and the resize behavior in the TUI. A zero-dimension PTY is undefined by POSIX; clamping to 1 is the most robust behavior. |
 | EC-283 | `RenameSession` with empty `new_name` | `SessionError::InvalidSessionName`; `ServerToClient::Error { code: "rename_failed", message: ... }` sent to requesting client |
 | EC-284 | Concurrent `KeyInput` messages from the same TUI client | Processed in order of arrival; each forwarded to session-host in receipt order |
@@ -176,7 +182,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 | L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — these ClientToServer variants extend the internal transport capability with session lifecycle control messages (spawn, kill, key input, resize, detach, rename, re-attach) — all transported over the existing UDS per the session/event/prompt push design |
 | Architecture Module | monocle-ipc (`ClientToServer` enum new variants); monocle-runtime (IPC handler routing to SessionManager) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-daemon-wiring-v2-delta.md v1.9.0 §IPC handler — new ClientToServer variants (including AttachSession; `ClientToServer::SpawnSession { opts: SpawnOptions }` wire variant under Model A — I27-001); SS-ipc.md v1.20.1 §`ClientToServer::SpawnSession { opts: SpawnOptions }` (Model A wire variant — I27-001); SS-ipc.md v1.20.1 §`ClientToServer::AttachSession` (I3-004 — TUI re-attach; replaces incorrect "TUI sends DaemonToHost::Attach" description); SS-ipc.md v1.20.1 §`ServerToClient::Error` — Error variant + code taxonomy (`spawn_failed`, `binary_not_found`, `invalid_spawn_arg`, `sidecar_write_failed`, `session_id_collision`, `session_not_found`, `attach_failed`, `kill_failed`, `rename_failed`, `invalid_request`) added by architect in Pass-6 parallel track (C6-001); SS-session-manager.md v2.2.1 §session_error_to_code (spawn-path arms — Model A reachability for binary_not_found/invalid_spawn_arg confirmed I27-001) |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.9.1 §IPC handler — new ClientToServer variants (including AttachSession; `ClientToServer::SpawnSession { opts: SpawnOptions }` wire variant under Model A — I27-001); SS-ipc.md v1.20.1 §`ClientToServer::SpawnSession { opts: SpawnOptions }` (Model A wire variant — I27-001); SS-ipc.md v1.20.1 §`ClientToServer::AttachSession` (I3-004 — TUI re-attach; replaces incorrect "TUI sends DaemonToHost::Attach" description); SS-ipc.md v1.20.1 §`ServerToClient::Error` — Error variant + code taxonomy (`spawn_failed`, `binary_not_found`, `invalid_spawn_arg`, `sidecar_write_failed`, `session_id_collision`, `session_not_found`, `attach_failed`, `kill_failed`, `rename_failed`, `invalid_request`) added by architect in Pass-6 parallel track (C6-001); SS-session-manager.md v2.2.1 §session_error_to_code (spawn-path arms — Model A reachability for binary_not_found/invalid_spawn_arg confirmed I27-001) |
 | Cross-Ref | BC-2.08.001 (SpawnSession → spawn_session()); BC-2.08.003 (KillSession → kill_session()); BC-2.08.007 (DetachSession → detach_session()) |
 | Test Name | test_BC_2_05_010_new_client_to_server_variants_routed |
 
@@ -199,6 +205,27 @@ S-TBD — Implement new ClientToServer IPC variants and daemon routing (filled b
 ## VP Anchors
 
 VP-TBD — IPC variant routing integration tests (filled after VP creation)
+
+## §Trace v1.7.2
+
+**S35-002 + arch-source pin v1.9.0→v1.9.1 — KeyInput reachable error code completeness** (2026-06-13 / D-277):
+- S35-002: KeyInput PC-4 previously enumerated only `"session_not_found"` as the failure
+  response. This is incomplete: `send_key_input()` can also return
+  `SessionError::SessionHostDead` when the session exists in the registry but its session-host
+  process has died. `session_error_to_code(IpcOp::KeyInput, SessionHostDead)` routes to
+  `"attach_failed"` per the exhaustive mapping table in SS-session-manager.md
+  §session_error_to_code attach-path arm. The omission was a no-silent-failure completeness
+  gap — an implementer seeing only `"session_not_found"` would not know to handle the dead-host
+  path at the IPC layer.
+  - **KeyInput PC-4:** rewritten from single `"session_not_found"` to enumerated error table
+    with both reachable codes: `"session_not_found"` (SessionNotFound) and `"attach_failed"`
+    (SessionHostDead), each with triggering variant and routing citation.
+  - **EC-281b (new):** documents the SessionHostDead → `"attach_failed"` KeyInput edge case
+    with full behavior description including post-error session Terminated transition.
+  - No other KeyInput behavior changed. Fire-and-forget postconditions (PC-3) and Invariant 2
+    (high-frequency / low-latency path) are unchanged.
+- Arch-source pin: SS-daemon-wiring-v2-delta.md v1.9.0 → v1.9.1 (all active citations).
+- Patch bump: 1.7.1 → 1.7.2.
 
 ## §Trace v1.7.1
 

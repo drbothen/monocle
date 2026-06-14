@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.0"
+version: "1.1.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:59:00Z
@@ -78,15 +78,16 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
    The per-client channel FIFO draining order then guarantees that if both messages are
    delivered, `SessionStateChanged` is received first. The mutex provides the atomicity
    window for both enqueues — it does NOT directly control wire order (the channel FIFO does).
-   See SS-daemon-wiring-v2-delta.md v1.9.0 §3b for the canonical emission code pattern.
+   See SS-daemon-wiring-v2-delta.md v1.9.1 §3b for the canonical emission code pattern.
 
    **Ordered-pair split on full buffer:** If the first `.try_send()` (SessionStateChanged)
    succeeds but the second `.try_send()` (SessionListUpdate) fails (client buffer full), the
-   pair has split. This is treated as a slow-client condition: the per-client
-   `slow_send_count` is incremented AND the client is immediately disconnected (equivalent
-   to exhausting the 3-strike threshold). The client may reconnect and receive a fresh
-   `InitialState` containing the post-transition state. Delivering a half-pair leaves the
-   TUI in an inconsistent state; disconnecting is safer than tolerating partial delivery.
+   pair has split. The client is IMMEDIATELY disconnected, INDEPENDENT of the slow-client
+   3-strike counter. `slow_send_count` is incremented for telemetry only; the disconnect is
+   unconditional on the first split (it does NOT require reaching any threshold). The client
+   may reconnect and receive a fresh `InitialState` containing the post-transition state.
+   Rationale: delivering a half-pair leaves the TUI in an inconsistent state; partial
+   delivery is unsafe.
 
 ### Rename does NOT emit SessionStateChanged
 
@@ -94,7 +95,7 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
    only — it is NOT a `SessionState` transition. `SessionStateChanged` carries
    `new_state: SessionState` and cannot convey the updated name. Only `SessionListUpdate`
    (carrying the full `SessionSnapshot` with updated `display_name`) is emitted for rename.
-   See SS-daemon-wiring-v2-delta.md v1.9.0 §3b emission table.
+   See SS-daemon-wiring-v2-delta.md v1.9.1 §3b emission table.
 
 4b. The `InitialState` push (on TUI client connect) includes the current session list with
    current states. TUI clients that connect after a transition has already occurred will see
@@ -182,7 +183,7 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC defines the `SessionStateChanged` IPC message which is the primary notification mechanism for session lifecycle state transitions; it is the trigger for the wizard auto-advance and EmbeddedTerminal exit, both of which are core session lifecycle behaviors in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager state transitions → broker publish); monocle-ipc (`ServerToClient::SessionStateChanged` variant); monocle-tui (wizard auto-advance, EmbeddedTerminal exit handlers) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.2.1 §Session lifecycle state machine (state transitions, including re-discovery GC and Detached re-discovery); SS-embedded-pty.md v1.5.1 §TUI AppMode Extensions (SessionCreation::Launching auto-transition to EmbeddedTerminal); SS-daemon-wiring-v2-delta.md v1.9.0 §3b (SessionStateChanged emission rule, ordered-pair-split-on-Full disconnect rule, rename-only-SessionListUpdate rule) |
+| Architecture Source | SS-session-manager.md v2.2.1 §Session lifecycle state machine (state transitions, including re-discovery GC and Detached re-discovery); SS-embedded-pty.md v1.5.2 §TUI AppMode Extensions (SessionCreation::Launching auto-transition to EmbeddedTerminal); SS-daemon-wiring-v2-delta.md v1.9.1 §3b (SessionStateChanged emission rule, ordered-pair-split-on-Full disconnect rule, rename-only-SessionListUpdate rule) |
 | Cross-Ref | BC-2.09.008 (SessionCreation wizard auto-transition to EmbeddedTerminal on Running); BC-2.08.003 (kill → Terminating transition; 12s watchdog → Terminated); BC-2.05.003 (SessionListUpdate — emitted concurrently with SessionStateChanged for same transition) |
 | Test Name | test_BC_2_08_008_session_state_changed_emitted_on_every_transition |
 
@@ -206,6 +207,21 @@ S-TBD — Implement SessionStateChanged broadcast on every SessionEntry state tr
 ## VP Anchors
 
 VP-TBD — SessionStateChanged emission and TUI response integration tests (filled after VP creation)
+
+## §Trace v1.1.1
+
+**S35-001 + arch-source pin sweep — drop contradictory N-strike rationale in split rule; v1.9.0→v1.9.1 + v1.5.1→v1.5.2** (2026-06-13 / D-277):
+- S35-001: PC-3 ordered-pair-split rule reworded to eliminate "(equivalent to exhausting the
+  3-strike threshold)" framing. The normative rule is: split triggers IMMEDIATE disconnect,
+  INDEPENDENT of the slow-client 3-strike counter. `slow_send_count` is incremented for
+  telemetry only; the disconnect is unconditional on the first split (does NOT require reaching
+  any threshold). Rationale phrase updated to match architect's corrected wording in
+  SS-daemon-wiring-v2-delta.md v1.9.1 §3b. Normative outcome unchanged (immediate disconnect
+  + reconnect→fresh InitialState); only the incorrect "3-strike equivalence" framing removed.
+- Arch-source pin: SS-daemon-wiring-v2-delta.md v1.9.0 → v1.9.1 (all active citations;
+  §Trace historical citations exempt per version-pin-historical policy).
+- Arch-source pin: SS-embedded-pty.md v1.5.1 → v1.5.2 (Architecture Source row).
+- Patch bump: 1.1.0 → 1.1.1.
 
 ## §Trace v1.1.0
 

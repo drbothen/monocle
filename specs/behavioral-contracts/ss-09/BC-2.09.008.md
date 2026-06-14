@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.0"
+version: "1.1.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -139,7 +139,7 @@ AppMode. A `Ctrl-D` or session termination also exits `EmbeddedTerminal` automat
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — session creation wizard and EmbeddedTerminal AppMode are both explicitly named in CAP-009; this BC covers the enter/exit transitions and the wizard auto-transition to EmbeddedTerminal |
 | Architecture Module | monocle-core (AppMode::EmbeddedTerminal, AppMode::SessionCreation variants, SessionCreationStep enum); monocle-tui (transition logic, wizard UI) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.5.1 §TUI AppMode Extensions (EmbeddedTerminal, SessionCreation, SessionCreationStep); §Session Creation Wizard; §State machine invariants |
+| Architecture Source | SS-embedded-pty.md v1.5.2 §TUI AppMode Extensions (EmbeddedTerminal, SessionCreation, SessionCreationStep); §Session Creation Wizard; §State machine invariants |
 | Test Name | test_BC_2_09_008_embedded_terminal_transitions |
 
 ## Related BCs
@@ -160,6 +160,12 @@ S-TBD — Implement EmbeddedTerminal/SessionCreation AppMode transitions in mono
 ## VP Anchors
 
 VP-TBD — AppMode transition tests (filled after VP creation)
+
+## §Trace v1.1.1
+
+**Arch-source pin v1.5.1→v1.5.2** (2026-06-13 / D-277):
+- Arch-source pin: SS-embedded-pty.md v1.5.1 → v1.5.2 (Architecture Source row).
+- No behavioral content changed. Patch bump only.
 
 ## §Trace v1.1.0
 

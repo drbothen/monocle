@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.0"
+version: "1.2.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:59:00Z
@@ -167,7 +167,7 @@ the retired single-message `HostToDaemon::ScrollbackDump`.
 | L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — the three new ServerToClient variants (ScrollbackChunk, ScrollbackDumpComplete, PtyReset) extend the session/event/prompt push capability with the chunked scrollback dump protocol and PTY reset notification, all transported over the existing shared UDS per ADR-0010 |
 | Architecture Module | monocle-ipc (`ServerToClient::ScrollbackChunk`, `ServerToClient::ScrollbackDumpComplete`, `ServerToClient::PtyReset` variants); monocle-runtime (broker fan-out §5b/§5c); monocle-tui (chunk accumulation, parser reset, status bar indicator) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-daemon-wiring-v2-delta.md v1.9.0 §5b (ScrollbackChunk/ScrollbackDumpComplete fan-out; I3-003 resume-after-snapshot); §5c (PtyReset fan-out); SS-session-manager.md v2.2.1 §Screen-state transfer on Attach (step 5d-5e: buffer PtyOutput during dump, replay on Complete); SS-ipc.md v1.20.1 §`ClientToServer::AttachSession` (I3-004 — TUI sends AttachSession not DaemonToHost::Attach); ADR-0010 v1.6.0 §pty-bytes-over-shared-uds-ipc (shared UDS decision + chunked protocol) |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.9.1 §5b (ScrollbackChunk/ScrollbackDumpComplete fan-out; I3-003 resume-after-snapshot); §5c (PtyReset fan-out); SS-session-manager.md v2.2.1 §Screen-state transfer on Attach (step 5d-5e: buffer PtyOutput during dump, replay on Complete); SS-ipc.md v1.20.1 §`ClientToServer::AttachSession` (I3-004 — TUI sends AttachSession not DaemonToHost::Attach); ADR-0010 v1.6.0 §pty-bytes-over-shared-uds-ipc (shared UDS decision + chunked protocol) |
 | Cross-Ref | BC-2.05.009 (PtyOutput fan-out; per-client buffer; Invariant 3b — same isolation model); BC-2.08.007 (Attach → triggers ScrollbackChunk* + ScrollbackDumpComplete sequence); BC-2.09.001 (PTY output renders after parser reconstruction completes) |
 | Test Name | test_BC_2_05_011_new_server_to_client_scrollback_and_reset_variants |
 
@@ -191,6 +191,12 @@ S-TBD — Implement ScrollbackChunk*/ScrollbackDumpComplete/PtyReset broker fan-
 ## VP Anchors
 
 VP-TBD — Scrollback dump integration tests and PtyReset unit tests (filled after VP creation)
+
+## §Trace v1.2.1
+
+**Arch-source pin v1.9.0→v1.9.1** (2026-06-13 / D-277):
+- Arch-source pin: SS-daemon-wiring-v2-delta.md v1.9.0 → v1.9.1 (Architecture Source row).
+- No behavioral content changed. Patch bump only.
 
 ## §Trace v1.2.0
 

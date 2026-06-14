@@ -178,7 +178,7 @@ pub enum ServerToClient {
     /// `Vec<SessionSnapshot>`. `SessionSnapshot` is the canonical wire boundary type for
     /// all sessions (monocle-spawned and externally-detected). `EnrichedSession` is retained
     /// internally for `EngineModule::detect()` but is NOT exposed on the wire. See
-    /// SS-daemon-wiring-v2-delta.md v1.9.0 §4 for the three-representation reconciliation.
+    /// SS-daemon-wiring-v2-delta.md v1.9.1 §4 for the three-representation reconciliation. <!-- version-pin-historical: v1.9.1 at C3-004 merge time -->
     InitialState {
         /// All sessions (monocle-spawned and externally-detected) as `SessionSnapshot`.
         sessions: Vec<SessionSnapshot>,

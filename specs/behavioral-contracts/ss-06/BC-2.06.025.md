@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.0"
+version: "1.3.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -144,7 +144,7 @@ pane.
 | L2 Capability | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability traceability §SS-06 |
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability traceability — this BC extends the sessions panel capability in CAP-006 with multi-session, multi-project grouping, and lifecycle actions |
 | Architecture Module | monocle-tui (sessions panel renderer, session list grouping logic, lifecycle keybindings) per ARCH-INDEX Subsystem Registry SS-06 |
-| Architecture Source | SS-ipc.md v1.20.1 §SessionSnapshot (wire boundary type; `degraded` and `degraded_reason` fields; `spawned_by_monocle: Option<bool>` field); SS-session-manager.md v2.2.1 §SessionManager §Public API (session_list() returns Vec<SessionSnapshot>); SS-embedded-pty.md v1.5.1 §Fast switching; SS-session-manager.md v2.2.1 §monocle-session-host startup sequence §I3-009 (degraded-env surfaced via HostToDaemon::StateChanged.degraded_env + SessionSnapshot.degraded) |
+| Architecture Source | SS-ipc.md v1.20.1 §SessionSnapshot (wire boundary type; `degraded` and `degraded_reason` fields; `spawned_by_monocle: Option<bool>` field); SS-session-manager.md v2.2.1 §SessionManager §Public API (session_list() returns Vec<SessionSnapshot>); SS-embedded-pty.md v1.5.2 §Fast switching; SS-session-manager.md v2.2.1 §monocle-session-host startup sequence §I3-009 (degraded-env surfaced via HostToDaemon::StateChanged.degraded_env + SessionSnapshot.degraded) |
 | Cross-Ref | BC-2.05.010 (KillSession/DetachSession/RenameSession IPC variants triggered from sessions panel); BC-2.09.008 (SessionCreation wizard and EmbeddedTerminal enter) |
 | Test Name | test_BC_2_06_025_multi_session_grouped_by_project |
 
@@ -165,6 +165,12 @@ S-TBD — Implement multi-session grouped sessions panel with lifecycle actions 
 ## VP Anchors
 
 VP-TBD — Sessions panel multi-session render tests (filled after VP creation)
+
+## §Trace v1.3.1
+
+**Arch-source pin v1.5.1→v1.5.2** (2026-06-13 / D-277):
+- Arch-source pin: SS-embedded-pty.md v1.5.1 → v1.5.2 (Architecture Source row).
+- No behavioral content changed. Patch bump only.
 
 ## §Trace v1.3.0
 
