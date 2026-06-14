@@ -409,7 +409,7 @@ pub enum ServerToClient {
     /// | `"attach_failed"`          | `SessionError::SessionHostDead` on the attach-path                   | "Session attach failed" |
     /// | `"kill_failed"`            | `SessionError::SessionHostDead` on the kill-path (op-aware mapping via `IpcOp::Kill`) | "Session kill failed" |
     /// | `"rename_failed"`          | `SessionManager::rename_session()` returned error                    | "Session rename failed" |
-    /// | `"invalid_request"`        | Validation failure before the SessionManager call                    | "[operation failed]" |
+    /// | `"invalid_request"`        | Generic/catch-all post-call code: `SessionError::Io` (unexpected I/O error) and any unmapped `EngineError` variant (`_ =>` forward-compat arm in `session_error_to_code()`); also reserved for any future pre-call validation failure path | "[operation failed]" |
     ///
     /// The `message` field carries a human-readable diagnostic string (not user-facing;
     /// logged by the TUI for diagnostics). The TUI renders the FIXED banner text from the

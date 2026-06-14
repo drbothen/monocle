@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.1"
+version: "1.1.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -38,7 +38,9 @@ mouse events in SGR encoding, and bracketed paste. No keyboard class is deferred
 ## Preconditions
 
 1. `AppMode::EmbeddedTerminal { session_id }` is active.
-2. The TUI has raw mode + Kitty keyboard enhancement flags + mouse capture enabled.
+2. The TUI has raw mode + Kitty keyboard enhancement flags enabled globally. Mouse capture is
+   enabled on `AppMode::EmbeddedTerminal` entry (scoped) — it is NOT globally active. (I3
+   design: SS-embedded-pty.md §"Crossterm setup (I3 fix)"; CC-GLOBAL-MOUSE-CAPTURE gate.)
 3. A session with `SessionState::Running` is focused.
 4. The session-host is connected and `KeyInput` messages are being proxied to the PTY.
 
@@ -102,8 +104,14 @@ mouse events in SGR encoding, and bracketed paste. No keyboard class is deferred
    and forwarded to the PTY. Claude Code interprets this as "end session."
 4. Kitty keyboard enhancement flags are enabled globally on TUI startup. If the terminal
    does not support Kitty protocol, the flags silently no-op and standard sequences are used.
-5. SGR mouse mode (`ESC [ ? 1006 h`) is written to the terminal when entering
-   `AppMode::EmbeddedTerminal`, in addition to the globally-active mouse capture.
+5. On entry to `AppMode::EmbeddedTerminal`, `EnableMouseCapture` is issued to the terminal
+   (scoped — NOT globally active) AND SGR extended mouse mode (`ESC [ ? 1006 h`) is written
+   immediately after. On exit from `AppMode::EmbeddedTerminal`, SGR mode is disabled
+   (`ESC [ ? 1006 l`) and then `DisableMouseCapture` is issued. This scoped entry/exit
+   pattern is the ratified I3 design (SS-embedded-pty.md §"Crossterm setup (I3 fix)",
+   lines 254-258 / §"EmbeddedTerminal EXIT", lines 349-360). Global mouse capture is an
+   unadopted option gated behind CC-GLOBAL-MOUSE-CAPTURE human sign-off. See also
+   BC-2.09.003 Invariant 1 (sibling authoritative statement of this same contract).
 
 ## Edge Cases
 
@@ -166,6 +174,29 @@ S-TBD — Implement key_event_to_pty_bytes() and KeyInput IPC send in monocle-tu
 ## VP Anchors
 
 VP-TBD — Keyboard translation unit tests (filled after VP creation)
+
+## §Trace v1.1.2
+
+**F-P37-IMP-001 — Normative invariant corrected: scoped mouse capture replaces erroneous "globally-active" claim** (2026-06-13 / D-279):
+- Finding: Invariant 5 (~line 106) stated SGR 1006 mode is written "in addition to the
+  globally-active mouse capture." This contradicts the ratified I3 design: mouse capture is
+  SCOPED to EmbeddedTerminal entry/exit, NOT globally active. Global mouse capture is an
+  unadopted option gated behind CC-GLOBAL-MOUSE-CAPTURE human sign-off.
+  Authority: SS-embedded-pty.md §"Crossterm setup (I3 fix)" lines 254-258 / §"EmbeddedTerminal
+  EXIT" lines 349-360; BC-2.09.003 Invariant 1 (sibling authoritative statement).
+- Precondition 2: tightened from "mouse capture enabled" (imprecise, implied global) to
+  explicitly state mouse capture is enabled on EmbeddedTerminal entry (scoped), consistent
+  with I3 design.
+- Invariant 5: rewritten to describe the full scoped entry/exit cycle (EnableMouseCapture +
+  SGR 1006 on entry; SGR 1006 disable + DisableMouseCapture on exit). Removes "globally-active"
+  language entirely. Adds CC-GLOBAL-MOUSE-CAPTURE gate reference and BC-2.09.003 cross-reference.
+- Whole-class sweep: BC-2.09.002 had exactly two "globally*" mentions — line 103 (Kitty flags,
+  which ARE globally enabled — correctly left unchanged) and line 106 (mouse capture — the
+  erroneous survivor, now corrected). No other global-capture phrasing survived.
+  BC-2.09.003 was NOT touched (its §Trace dismissal is historical record per task instruction).
+- This is a sibling-gap fix: Pass-36 §Trace in BC-2.09.003 had dismissed the I2-001/I3
+  scoped-capture gap; this pass corrects the surviving normative error in BC-2.09.002.
+- Version bump: 1.1.1 → 1.1.2 (patch: normative invariant corrected to ratified design).
 
 ## §Trace v1.1.1
 

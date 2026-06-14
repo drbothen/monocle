@@ -803,8 +803,8 @@ BC-2.09.001:
 
 BC-2.09.002:
   path: specs/behavioral-contracts/ss-09/BC-2.09.002.md
-  current_version: "1.1.1"
-  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
+  current_version: "1.1.2"
+  last_bump_commit: "[Pass-37 F-P37-IMP-001 D-279 — Invariant 5 scoped mouse-capture corrected; sibling gap from Pass-36 BC-2.09.003 dismissal fixed]"
   last_bump_date: "2026-06-13"
 
 BC-2.09.003:
