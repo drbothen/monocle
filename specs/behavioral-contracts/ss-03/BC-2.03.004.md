@@ -90,7 +90,7 @@ set (JC-2 parity: `PostToolUse` is omitted). `spawn()` and `preflight()` are Pha
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC governs the hook path routing and operational method surface of the ClaudeCodeModule adapter named in CAP-003 |
 | L2 Domain Invariants | DI-006 (every EngineModule implementation must be stateless with respect to process detection — hook_paths() is synchronous, performs no I/O, and returns a static mapping from a pure in-memory HashMap construction; Invariant 3 explicitly states "no I/O, no async" for this method, satisfying DI-006's stateless detection requirement); DI-007 (monocle must not write to any file owned by a harness or factory workflow system — hook_paths() returns read-only routing strings and writes to no files; spawn() and preflight() are stubs in Phase 1, preventing any write path from being exercised against harness-owned paths) |
 | Architecture Module | monocle-core (EngineModule trait, EnrichedSession, HookEvent types); monocle-runtime (ClaudeCodeModule implementation — monocle-runtime/src/engine/claude_code.rs) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module.md v1.1.26 §Struct-level inherent operations |
+| Architecture Source | SS-engine-module.md v1.1.27 §Struct-level inherent operations |
 | FC | JC-2 (5-endpoint parity, PostToolUse omitted) |
 | Brief Section | §Scope (§In Scope sub-bullets for hook endpoints — 5 canonical endpoints) |
 | Stories | S-TBD (filled by story-writer) |

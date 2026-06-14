@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "ipc"
 subsystem: SS-05
-version: "1.19.0"
+version: "1.20.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -178,7 +178,7 @@ pub enum ServerToClient {
     /// `Vec<SessionSnapshot>`. `SessionSnapshot` is the canonical wire boundary type for
     /// all sessions (monocle-spawned and externally-detected). `EnrichedSession` is retained
     /// internally for `EngineModule::detect()` but is NOT exposed on the wire. See
-    /// SS-daemon-wiring-v2-delta.md v1.8.0 §4 for the three-representation reconciliation.
+    /// SS-daemon-wiring-v2-delta.md v1.9.0 §4 for the three-representation reconciliation.
     InitialState {
         /// All sessions (monocle-spawned and externally-detected) as `SessionSnapshot`.
         sessions: Vec<SessionSnapshot>,
@@ -649,6 +649,57 @@ pub struct SessionSnapshot {
     #[serde(default)]
     pub degraded_reason: Option<String>,
 }
+
+impl SessionSnapshot {
+    /// ADR-0006 constructor: required because `SessionSnapshot` is `#[non_exhaustive]` and
+    /// constructed cross-crate by `monocle-runtime` (daemon) when building `InitialState`
+    /// and `SessionListUpdate` payloads. Per Rust E0639, struct-literal construction is
+    /// forbidden outside the defining crate for `#[non_exhaustive]` types. All 10 base
+    /// fields are positional; `degraded` and `degraded_reason` use their `#[serde(default)]`
+    /// defaults (false / None) when healthy — callers set them explicitly when degraded.
+    ///
+    /// # Construction path
+    /// - `monocle-runtime` (daemon): `SessionManager::session_list()` and
+    ///   `EngineModule::detect()` conversion both call `SessionSnapshot::new(...)` when
+    ///   assembling `InitialState.sessions` and `SessionListUpdate.sessions`.
+    /// - `monocle-ipc/tests/`: integration test binaries call `new(...)` directly.
+    ///   Each `[[test]]` binary links `monocle-ipc` as external; E0639 applies.
+    pub fn new(
+        session_id: String,
+        display_name: String,
+        state: SessionState,
+        harness_id: String,
+        project_root: String,
+        cwd: String,
+        spawned_by_monocle: Option<bool>,
+        started_at_micros: i64,
+        pty_rows: u16,
+        pty_cols: u16,
+    ) -> Self {
+        Self {
+            session_id,
+            display_name,
+            state,
+            harness_id,
+            project_root,
+            cwd,
+            spawned_by_monocle,
+            started_at_micros,
+            pty_rows,
+            pty_cols,
+            degraded: false,
+            degraded_reason: None,
+        }
+    }
+
+    /// Builder method to set degraded state after construction.
+    /// Called only when the session-host has reported missing critical env vars (I3-009).
+    pub fn with_degraded(mut self, reason: String) -> Self {
+        self.degraded = true;
+        self.degraded_reason = Some(reason);
+        self
+    }
+}
 ```
 
 `SessionState` is defined in `monocle-ipc` (or re-exported from `monocle-core`) so both the
@@ -699,6 +750,24 @@ pub struct SerializedCell {
     pub attrs: u8,
 }
 
+impl SerializedCell {
+    /// ADR-0006 constructor: required because `SerializedCell` is `#[non_exhaustive]` and
+    /// constructed cross-crate by the `monocle-session-host` binary when serializing a
+    /// `vt100::Screen` snapshot for `HostToDaemon::ScrollbackChunk`. Per Rust E0639, struct-
+    /// literal construction is forbidden outside the defining crate for `#[non_exhaustive]`
+    /// types. All 4 fields are required positional parameters.
+    ///
+    /// # Construction path
+    /// - `monocle-session-host` binary: reads `vt100::Cell` attributes and constructs
+    ///   `Vec<Vec<SerializedCell>>` for the scrollback dump (C5-002).
+    ///   The binary links `monocle-ipc` as an external crate; E0639 applies.
+    /// - `monocle-ipc/tests/`: integration test binaries that exercise scrollback
+    ///   serialization call `new(...)` directly.
+    pub fn new(ch: String, fg: SerializedColor, bg: SerializedColor, attrs: u8) -> Self {
+        Self { ch, fg, bg, attrs }
+    }
+}
+
 /// Terminal cell color as serialized for scrollback dump.
 /// Covers ANSI 16-color, 256-color, and 24-bit RGB as exposed by vt100 0.16.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -745,6 +814,50 @@ pub struct PermissionPromptPayload {
     /// Present when tool_name is "Edit" or similar file-mutation tools.
     pub old_content: Option<String>,
     pub new_content: Option<String>,
+}
+
+impl PermissionPromptPayload {
+    /// ADR-0006 constructor: required because `PermissionPromptPayload` is `#[non_exhaustive]`
+    /// and constructed cross-crate by `monocle-runtime` (daemon) when a `PreToolUse` hook
+    /// with `decision_required: true` arrives. The daemon creates the payload, embeds it in
+    /// `ServerToClient::PermissionPromptQueued { payload }`, and pushes it to all connected
+    /// TUI clients. The TUI only ever RECEIVES and serde-deserializes this type — it does
+    /// NOT construct it. Per Rust E0639, struct-literal construction is forbidden outside
+    /// the defining crate for `#[non_exhaustive]` types.
+    ///
+    /// # Construction path (daemon-side cross-crate, not serde-deserialize-only)
+    /// - `monocle-runtime` (daemon hook handler, `src/hooks/pre_tool_use.rs`): constructs
+    ///   `PermissionPromptPayload::new(...)` when building `PermissionPromptQueued`.
+    ///   `monocle-runtime` depends on `monocle-ipc`; E0639 applies cross-crate.
+    /// - `monocle-ipc/tests/`: integration test binaries that exercise the permission overlay
+    ///   path call `new(...)` directly.
+    /// - `monocle-tui` only ever serde-deserializes received payloads — no construction site.
+    ///
+    /// # ADR-0006 criteria
+    /// (1) Internal workspace scope: `monocle-ipc` and `monocle-runtime` are both workspace
+    ///     crates, never published to crates.io.
+    /// (2) External protocol anchor: fields are driven by the Claude Code PreToolUse hook
+    ///     payload; new optional fields (e.g., `preview_diff`) arise from Claude Code version
+    ///     bumps requiring coordinated BC revisions.
+    /// (3) All required fields are positional parameters; optional fields (`old_content`,
+    ///     `new_content`) default to `None` and may be set after construction.
+    pub fn new(
+        prompt_id: Uuid,
+        session_id: String,
+        tool_name: String,
+        tool_input: serde_json::Value,
+        old_content: Option<String>,
+        new_content: Option<String>,
+    ) -> Self {
+        Self {
+            prompt_id,
+            session_id,
+            tool_name,
+            tool_input,
+            old_content,
+            new_content,
+        }
+    }
 }
 ```
 
@@ -1246,6 +1359,19 @@ still pending in the daemon's registry (i.e., still within the 300ms timeout win
 prompts are never re-pushed.
 
 ---
+
+## §Trace v1.20.0
+
+**C30-002/I30-001 — ADR-0006 constructor gap: `SessionSnapshot`, `SerializedCell`, `PermissionPromptPayload` lacked public constructors despite cross-crate construction** (2026-06-13):
+
+- **Finding (C30-002 CRITICAL):** `SessionSnapshot` and `SerializedCell` are `#[non_exhaustive]` structs defined in `monocle-ipc` and constructed cross-crate (daemon/session-host code in `monocle-runtime`/`monocle-session-host` binary). No `pub fn new(...)` constructor existed, so any `struct SessionSnapshot { ... }` literal outside `monocle-ipc` would be E0639 at compile time.
+- **Finding (I30-001 IMPORTANT — adjudicated as cross-crate construction):** `PermissionPromptPayload` is `#[non_exhaustive]` and constructed by `monocle-runtime` (daemon hook handler `src/hooks/pre_tool_use.rs`) when building `ServerToClient::PermissionPromptQueued { payload }`. The daemon actively creates this struct and sends it. The TUI only ever serde-deserializes received payloads. This is NOT a serde-deserialize-only exemption (unlike `SessionStartEvent` which is never constructed outside `monocle-core`). Construction is daemon-side, cross-crate (`monocle-runtime` → `monocle-ipc`). Adjudication: **constructor required**.
+- **Fix — `SessionSnapshot::new(session_id, display_name, state, harness_id, project_root, cwd, spawned_by_monocle, started_at_micros, pty_rows, pty_cols) -> Self`:** Added in §Supporting Types, immediately after the struct definition. The two `#[serde(default)]` fields (`degraded: bool`, `degraded_reason: Option<String>`) are initialized to `false`/`None` in the constructor body; the `with_degraded(reason: String) -> Self` builder method sets them when the I3-009 degraded-env path fires. This matches ADR-0006 §Breaking-Change Discipline: optional fields default in the body, not as positional parameters.
+- **Fix — `SerializedCell::new(ch, fg, bg, attrs) -> Self`:** Added immediately after the struct definition. All 4 fields are required; none are optional. Called by `monocle-session-host` when serializing `vt100::Cell` values for `HostToDaemon::ScrollbackChunk`.
+- **Fix — `PermissionPromptPayload::new(prompt_id, session_id, tool_name, tool_input, old_content, new_content) -> Self`:** Added immediately after the struct definition. The `old_content: Option<String>` and `new_content: Option<String>` fields are present as positional parameters because they are populated at construction time (not post-construction) from the PreToolUse hook body — the daemon knows their values at the moment it creates the payload.
+- **ADR-0006 criteria satisfied for all three:** (1) internal workspace scope; (2) field additions driven by external protocol evolution (Claude Code version bumps) requiring BC revisions; (3) all required fields as positional parameters.
+- **Audit table:** All three structs added to `SS-engine-module.md §Cross-Crate Constructor Audit Table` (v1.1.26 → v1.1.27).
+- Semver: minor (v1.19.0 → v1.20.0) — additive constructor additions; no behavioral change.
 
 ## §Trace v1.19.0
 

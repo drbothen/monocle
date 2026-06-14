@@ -45,7 +45,7 @@ per-session). All sessions spawned in this test share this single file.
    and contains the standard schema fields (schema_version, session_id, pid, socket_path, state,
    project_root, cwd, harness_id, profile_id, started_at, display_name, pty_rows, pty_cols).
    NOTE: The sidecar MUST NOT contain a `hook_settings_path` field — that field does not exist
-   in the session-state.json schema (SS-session-manager v2.0.0 §session-state.json schema). The
+   in the session-state.json schema (SS-session-manager v2.1.0 §session-state.json schema). The
    hooks path is a shared constant (`<runtime_dir>/hooks-settings.json`) baked into every
    session's spawn args via `SpawnOptions.hooks_settings_path`; it is not stored redundantly
    in the sidecar.
@@ -107,7 +107,7 @@ concurrent spawns (indicates spawns erroneously wrote to it); any spawn call is 
 arg or points to a per-session path; any `session-state.json` sidecar is zero-byte or absent;
 any spawn takes >2 seconds; any per-session hooks file created (violates BC-HOOK-010 PC-3);
 any `session-state.json` sidecar contains a `hook_settings_path` field (schema violation — field
-does not exist in session-state.json schema v3 (`schema_version: 3`) per SS-session-manager v2.0.0).
+does not exist in session-state.json schema v3 (`schema_version: 3`) per SS-session-manager v2.1.0).
 
 **NOT in any story AC:** The story implementing BC-2.08.006 will have ACs for the `--settings` arg
 presence in a single spawn. This holdout tests the **shared-file model invariant under concurrent load**:
@@ -132,12 +132,12 @@ verifies correct `--settings` arg injection for all concurrent sessions.
 
 - **Finding (I28-001 — IMPORTANT):** Part A Step 1 (line ~31) contained the RETIRED Model-B
   three-argument `spawn_session()` signature: `SessionManager::spawn_session(recipe_A, harness_A, profile_A)`.
-  Model B was superseded by Model A (I27-001 adjudication, SS-session-manager v2.0.0 §Public API,
+  Model B was superseded by Model A (I27-001 adjudication, SS-session-manager v2.0.0 <!-- version-pin-historical: v2.0.0 was canonical at Pass-28 authoring time --> §Public API,
   BC-2.08.001 v1.4.0). Under Model A, `spawn_session()` accepts a single `SpawnOptions` struct;
   `SpawnRecipe` is daemon-internal and never appears on the call site.
 - **Fix:** Step 1 rewritten to the Model A call: construct `opts_A: SpawnOptions` with
   `harness_id`, `profile_id`, `project_root`, `worktree_root`, `session_id`,
-  `hooks_settings_path`, and `ccr_base_url` fields populated per the SS-session-manager v2.0.0
+  `hooks_settings_path`, and `ccr_base_url` fields populated per the SS-session-manager v2.0.0 <!-- version-pin-historical: v2.0.0 was canonical at Pass-28 authoring time -->
   §SpawnOptions field-population split (TUI populates `project_root`/`worktree_root`/`harness_id`/
   `profile_id`/`ccr_base_url`; daemon fills `session_id`/`hooks_settings_path`), then call
   `SessionManager::spawn_session(opts_A)`.

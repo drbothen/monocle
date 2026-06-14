@@ -69,7 +69,7 @@ traces_to: prd.md
 ## SS-03: Engine Module VPs (4)
 
 > Source-contract subsystem: BC-2.03.* (see `behavioral-contracts/BC-INDEX.md` §SS-03)
-> Architecture source: `architecture/SS-engine-module.md` v1.1.20
+> Architecture source: `architecture/SS-engine-module.md` v1.1.27
 > Capability: CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter")
 
 | VP ID | Title | Source BC | Proof Method | File | Old ID (PG-5) |

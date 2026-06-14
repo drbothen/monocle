@@ -83,7 +83,7 @@ harnesses).
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC governs the no-silent-fallback error behavior of the ClaudeCodeModule adapter component of CAP-003 |
 | L2 Domain Invariants | DI-006 (every EngineModule implementation must be stateless — metadata() and enrich() are non-detect methods, but DI-006's no-I/O and no-state-mutation constraints on the EngineModule interface require that error paths also be stateless: HomeUnresolvable fails fast without side effects, no retry state, no mutable shared variables); DI-007 (monocle must not write to any file owned by a harness or factory workflow system — HomeUnresolvable prevents incorrect path substitution that could cause metadata() or enrich() to write to an unintended location; by failing fast with a diagnostic, no file write is attempted with a potentially wrong path) |
 | Architecture Module | monocle-core (EngineModule trait, EnrichedSession, HookEvent types); monocle-runtime (ClaudeCodeModule implementation — monocle-runtime/src/engine/claude_code.rs) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module.md v1.1.26 §Behavioral Contracts BC-ENGINE-002-ERR |
+| Architecture Source | SS-engine-module.md v1.1.27 §Behavioral Contracts BC-ENGINE-002-ERR |
 | CLAUDE.md SOUL | SOUL #4 (no silent fallback for unresolvable platform home directory) |
 | Dev Dependency | `temp-env = { version = "^0.3", features = ["async_closure"] }` in `monocle-runtime` `[dev-dependencies]` |
 | Stories | S-TBD (filled by story-writer) |

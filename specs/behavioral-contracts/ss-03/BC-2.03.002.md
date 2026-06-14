@@ -86,7 +86,7 @@ substring. `cmdline` is retained for `enrich()` but is never the primary detecti
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the ClaudeCodeModule, which is explicitly the Claude Code Phase 1 adapter named in CAP-003 |
 | L2 Domain Invariants | DI-006 (every EngineModule implementation must be stateless with respect to process detection — detect() must not perform I/O and must not mutate shared state — ClaudeCodeModule::detect() performs a pure in-memory comparison of exe_path.file_name() against two string literals; Invariant 1 explicitly states the strict-basename rule uses no I/O and Invariant 2 prohibits cmdline as a signal to further prevent any shared-state dependency) |
 | Architecture Module | monocle-core (EngineModule trait, EnrichedSession, HookEvent types); monocle-runtime (ClaudeCodeModule implementation — monocle-runtime/src/engine/claude_code.rs) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module.md v1.1.26 §Phase 1 Implementation: ClaudeCodeModule |
+| Architecture Source | SS-engine-module.md v1.1.27 §Phase 1 Implementation: ClaudeCodeModule |
 | Stories | S-TBD (filled by story-writer) |
 | Old ID (historical) | BC-ENGINE-002 |
 | Test name | test_BC_ENGINE_002_claude_code_module_strict_basename_detect |

@@ -227,7 +227,7 @@ fn verify_bc_2_03_003() {
   pre-Dispatch-5a state; retired in Dispatch 5b).
 - Source contract: `behavioral-contracts/ss-03/BC-2.03.003.md` v1.0.2 (commit 68304e3 — PO 9B R110 Round 9B BC scope dispatch).
 - BC index: `behavioral-contracts/BC-INDEX.md` v1.11 (R18B commit 442f5ac — F-R119-2 closure: BC-INDEX §Trace v1.11 retrospective for R17F SM-applied Canonical SS table edit + v1.10 → v1.11 bookkeeping; supersedes v1.10 R16 R117 Round 16 PO dispatch — BC scope refresh; supersedes v1.9 commit c0c6b99 — PO 10A R111 Round 10A timestamp pathology fix + L2-INDEX pin refresh; supersedes v1.8 commit 3334fb6 — PO 9B R110 Round 9B BC scope dispatch; supersedes v1.7 commit 517c7ee — F-R109 Round 8B PO sweep; supersedes v1.6 commit 22579ac — PO 7A R108 Round 7A BC scope dispatch; supersedes v1.5 commit d92e4a7 — PO 6A R107 Round 6A finalization; supersedes v1.4 commit bb088a2 — PO 5A R106 Round 5 BC-INDEX dual-accept finalization; supersedes v1.2 commit 61133a7 — F-R105-3 + F-R105-9 + OBS-R44-1 DI mapping closure).
-- Architecture: `architecture/SS-engine-module.md` v1.1.20 (Architect 9A commit 159d123 R110 Round 9A keeps) §Behavioral Contracts.
+- Architecture: `architecture/SS-engine-module.md` v1.1.27 §Behavioral Contracts.
 - Dependency pins: `architecture/SS-deps-pin-manifest.md` v1.1.17
   (`temp-env ^0.3` pin with `async_closure` feature).
 - Conventions: `architecture/SS-conventions-anti-patterns.md` §Semgrep Rules

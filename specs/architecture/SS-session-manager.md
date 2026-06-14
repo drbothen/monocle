@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.0.0"
+version: "2.1.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -805,7 +805,7 @@ pub enum HostToDaemon {
     PtyReset,
 }
 
-// C5-002 (SS-ipc.md v1.19.0): SerializedCell and SerializedColor are defined in
+// C5-002 (SS-ipc.md v1.20.0): SerializedCell and SerializedColor are defined in
 // monocle-ipc (crate::ipc::SerializedCell / crate::ipc::SerializedColor) so both
 // monocle-session-host (writer) and monocle-tui (reader) share the type without a
 // cross-binary dependency. The canonical definition with full field documentation
@@ -1142,6 +1142,75 @@ pub struct SpawnOptions {
     /// Populated by the TUI (it knows the CCR configuration from its profile settings).
     pub ccr_base_url: Option<String>,
 }
+
+impl SpawnOptions {
+    /// ADR-0006 TUI-side constructor: required because `SpawnOptions` is `#[non_exhaustive]`
+    /// and constructed cross-crate by `monocle-tui` when the user confirms a session in the
+    /// SessionCreation wizard. The TUI populates exactly 5 fields; the daemon fills the
+    /// remaining 2 (`session_id`, `hooks_settings_path`) upon IPC receipt via
+    /// `with_daemon_fields()`. Per Rust E0639, struct-literal construction is forbidden
+    /// outside the defining crate for `#[non_exhaustive]` types.
+    ///
+    /// The two daemon-owned fields are initialized to documented placeholder values:
+    /// - `session_id: String::new()` — empty; always overwritten by daemon before use.
+    /// - `hooks_settings_path: PathBuf::new()` — empty; always overwritten by daemon before use.
+    /// These placeholders are never observable by production code because the daemon always
+    /// calls `with_daemon_fields()` before passing `SpawnOptions` to `spawn_session()`.
+    ///
+    /// # Construction path
+    /// - `monocle-tui` (`src/ui/session_creation.rs`): SessionCreation wizard Step 4
+    ///   (Confirm) calls `SpawnOptions::for_spawn_request(...)` and sends the result in
+    ///   `ClientToServer::SpawnSession { opts }`.
+    /// - `monocle-ipc/tests/` and `monocle-tui/tests/`: integration test binaries call
+    ///   `for_spawn_request(...)` for test fixture construction.
+    ///
+    /// # ADR-0006 criteria
+    /// (1) Internal workspace scope: `monocle-core` is a workspace crate, never published.
+    /// (2) External protocol anchor: `SpawnOptions` is the `ClientToServer::SpawnSession`
+    ///     wire payload; field additions require coordinated BC revisions (I27-001 Model A).
+    /// (3) All required fields are positional parameters; daemon-owned fields use documented
+    ///     placeholder values (empty strings/paths) because they are ALWAYS overwritten before
+    ///     production use — not arbitrary defaults that could silently propagate.
+    pub fn for_spawn_request(
+        project_root: PathBuf,
+        worktree_root: PathBuf,
+        harness_id: String,
+        profile_id: String,
+        ccr_base_url: Option<String>,
+    ) -> Self {
+        Self {
+            project_root,
+            worktree_root,
+            harness_id,
+            profile_id,
+            ccr_base_url,
+            // Daemon-owned fields: placeholder values; always overwritten by daemon
+            // via with_daemon_fields() before spawn_session() is called.
+            session_id: String::new(),
+            hooks_settings_path: PathBuf::new(),
+        }
+    }
+
+    /// ADR-0006 daemon-side consuming builder: fills the two daemon-owned fields on receipt
+    /// of `ClientToServer::SpawnSession { opts }`. The daemon calls this immediately upon
+    /// receipt, BEFORE passing the completed `SpawnOptions` to `spawn_session()`. This
+    /// replaces the E0639-violating `SpawnOptions { session_id: ..., hooks_settings_path: ...,
+    /// ..opts }` functional-update pattern (C30-001).
+    ///
+    /// # Why a consuming builder (not &mut self)?
+    /// The IPC handler receives `opts` by value (from serde deserialization of the wire
+    /// payload). A consuming builder avoids cloning and makes the "fill then pass" pattern
+    /// natural: `let opts = opts.with_daemon_fields(uuid, path); spawn_session(opts).await`.
+    ///
+    /// # Construction path
+    /// - `monocle-runtime` (daemon IPC handler, `src/ipc_handler.rs`): called immediately
+    ///   on the deserialized `opts` from `ClientToServer::SpawnSession { opts }`.
+    pub fn with_daemon_fields(mut self, session_id: String, hooks_settings_path: PathBuf) -> Self {
+        self.session_id = session_id;
+        self.hooks_settings_path = hooks_settings_path;
+        self
+    }
+}
 ```
 
 `ClaudeCodeModule::spawn_recipe()` fills the recipe from:
@@ -1242,6 +1311,17 @@ Daemon removes stale socket files during GC in re-discovery (alongside sidecar d
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v2.1.0
+
+**C30-001 — ADR-0006 constructor gap: `SpawnOptions` lacked public constructors despite cross-crate construction** (2026-06-13):
+
+- **Finding (C30-001 CRITICAL):** `SpawnOptions` is `#[non_exhaustive]` and constructed cross-crate by `monocle-tui` (SessionCreation wizard sends it as the `ClientToServer::SpawnSession { opts }` wire payload) and by `monocle-runtime` (daemon IPC handler fills `session_id` and `hooks_settings_path` on receipt). No public constructor existed. Additionally, the daemon-side fill step requires modifying two fields of an already-deserialized value — the E0639-violating `SpawnOptions { session_id: ..., ..opts }` functional-update pattern was used in SS-daemon-wiring-v2-delta.md §3 (also E0639 outside the defining crate).
+- **Fix — `SpawnOptions::for_spawn_request(project_root, worktree_root, harness_id, profile_id, ccr_base_url) -> Self`:** TUI-side positional constructor added in §SpawnOptions struct definition. Daemon-owned fields initialized to documented placeholder values (`String::new()`, `PathBuf::new()`). See impl block in §SpawnOptions for full rationale and ADR-0006 criteria.
+- **Fix — `SpawnOptions::with_daemon_fields(self, session_id: String, hooks_settings_path: PathBuf) -> Self`:** Daemon-side consuming builder added in §SpawnOptions struct definition. Replaces the `..opts` functional-update pattern. The daemon IPC handler now uses: `let opts = opts.with_daemon_fields(uuid, state.hooks_settings_path.clone()); spawn_session(opts).await`.
+- **Byte-for-byte consistency with SS-engine-module-v2-delta.md:** The `impl SpawnOptions` block (constructor bodies, doc-comments, field order) is identical between this file (canonical definition) and SS-engine-module-v2-delta.md (cross-reference). C29-001 field-consistency lesson applied: both definitions must remain identical; SS-engine-module-v2-delta.md is the canonical owner for the constructor spec.
+- **Audit table:** `SpawnOptions` added to `SS-engine-module.md §Cross-Crate Constructor Audit Table` (v1.1.26 → v1.1.27).
+- Semver: minor (v2.0.0 → v2.1.0) — additive constructor additions; no API behavioral change.
 
 ## §Trace v2.0.0
 

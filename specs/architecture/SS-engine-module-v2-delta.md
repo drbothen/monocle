@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "engine-module-v2-delta"
 subsystem: SS-03
-version: "1.2.0"
+version: "1.3.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -81,6 +81,30 @@ pub struct SpawnRecipe {
     pub cwd: PathBuf,
 }
 
+impl SpawnRecipe {
+    /// ADR-0006 constructor: required because `SpawnRecipe` is `#[non_exhaustive]` and
+    /// constructed cross-crate inside `ClaudeCodeModule::spawn_recipe()`, which lives in
+    /// `monocle-runtime`. `SpawnRecipe` is defined in `monocle-core`; `monocle-runtime`
+    /// depends on `monocle-core` as an external crate, so E0639 applies. All 4 fields are
+    /// required positional parameters (no optional fields on `SpawnRecipe`).
+    ///
+    /// # Construction path
+    /// - `monocle-runtime` (`src/engine/claude_code.rs`, `ClaudeCodeModule::spawn_recipe()`):
+    ///   the ONLY production construction site. Daemon-internal; never transmitted over IPC.
+    /// - `monocle-runtime/tests/`: integration test binaries that exercise `spawn_recipe()`
+    ///   outcomes call `new(...)` for assertion fixtures.
+    ///
+    /// # ADR-0006 criteria
+    /// (1) Internal workspace scope: `monocle-core` and `monocle-runtime` are both workspace
+    ///     crates, never published to crates.io.
+    /// (2) External protocol anchor: field additions (e.g., new harness CLI flags) arise from
+    ///     Claude Code version bumps requiring coordinated BC revisions; not organic refactoring.
+    /// (3) All 4 fields are required positional parameters.
+    pub fn new(binary: PathBuf, args: Vec<String>, env: HashMap<String, String>, cwd: PathBuf) -> Self {
+        Self { binary, args, env, cwd }
+    }
+}
+
 /// Options passed from the TUI via `ClientToServer::SpawnSession { opts }` to the daemon,
 /// and then from the daemon's IPC handler to `SessionManager::spawn_session(opts)` and
 /// from there to `EngineModule::spawn_recipe(&opts)`.
@@ -111,6 +135,75 @@ pub struct SpawnOptions {
     /// If CCR is detected and a base URL is configured, this carries the URL.
     /// The EngineModule MUST inject this as `ANTHROPIC_BASE_URL` in `env` if present.
     pub ccr_base_url: Option<String>,
+}
+
+impl SpawnOptions {
+    /// ADR-0006 TUI-side constructor: required because `SpawnOptions` is `#[non_exhaustive]`
+    /// and constructed cross-crate by `monocle-tui` when the user confirms a session in the
+    /// SessionCreation wizard. The TUI populates exactly 5 fields; the daemon fills the
+    /// remaining 2 (`session_id`, `hooks_settings_path`) upon IPC receipt via
+    /// `with_daemon_fields()`. Per Rust E0639, struct-literal construction is forbidden
+    /// outside the defining crate for `#[non_exhaustive]` types.
+    ///
+    /// The two daemon-owned fields are initialized to documented placeholder values:
+    /// - `session_id: String::new()` — empty; always overwritten by daemon before use.
+    /// - `hooks_settings_path: PathBuf::new()` — empty; always overwritten by daemon before use.
+    /// These placeholders are never observable by production code because the daemon always
+    /// calls `with_daemon_fields()` before passing `SpawnOptions` to `spawn_session()`.
+    ///
+    /// # Construction path
+    /// - `monocle-tui` (`src/ui/session_creation.rs`): SessionCreation wizard Step 4
+    ///   (Confirm) calls `SpawnOptions::for_spawn_request(...)` and sends the result in
+    ///   `ClientToServer::SpawnSession { opts }`.
+    /// - `monocle-ipc/tests/` and `monocle-tui/tests/`: integration test binaries call
+    ///   `for_spawn_request(...)` for test fixture construction.
+    ///
+    /// # ADR-0006 criteria
+    /// (1) Internal workspace scope: `monocle-core` is a workspace crate, never published.
+    /// (2) External protocol anchor: `SpawnOptions` is the `ClientToServer::SpawnSession`
+    ///     wire payload; field additions require coordinated BC revisions (I27-001 Model A).
+    /// (3) All required fields are positional parameters; daemon-owned fields use documented
+    ///     placeholder values (empty strings/paths) because they are ALWAYS overwritten before
+    ///     production use — not arbitrary defaults that could silently propagate.
+    pub fn for_spawn_request(
+        project_root: PathBuf,
+        worktree_root: PathBuf,
+        harness_id: String,
+        profile_id: String,
+        ccr_base_url: Option<String>,
+    ) -> Self {
+        Self {
+            project_root,
+            worktree_root,
+            harness_id,
+            profile_id,
+            ccr_base_url,
+            // Daemon-owned fields: placeholder values; always overwritten by daemon
+            // via with_daemon_fields() before spawn_session() is called.
+            session_id: String::new(),
+            hooks_settings_path: PathBuf::new(),
+        }
+    }
+
+    /// ADR-0006 daemon-side consuming builder: fills the two daemon-owned fields on receipt
+    /// of `ClientToServer::SpawnSession { opts }`. The daemon calls this immediately upon
+    /// receipt, BEFORE passing the completed `SpawnOptions` to `spawn_session()`. This
+    /// replaces the E0639-violating `SpawnOptions { session_id: ..., hooks_settings_path: ...,
+    /// ..opts }` functional-update pattern (C30-001).
+    ///
+    /// # Why a consuming builder (not &mut self)?
+    /// The IPC handler receives `opts` by value (from serde deserialization of the wire
+    /// payload). A consuming builder avoids cloning and makes the "fill then pass" pattern
+    /// natural: `let opts = opts.with_daemon_fields(uuid, path); spawn_session(opts).await`.
+    ///
+    /// # Construction path
+    /// - `monocle-runtime` (daemon IPC handler, `src/ipc_handler.rs`): called immediately
+    ///   on the deserialized `opts` from `ClientToServer::SpawnSession { opts }`.
+    pub fn with_daemon_fields(mut self, session_id: String, hooks_settings_path: PathBuf) -> Self {
+        self.session_id = session_id;
+        self.hooks_settings_path = hooks_settings_path;
+        self
+    }
 }
 ```
 
@@ -179,14 +272,14 @@ impl EngineModule for ClaudeCodeModule {
         // Inject MONOCLE_SESSION_ID so the session can be correlated in hook events
         env.insert("MONOCLE_SESSION_ID".to_string(), opts.session_id.clone());
 
-        Ok(SpawnRecipe {
+        Ok(SpawnRecipe::new(
             binary,
             args,
             env,
             // Use the resolved worktree root (not project_root directly).
             // project_root == worktree_root when no git worktree is configured.
-            cwd: opts.worktree_root.clone(),
-        })
+            opts.worktree_root.clone(),
+        ))
     }
 }
 ```
@@ -251,10 +344,13 @@ All Phase-1 `EngineModule` behavioral contracts (BC-2.03.*) remain in effect:
   `engine_module.spawn_recipe(&opts)` inside `SessionManager::spawn_session()` and is
   never transmitted over IPC. The `Serialize`/`Deserialize` derives on `SpawnRecipe` are
   retained for potential diagnostic serialization but carry no wire-protocol obligation.
-  `SpawnRecipe` does NOT require `#[non_exhaustive]` from a wire-type perspective (it is
-  not on the IPC boundary); however the attribute is harmless and is retained for the
-  forward-compat guarantee within daemon-internal code that struct-literal constructs
-  `SpawnRecipe` values.
+  `SpawnRecipe` is defined in `monocle-core` and constructed in `monocle-runtime`
+  (`ClaudeCodeModule::spawn_recipe()`); this is cross-crate construction, so E0639 applies
+  and `SpawnRecipe::new(binary, args, env, cwd) -> Self` is REQUIRED (C30-001 / ADR-0006).
+  The implementation spec above uses `SpawnRecipe::new(...)` — not a struct literal — for
+  exactly this reason. The `#[non_exhaustive]` attribute additionally provides forward-compat
+  for future recipe field additions (e.g., resource limits, process group flags) without
+  breaking the `ClaudeCodeModule` call site.
 
 ---
 
@@ -270,6 +366,20 @@ All Phase-1 `EngineModule` behavioral contracts (BC-2.03.*) remain in effect:
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.3.0
+
+**C30-001 — ADR-0006 constructor gap: `SpawnOptions` and `SpawnRecipe` lacked public constructors despite cross-crate construction** (2026-06-13):
+
+- **Finding (C30-001 CRITICAL — SpawnOptions):** `SpawnOptions` is `#[non_exhaustive]` and constructed cross-crate by `monocle-tui` (SessionCreation wizard) and by `monocle-runtime` (daemon IPC handler fills `session_id` and `hooks_settings_path` on receipt). No `pub fn new(...)` or builder existed. The daemon IPC handler sample in SS-daemon-wiring-v2-delta.md §3 used `SpawnOptions { session_id: ..., hooks_settings_path: ..., ..opts }` — the functional-update (`..opts`) on a `#[non_exhaustive]` struct from an external crate is E0639 (Rust E0639 applies to functional-record-update syntax as well as struct literals for `#[non_exhaustive]` types outside their defining crate).
+- **Finding (C30-001 CRITICAL — SpawnRecipe):** `SpawnRecipe` is `#[non_exhaustive]` and defined in `monocle-core`, constructed cross-crate in `monocle-runtime` (`ClaudeCodeModule::spawn_recipe()`). The implementation spec used a struct literal `SpawnRecipe { binary, args, env, cwd }` — E0639 from `monocle-runtime`'s perspective. No `pub fn new(...)` existed.
+- **Fix — `SpawnOptions::for_spawn_request(project_root, worktree_root, harness_id, profile_id, ccr_base_url) -> Self`:** TUI-side constructor. Daemon-owned fields (`session_id`, `hooks_settings_path`) are initialized to documented placeholder values (`String::new()`, `PathBuf::new()`) — always overwritten by daemon before use. This is NOT a Default-substitution for required fields: the fields ARE populated at production-time by `with_daemon_fields()`; the placeholder communicates "not yet populated" in specs and tests.
+- **Fix — `SpawnOptions::with_daemon_fields(self, session_id: String, hooks_settings_path: PathBuf) -> Self`:** Daemon-side consuming builder. Replaces the `..opts` functional-update pattern in SS-daemon-wiring-v2-delta.md §3 sample (C30-001 root cause). The daemon IPC handler now calls `let opts = opts.with_daemon_fields(uuid, state.hooks_settings_path.clone()); spawn_session(opts).await`.
+- **Fix — `SpawnRecipe::new(binary, args, env, cwd) -> Self`:** Four-field positional constructor. The `ClaudeCodeModule::spawn_recipe()` implementation spec updated to use `SpawnRecipe::new(...)` instead of the struct literal.
+- **Fix — §Phase Compatibility prose corrected:** The prior text said `SpawnRecipe`'s `#[non_exhaustive]` "is harmless" for "daemon-internal code that struct-literal constructs SpawnRecipe values." This was wrong: the construction is CROSS-CRATE (monocle-runtime → monocle-core), so E0639 DOES apply and `SpawnRecipe::new()` is required. Prose updated to state the cross-crate relationship and E0639 applicability explicitly.
+- **Canonical constructor spec:** `SpawnOptions::for_spawn_request()` and `with_daemon_fields()` are the normative patterns for all spec-level samples and test fixtures. The byte-for-byte consistent `SpawnOptions` struct definition in SS-session-manager.md §SpawnOptions is updated with identical `impl SpawnOptions` block (same constructor bodies, same doc-comments; see SS-session-manager.md §Trace v2.1.0).
+- **Audit table:** `SpawnOptions` and `SpawnRecipe` added to `SS-engine-module.md §Cross-Crate Constructor Audit Table` (v1.1.26 → v1.1.27).
+- Semver: minor (v1.2.0 → v1.3.0) — additive constructor additions + Phase Compatibility prose fix; no behavioral change.
 
 ## §Trace v1.2.0
 

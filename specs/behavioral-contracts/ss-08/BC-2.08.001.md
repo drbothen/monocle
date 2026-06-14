@@ -86,7 +86,7 @@ goes directly to `Launching`.
 4. `spawn_session()` returns `Ok(session_id)` (the UUID string).
 5. `ServerToClient::SessionStateChanged { session_id, new_state: Launching }` is published
    to the broker BEFORE `ServerToClient::SessionListUpdate` (both under the `SessionManager`
-   mutex per BC-2.08.008 Invariant 4 and SS-daemon-wiring-v2-delta.md v1.8.0 §3b).
+   mutex per BC-2.08.008 Invariant 4 and SS-daemon-wiring-v2-delta.md v1.9.0 §3b).
 
 ## Invariants
 
@@ -140,7 +140,7 @@ goes directly to `Launching`.
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC is the primary definition of the spawn operation that launches the session-host process and creates the session registry entry |
 | L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness — the sidecar is a monocle-owned file, not a harness file; the atomic write via tempfile::persist ensures no partial writes to monocle's own state) |
 | Architecture Module | monocle-runtime (SessionManager sub-module — `monocle-runtime/src/session_manager/mod.rs`) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.0.0 §SessionManager §Public API (`spawn_session(opts: SpawnOptions)` signature — Model A; `spawn_recipe()` called daemon-side as first step); SS-session-manager.md v2.0.0 §session-state.json schema (schema_version 3); SS-session-manager.md v2.0.0 §session_error_to_code (spawn-path arms: `EngineError::BinaryNotFound` → `"binary_not_found"`, `EngineError::InvalidPath` → `"invalid_spawn_arg"`); SS-engine-module-v2-delta.md v1.2.0 §SpawnOptions and §SpawnRecipe types (Model A wire/internal type assignment — I27-001); SS-ipc.md v1.19.0 §`ClientToServer::SpawnSession { opts: SpawnOptions }` (wire variant change — Model A); ADR-0009 v1.0.2 §Decision; SS-daemon-wiring-v2-delta.md v1.8.0 §3b (SessionStateChanged emission rule) |
+| Architecture Source | SS-session-manager.md v2.1.0 §SessionManager §Public API (`spawn_session(opts: SpawnOptions)` signature — Model A; `spawn_recipe()` called daemon-side as first step); SS-session-manager.md v2.1.0 §session-state.json schema (schema_version 3); SS-session-manager.md v2.1.0 §session_error_to_code (spawn-path arms: `EngineError::BinaryNotFound` → `"binary_not_found"`, `EngineError::InvalidPath` → `"invalid_spawn_arg"`); SS-engine-module-v2-delta.md v1.3.0 §SpawnOptions and §SpawnRecipe types (Model A wire/internal type assignment — I27-001); SS-ipc.md v1.20.0 §`ClientToServer::SpawnSession { opts: SpawnOptions }` (wire variant change — Model A); ADR-0009 v1.0.2 §Decision; SS-daemon-wiring-v2-delta.md v1.9.0 §3b (SessionStateChanged emission rule) |
 | Test Name | test_BC_2_08_001_spawn_session_entry_created_within_2s |
 
 ## Related BCs
@@ -207,12 +207,12 @@ changes from `spawn_session(recipe: SpawnRecipe, harness_id, profile_id, ...)` t
 - **Related BCs BC-2.03.005:** Description updated to clarify `spawn_recipe()` is called
   daemon-side INSIDE `spawn_session()` (not pre-built by the TUI caller).
 
-- **Architecture Anchors:** Extended to cite SS-engine-module-v2-delta.md v1.2.0 §SpawnOptions/SpawnRecipe
-  types and SS-session-manager.md v2.0.0 §session_error_to_code.
+- **Architecture Anchors:** Extended to cite SS-engine-module-v2-delta.md v1.3.0 §SpawnOptions/SpawnRecipe
+  types and SS-session-manager.md v2.1.0 §session_error_to_code.
 
 - **Architecture Source:** Updated all version citations from v1.9.0 to v2.0.0 (SS-session-manager)
-  and v1.7.0 to v1.8.0 (SS-daemon-wiring-v2-delta); added SS-engine-module-v2-delta.md v1.2.0
-  and SS-ipc.md v1.19.0.
+  and v1.7.0 to v1.8.0 (SS-daemon-wiring-v2-delta); added SS-engine-module-v2-delta.md v1.3.0
+  and SS-ipc.md v1.20.0.
 
 - No changes to Invariants, PC-1 through PC-5, EC-151, EC-152, EC-153, or Verification Properties
   (spawner call, sidecar schema, UUID invariants, publication ordering remain unchanged).

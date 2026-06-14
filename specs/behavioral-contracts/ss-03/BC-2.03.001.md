@@ -90,7 +90,7 @@ dyn-compatibility on MSRV 1.88 stable Rust. `metadata()` and `enrich()` must fai
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the EngineModule trait, which is the explicit engine abstraction over AI coding harnesses named in CAP-003 |
 | L2 Domain Invariants | DI-006 (every EngineModule implementation must be stateless with respect to process detection — detect() must not perform I/O and must not mutate shared state — Postcondition 6 mandates that detect() has no I/O and no shared state mutation; EngineModule implementations must follow this constraint to ensure DI-006) |
 | Architecture Module | monocle-core (EngineModule trait, EnrichedSession, HookEvent types); monocle-runtime (ClaudeCodeModule implementation — monocle-runtime/src/engine/claude_code.rs) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module.md v1.1.26 §EngineModule Trait Signature |
+| Architecture Source | SS-engine-module.md v1.1.27 §EngineModule Trait Signature |
 | Vision | §EngineModule |
 | Stories | S-TBD (filled by story-writer) |
 | Old ID (historical) | BC-ENGINE-001 |

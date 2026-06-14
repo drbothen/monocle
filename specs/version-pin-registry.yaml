@@ -94,9 +94,9 @@ SS-deps-pin-manifest:
 
 SS-engine-module:
   path: specs/architecture/SS-engine-module.md
-  current_version: "1.1.26"
-  last_bump_commit: "ee9742bbcbde"
-  last_bump_date: "2026-05-28"
+  current_version: "1.1.27"
+  last_bump_commit: "[Pass-30 C30-001/C30-002/I30-001 — ADR-0006 constructor gap: SpawnOptions, SpawnRecipe, SessionSnapshot, SerializedCell, PermissionPromptPayload added to Cross-Crate Constructor Audit Table]"
+  last_bump_date: "2026-06-13"
 
 SS-forward-compatibility:
   path: specs/architecture/SS-forward-compatibility.md
@@ -106,8 +106,8 @@ SS-forward-compatibility:
 
 SS-ipc:
   path: specs/architecture/SS-ipc.md
-  current_version: "1.19.0"
-  last_bump_commit: "[Pass-27 I27-001 — ClientToServer::SpawnSession payload: SpawnOptions opts (wire type); call-site hedge removed; Model-A reconciliation]"
+  current_version: "1.20.0"
+  last_bump_commit: "[Pass-30 C30-002/I30-001 — ADR-0006 constructors added: SessionSnapshot::new(), SerializedCell::new(), PermissionPromptPayload::new()]"
   last_bump_date: "2026-06-13"
 
 SS-permissions-phase1:
@@ -124,8 +124,8 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "2.0.0"
-  last_bump_commit: "[Pass-27 I27-001 — spawn_session(opts: SpawnOptions) signature MAJOR bump; Model-A daemon-side spawn_recipe() reconciliation]"
+  current_version: "2.1.0"
+  last_bump_commit: "[Pass-30 C30-001 — SpawnOptions::for_spawn_request() + with_daemon_fields() constructors added (ADR-0006 gap fix)]"
   last_bump_date: "2026-06-13"
 
 SS-embedded-pty:
@@ -136,14 +136,14 @@ SS-embedded-pty:
 
 SS-engine-module-v2-delta:
   path: specs/architecture/SS-engine-module-v2-delta.md
-  current_version: "1.2.0"
-  last_bump_commit: "[Pass-27 I27-001 — SpawnOptions promoted to wire type (#[non_exhaustive]+Serialize/Deserialize+harness_id); SpawnRecipe demoted to daemon-internal]"
+  current_version: "1.3.0"
+  last_bump_commit: "[Pass-30 C30-001 — SpawnOptions::for_spawn_request()+with_daemon_fields() + SpawnRecipe::new() constructors; Phase Compatibility prose corrected re E0639]"
   last_bump_date: "2026-06-13"
 
 SS-daemon-wiring-v2-delta:
   path: specs/architecture/SS-daemon-wiring-v2-delta.md
-  current_version: "1.8.0"
-  last_bump_commit: "[Pass-27 I27-001 — §3 SpawnSession arm receives opts: SpawnOptions; daemon-side spawn_recipe(&opts) call; Model-A reconciliation]"
+  current_version: "1.9.0"
+  last_bump_commit: "[Pass-30 C30-001 — SpawnSession arm: ..opts functional-update replaced with opts.with_daemon_fields(uuid, path) (E0639 fix)]"
   last_bump_date: "2026-06-13"
 
 SS-deps-pin-manifest-v2-delta:

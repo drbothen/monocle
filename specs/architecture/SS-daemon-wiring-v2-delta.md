@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "daemon-wiring-v2-delta"
 subsystem: SS-04
-version: "1.8.0"
+version: "1.9.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -157,12 +157,13 @@ ClientToServer::SpawnSession { opts } => {
     //   2. Calls SessionHostSpawner::spawn(&recipe) — OS process spawn.
     //   3. Writes the sidecar file.
     //
-    // Fill daemon-owned fields on opts before passing to spawn_session():
-    let opts = SpawnOptions {
-        session_id: uuid::Uuid::new_v4().to_string(),
-        hooks_settings_path: state.hooks_settings_path.clone(), // pre-written at step 9
-        ..opts  // project_root, worktree_root, harness_id, profile_id, ccr_base_url from TUI
-    };
+    // Fill daemon-owned fields on opts before passing to spawn_session().
+    // C30-001: SpawnOptions is #[non_exhaustive]; functional-update (`..opts`) is E0639
+    // outside the defining crate. Use the consuming builder `with_daemon_fields()` instead.
+    let opts = opts.with_daemon_fields(
+        uuid::Uuid::new_v4().to_string(),
+        state.hooks_settings_path.clone(), // pre-written at step 9
+    ); // project_root, worktree_root, harness_id, profile_id, ccr_base_url came from TUI
     //
     // session_error_to_code maps the EngineError-derived variants:
     //   SessionError::EngineError(BinaryNotFound) → "binary_not_found"
@@ -377,7 +378,7 @@ can use it without importing daemon-internal types.
 > was retired in v1.4.0 (I6-002 fix) because it diverged from the SS-ipc.md canonical by
 > omitting the `degraded`/`degraded_reason` fields.
 >
-> **Current canonical field summary** (SS-ipc.md v1.19.0 §Supporting Types — authoritative):
+> **Current canonical field summary** (SS-ipc.md v1.20.0 §Supporting Types — authoritative):
 > `session_id`, `display_name`, `state`, `harness_id`, `project_root`, `cwd`,
 > `spawned_by_monocle: Option<bool>`, `started_at_micros: i64`, `pty_rows: u16`,
 > `pty_cols: u16`, `degraded: bool` (`#[serde(default)]`), `degraded_reason: Option<String>`
@@ -681,6 +682,15 @@ If no in-process SessionManager stub exists in D-235 (i.e., the stub was skeleta
 implementer creates `SessionManager` from scratch per SS-08.
 
 ---
+
+## §Trace v1.9.0
+
+**C30-001 — ADR-0006 constructor fix: replace E0639-violating `..opts` functional-update with `with_daemon_fields()` consuming builder** (2026-06-13):
+
+- **Finding (C30-001 CRITICAL):** §3 `SpawnSession` handler arm used `SpawnOptions { session_id: ..., hooks_settings_path: ..., ..opts }`. Functional-record-update syntax (`..base`) on a `#[non_exhaustive]` struct from an external crate is E0639 in Rust — the same restriction that applies to struct-literal construction. `SpawnOptions` is defined in `monocle-core`; this handler lives in `monocle-runtime`; E0639 applies.
+- **Fix — `..opts` replaced with `opts.with_daemon_fields(uuid, path)`:** `SpawnOptions::with_daemon_fields(self, session_id: String, hooks_settings_path: PathBuf) -> Self` is the ADR-0006-conformant consuming builder defined in SS-engine-module-v2-delta.md (canonical constructor owner) and mirrored in SS-session-manager.md §SpawnOptions. The sample now reads: `let opts = opts.with_daemon_fields(uuid::Uuid::new_v4().to_string(), state.hooks_settings_path.clone());`.
+- **No semantic change:** The two daemon-owned fields (`session_id`, `hooks_settings_path`) are set to the identical values as before. Only the construction mechanism changes (struct-update → consuming builder). The TUI-provided fields (`project_root`, `worktree_root`, `harness_id`, `profile_id`, `ccr_base_url`) are preserved unchanged via `with_daemon_fields()`.
+- Semver: patch (v1.8.0 → v1.9.0) — sample code correction; no behavioral change.
 
 ## §Trace v1.8.0
 
