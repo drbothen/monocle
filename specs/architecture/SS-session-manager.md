@@ -1086,8 +1086,9 @@ pub enum HostToDaemon {
     },
     /// Sentinel terminating the scrollback dump stream.
     /// Sent after the last ScrollbackChunk. Contains cursor and PTY dimensions at
-    /// the moment the dump snapshot was taken. After sending this, the session-host
-    /// resumes forwarding live PtyBytes.
+    /// the moment the dump snapshot was taken. PtyBytes forwarding was NEVER paused
+    /// (snapshot-then-resume protocol, I3-003 / ADR-0010 §Interleaving); live PtyBytes
+    /// continued throughout the dump transfer and continue after this sentinel.
     ScrollbackDumpComplete {
         total_chunks: u32,
         cursor_row: u16,
@@ -1096,7 +1097,10 @@ pub enum HostToDaemon {
         pty_rows: u16,
         pty_cols: u16,
     },
-    /// Live PTY output bytes. NOT sent during an active scrollback dump transfer.
+    /// Live PTY output bytes. Sent continuously, INCLUDING during an active scrollback dump
+    /// transfer (snapshot-then-resume protocol, I3-003 / ADR-0010 §Interleaving). The
+    /// session-host does NOT pause PtyBytes for the dump; the TUI buffers live PtyBytes
+    /// during the dump window and replays them after `ScrollbackDumpComplete`.
     PtyBytes { bytes: Vec<u8> },
     /// Session state changed (child exited, etc.).
     /// I3-009: extended with optional degraded_env field. Serde default = None for
@@ -1155,7 +1159,9 @@ PTY bytes.
    After all chunks, send `HostToDaemon::ScrollbackDumpComplete` with cursor position, PTY
    dimensions, and total chunk count.
 
-4. **Resume PtyBytes forwarding** after `ScrollbackDumpComplete` is sent.
+4. PtyBytes forwarding was never paused (step 2); it continues uninterrupted throughout
+   and after the dump. After `ScrollbackDumpComplete` is sent no resume action is needed —
+   the PTY reader loop continues normally.
 
 5. **TUI receiver protocol:** On receipt of `ScrollbackDumpComplete`, the TUI MUST:
    a. Validate that `total_chunks` matches the number of `ScrollbackChunk` messages received.
@@ -1741,6 +1747,59 @@ BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
   defensive action×state matrix section. Multiple behavioral obligations added for implementers.
 
 SE-16d monotonicity: v2.6.0 timestamp 2026-06-14 ≥ v2.5.1 timestamp 2026-06-14. PASS.
+
+## §Trace v2.6.0 — Errata
+
+**F-P54-001 — Retired pause-during-dump survivors removed from three positions (ERRATA-NO-BUMP)** (2026-06-14):
+
+- **Finding (F-P54-001, IMPORTANT):** Three doc-comment/prose positions carried stale text from
+  the retired pause-during-dump model, contradicting the canonical snapshot-then-resume protocol
+  already correctly specified at lines ~1074-1075 (ScrollbackChunk doc-comment), lines ~1149-1152
+  (Screen-state transfer step 2), the event-loop Attach arm comment (line ~1256), and ADR-0010
+  §Interleaving. The survivors were:
+
+  **(1) `HostToDaemon::ScrollbackDumpComplete` doc-comment (line ~1089-1090):**
+  Previous: "After sending this, the session-host resumes forwarding live PtyBytes."
+  Implied that PtyBytes were paused during the dump and needed to be resumed after the sentinel.
+  Under the snapshot-then-resume model no pause ever occurs; "resumes" is incoherent.
+
+  **(2) `HostToDaemon::PtyBytes` variant doc-comment (line ~1099):**
+  Previous: "/// Live PTY output bytes. NOT sent during an active scrollback dump transfer."
+  This was an explicit statement of the retired pause model.
+
+  **(3) §Screen-state transfer on Attach step 4 (line ~1158):**
+  Previous: "**Resume PtyBytes forwarding** after `ScrollbackDumpComplete` is sent."
+  Step 2 (line ~1149) already mandates IMMEDIATE resume after snapshot (before any chunks
+  are sent), making step 4 contradictory — it re-implied a pause that step 2 prohibits.
+
+- **Fixes applied:**
+  (a) `ScrollbackDumpComplete` doc-comment: rewritten to "PtyBytes forwarding was NEVER paused
+      (snapshot-then-resume protocol, I3-003 / ADR-0010 §Interleaving); live PtyBytes continued
+      throughout the dump transfer and continue after this sentinel."
+  (b) `PtyBytes` doc-comment: rewritten to "Sent continuously, INCLUDING during an active
+      scrollback dump transfer (snapshot-then-resume protocol, I3-003 / ADR-0010 §Interleaving).
+      The session-host does NOT pause PtyBytes for the dump; the TUI buffers live PtyBytes during
+      the dump window and replays them after `ScrollbackDumpComplete`."
+  (c) §Screen-state transfer step 4: rewritten to "PtyBytes forwarding was never paused (step 2);
+      it continues uninterrupted throughout and after the dump. After `ScrollbackDumpComplete` is
+      sent no resume action is needed — the PTY reader loop continues normally."
+
+- **Exhaustive sweep results (third sweep — F-P54-001):**
+  Checked: SS-session-manager.md, SS-daemon-wiring-v2-delta.md, SS-daemon-wiring-impl.md,
+  SS-daemon-wiring.md, SS-embedded-pty.md, SS-engine-module.md, ADR-0010, BC-2.05.011.
+  PtyReset path, AttachSession path, re-attach-on-chunk-mismatch path: all clean.
+  SS-daemon-wiring-impl.md line ~1389 "pause before writing body" is HTTP test harness
+  (unrelated). SS-engine-module.md line ~448 "paused awaiting user decision" is permission
+  overlay state (unrelated).
+  **Retired-pause survivor count after this errata: 0.**
+
+- **No normative behavior change.** The snapshot-then-resume protocol (PtyBytes never paused,
+  TUI buffers live bytes during dump, replays after Complete) was already normatively specified
+  at step 2, the event-loop Attach arm comment, and ADR-0010. Only the three stale doc-comment
+  survivors are corrected. No new wire variants, no new error codes, no obligation changes.
+
+- **Semver: ERRATA-NO-BUMP (stays v2.6.0).** Consistent with Pass-39/48/53 errata precedent
+  for retired-concept doc-comment corrections. No registry change. No POL-11 cascade.
 
 ---
 
