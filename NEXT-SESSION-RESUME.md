@@ -39,7 +39,7 @@ at 5d9d603). All pivot spec work on factory-artifacts.
   survivors; errata-no-bump; counter stays 0.
 - **Pass-43 FINDINGS** (D-286): F-P43-IMP-001 SpawnAck step missing from SS-daemon-wiring-v2-delta
   §3 duplicate IPC-handler skeleton — last of 7 spawn-handshake siblings; SS-daemon-wiring-v2-delta
-  v1.10.0; counter stays 0.
+  bumped to v1.10.0 at D-286 authoring time; counter stays 0.
 - **Pass-44 FINDINGS** (D-287): F-P44-IMP-001 EngineError::UnsupportedOperation collapsed to generic
   invalid_request wire code — fixed with new spawn_unsupported (11th code); taxonomy 10→11;
   all 3 EngineError variants now map to dedicated codes; EngineError→wire-code class fully closed;
