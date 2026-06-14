@@ -416,8 +416,9 @@ pub enum SessionError {
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
     /// An EngineModule operation failed before the OS process was spawned.
-    /// Covers `EngineError::BinaryNotFound` (→ `"binary_not_found"`) and
-    /// `EngineError::InvalidPath` (→ `"invalid_spawn_arg"`).
+    /// Covers `EngineError::BinaryNotFound` (→ `"binary_not_found"`),
+    /// `EngineError::InvalidPath` (→ `"invalid_spawn_arg"`), and
+    /// `EngineError::UnsupportedOperation` (→ `"spawn_unsupported"`) (F-P44-IMP-001).
     /// Added by I12-001 to bridge EngineError into the SessionError taxonomy
     /// so BC-2.03.007 PC-3/PC-7 distinct user-visible diagnostics are satisfiable.
     #[error("engine error: {0}")]
@@ -1418,6 +1419,26 @@ BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
   Phase 1 variants as explicitly routed. Forward-compat fallback note updated accordingly.
 - Semver: minor (v2.3.0 → v2.4.0) — new explicit `EngineError::UnsupportedOperation` arm;
   normative routing change for the `UnsupportedOperation` path.
+
+## §Trace v2.4.0 — Errata
+
+**F-P48-001 — `SessionError::EngineError` variant doc-comment enumeration corrected from two items to three** (2026-06-14):
+
+- **Finding (F-P48-001, IMPORTANT):** The `SessionError::EngineError(...)` enum-variant doc-comment
+  enumerated only two bridged `EngineError` variants: `BinaryNotFound` (→ `"binary_not_found"`) and
+  `InvalidPath` (→ `"invalid_spawn_arg"`). The Pass-44 fix (F-P44-IMP-001) added a third variant,
+  `UnsupportedOperation` (→ `"spawn_unsupported"`), and propagated it to the mapping table
+  (~line 440), exhaustiveness prose (~lines 468-470), `session_error_to_code()` doc-comment
+  (~lines 502-503), and function body (~line 518) — but the variant doc-comment at lines 418-420
+  retained the stale two-item enumeration, contradicting the same document 20-100 lines below.
+- **Fix:** Variant doc-comment updated to enumerate all three bridged variants:
+  `BinaryNotFound` (→ `"binary_not_found"`), `InvalidPath` (→ `"invalid_spawn_arg"`), and
+  `UnsupportedOperation` (→ `"spawn_unsupported"`) (F-P44-IMP-001).
+- **Semver:** ERRATA-NO-BUMP. The function body and all normative contract surfaces were already
+  correct after F-P44-IMP-001. This is a doc-comment-only correction with no normative obligation
+  change. Version remains v2.4.0.
+
+---
 
 ## §Trace v2.3.0 — Errata
 

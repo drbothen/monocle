@@ -175,10 +175,11 @@ ClientToServer::SpawnSession { opts } => {
     );
     // I27-001 (Model A): The TUI sends SpawnOptions (user intent). spawn_session() internals:
     //   a. Calls engine_module.spawn_recipe(&opts)? — DAEMON-SIDE recipe construction.
-    //      If this returns EngineError::BinaryNotFound or EngineError::InvalidPath, the
-    //      error is converted to SessionError::EngineError via From<EngineError> and
-    //      bubbles to the Err(e) arm below. No OS process has been spawned at this point.
-    //      These EngineError codes are REACHABLE because spawn_recipe() runs daemon-side.
+    //      If this returns EngineError::BinaryNotFound, EngineError::InvalidPath, or
+    //      EngineError::UnsupportedOperation (F-P44-IMP-001), the error is converted to
+    //      SessionError::EngineError via From<EngineError> and bubbles to the Err(e) arm
+    //      below. No OS process has been spawned at this point.
+    //      All three EngineError variants are REACHABLE because spawn_recipe() runs daemon-side.
     //   b. Calls SessionHostSpawner::spawn(&recipe) — OS process spawn.
     //   c. Writes the sidecar file.
     //
@@ -708,6 +709,23 @@ The implementer MUST:
 
 If no in-process SessionManager stub exists in D-235 (i.e., the stub was skeletal), the
 implementer creates `SessionManager` from scratch per SS-08.
+
+---
+
+## §Trace v1.11.0 — Errata
+
+**F-P48-001 — I27-001 Model A comment step (a): stale two-item enumeration corrected to three** (2026-06-14):
+
+- **Finding (F-P48-001, sibling sweep):** The I27-001 (Model A) inline comment step (a) stated
+  "If this returns EngineError::BinaryNotFound or EngineError::InvalidPath" — a stale two-item
+  closed enumeration. The subsequent `session_error_to_code maps` block (lines 185-188) already
+  listed all three variants correctly after F-P44-IMP-001, but the introductory sentence and the
+  "These EngineError codes are REACHABLE" note did not include `UnsupportedOperation`.
+- **Fix:** Step (a) comment updated to enumerate all three variants:
+  `BinaryNotFound`, `InvalidPath`, and `UnsupportedOperation` (F-P44-IMP-001). Reachability
+  note updated from "These EngineError codes" to "All three EngineError variants".
+- **Semver:** ERRATA-NO-BUMP. Normative mapping comment at lines 185-188 was already correct.
+  This is a doc-comment-only correction. Version remains v1.11.0.
 
 ---
 
