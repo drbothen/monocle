@@ -467,7 +467,7 @@ pub enum ServerToClient {
     ///
     /// On receipt of `SpawnAck { session_id }`, the TUI MUST:
     ///   - If `AppMode` is currently `SessionCreation { step: Launching, .. }`:
-    ///     store `session_id` in `App::wizard_session_id` (see SS-09 §SessionCreation wizard).
+    ///     store `session_id` by setting `launching_session_id: Some(session_id)` in `AppMode::SessionCreation` (see SS-09 §SessionCreation wizard).
     ///   - Otherwise: log WARN and ignore (SpawnAck arrived for a spawn the wizard no longer
     ///     owns — e.g., wizard was cancelled between SpawnSession send and SpawnAck receipt).
     ///
@@ -482,8 +482,9 @@ pub enum ServerToClient {
     /// by `#[non_exhaustive]` + serde tag).
     SpawnAck {
         /// The daemon-assigned session UUID (String, same type used everywhere else).
-        /// The TUI stores this in `App::wizard_session_id` while `SessionCreation::Launching`
-        /// is the active step, to enable deterministic session_id filtering in EC-303.
+        /// The TUI stores this by setting `launching_session_id: Some(session_id)` in
+        /// `AppMode::SessionCreation` while `SessionCreation::Launching` is the active step,
+        /// to enable deterministic session_id filtering in EC-303.
         session_id: String,
     },
 }
@@ -588,9 +589,9 @@ pub enum ClientToServer {
     ///
     /// NOTE: If `spawn_session()` returns `Err`, the TUI will have already received `SpawnAck`.
     /// The `SpawnAck` session_id is therefore NOT guaranteed to correspond to a successfully
-    /// spawned session. The TUI MUST clear `App::wizard_session_id` on receipt of
-    /// `ServerToClient::Error` from the spawn path (treat as spawn failure; wizard returns
-    /// to ProfilePicker per BC-2.09.008 PC-5 / BC-2.09.008 EC-252).
+    /// spawned session. The TUI MUST clear `AppMode::SessionCreation.launching_session_id`
+    /// (set to `None`) on receipt of `ServerToClient::Error` from the spawn path (treat as
+    /// spawn failure; wizard returns to ProfilePicker per BC-2.09.008 PC-5 / BC-2.09.008 EC-252).
     SpawnSession {
         /// Spawn intent parameters from the TUI (SS-08 §SpawnOptions).
         /// `session_id` and `hooks_settings_path` are filled by the daemon IPC handler
@@ -1445,6 +1446,28 @@ still pending in the daemon's registry (i.e., still within the 300ms timeout win
 prompts are never re-pushed.
 
 ---
+
+## §Trace v1.21.0 — Errata
+
+**F-P42-IMP-001 — `wizard_session_id` orphan-name corrected to `launching_session_id` in live doc-comments** (2026-06-14):
+
+- **Finding (F-P42-IMP-001, IMPORTANT):** Three live (non-§Trace) locations in SS-ipc.md introduced
+  during the Pass-41 authoring burst (v1.20.1 → v1.21.0) referenced `App::wizard_session_id`, a
+  field name that does not exist. The canonical field — defined in SS-embedded-pty.md §AppMode
+  (SS-embedded-pty v1.6.0) — is `AppMode::SessionCreation.launching_session_id`. The §Trace text
+  for v1.21.0 Fix (a) already correctly cited `AppMode::SessionCreation::launching_session_id`;
+  only the live variant doc-comments were wrong. This is an orphan-name error: no wire contract,
+  struct shape, or behavioral spec was changed.
+- **Affected sites:**
+  - Line ~470 (SpawnAck §TUI consumption): `store session_id in App::wizard_session_id` →
+    `store session_id by setting launching_session_id: Some(session_id) in AppMode::SessionCreation`
+  - Line ~485 (SpawnAck.session_id field doc): `The TUI stores this in App::wizard_session_id` →
+    `The TUI stores this by setting launching_session_id: Some(session_id) in AppMode::SessionCreation`
+  - Line ~591 (SpawnSession spawn-failure note): `clear App::wizard_session_id` →
+    `clear AppMode::SessionCreation.launching_session_id (set to None)`
+- **Semver:** Errata-no-bump. No wire contract change; no behavioral change; prose-only reference-name
+  correction matching the precedent of SS-ipc:412 (Pass-37) and SS-embedded-pty:250 (S39-001 Pass-39).
+  Version remains v1.21.0.
 
 ## §Trace v1.21.0
 

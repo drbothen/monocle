@@ -545,8 +545,9 @@ match msg {
             Ok(_session_id) => { /* broker emits SessionStateChanged{Launching} + SessionListUpdate */ }
             Err(e) => {
                 // MUST NOT swallow — send error to requesting client only.
-                // NOTE: TUI has already received SpawnAck; it MUST clear wizard_session_id
-                // on receipt of this Error (spawn failed; wizard returns to ProfilePicker).
+                // NOTE: TUI has already received SpawnAck; it MUST clear launching_session_id
+                // (set to None in AppMode::SessionCreation) on receipt of this Error
+                // (spawn failed; wizard returns to ProfilePicker).
                 let _ = client_tx.send(ServerToClient::Error {
                     code: session_error_to_code(IpcOp::Spawn, &e).to_string(),
                     message: e.to_string(),
@@ -1387,6 +1388,22 @@ Daemon removes stale socket files during GC in re-discovery (alongside sidecar d
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v2.3.0 — Errata
+
+**F-P42-IMP-001 — `wizard_session_id` orphan-name corrected to `launching_session_id` in IPC handler skeleton comment** (2026-06-14):
+
+- **Finding (F-P42-IMP-001, IMPORTANT):** The `ClientToServer::SpawnSession` arm in §IPC handler
+  (line ~548) contained a skeleton comment referencing `wizard_session_id`, a field name that does
+  not exist. The canonical field is `AppMode::SessionCreation.launching_session_id` (SS-embedded-pty
+  v1.6.0). The §Trace text for v2.3.0 Fix (b) also cited this incorrect name in the fix summary —
+  that §Trace text is historical-exempt and left unchanged.
+- **Affected site:**
+  - Line ~548 (SpawnSession Err arm skeleton): `it MUST clear wizard_session_id` →
+    `it MUST clear launching_session_id (set to None in AppMode::SessionCreation)`
+- **Semver:** Errata-no-bump. No wire contract change; no behavioral change; prose-only reference-name
+  correction matching the precedent of SS-ipc:412 (Pass-37) and SS-embedded-pty:250 (S39-001 Pass-39).
+  Version remains v2.3.0.
 
 ## §Trace v2.3.0
 
