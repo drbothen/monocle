@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "ipc"
 subsystem: SS-05
-version: "1.21.0"
+version: "1.22.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -399,7 +399,7 @@ pub enum ServerToClient {
     /// client over its per-client channel. This includes EngineError-derived errors that are
     /// bridged through `SessionError::EngineError` (see §spawn_recipe() call site above).
     ///
-    /// # v1A error code taxonomy (closed set for Phase 1 — 10 codes)
+    /// # v1A error code taxonomy (closed set for Phase 1 — 11 codes)
     ///
     /// The `code` field carries one of the following string literals (snake_case):
     ///
@@ -407,6 +407,7 @@ pub enum ServerToClient {
     /// |----------------------------|----------------------------------------------------------------------|-----------------------|
     /// | `"binary_not_found"`       | `EngineError::BinaryNotFound` — harness binary not found on PATH (e.g., `claude` not installed) | "claude binary not found — is Claude Code installed and on PATH?" |
     /// | `"invalid_spawn_arg"`      | `EngineError::InvalidPath` — structurally invalid argument to `spawn_recipe()` (e.g., non-UTF-8 hooks settings path) | "Session spawn failed: invalid hooks settings path (non-UTF-8)" |
+    /// | `"spawn_unsupported"`      | `EngineError::UnsupportedOperation` — selected harness does not support monocle-controlled session spawning (F-P44-IMP-001) | "Session spawn not supported for this harness" |
     /// | `"spawn_failed"`           | OS process spawn failure from `SessionHostSpawner::spawn()`          | "Session spawn failed" |
     /// | `"sidecar_write_failed"`   | Sidecar write failed after OS process spawned (`SessionError::SidecarWriteFailed`) — orphan-kill protocol ran before error surfaces | "Session spawn failed: sidecar write error" |
     /// | `"session_id_collision"`   | UUID v4 collision in registry (`SessionError::SessionIdCollision`) — do not auto-retry | "Session spawn failed: internal ID collision" |
@@ -414,7 +415,7 @@ pub enum ServerToClient {
     /// | `"attach_failed"`          | `SessionError::SessionHostDead` on the attach-path                   | "Session attach failed" |
     /// | `"kill_failed"`            | `SessionError::SessionHostDead` on the kill-path (op-aware mapping via `IpcOp::Kill`) | "Session kill failed" |
     /// | `"rename_failed"`          | `SessionManager::rename_session()` returned error                    | "Session rename failed" |
-    /// | `"invalid_request"`        | Generic/catch-all post-call code: `SessionError::Io` (unexpected I/O error) and any unmapped `EngineError` variant (`_ =>` forward-compat arm in `session_error_to_code()`); also reserved for any future pre-call validation failure path | "[operation failed]" |
+    /// | `"invalid_request"`        | Generic/catch-all post-call code: `SessionError::Io` (unexpected I/O error) and any future `EngineError` variant not explicitly mapped (`_ =>` forward-compat arm in `session_error_to_code()` — after `UnsupportedOperation` gets its own arm, the catch-all covers only truly novel future variants); also reserved for any future pre-call validation failure path | "[operation failed]" |
     ///
     /// The `message` field carries a human-readable diagnostic string (not user-facing;
     /// logged by the TUI for diagnostics). The TUI renders the FIXED banner text from the
@@ -583,6 +584,9 @@ pub enum ClientToServer {
     /// - `"binary_not_found"` — `EngineError::BinaryNotFound` (harness not on PATH; reachable
     ///   because `spawn_recipe()` runs daemon-side via Model A)
     /// - `"invalid_spawn_arg"` — `EngineError::InvalidPath` (invalid argument to spawn_recipe())
+    /// - `"spawn_unsupported"` — `EngineError::UnsupportedOperation` (harness does not support
+    ///   monocle-controlled spawning; EC-112 defensive path — reachable because capability
+    ///   filtering in ProfilePicker is best-effort; F-P44-IMP-001)
     /// - `"spawn_failed"` — OS process spawn failure
     /// - `"sidecar_write_failed"` — sidecar I/O failure post-spawn
     /// - `"session_id_collision"` — UUID v4 collision (do not auto-retry)
@@ -1446,6 +1450,41 @@ still pending in the daemon's registry (i.e., still within the 300ms timeout win
 prompts are never re-pushed.
 
 ---
+
+## §Trace v1.22.0
+
+**F-P44-IMP-001 — `spawn_unsupported` wire code added; taxonomy extended from 10 to 11 codes** (2026-06-14):
+
+- **Finding (F-P44-IMP-001, IMPORTANT):** `EngineError::UnsupportedOperation` had no dedicated
+  wire code in the 10-code taxonomy. The inner `_ => "invalid_request"` catch-all arm in
+  `session_error_to_code()` (SS-session-manager.md) swallowed it, causing the TUI to render the
+  generic `"[operation failed]"` banner. BC-2.03.008 PC-3 / EC-112 / Canonical Test Vector mandate
+  the DISTINCT banner `"Session spawn not supported for this harness"`, which was undeliverable
+  without a dedicated code. This is the symmetric gap to I12-001, which gave `BinaryNotFound` and
+  `InvalidPath` dedicated codes for BC-2.03.007.
+- **Decision — defense-in-depth (EC-112 is a REACHABLE defensive path):** Capability filtering in
+  ProfilePicker is BEST-EFFORT. A harness's spawn capability may be unknown until spawn-time (no
+  API to pre-flight it), may change after profile selection (config hot-reload, CodeMachine update),
+  or a future/WASM engine may reach this path before capability filtering is established for it.
+  The daemon MUST therefore surface a distinct, deliverable error if `UnsupportedOperation` occurs —
+  even if the ProfilePicker filters correctly in the normal case. The "TUI wizard only surfaces
+  spawn_recipe() for harnesses that support it" prose in SS-engine-module-v2-delta.md
+  §semantic-contract lines ~333-334 is reconciled to "best-effort filtering" stance (see
+  SS-engine-module-v2-delta.md §Trace v1.5.0). The BC-2.03.008 EC-112 reachability stance is
+  AUTHORITATIVE: the path IS reachable and IS tested.
+- **Fix (a) — new wire code `"spawn_unsupported"` added:** Inserted as the 3rd row in the taxonomy
+  table (immediately after `"invalid_spawn_arg"`, before `"spawn_failed"`) because it occurs at the
+  same `spawn_recipe()` stage. Fixed TUI banner text: `"Session spawn not supported for this harness"`.
+  This is the text BC-2.03.008 PC-3 mandates and was previously undeliverable. Total v1A codes: 11
+  (was 10).
+- **Fix (b) — `ClientToServer::SpawnSession` spawn-path code list updated:** `"spawn_unsupported"`
+  added as the 3rd bullet in the on-failure code enumeration, with reachability rationale
+  (best-effort filtering; EC-112 defensive path).
+- **Fix (c) — `"invalid_request"` row clarified:** Its description now explicitly notes that, after
+  `UnsupportedOperation` acquires its own arm, the `_ =>` catch-all covers only truly novel future
+  `EngineError` variants not yet enumerated — it no longer swallows `UnsupportedOperation`.
+- Semver: minor (v1.21.0 → v1.22.0) — new wire code `"spawn_unsupported"`; normative taxonomy
+  count change (10 → 11); `ClientToServer::SpawnSession` on-failure code list extended.
 
 ## §Trace v1.21.0 — Errata
 

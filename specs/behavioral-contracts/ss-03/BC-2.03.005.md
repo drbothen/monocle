@@ -122,7 +122,7 @@ per-session worktree applies). The returned recipe is consumed by `SessionManage
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the spawn recipe assembly for the ClaudeCodeModule adapter, which is the mechanism by which the engine abstraction enables monocle to launch Claude Code sessions |
 | L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness or factory workflow system — PC-4 explicitly states spawn_recipe() writes no files; the hooks-settings.json path is passed through as a CLI arg string only) |
 | Architecture Module | monocle-runtime (ClaudeCodeModule implementation — `monocle-runtime/src/engine/claude_code.rs`) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module-v2-delta.md v1.4.1 §ClaudeCodeModule::spawn_recipe() implementation spec (two-pronged null-byte detection — C34-001); SS-session-manager.md v2.3.0 §SpawnRecipe integration with EngineModule |
+| Architecture Source | SS-engine-module-v2-delta.md v1.5.0 §ClaudeCodeModule::spawn_recipe() implementation spec (two-pronged null-byte detection — C34-001); SS-session-manager.md v2.4.0 §SpawnRecipe integration with EngineModule |
 | Stories | S-TBD (filled by story-writer) |
 | Test Name | test_BC_2_03_005_spawn_recipe_happy_path_binary_args_env_cwd |
 
@@ -149,7 +149,7 @@ VP-TBD — spawn_recipe() happy-path unit tests (filled after VP creation)
 
 **C34-001 — Add EC-104b for null-byte precondition violation; arch-source pin v1.4.0→v1.4.1** (2026-06-13 / D-276):
 
-- **Context:** SS-engine-module-v2-delta.md v1.4.1 (C34-001) corrected the null-byte detection
+- **Context:** SS-engine-module-v2-delta.md v1.5.0 (C34-001) corrected the null-byte detection
   mechanism in `spawn_recipe()` to a two-pronged check. Prong 1: `to_str()` returns `None`
   for non-UTF-8 paths. Prong 2: explicit `path_str.as_bytes().contains(&0)` scan for embedded
   null bytes (required because null is valid UTF-8 and `to_str()` returns `Some` for paths

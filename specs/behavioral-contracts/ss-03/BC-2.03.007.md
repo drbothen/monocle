@@ -53,8 +53,8 @@ matters for diagnostic accuracy.
    `SessionError::EngineError` → `ServerToClient::Error { code: "binary_not_found", message }`.
    The TUI MUST display the fixed banner: `"claude binary not found — is Claude Code installed
    and on PATH?"`. The session spawn fails; no `monocle-session-host` process is started.
-   Canonical code: `"binary_not_found"` (SS-ipc.md v1.21.0 §ServerToClient::Error taxonomy;
-   SS-session-manager.md v2.3.0 §session_error_to_code spawn-path arms).
+   Canonical code: `"binary_not_found"` (SS-ipc.md v1.22.0 §ServerToClient::Error taxonomy;
+   SS-session-manager.md v2.4.0 §session_error_to_code spawn-path arms).
 4. `BinaryNotFound` is NOT returned for any other failure mode. It is reserved exclusively
    for `which::which` failures.
 
@@ -79,8 +79,8 @@ matters for diagnostic accuracy.
    `SessionError::EngineError` → `ServerToClient::Error { code: "invalid_spawn_arg", message }`.
    The TUI MUST display the fixed banner: `"Session spawn failed: invalid hooks settings path
    (non-UTF-8)"`. The session spawn fails; no `monocle-session-host` process is started.
-   Canonical code: `"invalid_spawn_arg"` (SS-ipc.md v1.21.0 §ServerToClient::Error taxonomy;
-   SS-session-manager.md v2.3.0 §session_error_to_code spawn-path arms).
+   Canonical code: `"invalid_spawn_arg"` (SS-ipc.md v1.22.0 §ServerToClient::Error taxonomy;
+   SS-session-manager.md v2.4.0 §session_error_to_code spawn-path arms).
 8. `InvalidPath` is NOT used for binary-not-found. The two variants MUST NOT be conflated.
 
 ## Invariants
@@ -92,7 +92,7 @@ matters for diagnostic accuracy.
    detect null bytes — null (`\x00`) is valid UTF-8. The original draft of this BC incorrectly
    proposed using `BinaryNotFound` for both cases. SS-engine-module-v2-delta.md §Trace v1.0.1
    (IMP-5) corrected this; this BC encodes the corrected taxonomy. SS-engine-module-v2-delta.md
-   v1.4.1 §spawn_recipe() further corrected the detection mechanism (C34-001); this BC v1.2.2
+   §spawn_recipe() further corrected the detection mechanism at v1.4.1 authoring time (C34-001); this BC v1.2.2
    encodes that correction.
 2. `spawn_recipe()` checks binary existence FIRST (via `which::which`); if that succeeds,
    it then checks UTF-8 path validity. The order of checks is: (1) binary, (2) args validity.
@@ -134,7 +134,7 @@ matters for diagnostic accuracy.
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the error taxonomy for spawn_recipe(), which is a method on the ClaudeCodeModule adapter; typed errors are essential for diagnostic accuracy in the engine abstraction layer |
 | L2 Domain Invariants | DI-006 (EngineModule implementations must be stateless — error variants carry no shared state; both errors are pure value returns) |
 | Architecture Module | monocle-runtime (ClaudeCodeModule — `monocle-runtime/src/engine/claude_code.rs`); monocle-core (`EngineError` type) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module-v2-delta.md v1.4.1 §EngineError (new in v1A) + §Semantic contract (IMP-5 InvalidPath correction) + §spawn_recipe() two-pronged null-byte detection (C34-001) + §Phase Compatibility (I27-001 Model A: spawn_recipe() called daemon-side inside spawn_session()); SS-ipc.md v1.21.0 §ServerToClient::Error taxonomy (codes `"binary_not_found"` and `"invalid_spawn_arg"` — I12-001); SS-session-manager.md v2.3.0 §session_error_to_code spawn-path arms (EngineError bridge — I12-001; Model A reachability confirmed — I27-001) |
+| Architecture Source | SS-engine-module-v2-delta.md v1.5.0 §EngineError (new in v1A) + §Semantic contract (IMP-5 InvalidPath correction) + §spawn_recipe() two-pronged null-byte detection (C34-001) + §Phase Compatibility (I27-001 Model A: spawn_recipe() called daemon-side inside spawn_session()); SS-ipc.md v1.22.0 §ServerToClient::Error taxonomy (codes `"binary_not_found"` and `"invalid_spawn_arg"` — I12-001); SS-session-manager.md v2.4.0 §session_error_to_code spawn-path arms (EngineError bridge — I12-001; Model A reachability confirmed — I27-001) |
 | Test Name | test_BC_2_03_007_spawn_recipe_binary_not_found_and_invalid_path |
 
 ## Related BCs
@@ -162,7 +162,7 @@ VP-TBD — spawn_recipe() error path unit tests (filled after VP creation)
 - **Root cause:** The old EC-109 text claimed "`to_str()` returns `None` (null bytes invalidate
   path conversion)". This is false: null (`\x00`) is valid UTF-8, so `to_str()` returns `Some`
   for paths with embedded null bytes and cannot detect them. The correct mechanism
-  (established by SS-engine-module-v2-delta.md v1.4.1 §spawn_recipe() C34-001 fix) is a
+  (established by SS-engine-module-v2-delta.md v1.5.0 §spawn_recipe() C34-001 fix) is a
   two-pronged check: Prong 1 = `to_str()` returns `None` (genuine non-UTF-8); Prong 2 =
   explicit `path_str.as_bytes().contains(&0)` scan (null bytes, valid UTF-8 but OS-rejected).
 
@@ -179,7 +179,7 @@ VP-TBD — spawn_recipe() error path unit tests (filled after VP creation)
   and IPC code, so they are treated identically at the wire level.
 
 - **Invariant 1 updated:** Extended to document the two-pronged detection mechanism and cite
-  the C34-001 correction in SS-engine-module-v2-delta.md v1.4.1.
+  the C34-001 correction in SS-engine-module-v2-delta.md v1.5.0.
 
 - **Architecture Source pin:** v1.4.0 → v1.4.1 (architect's C34-001 bump); §spawn_recipe()
   two-pronged null-byte detection added to citation.

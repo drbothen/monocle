@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "daemon-wiring-v2-delta"
 subsystem: SS-04
-version: "1.10.0"
+version: "1.11.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -183,8 +183,9 @@ ClientToServer::SpawnSession { opts } => {
     //   c. Writes the sidecar file.
     //
     // session_error_to_code maps the EngineError-derived variants:
-    //   SessionError::EngineError(BinaryNotFound) → "binary_not_found"
-    //   SessionError::EngineError(InvalidPath)    → "invalid_spawn_arg"
+    //   SessionError::EngineError(BinaryNotFound)      → "binary_not_found"
+    //   SessionError::EngineError(InvalidPath)         → "invalid_spawn_arg"
+    //   SessionError::EngineError(UnsupportedOperation) → "spawn_unsupported" (F-P44-IMP-001)
     // See SS-session-manager.md §SessionError taxonomy and §session_error_to_code().
     // Step 4: Call spawn_session() with the completed SpawnOptions.
     match state.session_manager.lock().await
@@ -304,7 +305,7 @@ a `SessionError` to escape to the per-client task boundary.
 
 | Arm | Error routing | Op context | Notes |
 |-----|---------------|------------|-------|
-| `SpawnSession` | `ServerToClient::Error` | `IpcOp::Spawn` | Lifecycle op — includes EngineError-derived codes `"binary_not_found"` / `"invalid_spawn_arg"` via `SessionError::EngineError` bridge (I12-001) |
+| `SpawnSession` | `ServerToClient::Error` | `IpcOp::Spawn` | Lifecycle op — includes EngineError-derived codes `"binary_not_found"` / `"invalid_spawn_arg"` / `"spawn_unsupported"` via `SessionError::EngineError` bridge (I12-001; `"spawn_unsupported"` added F-P44-IMP-001) |
 | `KillSession` | `ServerToClient::Error` | `IpcOp::Kill` | `IpcOp::Kill` required: `SessionHostDead` → `"kill_failed"` not `"attach_failed"` |
 | `AttachSession` | `ServerToClient::Error` | `IpcOp::Attach` | `IpcOp::Attach` required: `SessionHostDead` → `"attach_failed"` |
 | `KeyInput` | `ServerToClient::Error` | `IpcOp::KeyInput` | Fire-and-forget on success; errors MUST still be surfaced (special rule) |
@@ -402,7 +403,7 @@ can use it without importing daemon-internal types.
 > was retired in v1.4.0 (I6-002 fix) because it diverged from the SS-ipc.md canonical by
 > omitting the `degraded`/`degraded_reason` fields.
 >
-> **Current canonical field summary** (SS-ipc.md v1.21.0 §Supporting Types — authoritative):
+> **Current canonical field summary** (SS-ipc.md v1.22.0 §Supporting Types — authoritative):
 > `session_id`, `display_name`, `state`, `harness_id`, `project_root`, `cwd`,
 > `spawned_by_monocle: Option<bool>`, `started_at_micros: i64`, `pty_rows: u16`,
 > `pty_cols: u16`, `degraded: bool` (`#[serde(default)]`), `degraded_reason: Option<String>`
@@ -709,6 +710,22 @@ If no in-process SessionManager stub exists in D-235 (i.e., the stub was skeleta
 implementer creates `SessionManager` from scratch per SS-08.
 
 ---
+
+## §Trace v1.11.0
+
+**F-P44-IMP-001 — `spawn_unsupported` code added to SpawnSession error-routing summary** (2026-06-14):
+
+- **Finding (F-P44-IMP-001):** The §3 per-arm error-handling summary table listed only
+  `"binary_not_found"` / `"invalid_spawn_arg"` as EngineError-derived codes for the `SpawnSession`
+  arm. The inline code comment for `session_error_to_code` also listed only the two I12-001 codes.
+  Neither reflected the new `"spawn_unsupported"` arm for `EngineError::UnsupportedOperation`
+  (F-P44-IMP-001).
+- **Fix (a) — §3 summary table row updated:** `SpawnSession` row now lists
+  `"binary_not_found"` / `"invalid_spawn_arg"` / `"spawn_unsupported"`.
+- **Fix (b) — spawn code block comment updated:** `session_error_to_code` mapping comment
+  now enumerates all three EngineError-derived codes with correct wire codes.
+- Semver: minor (v1.10.0 → v1.11.0) — error-routing summary reflects 11-code taxonomy;
+  cross-references consistent with SS-ipc.md v1.22.0 and SS-session-manager.md v2.4.0.
 
 ## §Trace v1.10.0
 

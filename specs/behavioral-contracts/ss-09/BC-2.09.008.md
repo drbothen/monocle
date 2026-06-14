@@ -150,7 +150,7 @@ AppMode. A `Ctrl-D` or session termination also exits `EmbeddedTerminal` automat
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — session creation wizard and EmbeddedTerminal AppMode are both explicitly named in CAP-009; this BC covers the enter/exit transitions and the wizard auto-transition to EmbeddedTerminal |
 | Architecture Module | monocle-core (AppMode::EmbeddedTerminal, AppMode::SessionCreation variants, SessionCreationStep enum); monocle-tui (transition logic, wizard UI) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.6.0 §TUI AppMode Extensions (EmbeddedTerminal, SessionCreation with `launching_session_id: Option<String>`, SessionCreationStep — F-P41-IMP-001); §Session Creation Wizard (SpawnAck receipt + launching_session_id storage + auto-advance match logic); §State machine invariants; SS-ipc.md v1.21.0 §ServerToClient::SpawnAck (point-to-point delivery to requesting client; wizard storage and filtering obligation) |
+| Architecture Source | SS-embedded-pty.md v1.6.0 §TUI AppMode Extensions (EmbeddedTerminal, SessionCreation with `launching_session_id: Option<String>`, SessionCreationStep — F-P41-IMP-001); §Session Creation Wizard (SpawnAck receipt + launching_session_id storage + auto-advance match logic); §State machine invariants; SS-ipc.md v1.22.0 §ServerToClient::SpawnAck (point-to-point delivery to requesting client; wizard storage and filtering obligation) |
 | Test Name | test_BC_2_09_008_embedded_terminal_transitions |
 
 ## Related BCs
@@ -212,7 +212,7 @@ VP-TBD — AppMode transition tests (filled after VP creation)
 
 ## §Trace v1.3.0
 
-**F-P41-IMP-001 — Wizard Step 4 (Launching): SpawnAck receipt + launching_session_id storage; Step 5 (auto-advance): deterministic match against launching_session_id; arch-source pins to SS-embedded-pty v1.6.0 + SS-ipc v1.21.0** (2026-06-14):
+**F-P41-IMP-001 — Wizard Step 4 (Launching): SpawnAck receipt + launching_session_id storage; Step 5 (auto-advance): deterministic match against launching_session_id; arch-source pins to SS-embedded-pty v1.6.0 + SS-ipc v1.22.0** (2026-06-14):
 
 - **PC Step 4 (Launching) — SpawnAck receipt (normative addition):** When
   `ServerToClient::SpawnAck { session_id }` is received, the wizard stores it:
@@ -236,7 +236,7 @@ VP-TBD — AppMode transition tests (filled after VP creation)
 
 - **Arch-source pin:** SS-embedded-pty.md v1.6.0 → v1.6.0 (new `launching_session_id`
   field in `AppMode::SessionCreation`; wizard SpawnAck wiring — F-P41-IMP-001);
-  SS-ipc.md v1.21.0 added (SpawnAck variant). Architecture Anchors updated to match.
+  SS-ipc.md v1.22.0 added (SpawnAck variant). Architecture Anchors updated to match.
 
 - No change to: EmbeddedTerminal enter/exit postconditions (PC-1..PC-5), Invariants
   1-4, EC-250..EC-254, Canonical Test Vectors, or Verification Properties.

@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.40.4"
+version: "1.40.5"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-14T19:00:00Z
+timestamp: 2026-06-14T20:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "cbf13d5"
@@ -1213,6 +1213,27 @@ SE-16d monotonicity: v1.36 timestamp 2026-06-03T14:00:00Z > v1.35 timestamp 2026
 - BC-2.05.010 title updated from 6-variant to 7-variant form (bc_h1_is_title_source_of_truth).
 
 SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. PASS.
+
+## §Trace v1.40.5
+
+**F-P44-IMP-001 — BC-2.03.008 v1.0.2 + BC-2.05.010 v1.8.1: `spawn_unsupported` wire code propagated to BC layer** (2026-06-14):
+
+- BC-2.03.008 v1.0.1 → v1.0.2: PC-3 now cites the `"spawn_unsupported"` wire code
+  (SS-ipc v1.22.0, 11th taxonomy entry) backing the "Session spawn not supported for this
+  harness" banner. EC-112 annotated as REACHABLE DEFENSIVE PATH (ProfilePicker capability
+  filtering is best-effort; F-P44-IMP-001). New integration test vector added for the
+  end-to-end spawn_session(opts, CodeMachineModule) → `"spawn_unsupported"` path.
+  Architecture Source pins bumped: SS-engine-module-v2-delta.md v1.4.1→v1.5.0; added
+  SS-session-manager.md v2.4.0 and SS-ipc.md v1.22.0 citations.
+- BC-2.05.010 v1.8.0 → v1.8.1: SpawnSession PC-4 extended with `"spawn_unsupported"`
+  immediately after `"invalid_spawn_arg"` and before `"spawn_failed"` (7 spawn-path codes
+  total). `"invalid_request"` bullet scoped to `SessionError::Io` and future unmapped
+  `EngineError` variants only (`UnsupportedOperation` no longer falls through).
+  Architecture Source pins bumped: SS-ipc.md v1.21.0→v1.22.0; SS-session-manager.md
+  v2.3.0→v2.4.0; `spawn_unsupported` added to inline code taxonomy (now 11 codes).
+- BC-INDEX version: 1.40.4 → 1.40.5. No BC ID additions or retirements. No H1 title changes.
+
+SE-16d monotonicity: v1.40.5 timestamp 2026-06-14T20:00:00Z > v1.40.4 timestamp 2026-06-14T19:00:00Z. PASS.
 
 ## §Trace v1.40.4
 

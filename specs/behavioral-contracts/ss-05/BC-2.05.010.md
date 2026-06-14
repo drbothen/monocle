@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.8.0"
+version: "1.8.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:45:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-ipc.md, architecture/SS-daemon-wiring-v2-delta.md, architecture/SS-session-manager.md, architecture/SS-engine-module-v2-delta.md]
-input-hash: "f01604c"
+input-hash: "fd8e22a"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-05
@@ -54,7 +54,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 2. Daemon calls `SessionManager::spawn_session(opts)` (BC-2.08.001).
 3. On success: `ServerToClient::SessionStateChanged { session_id, new_state }` broadcast BEFORE
    `ServerToClient::SessionListUpdate` broadcast (ordered pair, per-client FIFO, per BC-2.08.008
-   PC-3 / SS-daemon-wiring-v2-delta.md v1.10.0 §3b). The `SessionStateChanged` event reflects
+   PC-3 / SS-daemon-wiring-v2-delta.md v1.11.0 §3b). The `SessionStateChanged` event reflects
    the `Launching → Running` transition; the ordering is atomically guaranteed under the
    `SessionManager` mutex hold into each client's per-client `mpsc::Sender`.
 4. On failure: `ServerToClient::Error { code: <spawn-path-code>, message: ... }` sent to the
@@ -63,10 +63,17 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
    SS-session-manager.md §session_error_to_code):
    - `"binary_not_found"` — `EngineError::BinaryNotFound` (harness binary not on PATH)
    - `"invalid_spawn_arg"` — `EngineError::InvalidPath` (bad argument to spawn_recipe())
+   - `"spawn_unsupported"` — `EngineError::UnsupportedOperation` (harness does not support
+     monocle-controlled spawning; EC-112 defensive path — F-P44-IMP-001; ProfilePicker
+     capability filtering is best-effort, so this path is REACHABLE when a non-spawning
+     harness profile reaches the session creation wizard)
    - `"spawn_failed"` — `SessionError::SpawnFailed` (OS-level spawn failure after PATH resolve)
    - `"sidecar_write_failed"` — `SessionError::SidecarWriteFailed` (session-state.json write failed)
    - `"session_id_collision"` — `SessionError::SessionIdCollision` (UUID collision; exceedingly rare)
-   - `"invalid_request"` — any other `EngineError` variant (generic fallback)
+   - `"invalid_request"` — `SessionError::Io` (unexpected I/O error) and any future `EngineError`
+     variant not yet explicitly mapped (`_ =>` forward-compat arm in `session_error_to_code()`;
+     note: `UnsupportedOperation` now has its own dedicated `"spawn_unsupported"` arm and no
+     longer falls through to this catch-all — F-P44-IMP-001)
 
 ### KillSession
 
@@ -74,7 +81,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 2. Daemon calls `SessionManager::kill_session(&session_id)` (BC-2.08.003).
 3. On success: `ServerToClient::SessionStateChanged { session_id, new_state }` broadcast BEFORE
    `ServerToClient::SessionListUpdate` broadcast (ordered pair, per-client FIFO, per BC-2.08.008
-   PC-3 / SS-daemon-wiring-v2-delta.md v1.10.0 §3b). The `SessionStateChanged` event reflects
+   PC-3 / SS-daemon-wiring-v2-delta.md v1.11.0 §3b). The `SessionStateChanged` event reflects
    the `Running → Terminating` transition (emitted immediately; `Terminating → Terminated`
    follows when the session-host confirms exit per BC-2.08.003).
 4. On failure: `ServerToClient::Error { code: <kill-path-code>, message: ... }` sent to the
@@ -120,7 +127,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 2. Daemon calls `SessionManager::detach_session(&session_id)` (BC-2.08.007).
 3. On success: `ServerToClient::SessionStateChanged { session_id, new_state: Detached }` broadcast
    BEFORE `ServerToClient::SessionListUpdate` broadcast (ordered pair, per-client FIFO, per
-   BC-2.08.008 PC-3 / SS-daemon-wiring-v2-delta.md v1.10.0 §3b).
+   BC-2.08.008 PC-3 / SS-daemon-wiring-v2-delta.md v1.11.0 §3b).
 4. On failure: `ServerToClient::Error { code: <detach-path-code>, message: ... }` sent to the
    requesting client. `DetachSession` is user-initiated — failures MUST surface (not dropped) per
    the No-silent-failure invariant below. The reachable failure code, per
@@ -163,7 +170,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
    re-attaches a `Detached` session from the sessions panel. The TUI MUST NOT send
    `DaemonToHost::Attach` directly — that is a daemon→session-host message. The TUI sends
    `ClientToServer::AttachSession` to the daemon, which routes to `SessionManager::attach_session()`.
-   Per SS-ipc.md v1.21.0 §`ClientToServer::AttachSession`.
+   Per SS-ipc.md v1.22.0 §`ClientToServer::AttachSession`.
 
 ## Invariants
 
@@ -192,7 +199,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
    clamp (Invariant 5), the only remaining `resize_session()` failure is `SessionNotFound` —
    a benign race where the session terminated between the TUI sending the resize and the daemon
    processing it. These failures are WARN-logged and dropped; no `ServerToClient::Error` is sent.
-   Per SS-ipc.md v1.21.0 lines 1515/389 (normative citation) and SS-session-manager.md lines
+   Per SS-ipc.md v1.22.0 lines 1515/389 (normative citation) and SS-session-manager.md lines
    572-576 (ResizePane special rule rationale). Also cited by SS-session-manager.md line 385
    as "BC-2.05.010 §No-silent-failure invariant" — this section is the named target of that
    forward-reference.
@@ -234,7 +241,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 | L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — these ClientToServer variants extend the internal transport capability with session lifecycle control messages (spawn, kill, key input, resize, detach, rename, re-attach) — all transported over the existing UDS per the session/event/prompt push design |
 | Architecture Module | monocle-ipc (`ClientToServer` enum new variants); monocle-runtime (IPC handler routing to SessionManager) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-daemon-wiring-v2-delta.md v1.10.0 §IPC handler — new ClientToServer variants (including AttachSession; `ClientToServer::SpawnSession { opts: SpawnOptions }` wire variant under Model A — I27-001); SS-ipc.md v1.21.0 §`ClientToServer::SpawnSession { opts: SpawnOptions }` (Model A wire variant — I27-001); SS-ipc.md v1.21.0 §`ClientToServer::AttachSession` (I3-004 — TUI re-attach; replaces incorrect "TUI sends DaemonToHost::Attach" description); SS-ipc.md v1.21.0 §`ServerToClient::Error` — Error variant + code taxonomy (`spawn_failed`, `binary_not_found`, `invalid_spawn_arg`, `sidecar_write_failed`, `session_id_collision`, `session_not_found`, `attach_failed`, `kill_failed`, `rename_failed`, `invalid_request`) added by architect in Pass-6 parallel track (C6-001); SS-session-manager.md v2.3.0 §session_error_to_code (spawn-path arms — Model A reachability for binary_not_found/invalid_spawn_arg confirmed I27-001) |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.11.0 §IPC handler — new ClientToServer variants (including AttachSession; `ClientToServer::SpawnSession { opts: SpawnOptions }` wire variant under Model A — I27-001); SS-ipc.md v1.22.0 §`ClientToServer::SpawnSession { opts: SpawnOptions }` (Model A wire variant — I27-001); SS-ipc.md v1.22.0 §`ClientToServer::AttachSession` (I3-004 — TUI re-attach; replaces incorrect "TUI sends DaemonToHost::Attach" description); SS-ipc.md v1.22.0 §`ServerToClient::Error` — Error variant + code taxonomy (`spawn_failed`, `binary_not_found`, `invalid_spawn_arg`, `spawn_unsupported`, `sidecar_write_failed`, `session_id_collision`, `session_not_found`, `attach_failed`, `kill_failed`, `rename_failed`, `invalid_request`) — 11 codes as of v1.22.0; `spawn_unsupported` added F-P44-IMP-001; added by architect in Pass-6 parallel track (C6-001); SS-session-manager.md v2.4.0 §session_error_to_code (spawn-path arms — Model A reachability for binary_not_found/invalid_spawn_arg confirmed I27-001; UnsupportedOperation → "spawn_unsupported" arm added F-P44-IMP-001) |
 | Cross-Ref | BC-2.08.001 (SpawnSession → spawn_session()); BC-2.08.003 (KillSession → kill_session()); BC-2.08.007 (DetachSession → detach_session()) |
 | Test Name | test_BC_2_05_010_new_client_to_server_variants_routed |
 
@@ -257,6 +264,28 @@ S-TBD — Implement new ClientToServer IPC variants and daemon routing (filled b
 ## VP Anchors
 
 VP-TBD — IPC variant routing integration tests (filled after VP creation)
+
+## §Trace v1.8.1
+
+**F-P44-IMP-001 resolution — `spawn_unsupported` added to SpawnSession PC-4; `invalid_request` scoped** (2026-06-14):
+
+- **SpawnSession PC-4 — `"spawn_unsupported"` (new, 3rd in spawn-path list):** Added immediately
+  after `"invalid_spawn_arg"` and before `"spawn_failed"`. Covers `EngineError::UnsupportedOperation`
+  (harness does not support monocle-controlled spawning). This is the EC-112 defensive path per
+  F-P44-IMP-001: ProfilePicker capability filtering is best-effort and does NOT guarantee that
+  non-spawning harness profiles are excluded from the wizard. The daemon surfaces
+  `ServerToClient::Error { code: "spawn_unsupported" }` when this path fires.
+- **SpawnSession PC-4 — `"invalid_request"` (bullet updated):** `UnsupportedOperation` previously
+  fell through to this catch-all arm. As of F-P44-IMP-001 / SS-session-manager.md v2.4.0,
+  `UnsupportedOperation` has a dedicated `"spawn_unsupported"` arm. The `"invalid_request"` bullet
+  now correctly covers only `SessionError::Io` (unexpected I/O error) and future `EngineError`
+  variants not yet explicitly mapped in the `_ =>` forward-compat arm.
+- **Architecture Source (pin bump):** SS-ipc.md v1.22.0 → v1.22.0 (across all three SS-ipc.md
+  citations); SS-session-manager.md v2.4.0 → v2.4.0. `spawn_unsupported` added to the inline
+  code taxonomy list (now 11 codes total).
+- Patch bump: v1.8.0 → v1.8.1.
+
+SE-16d monotonicity: v1.8.1 timestamp 2026-06-14 > v1.8.0 timestamp 2026-06-13. PASS.
 
 ## §Trace v1.8.0
 

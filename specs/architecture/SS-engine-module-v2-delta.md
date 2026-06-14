@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "engine-module-v2-delta"
 subsystem: SS-03
-version: "1.4.1"
+version: "1.5.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -254,14 +254,17 @@ Audit introductory note: "Enums with `#[non_exhaustive]` are governed by BC-2.02
 (separate concern — match pattern completeness vs struct literal construction); they do not
 appear here.").
 
-**"10-code" conflation resolved:**
-The phrase "10-code EngineError taxonomy" that appeared in earlier review sessions referred to the
-`ServerToClient::Error.code` WIRE CODE SET (the 10 string literals in SS-ipc.md §ServerToClient::Error
-taxonomy), NOT to the `EngineError` enum variant count. The `EngineError` enum has exactly 3 variants
-(Phase 1). The 10-code taxonomy is the IPC wire layer; `EngineError` is the daemon-internal error
-representation. These are distinct concepts: `EngineError` produces 2 of the 10 wire codes when
-unwrapped in `session_error_to_code()` (`BinaryNotFound` → `"binary_not_found"`;
-`InvalidPath` → `"invalid_spawn_arg"`); unknown future variants → `"invalid_request"`.
+**Wire-code count note (updated F-P44-IMP-001):**
+The `ServerToClient::Error.code` WIRE CODE SET (SS-ipc.md §ServerToClient::Error taxonomy) grew
+from 10 to 11 codes in v1.22.0 of SS-ipc.md (F-P44-IMP-001). The `EngineError` enum has exactly 3
+variants (Phase 1). The 11-code taxonomy is the IPC wire layer; `EngineError` is the daemon-internal
+error representation. These are distinct concepts: `EngineError` produces 3 of the 11 wire codes when
+unwrapped in `session_error_to_code()`:
+- `BinaryNotFound` → `"binary_not_found"`
+- `InvalidPath` → `"invalid_spawn_arg"`
+- `UnsupportedOperation` → `"spawn_unsupported"` (F-P44-IMP-001 — was `"invalid_request"` catch-all)
+
+Unknown truly-novel future variants → `"invalid_request"` mandatory forward-compat fallback.
 
 **Complete canonical declaration:**
 
@@ -329,9 +332,14 @@ pub enum EngineError {
   `"spawn_failed"`, which violates BC-2.03.007 Invariant 1 (diagnostic-separation guarantee).
 - `UnsupportedOperation` is the default-impl sentinel: the default `spawn_recipe()` trait
   implementation returns `Err(EngineError::UnsupportedOperation("spawn_recipe"))`. Engine
-  modules that do not support monocle-controlled spawning return this variant; callers should
-  not treat it as a user-visible error (the TUI wizard only surfaces `spawn_recipe()` for
-  harnesses that support it).
+  modules that do not support monocle-controlled spawning return this variant. The ProfilePicker
+  applies BEST-EFFORT capability filtering to avoid surfacing spawn-capable entries for
+  harnesses known not to support it, but this filtering is not a hard invariant: a harness's
+  spawn capability may be unknown until spawn-time, may change after profile selection, or a
+  future/WASM engine may reach this path before filtering is established for it. The daemon
+  MUST therefore surface a distinct, user-visible error (`"spawn_unsupported"` wire code;
+  fixed banner `"Session spawn not supported for this harness"`) when `UnsupportedOperation`
+  occurs — EC-112 is a reachable defensive path (F-P44-IMP-001). See BC-2.03.008 PC-3.
 - These three failure modes are categorically distinct. `BinaryNotFound` means "the harness
   is not installed"; `InvalidPath` means "the supplied configuration is invalid";
   `UnsupportedOperation` means "this engine does not implement spawn_recipe."
@@ -479,6 +487,33 @@ All Phase-1 `EngineModule` behavioral contracts (BC-2.03.*) remain in effect:
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.5.0
+
+**F-P44-IMP-001 — `UnsupportedOperation` semantic contract reconciled: best-effort filtering + EC-112 reachable defensive path** (2026-06-14):
+
+- **Finding (F-P44-IMP-001, IMPORTANT / secondary):** SS-engine-module-v2-delta.md §semantic-contract
+  (lines ~333-334) stated: "callers should not treat it as a user-visible error (the TUI wizard only
+  surfaces `spawn_recipe()` for harnesses that support it)." This contradicted BC-2.03.008 PC-3 /
+  EC-112, which both mandate a REACHABLE path that surfaces the distinct user banner
+  `"Session spawn not supported for this harness"`.
+- **Decision:** ProfilePicker capability filtering is BEST-EFFORT, not a hard invariant. A harness's
+  spawn capability may be unknown until spawn-time, may change after profile selection (config
+  hot-reload, CodeMachine update), or a future/WASM engine may reach this path before filtering is
+  established for it. The "wizard only surfaces spawn_recipe() for harnesses that support it" claim
+  overstated the guarantee. The daemon must surface a distinct, deliverable error on
+  `UnsupportedOperation` regardless. EC-112 is a reachable defensive path.
+- **Fix — §semantic-contract updated:** `UnsupportedOperation` bullet rewritten to:
+  (a) describe ProfilePicker filtering as best-effort; (b) enumerate the scenarios that make EC-112
+  reachable at spawn-time despite filtering; (c) state that the daemon MUST surface
+  `"spawn_unsupported"` wire code + fixed banner `"Session spawn not supported for this harness"`.
+  Cross-reference to BC-2.03.008 PC-3 and F-P44-IMP-001 added.
+- **Wire-code count updated:** The "10-code" note in §EngineError (new in v1A) updated to reflect
+  the 11-code taxonomy (SS-ipc.md v1.22.0) and the corrected mapping:
+  `EngineError` now produces 3 of the 11 wire codes (`BinaryNotFound`→`"binary_not_found"`;
+  `InvalidPath`→`"invalid_spawn_arg"`; `UnsupportedOperation`→`"spawn_unsupported"`).
+- Semver: minor (v1.4.1 → v1.5.0) — normative semantic-contract change for `UnsupportedOperation`;
+  EC-112 reachability stance established.
 
 ## §Trace v1.4.1
 

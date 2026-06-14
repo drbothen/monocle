@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.3.0"
+version: "2.4.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -437,6 +437,7 @@ method calls EngineModule methods, so `SessionError::EngineError` can only be pr
 |----------------------|-------------------------------|------|-------|
 | `EngineError(BinaryNotFound)` | `spawn_session` (via `spawn_recipe()`) | `"binary_not_found"` | Harness binary not found on PATH; `which::which()` failure |
 | `EngineError(InvalidPath)` | `spawn_session` (via `spawn_recipe()`) | `"invalid_spawn_arg"` | Non-UTF-8 or null-byte argument to `spawn_recipe()` |
+| `EngineError(UnsupportedOperation)` | `spawn_session` (via `spawn_recipe()`) | `"spawn_unsupported"` | Harness does not support monocle-controlled spawning; EC-112 defensive path (F-P44-IMP-001) |
 | `SessionNotFound` | `kill_session`, `detach_session`, `attach_session`, `rename_session`, `send_key_input`, `resize_session` | `"session_not_found"` | Session ID not in registry |
 | `SpawnFailed` | `spawn_session` | `"spawn_failed"` | OS process spawn failure (from spawner) |
 | `SidecarWriteFailed` | `spawn_session` | `"sidecar_write_failed"` | Sidecar write failed after OS process spawned; orphan-kill protocol runs before this error surfaces |
@@ -445,7 +446,7 @@ method calls EngineModule methods, so `SessionError::EngineError` can only be pr
 | `SessionHostDead` (kill-path) | `kill_session` | `"kill_failed"` | Session-host PID dead when daemon attempts kill; see `session_error_to_code(Op, &SessionError)` |
 | `InvalidSessionName` | `rename_session` | `"rename_failed"` | Empty name or name exceeding length limit |
 | `Io` | Any | `"invalid_request"` | Unexpected I/O error; nearest generic failure code |
-| `EngineError` (other variants) | `spawn_session` | `"invalid_request"` | Catch-all for any future EngineError variants not explicitly mapped; `"invalid_request"` is the nearest generic code |
+| `EngineError` (other/future variants) | `spawn_session` | `"invalid_request"` | Catch-all for any future `EngineError` variants not yet explicitly mapped (mandatory `_ =>` forward-compat arm); `"invalid_request"` is the nearest generic code. `UnsupportedOperation` now has its own arm and no longer falls through here (F-P44-IMP-001). |
 
 **Exhaustiveness and forward-compatibility:** `session_error_to_code()` has two match layers with
 distinct exhaustiveness guarantees:
@@ -462,12 +463,13 @@ distinct exhaustiveness guarantees:
   `monocle-runtime` — a DIFFERENT crate — Rust requires a `_ =>` arm on any match over a
   `#[non_exhaustive]` enum from another crate; the compiler will reject the code without it. The
   `_ => "invalid_request"` arm is therefore not a silent swallow: it is a deliberate,
-  forward-compatible fallback that maps any future `EngineError` variants (added in Phase 3 for
-  WASM engine modules) to the well-defined `"invalid_request"` wire code. No diagnostic information
-  is silently lost: `BinaryNotFound` and `InvalidPath` — the only variants that carry
-  spawn-meaningful distinction — are explicitly routed before the catch-all. Any truly unknown
-  future variant produces a deterministic, observable `ServerToClient::Error { code: "invalid_request" }`
-  that is logged and sent to the requesting client (never dropped).
+  forward-compatible fallback that maps any truly novel future `EngineError` variants (added in
+  Phase 3 for WASM engine modules) to the well-defined `"invalid_request"` wire code. No diagnostic
+  information is silently lost: `BinaryNotFound`, `InvalidPath`, and `UnsupportedOperation` — the
+  three Phase 1 variants that carry spawn-meaningful distinction — are all explicitly routed before
+  the catch-all (F-P44-IMP-001 adds `UnsupportedOperation`). Any truly unknown future variant
+  produces a deterministic, observable `ServerToClient::Error { code: "invalid_request" }` that is
+  logged and sent to the requesting client (never dropped).
 
 #### IPC handler pattern (mandatory)
 
@@ -496,20 +498,25 @@ pub enum IpcOp {
 ///   `SessionError` variant added in the future will produce a compile error here.
 /// - INNER `EngineError` match: `_ =>` arm is MANDATORY. `EngineError` is
 ///   `#[non_exhaustive]` (defined in `monocle-core`); Rust requires a `_ =>` arm
-///   on any cross-crate match over a `#[non_exhaustive]` enum. The
-///   `_ => "invalid_request"` arm is a deliberate, documented forward-compat
-///   fallback for future WASM engine variants — not a silent swallow.
+///   on any cross-crate match over a `#[non_exhaustive]` enum. The three Phase 1
+///   variants (`BinaryNotFound`, `InvalidPath`, `UnsupportedOperation`) each have
+///   explicit arms (F-P44-IMP-001 adds `UnsupportedOperation`). The `_ => "invalid_request"`
+///   arm is a deliberate, documented forward-compat fallback for future WASM engine
+///   variants — not a silent swallow.
 ///
 /// EngineError variants are unpacked to produce distinct spawn-path codes:
 /// - `EngineError::BinaryNotFound` → `"binary_not_found"` (harness not on PATH)
 /// - `EngineError::InvalidPath` → `"invalid_spawn_arg"` (bad argument to spawn_recipe())
-/// - all other `EngineError` variants → `"invalid_request"` (mandatory `_=>` forward-compat fallback)
+/// - `EngineError::UnsupportedOperation` → `"spawn_unsupported"` (harness does not support
+///   monocle-controlled spawning; EC-112 defensive path — F-P44-IMP-001)
+/// - all other future `EngineError` variants → `"invalid_request"` (mandatory `_=>` forward-compat fallback)
 fn session_error_to_code(op: IpcOp, e: &SessionError) -> &'static str {
     match e {
         SessionError::EngineError(engine_err) => match engine_err {
-            monocle_core::engine::EngineError::BinaryNotFound(_) => "binary_not_found",
-            monocle_core::engine::EngineError::InvalidPath(_)    => "invalid_spawn_arg",
-            _                                                     => "invalid_request",
+            monocle_core::engine::EngineError::BinaryNotFound(_)      => "binary_not_found",
+            monocle_core::engine::EngineError::InvalidPath(_)         => "invalid_spawn_arg",
+            monocle_core::engine::EngineError::UnsupportedOperation(_) => "spawn_unsupported",
+            _                                                          => "invalid_request",
         },
         SessionError::SessionNotFound { .. }     => "session_not_found",
         SessionError::SpawnFailed { .. }          => "spawn_failed",
@@ -848,7 +855,7 @@ pub enum HostToDaemon {
     PtyReset,
 }
 
-// C5-002 (SS-ipc.md v1.21.0): SerializedCell and SerializedColor are defined in
+// C5-002 (SS-ipc.md v1.22.0): SerializedCell and SerializedColor are defined in
 // monocle-ipc (crate::ipc::SerializedCell / crate::ipc::SerializedColor) so both
 // monocle-session-host (writer) and monocle-tui (reader) share the type without a
 // cross-binary dependency. The canonical definition with full field documentation
@@ -1388,6 +1395,29 @@ Daemon removes stale socket files during GC in re-discovery (alongside sidecar d
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v2.4.0
+
+**F-P44-IMP-001 — `UnsupportedOperation` given dedicated `"spawn_unsupported"` arm; all 3 EngineError variants now explicitly mapped** (2026-06-14):
+
+- **Finding (F-P44-IMP-001, IMPORTANT):** `EngineError::UnsupportedOperation` fell through the
+  inner `_ => "invalid_request"` arm in `session_error_to_code()`. BC-2.03.008 PC-3 / EC-112
+  mandated the distinct banner `"Session spawn not supported for this harness"`, which was
+  undeliverable because the wire code collapsed to `"invalid_request"` → `"[operation failed]"`.
+- **Decision — defense-in-depth / EC-112 reachable:** Capability filtering in ProfilePicker is
+  best-effort. The daemon must surface a distinct error if `UnsupportedOperation` occurs at
+  spawn-time regardless of pre-filtering. EC-112 is a reachable defensive path.
+- **Fix (a) — new explicit arm:** `monocle_core::engine::EngineError::UnsupportedOperation(_) =>
+  "spawn_unsupported"` added immediately after `InvalidPath` arm and before the `_ =>` catch-all.
+  All 3 Phase 1 `EngineError` variants now map to distinct codes:
+  `BinaryNotFound` → `"binary_not_found"`, `InvalidPath` → `"invalid_spawn_arg"`,
+  `UnsupportedOperation` → `"spawn_unsupported"`.
+- **Fix (b) — mapping table updated:** `EngineError(UnsupportedOperation)` row added. Catch-all
+  row clarified: no longer swallows `UnsupportedOperation`; covers only truly novel future variants.
+- **Fix (c) — prose updated:** Inner-match exhaustiveness description updated to name all three
+  Phase 1 variants as explicitly routed. Forward-compat fallback note updated accordingly.
+- Semver: minor (v2.3.0 → v2.4.0) — new explicit `EngineError::UnsupportedOperation` arm;
+  normative routing change for the `UnsupportedOperation` path.
 
 ## §Trace v2.3.0 — Errata
 

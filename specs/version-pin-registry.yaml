@@ -106,8 +106,8 @@ SS-forward-compatibility:
 
 SS-ipc:
   path: specs/architecture/SS-ipc.md
-  current_version: "1.21.0"
-  last_bump_commit: "[Pass-41 F-P41-IMP-001 D-283 — new ServerToClient::SpawnAck{session_id} variant; UUID locus daemon IPC handler; correlated spawn response for TUI session_id handshake]"
+  current_version: "1.22.0"
+  last_bump_commit: "[Pass-44 F-P44-IMP-001 D-287 — new spawn_unsupported wire code (11th in taxonomy); session_error_to_code UnsupportedOperation arm; banner 'Session spawn not supported for this harness'; all 3 EngineError variants now mapped to dedicated codes]"
   last_bump_date: "2026-06-14"
 
 SS-permissions-phase1:
@@ -124,8 +124,8 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "2.3.0"
-  last_bump_commit: "[Pass-41 F-P41-IMP-001 D-283 — IPC handler UUID locus + SpawnAck send: daemon IPC handler generates UUID before spawn_session(); sends ServerToClient::SpawnAck{session_id} point-to-point; spawn_session() receives caller-supplied session_id]"
+  current_version: "2.4.0"
+  last_bump_commit: "[Pass-44 F-P44-IMP-001 D-287 — UnsupportedOperation match arm added to session_error_to_code; maps to spawn_unsupported; defense-in-depth comment on EC-112 reachable path]"
   last_bump_date: "2026-06-14"
 
 SS-embedded-pty:
@@ -136,14 +136,14 @@ SS-embedded-pty:
 
 SS-engine-module-v2-delta:
   path: specs/architecture/SS-engine-module-v2-delta.md
-  current_version: "1.4.1"
-  last_bump_commit: "[Pass-34 C34-001 — spawn_recipe() InvalidPath detection corrected to two-pronged check (D-276)]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.5.0"
+  last_bump_commit: "[Pass-44 F-P44-IMP-001 D-287 — best-effort ProfilePicker capability filtering note (EC-112 REACHABLE defensive path); spawn_unsupported count note for harnesses reporting 0-capable profiles; Lines 333-334 reconciled]"
+  last_bump_date: "2026-06-14"
 
 SS-daemon-wiring-v2-delta:
   path: specs/architecture/SS-daemon-wiring-v2-delta.md
-  current_version: "1.10.0"
-  last_bump_commit: "[Pass-43 F-P43-IMP-001 D-286 — §3 SpawnSession arm now carries 4-step SpawnAck sequence + spawn-fail clear-launching_session_id note; syncs duplicate IPC-handler skeleton to canonical SS-session-manager/SS-ipc sequence]"
+  current_version: "1.11.0"
+  last_bump_commit: "[Pass-44 F-P44-IMP-001 D-287 — §3 error table updated: UnsupportedOperation→spawn_unsupported row added; spawn comment updated to note UnsupportedOperation path; all 3 EngineError variants now in table]"
   last_bump_date: "2026-06-14"
 
 SS-deps-pin-manifest-v2-delta:
@@ -204,8 +204,8 @@ ARCH-INDEX:
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.40.4"
-  last_bump_commit: "[D-285 CV-SS-005 — BC-2.08.008 v1.2.1 / BC-2.09.008 v1.3.1 rows updated; §Trace v1.40.3 + v1.40.4 rows added]" # version-pin-historical: changelog description of bump, not a live pin
+  current_version: "1.40.5"
+  last_bump_commit: "[Pass-44 F-P44-IMP-001 D-287 — BC-2.03.008 v1.0.2 + BC-2.05.010 v1.8.1 rows updated in BC-INDEX; §Trace v1.40.5 row added]" # version-pin-historical: changelog description of bump, not a live pin
   last_bump_date: "2026-06-14"
 
 STORY-INDEX:
@@ -719,9 +719,9 @@ BC-2.03.007:
 
 BC-2.03.008:
   path: specs/behavioral-contracts/ss-03/BC-2.03.008.md
-  current_version: "1.0.1"
-  last_bump_commit: "[Pass-34 C34-001 — EC-109 updated for null-byte InvalidPath detection sweep (D-276)]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.0.2"
+  last_bump_commit: "[Pass-44 F-P44-IMP-001 D-287 — PC-3 added: UnsupportedOperation must emit spawn_unsupported wire code with distinct banner; EC-112 authored; test vector for spawn-not-supported path; arch-source pins bumped to SS-ipc v1.22.0/SS-session-manager v2.4.0/SS-engine-module-v2-delta v1.5.0]"
+  last_bump_date: "2026-06-14"
 
 BC-2.05.009:
   path: specs/behavioral-contracts/ss-05/BC-2.05.009.md
@@ -731,9 +731,9 @@ BC-2.05.009:
 
 BC-2.05.010:
   path: specs/behavioral-contracts/ss-05/BC-2.05.010.md
-  current_version: "1.8.0"
-  last_bump_commit: "[Pass-36 F-P36-IMP-002 D-278 — No-silent-failure invariant authored; DetachSession/ResizePane/RenameSession/AttachSession failure-path completeness; whole-class fallible-variant sweep]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.8.1"
+  last_bump_commit: "[Pass-44 F-P44-IMP-001 D-287 — PC-4 added: SpawnSession must emit spawn_unsupported banner when harness does not support session creation; arch-source pins bumped to SS-ipc v1.22.0/SS-session-manager v2.4.0/SS-engine-module-v2-delta v1.5.0/SS-daemon-wiring-v2-delta v1.11.0]"
+  last_bump_date: "2026-06-14"
 
 BC-2.05.011:
   path: specs/behavioral-contracts/ss-05/BC-2.05.011.md
@@ -750,7 +750,7 @@ BC-2.06.025:
 BC-2.08.001:
   path: specs/behavioral-contracts/ss-08/BC-2.08.001.md
   current_version: "1.5.0"
-  last_bump_commit: "[Pass-41 F-P41-IMP-001 D-283 — PC-1 UUID-locus clarified: daemon IPC handler generates UUID; SS-ipc v1.21.0 added to inputs; SpawnAck correlation mechanism referenced]"
+  last_bump_commit: "[Pass-41 F-P41-IMP-001 D-283 — PC-1 UUID-locus clarified: daemon IPC handler generates UUID; SS-ipc v1.21.0 added to inputs; SpawnAck correlation mechanism referenced]" # version-pin-historical: changelog description at Pass-41 bump time; v1.21.0 was canonical then
   last_bump_date: "2026-06-14"
 
 BC-2.08.002:

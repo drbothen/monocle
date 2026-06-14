@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.1"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-engine-module-v2-delta.md]
-input-hash: "0a5432c"
+input-hash: "427c948"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-03
@@ -45,7 +45,12 @@ that must be explicitly opted into, not accidentally inherited.
    no filesystem access, no `PATH` lookup is performed.
 2. The error message format is: `"unsupported operation: spawn_recipe"`.
 3. When the daemon receives `UnsupportedOperation` from `spawn_recipe()`, it MUST surface
-   an error to the TUI: `"Session spawn not supported for this harness"`. The session
+   an error to the TUI: `"Session spawn not supported for this harness"`. This banner is
+   delivered via `ServerToClient::Error { code: "spawn_unsupported", message: "Session spawn not supported for this harness" }`
+   — the `"spawn_unsupported"` wire code is the 11th entry in the `ServerToClient::Error`
+   code taxonomy (SS-ipc v1.22.0), mapped from `EngineError::UnsupportedOperation` via
+   `session_error_to_code(IpcOp::Spawn, EngineError::UnsupportedOperation)` →
+   `"spawn_unsupported"` (SS-session-manager v2.4.0 §session_error_to_code). The session
    creation wizard MUST present this error in the UI and return to the ProfilePicker step.
 4. The default impl is defined in the `EngineModule` trait body in `monocle-core/src/engine.rs`.
    It does NOT require any overriding `impl EngineModule for X` block — the default fires
@@ -68,16 +73,17 @@ that must be explicitly opted into, not accidentally inherited.
 
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
-| EC-112 | User selects a CodeMachineModule profile and attempts to create a new session | Daemon calls `spawn_recipe()` on `CodeMachineModule`; default impl returns `Err(UnsupportedOperation("spawn_recipe"))`; TUI shows "Session spawn not supported for this harness" error; wizard returns to ProfilePicker |
+| EC-112 | User selects a CodeMachineModule profile and attempts to create a new session | **REACHABLE DEFENSIVE PATH** (F-P44-IMP-001): ProfilePicker capability filtering is best-effort and does NOT guarantee that CodeMachineModule profiles are excluded from the session creation wizard. When this path fires: daemon calls `spawn_recipe()` on `CodeMachineModule`; default impl returns `Err(UnsupportedOperation("spawn_recipe"))`; daemon surfaces `ServerToClient::Error { code: "spawn_unsupported", message: "Session spawn not supported for this harness" }`; TUI shows the error banner; wizard returns to ProfilePicker. |
 | EC-113 | WASM engine loaded in Phase 3 that does not implement `spawn_recipe()` | Default `Err(UnsupportedOperation("spawn_recipe"))` fires; same error path as EC-112 |
 | EC-114 | `CodeMachineModule::spawn_recipe()` called with any `SpawnOptions` including valid paths | Returns `Err(UnsupportedOperation("spawn_recipe"))` regardless of input validity — input is not inspected |
 
 ## Canonical Test Vectors
 
-| Input | Expected Output | Category |
-|-------|----------------|----------|
-| `CodeMachineModule.spawn_recipe(any_opts)` | `Err(EngineError::UnsupportedOperation("spawn_recipe"))` | happy-path (expected unsupported) |
-| Any `EngineModule` impl without override called | `Err(EngineError::UnsupportedOperation("spawn_recipe"))` | happy-path (expected unsupported) |
+| Input | Expected Output | Edge Case | Test Type |
+|-------|----------------|-----------|-----------|
+| `CodeMachineModule.spawn_recipe(any_opts)` | `Err(EngineError::UnsupportedOperation("spawn_recipe"))` | — | unit |
+| Any `EngineModule` impl without override called | `Err(EngineError::UnsupportedOperation("spawn_recipe"))` | — | unit |
+| `spawn_session(opts, CodeMachineModule)` via IPC SpawnSession | `ServerToClient::Error { code: "spawn_unsupported", message: "Session spawn not supported for this harness" }` | EC-112 | integration |
 
 ## Verification Properties
 
@@ -94,7 +100,7 @@ that must be explicitly opted into, not accidentally inherited.
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the capability boundary for the engine abstraction: spawn is opt-in, not universal; the default Err impl enforces that boundary for all engines that do not explicitly support monocle-controlled session spawning |
 | L2 Domain Invariants | DI-006 (EngineModule implementations must be stateless — the default impl performs no I/O and returns a constant error value, satisfying stateless detection requirement; spawn_recipe() is not a detection method but the same stateless principle applies to non-overriding impls) |
 | Architecture Module | monocle-core (`EngineModule` trait default impl) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module-v2-delta.md v1.4.1 §spawn_recipe() — new trait method (default impl signature) |
+| Architecture Source | SS-engine-module-v2-delta.md v1.5.0 §spawn_recipe() — new trait method (default impl signature); SS-session-manager.md v2.4.0 §session_error_to_code — `EngineError::UnsupportedOperation` → `"spawn_unsupported"` arm (F-P44-IMP-001); SS-ipc.md v1.22.0 §`ServerToClient::Error` — `"spawn_unsupported"` as 11th wire code in taxonomy |
 | Cross-Ref | BC-2.03.005 (ClaudeCodeModule overrides this default with the real spawn_recipe() implementation) |
 | Test Name | test_BC_2_03_008_default_spawn_recipe_unsupported_operation |
 
@@ -114,6 +120,33 @@ S-TBD — Same story as BC-2.03.005 (EngineModule trait extension with spawn_rec
 ## VP Anchors
 
 VP-TBD — Default UnsupportedOperation unit test (filled after VP creation)
+
+## §Trace v1.0.2
+
+**F-P44-IMP-001 resolution — `spawn_unsupported` wire code; EC-112 reachability; integration test vector** (2026-06-14):
+
+- **PC-3 (normative update):** The "Session spawn not supported for this harness" banner is now
+  backed by the dedicated `"spawn_unsupported"` wire code (11th entry in the `ServerToClient::Error`
+  taxonomy per SS-ipc.md v1.22.0). PC-3 now cites the complete wire path:
+  `EngineError::UnsupportedOperation` → `session_error_to_code(IpcOp::Spawn, …)` →
+  `"spawn_unsupported"` (SS-session-manager.md v2.4.0 §session_error_to_code) →
+  `ServerToClient::Error { code: "spawn_unsupported", … }`. Previously PC-3 cited only the
+  user-facing banner without the wire code path.
+- **EC-112 (reachability note added):** EC-112 is a REACHABLE defensive path per F-P44-IMP-001.
+  ProfilePicker capability filtering is best-effort — it does NOT guarantee that non-spawning
+  harness profiles are excluded from the session creation wizard at all times. The daemon's
+  defense-in-depth is this BC: when the wizard reaches the daemon with a CodeMachineModule
+  profile, `spawn_recipe()` returns `Err(UnsupportedOperation)` and the `"spawn_unsupported"`
+  wire code is returned to the TUI. EC-112 description updated to make reachability explicit
+  and to name the wire code.
+- **Canonical Test Vector (new integration row):** `spawn_session(opts, CodeMachineModule)` via
+  IPC SpawnSession → `ServerToClient::Error { code: "spawn_unsupported" }` (EC-112, integration).
+  Exercises the full daemon-side defensive path end-to-end.
+- **Architecture Source (pin bump):** SS-engine-module-v2-delta.md v1.4.1 → v1.5.0; added
+  SS-session-manager.md v2.4.0 and SS-ipc.md v1.22.0 citations for the new wire code.
+- Patch bump: v1.0.1 → v1.0.2.
+
+SE-16d monotonicity: v1.0.2 timestamp 2026-06-14 > v1.0.1 timestamp 2026-06-13. PASS.
 
 ## §Trace v1.0.1
 
