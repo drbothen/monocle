@@ -99,6 +99,8 @@ pub struct SpawnOptions {
     /// rules in SS-session-manager.md §SpawnOptions.worktree_root. The EngineModule MUST
     /// use this as SpawnRecipe.cwd — NOT project_root.
     pub worktree_root: PathBuf,
+    /// Harness identifier selected by the user (e.g., "claude-code", "codemachine").
+    pub harness_id: String,
     /// Harness profile ID selected by the user in the SessionCreation wizard.
     pub profile_id: String,
     /// Pre-generated session UUID.
@@ -278,6 +280,7 @@ BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 - **Fix (b) — `SpawnRecipe` demoted to daemon-internal:** `SpawnRecipe` is no longer a wire type. Its `Serialize`/`Deserialize` derives are retained as optional (for diagnostic serialization), but it is never transmitted over IPC. `#[non_exhaustive]` on `SpawnRecipe` is retained as harmless forward-compat on a daemon-internal struct.
 - **Fix (c) — §Phase Compatibility prose corrected:** Two-bullet statement now correctly reads: `SpawnOptions` carries `#[non_exhaustive]` (wire type); `SpawnRecipe` does NOT carry mandatory wire-type obligations (daemon-internal).
 - **Fix (d) — `SpawnOptions` doc-comment and struct header updated:** Added I27-001 Model A rationale; added `harness_id: String` field (needed for `SessionEntry` recording; previously implicit in `profile_id`/`harness_id` on the old `spawn_session()` signature).
+- **Errata (C29-001, 2026-06-13) — Fix(d) struct-body edit inadvertently omitted at authoring:** The `harness_id: String` field attested in Fix(d) above was missing from the `SpawnOptions` struct body when this delta was first authored; only the doc-comment and prose reflected the field. The struct body is now corrected to match: `pub harness_id: String,` inserted after `worktree_root` and before `profile_id`, consistent with SS-session-manager.md §SpawnOptions field order. No semantic change; the published v1.2.0 meaning is unchanged.
 - Semver: minor (v1.1.1 → v1.2.0) — normative wire-type assignment change; `SpawnOptions` derive change.
 
 ## §Trace v1.1.1
