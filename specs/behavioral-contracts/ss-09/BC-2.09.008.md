@@ -161,9 +161,9 @@ AppMode. A `Ctrl-D` or session termination also exits `EmbeddedTerminal` automat
 
 ## Architecture Anchors
 
-- `architecture/SS-embedded-pty.md#tui-appmode-extensions` (v1.6.0) — EmbeddedTerminal/SessionCreation variant definitions; `launching_session_id: Option<String>` field (F-P41-IMP-001)
-- `architecture/SS-embedded-pty.md#session-creation-wizard` (v1.6.0) — wizard step sequence; SpawnAck receipt → launching_session_id storage; auto-advance match against launching_session_id
-- `architecture/SS-ipc.md#servertoClientspawnack` (v1.21.0) — SpawnAck variant; point-to-point delivery; wizard storage obligation
+- `architecture/SS-embedded-pty.md#tui-appmode-extensions` — EmbeddedTerminal/SessionCreation variant definitions; `launching_session_id: Option<String>` field (F-P41-IMP-001)
+- `architecture/SS-embedded-pty.md#session-creation-wizard` — wizard step sequence; SpawnAck receipt → launching_session_id storage; auto-advance match against launching_session_id
+- `architecture/SS-ipc.md#servertoClientspawnack` — SpawnAck variant; point-to-point delivery; wizard storage obligation
 
 ## Story Anchor
 
@@ -174,6 +174,12 @@ S-TBD — Implement EmbeddedTerminal/SessionCreation AppMode transitions in mono
 VP-TBD — AppMode transition tests (filled after VP creation)
 
 ## §Trace v1.3.1
+
+**F-P46-IMP-001 — §Architecture Anchors: version parentheticals stripped; version-less navigational convention adopted** (2026-06-14):
+
+- **Change:** Removed ` (vX.Y.Z)` parentheticals from all 3 entries in §Architecture Anchors (SS-embedded-pty.md ×2, SS-ipc.md). No normative content changed.
+- **Rationale:** Version pins in navigational anchors duplicate the authoritative §Architecture Source Traceability-table row (POL-11-enforced) and are invisible to POL-11's ID↔version adjacency regex when in the `` `path#anchor` (vX.Y.Z) `` form. Eliminating the duplication removes the drift class entirely. Authoritative version citations remain in the §Architecture Source table unchanged: SS-embedded-pty.md v1.6.0, SS-ipc.md v1.22.0.
+- **Bump disposition:** Errata-no-bump (navigational-anchor-only change, precedent D-275). BC version stays at v1.3.1.
 
 **CV-SS-005-SIBLING — PC Step 4 (Launching): expand FIFO-only ordering claim to state BOTH causal step ordering AND per-client FIFO (mirroring BC-2.08.008 v1.2.1 fix)** (2026-06-14):
 

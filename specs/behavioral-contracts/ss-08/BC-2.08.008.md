@@ -208,9 +208,9 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
 
 ## Architecture Anchors
 
-- `architecture/SS-session-manager.md#session-lifecycle-state-machine` (v2.3.0) — complete state transition table; IPC handler UUID-generation + SpawnAck step
-- `architecture/SS-embedded-pty.md#tui-appmode-extensions` (v1.6.0) — SessionCreation::Launching auto-advance rule; `launching_session_id: Option<String>` field (F-P41-IMP-001)
-- `architecture/SS-ipc.md#servertoClientspawnack` (v1.21.0) — SpawnAck variant; wizard storage obligation; spawn-failure clearing rule
+- `architecture/SS-session-manager.md#session-lifecycle-state-machine` — complete state transition table; IPC handler UUID-generation + SpawnAck step
+- `architecture/SS-embedded-pty.md#tui-appmode-extensions` — SessionCreation::Launching auto-advance rule; `launching_session_id: Option<String>` field (F-P41-IMP-001)
+- `architecture/SS-ipc.md#servertoClientspawnack` — SpawnAck variant; wizard storage obligation; spawn-failure clearing rule
 - `architecture/SS-daemon-wiring-v2-delta.md#ipc-handler-new-clienttoserver-variants` — broker publish path
 
 ## Story Anchor
@@ -222,6 +222,12 @@ S-TBD — Implement SessionStateChanged broadcast on every SessionEntry state tr
 VP-TBD — SessionStateChanged emission and TUI response integration tests (filled after VP creation)
 
 ## §Trace v1.2.1
+
+**F-P46-IMP-001 — §Architecture Anchors: version parentheticals stripped; version-less navigational convention adopted** (2026-06-14):
+
+- **Change:** Removed ` (vX.Y.Z)` parentheticals from all 3 entries in §Architecture Anchors (SS-session-manager.md, SS-embedded-pty.md, SS-ipc.md). No normative content changed.
+- **Rationale:** Version pins in navigational anchors duplicate the authoritative §Architecture Source Traceability-table row (POL-11-enforced) and are invisible to POL-11's ID↔version adjacency regex when in the `` `path#anchor` (vX.Y.Z) `` form. Eliminating the duplication removes the drift class entirely. Authoritative version citations remain in the §Architecture Source table unchanged: SS-session-manager.md v2.4.0, SS-embedded-pty.md v1.6.0, SS-ipc.md v1.22.0.
+- **Bump disposition:** Errata-no-bump (navigational-anchor-only change, precedent D-275). BC version stays at v1.2.1.
 
 **CV-SS-005 — PC-5 SpawnAck ordering guarantee completed with causal step ordering** (2026-06-14):
 

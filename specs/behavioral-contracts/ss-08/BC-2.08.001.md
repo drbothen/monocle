@@ -155,11 +155,11 @@ goes directly to `Launching`.
 
 ## Architecture Anchors
 
-- `architecture/SS-session-manager.md#sessionmanager` (v2.3.0) — struct definition, public API (`spawn_session(opts: SpawnOptions)` — Model A), session lifecycle state machine; IPC handler generates UUID + sends SpawnAck BEFORE spawn_session() (F-P41-IMP-001)
-- `architecture/SS-session-manager.md#session-statejson-schema` (v2.3.0) — sidecar schema specification (schema_version 3)
-- `architecture/SS-session-manager.md#error-handling-sessionerror-servertoclient-error-mapping` (v2.3.0) — `session_error_to_code()` spawn-path arms for EngineError bridge
-- `architecture/SS-engine-module-v2-delta.md#spawnrecipe-and-spawnoptions-types` (v1.4.1) — SpawnOptions as wire type; SpawnRecipe as daemon-internal (I27-001 Model A)
-- `architecture/SS-ipc.md#servertoClientspawnack` (v1.21.0) — SpawnAck variant definition; UUID-generation locus in IPC handler (F-P41-IMP-001)
+- `architecture/SS-session-manager.md#sessionmanager` — struct definition, public API (`spawn_session(opts: SpawnOptions)` — Model A), session lifecycle state machine; IPC handler generates UUID + sends SpawnAck BEFORE spawn_session() (F-P41-IMP-001)
+- `architecture/SS-session-manager.md#session-statejson-schema` — sidecar schema specification (schema_version 3)
+- `architecture/SS-session-manager.md#error-handling-sessionerror-servertoclient-error-mapping` — `session_error_to_code()` spawn-path arms for EngineError bridge
+- `architecture/SS-engine-module-v2-delta.md#spawnrecipe-and-spawnoptions-types` — SpawnOptions as wire type; SpawnRecipe as daemon-internal (I27-001 Model A)
+- `architecture/SS-ipc.md#servertoClientspawnack` — SpawnAck variant definition; UUID-generation locus in IPC handler (F-P41-IMP-001)
 - `architecture/adr/ADR-0009-native-session-host-process-model.md` — process model decision
 
 ## Story Anchor
@@ -171,6 +171,12 @@ S-TBD — Implement SessionManager::spawn_session() with SessionHostSpawner (fil
 VP-TBD — Session spawn integration tests (filled after VP creation)
 
 ## §Trace v1.5.0
+
+**F-P46-IMP-001 — §Architecture Anchors: version parentheticals stripped; version-less navigational convention adopted** (2026-06-14):
+
+- **Change:** Removed ` (vX.Y.Z)` parentheticals from all 5 entries in §Architecture Anchors (SS-session-manager.md ×3, SS-engine-module-v2-delta.md, SS-ipc.md). No normative content changed.
+- **Rationale:** Version pins in navigational anchors duplicate the authoritative §Architecture Source Traceability-table row (POL-11-enforced) and are invisible to POL-11's ID↔version adjacency regex when in the `` `path#anchor` (vX.Y.Z) `` form. Eliminating the duplication removes the drift class entirely. Authoritative version citations remain in the §Architecture Source table unchanged: SS-session-manager.md v2.4.0, SS-engine-module-v2-delta.md v1.5.0, SS-ipc.md v1.22.0.
+- **Bump disposition:** Errata-no-bump (navigational-anchor-only change, precedent D-275). BC version stays at v1.5.0.
 
 **F-P41-IMP-001 — UUID-generation locus corrected to IPC handler; SpawnAck wiring; arch-source pins to SS-session-manager v2.4.0 + SS-ipc v1.22.0** (2026-06-14):
 
