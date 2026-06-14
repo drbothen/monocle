@@ -247,8 +247,9 @@ terminal byte sequences and sent as `ClientToServer::KeyInput { session_id, byte
 
 **Crossterm setup (in `monocle-tui/src/event_loop.rs`) — I3 fix:**
 
-Keyboard enhancement (Kitty) flags and the global `EnableMouseCapture` are scoped separately
-to avoid stealing mouse selection/copy from monocle's own panels.
+Keyboard enhancement (Kitty) flags are enabled GLOBALLY at TUI startup. `EnableMouseCapture`
+is NOT global — it is scoped to `EmbeddedTerminal` entry/exit (per BC-2.09.002 Invariant-5)
+precisely to avoid stealing mouse selection/copy from monocle's own panels.
 
 ```rust
 // TUI STARTUP — global keyboard enhancement only; NO global mouse capture.
@@ -751,6 +752,15 @@ BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 ---
 
 ## §Trace v1.5.2
+
+**S39-001 errata — prose↔code contradiction at §Crossterm setup intro sentence** (2026-06-14):
+
+Descriptive sentence at §Crossterm setup (formerly line 250) incorrectly called `EnableMouseCapture`
+"global" — directly contradicting the code block it introduces (which states "NO global mouse
+capture" and "Mouse capture is deferred to EmbeddedTerminal entry"). Rewritten to be accurate:
+keyboard enhancement (Kitty) flags are enabled GLOBALLY at TUI startup; `EnableMouseCapture` is
+NOT global — it is scoped to `EmbeddedTerminal` entry/exit (per BC-2.09.002 Invariant-5).
+No normative content changed; prose-only errata. Semver: no bump (v1.5.2 retained).
 
 **S35-003 — `mouse_event_to_pty_bytes`: add `Drag(btn)` arm, fix `Moved` Ps (32→35), document mouse tracking mode and full Ps table** (D-277, 2026-06-13):
 
