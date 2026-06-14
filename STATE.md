@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "7.28"
+version: "7.29"
 status: active
 producer: state-manager
 timestamp: 2026-06-13T00:00:00Z
 phase: PIVOT-delta-in-progress
-current_step: "D-277: Adversarial Pass-35 CLEAN (0C/0I) — FIRST CLEAN of session — but 3 Suggestions fixed in-scope per production-grade principle (S35-001 split-pair rationale arithmetic contradiction in SS-daemon-wiring-v2-delta/BC-2.08.008; S35-002 KeyInput SessionHostDead→attach_failed error path undocumented in BC-2.05.010; S35-003 mouse SGR encoding — architect found MISSING Drag(MouseButton) match arm + Moved Ps 32→35 + full Ps/modifier table in SS-embedded-pty/BC-2.09.003). SS-daemon-wiring-v2-delta v1.9.1, SS-embedded-pty v1.5.2, SS-session-manager v2.2.1, SS-ipc v1.20.1, SS-engine-module-v2-delta v1.4.1, BC-INDEX v1.40.0 (138 BCs). Fixing changed the package → consecutive-clean counter RESET to 0 (Pass-35 clean does NOT count toward the streak). CONSECUTIVE-CLEAN COUNTER = 0. Pass-36 next = clean candidate 1 of 3. Durable zero-context checkpoint written at human request. STATE v7.27→v7.28."
+current_step: "D-279: Adversarial Pass-37 FINDINGS (2I) — F-P37-IMP-001 BC-2.09.002 Invariant-5 still asserted globally-active mouse capture (partial-fix sibling of I2-001/I3 scoped-capture missed at Pass-36); F-P37-IMP-002 SS-ipc:412 mis-described invalid_request trigger as pre-call vs canonical post-call catch-all. Fixed: PO BC-2.09.002→1.1.2 (scoped-capture); architect SS-ipc:412 descriptor errata (no bump — wire contract unchanged). CONSECUTIVE-CLEAN COUNTER = 0. Pass-38 next = clean candidate 1 of 3. Durable checkpoint v7.29 written. STATE v7.28→v7.29."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE. D-224: Wave-6 GATE PASSED (develop @ 2a51a91). D-225: STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to wave-7-READY; points 177→169/195 reconciled to sprint-state. D-226: S-027 DELIVERED (PR #32 @ 3787ebd) — Wave 7: 1/4 done. D-227: S-031 DELIVERED (PR #33 @ 8451486). D-228: S-028 DELIVERED (PR #34 @ 682e5e5) — Wave 7: 3/4 done. develop @ 682e5e5. D-229: Zero-context resume checkpoint — S-029 human-authorized 2026-06-02. develop @ 1158e24. D-230: S-029 DELIVERED (PR #35 @ 48463fb) — Wave 7 COMPLETE (4/4). 32/33 done (192/195 pts). develop @ 48463fb. D-231: Wave-7-gate prerequisite sweep complete — SS-ipc v1.11.0, BC-2.06.021 v1.0.7, BC-INDEX v1.34, STORY-INDEX v5.30, citation atomicity propagation. POL-11/POL-12 PASS. S-027/S-028 story frontmatter status fixed. D-232: Wave-7 gate PASSED — Phase 3 COMPLETE. 1514 tests, 0 failures. F-W7G3-MED-001 fixed (PR #37 @ 6811103). HS-EXP-008 score 1.0. DTU SKIP (DTU-CLONE-STORY added as Phase 4 prereq). sprint-state v1.38. D-233: Phase-3→4 consistency cleanup — EVAL-INDEX v1.9, STORY-INDEX v5.31, BC-HOOK-034 v1.0.2 (typo fix), sprint-state v1.39. 28 story-file status fields corrected. Input-hash refresh (113→0+17 bookkeeping-residual). POL-11/POL-12 PASS. All MED/LOW audit findings RESOLVED. D-234: DTU clone false-negative corrected — S-DTU-001 (cargo binary dtu-claude-code-hooks-v1) validated fidelity 1.0000 (25/25 fixtures). Gate-2 DTU-VALIDATION corrected from SKIP to PASS. DTU-CLONE-STORY closed (RESOLVED-FALSE-PREMISE). Phase 4 UNBLOCKED. dtu_clones_built updated. PROC-DTU-VALIDATE-LOCATION process gap added. D-235: Daemon-wiring convergence — monocle-runtime binary now serves (main() wires daemon_start_sequence + run_server + UDS + tracing + ring-flush + 10s drain). SS-daemon-wiring-impl v1.3.0. SS-deps-pin-manifest v1.2.1. ARCH-INDEX v1.0.26. STORY-INDEX v5.32. sprint-state v1.40. S-DAEMON-WIRE-FIX-001 Wave-8 anchor. Resolved: ADV-W5GATE-HIGH-001, ADV-W3GATE-MED-002/004, ADV-W4GATE-MED-002, S-005-main-wiring, F-DW-HIGH-001. POL-11/POL-12 PASS. D-236: PRODUCT-VISION PIVOT — observe-only RETIRED; monocle → full TUI control center. Phases 4-7 SUSPENDED. D-237: Human ratified re-baselined-v1 control-center vision scope (4 capabilities: Launch, Embedded PTY, Multi-session/multi-project, Interactive Tune + already-built Observe+Control). DAEMON-OWNS-PTY locus. Hook auto-injection v1. embedded-pty-evaluation.md v1.0: primary = portable-pty 0.9.0 + vt100 0.16.2 + tui-term 0.3.4. NEXT: gene-source disposition → revised vision-synthesis → human gate. D-238: Vision approval gate PASSED. domain-monocle-vision-synthesis.md APPROVED at v2.1 by Joshua Magady as the canonical basis for the control-center re-baselined-v1 brief→architecture→story delta. HUMAN ESCALATION folded in at the gate: v1A persistence now REQUIRES that a graceful daemon-PROCESS restart SURVIVES (CASE 2 changed from 'lost' to 'survive'). Persistence principle renamed DAEMON-OWNS-PTY → 'session-host-owns-PTY; daemon coordinates/re-attaches': PTY masters + harness child processes owned by native detached per-session session-host processes (abduco/dtach-style) that outlive the daemon process; daemon re-attaches over UDS on restart. NO-TMUX preserved as default; external supervisor is architect-surfaced fallback only (requires human decision, not silent adoption). CASE 1 (TUI restart survives) and CASE 3 (hard crash → lost, re-launch) unchanged. New HIGH-priority architect question Q-8 (PTY-ownership-survival mechanism) added; NOTE: the already-built D-235 in-process daemon wiring will likely need rework to move PTY ownership out of the daemon process. Remaining architect-only open questions: Q-1 (PTY bytes over UDS), Q-2 (EngineModule/SessionManager surface), Q-7 (tui-term fork posture), plus PTY-throughput benchmark — all resolved during architecture delta. Architect must also reconcile the stale narrow keyboard scope in DISPOSITION-V2 rollup + embedded-pty-evaluation (superseded by full-fidelity ratification). NEXT: brief delta (product-owner) → architecture delta (architect) → story decomposition (story-writer)."
-awaiting: "Adversarial Pass-36 (Pass-35 Suggestions fixed in-scope → RESET to 0; CONSECUTIVE-CLEAN COUNTER = 0; Pass-36 = clean candidate 1 of 3). Pass-1 DONE (D-242). Pass-2 DONE (D-243). Pass-3 DONE (D-244). Pass-4 DONE (D-245). Pass-5 DONE (D-246). Pass-6 DONE (D-247). Pass-7 DONE (D-248, 0C/4I/4S — FIRST zero-Critical). Pass-8 DONE (D-249, 0C/2I/1S). Pass-9 DONE (D-250, 0C/1I/1S). Pass-10 DONE (D-252, 0C/1I/4S). Pass-11 DONE (D-253, 0C/1I/4S). Pass-12 DONE (D-254, 0C/2I/2S). Pass-13 DONE (D-255, 0C/2I/2S). Pass-14 DONE (D-256, 0C/1I/1S). Pass-15 DONE (D-257, 0C/2I/1S). Pass-16 DONE (D-258, 0C/1I/1S). Pass-17 DONE (D-259, 0C/1I/2S). Pass-18 DONE (D-260, 0C/1I/2S). Pass-19 DONE (D-261, 0C/1I/1S). Pass-20 DONE (D-262, 0C/0I/2S — FIRST CLEAN PASS). Pass-21 DONE (D-263, 0C/0I/1S — SECOND CLEAN PASS). Pass-22 DONE (D-264, 0C/3I/2S — FINDINGS; counter RESET 2→0). Pass-23 DONE (D-265, 0C/2I/1S — FINDINGS; counter stays 0). Pass-24 DONE (D-266, 0C/1I/2S — FINDINGS; counter stays 0; SS-09 family fully re-derived). Pass-25 DONE (D-267, 0C/1I/1S — FINDINGS; counter stays 0; I25-001 retired SessionState::Created swept from L1 brief+vision prose+enum; brief 2.0.3→2.0.4, vision 2.2.2→2.2.3). Pass-26 DONE (D-268, 0C/1I/1S — FINDINGS; counter stays 0; I26-001 BC-2.08.007 EC-185/EC-188 non-existent AlreadyAttached/AttachTimeout variants reconciled; S26-001 #[non_exhaustive] class closed: SpawnRecipe+PermissionDecisionKind+SessionState; 4 spec versions bumped + 29-file propagation sweep). Pass-27 DONE (D-269, 0C/1I/1S — FINDINGS; counter stays 0; I27-001 spawn-path Model-A reconciliation — spawn_session(opts: SpawnOptions), SpawnOptions wire type, EngineError taxonomy reachable; 10 docs bumped + 36-file/83-stale-active propagation sweep). Pass-28 DONE (D-270, 0C/1I/1S — FINDINGS; counter stays 0; I28-001 HS-EXP-014 Step 1 live Model-B spawn_session(recipe,harness,profile) survivor FIXED → spawn_session(opts_A) with SpawnOptions; sibling holdouts clean; S28-001 SS-session-manager §Trace cross-ref DEFERRED as housekeeping). Pass-29 DONE (D-271, 1C/0I/0S — FINDINGS; C29-001 harness_id missing from SpawnOptions struct in SS-engine-module-v2-delta; errata no-bump fix). Pass-30 DONE (D-272, 2C+1I — FINDINGS; C30-001/002 + I30-001 ADR-0006 cross-crate #[non_exhaustive] constructor gap; SpawnOptions/SpawnRecipe/SessionSnapshot/SerializedCell/PermissionPromptPayload missing constructors + audit-table rows; fixed E0639 ..opts). Pass-31 DONE (D-273, 1C+1I — FINDINGS; P31-CRIT-001 EngineError enum referenced-but-never-declared → declared canonical #[non_exhaustive] enum, 3 variants; P31-HIGH-001 SpawnRecipe parity in SS-session-manager). Pass-32 DONE (D-274, 0C/3I — FINDINGS; IMP-001 session_error_to_code _=> prose self-contradiction; IMP-002 dead anchor #engineerror-additions→#engineerror-new-in-v1a; IMP-003 EngineError 'extension'→new-type framing). Pass-33 DONE (D-275, 0C/2I — FINDINGS; I33-001 PERVASIVE dead-anchor class; I33-002 §Trace over-claim; WHOLE-CLASS-NOW: built ANCHOR-LINT-TOOL scripts/check_cross_ref_anchors.py = POL-13 wired CI+pre-commit; lint found 70 dead anchors; architect added 42 explicit <a id> navigational anchors across 12 docs; PO fixed 2 defective citations; ANCHOR-LINT-TOOL CLOSED). Pass-34 DONE (D-276, 1C+1I — FINDINGS; C34-001 InvalidPath null-byte detection impossible via to_str() → two-pronged detection: to_str() + as_bytes().contains(&0); I34-001 BC-2.08.001 stale anchor version labels). Pass-35 DONE (D-277, 0C/0I/3S — FIRST CLEAN of session; 3 Suggestions fixed in-scope → RESET counter to 0; S35-001 split-pair rationale arithmetic contradiction; S35-002 KeyInput SessionHostDead→attach_failed undocumented; S35-003 mouse SGR Drag(MouseButton) missing arm + Moved Ps 32→35 + full Ps/modifier table). Novelty trajectory (C:5,5,4,1,2,2,0×22,1,2,1,0,0,1,1,0; I:8,6,9,4,4,2,4,2,1,1,1,2,2,1,2,1,1,1,1,0,0,3,2,1,1,1,1,1,0,1,1,3,2,1,0). CONSECUTIVE-CLEAN COUNTER = 0 (suggestions fixed in-scope at Pass-35 changed package; Pass-36 is first clean candidate). STRICT-3-CLEAN CRITERION ACTIVE: 3 consecutive cleans required. CODIFIED CYCLE CHECKLIST (D-245 SUG-003): after any RETIRED-term or corrected-magic-number fix, grep -rn .factory/specs before next adversarial pass. CODIFIED (D-246): anchor-resolution-closure check. CODIFIED (D-255): L-CWD-PROPAGATION-ATTESTATION. CODIFIED (D-258): L-VERIFICATION-ARTIFACT-FALSE-GREEN. DEP-PIN-SWEEP-RULE (D-256). POL-13 LIVE (D-275, ANCHOR-LINT-TOOL). OPEN (non-blocking, human ratification required before v1A story wave): (1) CC-TUITERM-WIP-SIGNOFF; (2) CC-GLOBAL-MOUSE-CAPTURE. DEFERRED (non-blocking): VP authoring for SS-08/SS-09 BCs; v1B Tune BCs; v1B pre-emption BC."
+awaiting: "Adversarial Pass-38 (CONSECUTIVE-CLEAN COUNTER = 0; Pass-38 = clean candidate 1 of 3). Pass-1 DONE (D-242). Pass-2 DONE (D-243). Pass-3 DONE (D-244). Pass-4 DONE (D-245). Pass-5 DONE (D-246). Pass-6 DONE (D-247). Pass-7 DONE (D-248, 0C/4I/4S — FIRST zero-Critical). Pass-8 DONE (D-249, 0C/2I/1S). Pass-9 DONE (D-250, 0C/1I/1S). Pass-10 DONE (D-252, 0C/1I/4S). Pass-11 DONE (D-253, 0C/1I/4S). Pass-12 DONE (D-254, 0C/2I/2S). Pass-13 DONE (D-255, 0C/2I/2S). Pass-14 DONE (D-256, 0C/1I/1S). Pass-15 DONE (D-257, 0C/2I/1S). Pass-16 DONE (D-258, 0C/1I/1S). Pass-17 DONE (D-259, 0C/1I/2S). Pass-18 DONE (D-260, 0C/1I/2S). Pass-19 DONE (D-261, 0C/1I/1S). Pass-20 DONE (D-262, 0C/0I/2S — FIRST CLEAN PASS). Pass-21 DONE (D-263, 0C/0I/1S — SECOND CLEAN PASS). Pass-22 DONE (D-264, 0C/3I/2S — FINDINGS; counter RESET 2→0). Pass-23 DONE (D-265, 0C/2I/1S — FINDINGS; counter stays 0). Pass-24 DONE (D-266, 0C/1I/2S — FINDINGS; counter stays 0; SS-09 family fully re-derived). Pass-25 DONE (D-267, 0C/1I/1S — FINDINGS; counter stays 0; I25-001 retired SessionState::Created swept from L1 brief+vision prose+enum; brief 2.0.3→2.0.4, vision 2.2.2→2.2.3). Pass-26 DONE (D-268, 0C/1I/1S — FINDINGS; counter stays 0; I26-001 BC-2.08.007 EC-185/EC-188 non-existent AlreadyAttached/AttachTimeout variants reconciled; S26-001 #[non_exhaustive] class closed: SpawnRecipe+PermissionDecisionKind+SessionState; 4 spec versions bumped + 29-file propagation sweep). Pass-27 DONE (D-269, 0C/1I/1S — FINDINGS; counter stays 0; I27-001 spawn-path Model-A reconciliation — spawn_session(opts: SpawnOptions), SpawnOptions wire type, EngineError taxonomy reachable; 10 docs bumped + 36-file/83-stale-active propagation sweep). Pass-28 DONE (D-270, 0C/1I/1S — FINDINGS; counter stays 0; I28-001 HS-EXP-014 Step 1 live Model-B spawn_session(recipe,harness,profile) survivor FIXED → spawn_session(opts_A) with SpawnOptions; sibling holdouts clean; S28-001 SS-session-manager §Trace cross-ref DEFERRED as housekeeping). Pass-29 DONE (D-271, 1C/0I/0S — FINDINGS; C29-001 harness_id missing from SpawnOptions struct in SS-engine-module-v2-delta; errata no-bump fix). Pass-30 DONE (D-272, 2C+1I — FINDINGS; C30-001/002 + I30-001 ADR-0006 cross-crate #[non_exhaustive] constructor gap; SpawnOptions/SpawnRecipe/SessionSnapshot/SerializedCell/PermissionPromptPayload missing constructors + audit-table rows; fixed E0639 ..opts). Pass-31 DONE (D-273, 1C+1I — FINDINGS; P31-CRIT-001 EngineError enum referenced-but-never-declared → declared canonical #[non_exhaustive] enum, 3 variants; P31-HIGH-001 SpawnRecipe parity in SS-session-manager). Pass-32 DONE (D-274, 0C/3I — FINDINGS; IMP-001 session_error_to_code _=> prose self-contradiction; IMP-002 dead anchor #engineerror-additions→#engineerror-new-in-v1a; IMP-003 EngineError 'extension'→new-type framing). Pass-33 DONE (D-275, 0C/2I — FINDINGS; I33-001 PERVASIVE dead-anchor class; I33-002 §Trace over-claim; WHOLE-CLASS-NOW: built ANCHOR-LINT-TOOL scripts/check_cross_ref_anchors.py = POL-13 wired CI+pre-commit; lint found 70 dead anchors; architect added 42 explicit <a id> navigational anchors across 12 docs; PO fixed 2 defective citations; ANCHOR-LINT-TOOL CLOSED). Pass-34 DONE (D-276, 1C+1I — FINDINGS; C34-001 InvalidPath null-byte detection impossible via to_str() → two-pronged detection: to_str() + as_bytes().contains(&0); I34-001 BC-2.08.001 stale anchor version labels). Pass-35 DONE (D-277, 0C/0I/3S — FIRST CLEAN of session; 3 Suggestions fixed in-scope → RESET counter to 0; S35-001 split-pair rationale arithmetic contradiction; S35-002 KeyInput SessionHostDead→attach_failed undocumented; S35-003 mouse SGR Drag(MouseButton) missing arm + Moved Ps 32→35 + full Ps/modifier table). Pass-36 DONE (D-278, 0C/2I — FINDINGS; F-P36-IMP-001 BC-2.09.003 Invariant-3 contradicted S35-003 Moved-unreachable model; F-P36-IMP-002 BC-2.05.010 missing named No-silent-failure invariant + Detach/Resize sibling error-path gaps + dangling SS arch forward-refs; whole-class swept ALL fallible variants; BC-2.09.003→1.5.0, BC-2.05.010→1.8.0; counter stays 0). Pass-37 DONE (D-279, 0C/2I — FINDINGS; F-P37-IMP-001 BC-2.09.002 Invariant-5 globally-active mouse capture — partial-fix sibling of Pass-36 BC-2.09.003 dismissal; F-P37-IMP-002 SS-ipc:412 invalid_request mis-described as pre-call vs post-call catch-all; BC-2.09.002→1.1.2; SS-ipc descriptor errata no-bump; counter stays 0). Novelty trajectory (C:5,5,4,1,2,2,0×22,1,2,1,0,0,1,1,0,0,0; I:8,6,9,4,4,2,4,2,1,1,1,2,2,1,2,1,1,1,1,0,0,3,2,1,1,1,1,1,0,1,1,3,2,1,0,2,2). CONSECUTIVE-CLEAN COUNTER = 0. STRICT-3-CLEAN CRITERION ACTIVE: 3 consecutive cleans required. PATTERN WARNING — PARTIAL-FIX SIBLINGS (Passes 33-37): each fix round exposes a sibling gap in the next pass. MITIGATION: for every fix round, owning agent must FIX-THE-WHOLE-CLASS — grep all sibling BCs/arch docs in same subsystem for same pattern; reconcile ALL instances in one burst. Tell adversary each pass to specifically hunt for siblings of the prior round's fix. CODIFIED CYCLE CHECKLIST (D-245 SUG-003): after any RETIRED-term or corrected-magic-number fix, grep -rn .factory/specs before next adversarial pass. CODIFIED (D-246): anchor-resolution-closure check. CODIFIED (D-255): L-CWD-PROPAGATION-ATTESTATION. CODIFIED (D-258): L-VERIFICATION-ARTIFACT-FALSE-GREEN. DEP-PIN-SWEEP-RULE (D-256). POL-13 LIVE (D-275, ANCHOR-LINT-TOOL). OPEN (non-blocking, human ratification required before v1A story wave): (1) CC-TUITERM-WIP-SIGNOFF; (2) CC-GLOBAL-MOUSE-CAPTURE. DEFERRED (non-blocking): VP authoring for SS-08/SS-09 BCs; v1B Tune BCs; v1B pre-emption BC."
 durable_task_register:
   outstanding:
     - id: "DEP-PIN-SWEEP-RULE"
@@ -459,9 +459,9 @@ durable_task_register:
     - "TALLY-GUARD (D-225): STATE running-tally must re-sum sprint-state per-story; summary.points_complete is a cache. Hand-increment drift produced +8 pts error + premature Phase-3-COMPLETE. L-W6-GATE-003."
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v7.28 (D-271..D-277) — 2026-06-13
+  ZERO-CONTEXT RESUME CHECKPOINT v7.29 (D-271..D-279) — 2026-06-13
   PIVOT: monocle → full TUI control center — PHASE-1D ADV CONVERGENCE IN PROGRESS
-  35 PASSES COMPLETE; CONSECUTIVE-CLEAN COUNTER = 0 (RESET after Pass-35 S-fixes); PASS-36 NEXT
+  37 PASSES COMPLETE; CONSECUTIVE-CLEAN COUNTER = 0; PASS-38 NEXT (clean candidate 1 of 3)
   ============================================================================
 
   READ THESE FIRST (in order — before anything else):
@@ -470,7 +470,7 @@ next_session_resume_protocol: |
   3. This STATE.md fully                                 ← durable_task_register + all deferreds
 
   ============================================================================
-  A. WHERE WE ARE (D-271..D-277, 2026-06-13)
+  A. WHERE WE ARE (D-271..D-279, 2026-06-13)
   ============================================================================
 
   MODE: greenfield-with-reference-ingest.
@@ -480,7 +480,7 @@ next_session_resume_protocol: |
   NO v1A production code written yet. Do NOT write v1A code yet.
   factory-artifacts: run `git -C .factory log -1 --format='%h %s'` for live HEAD.
 
-  35 adversarial passes complete on the v1A control-center spec package.
+  37 adversarial passes complete on the v1A control-center spec package.
   Finding trajectory (Critical / Important per pass):
     Pass 1: 5C/8I  Pass 2: 5C/6I  Pass 3: 4C/9I  Pass 4: 1C/4I  Pass 5: 2C/4I  Pass 6: 2C/2I
     Pass 7: 0C/4I  Pass 8: 0C/2I  Pass 9: 0C/1I  Pass 10: 0C/1I Pass 11: 0C/1I Pass 12: 0C/2I
@@ -489,46 +489,57 @@ next_session_resume_protocol: |
     Pass 22: 0C/3I (FINDINGS — counter RESET 2→0; sibling-BC cluster SS-09 scrollback/AppMode)
     Pass 23: 0C/2I  Pass 24: 0C/1I  Pass 25: 0C/1I  Pass 26: 0C/1I  Pass 27: 0C/1I  Pass 28: 0C/1I
     Pass 29: 1C/0I (D-271 — C29-001 harness_id missing from SpawnOptions; errata no-bump fix)
-    Pass 30: 2C/1I (D-272 — ADR-0006 constructor gap; E0639 ..opts; SpawnOptions/SpawnRecipe/
-             SessionSnapshot/SerializedCell/PermissionPromptPayload constructors + audit-table rows)
+    Pass 30: 2C/1I (D-272 — ADR-0006 constructor gap; E0639 ..opts; constructors for 5 wire types)
     Pass 31: 1C/1I (D-273 — EngineError enum declared canonical; SpawnRecipe SS-session-manager parity)
     Pass 32: 0C/3I (D-274 — session_error_to_code _=> contradiction; dead anchor; 'extension' framing)
     Pass 33: 0C/2I (D-275 — PERVASIVE dead-anchor class; WHOLE-CLASS-NOW; POL-13/ANCHOR-LINT-TOOL live)
     Pass 34: 1C/1I (D-276 — InvalidPath null-byte detection two-pronged; BC-2.08.001 stale anchor labels)
     Pass 35: 0C/0I (D-277 — FIRST CLEAN of session; 3 Suggestions fixed in-scope → RESET counter to 0)
+    Pass 36: 0C/2I (D-278 — F-P36-IMP-001 BC-2.09.003 Invariant-3 Moved-unreachable contradiction;
+             F-P36-IMP-002 BC-2.05.010 missing No-silent-failure invariant + Detach/Resize gaps;
+             whole-class swept all fallible variants; BC-2.09.003→1.5.0, BC-2.05.010→1.8.0)
+    Pass 37: 0C/2I (D-279 — F-P37-IMP-001 BC-2.09.002 Invariant-5 globally-active mouse capture
+             (partial-fix sibling of I3 scoped-capture; Pass-36 BC-2.09.003 fix dismissed sibling);
+             F-P37-IMP-002 SS-ipc:412 invalid_request mis-described as pre-call;
+             BC-2.09.002→1.1.2; SS-ipc descriptor errata no-bump)
 
-  Passes 7 through 35 ALL ZERO-Critical except Pass 29 (C29-001) and Pass 34 (C34-001).
-  CONSECUTIVE-CLEAN COUNTER = 0 (Pass-35 was 0C/0I but Suggestions fixed in-scope changed
-  the package, so the streak does not count. Counter reset to 0. Pass-36 = clean candidate 1 of 3).
-  NEXT = adversarial Pass 36.
+  Passes 7 through 37 ALL ZERO-Critical except Pass 29 (C29-001) and Pass 34 (C34-001).
+  CONSECUTIVE-CLEAN COUNTER = 0. Pass-38 = clean candidate 1 of 3.
+  NEXT = adversarial Pass 38.
   HUMAN DIRECTIVE: strict 3-consecutive-clean (reaffirmed; do NOT accept fewer than 3).
-  STRICT-3-CLEAN VINDICATED: 7 consecutive passes 29-35 each surfaced a new substantive defect,
+  STRICT-3-CLEAN VINDICATED: passes 29-37 each surfaced a new substantive defect,
   confirming that the 3-clean bar is correctly calibrated.
 
-  This session's key changes (Passes 29-35):
-  - Pass-29 (D-271): errata — harness_id field added to SpawnOptions in SS-engine-module-v2-delta
-    (no version bump; treated as errata like C29-001 per no-bump convention).
-  - Pass-30 (D-272): ADR-0006 cross-crate #[non_exhaustive] constructor gap closed. SpawnOptions
-    for_spawn_request()+with_daemon_fields(), SpawnRecipe/SessionSnapshot/SerializedCell/
-    PermissionPromptPayload new() constructors documented. E0639 ..opts bypass noted.
-  - Pass-31 (D-273): EngineError declared as canonical NEW v1A #[non_exhaustive] enum
-    (UnsupportedOperation/BinaryNotFound/InvalidPath, 3 variants), independent of
-    SpawnError/PreflightError/EngineMetadataError. SS-engine-module-v2-delta v1.4.1.
-  - Pass-32 (D-274): session_error_to_code _=> arm prose contradiction resolved; dead anchors
-    #engineerror-additions fixed; EngineError framing changed from 'extension' to new-type.
-  - Pass-33 (D-275): WHOLE-CLASS dead-anchor remediation. Built scripts/check_cross_ref_anchors.py
-    (POL-13), wired to CI + pre-commit. 70 dead anchors found; 42 explicit <a id> anchors added
-    across 12 docs. PO fixed 2 defective citations. ANCHOR-LINT-TOOL durable item CLOSED.
-  - Pass-34 (D-276): InvalidPath null-byte detection — two-pronged: to_str() for non-UTF-8 +
-    as_bytes().contains(&0) for null bytes (null is valid UTF-8). BC-2.03.005/006/007/008 updated.
-  - Pass-35 (D-277): 0C/0I CLEAN. S35-001 (split-pair rationale arithmetic) + S35-002 (KeyInput
-    SessionHostDead→attach_failed path) + S35-003 (mouse Drag(MouseButton) missing arm, Moved Ps
-    32→35, full Ps/modifier table) fixed in-scope per production-grade principle.
-    SS-daemon-wiring-v2-delta v1.9.1, SS-embedded-pty v1.5.2, SS-session-manager v2.2.1,
-    SS-ipc v1.20.1, SS-engine-module-v2-delta v1.4.1. Counter RESET to 0.
+  PATTERN WARNING — PARTIAL-FIX SIBLINGS (Passes 33-37):
+  The recurring finding pattern is PARTIAL-FIX SIBLINGS: each fix round exposes a sibling gap
+  that the NEXT pass catches. Examples: fixing KeyInput error path in BC-2.05.010 (S35-002) left
+  Detach/Resize sibling gaps (F-P36-IMP-002); fixing BC-2.09.003 mouse model (S35-003 + D-278)
+  left BC-2.09.002 Invariant-5 scoped-capture sibling (F-P37-IMP-001).
+  MITIGATION (mandatory every fix round):
+    1. Owning agent MUST grep all sibling BCs and arch docs in the SAME subsystem for the same
+       pattern and reconcile ALL instances in ONE burst — not just the flagged instance.
+    2. Tell the adversary each pass to SPECIFICALLY HUNT for siblings of the prior round's fix.
+    3. Do NOT declare a fix-class closed until a whole-subsystem grep confirms no survivors.
+
+  This session's key changes (Passes 35-37):
+  - Pass-35 (D-277): 0C/0I CLEAN. S35-001 (split-pair arithmetic) + S35-002 (KeyInput error path)
+    + S35-003 (mouse SGR Drag/Moved/modifier table) fixed in-scope. Counter RESET to 0.
+  - Pass-36 (D-278): 0C/2I FINDINGS. F-P36-IMP-001 BC-2.09.003 Invariant-3 contradicted the
+    S35-003 Moved-unreachable model (Ps=35 reachable under 1003 not just 1002); F-P36-IMP-002
+    BC-2.05.010 missing named "No-silent-failure invariant" + Detach/Resize error-path gaps +
+    dangling SS-session-manager:385/SS-ipc:389,1515 arch forward-refs. PO-only fix burst: named
+    invariant authored; whole-class swept ALL fallible variants (Kill/Rename/Attach documented
+    too); ResizePane documented as WARN-drop exception. BC-2.09.003→1.5.0, BC-2.05.010→1.8.0.
+  - Pass-37 (D-279): 0C/2I FINDINGS. F-P37-IMP-001 BC-2.09.002 Invariant-5 still asserted
+    globally-active mouse capture — partial-fix sibling of the I2-001/I3 scoped-capture fix that
+    Pass-36's BC-2.09.003 fix had incorrectly dismissed. F-P37-IMP-002 SS-ipc:412 described
+    invalid_request trigger as pre-call (never-matched guard) vs canonical post-call catch-all
+    (always-matched for unhandled variants). PO fixed BC-2.09.002→1.1.2 (scoped-capture
+    invariant); architect fixed SS-ipc:412 descriptor errata (no version bump — wire contract
+    unchanged, prose-only correction).
 
   ============================================================================
-  B. THE CONVERGENCE LOOP PROCEDURE (how a fresh session runs Pass 29+)
+  B. THE CONVERGENCE LOOP PROCEDURE (how a fresh session runs Pass 38+)
   ============================================================================
 
   Step A — Dispatch vsdd-factory:adversary FRESH-CONTEXT for Pass N.
@@ -543,7 +554,11 @@ next_session_resume_protocol: |
       (d) error-taxonomy completeness + no-silent-failure guarantee (8-variant SessionError;
           10-code EngineError taxonomy reachable under Model-A)
       (e) security (keystroke injection, auth token exfil, SO_PEERCRED enforcement paths)
-      (f) any new design gap
+      (f) PARTIAL-FIX SIBLING HUNT — specifically check all BCs/SS docs in the SAME subsystem
+          as the prior round's fix for the same pattern (e.g., if BC-2.09.003 was fixed last
+          pass, check BC-2.09.001/002/004..009 for the same gap; if BC-2.05.010 was fixed,
+          check all BC-2.05.* for analogous gaps). This closes the Passes-33-37 sibling cycle.
+      (g) any new design gap
     Instruct adversary: honest CLEAN verdict if spec is sound; only Critical/Important block;
     Suggestions do NOT block but apply "fix in-scope if Important-escalation risk" discipline.
 
@@ -598,7 +613,7 @@ next_session_resume_protocol: |
     [ ] registry diff line-count == claimed bump count; [ ] spot-check frontmatter of 2 bumped files.
 
   ============================================================================
-  D. FULL SPEC PACKAGE FOR PASS 36+ (adversary receives this exact list)
+  D. FULL SPEC PACKAGE FOR PASS 38+ (adversary receives this exact list)
   ============================================================================
 
   NOTE: All versions below DERIVED from version-pin-registry.yaml (source of truth).
@@ -626,11 +641,11 @@ next_session_resume_protocol: |
   Behavioral Contracts:
     BC-INDEX v1.40.0  (138 BCs total; 25 new v1A BCs)
     SS-03: BC-2.03.005 v1.1.3, BC-2.03.006 v1.1.1, BC-2.03.007 v1.2.2, BC-2.03.008 v1.0.1
-    SS-05: BC-2.05.009 v1.5.2, BC-2.05.010 v1.7.2, BC-2.05.011 v1.2.1
+    SS-05: BC-2.05.009 v1.5.2, BC-2.05.010 v1.8.0, BC-2.05.011 v1.2.1
     SS-06: BC-2.06.025 v1.3.1  (permission badge+bell during EmbeddedTerminal/SessionCreation)
     SS-08: BC-2.08.001 v1.4.3, BC-2.08.002 v1.2.1, BC-2.08.003 v1.3.1, BC-2.08.004 v1.2.1,
            BC-2.08.005 v1.0.1, BC-2.08.006 v1.2.1, BC-2.08.007 v1.4.2, BC-2.08.008 v1.1.1
-    SS-09: BC-2.09.001 v1.3.2, BC-2.09.002 v1.1.1, BC-2.09.003 v1.4.0, BC-2.09.004 v1.0.2,
+    SS-09: BC-2.09.001 v1.3.2, BC-2.09.002 v1.1.2, BC-2.09.003 v1.5.0, BC-2.09.004 v1.0.2,
            BC-2.09.005 v1.0.1, BC-2.09.006 v1.1.1, BC-2.09.007 v1.1.1, BC-2.09.008 v1.1.1,
            BC-2.09.009 v1.1.2
 
@@ -722,6 +737,26 @@ next_session_resume_protocol: |
     INDEPENDENT of slow-client 3-strike counter. These are two distinct error classes
     (framing integrity vs throughput). BC-2.08.008 v1.1.1. SS-daemon-wiring-v2-delta v1.9.1.
 
+  NO-SILENT-FAILURE INVARIANT BC-2.05.010 (Pass-36, D-278 — tell adversary this is CLOSED):
+    BC-2.05.010 now carries an explicit named "No-silent-failure invariant": every fallible
+    operation (KeyInput/Detach/Kill/Rename/Attach/Resize) maps to a documented error code.
+    ResizePane is the only documented WARN-drop exception (arch constraint). BC-2.05.010 v1.8.0.
+    Whole-class sweep of ALL fallible variants completed (Kill/Rename/Attach error-code docs too).
+
+  MOUSE SGR MOVED REACHABILITY (Pass-36, D-278 — tell adversary this is CLOSED):
+    BC-2.09.003 Invariant-3 updated: Ps=35 (Moved) IS reachable under X10 extended-mouse mode
+    1003 (not only 1002). Unreachable-on-Unix claim retired. BC-2.09.003 v1.5.0.
+
+  MOUSE CAPTURE SCOPE BC-2.09.002 (Pass-37, D-279 — tell adversary this is CLOSED):
+    BC-2.09.002 Invariant-5 updated: mouse capture is SCOPED (EmbeddedTerminal entry/exit)
+    not globally-active. The prior "globally-active" assertion was a partial-fix sibling of
+    the I2-001/I3 scoped-capture fix. BC-2.09.002 v1.1.2.
+
+  INVALID_REQUEST TRIGGER SS-ipc (Pass-37, D-279 — tell adversary this is CLOSED):
+    SS-ipc §InvalidRequest description corrected: invalid_request is a POST-CALL catch-all
+    for unhandled ClientToServer variants (always-matched final arm), NOT a pre-call guard.
+    Prose-only correction; wire contract unchanged; no version bump.
+
   ============================================================================
   F. CODIFIED LESSONS (enforce every pass and every fix round)
   ============================================================================
@@ -761,13 +796,20 @@ next_session_resume_protocol: |
   explicit <a id> navigational anchors to spec documents to satisfy POL-13 does NOT require a
   version bump. These are navigational aids, not normative content changes.
 
+  PARTIAL-FIX-SIBLING MITIGATION (D-278/D-279, Passes 33-37 pattern — codified):
+  Recurring pattern: each fix round exposes a sibling gap in the same subsystem in the next pass.
+  After every fix burst the owning agent MUST grep all BC/SS docs in the SAME subsystem for the
+  same pattern and reconcile ALL instances in ONE burst. The adversary MUST be explicitly told
+  each pass to hunt for siblings of the prior round's fix. Do NOT declare a fix-class closed
+  without a whole-subsystem grep confirming no survivors.
+
   ============================================================================
   G. REMAINING TASKS (in order)
   ============================================================================
 
   1. FINISH Phase-1d adversarial convergence (CURRENT STEP):
-     35 passes done → need 3 CONSECUTIVE clean (counter = 0; Pass-35 suggestions fixed in-scope
-     reset counter). Pass-36 = clean candidate 1 of 3. Drive to strict 3-clean per human directive.
+     37 passes done → need 3 CONSECUTIVE clean (counter = 0). Pass-38 = clean candidate 1 of 3.
+     Drive to strict 3-clean per human directive. Apply PARTIAL-FIX-SIBLING mitigation every round.
 
   2. Human spec-package APPROVAL GATE (after convergence):
      Run /vsdd-factory:check-input-drift first.
@@ -886,6 +928,32 @@ next_session_resume_protocol: |
   Pass-35 CLEAN does NOT count toward the 3-clean streak. Pass-36 = clean candidate 1 of 3.
   Durable zero-context checkpoint written at human request (next_session_resume_protocol v7.28).
 
+  D-278 (2026-06-13): Adversarial Pass-36 = FINDINGS (0C/2I).
+  F-P36-IMP-001 (BC-2.09.003 Invariant-3 contradicted the S35-003 Moved-unreachable model —
+  Invariant-3 still asserted Ps=35/Moved was unreachable on Unix, but the S35-003 fix introduced
+  Ps=35 reachable under 1003 mode, making Invariant-3 a direct contradiction). Fixed: Invariant-3
+  updated; Moved documented as reachable under 1003. BC-2.09.003→1.5.0.
+  F-P36-IMP-002 (BC-2.05.010 missing named "No-silent-failure invariant" + Detach/Resize sibling
+  error-path gaps — S35-002 documented KeyInput only; Detach/Resize had no error-path mapping;
+  arch forward-refs SS-session-manager:385/SS-ipc:389,1515 were dangling). Fixed: named invariant
+  authored (explicit "No-silent-failure invariant" section); whole-class sweep of ALL fallible
+  variants (KeyInput/Detach/Kill/Rename/Attach documented); ResizePane documented as WARN-drop
+  exception (arch constraint). BC-2.05.010→1.8.0. PO-only fix burst. Committed 33dea39.
+  Counter stays 0. Pass-37 next.
+
+  D-279 (2026-06-13): Adversarial Pass-37 = FINDINGS (0C/2I).
+  F-P37-IMP-001 (BC-2.09.002 Invariant-5 still asserted globally-active mouse capture —
+  partial-fix sibling of the I2-001/I3 scoped-capture fix; the Pass-36 fix of BC-2.09.003
+  had correctly updated the encoding table but incorrectly dismissed BC-2.09.002's sibling
+  Invariant-5, which still claimed mouse events captured in ALL TUI states not just
+  EmbeddedTerminal). Fixed: BC-2.09.002 Invariant-5 updated to scoped-capture model.
+  BC-2.09.002→1.1.2.
+  F-P37-IMP-002 (SS-ipc §InvalidRequest description mis-described the trigger as a pre-call
+  guard never matched vs canonical post-call catch-all for unhandled variants). Fixed:
+  architect corrected SS-ipc:412 descriptor; wire contract unchanged; prose-only errata;
+  no version bump. Committed b52dd53. Counter stays 0. Pass-38 next.
+  Durable zero-context checkpoint written (next_session_resume_protocol v7.29).
+
   ============================================================================
   ALREADY BUILT (REUSE — DO NOT REBUILD)
   ============================================================================
@@ -935,9 +1003,9 @@ current_cycle: cycle-001
 | 2 Story Decomposition | DONE (D-173 APPROVED) | 2026-05-27 | D-159 original gate: 17 stories, 86 pts. D-171: 16 stories (S-016..S-031, 109 pts) + 10 holdout scenarios. Total: 33 stories, 195 pts. D-172: adversarial story review 4 passes, trajectory 18→11→9→4. D-173: human gate APPROVED. BC-INDEX v1.23 (113 BCs). |
 | 3 TDD Implementation | COMPLETE — Wave-7 GATE PASSED (D-232) | 2026-06-03 | Wave 1+2+3 DONE (83 pts). Wave 4 GATE PASSED (D-175). Wave 5 GATE PASSED (D-182). Wave 6 GATE PASSED (D-224) @ 2a51a91. Wave 7 GATE PASSED (D-232): S-027 (D-226), S-031 (D-227), S-028 (D-228), S-029 (D-230). F-W7G3-MED-001 fixed PR #37 @ 6811103. 1514 tests, 0 failures. HS-EXP-008 score 1.0. 32/33 done (192/195 pts). develop @ 6811103. NEXT: Phase 3→4 transition gate → Phase 4. |
 | 4-7 | SUSPENDED — vision pivot D-236 | — | Old observe-only scope retired. Do NOT run phase-4-holdout-evaluation until vision revision complete. |
-| PIVOT | ADV-PASS-35-CLEAN (D-277); Pass-36 NEXT | 2026-06-13 | D-242..D-277: Passes 1-35 ALL resolved. C trajectory: 5→5→4→1→2→2→0×22,1,2,1,0,0,1,1,0. I trajectory: 8→6→9→4→4→2→4→2→1×16→0→0→3→2→1→1→1→1→0→1→1→3→2→1→0. Pass-35 (D-277): FIRST CLEAN (0C/0I/3S); S-fixes changed package → RESET counter to 0. Pass-34 (D-276): C34-001 two-pronged null-byte InvalidPath. Pass-33 (D-275): POL-13/ANCHOR-LINT-TOOL live. SS-ipc v1.20.1, SS-session-manager v2.2.1, SS-engine-module-v2-delta v1.4.1, SS-daemon-wiring-v2-delta v1.9.1, SS-embedded-pty v1.5.2. CONSECUTIVE-CLEAN COUNTER = 0. NEXT: Pass-36 (clean candidate 1 of 3). |
+| PIVOT | ADV-PASS-37-FINDINGS (D-279); Pass-38 NEXT | 2026-06-13 | D-242..D-279: Passes 1-37 ALL resolved. C trajectory: 5→5→4→1→2→2→0×22,1,2,1,0,0,1,1,0,0,0. I trajectory: 8→6→9→4→4→2→4→2→1×16→0→0→3→2→1→1→1→1→0→1→1→3→2→1→0,2,2. PATTERN: PARTIAL-FIX SIBLINGS (passes 33-37). BC-2.09.002→1.1.2, BC-2.09.003→1.5.0, BC-2.05.010→1.8.0. CONSECUTIVE-CLEAN COUNTER = 0. NEXT: Pass-38 (clean candidate 1 of 3). |
 
-develop has had docs/version-pin/CI-wiring commits this session (POL-13 anchor-lint CI wiring, version-pin maintenance). Phase 3 COMPLETE (D-232). 32/33 stories done, 192/195 pts (98%). D-238: Vision v2.2.3 APPROVED. D-239: Architecture delta (ADR-0009/0010/0011 + 5 SS deltas; ARCH-INDEX v1.0.28). D-275: POL-13/ANCHOR-LINT-TOOL live (CI + pre-commit). D-277: Pass-35 FIRST CLEAN; S-fixes reset counter to 0. SS-ipc v1.20.1, SS-session-manager v2.2.1, SS-engine-module-v2-delta v1.4.1, SS-daemon-wiring-v2-delta v1.9.1, SS-embedded-pty v1.5.2. VSDD Phases 4-7 (old scope) SUSPENDED. NEXT: adversarial Pass-36 (3 consecutive clean needed; COUNTER = 0) → human gate → story decomposition.
+develop has had docs/version-pin/CI-wiring commits this session (POL-13 anchor-lint CI wiring, version-pin maintenance). Phase 3 COMPLETE (D-232). 32/33 stories done, 192/195 pts (98%). D-238: Vision v2.2.3 APPROVED. D-239: Architecture delta (ADR-0009/0010/0011 + 5 SS deltas; ARCH-INDEX v1.0.28). D-275: POL-13/ANCHOR-LINT-TOOL live (CI + pre-commit). D-277: Pass-35 FIRST CLEAN; S-fixes reset counter to 0. D-278: Pass-36 2I (partial-fix siblings BC-2.09.003+BC-2.05.010); BC-2.09.003→1.5.0, BC-2.05.010→1.8.0. D-279: Pass-37 2I (BC-2.09.002 scoped-capture + SS-ipc:412 errata); BC-2.09.002→1.1.2. VSDD Phases 4-7 (old scope) SUSPENDED. NEXT: adversarial Pass-38 (3 consecutive clean needed; COUNTER = 0) → human gate → story decomposition.
 
 ## Blocking Issues
 
@@ -980,6 +1048,8 @@ D-047 through D-221 archived at: `cycles/cycle-001/decisions-archive.md`, `cycle
 | D-275 | Adversarial Pass-33 FINDINGS (0C/2I). I33-001 PERVASIVE dead-anchor class — human directive WHOLE-CLASS-NOW + STABLE-EXPLICIT-ANCHORS. Built scripts/check_cross_ref_anchors.py (POL-13), wired CI + pre-commit. 70 dead anchors found; 42 explicit <a id> anchors added across 12 docs (no version bumps for navigational anchors). PO fixed 2 defective citations. ANCHOR-LINT-TOOL CLOSED. factory-artifacts ef5b1ec; develop e9e9103 (CI wiring). Counter=0; Pass-34 next. STATE v7.25→v7.26. | 2026-06-13 | state-manager |
 | D-276 | Adversarial Pass-34 FINDINGS (1C/1I). C34-001 InvalidPath null-byte detection impossible via to_str() alone (null is valid UTF-8) — two-pronged: to_str().is_none() + as_bytes().contains(&0). BC-2.03.005/006/007/008 updated. I34-001 BC-2.08.001 stale anchor version labels. factory-artifacts 8fab81c. Counter=0; Pass-35 next. STATE v7.26→v7.27. | 2026-06-13 | state-manager |
 | D-277 | Adversarial Pass-35 CLEAN (0C/0I) — FIRST CLEAN of session. 3 Suggestions fixed in-scope per production-grade principle: S35-001 split-pair rationale arithmetic; S35-002 KeyInput SessionHostDead→attach_failed error path; S35-003 mouse Drag(MouseButton) missing arm + Moved Ps 32→35 + full Ps/modifier table. SS-daemon-wiring-v2-delta v1.9.1, SS-embedded-pty v1.5.2, SS-session-manager v2.2.1, SS-ipc v1.20.1, SS-engine-module-v2-delta v1.4.1. factory-artifacts a0d5720. S-fixes changed package → COUNTER RESET to 0; Pass-35 CLEAN does NOT count. Pass-36 = clean candidate 1 of 3. Durable checkpoint v7.28 written. STATE v7.27→v7.28. | 2026-06-13 | state-manager |
+| D-278 | Adversarial Pass-36 FINDINGS (0C/2I). F-P36-IMP-001 BC-2.09.003 Invariant-3 contradicted S35-003 Moved-reachability model (Ps=35 reachable under 1003; Invariant-3 still said unreachable). F-P36-IMP-002 BC-2.05.010 missing named No-silent-failure invariant + Detach/Resize error-path gaps + dangling SS arch forward-refs. PO-only fix: named invariant authored; whole-class swept all fallible variants (Kill/Rename/Attach too); ResizePane WARN-drop exception documented. BC-2.09.003→1.5.0, BC-2.05.010→1.8.0. factory-artifacts 33dea39. Counter stays 0. Pass-37 next. STATE v7.28→v7.28a. | 2026-06-13 | state-manager |
+| D-279 | Adversarial Pass-37 FINDINGS (0C/2I). F-P37-IMP-001 BC-2.09.002 Invariant-5 globally-active mouse capture — partial-fix sibling of I3 scoped-capture; Pass-36 BC-2.09.003 fix dismissed sibling BC-2.09.002. F-P37-IMP-002 SS-ipc:412 invalid_request described as pre-call guard (never matched) vs canonical post-call catch-all. PO: BC-2.09.002→1.1.2 (scoped-capture). Architect: SS-ipc:412 errata prose-only fix (no version bump — wire contract unchanged). factory-artifacts b52dd53. Counter stays 0. Pass-38 next. Durable checkpoint v7.29 written. STATE v7.28→v7.29. | 2026-06-13 | state-manager |
 | D-269 | Adversarial Pass-27 FINDINGS — consecutive-clean counter stays 0. 0 Critical / 1 Important / 1 Suggestion. I27-001 (LOAD-BEARING spawn-path contradiction: the extant spawn_session(recipe: SpawnRecipe) signature took a PRE-BUILT recipe as argument, making the asserted Model-A statement 'spawn_session internally calls spawn_recipe(&opts)' IMPOSSIBLE to satisfy — while Model-B TUI-side recipe-build rendered binary_not_found/invalid_spawn_arg ServerToClient::Error codes UNREACHABLE, defeating BC-2.03.007 PC-3/PC-7 no-silent-failure guarantee; root-cause: the I12-001 fix asserted Model-A prose without reconciling the signature/IPC payload) ADJUDICATED → MODEL A: daemon-side spawn_recipe() is the ONLY model making I12-001 taxonomy reachable + consistent with daemon-owns-EngineModule. PROPAGATED: spawn_session(opts: SpawnOptions) signature; ClientToServer::SpawnSession{opts} wire payload; SpawnOptions promoted to wire type (#[non_exhaustive]+Serialize/Deserialize+harness_id field); SpawnRecipe demoted to daemon-internal. 7 arch docs bumped (SS-session-manager 1.9.0→2.0.0 MAJOR, SS-ipc 1.18.0→1.19.0, SS-daemon-wiring-v2-delta 1.7.0→1.8.0, SS-engine-module-v2-delta 1.1.1→1.2.0, ADR-0010 1.5.0→1.6.0, SS-embedded-pty 1.5.0→1.5.1, SS-deps-pin-manifest-v2-delta 1.0.0→1.0.1). PO reconciled BCs: BC-2.08.001 Precondition-2→opts + EC-150→binary_not_found (1.3.1→1.4.0); BC-2.03.007 PC-3/PC-7 confirmed reachable (1.1.0→1.2.0); BC-2.05.010 SpawnSession PC-1/PC-2/EC-280 Model-B residue→opts (1.6.0→1.7.0). S27-001 (stale ARCH-INDEX bump instruction) annotated historical. 10 registry entries bumped atomically. Propagation sweep: 36 files (83 stale actives cleared). POL-11 PASS (327 active). POL-12 PASS. TWENTY-FIRST consecutive zero-Critical (C:...,0×21). Consecutive-clean counter = 0 (stays 0 — Important present). Pass-28 next = clean candidate 1 of 3. STATE v7.19→v7.20. | 2026-06-13 | state-manager |
 | D-268 | Adversarial Pass-26 FINDINGS — consecutive-clean counter stays 0. 0 Critical / 1 Important / 1 Suggestion. I26-001 (BC-2.08.007 EC-185/EC-188 cited non-existent SessionError variants AlreadyAttached/AttachTimeout — the closed 8-variant taxonomy has neither; attach_session() cannot satisfy these ECs) FIXED via reconcile-to-existing (production-grade, no taxonomy extension): EC-185 already-attached → idempotent Ok() (matches kill/detach idempotency BC-2.08.003 EC-165 / BC-2.08.007 EC-186 + BC-2.09.001 PC-6 re-attach-triggers-fresh-dump); EC-188 attach-timeout → SessionError::SessionHostDead → attach_failed per session_error_to_code attach-path arm (1.4.0→1.4.1). S26-001 (SpawnRecipe wire struct lacked #[non_exhaustive] vs SS-ipc blanket policy + own prose) FIXED: #[non_exhaustive] added to SpawnRecipe (SS-engine-module-v2-delta 1.1.0→1.1.1, prose narrowed re SpawnOptions daemon-internal); EXHAUSTIVE wire-type sweep found 2 MORE missing: PermissionDecisionKind (SS-ipc 1.17.0→1.18.0) + SessionState (SS-session-manager 1.8.1→1.9.0); SerializedColor/TransportEvent intentional documented exclusions confirmed. 4 registry entries bumped atomically (L-S027-004): BC-2.08.007→1.4.1, SS-engine-module-v2-delta→1.1.1, SS-ipc→1.18.0, SS-session-manager→1.9.0. Propagation sweep: 69 stale active version-pin literals cleared across 29 files (POL-11-driven). POL-11 PASS (324 active). POL-12 PASS. TWENTIETH consecutive zero-Critical (C:...,0×20). Consecutive-clean counter = 0 (stays 0 — Important present). Pass-27 next = clean candidate 1 of 3. STATE v7.18→v7.19. | 2026-06-13 | state-manager |
 | D-267 | Adversarial Pass-25 FINDINGS — consecutive-clean counter stays 0. 0 Critical / 1 Important / 1 Suggestion. Fresh-context Pass-25 (extra scrutiny on less-swept L1 prose / holdouts / ARCH-INDEX / SS-03/05/06 axes) confirmed SS-09 family re-derivation sound and found I25-001: retired SessionState::Created survived in THREE L1 source-of-truth locations — (1) product-brief §LAUNCH lifecycle prose 'Created → Launching → Running → Detached → Terminated' (uses retired Created, omits ratified Terminating); (2) vision §v1A-LAUNCH prose same stale string; (3) vision §SessionManager Rust code block retained `Created` and `Killed` enum variants (both removed from the ratified enum: Created was never persisted/observed, Killed was superseded by Terminating). The Created-scrub had been applied at BC-2.08.001 v1.1.0 but never propagated to L1. FIXED: all 3 locations → ratified enum/prose `Launching → Running → Detached → Terminating → Terminated` (brief 2.0.3→2.0.4; vision 2.2.2→2.2.3); consistency correction only — no decision change. POL-11 sweep also updated vision changelog BC-2.08.001 citations from v1.1.0 → v1.3.1 (canonical). 1 registry entry bumped atomically (L-S027-004): product-brief→2.0.4. S25-001 (EVAL-INDEX HS-EXP-015 4-BC/6-class count note) NO ACTION (Suggestion advisory; mapping sound). POL-11 PASS (328 active). POL-12 PASS. NINETEENTH consecutive zero-Critical (C:...,0×19). Consecutive-clean counter = 0 (stays 0 — Important present). Pass-26 next = clean candidate 1 of 3. Adversary noted package 'should converge' after this L1 fix. STATE v7.17→v7.18. | 2026-06-13 | state-manager |
