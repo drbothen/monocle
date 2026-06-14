@@ -1,147 +1,177 @@
-# monocle — Resume From Here (D-280..D-289, 2026-06-14)
+# monocle — Resume From Here (Phase-2 next, D-303, 2026-06-14)
 
 Read this file first, then CLAUDE.md, then `.factory/STATE.md`
-(`next_session_resume_protocol` block, v7.39, for the full checkpoint).
+(`next_session_resume_protocol` block, v7.54, for the full checkpoint +
+section E ratified decisions + durable_task_register).
 
 ---
 
-## Status at Pause
+## Status at Pause — Phase-1d FULLY COMPLETE
 
-**Phase-1d adversarial spec convergence is in progress.** 46 passes complete.
-Consecutive-clean counter = 0. Pass-47 is the next dispatch (clean candidate 1 of 3).
+**Phase-1d adversarial spec convergence is DONE.** 57 passes total.
+3 consecutive clean passes achieved (D-298/D-299/D-300 = Passes 55/56/57).
+Consistency audit DONE (D-301, 4 cross-doc gaps found and fixed).
+Human gate PASSED (D-302): v1A spec package APPROVED by Joshua Magady.
+Both risk sign-offs SIGNED: CC-TUITERM-WIP-SIGNOFF + CC-GLOBAL-MOUSE-CAPTURE.
+Input-hash content-review DONE (D-303): 0 semantic drift across 148 stale clusters;
+149 spec input-hashes re-baselined; circular-dep STALE residual documented (non-blocking).
 
-Human directive: **strict 3 consecutive clean passes** (zero Critical + zero Important).
-Do NOT accept fewer than 3. Do NOT resume old observe-only Phase 4-7.
+Human said: **"Begin Phase-2 now."**
+Then asked for a durable checkpoint first — so resume target is Phase-2, NOT a Phase-1d continuation.
 
-develop @ 8bc22a5 — no v1A production code written. develop HAS had docs/version-pin/CI-wiring
-commits (POL-13 anchor-lint, version-pin maintenance, POL-14 parenthetical-anchor-pin lint
-at 5d9d603). All pivot spec work on factory-artifacts.
+**Adversarial counter is MOOT for Phase-1d.** It RESETS for Phase-2 (new convergence cycle, 0 of 3 clean).
 
----
-
-## This Session's Arc (Passes 38-46, D-280..D-289)
-
-- **Pass-38 CLEAN** (D-280): S38-001 BC-2.09.008 PC-4/PC-1 partial mouse-capture restatement
-  fixed in-scope whole-class; BC-2.09.008→1.2.0; counter RESET to 0.
-- **Pass-39 CLEAN** (D-281): S39-001 SS-embedded-pty:250 global→scoped mouse-capture prose errata
-  fixed in-scope; errata-no-bump; counter RESET to 0.
-- **Pass-40 CLEAN** (D-282): OBS-1 BC-2.09.002 §Trace stale line-numbers deferred as housekeeping
-  (navigational only; POL-13 green); no spec change; counter ADVANCES 0→1.
-- **Pass-41 FINDINGS** (D-283): F-P41-IMP-001 SessionCreation→EmbeddedTerminal session_id handshake
-  gap — SpawnAck mechanism (b) ratified; launching_session_id field added; SS-ipc→1.21.0,
-  SS-embedded-pty→1.6.0, SS-session-manager→2.3.0, BC-2.08.001→1.5.0, BC-2.08.008→1.2.0,
-  BC-2.09.008→1.3.0; counter RESET 1→0.
-- **Proactive consistency-validator sweep** (D-285): CV-SS-001..005 + sibling doc; flushed
-  SpawnAck ordering guarantee, spawn-fail ProfilePicker return target, wizard_session_id orphan
-  pre-fix across all 7 spawn-handshake docs in one burst before Pass-42.
-- **Pass-42 FINDINGS** (D-284): F-P42-IMP-001 orphan wizard_session_id field-name in 4 SS-ipc
-  sites + 1 SS-session-manager site corrected to launching_session_id; whole-class grep zero
-  survivors; errata-no-bump; counter stays 0.
-- **Pass-43 FINDINGS** (D-286): F-P43-IMP-001 SpawnAck step missing from SS-daemon-wiring-v2-delta
-  §3 duplicate IPC-handler skeleton — last of 7 spawn-handshake siblings; SS-daemon-wiring-v2-delta
-  bumped to v1.10.0 at D-286 authoring time; counter stays 0.
-- **Pass-44 FINDINGS** (D-287): F-P44-IMP-001 EngineError::UnsupportedOperation collapsed to generic
-  invalid_request wire code — fixed with new spawn_unsupported (11th code); taxonomy 10→11;
-  all 3 EngineError variants now map to dedicated codes; EngineError→wire-code class fully closed;
-  SS-ipc v1.23.1, SS-session-manager v2.5.1, SS-engine-module-v2-delta v1.6.0,
-  SS-daemon-wiring-v2-delta v1.11.2, BC-2.03.008 v1.0.2 at D-287 authoring time, BC-2.05.010 v1.8.1 at D-287 authoring time; counter stays 0.
-- **Pass-45 CLEAN** (D-288): breadth sweep (PTY/scrollback/persistence/hooks/permission-overlay/
-  SessionState/holdouts) sound; 2 LOW suggestions S-P45-001/S-P45-002 deferred to Phase-4
-  holdout-prep (OBS-HS-PROSE-PHASE4-PREP); no spec change; counter ADVANCES 0→1.
-- **Pass-46 FINDINGS** (D-289): F-P46-IMP-001 stale §Architecture Anchors version pins in
-  BC-2.08.001 (5), BC-2.08.008 (3), BC-2.09.008 (3) — invisible to old POL-11 (missed
-  `path#anchor (vX.Y.Z)` parenthetical form); FIXED: version-less navigational anchors adopted
-  (errata-no-bump, 3 BCs); root-cause POL-11 blind spot CLOSED by POL-14/Pattern C in
-  check_version_pins.py + CI pol-lint + lefthook (develop @ 5d9d603); counter RESET 1→0.
+develop @ 122eed5 — no v1A production code written.
+factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'` (live; do NOT trust a static SHA here).
+STATE.md = v7.54.
 
 ---
 
-## Next Action: Adversarial Pass-47
+## Next Action: Phase-2 Delta Story Decomposition
 
-Dispatch `vsdd-factory:adversary` FRESH-CONTEXT for Pass-47 (clean candidate 1 of 3).
+Dispatch `vsdd-factory:story-writer` to decompose the v1A control-center pivot spec
+package into implementable stories. This is a DELTA decomposition: new stories on top of
+the existing pre-pivot corpus (STORY-INDEX v5.32, EPIC-01..06, S-001..S-032).
 
-Feed the full spec package (section D of `next_session_resume_protocol` in STATE.md v7.39).
+### Phase-2 Steps
 
-**Tell the adversary Pass-47 CLOSED items — do NOT re-litigate:**
-- Spawn-handshake complete across all 7 docs (SS-ipc, SS-session-manager, SS-embedded-pty,
-  SS-daemon-wiring-v2-delta, BC-2.08.001/008, BC-2.09.008); launching_session_id canonical.
-- EngineError taxonomy 11 codes complete; spawn_unsupported wire code; _=> arm = forward-compat only.
-- Version-less §Architecture Anchors (errata-no-bump); authoritative pins only in §Architecture Source.
-- spawn_unsupported (11th code) + banner "Session spawn not supported for this harness".
-- All CV-SS-001..005 items flushed (SpawnAck ordering, spawn-fail ProfilePicker return, wizard_session_id).
-- OBS-1 (BC-2.09.002 §Trace stale line-numbers) — ratified LOW housekeeping deferral.
-- S-P45-001/S-P45-002 (holdout-prose imprecisions) — ratified LOW Phase-4-prep deferral.
-- POL-14 parenthetical-anchor-pin lint live (develop @ 5d9d603).
+1. **story-writer creates stories** for all 25 v1A BCs (listed below), resolving every
+   `S-TBD` anchor in the BC files and every `stories_tested=[S-TBD]` in holdouts HS-EXP-011..015.
 
-**Emphasize BREADTH** — spawn/mouse/taxonomy areas are exhaustively closed. Hunt less-scrutinized
-subsystems (hooks, permissions, scrollback/persistence, SessionState lifecycle, security paths,
-PTY backpressure, daemon UDS, wire-type #[non_exhaustive] constructors).
+2. **story-writer integrates** new stories into STORY-INDEX v5.32 (continuous numbering
+   S-033+), sprint-state.yaml v1.40, and defines Wave 8+ in wave schedule.
+   New epics expected: EPIC-07 (Session Manager / SS-08), EPIC-08 (Embedded PTY / SS-09),
+   plus additions to EPIC-03 (SS-03 engine-module), EPIC-05 (SS-05 IPC), EPIC-06 (SS-06 TUI).
+
+3. **Pre-pivot story disposition:** 143 orphaned observe-only stories deferred here.
+   story-writer decides: archive / retire / mark-done-historical. Do NOT carry them into
+   the v1A wave as active targets. These are also the source of the 143 UNRESOLVABLE
+   input-hash entries (circular-dep tool limitation; non-blocking).
+
+4. **Adversarial story convergence:** 3 consecutive clean passes (new cycle; starts at 0).
+   Fresh consistency audit before Phase-2 human gate.
+
+> ORCHESTRATOR SPLIT RULE: dispatching story-writer to create >8 stories → split into
+> "create" and "integrate" sub-bursts (context-overflow rule).
+
+### v1A BCs Needing Stories (by subsystem)
+
+**SS-03 (engine-module):** BC-2.03.001 (EngineModule trait/monocle-core), .002 (ClaudeCodeModule
+strict-basename detect), .003 (HomeUnresolvable error path), .004 (ClaudeCodeModule inherent
+methods/hook_paths), .005/.006/.007/.008 (ClaudeCodeModule::spawn_recipe() + default + error
+handling — .006/.007/.008 may resolve to the same story as .005).
+
+**SS-05 (IPC):** BC-2.05.001 (UDS server bind 0o600), .002 (TUI UDS connect + InitialState),
+.003 (SessionListUpdate fan-out), .005 (PermissionPromptQueued), .006 (TUI reconnect backoff),
+.007 (TransportEvent::Disconnected), .008 (Transport trait/UdsTransport), .009 (PtyOutput broker
+fan-out), .010 (new ClientToServer IPC variants + routing), .011 (ScrollbackChunk*/Complete/PtyReset).
+NOTE: BC-2.05.004 already resolved to S-021/S-032.
+
+**SS-06 (TUI sessions panel):** BC-2.06.025 (multi-session grouped sessions panel + lifecycle actions).
+
+**SS-08 (session-manager):** BC-2.08.001 (spawn_session/SessionHostSpawner), .002 (re-discovery +
+setsid in monocle-session-host), .003 (kill_session), .004 (daemon_start_sequence 8b
+rediscover_sessions), .005 (GC task), .006 (hook auto-injection in spawn path), .007
+(attach/detach), .008 (SessionStateChanged broadcast).
+
+**SS-09 (embedded-pty):** BC-2.09.001 (TUI PTY widget: vt100 parser/PseudoTerminal
+render/PtyOutput handler), .002 (key_event_to_pty_bytes + KeyInput IPC), .003
+(mouse_event_to_pty_bytes + SGR), .004 (Kitty keyboard branch — same cluster as .002),
+.005 (paste — same cluster as .002), .007 (scrollback navigation), .008 (EmbeddedTerminal/
+SessionCreation AppMode transitions), .009 (permission badge + bell).
+
+**Holdouts with S-TBD anchors:** HS-EXP-011/012/013/014/015 — resolve stories_tested to real story IDs.
 
 ---
 
-## Current Spec-Package Headline Versions
+## Remaining Tooling Tasks (non-blocking for Phase-2; before Phase-4)
+
+1. **POL-11-PINFORMAT-BLIND-SPOT** (D-301, devops-engineer): extend check_version_pins.py with
+   a Pattern (like POL-14 Pattern C) to detect `path.md vX.Y.Z §section` live Architecture-Source
+   pins — invisible to current POL-11 (3rd POL blind-spot recurrence). Add CI + lefthook.
+
+2. **INPUT-HASH-CHILD-RECOMPUTE** (D-303, devops-engineer): pre-commit hook on factory-artifacts
+   should run compute-input-hash --scan --update when shared parent specs are edited, preventing
+   re-accumulation. Also document circular-input-dep STALE as non-blocking tool limitation.
+
+3. **ADV-W5GATE-HIGH-002** (pending): duplicate S-009 handler dead code. Route to implementer.
+
+4. **DEDUP-IPC-HANDLER-SKELETON** (pending): de-duplicate SS-session-manager §IPC handler
+   (canonical) vs SS-daemon-wiring-v2-delta §3 (mirror). Schedule before/with Phase-2.
+
+5. **OBS-HS-PROSE-PHASE4-PREP**: two LOW holdout-prose imprecisions (HS-EXP-014:46 child_pid;
+   HS-EXP-013:54 step-9 display-order). Deferred to Phase-4 holdout-eval prep.
+
+6. **Long-standing durable_task_register items** (ADV-W5GATE-MED-001/003, SS-IPC-181 historical
+   marker stale, BC-INDEX-TRACE-SS08-COUNT, etc.) — see STATE.md §H for full list.
+
+---
+
+## Canonical Spec Package Versions (v1A, at Phase-1d convergence)
+
+All versions derived from `.factory/specs/version-pin-registry.yaml` (source of truth).
 
 | Document | Version |
-|----------|---------|
+|---|---|
 | domain-monocle-vision-synthesis.md | v2.2.3 (APPROVED) |
 | product-brief.md | v2.0.4 |
 | prd.md | v1.28.3 |
 | ARCH-INDEX | v1.0.28 |
-| SS-ipc | v1.22.0 |
-| SS-session-manager | v2.4.0 |
+| SS-ipc | v1.23.2 |
+| SS-session-manager | v2.6.0 |
 | SS-embedded-pty | v1.6.0 |
-| SS-engine-module-v2-delta | v1.5.0 |
-| SS-daemon-wiring-v2-delta | v1.11.0 |
+| SS-engine-module-v2-delta | v1.6.0 |
+| SS-daemon-wiring-v2-delta | v1.11.3 |
 | SS-deps-pin-manifest-v2-delta | v1.0.1 |
 | ADR-0009 | v1.0.2 |
 | ADR-0010 | v1.6.0 |
 | ADR-0011 | v1.2.1 |
-| BC-INDEX | v1.40.5 (138 BCs; 25 v1A BCs) |
-| BC-2.03.008 | v1.0.2 |
-| BC-2.05.010 | v1.8.1 |
-| BC-2.08.001 | v1.5.0 |
-| BC-2.08.008 | v1.2.1 |
-| BC-2.09.008 | v1.3.1 |
+| BC-INDEX | v1.41.0 (138 BCs; 25 v1A BCs) |
 | EVAL-INDEX | v1.15 |
-| version-pin-registry.yaml | source of truth |
+| STORY-INDEX | v5.32 |
+| sprint-state.yaml | v1.40 |
 
 ---
 
-## Open Non-Blocking Follow-Ups
+## Key Ratified Decisions (do NOT re-litigate — see section E in STATE.md for full list)
 
-- **DEDUP-IPC-HANDLER-SKELETON**: de-duplicate SS-session-manager §IPC handler (canonical) vs
-  SS-daemon-wiring-v2-delta §3 (mirror) — duplication caused F-P43. Orchestrator action; schedule
-  before/with Phase-2. PENDING.
-- **OBS-HS-PROSE-PHASE4-PREP**: two LOW holdout-prose imprecisions (HS-EXP-014:46 child_pid;
-  HS-EXP-013:54 display-order). Deferred to Phase-4 holdout-eval prep. DEFERRED-PHASE4-PREP.
-- **SS-IPC-181-REDUNDANT-HISTORICAL-MARKER**: line ~181 pin (v1.9.1) stale after D-286/D-287 bumps
-  (now v1.11.0); POL-11-exempt (historical marker); manual update on next normative edit. PENDING.
-- **Tooling note**: POL-14 (Pattern C anchor-pin freshness) now live in scripts/check_version_pins.py
-  + CI pol-lint + lefthook (develop @ 5d9d603).
-- Long-standing durable_task_register items (ADV-W5GATE-HIGH-002 dead code, ADV-W5GATE-MED-001/003,
-  DTU-CLONE-STORY RESOLVED D-234, etc.) — see STATE.md §H for full list.
+- **Persistence model**: session-host-owns-PTY (monocle-session-host binary, setsid-detached,
+  per-session UDS). Graceful daemon restart SURVIVES (CASE 2 = survive). NO tmux default.
+- **Spawn-path Model A**: SpawnOptions on wire; SpawnRecipe daemon-internal; spawn_recipe()
+  called INSIDE spawn_session(); EngineError 3-variant canonical enum.
+- **IPC schema**: 12-code wire taxonomy; 9-variant SessionError; SpawnAck handshake;
+  launching_session_id; schema_version 3; snapshot-then-resume scrollback.
+- **PTY stack** (ADR-0011): portable-pty 0.9.0 + vt100 0.16.2 + tui-term =0.3.4; MSRV 1.88.
+- **Scoped mouse capture**: enabled on EmbeddedTerminal ENTRY, disabled on EXIT. NOT global.
+- **Session lifecycle**: Launching / Running / Detached / Terminating / Terminated.
+  Created and Killed are RETIRED.
+- **Terminated-in-grace action matrix**: rename→rename_failed; detach→idempotent Ok;
+  kill→idempotent Ok; resize→WARN-drop. BC-2.06.025 v1.5.0 Invariant 6 closes all cells.
+- **BC-2.06.025 Launching action rules**: kill ALLOWED; detach BLOCKED (session_not_ready);
+  rename ALLOWED. EC-298/EC-299 added.
+- **session_not_ready producer**: DetachSession arm only (Launching, host_conn None).
+  Resize WARN-drops ALL errors (Invariant 6 Exception). Kill → kill_failed (PID fallback).
+- **hooks-settings.json**: 4 URL-bearing keys + 2 reserved-empty keys; SessionStart NOT a key.
+- **ADR-0006 constructors**: all v1A #[non_exhaustive] wire structs have compliant constructors.
+- **Version-less §Architecture Anchors**: navigational only; authoritative pins in §Architecture Source.
+- **Concurrent multi-TUI-client**: ratified FUTURE scope (v1B+). Not a v1A defect.
+- v1B (Interactive Tune) BCs/stories: NOT yet authored. Author when v1B scheduled.
 
 ---
 
-## After Phase-1d Converges (3 consecutive clean)
+## Read-First Order for Any Agent
 
-1. Run `/vsdd-factory:check-input-drift` first.
-2. Human spec-package approval gate: CC-TUITERM-WIP-SIGNOFF (tui-term 0.3.4 WIP risk-acceptance)
-   + CC-GLOBAL-MOUSE-CAPTURE (mouse capture scope ratification).
-3. Phase-2 story decomposition (vsdd-factory:story-writer): v1A delta → stories + waves;
-   resolve all S-TBD anchors in 25 BCs + holdout stories_tested fields.
+1. This file (NEXT-SESSION-RESUME.md) — concise entry point
+2. `/Users/jmagady/Dev/monocle/CLAUDE.md` — production-grade + agent-routing rules
+3. `.factory/STATE.md` `next_session_resume_protocol` block (v7.54) — full checkpoint,
+   durable_task_register, section E ratified decisions
 
 ---
 
-## Full Checkpoint
+## Already-Built Substrate (do NOT re-implement)
 
-See `.factory/STATE.md` block `next_session_resume_protocol` (version 7.39, D-280..D-289) for:
-
-- The complete convergence-loop procedure (Steps A/B/C + commit rules + cycle checklist).
-- The PARTIAL-FIX-SIBLING mitigation (sections A, B, F).
-- The full 46-pass finding trajectory with per-pass detail.
-- The full spec package list with all current versions (derived from registry).
-- Ratified decisions: all Pass-38..46 closed items (section E).
-- All codified lessons including POL-COVERAGE-BLIND-SPOT and PROACTIVE-CONSISTENCY-SWEEP.
-- The durable_task_register for all non-blocking open items.
-- Already-built substrate inventory (1514 tests, 9 workspace crates, daemon, TUI, IPC).
+9 workspace crates: monocle-core, monocle-runtime, monocle-proto, monocle-test-harness,
+monocle (binary), monocle-config, monocle-ipc, xtask, monocle-tui.
+1514 tests, 0 failures (develop @ 6811103 wave-7-gate). Waves 1-7 DONE (32/33 stories, 192/195 pts).
+Daemon wires (D-235), TUI (S-025..S-029/S-031), hook ingestion, VecDeque permission overlay,
+EngineModule/FactoryAdapter traits, proto/ring. DTU clone S-DTU-001 validated fidelity 1.0 (D-234).
