@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.7.2"
+version: "1.8.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:45:00Z
@@ -77,7 +77,13 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
    PC-3 / SS-daemon-wiring-v2-delta.md v1.9.1 §3b). The `SessionStateChanged` event reflects
    the `Running → Terminating` transition (emitted immediately; `Terminating → Terminated`
    follows when the session-host confirms exit per BC-2.08.003).
-4. On failure (not found): `ServerToClient::Error { code: "session_not_found", message: ... }`.
+4. On failure: `ServerToClient::Error { code: <kill-path-code>, message: ... }` sent to the
+   requesting client per the No-silent-failure invariant (Invariant 6). Reachable failure codes,
+   per `session_error_to_code(IpcOp::Kill, &e)` (SS-session-manager.md §Mapping table lines 440/445):
+   - `"session_not_found"` — `SessionError::SessionNotFound` (session_id not in registry)
+   - `"kill_failed"` — `SessionError::SessionHostDead` on the kill-path (session-host PID dead
+     when daemon attempts to send `DaemonToHost::Kill`; `session_error_to_code(IpcOp::Kill, SessionHostDead)`
+     → `"kill_failed"` via the op-aware branch)
 
 ### KeyInput
 
@@ -94,8 +100,19 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 ### ResizePane
 
 1. `ClientToServer::ResizePane { session_id: String, rows: u16, cols: u16 }` is received.
-2. Daemon calls `SessionManager::resize_session(&session_id, rows, cols)`.
-3. No broadcast — resize is fire-and-forward; no acknowledgement.
+2. Daemon's IPC handler clamps zero dimensions to 1 (`rows = max(rows, 1); cols = max(cols, 1)`)
+   per Invariant 5 before calling `resize_session()`.
+3. Daemon calls `SessionManager::resize_session(&session_id, rows, cols)`.
+4. No broadcast — resize is fire-and-forward; no `ServerToClient::Error` sent on failure.
+5. **No-silent-failure EXCEPTION (ResizePane carve-out):** `ResizePane` is the ONLY
+   `ClientToServer` variant exempt from the No-silent-failure invariant (see §No-silent-failure
+   invariant below). Failures from `resize_session()` are WARN-logged and dropped — no
+   `ServerToClient::Error` is sent to the requesting client. Rationale: after the zero-dimension
+   clamp, the only remaining failure path is `SessionError::SessionNotFound` — a benign race
+   condition where the session terminated between the TUI sending the resize and the daemon
+   processing it. This race is expected at session teardown; surfacing it as a TUI error would
+   create spurious "Session not found" popups during normal session exit. Per
+   SS-session-manager.md §ResizePane special rule (lines 572-576).
 
 ### DetachSession
 
@@ -104,6 +121,14 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 3. On success: `ServerToClient::SessionStateChanged { session_id, new_state: Detached }` broadcast
    BEFORE `ServerToClient::SessionListUpdate` broadcast (ordered pair, per-client FIFO, per
    BC-2.08.008 PC-3 / SS-daemon-wiring-v2-delta.md v1.9.1 §3b).
+4. On failure: `ServerToClient::Error { code: <detach-path-code>, message: ... }` sent to the
+   requesting client. `DetachSession` is user-initiated — failures MUST surface (not dropped) per
+   the No-silent-failure invariant below. The reachable failure code, per
+   `session_error_to_code(IpcOp::Detach, &e)` (SS-session-manager.md §Mapping table line 440):
+   - `"session_not_found"` — `SessionError::SessionNotFound` (session_id not in registry or
+     already terminated). Note: `SessionHostDead` is NOT reachable on the detach-path; `detach_session()`
+     aborts the proxy task rather than attempting a new connection to the session-host.
+   See EC-284b.
 
 ### RenameSession
 
@@ -111,6 +136,12 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 2. Daemon calls `SessionManager::rename_session(&session_id, new_name)`.
 3. On success: `ServerToClient::SessionListUpdate` broadcast. NOTE: `SessionStateChanged` is
    NOT emitted for rename — rename is not a `SessionState` transition (per BC-2.08.008 PC-4a).
+4. On failure: `ServerToClient::Error { code: <rename-path-code>, message: ... }` sent to the
+   requesting client per the No-silent-failure invariant below. Reachable failure codes, per
+   `session_error_to_code(IpcOp::Rename, &e)` (SS-session-manager.md §Mapping table):
+   - `"session_not_found"` — `SessionError::SessionNotFound` (session_id not in registry)
+   - `"rename_failed"` — `SessionError::InvalidSessionName` (empty name or name exceeding
+     length limit; per SS-session-manager.md line 446 + EC-283)
 
 ### AttachSession
 
@@ -122,7 +153,12 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
    connected TUI clients (per BC-2.05.011). If state transitions from `Detached → Running`,
    `ServerToClient::SessionStateChanged { session_id, new_state: Running }` is broadcast
    BEFORE `ServerToClient::SessionListUpdate`.
-4. On failure (session not found, session-host dead): `ServerToClient::Error { code: "attach_failed", message: ... }` sent to the requesting client.
+4. On failure: `ServerToClient::Error { code: <attach-path-code>, message: ... }` sent to the
+   requesting client per the No-silent-failure invariant below. Reachable failure codes, per
+   `session_error_to_code(IpcOp::Attach, &e)` (SS-session-manager.md §Mapping table lines 440/444):
+   - `"session_not_found"` — `SessionError::SessionNotFound` (session_id not in registry)
+   - `"attach_failed"` — `SessionError::SessionHostDead` (session-host PID dead when daemon
+     attempts attach; `session_error_to_code(IpcOp::Attach, SessionHostDead)` → `"attach_failed"`)
 5. Use cases: (a) TUI re-attach after `PtyReset` (BC-2.05.011 PC-3c), (b) user explicitly
    re-attaches a `Detached` session from the sessions panel. The TUI MUST NOT send
    `DaemonToHost::Attach` directly — that is a daemon→session-host message. The TUI sends
@@ -145,6 +181,21 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
    (BC-2.09.006) should also prevent sending zero dimensions, but the daemon is the final
    enforcement point. Clamping prevents undefined PTY behavior without surfacing an error to
    the TUI. Cross-reference: BC-2.09.006 EC-237 (TUI-side resize no-op detection).
+6. **No-silent-failure invariant:** The daemon IPC handler MUST NOT return `Ok(())` at the
+   task boundary on `Err(SessionError::...)` from any lifecycle operation (SpawnSession,
+   KillSession, KeyInput, DetachSession, RenameSession, AttachSession). Every error from
+   `SessionManager` MUST produce `ServerToClient::Error { code, message }` to the requesting
+   client over its per-client channel. This includes `EngineError`-derived errors bridged
+   through `SessionError::EngineError` on the spawn path. Swallowing to `Ok(())` leaves the
+   TUI in a stale `Launching` (or other) state with no user-visible feedback — a silent failure.
+   **Exception — ResizePane only:** `ResizePane` is the sole carve-out. After the zero-dimension
+   clamp (Invariant 5), the only remaining `resize_session()` failure is `SessionNotFound` —
+   a benign race where the session terminated between the TUI sending the resize and the daemon
+   processing it. These failures are WARN-logged and dropped; no `ServerToClient::Error` is sent.
+   Per SS-ipc.md v1.20.1 lines 1515/389 (normative citation) and SS-session-manager.md lines
+   572-576 (ResizePane special rule rationale). Also cited by SS-session-manager.md line 385
+   as "BC-2.05.010 §No-silent-failure invariant" — this section is the named target of that
+   forward-reference.
 
 ## Edge Cases
 
@@ -156,6 +207,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 | EC-282 | `ResizePane` with `rows=0` or `cols=0` | The daemon's IPC handler MUST clamp each dimension to a minimum of 1 BEFORE forwarding to `resize_session()`. `rows = max(rows, 1); cols = max(cols, 1)`. The PTY and parser are resized to the clamped values. No `SessionError` is returned; the operation succeeds with clamped dimensions. Clamping is consistent with BC-2.09.006 EC-237 and the resize behavior in the TUI. A zero-dimension PTY is undefined by POSIX; clamping to 1 is the most robust behavior. |
 | EC-283 | `RenameSession` with empty `new_name` | `SessionError::InvalidSessionName`; `ServerToClient::Error { code: "rename_failed", message: ... }` sent to requesting client |
 | EC-284 | Concurrent `KeyInput` messages from the same TUI client | Processed in order of arrival; each forwarded to session-host in receipt order |
+| EC-284b | `DetachSession` for a `session_id` that has already terminated (race: session exits between TUI dispatch and daemon processing) | `SessionError::SessionNotFound`; `session_error_to_code(IpcOp::Detach, SessionNotFound)` → `"session_not_found"`; `ServerToClient::Error { code: "session_not_found", message: ... }` sent to requesting client. Per No-silent-failure invariant (Invariant 6) — DetachSession is user-initiated and MUST surface failures. |
 
 ## Canonical Test Vectors
 
@@ -205,6 +257,49 @@ S-TBD — Implement new ClientToServer IPC variants and daemon routing (filled b
 ## VP Anchors
 
 VP-TBD — IPC variant routing integration tests (filled after VP creation)
+
+## §Trace v1.8.0
+
+**F-P36-IMP-002 — No-silent-failure invariant authored; DetachSession + ResizePane + RenameSession + AttachSession failure-path completeness** (2026-06-13 / D-278):
+- F-P36-IMP-002: SS-session-manager.md line 385 cited "BC-2.05.010 §No-silent-failure invariant"
+  as a forward-reference to a named section that did not exist in this BC, creating a dangling
+  citation. SS-ipc.md lines 1515 and 389 state the canonical invariant verbatim. This fix
+  authors the named target section so all three arch citations resolve.
+- **Invariant 6 (new — §No-silent-failure invariant):** Authors the named invariant section with
+  the general rule (every fallible SessionManager call's Err MUST produce ServerToClient::Error
+  to the requesting client; the IPC handler MUST NOT swallow to Ok(())), and the explicit
+  ResizePane carve-out (WARN-drop only, benign session-not-found race, zero-dim clamp already
+  applied). The section heading "No-silent-failure invariant" is the exact forward-reference
+  target cited in SS-session-manager.md:385 / SS-ipc.md:389.
+- **ResizePane PC (rewritten):** Added explicit step for the zero-dimension clamp (moving Invariant 5
+  detail into the PC flow for implementer clarity), updated PC-4 to state no ServerToClient::Error
+  on failure, and added PC-5 documenting the no-silent-failure EXCEPTION with rationale cross-
+  referencing SS-session-manager.md §ResizePane special rule lines 572-576.
+- **DetachSession PC-4 (new):** Documents the `"session_not_found"` failure code for
+  `SessionError::SessionNotFound` with explicit note that `SessionHostDead` is NOT reachable
+  on the detach-path (detach aborts the proxy task, does not attempt a new host connection).
+  EC-284b added for the race-condition case.
+- **RenameSession PC-4 (new):** Documents both reachable failure codes: `"session_not_found"`
+  (SessionNotFound) and `"rename_failed"` (InvalidSessionName per EC-283), per
+  `session_error_to_code(IpcOp::Rename, &e)` mapping table.
+- **AttachSession PC-4 (rewritten for precision):** Previously said `code: "attach_failed"` for
+  both "session not found" and "session-host dead" failures — incorrect. SessionNotFound →
+  `"session_not_found"`; SessionHostDead (attach-path) → `"attach_failed"`. These are distinct
+  codes with distinct TUI banner texts. Rewritten with the complete two-code enumeration per
+  `session_error_to_code(IpcOp::Attach, &e)` SS-session-manager.md §Mapping table lines 440/444.
+- **Whole-class variant status (fix-the-whole-class):**
+  - SpawnSession: COMPLETE — PC-4 full 6-code spawn-path enumeration (per §Trace v1.6.0).
+  - KillSession: NOW COMPLETE — PC-4 rewritten to enumerate both reachable failure codes:
+    `"session_not_found"` (SessionNotFound) and `"kill_failed"` (SessionHostDead on kill-path via
+    op-aware `session_error_to_code(IpcOp::Kill, SessionHostDead)` branch). Previously only
+    documented `"session_not_found"`. Fix-the-whole-class discipline applied in same burst.
+  - KeyInput: COMPLETE — PC-4 full two-code enumeration (per §Trace v1.7.2).
+  - ResizePane: NOW COMPLETE — explicit exception documented in PC-5 (this fix).
+  - DetachSession: NOW COMPLETE — PC-4 added (this fix).
+  - RenameSession: NOW COMPLETE — PC-4 added (this fix).
+  - AttachSession: NOW COMPLETE (precision fix) — PC-4 rewritten from single-code to two-code (this fix).
+- Minor bump: 1.7.2 → 1.8.0 (minor: new named invariant section; multiple PCs extended with
+  error-path content; new EC-284b).
 
 ## §Trace v1.7.2
 

@@ -731,8 +731,8 @@ BC-2.05.009:
 
 BC-2.05.010:
   path: specs/behavioral-contracts/ss-05/BC-2.05.010.md
-  current_version: "1.7.2"
-  last_bump_commit: "[Pass-35 S35-002 D-277 — KeyInput reachable error path SessionHostDead→attach_failed documented]"
+  current_version: "1.8.0"
+  last_bump_commit: "[Pass-36 F-P36-IMP-002 D-278 — No-silent-failure invariant authored; DetachSession/ResizePane/RenameSession/AttachSession failure-path completeness; whole-class fallible-variant sweep]"
   last_bump_date: "2026-06-13"
 
 BC-2.05.011:
@@ -809,8 +809,8 @@ BC-2.09.002:
 
 BC-2.09.003:
   path: specs/behavioral-contracts/ss-09/BC-2.09.003.md
-  current_version: "1.4.0"
-  last_bump_commit: "[Pass-35 S35-003 D-277 — mouse Ps enumeration synced with SS-embedded-pty v1.5.2: Drag(MouseButton) arm + full Ps+modifier table]"
+  current_version: "1.5.0"
+  last_bump_commit: "[Pass-36 F-P36-IMP-001 D-278 — Invariant 3 rewritten: 1002 button-event tracking model; stale any-event/1003 claim removed; Moved UNREACHABLE on Unix; Drag delivered as Drag not Moved]"
   last_bump_date: "2026-06-13"
 
 BC-2.09.004:

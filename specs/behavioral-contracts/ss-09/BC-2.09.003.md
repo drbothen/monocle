@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.0"
+version: "1.5.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -109,9 +109,16 @@ All coordinate examples in this BC (and in BC-2.09.002 EC-213) assume:
      selection from monocle's sessions panel, event ribbon, and other panels. See
      SS-embedded-pty.md v1.5.2 §I3 UX tradeoff.
 2. `mouse_event_to_pty_bytes(event, pane_area: Rect)` is a PURE function — no I/O or state mutation.
-3. Mouse motion events (`MouseEventKind::Moved`) are forwarded only if button 1/2/3 tracking
-   is active (i.e., the harness's TUI has requested motion reporting). monocle always forwards
-   motion events in EmbeddedTerminal mode to maximize compatibility.
+3. **Motion delivery model — 1002 (button-event tracking), NOT 1003 (any-event tracking):**
+   crossterm enables tracking mode 1002 (`CSI ? 1002 h`, enabled implicitly by
+   `EnableMouseCapture`), which delivers motion ONLY while a mouse button is held — these are
+   `Drag(button)` events with base Ps 32/33/34. Mode 1003 (`any-event`, Ps 35 `Moved` —
+   no-button motion) is NOT enabled by monocle; `MouseEventKind::Moved` is therefore
+   UNREACHABLE on Unix. `Moved` is retained in `mouse_event_to_pty_bytes()` for Rust
+   match-exhaustiveness and correct Windows behavior only; it MUST NOT appear in production
+   Unix inputs. The prior claim that "monocle always forwards motion events to maximize
+   compatibility" described a 1003 any-event mode that is not enabled and is INCORRECT — remove
+   it. See Invariant 4 / PC-2 (Moved is UNREACHABLE on Unix) for the authoritative statement.
 4. The complete base-Ps enumeration: Down(L/M/R)=0/1/2 (terminator `M`); Up(L/M/R)=0/1/2
    (terminator `m`); Drag(L/M/R)=32/33/34 (button+32 motion bit, terminator `M`);
    Moved=35 (3+32, no-button motion, UNREACHABLE on Unix — see PC-2); ScrollUp=64;
@@ -169,6 +176,38 @@ S-TBD — Implement mouse_event_to_pty_bytes() and SGR mode entry (filled by sto
 ## VP Anchors
 
 VP-TBD — Mouse event SGR encoding unit tests (filled after VP creation)
+
+## §Trace v1.5.0
+
+**F-P36-IMP-001 — Invariant 3 rewritten: 1002 button-event tracking model; stale any-event/1003 claim removed** (2026-06-13 / D-278):
+- F-P36-IMP-001: Invariant 3 previously stated "Mouse motion events (MouseEventKind::Moved) are
+  forwarded only if button 1/2/3 tracking is active... monocle ALWAYS forwards motion events in
+  EmbeddedTerminal mode to maximize compatibility." This contradicted PC-2 (Moved table note:
+  "UNREACHABLE on Unix") and Invariant 4 (explicitly marks Moved UNREACHABLE) by implying monocle
+  uses 1003 any-event tracking mode.
+- **Root cause:** crossterm's `EnableMouseCapture` enables mode 1002 (button-event tracking,
+  `CSI ? 1002 h`) — not mode 1003 (any-event tracking). Under 1002, motion is delivered only
+  while a button is held, as `Drag(button)` events (base Ps 32/33/34). `MouseEventKind::Moved`
+  (Ps 35, no-button motion) is only produced under 1003, which monocle does NOT enable.
+  The "always forwards motion events" claim described a 1003 mode that does not exist in monocle.
+- **Invariant 3 rewritten:** Now accurately describes the 1002 tracking model — `Drag(button)`
+  events (Ps 32/33/34) are the only motion variants delivered on Unix; `Moved` (Ps 35) is
+  UNREACHABLE on Unix and retained solely for Rust match-exhaustiveness and Windows correctness.
+  The inaccurate "maximize compatibility" phrase is removed. Invariant is now internally consistent
+  with PC-2 table Moved row and Invariant 4.
+- **Whole-class scan of BC-2.09.001, BC-2.09.002, BC-2.09.003:** No other stale "any-event" /
+  1003 / "always forwards motion" / Moved-reachable claims found. BC-2.09.001 (PTY output
+  pipeline) contains no mouse tracking mode claims. BC-2.09.002 Invariant 4 states "SGR mouse mode
+  (`ESC [ ? 1006 h`) is written to the terminal when entering `AppMode::EmbeddedTerminal`, in
+  addition to the globally-active mouse capture" — this is accurate (SGR 1006 is the encoding
+  mode, separate from the tracking mode; 1006 + 1002 is the correct combination). BC-2.09.002
+  Preconditions PC-2 states "Kitty keyboard enhancement flags + mouse capture enabled" — the
+  "globally-active mouse capture" claim in PC-2 is a minor imprecision (mouse capture is scoped to
+  EmbeddedTerminal per BC-2.09.003 Invariant 1 / I3 fix), but this was corrected in BC-2.09.003
+  v1.2.0; BC-2.09.002 PC-2's "globally-active" language refers to Kitty flags (which ARE global)
+  and the juxtaposed mouse capture — it does not claim a different tracking mode. No behavioral
+  change needed in BC-2.09.001 or BC-2.09.002 for F-P36-IMP-001.
+- Minor bump: 1.4.0 → 1.5.0 (minor: normative Invariant 3 rewritten; stale any-event claim removed).
 
 ## §Trace v1.4.0
 
