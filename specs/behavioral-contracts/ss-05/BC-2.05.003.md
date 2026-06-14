@@ -109,7 +109,7 @@ the standard 4-byte LE length-prefix protocol (BC-2.05.002).
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability Traceability §SS-05 — this BC specifies the session list push that is the primary mechanism for the TUI to display live session state |
 | L2 Domain Invariants | DI-006 (EngineModule detect() must not perform I/O — session detection happens in EngineModule::detect() per BC-2.03.002; this BC governs how the detection result is broadcast to TUI clients, not the detection itself; DI-006 holds at the detection boundary) |
 | Architecture Module | monocle-ipc (ServerToClient::SessionListUpdate, fan-out broadcaster) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-ipc.md v1.20.1 §Message Types §Server-to-Client Messages; SS-ipc.md v1.20.1 §Connection Lifecycle §Phase 2 Streaming Updates |
+| Architecture Source | SS-ipc.md v1.21.0 §Message Types §Server-to-Client Messages; SS-ipc.md v1.21.0 §Connection Lifecycle §Phase 2 Streaming Updates |
 | Cross-Ref | BC-2.05.002 (InitialState contains the initial session list; this BC governs incremental updates); BC-2.02.003 (non-exhaustive enum policy applies to EnrichedSession) |
 | Test File | `monocle-ipc/tests/session_list_update.rs` |
 | Test Name | `test_BC_2_05_003_session_list_update_broadcast` |

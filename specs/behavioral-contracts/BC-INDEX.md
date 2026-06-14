@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.40.1"
+version: "1.40.2"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-14T00:00:00Z
+timestamp: 2026-06-14T12:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "cbf13d5"
@@ -1213,6 +1213,41 @@ SE-16d monotonicity: v1.36 timestamp 2026-06-03T14:00:00Z > v1.35 timestamp 2026
 - BC-2.05.010 title updated from 6-variant to 7-variant form (bc_h1_is_title_source_of_truth).
 
 SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. PASS.
+
+## §Trace v1.40.2
+
+**F-P41-IMP-001 — BC-2.08.001 v1.5.0, BC-2.08.008 v1.2.0, BC-2.09.008 v1.3.0: UUID-locus corrected; SpawnAck mechanism; launching_session_id destructure** (2026-06-14):
+
+- BC-2.08.001 v1.4.3 → v1.5.0: PC-1 UUID-locus corrected. Old wording: "generated via
+  `uuid::Uuid::new_v4().to_string()` inside `spawn_session()`". New wording: UUID is
+  generated in the daemon IPC handler (`ClientToServer::SpawnSession` match arm) BEFORE
+  `spawn_session()` is called. `spawn_session()` receives `opts.session_id` already
+  populated via `opts.with_daemon_fields()`; it does NOT generate the UUID itself.
+  Arch-source pins: SS-session-manager.md v2.3.0 → v2.3.0; SS-ipc.md v1.21.0 → v1.21.0.
+
+- BC-2.08.008 v1.1.1 → v1.2.0: PC-5 destructure corrected from
+  `AppMode::SessionCreation { step: Launching, session_id }` to
+  `AppMode::SessionCreation { step: Launching, launching_session_id: Some(session_id), .. }`.
+  Auto-advance now matches against `launching_session_id` (populated from
+  `ServerToClient::SpawnAck { session_id }` receipt), NOT a broadcast-race heuristic.
+  EC-303 enriched: explicit SpawnAck mechanism + spawn-failure clearing rule.
+  Arch-source pins: SS-embedded-pty.md v1.6.0 → v1.6.0; SS-ipc.md v1.21.0 → v1.21.0.
+
+- BC-2.09.008 v1.2.0 → v1.3.0: PC Step 4 (Launching) adds SpawnAck receipt →
+  `launching_session_id: Some(session_id.clone())` storage. PC Step 5 (auto-advance)
+  rewrites match to reference `launching_session_id` (deterministic). Steps renumbered
+  (old 5→6, old 6→7). Spawn-fail clearing added to Step 7. Arch-source pins:
+  SS-embedded-pty.md v1.6.0 → v1.6.0; SS-ipc.md v1.21.0 added.
+
+- Whole-class sweep: all SS-08 and SS-09 BCs + HS-EXP-011..015 scanned for (1) stale
+  UUID-generation-locus wording "inside spawn_session()", (2) bad `AppMode::SessionCreation`
+  destructure referencing bare `session_id`, (3) TUI-learns-session-id without SpawnAck.
+  Zero survivors confirmed after these three edits.
+
+- BC-INDEX version: 1.40.1 → 1.40.2. BC H1 titles unchanged (all three BC H1 headings
+  stable). No BC ID additions or retirements.
+
+SE-16d monotonicity: v1.40.2 timestamp 2026-06-14 ≥ v1.40.1 timestamp 2026-06-14. PASS.
 
 ## §Trace v1.40.1
 

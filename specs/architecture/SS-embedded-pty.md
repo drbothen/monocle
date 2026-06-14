@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "embedded-pty"
 subsystem: SS-09
-version: "1.5.2"
+version: "1.6.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -51,9 +51,19 @@ EmbeddedTerminal {
 },
 
 /// Launch wizard — multi-step modal for creating a new session.
+///
+/// `launching_session_id` is `None` until the TUI receives
+/// `ServerToClient::SpawnAck { session_id }` from the daemon (F-P41-IMP-001 resolution).
+/// It is set in the `Launching` step and used to filter `SessionStateChanged` events
+/// so the wizard only auto-advances on the session IT spawned (EC-303 deterministic filter).
+/// It is cleared (set back to `None`) on wizard exit (success or cancellation).
 SessionCreation {
     step: SessionCreationStep,
     prior: FocusSnapshot,
+    /// The daemon-assigned session UUID, populated on receipt of `ServerToClient::SpawnAck`.
+    /// `None` before SpawnAck is received (steps ProfilePicker/ProjectPicker/WorktreeConfirm)
+    /// or after wizard exit. `Some(id)` during the `Launching` step.
+    launching_session_id: Option<String>,
 },
 
 #[derive(Clone, PartialEq, Eq)]
@@ -679,11 +689,19 @@ The `AppMode::SessionCreation` wizard delegates to existing components where pos
   and keep the wizard on Step 3. The resolved path populates `SpawnOptions.worktree_root`.
 - **Step 4 (Launching):** the TUI sends `ClientToServer::SpawnSession { opts }` to the daemon,
   where `opts` is a `SpawnOptions` populated from the wizard steps (project_root, worktree_root,
-  harness_id, profile_id, ccr_base_url). The daemon fills session_id and hooks_settings_path
-  on receipt (I27-001 Model A — SpawnRecipe is built daemon-side in spawn_session()).
-  SessionCreation.step transitions to `Launching`. When the TUI receives
-  `ServerToClient::SessionStateChanged { new_state: Running }` for the new session, the
-  wizard auto-transitions to `AppMode::EmbeddedTerminal { session_id }`.
+  harness_id, profile_id, ccr_base_url). `SessionCreation.step` transitions to `Launching`.
+  The daemon IPC handler (F-P41-IMP-001 resolution):
+    1. Generates the session UUID.
+    2. Sends `ServerToClient::SpawnAck { session_id }` to the requesting TUI client only.
+    3. Calls `SessionManager::spawn_session(opts)` (daemon fills session_id and
+       hooks_settings_path daemon-side; I27-001 Model A — SpawnRecipe is built in spawn_session()).
+  On receipt of `SpawnAck { session_id }`, the TUI stores the id in
+  `AppMode::SessionCreation { launching_session_id: Some(session_id.clone()), .. }`.
+  This gives the wizard a deterministic session_id BEFORE any `SessionStateChanged { Launching }`
+  broadcast arrives. When the TUI subsequently receives
+  `ServerToClient::SessionStateChanged { session_id: <matching>, new_state: Running }`,
+  the wizard matches against `launching_session_id` (not a broadcast-race heuristic) and
+  auto-transitions to `AppMode::EmbeddedTerminal { session_id, prior: Dashboard }`.
 
 If spawn fails (daemon returns an error), the wizard returns to `Step 1` with an error banner.
 
@@ -694,7 +712,7 @@ If spawn fails (daemon returns an error), the wizard returns to `Step 1` with an
 | Module | Classification | Rationale |
 |--------|----------------|-----------|
 | `AppMode::EmbeddedTerminal` | Pure core | State variant; no I/O |
-| `AppMode::SessionCreation` | Pure core | State variant; no I/O |
+| `AppMode::SessionCreation` | Pure core | State variant; no I/O (F-P41-IMP-001: `launching_session_id: Option<String>` field added — still pure; in-memory only) |
 | `SessionCreationStep` | Pure core | Enum; no I/O |
 | `key_event_to_pty_bytes()` | Pure core | Input → bytes; no I/O; deterministic |
 | `mouse_event_to_pty_bytes()` | Pure core | Input → bytes; no I/O |
@@ -750,6 +768,39 @@ Mitigation: integration tests use a PTY fixture corpus from `embedded-pty-evalua
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.6.0
+
+**F-P41-IMP-001 resolution — `AppMode::SessionCreation` struct field + SpawnAck wizard wiring** (2026-06-14):
+
+- **Finding (F-P41-IMP-001, IMPORTANT):** Two defects in the SessionCreation wizard auto-advance design:
+  1. `AppMode::SessionCreation` had no `launching_session_id` field, making `BC-2.08.008 PC-5`'s
+     destructure `{ step: Launching, session_id }` uncompilable against the canonical struct.
+  2. The wizard had no deterministic mechanism to learn which `session_id` the daemon assigned —
+     `SessionStateChanged { Launching }` is broadcast to ALL clients with no correlation token,
+     creating a race on multiple simultaneous spawns.
+- **Decision:** Mechanism (b) — `ServerToClient::SpawnAck { session_id }` sent to the requesting
+  client only (not broadcast), generated in the IPC handler before `spawn_session()` is called.
+  Rationale: mechanism (a) (broadcast-race heuristic) violates the production-grade principle —
+  "usually works" on the single-TUI v1A path is not acceptable when a deterministic path is
+  available. `SpawnAck` is zero-cost (no extra round-trip; it is sent in the same IPC handler
+  `match` arm before the `spawn_session()` call), carries the exact assigned UUID, and gives the
+  wizard a deterministic session_id with guaranteed ordering (per-client FIFO channel delivers
+  `SpawnAck` before any broker-published `SessionStateChanged { Launching }`).
+- **Fix (a) — `AppMode::SessionCreation` struct extended:** Added
+  `launching_session_id: Option<String>` field. `None` during ProfilePicker/ProjectPicker/
+  WorktreeConfirm steps; `Some(id)` after `SpawnAck` is received in the `Launching` step;
+  `None` again on wizard exit (success or cancellation).
+- **Fix (b) — Step 4 (Launching) prose updated:** Describes the 3-step IPC handler sequence
+  (UUID generation → SpawnAck to requesting client → spawn_session()) and the TUI's obligation
+  to store the id in `launching_session_id`. Wizard auto-advance now references
+  `launching_session_id` as the filter (replaces the implicit broadcast-race model that
+  EC-303 described without a mechanism).
+- **Fix (c) — Module Purity table:** `AppMode::SessionCreation` row note updated (still Pure
+  core; `launching_session_id: Option<String>` is in-memory state).
+- **PO work-list:** See §Trace note — product-owner must update BC-2.08.008 PC-5, EC-303;
+  BC-2.09.008 PC Step 4/Step 5; BC-2.08.001 PC-1 UUID-locus wording.
+- Semver: minor (v1.5.2 → v1.6.0) — new struct field + new normative mechanism in wizard prose.
 
 ## §Trace v1.5.2
 

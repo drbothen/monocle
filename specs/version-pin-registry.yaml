@@ -106,9 +106,9 @@ SS-forward-compatibility:
 
 SS-ipc:
   path: specs/architecture/SS-ipc.md
-  current_version: "1.20.1"
-  last_bump_commit: "[Pass-31 P31-LOW-001 — PermissionPromptPayload::new() doc-comment corrected (positional params) D-273]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.21.0"
+  last_bump_commit: "[Pass-41 F-P41-IMP-001 D-283 — new ServerToClient::SpawnAck{session_id} variant; UUID locus daemon IPC handler; correlated spawn response for TUI session_id handshake]"
+  last_bump_date: "2026-06-14"
 
 SS-permissions-phase1:
   path: specs/architecture/SS-permissions-phase1.md
@@ -124,15 +124,15 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "2.2.1"
-  last_bump_commit: "[Pass-32 IMP-001 — session_error_to_code() EngineError _=> arm prose reconciled: outer SessionError match compiler-exhaustive; inner EngineError _=> mandatory #[non_exhaustive] forward-compat fallback (D-274)]"
-  last_bump_date: "2026-06-13"
+  current_version: "2.3.0"
+  last_bump_commit: "[Pass-41 F-P41-IMP-001 D-283 — IPC handler UUID locus + SpawnAck send: daemon IPC handler generates UUID before spawn_session(); sends ServerToClient::SpawnAck{session_id} point-to-point; spawn_session() receives caller-supplied session_id]"
+  last_bump_date: "2026-06-14"
 
 SS-embedded-pty:
   path: specs/architecture/SS-embedded-pty.md
-  current_version: "1.5.2"
-  last_bump_commit: "[Pass-35 S35-003 D-277 — mouse encoding corrected: Drag(MouseButton) arm added, Moved Ps 32→35, full Ps+modifier table]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.6.0"
+  last_bump_commit: "[Pass-41 F-P41-IMP-001 D-283 — new AppMode::SessionCreation.launching_session_id: Option<String> field; auto-advance to EmbeddedTerminal matches SessionStateChanged{Running} against launching_session_id]"
+  last_bump_date: "2026-06-14"
 
 SS-engine-module-v2-delta:
   path: specs/architecture/SS-engine-module-v2-delta.md
@@ -204,8 +204,8 @@ ARCH-INDEX:
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.40.1"
-  last_bump_commit: "[Pass-38 S38-001 D-280 2026-06-14 — BC-2.09.008 PC-4/PC-1 full mouse-capture sequences + BC-2.09.002 Inv-5 cross-refs; §Trace row added]" # version-pin-historical: changelog description of bump, not a live pin
+  current_version: "1.40.2"
+  last_bump_commit: "[Pass-41 F-P41-IMP-001 D-283 — BC-2.08.001 v1.5.0 / BC-2.08.008 v1.2.0 / BC-2.09.008 v1.3.0 rows updated; §Trace row added]" # version-pin-historical: changelog description of bump, not a live pin
   last_bump_date: "2026-06-14"
 
 STORY-INDEX:
@@ -749,9 +749,9 @@ BC-2.06.025:
 
 BC-2.08.001:
   path: specs/behavioral-contracts/ss-08/BC-2.08.001.md
-  current_version: "1.4.3"
-  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.5.0"
+  last_bump_commit: "[Pass-41 F-P41-IMP-001 D-283 — PC-1 UUID-locus clarified: daemon IPC handler generates UUID; SS-ipc v1.21.0 added to inputs; SpawnAck correlation mechanism referenced]"
+  last_bump_date: "2026-06-14"
 
 BC-2.08.002:
   path: specs/behavioral-contracts/ss-08/BC-2.08.002.md
@@ -791,9 +791,9 @@ BC-2.08.007:
 
 BC-2.08.008:
   path: specs/behavioral-contracts/ss-08/BC-2.08.008.md
-  current_version: "1.1.1"
-  last_bump_commit: "[Pass-35 S35-001 D-277 — ordered-pair-split rationale aligned with SS-daemon-wiring-v2-delta v1.9.1]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.2.0"
+  last_bump_commit: "[Pass-41 F-P41-IMP-001 D-283 — PC-5 destructure corrected to SessionStateChanged{Running, session_id} with launching_session_id match guard; EC-303 SpawnAck mechanism added; SS-embedded-pty+SS-ipc added to inputs]"
+  last_bump_date: "2026-06-14"
 
 BC-2.09.001:
   path: specs/behavioral-contracts/ss-09/BC-2.09.001.md
@@ -839,8 +839,8 @@ BC-2.09.007:
 
 BC-2.09.008:
   path: specs/behavioral-contracts/ss-09/BC-2.09.008.md
-  current_version: "1.2.0"
-  last_bump_commit: "[Pass-38 S38-001 D-280 2026-06-14 — PC-4/PC-1 full mouse-capture sequences; EnableMouseCapture+SGR-entry / SGR-exit+DisableMouseCapture; BC-2.09.002 Inv-5 cross-refs; whole-class SS-09/SS-05 swept zero survivors]"
+  current_version: "1.3.0"
+  last_bump_commit: "[Pass-41 F-P41-IMP-001 D-283 — PC Step 4/5 SpawnAck wiring added: TUI stores launching_session_id from SpawnAck, auto-advance matches against it; SS-ipc added to inputs]"
   last_bump_date: "2026-06-14"
 
 BC-2.09.009:

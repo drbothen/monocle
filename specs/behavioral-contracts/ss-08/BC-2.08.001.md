@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.3"
+version: "1.5.0"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-13T00:00:00Z
+timestamp: 2026-06-14T12:00:00Z
 phase: v1A-prd-delta
-inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/SS-engine-module-v2-delta.md, architecture/adr/ADR-0009-native-session-host-process-model.md]
-input-hash: "4419632"
+inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/SS-engine-module-v2-delta.md, architecture/SS-ipc.md, architecture/adr/ADR-0009-native-session-host-process-model.md]
+input-hash: "471df00"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-08
@@ -59,7 +59,10 @@ goes directly to `Launching`.
 
 1. `SessionHostSpawner::spawn(session_id, recipe, runtime_dir)` is called within 2 seconds
    of `spawn_session()` being invoked. The `session_id` is a UUID v4 rendered as a String
-   (generated via `uuid::Uuid::new_v4().to_string()` inside `spawn_session()`).
+   (generated via `uuid::Uuid::new_v4().to_string()` in the daemon IPC handler (the
+   `ClientToServer::SpawnSession` match arm) BEFORE `spawn_session()` is called.
+   `spawn_session()` receives `opts.session_id` already populated via
+   `opts.with_daemon_fields()`; it does NOT generate the UUID itself.).
 2. A `SessionEntry` is added to `SessionManager.sessions` keyed by `session_id`. The entry's
    initial `state` is `SessionState::Launching`.
 3. `session-state.json` is written to `<runtime_dir>/session-<session_id>.json` with the
@@ -140,7 +143,7 @@ goes directly to `Launching`.
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC is the primary definition of the spawn operation that launches the session-host process and creates the session registry entry |
 | L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness — the sidecar is a monocle-owned file, not a harness file; the atomic write via tempfile::persist ensures no partial writes to monocle's own state) |
 | Architecture Module | monocle-runtime (SessionManager sub-module — `monocle-runtime/src/session_manager/mod.rs`) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.2.1 §SessionManager §Public API (`spawn_session(opts: SpawnOptions)` signature — Model A; `spawn_recipe()` called daemon-side as first step); SS-session-manager.md v2.2.1 §session-state.json schema (schema_version 3); SS-session-manager.md v2.2.1 §session_error_to_code (spawn-path arms: `EngineError::BinaryNotFound` → `"binary_not_found"`, `EngineError::InvalidPath` → `"invalid_spawn_arg"`); SS-engine-module-v2-delta.md v1.4.1 §SpawnOptions and §SpawnRecipe types (Model A wire/internal type assignment — I27-001); SS-ipc.md v1.20.1 §`ClientToServer::SpawnSession { opts: SpawnOptions }` (wire variant change — Model A); ADR-0009 v1.0.2 §Decision; SS-daemon-wiring-v2-delta.md v1.9.1 §3b (SessionStateChanged emission rule) |
+| Architecture Source | SS-session-manager.md v2.3.0 §SessionManager §Public API (`spawn_session(opts: SpawnOptions)` signature — Model A; `spawn_recipe()` called daemon-side as first step; UUID generated in IPC handler BEFORE spawn_session()); SS-session-manager.md v2.3.0 §session-state.json schema (schema_version 3); SS-session-manager.md v2.3.0 §session_error_to_code (spawn-path arms: `EngineError::BinaryNotFound` → `"binary_not_found"`, `EngineError::InvalidPath` → `"invalid_spawn_arg"`); SS-engine-module-v2-delta.md v1.4.1 §SpawnOptions and §SpawnRecipe types (Model A wire/internal type assignment — I27-001); SS-ipc.md v1.21.0 §`ClientToServer::SpawnSession { opts: SpawnOptions }` (wire variant — Model A) + §`ServerToClient::SpawnAck { session_id }` (new variant — F-P41-IMP-001); ADR-0009 v1.0.2 §Decision; SS-daemon-wiring-v2-delta.md v1.9.1 §3b (SessionStateChanged emission rule) |
 | Test Name | test_BC_2_08_001_spawn_session_entry_created_within_2s |
 
 ## Related BCs
@@ -152,10 +155,11 @@ goes directly to `Launching`.
 
 ## Architecture Anchors
 
-- `architecture/SS-session-manager.md#sessionmanager` (v2.2.1) — struct definition, public API (`spawn_session(opts: SpawnOptions)` — Model A), session lifecycle state machine
-- `architecture/SS-session-manager.md#session-statejson-schema` (v2.2.1) — sidecar schema specification (schema_version 3)
-- `architecture/SS-session-manager.md#error-handling-sessionerror-servertoclient-error-mapping` (v2.2.1) — `session_error_to_code()` spawn-path arms for EngineError bridge
+- `architecture/SS-session-manager.md#sessionmanager` (v2.3.0) — struct definition, public API (`spawn_session(opts: SpawnOptions)` — Model A), session lifecycle state machine; IPC handler generates UUID + sends SpawnAck BEFORE spawn_session() (F-P41-IMP-001)
+- `architecture/SS-session-manager.md#session-statejson-schema` (v2.3.0) — sidecar schema specification (schema_version 3)
+- `architecture/SS-session-manager.md#error-handling-sessionerror-servertoclient-error-mapping` (v2.3.0) — `session_error_to_code()` spawn-path arms for EngineError bridge
 - `architecture/SS-engine-module-v2-delta.md#spawnrecipe-and-spawnoptions-types` (v1.4.1) — SpawnOptions as wire type; SpawnRecipe as daemon-internal (I27-001 Model A)
+- `architecture/SS-ipc.md#servertoClientspawnack` (v1.21.0) — SpawnAck variant definition; UUID-generation locus in IPC handler (F-P41-IMP-001)
 - `architecture/adr/ADR-0009-native-session-host-process-model.md` — process model decision
 
 ## Story Anchor
@@ -165,6 +169,28 @@ S-TBD — Implement SessionManager::spawn_session() with SessionHostSpawner (fil
 ## VP Anchors
 
 VP-TBD — Session spawn integration tests (filled after VP creation)
+
+## §Trace v1.5.0
+
+**F-P41-IMP-001 — UUID-generation locus corrected to IPC handler; SpawnAck wiring; arch-source pins to SS-session-manager v2.3.0 + SS-ipc v1.21.0** (2026-06-14):
+
+- **PC-1 UUID-locus (normative rewrite):** The old wording "generated via
+  `uuid::Uuid::new_v4().to_string()` inside `spawn_session()`" was incorrect. The canonical
+  mechanism (F-P41-IMP-001, SS-session-manager.md v2.3.0 §IPC handler skeleton): the daemon
+  IPC handler generates the UUID in the `ClientToServer::SpawnSession` match arm BEFORE calling
+  `spawn_session()`. `spawn_session()` receives `opts.session_id` already populated via
+  `opts.with_daemon_fields(session_id, hooks_path)`; it does NOT generate the UUID itself.
+  PC-1 now states this correctly.
+
+- **Arch-source pin:** SS-session-manager.md v2.3.0 → v2.3.0 (F-P41-IMP-001 IPC handler
+  change — UUID generation + SpawnAck step added); SS-ipc.md v1.21.0 → v1.21.0 (new
+  `ServerToClient::SpawnAck { session_id }` variant). Architecture Anchors updated to match.
+
+- **No invariant change:** The uniqueness invariant (Invariant 1) and all other behavioral
+  content are unchanged. The UUID is still UUID v4; collision detection still required.
+  Only the generation locus is corrected: handler arm, not spawn_session() body.
+
+- SE-16d monotonicity: v1.5.0 timestamp 2026-06-14 > v1.4.3 timestamp 2026-06-13. PASS.
 
 ## §Trace v1.4.3
 
@@ -182,7 +208,7 @@ VP-TBD — Session spawn integration tests (filled after VP creation)
   from the Architecture-Source row in this same file:
   - `architecture/SS-session-manager.md#sessionmanager` `(v2.0.0)` → `(v2.2.1)` (×3 anchors)
   - `architecture/SS-engine-module-v2-delta.md#spawnrecipe-and-spawnoptions-types` `(v1.2.0)` → `(v1.4.1)`
-  The Architecture-Source row already cited SS-session-manager.md v2.2.1 and now cites
+  The Architecture-Source row already cited SS-session-manager.md v2.3.0 and now cites
   SS-engine-module-v2-delta.md v1.4.1 (see arch-source pin below). The anchor labels now
   match the Architecture-Source row — single source of truth for version labels.
 

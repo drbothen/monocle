@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.0"
+version: "1.3.0"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-03T23:30:00Z
+timestamp: 2026-06-14T12:00:00Z
 phase: v1A-prd-delta
-inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md]
-input-hash: "d80f11d"
+inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md, architecture/SS-ipc.md]
+input-hash: "d0b3854"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-09
@@ -62,9 +62,13 @@ AppMode. A `Ctrl-D` or session termination also exits `EmbeddedTerminal` automat
 3. Step 2 (ProjectPicker): nucleo-filtered list of recent project roots; free-text entry.
 4. Step 3 (WorktreeConfirm): editable display name + resolved worktree path.
 5. Step 4 (Launching): TUI sends `ClientToServer::SpawnSession` to daemon. Status bar shows
-   `[Launching session...]`. When `ServerToClient::SessionStateChanged { new_state: Running }` is
-   received, AppMode auto-transitions to `EmbeddedTerminal { session_id, prior: Dashboard }`.
-6. If spawn fails (daemon returns error): wizard returns to `ProfilePicker` with an error banner.
+   `[Launching session...]`. On receipt of `ServerToClient::SpawnAck { session_id }`, the wizard
+   stores it: `AppMode::SessionCreation { launching_session_id: Some(session_id.clone()), .. }`.
+   This is a point-to-point message to the requesting client only — it is NOT broadcast.
+   `SpawnAck` is guaranteed to arrive before any broker-published
+   `ServerToClient::SessionStateChanged { new_state: Launching }` (per-client FIFO ordering).
+6. Step 5 (auto-advance): When `ServerToClient::SessionStateChanged { session_id: <matching launching_session_id>, new_state: Running }` is received, `AppMode` auto-transitions to `EmbeddedTerminal { session_id, prior: Dashboard }`. The match is against `launching_session_id` (deterministic — populated from `SpawnAck`), NOT a broadcast heuristic. `SessionStateChanged` events whose `session_id` does not match `launching_session_id` are ignored by the wizard.
+7. If spawn fails (daemon returns `ServerToClient::Error`): wizard clears `launching_session_id` to `None` and returns to `ProfilePicker` with an error banner.
 
 ## Postconditions (exiting EmbeddedTerminal)
 
@@ -139,7 +143,7 @@ AppMode. A `Ctrl-D` or session termination also exits `EmbeddedTerminal` automat
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — session creation wizard and EmbeddedTerminal AppMode are both explicitly named in CAP-009; this BC covers the enter/exit transitions and the wizard auto-transition to EmbeddedTerminal |
 | Architecture Module | monocle-core (AppMode::EmbeddedTerminal, AppMode::SessionCreation variants, SessionCreationStep enum); monocle-tui (transition logic, wizard UI) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.5.2 §TUI AppMode Extensions (EmbeddedTerminal, SessionCreation, SessionCreationStep); §Session Creation Wizard; §State machine invariants |
+| Architecture Source | SS-embedded-pty.md v1.6.0 §TUI AppMode Extensions (EmbeddedTerminal, SessionCreation with `launching_session_id: Option<String>`, SessionCreationStep — F-P41-IMP-001); §Session Creation Wizard (SpawnAck receipt + launching_session_id storage + auto-advance match logic); §State machine invariants; SS-ipc.md v1.21.0 §ServerToClient::SpawnAck (point-to-point delivery to requesting client; wizard storage and filtering obligation) |
 | Test Name | test_BC_2_09_008_embedded_terminal_transitions |
 
 ## Related BCs
@@ -150,8 +154,9 @@ AppMode. A `Ctrl-D` or session termination also exits `EmbeddedTerminal` automat
 
 ## Architecture Anchors
 
-- `architecture/SS-embedded-pty.md#tui-appmode-extensions` — EmbeddedTerminal/SessionCreation variant definitions
-- `architecture/SS-embedded-pty.md#session-creation-wizard` — wizard step sequence
+- `architecture/SS-embedded-pty.md#tui-appmode-extensions` (v1.6.0) — EmbeddedTerminal/SessionCreation variant definitions; `launching_session_id: Option<String>` field (F-P41-IMP-001)
+- `architecture/SS-embedded-pty.md#session-creation-wizard` (v1.6.0) — wizard step sequence; SpawnAck receipt → launching_session_id storage; auto-advance match against launching_session_id
+- `architecture/SS-ipc.md#servertoClientspawnack` (v1.21.0) — SpawnAck variant; point-to-point delivery; wizard storage obligation
 
 ## Story Anchor
 
@@ -160,6 +165,39 @@ S-TBD — Implement EmbeddedTerminal/SessionCreation AppMode transitions in mono
 ## VP Anchors
 
 VP-TBD — AppMode transition tests (filled after VP creation)
+
+## §Trace v1.3.0
+
+**F-P41-IMP-001 — Wizard Step 4 (Launching): SpawnAck receipt + launching_session_id storage; Step 5 (auto-advance): deterministic match against launching_session_id; arch-source pins to SS-embedded-pty v1.6.0 + SS-ipc v1.21.0** (2026-06-14):
+
+- **PC Step 4 (Launching) — SpawnAck receipt (normative addition):** When
+  `ServerToClient::SpawnAck { session_id }` is received, the wizard stores it:
+  `AppMode::SessionCreation { launching_session_id: Some(session_id.clone()), .. }`.
+  `SpawnAck` is point-to-point (requesting client only; NOT broadcast). It arrives
+  before any broker-published `SessionStateChanged { Launching }` per per-client
+  FIFO ordering. Status bar shows `[Launching session...]`. Old Step 5 (auto-advance
+  on `SessionStateChanged`) is renumbered to Step 6; old Step 6 (spawn-fail) is
+  renumbered to Step 7.
+
+- **PC Step 5 (auto-advance) — deterministic match (normative rewrite):** Auto-advance
+  now matches `SessionStateChanged.session_id` against `launching_session_id` (populated
+  from `SpawnAck`), NOT a broadcast-race heuristic. Events not matching `launching_session_id`
+  are ignored. This replaces the implicit "any Running event" model that was unimplementable
+  for concurrent spawns from multiple TUI clients.
+
+- **Spawn-fail clearing (normative addition):** On receipt of `ServerToClient::Error`
+  after `SpawnSession`, wizard clears `launching_session_id` to `None` before returning
+  to ProfilePicker. (SpawnAck was already sent by the daemon for the failed spawn; the
+  id is now stale.)
+
+- **Arch-source pin:** SS-embedded-pty.md v1.6.0 → v1.6.0 (new `launching_session_id`
+  field in `AppMode::SessionCreation`; wizard SpawnAck wiring — F-P41-IMP-001);
+  SS-ipc.md v1.21.0 added (SpawnAck variant). Architecture Anchors updated to match.
+
+- No change to: EmbeddedTerminal enter/exit postconditions (PC-1..PC-5), Invariants
+  1-4, EC-250..EC-254, Canonical Test Vectors, or Verification Properties.
+
+- SE-16d monotonicity: v1.3.0 timestamp 2026-06-14 > v1.2.0 timestamp 2026-06-14. PASS.
 
 ## §Trace v1.2.0
 

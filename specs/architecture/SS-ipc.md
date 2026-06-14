@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "ipc"
 subsystem: SS-05
-version: "1.20.1"
+version: "1.21.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -377,14 +377,19 @@ pub enum ServerToClient {
     ///
     /// The TUI sends `ClientToServer::SpawnSession { opts: SpawnOptions }` carrying user-intent
     /// spawn parameters (project root, worktree root, harness ID, profile ID, CCR URL). The
-    /// daemon IPC handler fills `SpawnOptions.session_id` (pre-generated UUID) and
-    /// `SpawnOptions.hooks_settings_path` (shared hooks-settings.json) upon receipt, then
-    /// passes the completed `SpawnOptions` to `SessionManager::spawn_session(opts)`. The
-    /// `SpawnRecipe` is built daemon-side inside `spawn_session()` via `spawn_recipe()` and
-    /// is never transmitted over IPC. This is the ONLY path on which `EngineError::BinaryNotFound`
-    /// and `EngineError::InvalidPath` can reach `ServerToClient::Error` as distinct codes
-    /// (BC-2.03.007 PC-3/PC-7 diagnostic guarantee). The TUI is a thin client — it sends
-    /// intent (SpawnOptions), not a pre-built harness command line.
+    /// daemon IPC handler generates the session UUID (`uuid::Uuid::new_v4().to_string()`),
+    /// fills `SpawnOptions.session_id` and `SpawnOptions.hooks_settings_path` (shared
+    /// hooks-settings.json) via `opts.with_daemon_fields(session_id, hooks_path)`, sends
+    /// `ServerToClient::SpawnAck { session_id }` to the requesting client (F-P41-IMP-001
+    /// resolution — deterministic correlation), then passes the completed `SpawnOptions` to
+    /// `SessionManager::spawn_session(opts)`. UUID generation and SpawnAck dispatch happen
+    /// in the IPC handler BEFORE `spawn_session()` is called — `spawn_session()` receives
+    /// `opts.session_id` already populated. The `SpawnRecipe` is built daemon-side inside
+    /// `spawn_session()` via `spawn_recipe()` and is never transmitted over IPC. This is the
+    /// ONLY path on which `EngineError::BinaryNotFound` and `EngineError::InvalidPath` can
+    /// reach `ServerToClient::Error` as distinct codes (BC-2.03.007 PC-3/PC-7 diagnostic
+    /// guarantee). The TUI is a thin client — it sends intent (SpawnOptions), not a
+    /// pre-built harness command line.
     ///
     /// # No-silent-failure invariant (BC-2.05.010 PC-4 / PC-3-4 obligation)
     ///
@@ -425,8 +430,71 @@ pub enum ServerToClient {
         /// Human-readable diagnostic detail for logging. Not displayed verbatim to the user.
         message: String,
     },
+
+    // ── F-P41-IMP-001 resolution (2026-06-14) ─────────────────────────────────
+
+    /// Deterministic spawn acknowledgement. Sent by the daemon IPC handler to the
+    /// REQUESTING CLIENT ONLY (never broadcast) immediately after the session UUID is
+    /// generated and the `SpawnSession` IPC message is accepted, BEFORE calling
+    /// `SessionManager::spawn_session()`.
+    ///
+    /// # Why this exists — F-P41-IMP-001 resolution
+    ///
+    /// `ClientToServer::SpawnSession` carries no correlation token. The daemon assigns the
+    /// `session_id` (UUID v4) in the IPC handler and passes it to `spawn_session()` inside
+    /// the completed `SpawnOptions`. The requesting TUI has no other way to learn this id
+    /// deterministically — `SessionStateChanged { Launching }` is broadcast to ALL clients
+    /// and carries no request correlation, making a heuristic "first unseen Launching id" race
+    /// on multiple simultaneous spawns. `SpawnAck` closes this gap without a broadcast-race.
+    ///
+    /// # Delivery ordering (normative)
+    ///
+    /// The IPC handler MUST emit `SpawnAck` in this sequence, on the REQUESTING client's
+    /// per-client channel only:
+    ///   1. Generate `session_id` via `uuid::Uuid::new_v4().to_string()`.
+    ///   2. Send `ServerToClient::SpawnAck { session_id: session_id.clone() }` to the
+    ///      requesting client (per-client `client_tx.send(...)`) — NOT to the broker.
+    ///   3. Build completed `SpawnOptions` via `opts.with_daemon_fields(session_id, hooks_path)`.
+    ///   4. Call `SessionManager::spawn_session(opts)`.
+    ///   5. On `Ok`: broker emits `SessionStateChanged { Launching }` + `SessionListUpdate`.
+    ///   6. On `Err`: send `ServerToClient::Error` to requesting client (existing path unchanged).
+    ///
+    /// Step 2 MUST precede step 4 so that `SpawnAck` arrives at the TUI before any broadcast
+    /// `SessionStateChanged { Launching }` event. The per-client FIFO channel guarantees
+    /// in-order delivery to the requesting client.
+    ///
+    /// # TUI consumption (normative)
+    ///
+    /// On receipt of `SpawnAck { session_id }`, the TUI MUST:
+    ///   - If `AppMode` is currently `SessionCreation { step: Launching, .. }`:
+    ///     store `session_id` in `App::wizard_session_id` (see SS-09 §SessionCreation wizard).
+    ///   - Otherwise: log WARN and ignore (SpawnAck arrived for a spawn the wizard no longer
+    ///     owns — e.g., wizard was cancelled between SpawnSession send and SpawnAck receipt).
+    ///
+    /// # schema_version impact
+    ///
+    /// `SpawnAck` is a new `ServerToClient` variant. Because `ServerToClient` is `#[non_exhaustive]`,
+    /// adding a new variant is forward-compatible for receivers that already handle unknown
+    /// variants gracefully (required by `#[non_exhaustive]` contract). The wire `schema_version`
+    /// in `session-state.json` is unchanged (that schema governs the sidecar file, not the
+    /// IPC message types). No `schema_version` bump is required for IPC message type additions
+    /// (the IPC protocol does not carry an explicit version field; forward-compat is handled
+    /// by `#[non_exhaustive]` + serde tag).
+    SpawnAck {
+        /// The daemon-assigned session UUID (String, same type used everywhere else).
+        /// The TUI stores this in `App::wizard_session_id` while `SessionCreation::Launching`
+        /// is the active step, to enable deterministic session_id filtering in EC-303.
+        session_id: String,
+    },
 }
 ```
+
+<a id="servertoClientspawnack"></a>
+#### ServerToClient::SpawnAck — normative cross-reference anchor
+
+The `SpawnAck { session_id }` variant is defined above in the `ServerToClient` enum (F-P41-IMP-001,
+2026-06-14). Full delivery-ordering and TUI-consumption spec is in the doc-comment for the variant.
+This heading provides a stable anchor target for cross-references (POL-13 compliance).
 
 ### Client-to-Server Messages
 
@@ -494,12 +562,19 @@ pub enum ClientToServer {
 
     /// Spawn a new harness session.
     ///
-    /// The TUI sends spawn intent parameters (`SpawnOptions`). The daemon IPC handler fills
-    /// `SpawnOptions.session_id` and `SpawnOptions.hooks_settings_path` on receipt, then
-    /// calls `SessionManager::spawn_session(opts)`. Inside `spawn_session()`, the daemon
-    /// calls `engine_module.spawn_recipe(&opts)` FIRST to build the `SpawnRecipe`
-    /// (I27-001 Model A: daemon-side recipe construction). The `SpawnRecipe` is never sent
-    /// over IPC; only `SpawnOptions` crosses the wire.
+    /// The TUI sends spawn intent parameters (`SpawnOptions`). The daemon IPC handler:
+    ///   1. Generates `session_id` via `uuid::Uuid::new_v4().to_string()` (F-P41-IMP-001:
+    ///      UUID generation is in the IPC handler, NOT inside `spawn_session()`).
+    ///   2. Fills `SpawnOptions.session_id` and `SpawnOptions.hooks_settings_path` via
+    ///      `opts.with_daemon_fields(session_id.clone(), hooks_path)`.
+    ///   3. Sends `ServerToClient::SpawnAck { session_id }` to the REQUESTING CLIENT ONLY
+    ///      (not broadcast), so the TUI wizard can store the id for deterministic EC-303
+    ///      session_id filtering before any `SessionStateChanged { Launching }` broadcast
+    ///      arrives.
+    ///   4. Calls `SessionManager::spawn_session(opts)`. Inside `spawn_session()`, the daemon
+    ///      calls `engine_module.spawn_recipe(&opts)` FIRST to build the `SpawnRecipe`
+    ///      (I27-001 Model A: daemon-side recipe construction). The `SpawnRecipe` is never
+    ///      sent over IPC; only `SpawnOptions` crosses the wire.
     ///
     /// On success the daemon emits `SessionStateChanged { Launching }` + `SessionListUpdate`.
     /// On failure the daemon sends `ServerToClient::Error` to the requesting client with one of
@@ -510,10 +585,17 @@ pub enum ClientToServer {
     /// - `"spawn_failed"` — OS process spawn failure
     /// - `"sidecar_write_failed"` — sidecar I/O failure post-spawn
     /// - `"session_id_collision"` — UUID v4 collision (do not auto-retry)
+    ///
+    /// NOTE: If `spawn_session()` returns `Err`, the TUI will have already received `SpawnAck`.
+    /// The `SpawnAck` session_id is therefore NOT guaranteed to correspond to a successfully
+    /// spawned session. The TUI MUST clear `App::wizard_session_id` on receipt of
+    /// `ServerToClient::Error` from the spawn path (treat as spawn failure; wizard returns
+    /// to ProfilePicker per BC-2.09.008 PC-5 / BC-2.09.008 EC-252).
     SpawnSession {
         /// Spawn intent parameters from the TUI (SS-08 §SpawnOptions).
         /// `session_id` and `hooks_settings_path` are filled by the daemon IPC handler
-        /// upon receipt, before passing to `SessionManager::spawn_session()`.
+        /// upon receipt (via `with_daemon_fields()`), before passing to
+        /// `SessionManager::spawn_session()`. See step 1-2 above.
         opts: SpawnOptions,
     },
 
@@ -1363,6 +1445,42 @@ still pending in the daemon's registry (i.e., still within the 300ms timeout win
 prompts are never re-pushed.
 
 ---
+
+## §Trace v1.21.0
+
+**F-P41-IMP-001 — `ServerToClient::SpawnAck` added; UUID-locus prose corrected throughout** (2026-06-14):
+
+- **Finding (F-P41-IMP-001, IMPORTANT):** Three defects in the spawn-correlation design:
+  1. `ClientToServer::SpawnSession` carried no correlation token. The daemon assigned the UUID
+     but had no channel to return it to the requesting TUI, making deterministic session_id
+     filtering in `AppMode::SessionCreation` (EC-303) impossible.
+  2. The `ServerToClient::Error` variant's `# spawn_recipe() call site` section said "the daemon
+     IPC handler fills `SpawnOptions.session_id` (pre-generated UUID)". The term "pre-generated"
+     was ambiguous — it implies the UUID was generated before the message arrived rather than by
+     the IPC handler on receipt.
+  3. `ClientToServer::SpawnSession` variant doc-comment said "The daemon IPC handler fills
+     `SpawnOptions.session_id` and `SpawnOptions.hooks_settings_path` on receipt, then calls
+     `SessionManager::spawn_session(opts)`" — missing the SpawnAck step entirely.
+- **Decision — Mechanism (b):** `ServerToClient::SpawnAck { session_id }` is added as a new
+  `ServerToClient` variant. It is sent to the REQUESTING CLIENT ONLY (not broadcast) by the
+  IPC handler in the same `ClientToServer::SpawnSession` match arm, BEFORE calling
+  `spawn_session()`. This gives the TUI wizard a deterministic UUID via a point-to-point message
+  with guaranteed ordering (per-client FIFO channel delivers SpawnAck before any broker-published
+  `SessionStateChanged { Launching }`). Mechanism (a) (broadcast-race heuristic, "claim first
+  unseen Launching id") was rejected as production-grade non-compliant: it fails on multiple
+  simultaneous spawns and has no correlation guarantee even in the v1A single-TUI case.
+- **Fix (a) — `ServerToClient::SpawnAck` variant added:** New variant with `session_id: String`
+  field. Full normative doc-comment specifies delivery ordering (5 steps), TUI consumption
+  obligation (store in `AppMode::SessionCreation::launching_session_id`), and schema_version
+  impact (no `session-state.json` schema bump needed; IPC forward-compat via `#[non_exhaustive]`).
+- **Fix (b) — `ServerToClient::Error` spawn section rewritten:** "pre-generated UUID" →
+  explicit "generates the session UUID (`uuid::Uuid::new_v4().to_string()`)" with SpawnAck
+  step described in the call chain.
+- **Fix (c) — `ClientToServer::SpawnSession` variant doc-comment rewritten:** Full 4-step
+  IPC handler sequence documented. SpawnAck added as step 3. Spawn-failure case clarified:
+  TUI must clear `wizard_session_id` on spawn error even though SpawnAck has been received.
+- Semver: minor (v1.20.1 → v1.21.0) — new `ServerToClient::SpawnAck` wire variant;
+  normative IPC handler behavior added.
 
 ## §Trace v1.20.1
 

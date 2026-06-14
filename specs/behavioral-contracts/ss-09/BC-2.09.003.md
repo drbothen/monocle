@@ -52,7 +52,7 @@ All coordinate examples in this BC (and in BC-2.09.002 EC-213) assume:
 1. `AppMode::EmbeddedTerminal { session_id }` is active.
 2. `crossterm::event::EnableMouseCapture` was called during `App::enter_embedded_terminal()`
    — mouse capture is scoped to `EmbeddedTerminal` entry, NOT globally active at TUI startup
-   (I3 fix per SS-embedded-pty.md v1.5.2: global mouse capture is NOT used; it would steal
+   (I3 fix per SS-embedded-pty.md v1.6.0: global mouse capture is NOT used; it would steal
    text selection from monocle's own panels).
 3. SGR mouse mode (`ESC [ ? 1006 h`) has been written to the terminal on EmbeddedTerminal entry
    (immediately after `EnableMouseCapture`).
@@ -63,7 +63,7 @@ All coordinate examples in this BC (and in BC-2.09.002 EC-213) assume:
 1. When a `crossterm::event::Event::Mouse(event)` is received in `AppMode::EmbeddedTerminal`,
    `mouse_event_to_pty_bytes(event, pane_area: Rect)` is called.
 2. The function returns `Some(bytes)` encoding the event in SGR mouse mode.
-   The complete base-`Ps` table (per SS-embedded-pty.md v1.5.2 §mouse_event_to_pty_bytes):
+   The complete base-`Ps` table (per SS-embedded-pty.md v1.6.0 §mouse_event_to_pty_bytes):
 
    | `crossterm::MouseEventKind` | Base `Ps` | Terminator | Notes |
    |-----------------------------|-----------|-----------|-------|
@@ -107,7 +107,7 @@ All coordinate examples in this BC (and in BC-2.09.002 EC-213) assume:
    - `EnableMouseCapture` is NOT called at TUI startup; it is NOT globally active outside
      `EmbeddedTerminal` mode. Rationale: global mouse capture would steal terminal text
      selection from monocle's sessions panel, event ribbon, and other panels. See
-     SS-embedded-pty.md v1.5.2 §I3 UX tradeoff.
+     SS-embedded-pty.md v1.6.0 §I3 UX tradeoff.
 2. `mouse_event_to_pty_bytes(event, pane_area: Rect)` is a PURE function — no I/O or state mutation.
 3. **Motion delivery model — 1002 (button-event tracking), NOT 1003 (any-event tracking):**
    crossterm enables tracking mode 1002 (`CSI ? 1002 h`, enabled implicitly by
@@ -123,7 +123,7 @@ All coordinate examples in this BC (and in BC-2.09.002 EC-213) assume:
    (terminator `m`); Drag(L/M/R)=32/33/34 (button+32 motion bit, terminator `M`);
    Moved=35 (3+32, no-button motion, UNREACHABLE on Unix — see PC-2); ScrollUp=64;
    ScrollDown=65; ScrollLeft=66; ScrollRight=67. Modifier bits are additive: Shift|=4,
-   Alt|=8, Ctrl|=16. This matches SS-embedded-pty.md v1.5.2 §mouse_event_to_pty_bytes
+   Alt|=8, Ctrl|=16. This matches SS-embedded-pty.md v1.6.0 §mouse_event_to_pty_bytes
    exhaustively. The prior partial enumeration {0,1,2,64,65} was incomplete.
 
 ## Edge Cases
@@ -158,7 +158,7 @@ All coordinate examples in this BC (and in BC-2.09.002 EC-213) assume:
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — mouse forwarding is explicitly named in CAP-009 ("mouse") as part of the full-fidelity keyboard forwarding capability |
 | Architecture Module | monocle-core (`mouse_event_to_pty_bytes()` pure function); monocle-tui (EmbeddedTerminal event handler, SGR mode write) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.5.2 §Mouse support (SGR mode); §I3 UX tradeoff (scoped mouse capture) |
+| Architecture Source | SS-embedded-pty.md v1.6.0 §Mouse support (SGR mode); §I3 UX tradeoff (scoped mouse capture) |
 | Test Name | test_BC_2_09_003_mouse_events_sgr_encoded |
 
 ## Related BCs
@@ -211,7 +211,7 @@ VP-TBD — Mouse event SGR encoding unit tests (filled after VP creation)
 
 ## §Trace v1.4.0
 
-**S35-003 + arch-source pin v1.5.1→v1.5.2 — complete mouse Ps enumeration matching SS-embedded-pty v1.5.2** (2026-06-13 / D-277):
+**S35-003 + arch-source pin v1.5.1→v1.5.2 — complete mouse Ps enumeration matching SS-embedded-pty v1.6.0** (2026-06-13 / D-277):
 - S35-003: PC-2 and Invariant 4 previously carried the incomplete Ps enumeration
   {0,1,2,64,65} (Down left/middle/right and ScrollUp/ScrollDown only). This missed:
   Up variants (release, terminator `m`), Drag variants (32/33/34 — button+32 motion bit),
@@ -221,7 +221,7 @@ VP-TBD — Mouse event SGR encoding unit tests (filled after VP creation)
   Ctrl|=16).
   - **PC-2:** replaced prose with the authoritative 14-row base-Ps table (12 base values +
     Moved-unreachable note) plus the modifier-bit additive rule and the terminator mapping
-    (Up variants → `m`; all others → `M`). Source: SS-embedded-pty.md v1.5.2
+    (Up variants → `m`; all others → `M`). Source: SS-embedded-pty.md v1.6.0
     §mouse_event_to_pty_bytes exhaustive match.
   - **Invariant 4:** replaced "ScrollUp=64/ScrollDown=65" partial statement with the complete
     base-Ps summary covering all 12 base values + modifier rule + SS-embedded-pty citation.

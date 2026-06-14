@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.1"
+version: "1.2.0"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-03T23:59:00Z
+timestamp: 2026-06-14T12:00:00Z
 phase: v1A-prd-delta
-inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/SS-daemon-wiring-v2-delta.md]
-input-hash: "42e785f"
+inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/SS-embedded-pty.md, architecture/SS-ipc.md, architecture/SS-daemon-wiring-v2-delta.md]
+input-hash: "1d2bd94"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-08
@@ -104,14 +104,19 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
 
 ### SessionCreation wizard auto-advance
 
-5. When the TUI is in `AppMode::SessionCreation { step: Launching, session_id }` and receives
-   `SessionStateChanged { session_id: <matching>, new_state: Running }`:
+5. When the TUI is in `AppMode::SessionCreation { step: Launching, launching_session_id: Some(session_id), .. }` and receives
+   `SessionStateChanged { session_id: <matching launching_session_id>, new_state: Running }`:
    - The `SessionCreation` wizard auto-transitions to
      `AppMode::EmbeddedTerminal { session_id, prior: Dashboard }`.
    - The TUI does NOT require the user to press Enter or any key — the transition is automatic.
+   - Auto-advance matches against `launching_session_id` (populated from
+     `ServerToClient::SpawnAck { session_id }` on successful spawn), NOT a broadcast-race
+     heuristic. `SessionStateChanged` events whose `session_id` does not match
+     `launching_session_id` are ignored by the wizard.
    - This auto-transition requires that `SessionStateChanged` is delivered before or at the
      same time as `SessionListUpdate` (so the wizard can act on the exact transition event,
-     not just the list update).
+     not just the list update). `SpawnAck` is delivered before any broker-published
+     `SessionStateChanged { Launching }` per the per-client FIFO ordering guarantee.
 
 6. When the TUI is in `AppMode::EmbeddedTerminal { session_id }` and receives
    `SessionStateChanged { session_id: <matching>, new_state: Terminated }`:
@@ -153,7 +158,7 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
 | EC-300 | Session transitions to `Terminating` (kill sent); then immediately to `Terminated` (fast exit) | Two `SessionStateChanged` messages emitted: first `{new_state: Terminating}`, then `{new_state: Terminated}`. Both are broadcast. TUI receives both in order. |
 | EC-301 | No TUI clients connected when transition occurs | `SessionStateChanged` posted to broker; broker fan-out has no subscribers; message discarded. No error. Connecting TUI clients receive current state in `InitialState`. |
 | EC-302 | TUI client connects during a transition (between `SessionStateChanged` and `SessionListUpdate` for the same session) | The client's `InitialState` push includes the post-transition state. The in-flight `SessionStateChanged` / `SessionListUpdate` pair for the transition is NOT replayed for the new client. The new client may miss the transition event but will see correct state in `InitialState`. |
-| EC-303 | `SessionCreation` wizard's session_id changes (session spawn failed and new session spawned) | Wizard tracks the new session_id; `SessionStateChanged` for the OLD session_id is ignored by the wizard (session_id filter). |
+| EC-303 | `SessionCreation` wizard's session_id changes (session spawn failed and new session spawned) | Wizard tracks the new session_id via `launching_session_id: Option<String>` (populated from `ServerToClient::SpawnAck { session_id }` on successful spawn). `SessionStateChanged` events whose `session_id` does not match `launching_session_id` are ignored by the wizard. On spawn failure, the daemon has already sent `SpawnAck`; the wizard MUST clear `launching_session_id` to `None` when the subsequent `ServerToClient::Error` is received, then re-populate it from the `SpawnAck` of the retry spawn. |
 | EC-304 | `SessionStateChanged { new_state: Running }` received for a session the TUI does not have in its local state | TUI logs WARN and requests a fresh `InitialState` re-sync (or ignores if the session appears in the next `SessionListUpdate`). |
 
 ## Canonical Test Vectors
@@ -183,7 +188,7 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC defines the `SessionStateChanged` IPC message which is the primary notification mechanism for session lifecycle state transitions; it is the trigger for the wizard auto-advance and EmbeddedTerminal exit, both of which are core session lifecycle behaviors in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager state transitions → broker publish); monocle-ipc (`ServerToClient::SessionStateChanged` variant); monocle-tui (wizard auto-advance, EmbeddedTerminal exit handlers) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.2.1 §Session lifecycle state machine (state transitions, including re-discovery GC and Detached re-discovery); SS-embedded-pty.md v1.5.2 §TUI AppMode Extensions (SessionCreation::Launching auto-transition to EmbeddedTerminal); SS-daemon-wiring-v2-delta.md v1.9.1 §3b (SessionStateChanged emission rule, ordered-pair-split-on-Full disconnect rule, rename-only-SessionListUpdate rule) |
+| Architecture Source | SS-session-manager.md v2.3.0 §Session lifecycle state machine (state transitions, including re-discovery GC and Detached re-discovery; IPC handler generates UUID + sends SpawnAck before spawn_session()); SS-embedded-pty.md v1.6.0 §TUI AppMode Extensions (SessionCreation::Launching auto-transition to EmbeddedTerminal; `launching_session_id: Option<String>` field added — F-P41-IMP-001); SS-ipc.md v1.21.0 §ServerToClient::SpawnAck (new variant; per-client point-to-point delivery before SessionStateChanged{Launching}); SS-daemon-wiring-v2-delta.md v1.9.1 §3b (SessionStateChanged emission rule, ordered-pair-split-on-Full disconnect rule, rename-only-SessionListUpdate rule) |
 | Cross-Ref | BC-2.09.008 (SessionCreation wizard auto-transition to EmbeddedTerminal on Running); BC-2.08.003 (kill → Terminating transition; 12s watchdog → Terminated); BC-2.05.003 (SessionListUpdate — emitted concurrently with SessionStateChanged for same transition) |
 | Test Name | test_BC_2_08_008_session_state_changed_emitted_on_every_transition |
 
@@ -196,8 +201,9 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
 
 ## Architecture Anchors
 
-- `architecture/SS-session-manager.md#session-lifecycle-state-machine` — complete state transition table
-- `architecture/SS-embedded-pty.md#tui-appmode-extensions` — SessionCreation::Launching auto-advance rule
+- `architecture/SS-session-manager.md#session-lifecycle-state-machine` (v2.3.0) — complete state transition table; IPC handler UUID-generation + SpawnAck step
+- `architecture/SS-embedded-pty.md#tui-appmode-extensions` (v1.6.0) — SessionCreation::Launching auto-advance rule; `launching_session_id: Option<String>` field (F-P41-IMP-001)
+- `architecture/SS-ipc.md#servertoClientspawnack` (v1.21.0) — SpawnAck variant; wizard storage obligation; spawn-failure clearing rule
 - `architecture/SS-daemon-wiring-v2-delta.md#ipc-handler-new-clienttoserver-variants` — broker publish path
 
 ## Story Anchor
@@ -207,6 +213,38 @@ S-TBD — Implement SessionStateChanged broadcast on every SessionEntry state tr
 ## VP Anchors
 
 VP-TBD — SessionStateChanged emission and TUI response integration tests (filled after VP creation)
+
+## §Trace v1.2.0
+
+**F-P41-IMP-001 — PC-5 destructure corrected to `launching_session_id`; EC-303 SpawnAck mechanism added; arch-source pins to SS-embedded-pty v1.6.0 + SS-ipc v1.21.0** (2026-06-14):
+
+- **PC-5 destructure (normative rewrite):** The old pattern
+  `AppMode::SessionCreation { step: Launching, session_id }` was incorrect — the struct
+  has no bare `session_id` field. Under F-P41-IMP-001 (SS-embedded-pty.md v1.6.0),
+  `AppMode::SessionCreation` gains `launching_session_id: Option<String>` (populated from
+  `ServerToClient::SpawnAck { session_id }` receipt). The correct destructure is:
+  `AppMode::SessionCreation { step: Launching, launching_session_id: Some(session_id), .. }`.
+  Auto-advance now matches against `launching_session_id` (deterministic, not a
+  broadcast-race heuristic). `SessionStateChanged` events whose `session_id` does not
+  match `launching_session_id` are ignored by the wizard. `SpawnAck` is guaranteed to
+  arrive before any broker-published `SessionStateChanged { Launching }` via the per-client
+  FIFO channel.
+
+- **EC-303 (normative enrichment):** Added explicit SpawnAck mechanism: wizard tracks
+  `launching_session_id: Option<String>` populated from `SpawnAck`. On spawn failure,
+  wizard MUST clear `launching_session_id` to `None` when `ServerToClient::Error` is
+  received (even though `SpawnAck` was already received for the failed spawn). Retry
+  spawn re-populates from the new `SpawnAck`.
+
+- **Arch-source pin:** SS-embedded-pty.md v1.6.0 → v1.6.0 (new `launching_session_id`
+  field in `AppMode::SessionCreation` — F-P41-IMP-001); SS-ipc.md v1.21.0 → v1.21.0
+  (new `ServerToClient::SpawnAck` variant). Architecture Anchors updated to match.
+
+- No change to: emission completeness (PC-1), broker dispatch (PC-2), ordering/split rule
+  (PC-3), rename rule (PC-4a), PC-4b, PC-6, Invariants 1-4, EC-300/301/302/304, or
+  Canonical Test Vectors.
+
+- SE-16d monotonicity: v1.2.0 timestamp 2026-06-14 > v1.1.1 timestamp 2026-06-13. PASS.
 
 ## §Trace v1.1.1
 
