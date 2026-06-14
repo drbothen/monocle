@@ -8,7 +8,7 @@ severity: must-pass
 visibility: holdout-evaluator-only
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T12:00:00Z
-modified: 2026-06-03T23:59:00Z
+modified: 2026-06-13T00:00:00Z
 ---
 
 # HS-EXP-014: Hook Auto-Injection Under Concurrent Spawns — Shared hooks-settings.json Not Clobbered; All Sessions Get Correct `--settings` Arg
@@ -28,7 +28,17 @@ per-session). All sessions spawned in this test share this single file.
 
 ### Part A: Sequential spawn — `--settings` arg present
 
-1. Call `SessionManager::spawn_session(recipe_A, harness_A, profile_A)` for session S1.
+1. Construct a `SpawnOptions` value `opts_A` carrying `harness_id: harness_A`,
+   `profile_id: profile_A`, `project_root: <a test project path>`,
+   `worktree_root: <same path, or a configured worktree root>`,
+   `session_id: <daemon-pre-generated UUID v4 string>`,
+   `hooks_settings_path: <runtime_dir>/hooks-settings.json` (the shared path written at
+   daemon startup), and `ccr_base_url: None`.
+   Call `SessionManager::spawn_session(opts_A)` for session S1.
+   NOTE: `session_id` and `hooks_settings_path` are daemon-filled fields (the daemon IPC
+   handler populates them before calling `spawn_session()`; the TUI does not set them).
+   In the test harness, the `MockSessionHostSpawner` fixture populates them directly since
+   there is no IPC layer.
 2. Verify within 2 seconds: `MockSessionHostSpawner` was called with args that include
    `--settings <runtime_dir>/hooks-settings.json` (the single shared file path).
 3. Verify: `session-state.json` for S1 was written at flat path `<runtime_dir>/session-<S1-uuid>.json`
@@ -115,6 +125,28 @@ state.json schema). The architect noted the field is redundant — the hooks pat
 constant (`<runtime_dir>/hooks-settings.json`) passed via spawn args, not stored per-session in
 the sidecar. The holdout now asserts the ABSENCE of the field (schema compliance) and instead
 verifies correct `--settings` arg injection for all concurrent sessions.
+
+---
+
+**§Trace v1.2 — Pass-28 I28-001: live Model-B spawn signature corrected to Model A SpawnOptions (2026-06-13)**
+
+- **Finding (I28-001 — IMPORTANT):** Part A Step 1 (line ~31) contained the RETIRED Model-B
+  three-argument `spawn_session()` signature: `SessionManager::spawn_session(recipe_A, harness_A, profile_A)`.
+  Model B was superseded by Model A (I27-001 adjudication, SS-session-manager v2.0.0 §Public API,
+  BC-2.08.001 v1.4.0). Under Model A, `spawn_session()` accepts a single `SpawnOptions` struct;
+  `SpawnRecipe` is daemon-internal and never appears on the call site.
+- **Fix:** Step 1 rewritten to the Model A call: construct `opts_A: SpawnOptions` with
+  `harness_id`, `profile_id`, `project_root`, `worktree_root`, `session_id`,
+  `hooks_settings_path`, and `ccr_base_url` fields populated per the SS-session-manager v2.0.0
+  §SpawnOptions field-population split (TUI populates `project_root`/`worktree_root`/`harness_id`/
+  `profile_id`/`ccr_base_url`; daemon fills `session_id`/`hooks_settings_path`), then call
+  `SessionManager::spawn_session(opts_A)`.
+- **Scope:** Part A Step 1 only. All other live Steps already used Model A language. §Trace
+  entries are historical records — not updated.
+- **Sweep of sibling holdouts HS-EXP-011/012/013/015:** grep confirmed ZERO Model-B
+  spawn-signature residue in any live Steps section of those files. No further fixes required.
+- Behavioral semantics unchanged: S1 is still spawned with `harness_A`/`profile_A`. Only the
+  call-site notation is corrected to match the ratified v2.0.0 public API.
 
 ---
 
