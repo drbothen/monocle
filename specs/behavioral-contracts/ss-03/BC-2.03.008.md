@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.3"
+version: "1.0.4"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -105,7 +105,7 @@ that must be explicitly opted into, not accidentally inherited.
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the capability boundary for the engine abstraction: spawn is opt-in, not universal; the default Err impl enforces that boundary for all engines that do not explicitly support monocle-controlled session spawning |
 | L2 Domain Invariants | DI-006 (EngineModule implementations must be stateless — the default impl performs no I/O and returns a constant error value, satisfying stateless detection requirement; spawn_recipe() is not a detection method but the same stateless principle applies to non-overriding impls) |
 | Architecture Module | monocle-core (`EngineModule` trait default impl) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module-v2-delta.md v1.6.0 §spawn_recipe() — new trait method (default impl signature); SS-session-manager.md v2.5.0 §session_error_to_code — `EngineError::UnsupportedOperation` → `"spawn_unsupported"` arm (F-P44-IMP-001); SS-ipc.md v1.23.0 §`ServerToClient::Error` — `"spawn_unsupported"` as 11th wire code in taxonomy (12 total as of v1.23.0; `session_not_ready` is the 12th — F-P50-001; `spawn_unsupported` positional rank unchanged) |
+| Architecture Source | SS-engine-module-v2-delta.md v1.6.0 §spawn_recipe() — new trait method (default impl signature); SS-session-manager.md v2.6.0 §session_error_to_code — `EngineError::UnsupportedOperation` → `"spawn_unsupported"` arm (F-P44-IMP-001); SS-ipc.md v1.23.2 §`ServerToClient::Error` — `"spawn_unsupported"` as 11th wire code in taxonomy (12 total as of v1.23.2; `session_not_ready` is the 12th — F-P50-001; `spawn_unsupported` positional rank unchanged) |
 | Cross-Ref | BC-2.03.005 (ClaudeCodeModule overrides this default with the real spawn_recipe() implementation) |
 | Test Name | test_BC_2_03_008_default_spawn_recipe_unsupported_operation |
 
@@ -125,6 +125,15 @@ S-TBD — Same story as BC-2.03.005 (EngineModule trait extension with spawn_rec
 ## VP Anchors
 
 VP-TBD — Default UnsupportedOperation unit test (filled after VP creation)
+
+## §Trace v1.0.4
+
+**P57-sweep — Architecture Source live-pin correction: SS-session-manager v2.5.0→v2.6.0; SS-ipc v1.23.0→v1.23.2** (2026-06-14):
+- **Architecture Source (line 108 — live pin only):** SS-session-manager.md v2.5.0 → v2.6.0; SS-ipc.md v1.23.0 → v1.23.2. These two cascade bumps occurred at Pass-52 (F-P52-001 / D-295) and Pass-50 respectively; BC-2.03.008 was NOT in the Pass-51/52 cascade target lists, so its live Architecture Source cell was missed. §Trace lines (v1.0.3: lines 133/134; v1.0.2: lines 159/161/175) correctly record historical versions at the time of each trace entry — those are NOT stale and remain untouched.
+- **POL-11 blind spot note:** `check_version_pins.py` does NOT flag the `path.md vX.Y.Z §section` pin format in Traceability table cells. This stale pin was invisible to POL-11 and was caught only by the Phase-1d→human-gate fresh-context consistency audit (Pass-57 sweep). No behavioral content changed.
+- Patch bump: v1.0.3 → v1.0.4.
+
+SE-16d monotonicity: v1.0.4 timestamp 2026-06-14 > v1.0.3 timestamp 2026-06-14. PASS.
 
 ## §Trace v1.0.3
 

@@ -204,8 +204,8 @@ ARCH-INDEX:
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.41.0"
-  last_bump_commit: "[Pass-52 F-P52-001 D-295 — SS-session-manager v2.6.0, SS-ipc v1.23.2, SS-daemon-wiring-v2-delta v1.11.3, BC-2.06.025 v1.5.0, BC-2.08.005 v1.0.2 version rows updated; §Trace v1.41.0 added]" # version-pin-historical: changelog description of bump, not a live pin
+  current_version: "1.41.1"
+  last_bump_commit: "[Pass-57 D-301 — GAP-7.1: SS-DTU preamble dtu-assessment pin v1.7.5→v1.7.6; GAP-7.2: duplicate separator removed; §Trace v1.41.1 added]" # version-pin-historical: changelog description of bump, not a live pin
   last_bump_date: "2026-06-14"
 
 STORY-INDEX:
@@ -719,8 +719,8 @@ BC-2.03.007:
 
 BC-2.03.008:
   path: specs/behavioral-contracts/ss-03/BC-2.03.008.md
-  current_version: "1.0.3"
-  last_bump_commit: "[Pass-50 F-P50-001 D-293 — arch-source pins bumped to SS-ipc v1.23.0/SS-session-manager v2.5.0/SS-engine-module-v2-delta v1.6.0; SessionNotReady taxonomy note updated; 12-code taxonomy propagation]" # version-pin-historical: changelog description of Pass-50 bump; those were canonical versions at Pass-50 time
+  current_version: "1.0.4"
+  last_bump_commit: "[Pass-57 D-301 — GAP-1.1: arch-source live pins corrected to v2.6.0/v1.23.2 (2 cascade generations stale; missed by Pass-51/52 target lists + POL-11 blind to vX.Y.Z §section format)]" # version-pin-historical: changelog description of what was corrected; stale values are the old versions being fixed
   last_bump_date: "2026-06-14"
 
 BC-2.05.009:
@@ -773,8 +773,8 @@ BC-2.08.004:
 
 BC-2.08.005:
   path: specs/behavioral-contracts/ss-08/BC-2.08.005.md
-  current_version: "1.0.2"
-  last_bump_commit: "[Pass-52 F-P52-001 D-295 — Invariant 4 revive-not-allowed backed by rename_failed wire code from SS-session-manager §Terminated-in-grace; arch-source pins bumped to SS-session-manager v2.6.0/SS-ipc v1.23.2/SS-daemon-wiring-v2-delta v1.11.3]"
+  current_version: "1.0.3"
+  last_bump_commit: "[Pass-57 D-301 — GAP-4.1: §session_error_to_code() anchor misattributed to SS-ipc.md; corrected to SS-session-manager.md (canonical home per SS-daemon-wiring-v2-delta:138); OBS-P57-001 upgraded from ratified-LOW to IMPORTANT GAP-4.1 and fixed]"
   last_bump_date: "2026-06-14"
 
 BC-2.08.006:

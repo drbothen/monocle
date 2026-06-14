@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.2"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -106,7 +106,7 @@ immediately (no grace period for sidecars without a live process).
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — GC is explicitly named in CAP-008; this BC defines the 10-second grace period, sidecar cleanup, and SessionListUpdate publication that constitute the GC policy |
 | Architecture Module | monocle-runtime (SessionManager GC tokio task) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.6.0 §Session GC policy; SS-session-manager.md v2.6.0 §Terminated-in-grace defensive action×state matrix (F-P52-001); SS-ipc.md v1.23.2 §session_error_to_code() (InvalidSessionName → "rename_failed"); SS-daemon-wiring-v2-delta.md v1.11.3 |
+| Architecture Source | SS-session-manager.md v2.6.0 §Session GC policy; SS-session-manager.md v2.6.0 §Terminated-in-grace defensive action×state matrix (F-P52-001); SS-session-manager.md v2.6.0 §session_error_to_code() (InvalidSessionName → "rename_failed"); SS-ipc.md v1.23.2 §ServerToClient::Error taxonomy; SS-daemon-wiring-v2-delta.md v1.11.3 |
 | Test Name | test_BC_2_08_005_terminated_session_gc_after_10s |
 
 ## Related BCs
@@ -125,6 +125,17 @@ S-TBD — Implement SessionManager GC task (filled by story-writer)
 ## VP Anchors
 
 VP-TBD — GC timing tests using tokio::time::pause (filled after VP creation)
+
+## §Trace v1.0.3
+
+**P57-sweep — Architecture Source anchor misattribution correction: §session_error_to_code() moved from SS-ipc.md to SS-session-manager.md** (2026-06-14):
+- **Architecture Source (line 109 — live pin only):** The `§session_error_to_code()` anchor was incorrectly attributed to `SS-ipc.md v1.23.2`. Per `SS-daemon-wiring-v2-delta.md:138`, `session_error_to_code()` is defined in `SS-session-manager.md` (monocle-runtime), NOT `SS-ipc.md`. SS-ipc.md has no `§session_error_to_code()` section.
+- **Correction:** `SS-ipc.md v1.23.2 §session_error_to_code()` → `SS-session-manager.md v2.6.0 §session_error_to_code()`. SS-ipc.md v1.23.2 citation retained separately for `§ServerToClient::Error taxonomy` (which IS defined in SS-ipc.md). The functional semantic is unchanged — the error-to-code mapping still produces `"rename_failed"` from `InvalidSessionName { reason: "session terminated" }` — only the source document attribution is corrected.
+- **Finding origin:** Phase-1d→human-gate fresh-context consistency audit (OBS-P57-001, upgraded to IMPORTANT severity by consistency lens). Confirmed by `SS-daemon-wiring-v2-delta.md:138`.
+- No behavioral content changed.
+- Patch bump: v1.0.2 → v1.0.3.
+
+SE-16d monotonicity: v1.0.3 timestamp 2026-06-14 > v1.0.2 timestamp 2026-06-14. PASS.
 
 ## §Trace v1.0.2
 

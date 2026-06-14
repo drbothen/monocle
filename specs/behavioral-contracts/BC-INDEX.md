@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.41.0"
+version: "1.41.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-15T00:00:00Z
@@ -78,8 +78,6 @@ traces_to: prd.md
 | BC-2.03.006 | ClaudeCodeModule.spawn_recipe() — CCR Base URL Injection | P0 | active | ss-03/BC-2.03.006.md | — |
 | BC-2.03.007 | spawn_recipe() Error Cases — BinaryNotFound and InvalidPath | P0 | active | ss-03/BC-2.03.007.md | — |
 | BC-2.03.008 | Default spawn_recipe() Returns UnsupportedOperation | P1 | active | ss-03/BC-2.03.008.md | — |
-
----
 
 ---
 
@@ -223,7 +221,7 @@ traces_to: prd.md
 ## SS-DTU: Claude Code Hook Protocol (DTU Gene-Source Contracts)
 
 > Gene source: `any-context-lazyclaude/internal/core/config/hooks.go` (hooks-r1/r2 ingest rounds)
-> Architecture source: `specs/dtu-assessment.md` v1.7.5 §Clone Development Approach
+> Architecture source: `specs/dtu-assessment.md` v1.7.6 §Clone Development Approach
 > Subsystem: SS-01 (DTU contracts describe protocol ingested by SS-01 daemon endpoints)
 > Capability: CAP-001 ("Daemon ingestion of Claude Code hook events; lifecycle management")
 > Note: These are gene-transfusion behavioral contracts (origin: gene-transfusion) that define
@@ -1225,6 +1223,17 @@ SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. 
 - BC-INDEX version: 1.40.4 → 1.40.5. No BC ID additions or retirements. No H1 title changes.
 
 SE-16d monotonicity: v1.40.5 timestamp 2026-06-14T20:00:00Z > v1.40.4 timestamp 2026-06-14T19:00:00Z. PASS.
+
+## §Trace v1.41.1
+
+**P57-sweep — dtu-assessment pin v1.7.5→v1.7.6; double-separator removal SS-03/SS-04 boundary** (2026-06-14):
+
+- **GAP-7.1 (IMPORTANT):** SS-DTU section preamble live normative reference `specs/dtu-assessment.md v1.7.5 §Clone Development Approach` was stale. Registry current: dtu-assessment = v1.7.6 (bumped dd82c05, 2026-05-30). Updated to v1.7.6.
+- **GAP-7.2 (LOW):** Double `---` separator between SS-03 and SS-04 sections (lines 83-85 at time of audit). Duplicate removed so a single `---` remains, consistent with all other section boundaries.
+- No BC H1 titles changed. No BC IDs added or retired. No normative behavior changed.
+- BC-INDEX version: 1.41.0 → 1.41.1.
+
+SE-16d monotonicity: v1.41.1 timestamp 2026-06-14 > v1.41.0 timestamp 2026-06-15T00:00:00Z. PASS (same calendar day; intra-day sequence confirmed by burst ordering).
 
 ## §Trace v1.41.0
 
