@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.2"
+version: "1.1.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -93,7 +93,8 @@ per-session worktree applies). The returned recipe is consumed by `SessionManage
 | EC-101 | `which::which("claude")` succeeds; `opts.ccr_base_url` is `Some("http://localhost:8080")` | Returns `Ok(SpawnRecipe)` with `env = {"MONOCLE_SESSION_ID": opts.session_id, "ANTHROPIC_BASE_URL": "http://localhost:8080"}`; see BC-2.03.006 |
 | EC-102 | `opts.worktree_root` resolves (via three-rule algorithm) to a path that exists on disk but is not a git repo (non-git project; three-rule fallback: `worktree_root = project_root`) | No error from `spawn_recipe()` — it uses `opts.worktree_root` as-is (which equals `opts.project_root` for non-git projects per the three-rule fallback); session-host is spawned in that directory; git worktree validation (if required) is caller's responsibility before passing `worktree_root` to `spawn_recipe()` |
 | EC-103 | `which::which("claude")` fails (binary not on PATH) | Returns `Err(EngineError::BinaryNotFound("claude".into()))` — see BC-2.03.007 |
-| EC-104 | `opts.hooks_settings_path` is non-UTF-8 | Returns `Err(EngineError::InvalidPath(...))` — see BC-2.03.007 (corrected: InvalidPath) |
+| EC-104 | `opts.hooks_settings_path` is non-UTF-8 (Prong 1: `to_str()` returns `None`) | Returns `Err(EngineError::InvalidPath(...))` — see BC-2.03.007 PC-5 Prong 1 (corrected: InvalidPath) |
+| EC-104b | `opts.hooks_settings_path` is valid UTF-8 but contains an embedded null byte (Prong 2: explicit `as_bytes().contains(&0)` scan fires) | Returns `Err(EngineError::InvalidPath(...))` — `to_str()` alone CANNOT detect null bytes (null is valid UTF-8); the explicit null scan is required; same `EngineError::InvalidPath` variant and `"invalid_spawn_arg"` IPC code as EC-104 — see BC-2.03.007 PC-5 Prong 2 |
 
 ## Canonical Test Vectors
 
@@ -121,7 +122,7 @@ per-session worktree applies). The returned recipe is consumed by `SessionManage
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the spawn recipe assembly for the ClaudeCodeModule adapter, which is the mechanism by which the engine abstraction enables monocle to launch Claude Code sessions |
 | L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness or factory workflow system — PC-4 explicitly states spawn_recipe() writes no files; the hooks-settings.json path is passed through as a CLI arg string only) |
 | Architecture Module | monocle-runtime (ClaudeCodeModule implementation — `monocle-runtime/src/engine/claude_code.rs`) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module-v2-delta.md v1.4.0 §ClaudeCodeModule::spawn_recipe() implementation spec; SS-session-manager.md v2.2.1 §SpawnRecipe integration with EngineModule |
+| Architecture Source | SS-engine-module-v2-delta.md v1.4.1 §ClaudeCodeModule::spawn_recipe() implementation spec (two-pronged null-byte detection — C34-001); SS-session-manager.md v2.2.1 §SpawnRecipe integration with EngineModule |
 | Stories | S-TBD (filled by story-writer) |
 | Test Name | test_BC_2_03_005_spawn_recipe_happy_path_binary_args_env_cwd |
 
@@ -143,6 +144,33 @@ S-TBD — Implement ClaudeCodeModule::spawn_recipe() with binary resolution, --s
 ## VP Anchors
 
 VP-TBD — spawn_recipe() happy-path unit tests (filled after VP creation)
+
+## §Trace v1.1.3
+
+**C34-001 — Add EC-104b for null-byte precondition violation; arch-source pin v1.4.0→v1.4.1** (2026-06-13 / D-276):
+
+- **Context:** SS-engine-module-v2-delta.md v1.4.1 (C34-001) corrected the null-byte detection
+  mechanism in `spawn_recipe()` to a two-pronged check. Prong 1: `to_str()` returns `None`
+  for non-UTF-8 paths. Prong 2: explicit `path_str.as_bytes().contains(&0)` scan for embedded
+  null bytes (required because null is valid UTF-8 and `to_str()` returns `Some` for paths
+  containing null bytes).
+
+- **EC-104 relabeled:** Prong 1 (non-UTF-8 → `to_str()` returns `None`) now explicitly
+  cited as Prong 1 in the EC-104 description to match BC-2.03.007 PC-5 terminology.
+
+- **EC-104b added:** New edge case covering Prong 2 — path is valid UTF-8 but contains an
+  embedded null byte. `to_str()` returns `Some` (cannot detect the null); explicit scan
+  `path_str.as_bytes().contains(&0)` fires and returns `Err(EngineError::InvalidPath(...))`.
+  Same wire-code (`"invalid_spawn_arg"`) as EC-104. Ensures BC-2.03.005 and BC-2.03.007
+  agree on the complete `InvalidPath` coverage.
+
+- **Precondition 3** ("does not contain embedded null bytes") remains correct as a
+  precondition — EC-104b documents the violation path for callers that fail to satisfy it.
+
+- **Architecture Source pin:** v1.4.0 → v1.4.1; §spawn_recipe() two-pronged null-byte
+  detection cited.
+
+- No behavioral change to happy-path postconditions. Patch bump only.
 
 ## §Trace v1.1.2
 

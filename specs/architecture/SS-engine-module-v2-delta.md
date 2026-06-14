@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "engine-module-v2-delta"
 subsystem: SS-03
-version: "1.4.0"
+version: "1.4.1"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -291,8 +291,19 @@ pub enum EngineError {
     BinaryNotFound(String),
 
     /// A structurally invalid argument was supplied to `spawn_recipe()`.
-    /// Covers `hooks_settings_path` values that cannot be converted to a valid UTF-8 string
-    /// (required for CLI arg passing) or that contain embedded null bytes.
+    ///
+    /// Detected via a TWO-PRONGED explicit check in `spawn_recipe()` step 2:
+    ///   1. `Path::to_str()` returns `None` → path is not valid UTF-8 → `InvalidPath`.
+    ///   2. Explicit byte scan: `path_str.as_bytes().contains(&0)` → path contains an
+    ///      embedded null byte → `InvalidPath`.
+    ///
+    /// The null-byte check MUST be explicit because null bytes (U+0000) ARE valid UTF-8;
+    /// `Path::to_str()` returns `Some(...)` for null-containing paths, so without prong (2)
+    /// a null-byte path would pass through `to_str()` and produce a `NulError` at
+    /// `CString`/`execve` construction, mapping to `SessionError::SpawnFailed` with wire
+    /// code `"spawn_failed"` — defeating the diagnostic-separation guarantee of BC-2.03.007
+    /// Invariant 1 (`"invalid_spawn_arg"` vs `"spawn_failed"` must be categorically distinct).
+    ///
     /// DISTINCT from `BinaryNotFound`: the harness binary may exist but the argument is
     /// structurally invalid and cannot be passed as a CLI arg.
     #[error("invalid argument: {0}")]
@@ -305,9 +316,17 @@ pub enum EngineError {
 - `BinaryNotFound` is reserved exclusively for the case where `which::which("claude")`
   (or the equivalent for other harnesses) fails — i.e., the harness binary cannot be
   located on `PATH`.
-- `InvalidPath` is used for structurally invalid arguments to `spawn_recipe()`, including
-  `hooks_settings_path` values that cannot be converted to a UTF-8 string (required for
-  CLI arg passing), or that contain embedded null bytes.
+- `InvalidPath` is used for structurally invalid arguments to `spawn_recipe()`. Detection
+  uses an EXPLICIT TWO-PRONGED check in step 2 of the implementation spec:
+  - **Prong 1 (non-UTF-8):** `opts.hooks_settings_path.to_str()` returns `None` → the path
+    cannot be represented as a valid UTF-8 string → `InvalidPath` is returned immediately.
+  - **Prong 2 (embedded null byte):** After prong 1 succeeds and yields `path_str: &str`,
+    an explicit byte scan `path_str.as_bytes().contains(&0)` checks for embedded null bytes.
+    If true → `InvalidPath` is returned.
+  Prong 2 is MANDATORY because null bytes (U+0000) ARE valid UTF-8; `to_str()` returns
+  `Some(...)` for null-containing paths. Without prong 2, a null-byte path silently escapes
+  to `CString`/`execve`, producing a `NulError` → `SessionError::SpawnFailed` → wire code
+  `"spawn_failed"`, which violates BC-2.03.007 Invariant 1 (diagnostic-separation guarantee).
 - `UnsupportedOperation` is the default-impl sentinel: the default `spawn_recipe()` trait
   implementation returns `Err(EngineError::UnsupportedOperation("spawn_recipe"))`. Engine
   modules that do not support monocle-controlled spawning return this variant; callers should
@@ -333,14 +352,28 @@ impl EngineModule for ClaudeCodeModule {
             .map_err(|_| EngineError::BinaryNotFound("claude".into()))?;
 
         // 2. Build args: --settings <hooks_settings_path>
+        //
+        // TWO-PRONGED InvalidPath guard (must be explicit — both conditions required):
+        //
+        // Prong 1: non-UTF-8 path. Path::to_str() returns None for non-UTF-8 byte sequences.
+        let path_str = opts.hooks_settings_path
+            .to_str()
+            .ok_or_else(|| EngineError::InvalidPath(
+                format!("hooks_settings_path is not valid UTF-8: {:?}", opts.hooks_settings_path)
+            ))?;
+        //
+        // Prong 2: embedded null byte. U+0000 IS valid UTF-8, so to_str() returns Some(...)
+        // for null-containing paths. Without this explicit scan, a null-byte path silently
+        // reaches CString/execve, producing NulError → SessionError::SpawnFailed →
+        // wire code "spawn_failed", violating BC-2.03.007 Invariant 1 (diagnostic separation).
+        if path_str.as_bytes().contains(&0) {
+            return Err(EngineError::InvalidPath(
+                format!("hooks_settings_path contains an embedded null byte: {:?}", opts.hooks_settings_path)
+            ));
+        }
         let args = vec![
             "--settings".to_string(),
-            opts.hooks_settings_path
-                .to_str()
-                .ok_or_else(|| EngineError::InvalidPath(
-                    format!("hooks_settings_path is not valid UTF-8: {:?}", opts.hooks_settings_path)
-                ))?
-                .to_string(),
+            path_str.to_string(),
         ];
 
         // 3. Build env: inject CCR base URL if configured
@@ -444,6 +477,22 @@ All Phase-1 `EngineModule` behavioral contracts (BC-2.03.*) remain in effect:
 | BC-2.03.008 | CodeMachineModule.spawn_recipe() returns UnsupportedOperation (v1 boundary) | P1 |
 
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
+
+---
+
+## §Trace v1.4.1
+
+**C34-001 — InvalidPath null-byte detection was factually impossible via to_str() alone** (2026-06-13, D-276):
+
+- **Finding (C34-001 CRITICAL):** The `spawn_recipe()` implementation spec (step 2) detected `InvalidPath` ONLY via `opts.hooks_settings_path.to_str().ok_or_else(|| EngineError::InvalidPath(...))`. The `InvalidPath` doc-comment and §Semantic contract both claimed this variant ALSO covers paths "that contain embedded null bytes." This claim was factually wrong: null bytes (U+0000) ARE valid UTF-8, so `Path::to_str()` returns `Some(...)` for null-containing paths — it does NOT return `None`. A null-byte path would therefore pass through `to_str()` and only fail later at `CString`/`execve`/`portable_pty::CommandBuilder` construction as a `NulError`, which maps to `SessionError::SpawnFailed` with wire code `"spawn_failed"`, NOT `EngineError::InvalidPath` with wire code `"invalid_spawn_arg"`. This defeats BC-2.03.007 Invariant 1 (diagnostic-separation guarantee: `"invalid_spawn_arg"` vs `"spawn_failed"` must be categorically distinct).
+- **Fix — Explicit two-pronged InvalidPath check in spawn_recipe() step 2:**
+  - Prong 1 (existing, correct): `opts.hooks_settings_path.to_str().ok_or_else(|| EngineError::InvalidPath("...not valid UTF-8..."))?` — handles non-UTF-8 byte sequences.
+  - Prong 2 (new, required): After prong 1 yields `path_str: &str`, an explicit byte scan `if path_str.as_bytes().contains(&0) { return Err(EngineError::InvalidPath("...embedded null byte...")); }` — handles paths that are valid UTF-8 but contain a null byte. The scan must precede any use of `path_str` as a CLI argument.
+- **Doc-comment corrected:** `InvalidPath` variant doc-comment rewritten to state the TWO-PRONGED detection mechanism explicitly, explain WHY null bytes cannot be caught by `to_str()`, and document the consequence of omitting prong 2 (NulError → SpawnFailed → "spawn_failed" — BC-2.03.007 Invariant 1 violation).
+- **§Semantic contract corrected:** `InvalidPath` bullet rewritten to describe both prongs explicitly, with the rationale for mandatory prong 2.
+- **Semver: patch (v1.4.0 → v1.4.1)** — the InvalidPath contract for null bytes was always the INTENDED behavior (BC-2.03.007 Invariant 1 requires it); only the implementation mechanism was wrong. This is a correctness fix to the detection path, not a behavioral addition. If the implementing engineer had followed v1.4.0 literally, null-byte paths would have mapped to the wrong wire code — hence patch (not minor).
+- **BC sweep required (no story cascade — all v1A):** BC-2.03.005, BC-2.03.006, BC-2.03.007, BC-2.03.008, BC-2.08.001, BC-2.08.006 — all cite `SS-engine-module-v2-delta.md v1.4.0` in Architecture Source; product-owner must sweep to v1.4.1.
+- **Registry bump required:** `version-pin-registry.yaml` entry for `SS-engine-module-v2-delta.md` must be updated from v1.4.0 → v1.4.1 by state-manager (per REGISTRY ATOMICITY rule — registry and spec file bump are one atomic factory-artifacts commit).
 
 ---
 

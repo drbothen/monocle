@@ -1292,7 +1292,7 @@ it for all sessions is clobber-safe precisely because the content is a pure func
 **BC-HOOK-010 is the authoritative model.** BC-2.08.006 Invariant 3 and EC-182 (which
 previously mandated per-session paths to avoid clobber) were architecture-level errors: they
 misdiagnosed the clobber risk. Clobber is a problem only when content differs between writers;
-here it never differs. BC-2.08.006 v1.2.0 has been RECONCILED in place by product-owner to
+here it never differs. BC-2.08.006 v1.2.0 has been RECONCILED in place by product-owner to <!-- version-pin-historical: v1.2.0 is the version at the time of this reconciliation event; historical record only -->
 reflect the shared-file model — Invariant 3 and EC-182 have been rewritten (not removed) to
 describe the correct shared-file behavior. This reconciliation is the canonical outcome; no
 further BC-2.08.006 edits are needed.

@@ -136,8 +136,8 @@ SS-embedded-pty:
 
 SS-engine-module-v2-delta:
   path: specs/architecture/SS-engine-module-v2-delta.md
-  current_version: "1.4.0"
-  last_bump_commit: "[Pass-31 P31-CRIT-001 — EngineError declared as canonical #[non_exhaustive] pub enum (3 variants, thiserror) D-273]"
+  current_version: "1.4.1"
+  last_bump_commit: "[Pass-34 C34-001 — spawn_recipe() InvalidPath detection corrected to two-pronged check (D-276)]"
   last_bump_date: "2026-06-13"
 
 SS-daemon-wiring-v2-delta:
@@ -701,27 +701,27 @@ BC-2.07.006:
 
 BC-2.03.005:
   path: specs/behavioral-contracts/ss-03/BC-2.03.005.md
-  current_version: "1.1.2"
-  last_bump_commit: "[Pass-13 I13-001+S13-001 — exhaustive worktree_root: VP row1 + EC-102 + §Trace false-attestation; 3rd recurrence resolved whole-file]"
-  last_bump_date: "2026-06-04"
+  current_version: "1.1.3"
+  last_bump_commit: "[Pass-34 C34-001 — EC-104b updated for two-pronged null-byte/non-UTF-8 InvalidPath detection (D-276)]"
+  last_bump_date: "2026-06-13"
 
 BC-2.03.006:
   path: specs/behavioral-contracts/ss-03/BC-2.03.006.md
-  current_version: "1.1.0"
-  last_bump_commit: "[Adversarial Pass 2 resolution 2026-06-03 — D-243 C2-003/I2-005]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.1.1"
+  last_bump_commit: "[Pass-34 C34-001 — spawn_recipe() InvalidPath EngineError doc updated for two-pronged detection (D-276)]"
+  last_bump_date: "2026-06-13"
 
 BC-2.03.007:
   path: specs/behavioral-contracts/ss-03/BC-2.03.007.md
-  current_version: "1.2.1"
-  last_bump_commit: "[Pass-32 IMP-002/IMP-003 — dead anchor #engineerror-additions→#engineerror-new-in-v1a; EngineError variants presented as 'new-type framing' not 'extensions' (D-274)]"
+  current_version: "1.2.2"
+  last_bump_commit: "[Pass-34 C34-001 — Invariant-1 diagnostic separation restored: to_str() non-UTF-8 + as_bytes().contains(&0) null-byte scan (D-276)]"
   last_bump_date: "2026-06-13"
 
 BC-2.03.008:
   path: specs/behavioral-contracts/ss-03/BC-2.03.008.md
-  current_version: "1.0.0"
-  last_bump_commit: "[D-241 v1A control-center BC/PRD/holdout delta 2026-06-03 — new SS-03 BC: SessionManager discovery re-probe]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.0.1"
+  last_bump_commit: "[Pass-34 C34-001 — EC-109 updated for null-byte InvalidPath detection sweep (D-276)]"
+  last_bump_date: "2026-06-13"
 
 BC-2.05.009:
   path: specs/behavioral-contracts/ss-05/BC-2.05.009.md
@@ -749,8 +749,8 @@ BC-2.06.025:
 
 BC-2.08.001:
   path: specs/behavioral-contracts/ss-08/BC-2.08.001.md
-  current_version: "1.4.1"
-  last_bump_commit: "[D-275 ANCHOR-LINT-TOOL remediation — servertocommand→servertoclient anchor typo fix in §Architecture-Source cross-reference]"
+  current_version: "1.4.2"
+  last_bump_commit: "[Pass-34 I34-001 — stale anchor version labels v2.0.0/v1.2.0 refreshed to v2.2.1/v1.4.1 (D-276)]"
   last_bump_date: "2026-06-13"
 
 BC-2.08.002:
@@ -779,9 +779,9 @@ BC-2.08.005:
 
 BC-2.08.006:
   path: specs/behavioral-contracts/ss-08/BC-2.08.006.md
-  current_version: "1.2.0"
-  last_bump_commit: "[Adversarial Pass 4 resolution D-245 2026-06-03 — SUG-002 PC-5: EnrichedSession→SessionSnapshot wire boundary type (C3-004 propagation)]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.2.1"
+  last_bump_commit: "[Pass-34 C34-001 — arch-source pin sweep for null-byte/InvalidPath detection (D-276)]"
+  last_bump_date: "2026-06-13"
 
 BC-2.08.007:
   path: specs/behavioral-contracts/ss-08/BC-2.08.007.md

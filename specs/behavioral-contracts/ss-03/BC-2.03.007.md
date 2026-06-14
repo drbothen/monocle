@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.1"
+version: "1.2.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -60,12 +60,21 @@ matters for diagnostic accuracy.
 
 ### InvalidPath path
 
-5. When `opts.hooks_settings_path.to_str()` returns `None` (the path bytes are not valid
-   UTF-8), `spawn_recipe()` returns
+5. `spawn_recipe()` applies a **two-pronged check** to `opts.hooks_settings_path`:
+   - **Prong 1 — non-UTF-8:** `opts.hooks_settings_path.to_str()` returns `None` (path bytes
+     are not valid UTF-8). `to_str()` cannot detect null bytes because null (`\x00`) is valid
+     UTF-8 and `to_str()` returns `Some` for paths containing null bytes.
+   - **Prong 2 — embedded null byte:** After a successful `to_str()`, an explicit scan via
+     `path_str.as_bytes().contains(&0)` detects any embedded null byte and returns
+     `Err(EngineError::InvalidPath(...))`. This explicit scan is required because `to_str()`
+     alone cannot detect null bytes.
+   In either prong, `spawn_recipe()` returns
    `Err(EngineError::InvalidPath(format!("hooks_settings_path is not valid UTF-8: {:?}", opts.hooks_settings_path)))`.
 6. The `InvalidPath` variant carries a descriptive message including the problematic path
    rendered via `{:?}` formatting. The error message format is:
    `"invalid argument: hooks_settings_path is not valid UTF-8: <path_debug>"`.
+   Both prongs produce the same `EngineError::InvalidPath` variant and IPC error code
+   (`"invalid_spawn_arg"`); they are treated identically at the wire level.
 7. On receiving `InvalidPath`, the error propagates as `EngineError::InvalidPath` →
    `SessionError::EngineError` → `ServerToClient::Error { code: "invalid_spawn_arg", message }`.
    The TUI MUST display the fixed banner: `"Session spawn failed: invalid hooks settings path
@@ -77,9 +86,14 @@ matters for diagnostic accuracy.
 ## Invariants
 
 1. **Semantic separation is mandatory:** `BinaryNotFound` = harness not installed (which failure).
-   `InvalidPath` = argument structurally invalid (UTF-8 conversion failure). The original draft
-   of this BC incorrectly proposed using `BinaryNotFound` for both cases. SS-engine-module-v2-delta.md
-   §Trace v1.0.1 (IMP-5) corrected this; this BC encodes the corrected taxonomy.
+   `InvalidPath` = argument structurally invalid (non-UTF-8 bytes OR embedded null byte). The
+   two-pronged detection mechanism (non-UTF-8 via `to_str()` returning `None`; embedded null
+   via explicit `as_bytes().contains(&0)` scan) is required because `to_str()` alone cannot
+   detect null bytes — null (`\x00`) is valid UTF-8. The original draft of this BC incorrectly
+   proposed using `BinaryNotFound` for both cases. SS-engine-module-v2-delta.md §Trace v1.0.1
+   (IMP-5) corrected this; this BC encodes the corrected taxonomy. SS-engine-module-v2-delta.md
+   v1.4.1 §spawn_recipe() further corrected the detection mechanism (C34-001); this BC v1.2.2
+   encodes that correction.
 2. `spawn_recipe()` checks binary existence FIRST (via `which::which`); if that succeeds,
    it then checks UTF-8 path validity. The order of checks is: (1) binary, (2) args validity.
    Early return on first failure.
@@ -91,7 +105,7 @@ matters for diagnostic accuracy.
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
 | EC-108 | `claude` binary is on PATH but not executable (permission denied) | `which::which` succeeds (returns path); execution permission failure occurs later at spawn time (in `monocle-session-host`); `spawn_recipe()` returns `Ok(recipe)` — it does not check executability |
-| EC-109 | `hooks_settings_path` contains embedded null bytes (not just non-UTF-8) | `to_str()` returns `None` (null bytes invalidate path conversion); returns `Err(EngineError::InvalidPath(...))` — treated identically to non-UTF-8 |
+| EC-109 | `hooks_settings_path` contains embedded null bytes (not just non-UTF-8) | `to_str()` returns `Some(path_str)` because null (`\x00`) is valid UTF-8 — `to_str()` alone CANNOT detect null bytes; the explicit scan `path_str.as_bytes().contains(&0)` detects the null and returns `Err(EngineError::InvalidPath(...))`; treated identically to non-UTF-8 at the IPC wire-code level (`"invalid_spawn_arg"`) |
 | EC-110 | `hooks_settings_path` is valid UTF-8 but the file does not exist at that path | `spawn_recipe()` returns `Ok(recipe)` — it does not check file existence; the `--settings <path>` arg is passed through; `claude` will fail to read the settings file at runtime |
 | EC-111 | Both `which::which` fails AND `hooks_settings_path` is invalid UTF-8 | Returns `Err(EngineError::BinaryNotFound("claude"))` — binary check is first; arg validation is never reached |
 
@@ -120,7 +134,7 @@ matters for diagnostic accuracy.
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the error taxonomy for spawn_recipe(), which is a method on the ClaudeCodeModule adapter; typed errors are essential for diagnostic accuracy in the engine abstraction layer |
 | L2 Domain Invariants | DI-006 (EngineModule implementations must be stateless — error variants carry no shared state; both errors are pure value returns) |
 | Architecture Module | monocle-runtime (ClaudeCodeModule — `monocle-runtime/src/engine/claude_code.rs`); monocle-core (`EngineError` type) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module-v2-delta.md v1.4.0 §EngineError (new in v1A) + §Semantic contract (IMP-5 InvalidPath correction) + §Phase Compatibility (I27-001 Model A: spawn_recipe() called daemon-side inside spawn_session()); SS-ipc.md v1.20.1 §ServerToClient::Error taxonomy (codes `"binary_not_found"` and `"invalid_spawn_arg"` — I12-001); SS-session-manager.md v2.2.1 §session_error_to_code spawn-path arms (EngineError bridge — I12-001; Model A reachability confirmed — I27-001) |
+| Architecture Source | SS-engine-module-v2-delta.md v1.4.1 §EngineError (new in v1A) + §Semantic contract (IMP-5 InvalidPath correction) + §spawn_recipe() two-pronged null-byte detection (C34-001) + §Phase Compatibility (I27-001 Model A: spawn_recipe() called daemon-side inside spawn_session()); SS-ipc.md v1.20.1 §ServerToClient::Error taxonomy (codes `"binary_not_found"` and `"invalid_spawn_arg"` — I12-001); SS-session-manager.md v2.2.1 §session_error_to_code spawn-path arms (EngineError bridge — I12-001; Model A reachability confirmed — I27-001) |
 | Test Name | test_BC_2_03_007_spawn_recipe_binary_not_found_and_invalid_path |
 
 ## Related BCs
@@ -140,6 +154,38 @@ S-TBD — Same story as BC-2.03.005 (error handling in spawn_recipe(); filled by
 ## VP Anchors
 
 VP-TBD — spawn_recipe() error path unit tests (filled after VP creation)
+
+## §Trace v1.2.2
+
+**C34-001 — Corrected null-byte detection mechanism; arch-source pin v1.4.0→v1.4.1** (2026-06-13 / D-276):
+
+- **Root cause:** The old EC-109 text claimed "`to_str()` returns `None` (null bytes invalidate
+  path conversion)". This is false: null (`\x00`) is valid UTF-8, so `to_str()` returns `Some`
+  for paths with embedded null bytes and cannot detect them. The correct mechanism
+  (established by SS-engine-module-v2-delta.md v1.4.1 §spawn_recipe() C34-001 fix) is a
+  two-pronged check: Prong 1 = `to_str()` returns `None` (genuine non-UTF-8); Prong 2 =
+  explicit `path_str.as_bytes().contains(&0)` scan (null bytes, valid UTF-8 but OS-rejected).
+
+- **EC-109 rewritten:** Old: "`to_str()` returns `None` (null bytes invalidate path conversion)".
+  New: "`to_str()` returns `Some(path_str)` because null is valid UTF-8 — explicit scan
+  `path_str.as_bytes().contains(&0)` detects the null and returns `Err(InvalidPath(...))`;
+  treated identically to non-UTF-8 at the `"invalid_spawn_arg"` wire-code level."
+
+- **Postcondition 5 rewritten:** Now documents both prongs with explicit statement that
+  `to_str()` alone cannot detect null bytes. Same `EngineError::InvalidPath` variant and
+  `"invalid_spawn_arg"` IPC code for both prongs (wire-level identity preserved).
+
+- **Postcondition 6 extended:** Added clarification that both prongs produce the same variant
+  and IPC code, so they are treated identically at the wire level.
+
+- **Invariant 1 updated:** Extended to document the two-pronged detection mechanism and cite
+  the C34-001 correction in SS-engine-module-v2-delta.md v1.4.1.
+
+- **Architecture Source pin:** v1.4.0 → v1.4.1 (architect's C34-001 bump); §spawn_recipe()
+  two-pronged null-byte detection added to citation.
+
+- No behavioral outcome changed (InvalidPath → invalid_spawn_arg wire code unchanged). Only
+  the mechanism description was wrong. Patch bump only.
 
 ## §Trace v1.2.1
 

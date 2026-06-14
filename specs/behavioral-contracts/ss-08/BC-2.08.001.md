@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.1"
+version: "1.4.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-13T00:00:00Z
@@ -140,7 +140,7 @@ goes directly to `Launching`.
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC is the primary definition of the spawn operation that launches the session-host process and creates the session registry entry |
 | L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness — the sidecar is a monocle-owned file, not a harness file; the atomic write via tempfile::persist ensures no partial writes to monocle's own state) |
 | Architecture Module | monocle-runtime (SessionManager sub-module — `monocle-runtime/src/session_manager/mod.rs`) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.2.1 §SessionManager §Public API (`spawn_session(opts: SpawnOptions)` signature — Model A; `spawn_recipe()` called daemon-side as first step); SS-session-manager.md v2.2.1 §session-state.json schema (schema_version 3); SS-session-manager.md v2.2.1 §session_error_to_code (spawn-path arms: `EngineError::BinaryNotFound` → `"binary_not_found"`, `EngineError::InvalidPath` → `"invalid_spawn_arg"`); SS-engine-module-v2-delta.md v1.4.0 §SpawnOptions and §SpawnRecipe types (Model A wire/internal type assignment — I27-001); SS-ipc.md v1.20.1 §`ClientToServer::SpawnSession { opts: SpawnOptions }` (wire variant change — Model A); ADR-0009 v1.0.2 §Decision; SS-daemon-wiring-v2-delta.md v1.9.0 §3b (SessionStateChanged emission rule) |
+| Architecture Source | SS-session-manager.md v2.2.1 §SessionManager §Public API (`spawn_session(opts: SpawnOptions)` signature — Model A; `spawn_recipe()` called daemon-side as first step); SS-session-manager.md v2.2.1 §session-state.json schema (schema_version 3); SS-session-manager.md v2.2.1 §session_error_to_code (spawn-path arms: `EngineError::BinaryNotFound` → `"binary_not_found"`, `EngineError::InvalidPath` → `"invalid_spawn_arg"`); SS-engine-module-v2-delta.md v1.4.1 §SpawnOptions and §SpawnRecipe types (Model A wire/internal type assignment — I27-001); SS-ipc.md v1.20.1 §`ClientToServer::SpawnSession { opts: SpawnOptions }` (wire variant change — Model A); ADR-0009 v1.0.2 §Decision; SS-daemon-wiring-v2-delta.md v1.9.0 §3b (SessionStateChanged emission rule) |
 | Test Name | test_BC_2_08_001_spawn_session_entry_created_within_2s |
 
 ## Related BCs
@@ -152,10 +152,10 @@ goes directly to `Launching`.
 
 ## Architecture Anchors
 
-- `architecture/SS-session-manager.md#sessionmanager` (v2.0.0) — struct definition, public API (`spawn_session(opts: SpawnOptions)` — Model A), session lifecycle state machine
-- `architecture/SS-session-manager.md#session-statejson-schema` (v2.0.0) — sidecar schema specification (schema_version 3)
-- `architecture/SS-session-manager.md#error-handling-sessionerror-servertoclient-error-mapping` (v2.0.0) — `session_error_to_code()` spawn-path arms for EngineError bridge
-- `architecture/SS-engine-module-v2-delta.md#spawnrecipe-and-spawnoptions-types` (v1.2.0) — SpawnOptions as wire type; SpawnRecipe as daemon-internal (I27-001 Model A)
+- `architecture/SS-session-manager.md#sessionmanager` (v2.2.1) — struct definition, public API (`spawn_session(opts: SpawnOptions)` — Model A), session lifecycle state machine
+- `architecture/SS-session-manager.md#session-statejson-schema` (v2.2.1) — sidecar schema specification (schema_version 3)
+- `architecture/SS-session-manager.md#error-handling-sessionerror-servertoclient-error-mapping` (v2.2.1) — `session_error_to_code()` spawn-path arms for EngineError bridge
+- `architecture/SS-engine-module-v2-delta.md#spawnrecipe-and-spawnoptions-types` (v1.4.1) — SpawnOptions as wire type; SpawnRecipe as daemon-internal (I27-001 Model A)
 - `architecture/adr/ADR-0009-native-session-host-process-model.md` — process model decision
 
 ## Story Anchor
@@ -165,6 +165,26 @@ S-TBD — Implement SessionManager::spawn_session() with SessionHostSpawner (fil
 ## VP Anchors
 
 VP-TBD — Session spawn integration tests (filled after VP creation)
+
+## §Trace v1.4.2
+
+**I34-001 — Stale anchor version labels updated; arch-source pin v1.4.0→v1.4.1** (2026-06-13 / D-276):
+
+- **I34-001 (Architecture Anchors stale version labels):**
+  The Architecture Anchors section carried stale parenthetical version labels that diverged
+  from the Architecture-Source row in this same file:
+  - `architecture/SS-session-manager.md#sessionmanager` `(v2.0.0)` → `(v2.2.1)` (×3 anchors)
+  - `architecture/SS-engine-module-v2-delta.md#spawnrecipe-and-spawnoptions-types` `(v1.2.0)` → `(v1.4.1)`
+  The Architecture-Source row already cited SS-session-manager.md v2.2.1 and now cites
+  SS-engine-module-v2-delta.md v1.4.1 (see arch-source pin below). The anchor labels now
+  match the Architecture-Source row — single source of truth for version labels.
+
+- **Arch-source pin:** SS-engine-module-v2-delta.md v1.4.0 → v1.4.1 (architect C34-001 bump).
+  The v1.4.1 bump corrected the null-byte detection mechanism in spawn_recipe(); this BC's
+  spawn-sequence description is unaffected behaviorally (the two-pronged check is internal
+  to spawn_recipe() and produces the same EngineError::InvalidPath outcome).
+
+- No behavioral content changed. Patch bump only.
 
 ## §Trace v1.4.0
 

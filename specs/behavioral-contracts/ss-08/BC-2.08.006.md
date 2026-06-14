@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.0"
+version: "1.2.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -117,7 +117,7 @@ has `--settings` in its argv.
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — hook auto-injection on spawn is explicitly named in CAP-008; this BC defines the complete injection chain from daemon hook-file write through to child process argv |
 | L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness — hooks-settings.json is written to monocle's runtime_dir, NOT to Claude Code's config directory; the `--settings` flag mechanism ensures monocle does not touch `~/.monocle/settings.json` or any Claude Code-owned path) |
 | Architecture Module | monocle-runtime (SessionManager spawn; daemon hook-file writer); monocle-session-host (CommandBuilder construction from recipe) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.2.1 §SpawnRecipe integration with EngineModule; SS-engine-module-v2-delta.md v1.4.0 §Hook auto-injection invariant; BC-HOOK-027; BC-HOOK-028 |
+| Architecture Source | SS-session-manager.md v2.2.1 §SpawnRecipe integration with EngineModule; SS-engine-module-v2-delta.md v1.4.1 §Hook auto-injection invariant; BC-HOOK-027; BC-HOOK-028 |
 | Cross-Ref | BC-2.03.005 (spawn_recipe() produces --settings arg); BC-HOOK-027 (monocle never writes ~/.monocle/settings.json); BC-HOOK-028 (no env-var alternative for hook injection); BC-2.04.010 (hook tmpfile generation — writes shared per-runtimeDir hooks-settings.json at daemon startup); BC-HOOK-010 (authoritative: hooks-settings.json is per-runtimeDir, not per-session) |
 | Test Name | test_BC_2_08_006_hook_auto_injection_settings_arg_in_child_argv |
 
@@ -139,6 +139,16 @@ S-TBD — Implement hook auto-injection in session spawn path (filled by story-w
 ## VP Anchors
 
 VP-TBD — Hook injection end-to-end tests (filled after VP creation)
+
+## §Trace v1.2.1
+
+**Arch-source pin v1.4.0→v1.4.1 (architect C34-001 bump)** (2026-06-13 / D-276):
+- Architecture Source updated: SS-engine-module-v2-delta.md v1.4.0 → v1.4.1.
+- Reason: architect bumped SS-engine-module-v2-delta.md to v1.4.1 to correct the null-byte
+  detection mechanism in spawn_recipe() (C34-001). The hook auto-injection invariant in this
+  BC is unaffected — it governs the `--settings` arg assembly and `lock.app` filter content,
+  not the null-byte detection path.
+- Patch bump only.
 
 ## §Trace v1.2.0
 
