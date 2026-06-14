@@ -238,12 +238,18 @@ jobs:
           fi
           echo "::notice::audit-table.md matches canonical SS-engine-module.md §Cross-Crate Constructor Audit Table"
 
-  # POL-11 + POL-12 enforcement: version-pin literal freshness + structural-claim freshness.
+  # POL-11 + POL-12 + POL-14 enforcement: version-pin freshness + structural-claim freshness.
   # Runs after preflight (in parallel with semgrep and audit-table-drift).
   # CI step ordering per SS-conventions-anti-patterns.md §CI Wiring.
   #
   # POL-11 (ADR-0007): verifies every active version-pin literal in .md/.rs/.toml/.yml/.yaml
   #   files matches the canonical version in .factory/specs/version-pin-registry.yaml.
+  #
+  # POL-14 (monocle-anchor-pin-freshness): embedded in check_version_pins.py (Pattern C).
+  #   Detects the parenthetical anchor-pin form `path/to/artifact.md#anchor` (vX.Y.Z)
+  #   that was previously invisible to POL-11 due to ID-version separation by #fragment + parens.
+  #   Validates cited version against registry. Introduced to close F-P46-IMP-001 process-gap.
+  #   Runs automatically as part of the POL-11 step — no separate invocation required.
   #
   # POL-12 Phase 1 (ADR-0008): verifies App struct field type-identifier claims in
   #   .factory/stories/*.md Tasks checklists + Downstream Consumer Contract blocks match
@@ -252,7 +258,7 @@ jobs:
   # Both scripts read from factory-artifacts (checked out at .factory-spec/).
   # No Rust toolchain required — pure Python with stdlib only.
   pol-lint:
-    name: POL-11 + POL-12 (version-pin + structural-claim freshness)
+    name: POL-11 + POL-12 + POL-14 (version-pin + anchor-pin + structural-claim freshness)
     needs: preflight
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -270,11 +276,14 @@ jobs:
           ref: factory-artifacts
           path: .factory-spec
 
-      - name: POL-11 — version-pin literal freshness (monocle-version-pin-freshness)
-        # Verifies every active version-pin literal (SS-X.md vN.M, BC-N.N.N vN.M, ADR-NNNN vN.M)
+      - name: POL-11/POL-14 — version-pin + anchor-pin freshness (monocle-version-pin-freshness + monocle-anchor-pin-freshness)
+        # POL-11: Verifies every active version-pin literal (SS-X.md vN.M, BC-N.N.N vN.M, ADR-NNNN vN.M)
         # in .md, .rs, .toml, .yml, .yaml files matches the registry current_version.
         # Active = not in §Trace section, not annotated # version-pin-historical, no time qualifier.
-        # Exit 1 on any stale active pointer. Exit 0 on all-current or all-historical.
+        # POL-14 (Pattern C): additionally detects the parenthetical anchor-pin form
+        #   `path/to/artifact.md#fragment` (vX.Y.Z) which was invisible to POL-11 Pattern A.
+        #   Validates cited version against registry identically. Closes F-P46-IMP-001 process-gap.
+        # Exit 1 on any stale active pointer (either form). Exit 0 on all-current or all-historical.
         run: |
           set -euo pipefail
           python3 scripts/check_version_pins.py \

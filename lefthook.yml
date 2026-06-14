@@ -1,6 +1,6 @@
 # lefthook.yml — monocle local development hook configuration.
 #
-# POL-11 + POL-12 pre-commit enforcement (ADR-0007 + ADR-0008).
+# POL-11 + POL-12 + POL-14 pre-commit enforcement (ADR-0007 + ADR-0008).
 #
 # INSTALLATION:
 #   brew install lefthook     # macOS
@@ -30,13 +30,15 @@ pre-commit:
   # setup), the script will fall back to walking up the directory tree. On a developer
   # machine with the standard worktree setup, .factory/ is always available.
   commands:
-    pol-11-version-pin:
+    pol-11-pol-14-version-and-anchor-pin:
       run: |
         python3 scripts/check_version_pins.py \
           --factory-root .factory \
           --workspace-root .
       fail_text: |
-        POL-11 FAIL: stale version-pin literal(s) detected.
+        POL-11/POL-14 FAIL: stale version-pin literal(s) detected.
+        POL-11 covers adjacent-form pins (SS-X.md vN.M) and YAML inputs[] pins.
+        POL-14 (Pattern C) covers parenthetical anchor-pin form: `path/artifact.md#anchor` (vX.Y.Z).
         Fix: update cited version, convert to version-free form (§section anchor), or add
         time qualifier to make it a historical anchor (ADR-0007 §Decision).
         See 'python3 scripts/check_version_pins.py --help' for options.

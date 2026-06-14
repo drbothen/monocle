@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-check_version_pins.py — POL-11: Version-pin literal freshness enforcement.
+check_version_pins.py — POL-11 + POL-14: Version-pin literal freshness enforcement.
 
 Implements monocle-version-pin-freshness CI gate per ADR-0007
 §Implementation Plan and SS-conventions-anti-patterns.md §Citation Discipline.
@@ -43,6 +43,26 @@ PATTERN B — YAML FRONTMATTER FORM:
         against provenance frozen at document authoring time.
   The gate never silently ignores the YAML form — handling is always explicit
   (HISTORICAL or ACTIVE, never unhandled).
+
+POL-14 — PARENTHETICAL ANCHOR-PIN FORM (Pattern C):
+  In addition to Pattern A (adjacent form) and Pattern B (YAML frontmatter), this
+  script detects the parenthetical anchor-pin form used in §Architecture Anchors
+  sections:
+    `architecture/SS-ipc.md#servertoClientspawnack` (v1.21.0)
+  The backtick-enclosed doc-path (optionally with #fragment) followed by ` (vX.Y.Z)`
+  was previously invisible to Pattern A because the `#anchor` + space + `(` separates
+  the artifact ID from the version literal. This made such pins drift-invisible; see
+  F-P46-IMP-001 for the incident that motivated this guard.
+
+  POL-14 behaviour:
+  - Extracts the artifact ID from the .md basename (strips #fragment and .md suffix).
+  - Validates the cited version against version-pin-registry.yaml exactly as Pattern A.
+  - Historical-anchor exemptions apply identically (§Trace, annotation markers, time
+    qualifiers) — the form CAN be used but CANNOT silently drift.
+  - Artifacts not in the registry are reported as unknown (warning, not CI failure)
+    because anchor citations may legitimately reference sub-specs not yet in the registry.
+  - If a discovered violation means the PO fix is incomplete (the form reappears),
+    this script reports the exact file/line — do NOT suppress.
 
 SCANNED FILE TYPES: .md, .rs, .toml, .yml, .yaml
 
@@ -310,6 +330,57 @@ _STORY_FILE_RE = re.compile(r'(?:^|/)stories/S-[^/]+\.md$')
 # Artifact ID normalisation: strip .md suffix and trailing whitespace.
 _MD_SUFFIX_RE = re.compile(r'\.md$', re.IGNORECASE)
 
+# Artifact ID normalisation from anchor-pin paths: strip #fragment then .md suffix.
+# Used by Pattern C to extract the registry key from a backtick-quoted doc path.
+# Example: 'architecture/SS-ipc.md#servertoClientspawnack' → 'SS-ipc'
+_MD_WITH_FRAGMENT_SUFFIX_RE = re.compile(r'\.md(#[^`]*)?\s*$', re.IGNORECASE)
+
+# ───────────────────────────────────────────────────────────────────────────────
+# Pattern C — Parenthetical anchor-pin form (POL-14: monocle-anchor-pin-freshness).
+#
+# Detects the form used in §Architecture Anchors sections:
+#   `architecture/SS-ipc.md#servertoClientspawnack` (v1.21.0)
+#   `architecture/SS-session-manager.md#spawnack` (v2.3.0)
+#   `SS-tui.md` (v1.4.1)
+#
+# This form was previously invisible to Pattern A because the `#anchor` + whitespace
+# + opening `(` separated the artifact ID from the version literal, preventing the
+# Pattern A `<id>[ \t]+v<version>` match from firing. Three BCs accrued stale
+# anchor-section pins that drifted from their §Architecture Source rows and passed
+# POL-11 for many passes (F-P46-IMP-001, discovered Pass-46).
+#
+# Pattern groups:
+#   Group 1: full backtick-enclosed path (e.g. 'architecture/SS-ipc.md#someanchor')
+#   Group 2: version literal (N.N or N.N.N)
+#
+# Artifact ID extraction from Group 1:
+#   - Take the basename: split on '/' and take the last segment.
+#   - Strip #fragment and .md extension via _MD_WITH_FRAGMENT_SUFFIX_RE.
+#   - Normalise via _normalise_artifact_id() (same path as Pattern A).
+#
+# False-match guards:
+#   - Requires opening backtick before the path.
+#   - Requires the path to end in .md (possibly followed by #fragment).
+#   - Requires closing backtick then whitespace then `(v`.
+#   - Version must be N.N or N.N.N digits only, closed by `)`.
+#   - Prose `(v1.2.3)` without a backtick-quoted .md path does NOT match.
+#
+# Historical-anchor exemptions apply identically to Pattern A: §Trace section,
+# explicit `<!-- version-pin-historical -->` annotation, and time qualifiers all
+# exempt the cited version from staleness checking.
+# ───────────────────────────────────────────────────────────────────────────────
+_PAREN_ANCHOR_PIN_RE = re.compile(
+    r"""
+    `                                              # opening backtick
+    ([^`]+?\.md                                    # path ending in .md
+    (?:\#[^`]*)?)                                  # optional #fragment (no backticks inside)
+    `                                              # closing backtick
+    [ \t]+                                         # required whitespace separator
+    \(v([0-9]+\.[0-9]+(?:\.[0-9]+)?)\)            # (vX.Y.Z) — parenthesised version literal
+    """,
+    re.VERBOSE,
+)
+
 # ───────────────────────────────────────────────────────────────────────────────
 # Historical-anchor time qualifiers (ADR-0007 §Historical Anchor Classification).
 #
@@ -418,6 +489,10 @@ class ScanStats:
     yaml_pins_found: int = 0
     yaml_pins_historical: int = 0   # individual story files (exempt by classification)
     yaml_pins_active: int = 0        # living index docs + other files (checked)
+    # Pattern C counters (parenthetical anchor-pin form, POL-14)
+    anchor_pins_found: int = 0
+    anchor_pins_historical: int = 0  # exempt via §Trace / annotation / time qualifier
+    anchor_pins_active: int = 0      # checked against registry
     findings: list[Finding] = field(default_factory=list)
     unknown_artifacts: list[tuple[str, str, str]] = field(default_factory=list)  # (file, artifact_id, version)
 
@@ -651,6 +726,88 @@ def _process_yaml_pin(
         )
 
 
+def _normalise_anchor_pin_artifact_id(raw_path: str) -> str:
+    """
+    Extract a registry-normalised artifact ID from a Pattern C backtick-path.
+
+    Input is the Group 1 capture from _PAREN_ANCHOR_PIN_RE, e.g.:
+      'architecture/SS-ipc.md#servertoClientspawnack'  → 'SS-ipc'
+      'architecture/SS-session-manager.md'              → 'SS-session-manager'
+      'SS-tui.md'                                       → 'SS-tui'
+      'behavioral-contracts/ss-06/BC-2.06.007.md#foo'  → 'BC-2.06.007'
+
+    Steps:
+      1. Take the basename (split on '/').
+      2. Strip #fragment and .md suffix via _MD_WITH_FRAGMENT_SUFFIX_RE.
+      3. Normalise trailing whitespace.
+    """
+    basename = raw_path.split("/")[-1]
+    # Strip .md and any #fragment that follows it
+    artifact_id = _MD_WITH_FRAGMENT_SUFFIX_RE.sub("", basename).strip()
+    return artifact_id
+
+
+def _process_anchor_pin(
+    file_path: Path,
+    raw_path: str,
+    cited_version: str,
+    lineno: int,
+    line_text: str,
+    in_trace: bool,
+    registry: dict[str, str],
+    stats: ScanStats,
+) -> None:
+    """
+    Process a single Pattern C (parenthetical anchor-pin form) version-pin match.
+
+    POL-14 — monocle-anchor-pin-freshness:
+    Detects `path/to/artifact.md#fragment` (vX.Y.Z) citations. Validates the
+    version against the registry exactly as Pattern A does for adjacent-form pins.
+
+    Historical-anchor exemptions apply identically (§Trace, annotation markers,
+    time qualifiers). Artifacts not in the registry are recorded as unknown
+    (warning, not CI failure) because anchor citations may legitimately reference
+    sub-specs not yet in the registry.
+
+    Modifies stats in-place (anchor_pins_* counters + findings/unknown_artifacts).
+    """
+    stats.anchor_pins_found += 1
+    stats.pins_found += 1
+
+    # Apply the same historical-anchor exemptions as Pattern A.
+    if _is_historical_anchor(line_text, in_trace):
+        stats.anchor_pins_historical += 1
+        stats.pins_historical += 1
+        return
+
+    # Active pointer: normalise artifact ID and verify against registry.
+    stats.anchor_pins_active += 1
+    stats.pins_active += 1
+
+    artifact_id = _normalise_anchor_pin_artifact_id(raw_path)
+
+    if artifact_id not in registry:
+        # Unknown artifact: record for reporting (warning, not CI failure).
+        # Anchor citations may reference sub-specs not yet in the registry.
+        stats.unknown_artifacts.append(
+            (str(file_path), artifact_id, cited_version)
+        )
+        return
+
+    canonical_version = registry[artifact_id]
+    if cited_version != canonical_version:
+        stats.findings.append(
+            Finding(
+                file_path=str(file_path),
+                line_number=lineno,
+                artifact_id=artifact_id,
+                cited_version=cited_version,
+                canonical_version=canonical_version,
+                line_text=line_text.strip(),
+            )
+        )
+
+
 def _update_trace_state(line: str, in_trace: bool, trace_level: int) -> tuple[bool, int]:
     """
     Given the current line and §Trace tracking state, return updated (in_trace, trace_level).
@@ -737,7 +894,7 @@ def scan_file(
     """
     Scan a single file for active version-pin literals and record findings.
 
-    Detects THREE forms:
+    Detects FOUR forms:
     - Pattern A (same-line): "BC-2.06.004 v1.2.1" on one line.
     - Pattern A (cross-line split, PG-SPLIT): artifact ID at end of line N, version vX.Y
       at start of line N+1. Historical-anchor exemption applies if EITHER line carries
@@ -746,6 +903,10 @@ def scan_file(
       in file frontmatter. Classified per ADR-0007 §Story inputs[] Historical Provenance:
       individual story files → HISTORICAL (logged, not checked); living index docs and
       other files → ACTIVE (checked against registry). Never silently ignored.
+    - Pattern C (parenthetical anchor-pin form, POL-14): `path/to/artifact.md#anchor` (vX.Y.Z)
+      Used in §Architecture Anchors sections. Previously invisible to Pattern A because
+      the #anchor + space + ( separated the ID from the version. Historical-anchor
+      exemptions apply identically. Artifacts not in registry → unknown warning (not failure).
 
     Modifies stats in-place.
     """
@@ -846,6 +1007,21 @@ def scan_file(
                 _process_yaml_pin(
                     file_path, artifact_path, cited_version, lineno, raw_line,
                     registry, stats, verbose=verbose,
+                )
+
+        # ── Pattern C: parenthetical anchor-pin form (POL-14) ───────────────
+        # Detect `path/to/artifact.md#fragment` (vX.Y.Z) citations.
+        # This form appears in §Architecture Anchors sections where the artifact
+        # ID and version are separated by `#anchor` + ` (`, making them
+        # invisible to Pattern A's `<id>[ \t]+v<version>` matcher.
+        # Historical-anchor exemptions apply identically to Pattern A.
+        if "`" in raw_line and "(v" in raw_line:
+            for pm in _PAREN_ANCHOR_PIN_RE.finditer(raw_line):
+                raw_path = pm.group(1)
+                cited_version = pm.group(2)
+                _process_anchor_pin(
+                    file_path, raw_path, cited_version, lineno, raw_line,
+                    in_trace, registry, stats,
                 )
 
 
@@ -958,8 +1134,10 @@ def collect_files(workspace_root: Path, factory_root: Path) -> list[Path]:
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "POL-11: Version-pin literal freshness enforcement (monocle-version-pin-freshness).\n"
-            "Verifies every active version-pin literal matches canonical version in registry.\n"
+            "POL-11 + POL-14: Version-pin and anchor-pin freshness enforcement.\n"
+            "POL-11 (monocle-version-pin-freshness): verifies adjacent-form and YAML-form pins.\n"
+            "POL-14 (monocle-anchor-pin-freshness): verifies parenthetical anchor-pin form\n"
+            "  `path/to/artifact.md#fragment` (vX.Y.Z) — Pattern C, closes F-P46-IMP-001.\n"
             "Implements ADR-0007 §Implementation Plan."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -1066,8 +1244,8 @@ def main() -> None:
 
     if n_stale > 0:
         print(
-            f"\nPOL-11 FAIL: {n_stale} stale active version-pin literal(s) detected.\n"
-            f"(ADR-0007 §CI enforcement gate — monocle-version-pin-freshness)\n",
+            f"\nPOL-11/POL-14 FAIL: {n_stale} stale active version-pin literal(s) detected.\n"
+            f"(ADR-0007 §CI enforcement gate — monocle-version-pin-freshness + monocle-anchor-pin-freshness)\n",
             file=sys.stderr,
         )
         for f in sorted(stats.findings, key=lambda x: (x.file_path, x.line_number)):
@@ -1091,7 +1269,7 @@ def main() -> None:
             print("(--dry-run: exiting 0 despite findings)", file=sys.stderr)
     else:
         print(
-            f"POL-11 PASS: all active version-pin literals are current "
+            f"POL-11/POL-14 PASS: all active version-pin literals are current "
             f"({stats.pins_active} active, {stats.pins_historical} historical anchors, "
             f"{stats.files_scanned} files scanned)."
         )
@@ -1108,6 +1286,9 @@ def main() -> None:
             f"  Pattern B (YAML) total:           {stats.yaml_pins_found}\n"
             f"  Pattern B historical (non-index): {stats.yaml_pins_historical}\n"
             f"  Pattern B active (*-INDEX/prd.md): {stats.yaml_pins_active}\n"
+            f"  Pattern C (anchor-pin) total:      {stats.anchor_pins_found}\n"
+            f"  Pattern C historical:              {stats.anchor_pins_historical}\n"
+            f"  Pattern C active (POL-14):         {stats.anchor_pins_active}\n"
             f"  Unknown artifacts:     {len(set((a, v) for _, a, v in stats.unknown_artifacts))}\n"
             f"  Findings (stale):      {n_findings}"
         )
