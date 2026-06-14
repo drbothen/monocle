@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "7.35"
+version: "7.36"
 status: active
 producer: state-manager
 timestamp: 2026-06-14T00:00:00Z
 phase: PIVOT-delta-in-progress
-current_step: "D-285: Post-Pass-42 CROSS-DOC CONSISTENCY SWEEP (orchestrator-injected, fresh-context consistency-validator) of the spawn-handshake feature — run to break the per-adversary-pass partial-fix-sibling cycle (2 consecutive Importants F-P41/F-P42 in this feature). Found 5 findings + 1 sibling, ALL fixed in one burst: CV-SS-001 (SS-ipc §Trace orphan wizard_session_id description), CV-SS-002 (SS-ipc unresolved BC-2.09.008 PC-5 cross-ref → item 7), CV-SS-003 (SS-embedded-pty Step-1→ProfilePicker), CV-SS-004 (SS-embedded-pty missing clear-launching_session_id obligation), CV-SS-005 + BC-2.09.008 sibling (causal-step-ordering + FIFO completeness). Bumps: BC-2.08.008 v1.2.1, BC-2.09.008 v1.3.1, BC-INDEX v1.40.4; SS-ipc v1.21.0 / SS-embedded-pty v1.6.0 errata-no-bump. CONSECUTIVE-CLEAN COUNTER = 0 (unchanged; this was a proactive sweep, not an adversarial pass). Pass-43 next = clean candidate 1 of 3, now against a holistically consistency-validated spawn-handshake feature."
+current_step: "D-286: Pass-43 VERDICT FINDINGS (0C/1I) — F-P43-IMP-001 SpawnAck step missing from SS-daemon-wiring-v2-delta §3 duplicate IPC-handler skeleton (last spawn-handshake sweep sibling, 7-of-7; CANONICAL PATTERN LOCK co-propagation had failed). FIXED via architect: §3 SpawnSession arm now carries 4-step SpawnAck sequence + spawn-fail clear-launching_session_id; confirmed last unsynced handler-skeleton site (all 3 representations synced). SS-daemon-wiring-v2-delta v1.9.1 → v1.10.0. CONSECUTIVE-CLEAN COUNTER = 0. Pass-44 next = clean candidate 1 of 3."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE. D-224: Wave-6 GATE PASSED (develop @ 2a51a91). D-225: STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to wave-7-READY; points 177→169/195 reconciled to sprint-state. D-226: S-027 DELIVERED (PR #32 @ 3787ebd) — Wave 7: 1/4 done. D-227: S-031 DELIVERED (PR #33 @ 8451486). D-228: S-028 DELIVERED (PR #34 @ 682e5e5) — Wave 7: 3/4 done. develop @ 682e5e5. D-229: Zero-context resume checkpoint — S-029 human-authorized 2026-06-02. develop @ 1158e24. D-230: S-029 DELIVERED (PR #35 @ 48463fb) — Wave 7 COMPLETE (4/4). 32/33 done (192/195 pts). develop @ 48463fb. D-231: Wave-7-gate prerequisite sweep complete — SS-ipc v1.11.0, BC-2.06.021 v1.0.7, BC-INDEX v1.34, STORY-INDEX v5.30, citation atomicity propagation. POL-11/POL-12 PASS. S-027/S-028 story frontmatter status fixed. D-232: Wave-7 gate PASSED — Phase 3 COMPLETE. 1514 tests, 0 failures. F-W7G3-MED-001 fixed (PR #37 @ 6811103). HS-EXP-008 score 1.0. DTU SKIP (DTU-CLONE-STORY added as Phase 4 prereq). sprint-state v1.38. D-233: Phase-3→4 consistency cleanup — EVAL-INDEX v1.9, STORY-INDEX v5.31, BC-HOOK-034 v1.0.2 (typo fix), sprint-state v1.39. 28 story-file status fields corrected. Input-hash refresh (113→0+17 bookkeeping-residual). POL-11/POL-12 PASS. All MED/LOW audit findings RESOLVED. D-234: DTU clone false-negative corrected — S-DTU-001 (cargo binary dtu-claude-code-hooks-v1) validated fidelity 1.0000 (25/25 fixtures). Gate-2 DTU-VALIDATION corrected from SKIP to PASS. DTU-CLONE-STORY closed (RESOLVED-FALSE-PREMISE). Phase 4 UNBLOCKED. dtu_clones_built updated. PROC-DTU-VALIDATE-LOCATION process gap added. D-235: Daemon-wiring convergence — monocle-runtime binary now serves (main() wires daemon_start_sequence + run_server + UDS + tracing + ring-flush + 10s drain). SS-daemon-wiring-impl v1.3.0. SS-deps-pin-manifest v1.2.1. ARCH-INDEX v1.0.26. STORY-INDEX v5.32. sprint-state v1.40. S-DAEMON-WIRE-FIX-001 Wave-8 anchor. Resolved: ADV-W5GATE-HIGH-001, ADV-W3GATE-MED-002/004, ADV-W4GATE-MED-002, S-005-main-wiring, F-DW-HIGH-001. POL-11/POL-12 PASS. D-236: PRODUCT-VISION PIVOT — observe-only RETIRED; monocle → full TUI control center. Phases 4-7 SUSPENDED. D-237: Human ratified re-baselined-v1 control-center vision scope (4 capabilities: Launch, Embedded PTY, Multi-session/multi-project, Interactive Tune + already-built Observe+Control). DAEMON-OWNS-PTY locus. Hook auto-injection v1. embedded-pty-evaluation.md v1.0: primary = portable-pty 0.9.0 + vt100 0.16.2 + tui-term 0.3.4. NEXT: gene-source disposition → revised vision-synthesis → human gate. D-238: Vision approval gate PASSED. domain-monocle-vision-synthesis.md APPROVED at v2.1 by Joshua Magady as the canonical basis for the control-center re-baselined-v1 brief→architecture→story delta. HUMAN ESCALATION folded in at the gate: v1A persistence now REQUIRES that a graceful daemon-PROCESS restart SURVIVES (CASE 2 changed from 'lost' to 'survive'). Persistence principle renamed DAEMON-OWNS-PTY → 'session-host-owns-PTY; daemon coordinates/re-attaches': PTY masters + harness child processes owned by native detached per-session session-host processes (abduco/dtach-style) that outlive the daemon process; daemon re-attaches over UDS on restart. NO-TMUX preserved as default; external supervisor is architect-surfaced fallback only (requires human decision, not silent adoption). CASE 1 (TUI restart survives) and CASE 3 (hard crash → lost, re-launch) unchanged. New HIGH-priority architect question Q-8 (PTY-ownership-survival mechanism) added; NOTE: the already-built D-235 in-process daemon wiring will likely need rework to move PTY ownership out of the daemon process. Remaining architect-only open questions: Q-1 (PTY bytes over UDS), Q-2 (EngineModule/SessionManager surface), Q-7 (tui-term fork posture), plus PTY-throughput benchmark — all resolved during architecture delta. Architect must also reconcile the stale narrow keyboard scope in DISPOSITION-V2 rollup + embedded-pty-evaluation (superseded by full-fidelity ratification). NEXT: brief delta (product-owner) → architecture delta (architect) → story decomposition (story-writer)."
-awaiting: "Adversarial Pass-43 (CONSECUTIVE-CLEAN COUNTER = 0; Pass-43 = clean candidate 1 of 3). Post-Pass-42 consistency sweep DONE (D-285, 5 findings + 1 sibling fixed in one burst). Pass-43 = clean candidate 1 of 3. Pass-1 DONE (D-242). Pass-2 DONE (D-243). Pass-3 DONE (D-244). Pass-4 DONE (D-245). Pass-5 DONE (D-246). Pass-6 DONE (D-247). Pass-7 DONE (D-248, 0C/4I/4S — FIRST zero-Critical). Pass-8 DONE (D-249, 0C/2I/1S). Pass-9 DONE (D-250, 0C/1I/1S). Pass-10 DONE (D-252, 0C/1I/4S). Pass-11 DONE (D-253, 0C/1I/4S). Pass-12 DONE (D-254, 0C/2I/2S). Pass-13 DONE (D-255, 0C/2I/2S). Pass-14 DONE (D-256, 0C/1I/1S). Pass-15 DONE (D-257, 0C/2I/1S). Pass-16 DONE (D-258, 0C/1I/1S). Pass-17 DONE (D-259, 0C/1I/2S). Pass-18 DONE (D-260, 0C/1I/2S). Pass-19 DONE (D-261, 0C/1I/1S). Pass-20 DONE (D-262, 0C/0I/2S — FIRST CLEAN PASS). Pass-21 DONE (D-263, 0C/0I/1S — SECOND CLEAN PASS). Pass-22 DONE (D-264, 0C/3I/2S — FINDINGS; counter RESET 2→0). Pass-23 DONE (D-265, 0C/2I/1S — FINDINGS; counter stays 0). Pass-24 DONE (D-266, 0C/1I/2S — FINDINGS; counter stays 0; SS-09 family fully re-derived). Pass-25 DONE (D-267, 0C/1I/1S — FINDINGS; counter stays 0; I25-001 retired SessionState::Created swept from L1 brief+vision prose+enum; brief 2.0.3→2.0.4, vision 2.2.2→2.2.3). Pass-26 DONE (D-268, 0C/1I/1S — FINDINGS; counter stays 0; I26-001 BC-2.08.007 EC-185/EC-188 non-existent AlreadyAttached/AttachTimeout variants reconciled; S26-001 #[non_exhaustive] class closed: SpawnRecipe+PermissionDecisionKind+SessionState; 4 spec versions bumped + 29-file propagation sweep). Pass-27 DONE (D-269, 0C/1I/1S — FINDINGS; counter stays 0; I27-001 spawn-path Model-A reconciliation — spawn_session(opts: SpawnOptions), SpawnOptions wire type, EngineError taxonomy reachable; 10 docs bumped + 36-file/83-stale-active propagation sweep). Pass-28 DONE (D-270, 0C/1I/1S — FINDINGS; counter stays 0; I28-001 HS-EXP-014 Step 1 live Model-B spawn_session(recipe,harness,profile) survivor FIXED → spawn_session(opts_A) with SpawnOptions; sibling holdouts clean; S28-001 SS-session-manager §Trace cross-ref DEFERRED as housekeeping). Pass-29 DONE (D-271, 1C/0I/0S — FINDINGS; C29-001 harness_id missing from SpawnOptions struct in SS-engine-module-v2-delta; errata no-bump fix). Pass-30 DONE (D-272, 2C+1I — FINDINGS; C30-001/002 + I30-001 ADR-0006 cross-crate #[non_exhaustive] constructor gap; SpawnOptions/SpawnRecipe/SessionSnapshot/SerializedCell/PermissionPromptPayload missing constructors + audit-table rows; fixed E0639 ..opts). Pass-31 DONE (D-273, 1C+1I — FINDINGS; P31-CRIT-001 EngineError enum referenced-but-never-declared → declared canonical #[non_exhaustive] enum, 3 variants; P31-HIGH-001 SpawnRecipe parity in SS-session-manager). Pass-32 DONE (D-274, 0C/3I — FINDINGS; IMP-001 session_error_to_code _=> prose self-contradiction; IMP-002 dead anchor #engineerror-additions→#engineerror-new-in-v1a; IMP-003 EngineError 'extension'→new-type framing). Pass-33 DONE (D-275, 0C/2I — FINDINGS; I33-001 PERVASIVE dead-anchor class; I33-002 §Trace over-claim; WHOLE-CLASS-NOW: built ANCHOR-LINT-TOOL scripts/check_cross_ref_anchors.py = POL-13 wired CI+pre-commit; lint found 70 dead anchors; architect added 42 explicit <a id> navigational anchors across 12 docs; PO fixed 2 defective citations; ANCHOR-LINT-TOOL CLOSED). Pass-34 DONE (D-276, 1C+1I — FINDINGS; C34-001 InvalidPath null-byte detection impossible via to_str() → two-pronged detection: to_str() + as_bytes().contains(&0); I34-001 BC-2.08.001 stale anchor version labels). Pass-35 DONE (D-277, 0C/0I/3S — FIRST CLEAN of session; 3 Suggestions fixed in-scope → RESET counter to 0; S35-001 split-pair rationale arithmetic contradiction; S35-002 KeyInput SessionHostDead→attach_failed undocumented; S35-003 mouse SGR Drag(MouseButton) missing arm + Moved Ps 32→35 + full Ps/modifier table). Pass-36 DONE (D-278, 0C/2I — FINDINGS; F-P36-IMP-001 BC-2.09.003 Invariant-3 contradicted S35-003 Moved-unreachable model; F-P36-IMP-002 BC-2.05.010 missing named No-silent-failure invariant + Detach/Resize sibling error-path gaps + dangling SS arch forward-refs; whole-class swept ALL fallible variants; BC-2.09.003→1.5.0, BC-2.05.010→1.8.0; counter stays 0). Pass-37 DONE (D-279, 0C/2I — FINDINGS; F-P37-IMP-001 BC-2.09.002 Invariant-5 globally-active mouse capture — partial-fix sibling of Pass-36 BC-2.09.003 dismissal; F-P37-IMP-002 SS-ipc:412 invalid_request mis-described as pre-call vs post-call catch-all; BC-2.09.002→1.1.2; SS-ipc descriptor errata no-bump; counter stays 0). Pass-38 DONE (D-280, 0C/0I CLEAN; S38-001 BC-2.09.008 PC-4/PC-1 partial mouse-capture restatement fixed in-scope whole-class → counter RESET to 0). Pass-39 DONE (D-281, 0C/0I CLEAN; S39-001 errata SS-embedded-pty:250 global→scoped mouse-capture prose fixed in-scope → counter RESET to 0). Pass-40 DONE (D-282, 0C/0I CLEAN; OBS-1 BC-2.09.002 §Trace stale line-numbers deferred as housekeeping; counter ADVANCES 0→1). Pass-41 DONE (D-283, 0C/1I — F-P41-IMP-001 SessionCreation→EmbeddedTerminal session_id handshake gap FIXED; SpawnAck mechanism (b) ratified; counter RESET to 0). Pass-42 DONE (D-284, 0C/1I — F-P42-IMP-001 orphan wizard_session_id field-name corrected to launching_session_id in 4 SS-ipc sites + 1 SS-session-manager site; whole-class grep zero survivors; errata-no-bump; counter stays 0). Novelty trajectory (C:5,5,4,1,2,2,0×22,1,2,1,0,0,1,1,0,0,0,0,0,0; I:8,6,9,4,4,2,4,2,1,1,1,2,2,1,2,1,1,1,1,0,0,3,2,1,1,1,1,1,0,1,1,3,2,1,0,2,2,0,0,0,1,1). CONSECUTIVE-CLEAN COUNTER = 0. Pass-43 = clean candidate 1 of 3. STRICT-3-CLEAN CRITERION ACTIVE: 3 consecutive cleans required. PATTERN WARNING — PARTIAL-FIX SIBLINGS (Passes 33-42): each fix round exposes a sibling gap in the next pass. NOTE: F-P41→F-P42 self-sibling chain demonstrates that a fix's own primary doc can be the surviving sibling (Pass-41 corrected the SpawnAck variant doc-comment; Pass-42 found that SS-ipc body prose + §Trace errata + 3 additional sites still used wizard_session_id). MITIGATION: for every fix round, owning agent must FIX-THE-WHOLE-CLASS — grep all sibling BCs/arch docs in same subsystem for same pattern; reconcile ALL instances in one burst. Tell adversary each pass to specifically hunt for siblings of the prior round's fix. CODIFIED CYCLE CHECKLIST (D-245 SUG-003): after any RETIRED-term or corrected-magic-number fix, grep -rn .factory/specs before next adversarial pass. CODIFIED (D-246): anchor-resolution-closure check. CODIFIED (D-255): L-CWD-PROPAGATION-ATTESTATION. CODIFIED (D-258): L-VERIFICATION-ARTIFACT-FALSE-GREEN. DEP-PIN-SWEEP-RULE (D-256). POL-13 LIVE (D-275, ANCHOR-LINT-TOOL). OPEN (non-blocking, human ratification required before v1A story wave): (1) CC-TUITERM-WIP-SIGNOFF; (2) CC-GLOBAL-MOUSE-CAPTURE. DEFERRED (non-blocking): VP authoring for SS-08/SS-09 BCs; v1B Tune BCs; v1B pre-emption BC."
+awaiting: "Adversarial Pass-44 (CONSECUTIVE-CLEAN COUNTER = 0; Pass-44 = clean candidate 1 of 3). Pass-43 DONE (D-286, 0C/1I — F-P43-IMP-001 SpawnAck step missing from SS-daemon-wiring-v2-delta §3 duplicate IPC-handler skeleton; 7-of-7 spawn-handshake sibling; SS-daemon-wiring-v2-delta v1.10.0; FIXED). Pass-1 DONE (D-242). Pass-2 DONE (D-243). Pass-3 DONE (D-244). Pass-4 DONE (D-245). Pass-5 DONE (D-246). Pass-6 DONE (D-247). Pass-7 DONE (D-248, 0C/4I/4S — FIRST zero-Critical). Pass-8 DONE (D-249, 0C/2I/1S). Pass-9 DONE (D-250, 0C/1I/1S). Pass-10 DONE (D-252, 0C/1I/4S). Pass-11 DONE (D-253, 0C/1I/4S). Pass-12 DONE (D-254, 0C/2I/2S). Pass-13 DONE (D-255, 0C/2I/2S). Pass-14 DONE (D-256, 0C/1I/1S). Pass-15 DONE (D-257, 0C/2I/1S). Pass-16 DONE (D-258, 0C/1I/1S). Pass-17 DONE (D-259, 0C/1I/2S). Pass-18 DONE (D-260, 0C/1I/2S). Pass-19 DONE (D-261, 0C/1I/1S). Pass-20 DONE (D-262, 0C/0I/2S — FIRST CLEAN PASS). Pass-21 DONE (D-263, 0C/0I/1S — SECOND CLEAN PASS). Pass-22 DONE (D-264, 0C/3I/2S — FINDINGS; counter RESET 2→0). Pass-23 DONE (D-265, 0C/2I/1S — FINDINGS; counter stays 0). Pass-24 DONE (D-266, 0C/1I/2S — FINDINGS; counter stays 0; SS-09 family fully re-derived). Pass-25 DONE (D-267, 0C/1I/1S — FINDINGS; counter stays 0; I25-001 retired SessionState::Created swept from L1 brief+vision prose+enum; brief 2.0.3→2.0.4, vision 2.2.2→2.2.3). Pass-26 DONE (D-268, 0C/1I/1S — FINDINGS; counter stays 0; I26-001 BC-2.08.007 EC-185/EC-188 non-existent AlreadyAttached/AttachTimeout variants reconciled; S26-001 #[non_exhaustive] class closed: SpawnRecipe+PermissionDecisionKind+SessionState; 4 spec versions bumped + 29-file propagation sweep). Pass-27 DONE (D-269, 0C/1I/1S — FINDINGS; counter stays 0; I27-001 spawn-path Model-A reconciliation — spawn_session(opts: SpawnOptions), SpawnOptions wire type, EngineError taxonomy reachable; 10 docs bumped + 36-file/83-stale-active propagation sweep). Pass-28 DONE (D-270, 0C/1I/1S — FINDINGS; counter stays 0; I28-001 HS-EXP-014 Step 1 live Model-B spawn_session(recipe,harness,profile) survivor FIXED → spawn_session(opts_A) with SpawnOptions; sibling holdouts clean; S28-001 SS-session-manager §Trace cross-ref DEFERRED as housekeeping). Pass-29 DONE (D-271, 1C/0I/0S — FINDINGS; C29-001 harness_id missing from SpawnOptions struct in SS-engine-module-v2-delta; errata no-bump fix). Pass-30 DONE (D-272, 2C+1I — FINDINGS; C30-001/002 + I30-001 ADR-0006 cross-crate #[non_exhaustive] constructor gap; SpawnOptions/SpawnRecipe/SessionSnapshot/SerializedCell/PermissionPromptPayload missing constructors + audit-table rows; fixed E0639 ..opts). Pass-31 DONE (D-273, 1C+1I — FINDINGS; P31-CRIT-001 EngineError enum referenced-but-never-declared → declared canonical #[non_exhaustive] enum, 3 variants; P31-HIGH-001 SpawnRecipe parity in SS-session-manager). Pass-32 DONE (D-274, 0C/3I — FINDINGS; IMP-001 session_error_to_code _=> prose self-contradiction; IMP-002 dead anchor #engineerror-additions→#engineerror-new-in-v1a; IMP-003 EngineError 'extension'→new-type framing). Pass-33 DONE (D-275, 0C/2I — FINDINGS; I33-001 PERVASIVE dead-anchor class; I33-002 §Trace over-claim; WHOLE-CLASS-NOW: built ANCHOR-LINT-TOOL scripts/check_cross_ref_anchors.py = POL-13 wired CI+pre-commit; lint found 70 dead anchors; architect added 42 explicit <a id> navigational anchors across 12 docs; PO fixed 2 defective citations; ANCHOR-LINT-TOOL CLOSED). Pass-34 DONE (D-276, 1C+1I — FINDINGS; C34-001 InvalidPath null-byte detection impossible via to_str() → two-pronged detection: to_str() + as_bytes().contains(&0); I34-001 BC-2.08.001 stale anchor version labels). Pass-35 DONE (D-277, 0C/0I/3S — FIRST CLEAN of session; 3 Suggestions fixed in-scope → RESET counter to 0; S35-001 split-pair rationale arithmetic contradiction; S35-002 KeyInput SessionHostDead→attach_failed undocumented; S35-003 mouse SGR Drag(MouseButton) missing arm + Moved Ps 32→35 + full Ps/modifier table). Pass-36 DONE (D-278, 0C/2I — FINDINGS; F-P36-IMP-001 BC-2.09.003 Invariant-3 contradicted S35-003 Moved-unreachable model; F-P36-IMP-002 BC-2.05.010 missing named No-silent-failure invariant + Detach/Resize sibling error-path gaps + dangling SS arch forward-refs; whole-class swept ALL fallible variants; BC-2.09.003→1.5.0, BC-2.05.010→1.8.0; counter stays 0). Pass-37 DONE (D-279, 0C/2I — FINDINGS; F-P37-IMP-001 BC-2.09.002 Invariant-5 globally-active mouse capture — partial-fix sibling of Pass-36 BC-2.09.003 dismissal; F-P37-IMP-002 SS-ipc:412 invalid_request mis-described as pre-call vs post-call catch-all; BC-2.09.002→1.1.2; SS-ipc descriptor errata no-bump; counter stays 0). Pass-38 DONE (D-280, 0C/0I CLEAN; S38-001 BC-2.09.008 PC-4/PC-1 partial mouse-capture restatement fixed in-scope whole-class → counter RESET to 0). Pass-39 DONE (D-281, 0C/0I CLEAN; S39-001 errata SS-embedded-pty:250 global→scoped mouse-capture prose fixed in-scope → counter RESET to 0). Pass-40 DONE (D-282, 0C/0I CLEAN; OBS-1 BC-2.09.002 §Trace stale line-numbers deferred as housekeeping; counter ADVANCES 0→1). Pass-41 DONE (D-283, 0C/1I — F-P41-IMP-001 SessionCreation→EmbeddedTerminal session_id handshake gap FIXED; SpawnAck mechanism (b) ratified; counter RESET to 0). Pass-42 DONE (D-284, 0C/1I — F-P42-IMP-001 orphan wizard_session_id field-name corrected to launching_session_id in 4 SS-ipc sites + 1 SS-session-manager site; whole-class grep zero survivors; errata-no-bump; counter stays 0). Pass-43 DONE (D-286, 0C/1I — F-P43-IMP-001 SpawnAck step missing from SS-daemon-wiring-v2-delta §3 IPC-handler skeleton; last spawn-handshake sibling 7-of-7; SS-daemon-wiring-v2-delta v1.10.0; counter stays 0). Novelty trajectory (C:5,5,4,1,2,2,0×22,1,2,1,0,0,1,1,0,0,0,0,0,0,0; I:8,6,9,4,4,2,4,2,1,1,1,2,2,1,2,1,1,1,1,0,0,3,2,1,1,1,1,1,0,1,1,3,2,1,0,2,2,0,0,0,1,1,1). CONSECUTIVE-CLEAN COUNTER = 0. Pass-44 = clean candidate 1 of 3. STRICT-3-CLEAN CRITERION ACTIVE: 3 consecutive cleans required. PATTERN WARNING — PARTIAL-FIX SIBLINGS (Passes 33-43): each fix round exposes a sibling gap in the next pass. NOTE: F-P41→F-P42 self-sibling chain demonstrates that a fix's own primary doc can be the surviving sibling (Pass-41 corrected the SpawnAck variant doc-comment; Pass-42 found that SS-ipc body prose + §Trace errata + 3 additional sites still used wizard_session_id). NOTE: F-P43 demonstrates that a CANONICAL PATTERN LOCK co-propagation can miss a sibling doc (SS-daemon-wiring-v2-delta §3 IPC-handler skeleton not updated when Pass-41 + D-285 propagated the SpawnAck pattern). MITIGATION: for every fix round, owning agent must FIX-THE-WHOLE-CLASS — grep all sibling BCs/arch docs in same subsystem for same pattern; reconcile ALL instances in one burst. Tell adversary each pass to specifically hunt for siblings of the prior round's fix. CODIFIED CYCLE CHECKLIST (D-245 SUG-003): after any RETIRED-term or corrected-magic-number fix, grep -rn .factory/specs before next adversarial pass. CODIFIED (D-246): anchor-resolution-closure check. CODIFIED (D-255): L-CWD-PROPAGATION-ATTESTATION. CODIFIED (D-258): L-VERIFICATION-ARTIFACT-FALSE-GREEN. DEP-PIN-SWEEP-RULE (D-256). POL-13 LIVE (D-275, ANCHOR-LINT-TOOL). OPEN (non-blocking, human ratification required before v1A story wave): (1) CC-TUITERM-WIP-SIGNOFF; (2) CC-GLOBAL-MOUSE-CAPTURE. DEFERRED (non-blocking): VP authoring for SS-08/SS-09 BCs; v1B Tune BCs; v1B pre-emption BC."
 durable_task_register:
   outstanding:
     - id: "DEP-PIN-SWEEP-RULE"
@@ -441,14 +441,19 @@ durable_task_register:
       detail: "D-277 session: BC-INDEX §Trace at approximately line 1337 contains a historical count 'SS-08 ... 7 BCs' which reflects the pre-I16-001 state before BC-2.08.008 was added in D-258. The normative §Summary section correctly shows 8 BCs for SS-08. The §Trace entry is a historical annotation only; a standalone BC-INDEX bump to fix a §Trace count would trigger a disproportionate sweep. Fold into next substantive BC-INDEX normative edit. Non-blocking."
       blocking: false
     - id: "SS-IPC-181-REDUNDANT-HISTORICAL-MARKER"
-      subject: "SS-ipc.md line ~181 active cross-ref pin to SS-daemon-wiring-v2-delta v1.9.1 has a redundant version-pin-historical marker"
+      subject: "SS-ipc.md line ~181 active cross-ref pin to SS-daemon-wiring-v2-delta v1.9.1 has a redundant version-pin-historical marker — NOW STALE (D-286 bumped to v1.10.0)"
       status: pending
-      detail: "D-277 session: during the Pass-35 propagation sweep, SS-ipc.md line ~181 received a version-pin-historical marker on an active cross-ref pin to SS-daemon-wiring-v2-delta v1.9.1. The pin is current (not stale) but is now POL-11-exempt, creating a mild future-staleness risk: if SS-daemon-wiring-v2-delta bumps in the future, POL-11 will not catch the stale pin on this line. Revisit if a future SS-daemon-wiring-v2-delta bump occurs and the line remains unchecked. Non-blocking."
+      detail: "D-277 session: during the Pass-35 propagation sweep, SS-ipc.md line ~181 received a version-pin-historical marker on an active cross-ref pin to SS-daemon-wiring-v2-delta v1.9.1. The pin was current at the time but is POL-11-exempt (version-pin-historical annotation). D-286: SS-daemon-wiring-v2-delta bumped to v1.10.0 — the line ~181 pin is now STALE (still says v1.9.1) and POL-11 cannot catch it due to the historical marker. Action required: remove the version-pin-historical marker from SS-ipc line ~181 and update the version to v1.10.0 (or convert to version-free form citing only the section anchor). Non-blocking for Phase-1d convergence but should be addressed before Phase-2 story decomposition."
       blocking: false
     - id: "OBS-1-BC2.09.002-TRACE-LINE-NUMBERS"
       subject: "[housekeeping] BC-2.09.002 Inv-5 §Trace cites stale SS-embedded-pty line numbers (254-258) for the scoped entry sequence; actual ENTRY block at 279-289"
       status: deferred-housekeeping
       detail: "D-282 Pass-40 OBS-1: navigational stale-line-number in a §Trace citation. Section-name anchors (§Crossterm-setup / §EmbeddedTerminal-ENTRY) resolve correctly and POL-13 passes; line numbers are an informal navigational aid, not the enforced anchor. No version bump required per the closed dead-anchor/navigational-reference precedent (C29-001 / D-275). Fix by updating the line-number references to 279-289 (entry) when BC-2.09.002 is next edited for a substantive reason — bumping a heavily-cited authoritative BC solely for a §Trace line-number is disproportionate. Non-blocking; zero implementation impact."
+      blocking: false
+    - id: "DEDUP-IPC-HANDLER-SKELETON"
+      subject: "[structural] de-duplicate the two normative IPC-handler skeletons (SS-session-manager §IPC handler is canonical; SS-daemon-wiring-v2-delta §3 should become reference-plus-delta) — duplication caused F-P43 despite CANONICAL PATTERN LOCK"
+      status: pending-orchestrator-action
+      detail: "D-286: architect recommendation. SS-session-manager §IPC handler and SS-daemon-wiring-v2-delta §3 both carry full normative Rust handler skeletons of the same ClientToServer dispatch; the F-P41 sweep updated the canonical but missed the delta sibling (root cause of F-P43). Production-grade fix: make SS-session-manager the single authoritative skeleton and restructure SS-daemon-wiring-v2-delta §3 to cross-reference it + retain only its legitimate delta annotations (IpcOp import note, error-routing summary table, §3b emission rule). Requires architect + PO awareness (summary table has normative force). Concrete orchestrator-directed action item (NOT tech-debt-register; NOT a vague 'later'). Schedule as a consistency task before/with Phase-2 story decomposition. Non-blocking for Phase-1d convergence (both skeletons currently in sync)."
       blocking: false
   se_candidates:
     - id: SE-40
@@ -464,9 +469,9 @@ durable_task_register:
     - "TALLY-GUARD (D-225): STATE running-tally must re-sum sprint-state per-story; summary.points_complete is a cache. Hand-increment drift produced +8 pts error + premature Phase-3-COMPLETE. L-W6-GATE-003."
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v7.35 (D-271..D-285) — 2026-06-14
+  ZERO-CONTEXT RESUME CHECKPOINT v7.36 (D-271..D-286) — 2026-06-14
   PIVOT: monocle → full TUI control center — PHASE-1D ADV CONVERGENCE IN PROGRESS
-  42 PASSES COMPLETE + D-285 PROACTIVE CONSISTENCY SWEEP; CONSECUTIVE-CLEAN COUNTER = 0; PASS-43 NEXT (clean candidate 1 of 3)
+  43 PASSES COMPLETE; CONSECUTIVE-CLEAN COUNTER = 0; PASS-44 NEXT (clean candidate 1 of 3)
   ============================================================================
 
   READ THESE FIRST (in order — before anything else):
@@ -485,7 +490,7 @@ next_session_resume_protocol: |
   NO v1A production code written yet. Do NOT write v1A code yet.
   factory-artifacts: run `git -C .factory log -1 --format='%h %s'` for live HEAD.
 
-  42 adversarial passes complete on the v1A control-center spec package.
+  43 adversarial passes complete on the v1A control-center spec package.
   Finding trajectory (Critical / Important per pass):
     Pass 1: 5C/8I  Pass 2: 5C/6I  Pass 3: 4C/9I  Pass 4: 1C/4I  Pass 5: 2C/4I  Pass 6: 2C/2I
     Pass 7: 0C/4I  Pass 8: 0C/2I  Pass 9: 0C/1I  Pass 10: 0C/1I Pass 11: 0C/1I Pass 12: 0C/2I
@@ -526,28 +531,36 @@ next_session_resume_protocol: |
              partial-fix sibling of Pass-41 SpawnAck fix; canonical is launching_session_id;
              SS-ipc body contradicted its own §Trace; 4 SS-ipc sites + 1 SS-session-manager
              site corrected; whole-class grep zero survivors; errata-no-bump; counter stays 0)
+    Pass 43: 0C/1I FINDINGS (D-286 — F-P43-IMP-001: SpawnAck step missing from SS-daemon-wiring-v2-delta
+             §3 duplicate IPC-handler skeleton; last spawn-handshake sibling 7-of-7; CANONICAL
+             PATTERN LOCK co-propagation missed the §3 mirror skeleton; SS-daemon-wiring-v2-delta
+             v1.10.0; whole-class confirmed all 3 representations now synced; counter stays 0)
 
-  Passes 7 through 42 ALL ZERO-Critical except Pass 29 (C29-001) and Pass 34 (C34-001).
-  CONSECUTIVE-CLEAN COUNTER = 0. Pass-43 = clean candidate 1 of 3.
-  NEXT = adversarial Pass 43.
+  Passes 7 through 43 ALL ZERO-Critical except Pass 29 (C29-001) and Pass 34 (C34-001).
+  CONSECUTIVE-CLEAN COUNTER = 0. Pass-44 = clean candidate 1 of 3.
+  NEXT = adversarial Pass 44.
   HUMAN DIRECTIVE: strict 3-consecutive-clean (reaffirmed; do NOT accept fewer than 3).
   STRICT-3-CLEAN VINDICATED: passes 29-42 have each surfaced a substantive defect or required
   a whole-class in-scope fix, confirming the 3-clean bar is correctly calibrated.
 
-  PATTERN WARNING — PARTIAL-FIX SIBLINGS (Passes 33-42):
+  PATTERN WARNING — PARTIAL-FIX SIBLINGS (Passes 33-43):
   The recurring finding pattern is PARTIAL-FIX SIBLINGS: each fix round exposes a sibling gap
   that the NEXT pass catches. Examples: fixing KeyInput error path in BC-2.05.010 (S35-002) left
   Detach/Resize sibling gaps (F-P36-IMP-002); fixing BC-2.09.003 mouse model (S35-003 + D-278)
   left BC-2.09.002 Invariant-5 scoped-capture sibling (F-P37-IMP-001); SpawnAck fix (D-283)
-  left wizard_session_id orphan name in SS-ipc body/§Trace/doc-comment (F-P42-IMP-001, D-284).
+  left wizard_session_id orphan name in SS-ipc body/§Trace/doc-comment (F-P42-IMP-001, D-284);
+  D-283/D-285 CANONICAL PATTERN LOCK propagation missed SS-daemon-wiring-v2-delta §3 mirror
+  skeleton (F-P43-IMP-001, D-286).
   NOTE: F-P41→F-P42 self-sibling chain: a fix's own primary doc can be the surviving sibling.
-  Pass-41 corrected the SpawnAck variant doc-comment; Pass-42 found SS-ipc body prose +
-  §Trace errata + 3 additional internal sites still used wizard_session_id.
+  NOTE: F-P43 demonstrates that structural duplication across docs (canonical vs delta mirror)
+  is a distinct failure mode from in-doc sibling gaps — BOTH must be checked in every sweep.
   MITIGATION (mandatory every fix round):
     1. Owning agent MUST grep all sibling BCs and arch docs in the SAME subsystem for the same
        pattern and reconcile ALL instances in ONE burst — not just the flagged instance.
     2. Tell the adversary each pass to SPECIFICALLY HUNT for siblings of the prior round's fix.
     3. Do NOT declare a fix-class closed until a whole-subsystem grep confirms no survivors.
+    4. For features with CANONICAL + DELTA mirror docs (e.g., SS-session-manager vs
+       SS-daemon-wiring-v2-delta §3): explicitly include the delta mirror in every sweep.
 
   This session's key changes (Passes 35-42):
   - Pass-35 (D-277): 0C/0I CLEAN. S35-001 (split-pair arithmetic) + S35-002 (KeyInput error path)
@@ -579,6 +592,15 @@ next_session_resume_protocol: |
     wizard_session_id). Fixed via architect: whole-class grep confirmed zero live survivors.
     Errata-no-bump: wire contract + canonical struct unchanged. SS-ipc stays v1.21.0,
     SS-session-manager stays v2.3.0. Counter stays 0.
+  - Pass-43 (D-286): 0C/1I FINDINGS. F-P43-IMP-001 SpawnAck step missing from SS-daemon-wiring-v2-delta
+    §3 duplicate IPC-handler skeleton — the §3 SpawnSession arm did not carry the 4-step SpawnAck
+    sequence that D-283/D-285 propagated to SS-session-manager and SS-ipc. Root cause: CANONICAL
+    PATTERN LOCK co-propagation missed the §3 mirror skeleton in SS-daemon-wiring-v2-delta (structural
+    duplication between canonical SS-session-manager and delta mirror). This is the 7-of-7
+    spawn-handshake sibling; all 3 normative representations now in sync. Fixed: §3 SpawnSession
+    arm now carries full 4-step SpawnAck sequence + spawn-fail clear-launching_session_id note.
+    SS-daemon-wiring-v2-delta v1.9.1 → v1.10.0. POL-11 16-literal sweep across 8 BC files.
+    DEDUP-IPC-HANDLER-SKELETON added to durable_task_register. Counter stays 0.
 
   ============================================================================
   B. THE CONVERGENCE LOOP PROCEDURE (how a fresh session runs Pass 40+)
@@ -672,7 +694,7 @@ next_session_resume_protocol: |
     SS-session-manager v2.3.0             (spawn_session(opts); SpawnOptions split; EngineError bridge; KeyInput error path; IPC handler UUID locus + SpawnAck send)
     SS-embedded-pty v1.6.0               (Launching step opts ref; App struct fields; auto-attach; Drag(MouseButton) arm; full Ps/modifier table; launching_session_id field)
     SS-engine-module-v2-delta v1.4.1     (SpawnOptions wire type #[ne]+Serialize/Deserialize+harness_id; SpawnRecipe daemon-internal; EngineError NEW canonical enum 3-variant)
-    SS-daemon-wiring-v2-delta v1.9.1     (daemon coordinator; IPC SpawnSession arm; ordered-pair-split rationale; ADR-0006 constructors)
+    SS-daemon-wiring-v2-delta v1.10.0    (daemon coordinator; IPC SpawnSession arm + 4-step SpawnAck sequence; ordered-pair-split rationale; ADR-0006 constructors)
     SS-deps-pin-manifest-v2-delta v1.0.1 (portable-pty 0.9.0; vt100 0.16.2; tui-term =0.3.4)
 
   ADRs:
@@ -777,7 +799,7 @@ next_session_resume_protocol: |
   ORDERED-PAIR-SPLIT (Pass-35, D-277 — tell adversary this is CLOSED):
     Ordered-pair-split (half-message disconnect) triggers immediate client disconnect
     INDEPENDENT of slow-client 3-strike counter. These are two distinct error classes
-    (framing integrity vs throughput). BC-2.08.008 v1.1.1. SS-daemon-wiring-v2-delta v1.9.1.
+    (framing integrity vs throughput). BC-2.08.008 v1.1.1. SS-daemon-wiring-v2-delta v1.10.0.
 
   NO-SILENT-FAILURE INVARIANT BC-2.05.010 (Pass-36, D-278 — tell adversary this is CLOSED):
     BC-2.05.010 now carries an explicit named "No-silent-failure invariant": every fallible
@@ -835,6 +857,20 @@ next_session_resume_protocol: |
     prose + §Trace errata + doc-comments + SS-session-manager skeleton comment after Pass-41.
     All 5 live sites corrected at D-284 via architect errata-no-bump burst. wizard_session_id
     is RETIRED — do NOT reintroduce or re-flag. Whole-class grep confirmed zero survivors.
+
+  SPAWN HANDSHAKE COMPLETE (Pass-43, D-286 — tell adversary this feature class is CLOSED):
+    SpawnAck step is now present in ALL THREE normative IPC-handler representations:
+      (1) SS-session-manager §IPC handler (canonical; primary normative skeleton)
+      (2) SS-ipc §SpawnAck delivery-ordering (SpawnAck ordering guarantee prose)
+      (3) SS-daemon-wiring-v2-delta §3 SpawnSession arm (duplicate skeleton; now synced)
+    Spawn-handshake feature complete across all 7 docs that carry normative spawn-handshake
+    content: SS-ipc, SS-session-manager, SS-embedded-pty, SS-daemon-wiring-v2-delta,
+    BC-2.08.001, BC-2.08.008, BC-2.09.008. Root cause of F-P43: CANONICAL PATTERN LOCK
+    co-propagation (D-283/D-285) updated SS-session-manager and SS-ipc but missed the
+    duplicate IPC-handler skeleton in SS-daemon-wiring-v2-delta §3 (structural duplication
+    was the failure mode). Architect recommendation DEDUP-IPC-HANDLER-SKELETON added to
+    durable_task_register (non-blocking for Phase-1d convergence; both skeletons now in sync).
+    SS-daemon-wiring-v2-delta v1.10.0.
 
   OBS-1 BC-2.09.002 §TRACE LINE-NUMBERS (Pass-40, D-282 — tell adversary this is a RATIFIED LOW deferral; do NOT re-flag):
     BC-2.09.002 Inv-5 §Trace cites SS-embedded-pty lines 254-258 for the ENTRY sequence;
@@ -906,7 +942,7 @@ next_session_resume_protocol: |
   ============================================================================
 
   1. FINISH Phase-1d adversarial convergence (CURRENT STEP):
-     42 passes done → need 3 CONSECUTIVE clean (counter = 0). Pass-43 = clean candidate 1 of 3.
+     43 passes done → need 3 CONSECUTIVE clean (counter = 0). Pass-44 = clean candidate 1 of 3.
      Drive to strict 3-clean per human directive. Apply PARTIAL-FIX-SIBLING mitigation every round.
 
   2. Human spec-package APPROVAL GATE (after convergence):
@@ -957,8 +993,9 @@ next_session_resume_protocol: |
   CC-GLOBAL-MOUSE-CAPTURE: human approval if future story needs clickable monocle panels.
   ENGINE-RS-DEVERSION: engine.rs doc-comment version pins should be de-versioned per CI-PARITY rule 3.
   BC-INDEX-TRACE-SS08-COUNT: §Trace stale 'SS-08 ... 7 BCs' (actual 8); fold into next BC-INDEX edit.
-  SS-IPC-181-REDUNDANT-HISTORICAL-MARKER: line ~181 active pin has redundant version-pin-historical marker.
+  SS-IPC-181-REDUNDANT-HISTORICAL-MARKER: line ~181 pin (v1.9.1) now STALE after D-286 v1.10.0 bump; POL-11-exempt due to historical marker — needs manual update or version-free form. PENDING.
   OBS-1-BC2.09.002-TRACE-LINE-NUMBERS: BC-2.09.002 §Trace stale line-numbers 254-258 vs actual ENTRY block 279-289; fold into next substantive BC-2.09.002 edit. DEFERRED-HOUSEKEEPING.
+  DEDUP-IPC-HANDLER-SKELETON: de-duplicate SS-session-manager §IPC handler (canonical) and SS-daemon-wiring-v2-delta §3 (mirror); duplication caused F-P43. Schedule before/with Phase-2. PENDING-ORCHESTRATOR-ACTION.
 
   ============================================================================
   I. DECISION LOG ENTRIES (D-271..D-284)
@@ -1052,6 +1089,23 @@ next_session_resume_protocol: |
   architect corrected SS-ipc:412 descriptor; wire contract unchanged; prose-only errata;
   no version bump. Committed b52dd53. Counter stays 0. Pass-38 next (DONE D-280).
   Durable zero-context checkpoint written (next_session_resume_protocol v7.29). Pass-38 DONE D-280.
+
+  D-286 (2026-06-14): Adversarial Pass-43 = FINDINGS (0C/1I). Producer: state-manager.
+  F-P43-IMP-001 (SpawnAck step missing from SS-daemon-wiring-v2-delta §3 duplicate IPC-handler
+  skeleton — the §3 SpawnSession arm did not carry the 4-step SpawnAck sequence (UUID generation,
+  SpawnAck send, spawn_session() call, spawn-fail clear-launching_session_id) that the D-283/D-285
+  propagation sweep added to SS-session-manager and SS-ipc. Root cause: CANONICAL PATTERN LOCK
+  co-propagation missed the duplicate handler skeleton in SS-daemon-wiring-v2-delta §3 — structural
+  duplication between SS-session-manager (canonical skeleton) and SS-daemon-wiring-v2-delta §3
+  (mirror/delta skeleton) meant the pattern-lock update path had one unvisited site.
+  This is the 7-of-7 spawn-handshake sweep sibling; the feature is now complete.
+  Fixed via architect: §3 SpawnSession arm now carries the full 4-step SpawnAck sequence +
+  spawn-fail clear-launching_session_id note. All 3 normative IPC-handler representations synced.
+  SS-daemon-wiring-v2-delta v1.9.1 → v1.10.0. POL-11 propagation sweep: 16 stale-active v1.9.1
+  literals updated across 8 BC files (BC-2.05.009/010/011, BC-2.08.001/003/004/007/008).
+  Registry updated atomically. POL-11/POL-12/POL-13 PASS. factory-artifacts committed at a8e0ce8.
+  DEDUP-IPC-HANDLER-SKELETON added to durable_task_register (non-blocking).
+  CONSECUTIVE-CLEAN COUNTER = 0. Pass-44 = clean candidate 1 of 3. STATE v7.35→v7.36.
 
   D-285 (2026-06-14): Post-Pass-42 PROACTIVE CONSISTENCY SWEEP. Producer: state-manager.
   Fresh-context consistency-validator scoped to spawn-handshake feature doc-surface injected by
@@ -1147,6 +1201,7 @@ D-047 through D-241 archived at: `cycles/cycle-001/decisions-archive.md` and `cy
 
 | ID | Decision | Date | Made By |
 |----|----------|------|---------|
+| D-286 | Pass-43 VERDICT FINDINGS (0C/1I). F-P43-IMP-001 SpawnAck step missing from SS-daemon-wiring-v2-delta §3 duplicate IPC-handler skeleton — §3 SpawnSession arm lacked the 4-step SpawnAck sequence that D-283/D-285 propagated to SS-session-manager and SS-ipc. Root cause: CANONICAL PATTERN LOCK co-propagation missed the §3 mirror skeleton (structural duplication failure mode). Last spawn-handshake sibling (7-of-7); all 3 normative representations now synced. Fixed: §3 SpawnSession arm carries full 4-step sequence + spawn-fail clear-launching_session_id. SS-daemon-wiring-v2-delta v1.9.1 → v1.10.0. POL-11 16-literal sweep across 8 BC files (BC-2.05.009/010/011, BC-2.08.001/003/004/007/008). Registry updated atomically. POL-11/POL-12/POL-13 PASS. factory-artifacts a8e0ce8. DEDUP-IPC-HANDLER-SKELETON added to durable_task_register. Counter=0. Pass-44 = clean candidate 1 of 3. STATE v7.35→v7.36. | 2026-06-14 | state-manager |
 | D-256 | Adversarial Pass-14 convergence-fix — 0 Critical / 1 Important / 1 Suggestion. I14-001 (lone stale portable-pty 0.8.x normative literal in SS-session-manager §env-inheritance prose at line 597; architect ran exhaustive crate-pin sweep across all in-scope specs confirming I14-001 was the ONLY stale live straggler — class CLOSED; SS-session-manager 1.8.0→1.8.1). S14-001 [process-gap] DEP-PIN-SWEEP-RULE: POL-11 keys on artifact-IDs not crate-pin literals → stale crate pins in prose escape CI; recorded in durable_task_register (devops-engineer tooling task, non-blocking). 1 registry entry bumped atomically (L-S027-004): SS-session-manager→1.8.1. Propagation sweep: 15 unique files updated (27 stale actives); no §Trace/historical entries touched. POL-11 PASS (319 active). POL-12 PASS. EIGHTH consecutive zero-Critical (C:...,0×8). Consecutive-clean counter = 0; Pass-15 next. STATE v7.06→v7.07. | 2026-06-04 | state-manager |
 | D-257 | Adversarial Pass-15 convergence-fix — 0 Critical / 2 Important / 1 Suggestion. I15-001 (EC-283 code 'invalid_request' for RenameSession empty-name contradicts canonical session_error_to_code() which maps InvalidSessionName→'rename_failed' unconditionally — cross-doc contradiction/build collision; BC-2.05.010 1.5.0→1.5.1, EC-283 corrected to 'rename_failed', §Trace rationale updated). I15-002 (PRD §2.5 listed BC-2.05.010 as '6-variant' title missing AttachSession — S-P7-003 partial-fix straggler; class-close sweep also found entirely missing BC-2.05.011 row in §2.5; prd 1.28.1→1.28.2, 7-variant + BC-2.05.011 row added). S15-001 ADR-0010 §Trace v1.2.0 '256' lacks inline superseded-marker — DEFERRED (housekeeping; fold into next ADR-0010 substantive edit; ADR-0010-TRACE-256-MARKER recorded in durable_task_register). 2 registry entries bumped atomically (L-S027-004): BC-2.05.010→1.5.1, prd→1.28.2. POL-11 PASS (319 active). POL-12 PASS. NINTH consecutive zero-Critical (C:...,0×9). Consecutive-clean counter = 0; Pass-16 next. STATE v7.07→v7.08. | 2026-06-04 | state-manager |
 | D-259 | Adversarial Pass-17 convergence-fix — 0 Critical / 1 Important / 2 Suggestions. I17-001 (Architecture-Source pin-symmetry violation: 3 BC cells cited ADR docs unpinned while SS docs pinned — violates codified BC-INDEX Pin-Symmetry Convention F-R117-3/SE-17e; sibling-inconsistent since SS-05 BCs pinned ADR-0010) FIXED via EXHAUSTIVE sweep of all 25 in-scope BC Architecture-Source cells: pinned ADR-0011 v1.2.0 (BC-2.09.001) + ADR-0009 v1.0.2 (BC-2.08.001/002) + 2 additional unpinned SS-session-manager v1.8.1 refs found in same cells; zero remaining violations confirmed. S17-002 (loose ADR §-anchors) folded in: §PTY-stack-selection/§native-detached-session-host → §Decision (verified exact headings). S17-001 (ADR-0009 risk-table '5s backoff' ambiguous vs canonical no-retry) FIXED → '5s hard deadline, one attempt, no retry per BC-2.08.004 Inv-2' (ADR-0009 1.0.1→1.0.2). BC bumps: BC-2.09.001 1.3.1, BC-2.08.001 1.3.1, BC-2.08.002 1.2.1. 4 registry entries bumped atomically (L-S027-004). POL-11 PASS (329 active). POL-12 PASS. ELEVENTH consecutive zero-Critical (C:...,0×11). Consecutive-clean counter = 0; Pass-18 next. STATE v7.09→v7.10. | 2026-06-04 | state-manager |
