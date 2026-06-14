@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.1"
+version: "1.3.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -53,11 +53,30 @@ has `--settings` in its argv.
 2. The harness child process (`claude`) is spawned on the PTY slave with `--settings
    <hooks_settings_path>` present in its command-line args. The args are passed verbatim
    from `recipe.args` — no modification by the session-host.
-3. The hooks-settings.json at `hooks_settings_path` contains:
-   - `"hooks": { ... }` — all 5 canonical hook endpoints (BC-HOOK-007), each pointing to
-     `http://127.0.0.1:<daemon_port>/hooks/<endpoint>`.
+3. The hooks-settings.json at `hooks_settings_path` contains (per BC-2.04.010 PC-3 /
+   SS-daemon-wiring.md §Hook Tmpfile Generation):
+   - `"hooks": { ... }` with exactly 4 URL-bearing keys and 2 reserved-empty keys:
+     - `"PreToolUse"` → curl POST `http://127.0.0.1:<daemon_port>/hooks/pre-tool-use`
+       with `X-Monocle-Authorization: monocle-v1:<64-hex>` header
+     - `"Notification"` → curl POST `http://127.0.0.1:<daemon_port>/hooks/notification`
+       with `X-Monocle-Authorization: monocle-v1:<64-hex>` header
+     - `"Stop"` → curl POST `http://127.0.0.1:<daemon_port>/hooks/stop`
+       with `X-Monocle-Authorization: monocle-v1:<64-hex>` header
+     - `"UserPromptSubmit"` → curl POST `http://127.0.0.1:<daemon_port>/hooks/prompt-submit`
+       with `X-Monocle-Authorization: monocle-v1:<64-hex>` header
+     - `"PostToolUse": []` — reserved-empty array (forward-compat placeholder; Claude Code
+       ignores hook types with empty arrays)
+     - `"PreCompact": []` — reserved-empty array (forward-compat placeholder)
+   - `"SessionStart"` is NOT a key in this file. Claude Code invokes
+     `POST /hooks/session-start` via its own internal lifecycle mechanism regardless of
+     hooks-settings.json content; monocle's axum router handles it, but it is NOT
+     configured through hooks-settings.json.
    - `"lock": { "app": "monocle" }` — the filter that prevents externally-launched
      `claude` instances from sending hooks to monocle's daemon.
+   Authority: BC-2.04.010 PC-3 (4-URL + 2-empty schema). Note: BC-HOOK-007 governs the
+   5-key set produced by the DTU gene-source clone's `WriteHooksSettingsFile` (which
+   includes `"SessionStart"` and excludes `"PreCompact"`); BC-HOOK-007 does NOT govern
+   the file written by the v1A daemon.
 4. No manual user configuration of hooks is required. The user MUST NOT edit
    `~/.monocle/settings.json` or any Claude Code settings file to receive hooks
    (BC-HOOK-027 + BC-HOOK-028).
@@ -139,6 +158,26 @@ S-TBD — Implement hook auto-injection in session spawn path (filled by story-w
 ## VP Anchors
 
 VP-TBD — Hook injection end-to-end tests (filled after VP creation)
+
+## §Trace v1.3.0
+
+**F-P53-001 IMPORTANT — PC-3 authority corrected from BC-HOOK-007 to BC-2.04.010** (2026-06-14):
+- PC-3 rewrote to anchor on BC-2.04.010 PC-3 / SS-daemon-wiring.md §Hook Tmpfile Generation
+  instead of BC-HOOK-007.
+- BC-HOOK-007 governs the DTU gene-source clone's `WriteHooksSettingsFile` (5 keys: PreToolUse,
+  Notification, Stop, SessionStart, UserPromptSubmit; no PreCompact). It does NOT govern the
+  v1A daemon-written hooks-settings.json.
+- BC-2.04.010 PC-3 is the authoritative schema for the v1A daemon file: 4 URL-bearing keys
+  (PreToolUse, Notification, Stop, UserPromptSubmit) + PostToolUse:[] + PreCompact:[] +
+  no SessionStart key.
+- SessionStart is explicitly excluded from the file: Claude Code fires this event via its own
+  internal lifecycle; monocle's axum router handles it but it is not configured through
+  hooks-settings.json.
+- Lock object description retained unchanged.
+- No other BC files require changes (whole-class sweep: only this file cited BC-HOOK-007 as
+  the v1A daemon file content authority; all other SessionStart references in BC layer describe
+  the served HTTP endpoint set or DTU clone scope).
+- Minor bump: v1.2.1 → v1.3.0 (postcondition rewrite).
 
 ## §Trace v1.2.1
 

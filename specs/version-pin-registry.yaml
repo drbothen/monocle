@@ -779,9 +779,9 @@ BC-2.08.005:
 
 BC-2.08.006:
   path: specs/behavioral-contracts/ss-08/BC-2.08.006.md
-  current_version: "1.2.1"
-  last_bump_commit: "[Pass-34 C34-001 — arch-source pin sweep for null-byte/InvalidPath detection (D-276)]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.3.0"
+  last_bump_commit: "[Pass-53 F-P53-001 D-296 — PC-3 authority corrected from BC-HOOK-007 (DTU gene-source clone) to BC-2.04.010 PC-3; 4-URL+2-empty hooks-settings.json schema; SessionStart NOT a file key]"
+  last_bump_date: "2026-06-14"
 
 BC-2.08.007:
   path: specs/behavioral-contracts/ss-08/BC-2.08.007.md

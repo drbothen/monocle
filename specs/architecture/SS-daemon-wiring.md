@@ -279,10 +279,15 @@ include a `SessionStart` handler entry — Claude Code invokes this endpoint on 
 initiative.
 
 Implementers: do NOT add a `SessionStart` key to the `hooks-settings.json` schema in
-§Hook Tmpfile Generation. The `hooks-settings.json` configures only the 5 hook types
-that support user-configurable scripts (`PreToolUse`, `Notification`, `Stop`,
-`PostToolUse`, `UserPromptSubmit`). `SessionStart` arrives because Claude Code calls it
-regardless of hooks-settings configuration.
+§Hook Tmpfile Generation. The `hooks-settings.json` `hooks` object has **6 JSON keys**:
+4 URL-bearing keys (`PreToolUse`, `Notification`, `Stop`, `UserPromptSubmit` — each
+pointing to `http://127.0.0.1:<port>/hooks/<endpoint>` with the `X-Monocle-Authorization`
+token) plus 2 reserved-empty arrays (`PostToolUse: []`, `PreCompact: []`). This is
+distinct from the **5 served HTTP endpoints** on the axum router (`/hooks/pre-tool-use`,
+`/hooks/notification`, `/hooks/stop`, `/hooks/prompt-submit`, `/hooks/session-start`):
+`SessionStart` is a served endpoint but NOT a `hooks-settings.json` key — Claude Code
+invokes it via its internal lifecycle, not through the hook-script configuration in this
+file (BC-2.04.010 PC-3). `SessionStart` arrives regardless of hooks-settings content.
 
 ### Timeout Budget Enforcement
 
@@ -623,3 +628,28 @@ exit, not the exclusive mutex — the lock file atomic write is the true exclusi
   call is `ProjectDirs::from("", "", "monocle")` per SS-config.md. BC-2.04.006 must be updated
   by the PO. SS-daemon-wiring.md delegates constructor selection to BC-2.04.006 and
   SS-daemon-lifecycle.md; no direct fix is needed in this file.
+
+## §Errata F-P53-001 (no version bump — clarification only) (2026-06-14)
+
+**F-P53-001 — §SessionStart Invocation Path Note: imprecise hook-schema framing corrected.**
+
+The implementer note at §SessionStart Invocation Path Note (lines 281-285 in v1.3.0) stated:
+"The `hooks-settings.json` configures only the 5 hook types that support user-configurable
+scripts (`PreToolUse`, `Notification`, `Stop`, `PostToolUse`, `UserPromptSubmit`)."
+
+This was imprecise in three ways: (1) it said "5 hook types" when the JSON file has 6 keys
+total; (2) it listed `PostToolUse` as active (it is a reserved-empty array `[]`); (3) it
+omitted `PreCompact` entirely (also a reserved-empty array `[]`); (4) it did not distinguish
+served HTTP endpoints (5) from hooks-settings.json JSON keys (6: 4 URL-bearing + 2 empty).
+
+**Correction:** The note now precisely states the file has **6 JSON keys**: 4 URL-bearing
+(`PreToolUse`, `Notification`, `Stop`, `UserPromptSubmit`) plus 2 reserved-empty arrays
+(`PostToolUse: []`, `PreCompact: []`). The distinction between the 5 served axum endpoints
+(`/hooks/pre-tool-use`, `/hooks/notification`, `/hooks/stop`, `/hooks/prompt-submit`,
+`/hooks/session-start`) and the 6 JSON keys is now explicit, with a BC-2.04.010 PC-3
+reference. The "do NOT add SessionStart key" implementer directive is preserved.
+
+**Normative impact:** None. The actual schema (BC-2.04.010 PC-3) is unchanged. This is a
+precision improvement to the §SessionStart Invocation Path Note to match the already-correct
+framing in §Hook Tmpfile Generation §Key properties (F-P1D2-007, v1.2.0). No new wire codes,
+variants, or obligations introduced. ERRATA-NO-BUMP disposition confirmed.
