@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.40.9"
+version: "1.41.0"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-14T23:00:00Z
+timestamp: 2026-06-15T00:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "cbf13d5"
@@ -1225,6 +1225,54 @@ SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. 
 - BC-INDEX version: 1.40.4 → 1.40.5. No BC ID additions or retirements. No H1 title changes.
 
 SE-16d monotonicity: v1.40.5 timestamp 2026-06-14T20:00:00Z > v1.40.4 timestamp 2026-06-14T19:00:00Z. PASS.
+
+## §Trace v1.41.0
+
+**F-P52-001 — BC-2.06.025 v1.5.0 + BC-2.08.005 v1.0.2: Terminated-in-grace panel action guards** (2026-06-14):
+
+- **BC-2.06.025 v1.4.0 → v1.5.0 (minor — normative addition):**
+  Sessions with `SessionState::Terminated` render `[X]` in the sessions panel during the 10s GC
+  grace window (Invariant 4, pre-existing). Prior to v1.5.0, no lifecycle-action guard existed for
+  Terminated-in-grace sessions — an implementer could dispatch `k`, `D`, or `r` on a corpse.
+  Gap closed per SS-session-manager.md v2.6.0 §Terminated-in-grace defensive action×state matrix
+  (F-P52-001) specifying daemon-side dispositions (rename → `rename_failed`; detach → Ok(());
+  kill → Ok(); resize → WARN-drop):
+  - **Invariant 6 (new):** Blanket TUI-side block for Terminated-in-grace sessions. Kill (`k`/`d`),
+    Detach (`D`), and Rename (`r`) are all no-ops + status bar shows "Session has terminated".
+    Mirrors the Terminating block in Invariant 4. Additive to the existing `[X]` indicator rule.
+  - **EC-300 (new):** `k`/`d` on Terminated → no KillSession IPC; status hint.
+  - **EC-301 (new):** `D` on Terminated → no DetachSession IPC; status hint.
+  - **EC-302 (new):** `r` on Terminated → no RenameSession IPC; status hint; daemon error noted
+    (`Err(InvalidSessionName{"session terminated"})` → `"rename_failed"` per BC-2.08.005 Inv 4).
+  - **VP table:** Three new unit test VPs for Terminated-in-grace action guards.
+  - **Traceability Cross-Ref expanded:** BC-2.08.003 Invariant 2; BC-2.08.005 Invariant 4;
+    SS-session-manager.md v2.6.0 §Terminated-in-grace defensive action×state matrix (F-P52-001).
+  - **Architecture Source updated:** SS-session-manager.md v2.5.1 → v2.6.0; SS-ipc.md v1.23.1 →
+    v1.23.2; SS-daemon-wiring-v2-delta.md v1.11.2 → v1.11.3.
+  - **Pass-51 Launching rules NOT regressed.** Invariant 5 (kill ALLOWED, detach BLOCKED, rename
+    ALLOWED for Launching sessions) fully preserved.
+
+- **BC-2.08.005 v1.0.1 → v1.0.2 (patch — trace errata):**
+  Invariant 4 previously stated "rename_session() reviving a Terminated session — which is not
+  allowed" without specifying the observable mechanism. Updated with the explicit error return:
+  `Err(SessionError::InvalidSessionName { reason: "session terminated" })` → wire code
+  `"rename_failed"` per SS-session-manager.md v2.6.0 §Terminated-in-grace defensive action×state
+  matrix. TUI-side guard (BC-2.06.025 Invariant 6) cited as the mechanism making this a
+  defensive/untrusted-client-only path. Architecture Source updated to v2.6.0 pin.
+  SessionError 9-variant / 12-code counts NOT regressed — no new variants or wire codes.
+
+- **BC-2.08.003 — NO CHANGE:** kill-on-Terminated idempotency already specified in Invariant 2
+  ("kill_session() on a Terminated or Terminating session MUST return Ok(()) (idempotent)").
+  Confirmed no gap; no edit needed.
+
+- **Sweep result:** 0 survivors. All live sites claiming rename/detach allowed on Terminated
+  sessions have been reconciled. The "succeeds on any non-Terminated session" rationale at
+  BC-2.06.025 PC-3 (Launching rename) and Invariant 5 is correct — those statements describe
+  daemon behavior for Launching (a non-Terminated state) and are unaffected.
+
+- BC-INDEX version: 1.40.9 → 1.41.0. No BC H1 title changes. No BC ID additions or retirements.
+
+SE-16d monotonicity: v1.41.0 timestamp 2026-06-15T00:00:00Z > v1.40.9 timestamp 2026-06-14T23:00:00Z. PASS.
 
 ## §Trace v1.40.9
 

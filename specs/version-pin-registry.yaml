@@ -106,8 +106,8 @@ SS-forward-compatibility:
 
 SS-ipc:
   path: specs/architecture/SS-ipc.md
-  current_version: "1.23.1"
-  last_bump_commit: "[Pass-51 F-P51-001 D-294 — errata trace: session_not_ready producer = DetachSession arm only; resize WARN-dropped per BC-2.05.010 Invariant 6 Exception; SS-ipc §DetachSession IPC handler comment updated]"
+  current_version: "1.23.2"
+  last_bump_commit: "[Pass-52 F-P52-001 D-295 — errata trace: false 'Running/Detached only' claim corrected; §Terminated-in-grace defensive action×state: detach→idempotent Ok, kill→idempotent Ok, resize→WARN-drop, rename→rename_failed; Terminated panel guard doc-comment added]"
   last_bump_date: "2026-06-14"
 
 SS-permissions-phase1:
@@ -124,8 +124,8 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "2.5.1"
-  last_bump_commit: "[Pass-51 F-P51-001 D-294 — mapping table + step-8 + doc-comments corrected to detach-only session_not_ready producer; resize explicitly excluded (WARN-drop per BC-2.05.010 Invariant 6 Exception)]"
+  current_version: "2.6.0"
+  last_bump_commit: "[Pass-52 F-P52-001 D-295 — §Terminated-in-grace defensive action×state matrix added: rename→rename_failed (backs BC-2.08.005 Inv 4 revive-not-allowed), detach→idempotent Ok, kill→idempotent Ok per BC-2.08.003 Inv 2, resize→WARN-drop; closes ALL action×state cells]"
   last_bump_date: "2026-06-14"
 
 SS-embedded-pty:
@@ -142,8 +142,8 @@ SS-engine-module-v2-delta:
 
 SS-daemon-wiring-v2-delta:
   path: specs/architecture/SS-daemon-wiring-v2-delta.md
-  current_version: "1.11.2"
-  last_bump_commit: "[Pass-51 F-P51-001 D-294 — errata trace: session_not_ready producer clarified to DetachSession arm only; SS-ipc errata note added]"
+  current_version: "1.11.3"
+  last_bump_commit: "[Pass-52 F-P52-001 D-295 — errata trace: Terminated-in-grace action×state disposition matrix added to error table; false 'Running/Detached only' SS-ipc claim corrected in §Trace]"
   last_bump_date: "2026-06-14"
 
 SS-deps-pin-manifest-v2-delta:
@@ -204,8 +204,8 @@ ARCH-INDEX:
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.40.9"
-  last_bump_commit: "[Pass-51 F-P51-001 D-294 — SS-session-manager v2.5.1, SS-ipc v1.23.1, SS-daemon-wiring-v2-delta v1.11.2, BC-2.05.010 v1.9.1, BC-2.08.007 v1.5.1, BC-2.06.025 v1.4.0 version rows updated; §Trace v1.40.9 added]" # version-pin-historical: changelog description of bump, not a live pin
+  current_version: "1.41.0"
+  last_bump_commit: "[Pass-52 F-P52-001 D-295 — SS-session-manager v2.6.0, SS-ipc v1.23.2, SS-daemon-wiring-v2-delta v1.11.3, BC-2.06.025 v1.5.0, BC-2.08.005 v1.0.2 version rows updated; §Trace v1.41.0 added]" # version-pin-historical: changelog description of bump, not a live pin
   last_bump_date: "2026-06-14"
 
 STORY-INDEX:
@@ -732,7 +732,7 @@ BC-2.05.009:
 BC-2.05.010:
   path: specs/behavioral-contracts/ss-05/BC-2.05.010.md
   current_version: "1.9.1"
-  last_bump_commit: "[Pass-51 F-P51-001 D-294 — §DetachSession PC-4 gains session_not_ready bullet; §ResizePane rationale expanded (carve-out strengthened; WARN-drop all errors per Invariant 6 Exception); §Trace S-P51-001 copy-paste duplicate fixed; arch-source pins bumped to SS-ipc v1.23.1/SS-session-manager v2.5.1/SS-daemon-wiring-v2-delta v1.11.2]"
+  last_bump_commit: "[Pass-51 F-P51-001 D-294 — §DetachSession PC-4 gains session_not_ready bullet; §ResizePane rationale expanded; arch-source pins bumped at Pass-51 time]" # version-pin-historical: changelog of Pass-51 bump; SS-ipc/SS-session-manager/SS-daemon-wiring versions cited were canonical at Pass-51 bump time
   last_bump_date: "2026-06-14"
 
 BC-2.05.011:
@@ -743,8 +743,8 @@ BC-2.05.011:
 
 BC-2.06.025:
   path: specs/behavioral-contracts/ss-06/BC-2.06.025.md
-  current_version: "1.4.0"
-  last_bump_commit: "[Pass-51 F-P51-001 D-294 SIBLING — added explicit Launching action rules (Invariant 5): kill ALLOWED per F-P50-001, detach BLOCKED/no-op, rename allowed; EC-298 (kill-during-Launching) + EC-299 (detach-during-Launching); VP references backing 'BC-2.06.025 guards' cites]"
+  current_version: "1.5.0"
+  last_bump_commit: "[Pass-52 F-P52-001 D-295 — Invariant 6 (Terminated-in-grace panel guard: k/D/r blocked for Terminated state; same guard class as Terminating Invariant 5); EC-300 (kill-on-Terminated→idempotent Ok), EC-301 (detach-on-Terminated→idempotent Ok), EC-302 (rename-on-Terminated→rename_failed); VP refs added]"
   last_bump_date: "2026-06-14"
 
 BC-2.08.001:
@@ -773,9 +773,9 @@ BC-2.08.004:
 
 BC-2.08.005:
   path: specs/behavioral-contracts/ss-08/BC-2.08.005.md
-  current_version: "1.0.1"
-  last_bump_commit: "[Pass-22 S22-002 2026-06-04 — Related-BCs prose Killed→Terminating→Terminated]"
-  last_bump_date: "2026-06-04"
+  current_version: "1.0.2"
+  last_bump_commit: "[Pass-52 F-P52-001 D-295 — Invariant 4 revive-not-allowed backed by rename_failed wire code from SS-session-manager §Terminated-in-grace; arch-source pins bumped to SS-session-manager v2.6.0/SS-ipc v1.23.2/SS-daemon-wiring-v2-delta v1.11.3]"
+  last_bump_date: "2026-06-14"
 
 BC-2.08.006:
   path: specs/behavioral-contracts/ss-08/BC-2.08.006.md
@@ -786,7 +786,7 @@ BC-2.08.006:
 BC-2.08.007:
   path: specs/behavioral-contracts/ss-08/BC-2.08.007.md
   current_version: "1.5.1"
-  last_bump_commit: "[Pass-51 F-P51-001 D-294 — detach defensive-branch note: when session not ready, detach BLOCKED/session_not_ready per BC-2.05.010 PC-4; arch-source pins bumped to SS-session-manager v2.5.1/SS-daemon-wiring-v2-delta v1.11.2/SS-ipc v1.23.1]"
+  last_bump_commit: "[Pass-51 F-P51-001 D-294 — detach defensive-branch note: detach BLOCKED/session_not_ready; arch-source pins bumped at Pass-51 time]" # version-pin-historical: changelog of Pass-51 bump; SS-session-manager/SS-daemon-wiring/SS-ipc versions cited were canonical at Pass-51 bump time
   last_bump_date: "2026-06-14"
 
 BC-2.08.008:

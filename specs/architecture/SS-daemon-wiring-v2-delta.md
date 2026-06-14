@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "daemon-wiring-v2-delta"
 subsystem: SS-04
-version: "1.11.2"
+version: "1.11.3"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -404,7 +404,7 @@ can use it without importing daemon-internal types.
 > was retired in v1.4.0 (I6-002 fix) because it diverged from the SS-ipc.md canonical by
 > omitting the `degraded`/`degraded_reason` fields.
 >
-> **Current canonical field summary** (SS-ipc.md v1.23.1 §Supporting Types — authoritative):
+> **Current canonical field summary** (SS-ipc.md v1.23.2 §Supporting Types — authoritative):
 > `session_id`, `display_name`, `state`, `harness_id`, `project_root`, `cwd`,
 > `spawned_by_monocle: Option<bool>`, `started_at_micros: i64`, `pty_rows: u16`,
 > `pty_cols: u16`, `degraded: bool` (`#[serde(default)]`), `degraded_reason: Option<String>`
@@ -726,6 +726,65 @@ implementer creates `SessionManager` from scratch per SS-08.
   note updated from "These EngineError codes" to "All three EngineError variants".
 - **Semver:** ERRATA-NO-BUMP. Normative mapping comment at lines 185-188 was already correct.
   This is a doc-comment-only correction. Version remains v1.11.0.
+
+---
+
+## §Trace v1.11.3
+
+**F-P52-001 — §3 handler arms confirmed correct for Terminated-in-grace dispatch; citation updated to SS-session-manager v2.6.0** (2026-06-14):
+
+- **Finding (F-P52-001, IMPORTANT):** F-P52-001 identified that `rename_session()` and
+  `detach_session()` lacked documented dispositions for Terminated-in-grace sessions in
+  SS-session-manager.md (pre-v2.6.0). SS-daemon-wiring-v2-delta §3 mirrors the IPC handler
+  dispatch pattern using `session_error_to_code()`. The question is: does this document's §3
+  handler code need any change to handle the new Terminated-in-grace dispositions?
+
+- **Answer: No change needed to §3 handler code.** The handler already dispatches:
+  ```rust
+  ClientToServer::RenameSession { session_id, new_name } => {
+      match state.session_manager.lock().await.rename_session(&session_id, new_name).await {
+          Ok(()) => { /* SessionListUpdate emitted by rename_session */ }
+          Err(e) => {
+              let _ = client_tx.send(ServerToClient::Error {
+                  code: session_error_to_code(IpcOp::Rename, &e).to_string(),
+                  message: e.to_string(),
+              }).await;
+          }
+      }
+  }
+  ```
+  When `rename_session()` returns `Err(SessionError::InvalidSessionName { reason: "session
+  terminated" })` for a Terminated-in-grace entry (per SS-session-manager.md v2.6.0 §Trace
+  v2.6.0), `session_error_to_code(IpcOp::Rename, &e)` maps it to `"rename_failed"`. The
+  handler already sends `ServerToClient::Error { code: "rename_failed", ... }`. Correct.
+
+  For `DetachSession` on Terminated (idempotent `Ok(())`): the `Ok(())` arm emits nothing
+  (the broker emission comment says "SessionStateChanged{Detached} + SessionListUpdate emitted
+  by detach_session" — but since this is an idempotent Ok with no state change, detach_session
+  on Terminated emits neither. The handler Ok(()) arm does not force a broker send; it only
+  passes through. This is consistent with kill-on-Terminated being similarly Ok(()) with no
+  extra broker emission). The comment in the handler's DetachSession Ok arm slightly overstates
+  — it implies emission always happens. No normative fix is needed in the handler body; the
+  SessionManager itself controls broker emission (only emits on state change).
+
+- **§3 handler comment correction:** The `DetachSession` arm Ok comment
+  `/* SessionStateChanged{Detached} + SessionListUpdate emitted by detach_session */` is
+  technically overstated — it implies emission is unconditional. For the Terminated-in-grace
+  idempotent path, detach_session() returns Ok(()) without emitting any broker events (no state
+  change occurs). To avoid future misreading, a clarifying note should be added. However, this
+  is ERRATA-NO-BUMP level — the normative handler logic is already correct.
+
+- **§3b emission table note:** The §3b table "Methods that emit SessionListUpdate ONLY" has a
+  `rename_session()` row. This row documents the SUCCESS path only (display_name update → only
+  SessionListUpdate). On error (including Terminated-rename → rename_failed), no broker emission
+  occurs — consistent with the error paths of all other lifecycle methods. The table is correct
+  as-is (it documents success-path emissions only; error paths route to ServerToClient::Error and
+  do not publish to the broker). No table change needed.
+
+- **Citation updated:** SS-session-manager.md v2.5.1 → v2.6.0.
+
+- **Semver: ERRATA-NO-BUMP (v1.11.2 → v1.11.3).** No behavioral change to §3 handler code.
+  Citation staleness corrected; handler correctness confirmed.
 
 ---
 

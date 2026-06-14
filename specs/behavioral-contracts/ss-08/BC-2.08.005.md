@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.1"
+version: "1.0.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -64,8 +64,15 @@ immediately (no grace period for sidecars without a live process).
 3. `session-state.json` deletion MUST use `std::fs::remove_file` (tolerates ENOENT if the
    session-host already deleted it). GC MUST NOT fail on a missing sidecar.
 4. GC is managed by a single tokio task per session that fires via `tokio::time::sleep`.
-   Cancellation of the GC task (e.g., if `rename_session()` revives a Terminated session —
-   which is not allowed) must not be possible after `Terminated` is entered.
+   Cancellation of the GC task is not possible after `Terminated` is entered. Reviving a
+   Terminated session via `rename_session()` is not allowed — attempting `rename_session()` on
+   a Terminated-in-grace session returns `Err(SessionError::InvalidSessionName { reason:
+   "session terminated" })`, which maps to wire code `"rename_failed"` per
+   `session_error_to_code()` (SS-session-manager.md v2.6.0 §Terminated-in-grace defensive
+   action×state matrix, F-P52-001). The GC task is not cancellable; the rename error is the
+   observable safety mechanism that prevents display_name mutation on a corpse. The TUI-side
+   guard (BC-2.06.025 Invariant 6) ensures `"rename_failed"` with this reason is a
+   defensive/untrusted-client-only path — unreachable from the official TUI.
 
 ## Edge Cases
 
@@ -99,7 +106,7 @@ immediately (no grace period for sidecars without a live process).
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — GC is explicitly named in CAP-008; this BC defines the 10-second grace period, sidecar cleanup, and SessionListUpdate publication that constitute the GC policy |
 | Architecture Module | monocle-runtime (SessionManager GC tokio task) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.5.1 §Session GC policy |
+| Architecture Source | SS-session-manager.md v2.6.0 §Session GC policy; SS-session-manager.md v2.6.0 §Terminated-in-grace defensive action×state matrix (F-P52-001); SS-ipc.md v1.23.2 §session_error_to_code() (InvalidSessionName → "rename_failed"); SS-daemon-wiring-v2-delta.md v1.11.3 |
 | Test Name | test_BC_2_08_005_terminated_session_gc_after_10s |
 
 ## Related BCs
@@ -118,6 +125,44 @@ S-TBD — Implement SessionManager GC task (filled by story-writer)
 ## VP Anchors
 
 VP-TBD — GC timing tests using tokio::time::pause (filled after VP creation)
+
+## §Trace v1.0.2
+
+**F-P52-001 — Invariant 4: explicit rename-on-Terminated error-return backing** (2026-06-14):
+
+- **Gap closed (F-P52-001):** Invariant 4 previously stated GC task cancellation "must not be
+  possible after Terminated is entered" and cited "rename_session() revives a Terminated session
+  — which is not allowed" as the motivating case. However, it did not specify the observable
+  safety mechanism: what actually happens at the daemon layer if `rename_session()` IS called on
+  a Terminated-in-grace session. The architect closed this at SS-session-manager.md v2.6.0
+  §Terminated-in-grace defensive action×state matrix (F-P52-001):
+  - `rename_session()` on Terminated-in-grace → `Err(SessionError::InvalidSessionName { reason:
+    "session terminated" })` → wire code `"rename_failed"` via exhaustive `session_error_to_code()`.
+  - `detach_session()` on Terminated-in-grace → idempotent `Ok(())` (no-op; no host to detach).
+  - `kill_session()` on Terminated-in-grace → idempotent `Ok(())` (already in BC-2.08.003 Inv 2).
+  - `resize_session()` on Terminated-in-grace → WARN-drop (no-op).
+
+- **Invariant 4 updated:** Added explicit `Err(SessionError::InvalidSessionName { reason:
+  "session terminated" })` → `"rename_failed"` specification. Added citation of SS-session-manager.md
+  v2.6.0 §Terminated-in-grace defensive action×state matrix (F-P52-001). Added TUI-side guard
+  cross-reference to BC-2.06.025 Invariant 6 (the "rename_failed" reason code is a
+  defensive/untrusted-client-only path — unreachable from the official TUI).
+
+- **Architecture Source updated:** SS-session-manager.md pin v2.5.1 → v2.6.0; SS-ipc.md v1.23.2
+  (session_error_to_code taxonomy); SS-daemon-wiring-v2-delta.md v1.11.3 added.
+
+- **No new error variants or wire codes introduced.** `InvalidSessionName` already exists in the
+  9-variant `SessionError` enum; `"rename_failed"` already exists in the 12-code wire taxonomy.
+  The `{ reason: "session terminated" }` field is a new reason string within the existing
+  `InvalidSessionName` variant — not a schema extension.
+
+- **SessionError 9-variant / 12-code counts NOT regressed.** No new variants; no new wire codes.
+
+- **Patch bump: v1.0.1 → v1.0.2** (trace-level errata adding explicit error-return specification
+  to Invariant 4; behavioral obligation was already implicit in "which is not allowed"; this makes
+  the observable mechanism explicit and testable).
+
+SE-16d monotonicity: v1.0.2 timestamp 2026-06-14 > v1.0.1 timestamp 2026-06-13. PASS.
 
 ## §Trace v1.0.1
 

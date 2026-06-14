@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "ipc"
 subsystem: SS-05
-version: "1.23.1"
+version: "1.23.2"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -1449,6 +1449,52 @@ Mitigation: SOQ-3 (overlay clear on disconnect) removes all `VecDeque<PromptModa
 on TUI-side disconnect. The `InitialState` push on reconnect contains only prompts that are
 still pending in the daemon's registry (i.e., still within the 300ms timeout window). Stale
 prompts are never re-pushed.
+
+---
+
+## §Trace v1.23.2
+
+**F-P52-001 — Correct erroneous BC-2.06.025 characterization in §Trace v1.23.0** (2026-06-14):
+
+- **Finding (F-P52-001, IMPORTANT/cross-doc contradiction):** §Trace v1.23.0 (the finding text in
+  the `"session_not_ready"` wire-code fix) stated:
+  > "This error is normally unreachable from correct TUI behavior (BC-2.06.025 only enables
+  > Detach/Resize for Running/Detached sessions)"
+
+  This characterization is incorrect on two counts:
+
+  (a) **BC-2.06.025 does not enumerate Resize as a guarded action.** Resize (ResizePane) is not
+      a panel lifecycle keybinding in BC-2.06.025; it is a continuous PTY operation dispatched
+      independently of the sessions panel state. BC-2.06.025 covers Kill (k/d), Detach (D), and
+      Rename (r). Conflating Resize with the panel guard set is factually wrong.
+
+  (b) **BC-2.06.025 Invariant 5 (F-P51-001, v1.4.0) ALLOWS Rename on Launching.** The §Trace
+      v1.23.0 text implies BC-2.06.025 restricts Detach (and incorrectly "Resize") to
+      Running/Detached ONLY, which would mean rename is also restricted — but that is not the
+      case. BC-2.06.025 Invariant 5 explicitly ALLOWS `r` (RenameSession) during Launching and
+      BLOCKS only `D` (DetachSession) during Launching. The "only enables Detach/Resize for
+      Running/Detached" statement overclaims the scope of BC-2.06.025's guards.
+
+- **Normative body impact:** Line 418 in the normative body of SS-ipc.md correctly states
+  `"session_not_ready"` is "normally unreachable from correct TUI behavior" — this is accurate.
+  Only the parenthetical in the §Trace v1.23.0 historical text is erroneous. The normative body
+  requires no change.
+
+- **Accurate characterization:** `"session_not_ready"` is normally unreachable from the official
+  TUI because BC-2.06.025 Invariant 5 (F-P51-001) BLOCKS DetachSession during Launching at the
+  TUI panel level. The `"session_not_ready"` code is a defensive path for untrusted clients.
+  Kill and Rename are NOT restricted by BC-2.06.025 during Launching.
+
+- **Additional gap (F-P52-001):** BC-2.06.025 also lacked a Terminated-in-grace panel guard
+  before F-P52-001. A correct TUI (before F-P52-001) COULD dispatch `r` or `D` on a Terminated
+  session shown with [X] during the 10s GC grace window. This gap is now closed:
+  SS-session-manager.md v2.6.0 specifies the daemon-side defensive disposition for all lifecycle
+  actions on Terminated-in-grace entries. BC-2.06.025 must add a Terminated panel guard (product-
+  owner action); see SS-session-manager.md §Trace v2.6.0 for the BC reconciliation specification.
+
+- **Semver: ERRATA-NO-BUMP (v1.23.1 → v1.23.2).** The normative wire-code taxonomy (12 codes)
+  is unchanged. The §Trace v1.23.0 finding text is historical and is corrected here. No normative
+  obligation changed. Version stays at 1.23.x; this is a trace-level errata.
 
 ---
 

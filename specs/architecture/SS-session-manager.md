@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.5.1"
+version: "2.6.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -232,6 +232,26 @@ pub enum SessionState {
     Terminating,
     /// Harness child exited (naturally or via SIGTERM/SIGKILL from kill_session()); session-host
     /// sent StateChanged::Terminated to daemon. Terminal state — no further transitions.
+    ///
+    /// Terminated-in-grace lifecycle action dispositions (F-P52-001):
+    ///   kill_session()   → Ok(()) idempotent (BC-2.08.003 Invariant 2 — kill is already complete).
+    ///   rename_session() → Err(InvalidSessionName { reason: "session terminated" }) → "rename_failed"
+    ///                      (BC-2.08.005 Invariant 4: revive-via-rename is not allowed; no new code).
+    ///   detach_session() → Ok(()) idempotent (session-host is dead; detach is a no-op, parallel to
+    ///                      kill precedent; no new code).
+    ///   attach_session() → Err(SessionHostDead { session_id }) → "attach_failed" (host is dead).
+    ///   resize_session() → WARN-drop (existing ResizePane carve-out; no ServerToClient::Error).
+    ///   send_key_input() → Err(SessionHostDead { session_id }) → "attach_failed" (host is dead;
+    ///                      closest existing code; no new code).
+    ///   (None of these require new SessionError variants or wire codes — F-P52-001 constraint.)
+    ///
+    /// TUI panel rule (F-P52-001): Terminated-in-grace sessions render [X] per BC-2.06.025
+    /// Invariant 4. The TUI MUST block all lifecycle actions (k/d, D, r) on Terminated sessions
+    /// — no-op + status bar hint "Session has terminated" — mirroring the Terminating guard.
+    /// Kill (k/d) is explicitly blocked TUI-side despite the daemon's idempotent Ok(()) path;
+    /// a dead session has no user-meaningful kill operation, and panel consistency with the
+    /// Terminating guard is the production-grade default. The daemon defensive path remains
+    /// available for untrusted clients and the existing BC-2.08.003 Invariant 2 coverage.
     Terminated,
 }
 ```
@@ -258,6 +278,12 @@ pub enum SessionState {
 | `Terminating` | 12s timeout (no StateChanged received) | `Terminated` | Daemon sends SIGKILL to session-host PID; GC sidecar |
 | `Terminating` | PID dead on re-discovery | `Terminated` | GC sidecar |
 | `Terminated` | GC timer (10s) | *(removed)* | Entry removed from registry |
+| `Terminated` | `kill_session()` called | *(no transition)* | Idempotent Ok(()) — kill already complete; no duplicate message (BC-2.08.003 Inv 2). TUI blocks this via panel guard (F-P52-001). |
+| `Terminated` | `rename_session()` called | *(no transition)* | Err(InvalidSessionName { reason: "session terminated" }) → wire code "rename_failed" (BC-2.08.005 Inv 4: revive not allowed; no new code) (F-P52-001). |
+| `Terminated` | `detach_session()` called | *(no transition)* | Idempotent Ok(()) — session-host dead; no active connection to detach (parallel to kill precedent; no new code) (F-P52-001). |
+| `Terminated` | `attach_session()` called | *(no transition)* | Err(SessionHostDead) → wire code "attach_failed" — session-host process is dead (F-P52-001). |
+| `Terminated` | `resize_session()` called | *(no transition)* | WARN-drop (existing ResizePane carve-out; no ServerToClient::Error) (F-P52-001). |
+| `Terminated` | `send_key_input()` called | *(no transition)* | Err(SessionHostDead) → wire code "attach_failed" — host dead; no stdin to forward (F-P52-001). |
 
 #### Re-discovery state handling (I4 — all states covered)
 
@@ -513,6 +539,18 @@ impl SessionManager {
     pub async fn kill_session(&mut self, session_id: &str) -> Result<(), SessionError>;
 
     /// Detach the daemon from a running session-host (disconnect proxy; session continues).
+    ///
+    /// State-specific dispositions (F-P52-001):
+    ///   Running: normal path — proxy task aborted; state transitions Running → Detached.
+    ///   Launching (host_conn: None): Err(SessionNotReady) → "session_not_ready" (F-P50-001).
+    ///     Defensive invariant — correct TUI never sends DetachSession during Launching
+    ///     (BC-2.06.025 Invariant 5; F-P51-001). See §Post-spawn monitor item 8.
+    ///   Detached: no-op or idempotent Ok(()) — already detached; no state transition.
+    ///   Terminating: Err(SessionNotFound) semantics are acceptable here, or idempotent Ok(()).
+    ///     Correct TUI blocks detach on Terminating (BC-2.06.025 Invariant 4). Defensive path.
+    ///   Terminated: idempotent Ok(()) — session-host process is dead; there is no active
+    ///     connection to detach from (parallel to kill-on-Terminated idempotency precedent).
+    ///     No new SessionError variant or wire code (F-P52-001 constraint honored).
     pub async fn detach_session(&mut self, session_id: &str) -> Result<(), SessionError>;
 
     /// Re-attach the daemon to a running session-host (reconnect proxy).
@@ -524,6 +562,16 @@ impl SessionManager {
     /// only and cannot convey the updated display_name. The correct broadcast is SessionListUpdate,
     /// which carries the full SessionSnapshot including the new display_name. SessionStateChanged
     /// is NOT emitted. See C3-003 / SS-daemon-wiring-v2-delta §3b emission table.
+    ///
+    /// State-specific dispositions (F-P52-001):
+    ///   Launching, Running, Detached, Terminating: rename succeeds (display_name update; no state
+    ///     transition). Note: the CORRECT TUI blocks rename on Terminating and Terminated via panel
+    ///     guards (BC-2.06.025 Invariants 4 and 5/F-P52-001); this path is defensive for untrusted
+    ///     clients. Rename on Launching IS allowed per BC-2.06.025 Invariant 5 (F-P51-001).
+    ///   Terminated: returns Err(InvalidSessionName { reason: "session terminated" }) → wire code
+    ///     "rename_failed". BC-2.08.005 Invariant 4 prohibits reviving a Terminated session via
+    ///     rename. Uses the existing InvalidSessionName variant with a state-reason field — no new
+    ///     SessionError variant or wire code (F-P52-001 constraint honored).
     pub async fn rename_session(&mut self, session_id: &str, new_name: String) -> Result<(), SessionError>;
 
     /// Resize the PTY for a session (forwards to session-host).
@@ -613,13 +661,13 @@ method calls EngineModule methods, so `SessionError::EngineError` can only be pr
 | `EngineError(BinaryNotFound)` | `spawn_session` (via `spawn_recipe()`) | `"binary_not_found"` | Harness binary not found on PATH; `which::which()` failure |
 | `EngineError(InvalidPath)` | `spawn_session` (via `spawn_recipe()`) | `"invalid_spawn_arg"` | Non-UTF-8 or null-byte argument to `spawn_recipe()` |
 | `EngineError(UnsupportedOperation)` | `spawn_session` (via `spawn_recipe()`) | `"spawn_unsupported"` | Harness does not support monocle-controlled spawning; EC-112 defensive path (F-P44-IMP-001) |
-| `SessionNotFound` | `kill_session`, `detach_session`, `attach_session`, `rename_session`, `send_key_input`, `resize_session` | `"session_not_found"` | Session ID not in registry |
+| `SessionNotFound` | `kill_session`, `detach_session`, `attach_session`, `rename_session`, `send_key_input`, `resize_session` | `"session_not_found"` | Session ID not in registry. Note: a Terminated-in-grace session IS still in the registry; these methods reach state-specific dispatch BEFORE the SessionNotFound check would apply. See Terminated-in-grace dispositions in §State transition table (F-P52-001). |
 | `SpawnFailed` | `spawn_session` | `"spawn_failed"` | OS process spawn failure (from spawner) |
 | `SidecarWriteFailed` | `spawn_session` | `"sidecar_write_failed"` | Sidecar write failed after OS process spawned; orphan-kill protocol runs before this error surfaces |
 | `SessionIdCollision` | `spawn_session` | `"session_id_collision"` | UUID v4 collision in registry; astronomically rare; do not auto-retry |
 | `SessionHostDead` (attach-path) | `attach_session` | `"attach_failed"` | Session-host PID dead when daemon attempts attach |
 | `SessionHostDead` (kill-path) | `kill_session` | `"kill_failed"` | Session-host PID dead when daemon attempts kill; see `session_error_to_code(Op, &SessionError)` |
-| `InvalidSessionName` | `rename_session` | `"rename_failed"` | Empty name or name exceeding length limit |
+| `InvalidSessionName` | `rename_session` | `"rename_failed"` | Empty name or name exceeding length limit. Also returned when `rename_session()` is called on a Terminated-in-grace session: `InvalidSessionName { reason: "session terminated" }` (BC-2.08.005 Invariant 4 — revive via rename not allowed; F-P52-001 — no new variant or code). |
 | `SessionNotReady` | `detach_session` | `"session_not_ready"` | Session in Launching state; `host_conn: None` (monitor not yet connected); defensive invariant for untrusted clients — correct TUI never sends DetachSession during Launching (BC-2.06.025 + BC-2.08.007 Precondition 1). `resize_session()` may also return this variant internally but the ResizePane IPC arm WARN-drops ALL resize errors (never sends ServerToClient::Error). Wire producer: DetachSession arm only. (F-P50-001; resize excluded F-P51-001) |
 | `Io` | Any | `"invalid_request"` | Unexpected I/O error; nearest generic failure code |
 | `EngineError` (other/future variants) | `spawn_session` | `"invalid_request"` | Catch-all for any future `EngineError` variants not yet explicitly mapped (mandatory `_ =>` forward-compat arm); `"invalid_request"` is the nearest generic code. `UnsupportedOperation` now has its own arm and no longer falls through here (F-P44-IMP-001). |
@@ -646,6 +694,39 @@ distinct exhaustiveness guarantees:
   the catch-all (F-P44-IMP-001 adds `UnsupportedOperation`). Any truly unknown future variant
   produces a deterministic, observable `ServerToClient::Error { code: "invalid_request" }` that is
   logged and sent to the requesting client (never dropped).
+
+#### Terminated-in-grace defensive action×state matrix (F-P52-001)
+
+The following matrix documents the canonical daemon-side disposition for every lifecycle action
+dispatched against a session in EVERY non-Running state (including Terminated-in-grace). This
+matrix closes the gap identified in F-P52-001: prior to v2.6.0, `rename_session()` and
+`detach_session()` on Terminated-in-grace entries had no documented disposition in this spec,
+creating a silent-success path that contradicts BC-2.08.005 Invariant 4 (revive-via-rename not
+allowed) and the no-silent-failure invariant (BC-2.05.010).
+
+**No new SessionError variants or wire codes are used.** All dispositions map to existing
+variants and codes (F-P52-001 hard constraint honored).
+
+| Action | Launching (no host_conn) | Launching (host_conn estab.) | Running | Detached | Terminating | Terminated-in-grace |
+|--------|--------------------------|------------------------------|---------|----------|-------------|---------------------|
+| `kill_session()` | Ok(()) — PID fallback SIGTERM; Launching→Terminating | Ok(()) — Kill over host_conn; Launching→Terminating | Ok(()) — Kill over host_conn; Running→Terminating | Ok(()) — fresh UDS+SO_PEERCRED + Kill; Detached→Terminating | Ok(()) — idempotent (BC-2.08.003 Inv 2) | Ok(()) — idempotent (BC-2.08.003 Inv 2; kill already complete) |
+| `rename_session()` | Ok(()) — metadata op; no host_conn needed (BC-2.06.025 Inv 5) | Ok(()) — same | Ok(()) — metadata op | Ok(()) — metadata op | Ok(()) — metadata op; display_name update proceeds (TUI blocks this path per BC-2.06.025 Inv 4; daemon allows it defensively since rename is idempotent metadata) | Err(InvalidSessionName{"session terminated"}) → "rename_failed" (BC-2.08.005 Inv 4) |
+| `detach_session()` | Err(SessionNotReady) → "session_not_ready" (F-P50-001) | Err(SessionNotReady) if host_conn not yet active for detach; see §Post-spawn monitor item 8 | Ok(()) — Running→Detached | Ok(()) — idempotent (already detached) | Ok(()) — idempotent (no active connection; consistent with detach-on-Terminated) | Ok(()) — idempotent (host dead; no connection to sever) |
+| `attach_session()` | Err(SessionNotFound) or state-error — not valid target | N/A (not yet Running) | N/A (already attached) | Ok(()) — Detached→Running; fresh ScrollbackDump | Err(SessionHostDead) → "attach_failed" (session is being killed) | Err(SessionHostDead) → "attach_failed" (host process is dead) |
+| `resize_session()` | WARN-drop (ResizePane carve-out) | WARN-drop | Ok(()) | WARN-drop (no active proxy; resize forwarded but no PTY streaming; IPC handler carve-out applies to all resize errors regardless of session state) | WARN-drop | WARN-drop |
+| `send_key_input()` | Err(SessionNotFound or SessionHostDead) → "attach_failed" | SessionHostDead if host not live | Ok(()) — forwarded to stdin | Err — no active proxy/stdin path (session detached; use AttachSession first); maps to nearest existing code — SessionHostDead → "attach_failed" or SessionNotFound → "session_not_found" depending on impl; untrusted-client path | Err(SessionHostDead) → "attach_failed" | Err(SessionHostDead) → "attach_failed" |
+
+**Clarification on rename-on-Terminating:** BC-2.06.025 Invariant 4 blocks rename at the TUI for
+Terminating sessions. The daemon defensive path for an untrusted client sending RenameSession on
+Terminating: the spec does not prohibit it at the daemon level (rename is metadata-only and
+idempotent for the display_name field). However, since the correct TUI never reaches this path and
+a terminated-in-progress session's display_name rename has no user value, returning idempotent
+Ok(()) (metadata rename proceeds) is acceptable. No dedicated error needed.
+
+**No panic / silent-success paths remain for any action on any state.** Every cell either returns
+Ok(()) with documented idempotency rationale or returns Err with an existing SessionError variant
+and existing wire code. The ResizePane carve-out WARN-drop is not a silent-success — it is
+explicitly documented as the established benign-race exception.
 
 #### IPC handler pattern (mandatory)
 
@@ -1037,7 +1118,7 @@ pub enum HostToDaemon {
     PtyReset,
 }
 
-// C5-002 (SS-ipc.md v1.23.1): SerializedCell and SerializedColor are defined in
+// C5-002 (SS-ipc.md v1.23.2): SerializedCell and SerializedColor are defined in
 // monocle-ipc (crate::ipc::SerializedCell / crate::ipc::SerializedColor) so both
 // monocle-session-host (writer) and monocle-tui (reader) share the type without a
 // cross-binary dependency. The canonical definition with full field documentation
@@ -1583,6 +1664,83 @@ Daemon removes stale socket files during GC in re-discovery (alongside sidecar d
 | BC-2.08.007 | SpawnRecipe: binary path resolved; cwd is project root; env carries CCR URL if applicable | P0 |
 
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
+
+---
+
+## §Trace v2.6.0
+
+**F-P52-001 — Terminated-in-grace action dispositions specified; daemon defensive matrix closed; no new variants/codes** (2026-06-14):
+
+- **Finding (F-P52-001, IMPORTANT/no-silent-failure + cross-doc contradiction):** Prior to this
+  version, `rename_session()` and `detach_session()` had no documented disposition for sessions
+  in `Terminated`-in-grace state (the 10-second window after entry transitions to Terminated but
+  before the GC timer removes the registry entry — BC-2.08.005 PC-1). A Terminated entry IS in
+  the registry; neither call would return `SessionNotFound`. This left two unguarded paths:
+  (a) **rename on Terminated**: would silently succeed (update display_name on a corpse),
+      contradicting BC-2.08.005 Invariant 4 ("reviving a Terminated session via rename is not
+      allowed").
+  (b) **detach on Terminated**: would proceed against a dead session-host with undefined behavior
+      (`host_conn` is None; no socket to detach from).
+  Additionally, BC-2.06.025 Invariant 4 / Invariant 5 blocked lifecycle actions only for
+  Terminating (blanket) and Launching (action-specific), with no Terminated panel guard — leaving
+  the official TUI able to dispatch `r` (RenameSession) and `D` (DetachSession) on Terminated
+  entries shown during the [X] grace window.
+
+- **Canonical model decision (F-P52-001):**
+
+  **TUI layer (BC-2.06.025 scope — reported to product-owner):** Terminated-in-grace sessions
+  MUST mirror the Terminating guard: all lifecycle actions (k/d, D, r) are BLOCKED as no-ops
+  with status bar hint "Session has terminated". Kill is blocked TUI-side even though the daemon
+  handles it idempotently — a dead session has no user-meaningful kill operation, and panel
+  consistency is the production-grade default. The existing [X] indicator (BC-2.06.025 Invariant
+  4) is retained; the new guard is additive.
+
+  **Daemon layer (this document):** All lifecycle actions on Terminated-in-grace entries map to
+  existing SessionError variants and existing wire codes. NO new variants or codes added.
+  - kill_session: idempotent Ok(()) — BC-2.08.003 Invariant 2 (already covered).
+  - rename_session: Err(InvalidSessionName { reason: "session terminated" }) → "rename_failed".
+    Reuses InvalidSessionName with a state-reason string. BC-2.08.005 Invariant 4 satisfied.
+  - detach_session: idempotent Ok(()) — session-host is dead; no active connection to sever.
+    Parallel to kill-on-Terminated idempotency precedent (parallel structure, consistent mental
+    model: "dead session, dead session-host, lifecycle ops are no-ops or already-done").
+  - attach_session: Err(SessionHostDead) → "attach_failed" — host process is dead.
+  - resize_session: WARN-drop — existing ResizePane carve-out.
+  - send_key_input: Err(SessionHostDead) → "attach_failed" — host dead; no stdin to forward.
+
+- **Fixes applied:**
+  (a) `SessionState::Terminated` doc-comment extended with full Terminated-in-grace lifecycle
+      action disposition table (see inline variant doc-comment).
+  (b) State transition table extended with 6 new rows covering all lifecycle actions on
+      Terminated entries (rows: kill/rename/detach/attach/resize/send_key_input).
+  (c) `rename_session()` public API doc-comment extended with state-specific disposition section
+      covering Launching/Running/Detached/Terminating (normal) and Terminated (error path).
+  (d) `detach_session()` public API doc-comment extended with state-specific disposition section
+      covering all states including Terminated (idempotent Ok(())).
+  (e) Mapping table `SessionNotFound` row: note added that Terminated-in-grace entries ARE in
+      the registry and do NOT trigger SessionNotFound — they reach state-specific dispatch first.
+  (f) Mapping table `InvalidSessionName` row: note added for Terminated-state rename disposition.
+  (g) New §"Terminated-in-grace defensive action×state matrix (F-P52-001)" section added between
+      the mapping table exhaustiveness prose and §IPC handler pattern. This section closes every
+      cell in the action×state product for all non-Running states, with no-new-code constraint
+      explicitly documented.
+
+- **No new SessionError variants.** No new wire codes. Taxonomy remains 9 variants / 12 codes.
+  The Terminated-rename path reuses `InvalidSessionName` with a new reason string — this is not
+  a new variant (InvalidSessionName already had a `reason: String` field).
+
+- **BC impact (product-owner to act):**
+  - BC-2.06.025: needs Terminated panel guard (Invariant 4 extension or new Invariant 6) that
+    blocks k/d, D, r on Terminated sessions — mirroring Terminating's Invariant 4 guard.
+    New ECs and VPs needed. See architect report F-P52-001 §BC reconciliation.
+  - BC-2.08.005: Invariant 4 now has an arch backing (rename_on_Terminated → rename_failed);
+    should be updated to cross-reference this document's disposition. Version bump TBD by PO.
+  - BC-2.08.003 Invariant 2: already covered (kill idempotency confirmed); no change needed.
+
+- **Semver: minor (v2.5.1 → v2.6.0)** — normative additions: Terminated-in-grace disposition
+  matrix, doc-comment extensions on two public API methods, state table rows (7 new rows), new
+  defensive action×state matrix section. Multiple behavioral obligations added for implementers.
+
+SE-16d monotonicity: v2.6.0 timestamp 2026-06-14 ≥ v2.5.1 timestamp 2026-06-14. PASS.
 
 ---
 
