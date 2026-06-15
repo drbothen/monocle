@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "7.54"
+version: "7.55"
 status: active
 producer: state-manager
 timestamp: 2026-06-14T00:00:00Z
 phase: PIVOT-phase-1d-approved
-current_step: "D-303: Input-hash content-review COMPLETE + re-baseline DONE (2026-06-14). Read-only triage of all 148 stale clusters via upstream git diffs found 0 semantic drift (all cosmetic/version-pin/§Trace or v1A-package-already-reviewed). 149 spec input-hashes re-baselined via --update (149 files UPDATED, 0 UPDATE_FAILED). Circular-dependency STALE residual (tool design limitation: files listing each other as inputs produce non-convergent hash cycles) documented in INPUT-HASH-CHILD-RECOMPUTE process gap. 143 orphaned pre-pivot observe-only stories remain deferred to Phase-2. POL-11 GREEN. POL-12 GREEN. Phase-1d FULLY COMPLETE. NEXT = Phase-2 story decomposition."
+current_step: "D-305 (2026-06-15): Zero-context resume checkpoint for Phase-2 delta story decomposition. Phase-1d FULLY COMPLETE (D-303). Two new ratified human decisions recorded: D-304 (autonomous Phase-2 dispatch authorized) and D-305 (pre-pivot 143-story disposition requires human ratification before execution). Full Phase-2 Burst A–G dispatch plan embedded in next_session_resume_protocol. NEXT = Phase-2 Burst A: story-writer creates SS-08 session-manager story files (new EPIC-07), IDs starting S-033. STATE v7.54→v7.55."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE. D-224: Wave-6 GATE PASSED (develop @ 2a51a91). D-225: STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to wave-7-READY; points 177→169/195 reconciled to sprint-state. D-226: S-027 DELIVERED (PR #32 @ 3787ebd) — Wave 7: 1/4 done. D-227: S-031 DELIVERED (PR #33 @ 8451486). D-228: S-028 DELIVERED (PR #34 @ 682e5e5) — Wave 7: 3/4 done. develop @ 682e5e5. D-229: Zero-context resume checkpoint — S-029 human-authorized 2026-06-02. develop @ 1158e24. D-230: S-029 DELIVERED (PR #35 @ 48463fb) — Wave 7 COMPLETE (4/4). 32/33 done (192/195 pts). develop @ 48463fb. D-231: Wave-7-gate prerequisite sweep complete — SS-ipc v1.11.0, BC-2.06.021 v1.0.7, BC-INDEX v1.34, STORY-INDEX v5.30, citation atomicity propagation. POL-11/POL-12 PASS. S-027/S-028 story frontmatter status fixed. D-232: Wave-7 gate PASSED — Phase 3 COMPLETE. 1514 tests, 0 failures. F-W7G3-MED-001 fixed (PR #37 @ 6811103). HS-EXP-008 score 1.0. DTU SKIP (DTU-CLONE-STORY added as Phase 4 prereq). sprint-state v1.38. D-233: Phase-3→4 consistency cleanup — EVAL-INDEX v1.9, STORY-INDEX v5.31, BC-HOOK-034 v1.0.2 (typo fix), sprint-state v1.39. 28 story-file status fields corrected. Input-hash refresh (113→0+17 bookkeeping-residual). POL-11/POL-12 PASS. All MED/LOW audit findings RESOLVED. D-234: DTU clone false-negative corrected — S-DTU-001 (cargo binary dtu-claude-code-hooks-v1) validated fidelity 1.0000 (25/25 fixtures). Gate-2 DTU-VALIDATION corrected from SKIP to PASS. DTU-CLONE-STORY closed (RESOLVED-FALSE-PREMISE). Phase 4 UNBLOCKED. dtu_clones_built updated. PROC-DTU-VALIDATE-LOCATION process gap added. D-235: Daemon-wiring convergence — monocle-runtime binary now serves (main() wires daemon_start_sequence + run_server + UDS + tracing + ring-flush + 10s drain). SS-daemon-wiring-impl v1.3.0. SS-deps-pin-manifest v1.2.1. ARCH-INDEX v1.0.26. STORY-INDEX v5.32. sprint-state v1.40. S-DAEMON-WIRE-FIX-001 Wave-8 anchor. Resolved: ADV-W5GATE-HIGH-001, ADV-W3GATE-MED-002/004, ADV-W4GATE-MED-002, S-005-main-wiring, F-DW-HIGH-001. POL-11/POL-12 PASS. D-236: PRODUCT-VISION PIVOT — observe-only RETIRED; monocle → full TUI control center. Phases 4-7 SUSPENDED. D-237: Human ratified re-baselined-v1 control-center vision scope (4 capabilities: Launch, Embedded PTY, Multi-session/multi-project, Interactive Tune + already-built Observe+Control). DAEMON-OWNS-PTY locus. Hook auto-injection v1. embedded-pty-evaluation.md v1.0: primary = portable-pty 0.9.0 + vt100 0.16.2 + tui-term 0.3.4. NEXT: gene-source disposition → revised vision-synthesis → human gate. D-238: Vision approval gate PASSED. domain-monocle-vision-synthesis.md APPROVED at v2.1 by Joshua Magady as the canonical basis for the control-center re-baselined-v1 brief→architecture→story delta. HUMAN ESCALATION folded in at the gate: v1A persistence now REQUIRES that a graceful daemon-PROCESS restart SURVIVES (CASE 2 changed from 'lost' to 'survive'). Persistence principle renamed DAEMON-OWNS-PTY → 'session-host-owns-PTY; daemon coordinates/re-attaches': PTY masters + harness child processes owned by native detached per-session session-host processes (abduco/dtach-style) that outlive the daemon process; daemon re-attaches over UDS on restart. NO-TMUX preserved as default; external supervisor is architect-surfaced fallback only (requires human decision, not silent adoption). CASE 1 (TUI restart survives) and CASE 3 (hard crash → lost, re-launch) unchanged. New HIGH-priority architect question Q-8 (PTY-ownership-survival mechanism) added; NOTE: the already-built D-235 in-process daemon wiring will likely need rework to move PTY ownership out of the daemon process. Remaining architect-only open questions: Q-1 (PTY bytes over UDS), Q-2 (EngineModule/SessionManager surface), Q-7 (tui-term fork posture), plus PTY-throughput benchmark — all resolved during architecture delta. Architect must also reconcile the stale narrow keyboard scope in DISPOSITION-V2 rollup + embedded-pty-evaluation (superseded by full-fidelity ratification). NEXT: brief delta (product-owner) → architecture delta (architect) → story decomposition (story-writer). D-292: Pass-49 FIX BURST — F-P49-001 BC-INDEX+SS-conventions canonical SS version mirror tables converted to registry pointers (POL-11 blind spot closed); BC-INDEX→v1.40.7; SS-conventions errata-no-bump; S-P49-001 HS-EXP-011/012 cite-precision; EVAL-INDEX BC-INDEX citation updated. COUNTER = 0. Pass-50 next. D-293: Pass-50 FIX BURST — F-P50-001 host_conn-lifecycle contradiction resolved; SessionNotReady/session_not_ready 12-code taxonomy added; full cascade swept (9 spec files, 31 prose files); SS-ipc v1.23.0, SS-session-manager v2.5.0, SS-daemon-wiring-v2-delta v1.11.1, SS-engine-module-v2-delta v1.6.0, BC-2.08.003 v1.4.0, BC-2.05.010 v1.9.0, BC-2.08.007 v1.5.0, BC-2.03.008 v1.0.3, BC-INDEX v1.40.8. COUNTER = 0. Pass-51 next. D-294: Pass-51 FIX BURST — F-P51-001 session_not_ready producer = DetachSession arm only (resize WARN-dropped per Invariant 6 Exception); SS-session-manager v2.5.1, SS-ipc v1.23.1, SS-daemon-wiring-v2-delta v1.11.2, BC-2.05.010 v1.9.1, BC-2.08.007 v1.5.1, BC-2.06.025 v1.4.0 (Launching action rules Invariant 5 + EC-298/EC-299), BC-INDEX v1.40.9. POL-11 cascade ~82 literals across ~34 files. COUNTER = 0. Pass-52 next. D-295: Pass-52 FIX BURST — F-P52-001 Terminated-in-GC-grace action×state matrix closed; rename→rename_failed (backs BC-2.08.005 Inv 4), detach→idempotent Ok, kill→idempotent Ok (BC-2.08.003 Inv 2), resize→WARN-drop; no new wire codes/variants; SS-session-manager v2.6.0, SS-ipc v1.23.2, SS-daemon-wiring-v2-delta v1.11.3, BC-2.06.025 v1.5.0 (Invariant 6 + EC-300/301/302), BC-2.08.005 v1.0.2, BC-INDEX v1.41.0; POL-11 cascade 90 literals across 31 files; POL-11/POL-12 GREEN; COUNTER = 0. Pass-53 next. D-296: Pass-53 FIX BURST — F-P53-001 BC-2.08.006 PC-3 authority corrected BC-HOOK-007→BC-2.04.010; 4-URL+2-empty hooks-settings.json schema; SessionStart NOT a file key; SS-daemon-wiring errata-no-bump sibling; BC-2.08.006 v1.3.0; POL-11/POL-12 GREEN; COUNTER = 0. Pass-54 next. D-297: Pass-54 FIX BURST — F-P54-001 retired pause-during-dump doc-comment survivors removed from SS-session-manager (3 positions); errata-no-bump (v2.6.0 stays); snapshot-then-resume canonical; whole-class sweep 0 survivors; POL-11/POL-12 GREEN; COUNTER = 0. Pass-55 next. D-298: Pass-55 CLEAN (0C/0I) — retired-concept residue sweep across all 8 classes clean; all breadth axes sound; no spec text changed; COUNTER 0→1. Pass-56 next. D-299: Pass-56 CLEAN (0C/0I) — independent fresh-context 9-axis sweep (anchor-resolution, full-lifecycle, retired-concept, error-taxonomy, security, canonical-vs-delta mirror, cross-index, holdout realizability, deps/MSRV) all PASS; zero novelty; COUNTER 1→2. Pass-57 next = clean candidate 3 of 3. D-300: Pass-57 CLEAN (0C/0I) — THIRD consecutive clean; rigorous independent 9-axis sweep all PASS; zero novelty; COUNTER 2→3; PHASE-1D ADVERSARIAL SPEC CONVERGENCE COMPLETE. Strict-3-clean gate satisfied (Passes 55/56/57). OBS-P57-001 ratified LOW deferral. Next: pre-gate validations → human approval gate → Phase-2."
-awaiting: "PHASE-1D FULLY COMPLETE (D-303, 2026-06-14). Input-hash content-review DONE (human D-302 directive satisfied: read-only triage found 0 semantic drift across all 148 stale clusters; all cosmetic/v1A-already-reviewed). 149 spec input-hashes re-baselined via --update. Circular-dependency STALE residual is a tool design limitation (INPUT-HASH-CHILD-RECOMPUTE process gap; non-blocking for Phase-2). POL-11 GREEN. POL-12 GREEN. CC-TUITERM-WIP-SIGNOFF SIGNED (D-302). CC-GLOBAL-MOUSE-CAPTURE SIGNED (D-302). 143 orphaned pre-pivot observe-only stories deferred to Phase-2. NEXT = Phase-2 story decomposition (vsdd-factory:story-writer): resolve S-TBD anchors in v1A BCs + holdout stories_tested; decompose v1A delta → stories + waves. Deferred tooling follow-ups (devops-engineer, non-blocking before Phase-4): POL-11-PINFORMAT-BLIND-SPOT + INPUT-HASH-CHILD-RECOMPUTE."
+traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE. D-224: Wave-6 GATE PASSED (develop @ 2a51a91). D-225: STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to wave-7-READY; points 177→169/195 reconciled to sprint-state. D-226: S-027 DELIVERED (PR #32 @ 3787ebd) — Wave 7: 1/4 done. D-227: S-031 DELIVERED (PR #33 @ 8451486). D-228: S-028 DELIVERED (PR #34 @ 682e5e5) — Wave 7: 3/4 done. develop @ 682e5e5. D-229: Zero-context resume checkpoint — S-029 human-authorized 2026-06-02. develop @ 1158e24. D-230: S-029 DELIVERED (PR #35 @ 48463fb) — Wave 7 COMPLETE (4/4). 32/33 done (192/195 pts). develop @ 48463fb. D-231: Wave-7-gate prerequisite sweep complete — SS-ipc v1.11.0, BC-2.06.021 v1.0.7, BC-INDEX v1.34, STORY-INDEX v5.30, citation atomicity propagation. POL-11/POL-12 PASS. S-027/S-028 story frontmatter status fixed. D-232: Wave-7 gate PASSED — Phase 3 COMPLETE. 1514 tests, 0 failures. F-W7G3-MED-001 fixed (PR #37 @ 6811103). HS-EXP-008 score 1.0. DTU SKIP (DTU-CLONE-STORY added as Phase 4 prereq). sprint-state v1.38. D-233: Phase-3→4 consistency cleanup — EVAL-INDEX v1.9, STORY-INDEX v5.31, BC-HOOK-034 v1.0.2 (typo fix), sprint-state v1.39. 28 story-file status fields corrected. Input-hash refresh (113→0+17 bookkeeping-residual). POL-11/POL-12 PASS. All MED/LOW audit findings RESOLVED. D-234: DTU clone false-negative corrected — S-DTU-001 (cargo binary dtu-claude-code-hooks-v1) validated fidelity 1.0000 (25/25 fixtures). Gate-2 DTU-VALIDATION corrected from SKIP to PASS. DTU-CLONE-STORY closed (RESOLVED-FALSE-PREMISE). Phase 4 UNBLOCKED. dtu_clones_built updated. PROC-DTU-VALIDATE-LOCATION process gap added. D-235: Daemon-wiring convergence — monocle-runtime binary now serves (main() wires daemon_start_sequence + run_server + UDS + tracing + ring-flush + 10s drain). SS-daemon-wiring-impl v1.3.0. SS-deps-pin-manifest v1.2.1. ARCH-INDEX v1.0.26. STORY-INDEX v5.32. sprint-state v1.40. S-DAEMON-WIRE-FIX-001 Wave-8 anchor. Resolved: ADV-W5GATE-HIGH-001, ADV-W3GATE-MED-002/004, ADV-W4GATE-MED-002, S-005-main-wiring, F-DW-HIGH-001. POL-11/POL-12 PASS. D-236: PRODUCT-VISION PIVOT — observe-only RETIRED; monocle → full TUI control center. Phases 4-7 SUSPENDED. D-237: Human ratified re-baselined-v1 control-center vision scope (4 capabilities: Launch, Embedded PTY, Multi-session/multi-project, Interactive Tune + already-built Observe+Control). DAEMON-OWNS-PTY locus. Hook auto-injection v1. embedded-pty-evaluation.md v1.0: primary = portable-pty 0.9.0 + vt100 0.16.2 + tui-term 0.3.4. NEXT: gene-source disposition → revised vision-synthesis → human gate. D-238: Vision approval gate PASSED. domain-monocle-vision-synthesis.md APPROVED at v2.1 by Joshua Magady as the canonical basis for the control-center re-baselined-v1 brief→architecture→story delta. HUMAN ESCALATION folded in at the gate: v1A persistence now REQUIRES that a graceful daemon-PROCESS restart SURVIVES (CASE 2 changed from 'lost' to 'survive'). Persistence principle renamed DAEMON-OWNS-PTY → 'session-host-owns-PTY; daemon coordinates/re-attaches': PTY masters + harness child processes owned by native detached per-session session-host processes (abduco/dtach-style) that outlive the daemon process; daemon re-attaches over UDS on restart. NO-TMUX preserved as default; external supervisor is architect-surfaced fallback only (requires human decision, not silent adoption). CASE 1 (TUI restart survives) and CASE 3 (hard crash → lost, re-launch) unchanged. New HIGH-priority architect question Q-8 (PTY-ownership-survival mechanism) added; NOTE: the already-built D-235 in-process daemon wiring will likely need rework to move PTY ownership out of the daemon process. Remaining architect-only open questions: Q-1 (PTY bytes over UDS), Q-2 (EngineModule/SessionManager surface), Q-7 (tui-term fork posture), plus PTY-throughput benchmark — all resolved during architecture delta. Architect must also reconcile the stale narrow keyboard scope in DISPOSITION-V2 rollup + embedded-pty-evaluation (superseded by full-fidelity ratification). NEXT: brief delta (product-owner) → architecture delta (architect) → story decomposition (story-writer). D-292: Pass-49 FIX BURST — F-P49-001 BC-INDEX+SS-conventions canonical SS version mirror tables converted to registry pointers (POL-11 blind spot closed); BC-INDEX→v1.40.7; SS-conventions errata-no-bump; S-P49-001 HS-EXP-011/012 cite-precision; EVAL-INDEX BC-INDEX citation updated. COUNTER = 0. Pass-50 next. D-293: Pass-50 FIX BURST — F-P50-001 host_conn-lifecycle contradiction resolved; SessionNotReady/session_not_ready 12-code taxonomy added; full cascade swept (9 spec files, 31 prose files); SS-ipc v1.23.0, SS-session-manager v2.5.0, SS-daemon-wiring-v2-delta v1.11.1, SS-engine-module-v2-delta v1.6.0, BC-2.08.003 v1.4.0, BC-2.05.010 v1.9.0, BC-2.08.007 v1.5.0, BC-2.03.008 v1.0.3, BC-INDEX v1.40.8. COUNTER = 0. Pass-51 next. D-294: Pass-51 FIX BURST — F-P51-001 session_not_ready producer = DetachSession arm only (resize WARN-dropped per Invariant 6 Exception); SS-session-manager v2.5.1, SS-ipc v1.23.1, SS-daemon-wiring-v2-delta v1.11.2, BC-2.05.010 v1.9.1, BC-2.08.007 v1.5.1, BC-2.06.025 v1.4.0 (Launching action rules Invariant 5 + EC-298/EC-299), BC-INDEX v1.40.9. POL-11 cascade ~82 literals across ~34 files. COUNTER = 0. Pass-52 next. D-295: Pass-52 FIX BURST — F-P52-001 Terminated-in-GC-grace action×state matrix closed; rename→rename_failed (backs BC-2.08.005 Inv 4), detach→idempotent Ok, kill→idempotent Ok (BC-2.08.003 Inv 2), resize→WARN-drop; no new wire codes/variants; SS-session-manager v2.6.0, SS-ipc v1.23.2, SS-daemon-wiring-v2-delta v1.11.3, BC-2.06.025 v1.5.0 (Invariant 6 + EC-300/301/302), BC-2.08.005 v1.0.2, BC-INDEX v1.41.0; POL-11 cascade 90 literals across 31 files; POL-11/POL-12 GREEN; COUNTER = 0. Pass-53 next. D-296: Pass-53 FIX BURST — F-P53-001 BC-2.08.006 PC-3 authority corrected BC-HOOK-007→BC-2.04.010; 4-URL+2-empty hooks-settings.json schema; SessionStart NOT a file key; SS-daemon-wiring errata-no-bump sibling; BC-2.08.006 v1.3.0; POL-11/POL-12 GREEN; COUNTER = 0. Pass-54 next. D-297: Pass-54 FIX BURST — F-P54-001 retired pause-during-dump doc-comment survivors removed from SS-session-manager (3 positions); errata-no-bump (v2.6.0 stays); snapshot-then-resume canonical; whole-class sweep 0 survivors; POL-11/POL-12 GREEN; COUNTER = 0. Pass-55 next. D-298: Pass-55 CLEAN (0C/0I) — retired-concept residue sweep across all 8 classes clean; all breadth axes sound; no spec text changed; COUNTER 0→1. Pass-56 next. D-299: Pass-56 CLEAN (0C/0I) — independent fresh-context 9-axis sweep (anchor-resolution, full-lifecycle, retired-concept, error-taxonomy, security, canonical-vs-delta mirror, cross-index, holdout realizability, deps/MSRV) all PASS; zero novelty; COUNTER 1→2. Pass-57 next = clean candidate 3 of 3. D-300: Pass-57 CLEAN (0C/0I) — THIRD consecutive clean; rigorous independent 9-axis sweep all PASS; zero novelty; COUNTER 2→3; PHASE-1D ADVERSARIAL SPEC CONVERGENCE COMPLETE. Strict-3-clean gate satisfied (Passes 55/56/57). OBS-P57-001 ratified LOW deferral. Next: pre-gate validations → human approval gate → Phase-2. D-304 (2026-06-15): Human authorized AUTONOMOUS Phase-2 dispatch — orchestrator may run Bursts A–G without per-burst plan-review gate (story-writer, product-owner, state-manager bursts run sequentially; state-manager dispatched LAST in any burst). D-305 (2026-06-15): Pre-pivot 143-story disposition — story-writer PRODUCES RECOMMENDATION (archive/retire/mark-done-historical) in Burst D, written to .factory/stories/pre-pivot-disposition-recommendation.md; orchestrator routes to human for RATIFICATION before execution. Bulk-archive BLOCKED until ratified."
+awaiting: "PHASE-2 DELTA STORY DECOMPOSITION — BURST A IS THE IMMEDIATE NEXT ACTION (D-304/D-305 ratified 2026-06-15). Dispatch vsdd-factory:story-writer for Burst A: create SS-08 session-manager story FILES ONLY (new EPIC-07), story IDs starting S-033. No BC edits, no index edits in Burst A. BCs to decompose: BC-2.08.001/002/003/004/005/006/007/008. Full 7-burst sequential plan in next_session_resume_protocol. D-304: autonomous Phase-2 dispatch authorized (no per-burst plan-review gate). D-305: 143-story pre-pivot disposition requires story-writer RECOMMENDATION first, then human ratification BEFORE execution (Burst D). Adversarial counter RESET to 0/3 for Phase-2. Tooling follow-ups non-blocking: POL-11-PINFORMAT-BLIND-SPOT + INPUT-HASH-CHILD-RECOMPUTE (devops-engineer, before Phase-4)."
 durable_task_register:
   outstanding:
     - id: "INPUT-HASH-CHILD-RECOMPUTE"
@@ -499,18 +499,16 @@ durable_task_register:
     - "TALLY-GUARD (D-225): STATE running-tally must re-sum sprint-state per-story; summary.points_complete is a cache. Hand-increment drift produced +8 pts error + premature Phase-3-COMPLETE. L-W6-GATE-003."
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v7.54 (D-271..D-303) — 2026-06-14
+  ZERO-CONTEXT RESUME CHECKPOINT v7.55 (D-271..D-305) — 2026-06-15
   PIVOT: monocle → full TUI control center — PHASE-1D FULLY COMPLETE (D-303)
-  PHASE-2 STORY DECOMPOSITION IS THE NEXT ACTION (human approved "Begin Phase-2 now")
+  PHASE-2 DELTA STORY DECOMPOSITION IS THE NEXT ACTION — BURST A IS IMMEDIATE
   57 PASSES COMPLETE; CONVERGENCE COMPLETE; CONSISTENCY AUDIT DONE; HUMAN GATE PASSED; INPUT-HASH REBASELINED
   CC-TUITERM-WIP-SIGNOFF SIGNED; CC-GLOBAL-MOUSE-CAPTURE SIGNED; INPUT-HASH CONTENT-REVIEW DONE (0 semantic drift)
-  NEXT: Phase-2 DELTA story decomposition (vsdd-factory:story-writer) — resolve ALL S-TBD anchors in 25 v1A BCs;
-        decompose v1A BCs → new stories; integrate into existing STORY-INDEX v5.32 + sprint-state.yaml;
-        new epics (EPIC-07 SS-08, EPIC-08 SS-09), new waves (Wave 8+); 3-clean adversarial + consistency audit before gate.
-  143 orphaned pre-pivot observe-only stories: deferred to Phase-2 disposition (retire/archive/mark-done-historical).
-  ADVERSARIAL COUNTER RESET: Phase-1d convergence counter is MOOT. Phase-2 starts a NEW convergence cycle (0 of 3 clean).
+  D-304 RATIFIED: Autonomous Phase-2 dispatch authorized — no per-burst plan-review gate.
+  D-305 RATIFIED: 143-story disposition requires story-writer RECOMMENDATION + human RATIFICATION before execution.
+  ADVERSARIAL COUNTER RESET to 0/3 for Phase-2 (Phase-1d counter is MOOT).
   factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'` (do NOT trust a literal SHA here).
-  develop HEAD: 122eed5 (no v1A production code; last v1A-relevant doc commit per recent history).
+  develop HEAD: 2141adc (no v1A production code written; Phase-1d spec-only work).
   ============================================================================
 
   READ THESE FIRST (in order — before anything else):
@@ -519,84 +517,75 @@ next_session_resume_protocol: |
   3. This STATE.md fully                                 ← durable_task_register + section E ratified decisions + all deferreds
 
   ============================================================================
-  PHASE-2 PLAN — DELTA STORY DECOMPOSITION
+  PHASE-2 DISPATCH PLAN — BURST A-G (SEQUENTIAL — DO NOT PARALLELIZE STORY IDs)
   ============================================================================
 
-  Phase-2 is a DELTA decomposition: the v1A pivot adds new scope on top of the existing
-  pre-pivot story corpus (STORY-INDEX v5.32, EPIC-01..06, S-001..S-032, sprint-state v1.40).
+  Phase-2 is a DELTA decomposition: v1A pivot adds new scope on top of the existing
+  pre-pivot corpus (STORY-INDEX v5.32, EPIC-01..06, S-001..S-032, sprint-state v1.40).
+  Bursts run SEQUENTIALLY so story IDs do not collide. Each create burst reports the
+  next free story ID before returning. state-manager is dispatched LAST in any burst
+  that also runs other agents. Continuous numbering: next story is S-033+.
 
-  STEP 1 — story-writer maps the 25 v1A BCs → implementable stories, resolving every S-TBD anchor.
-  v1A BCs needing stories, by subsystem (each `S-TBD` in the BC becomes a real story ID):
+  BURST A — vsdd-factory:story-writer
+    Scope: create SS-08 session-manager STORY FILES ONLY (new EPIC-07), IDs starting S-033.
+    NO BC edits, NO index edits. Story files only.
+    Report: list of created story IDs + BC-to-story mapping. Report next free ID for Burst B.
+    BCs: BC-2.08.001 (spawn_session/SessionHostSpawner), .002 (re-discovery + setsid in
+    monocle-session-host), .003 (kill_session), .004 (daemon_start_sequence step-8b
+    rediscover_sessions), .005 (GC task), .006 (hook auto-injection in spawn path),
+    .007 (attach/detach), .008 (SessionStateChanged broadcast). Some may cluster.
 
-  SS-03 (engine-module):
-    BC-2.03.001  EngineModule trait + monocle-core crate wiring
-    BC-2.03.002  ClaudeCodeModule strict-basename detect
-    BC-2.03.003  HomeUnresolvable error path
-    BC-2.03.004  ClaudeCodeModule inherent methods / hook_paths
-    BC-2.03.005  ClaudeCodeModule::spawn_recipe() + default
-    BC-2.03.006  spawn_recipe() error handling — NOTE: .006/.007/.008 may resolve to the same story as .005
+  BURST B — vsdd-factory:story-writer (AFTER Burst A reports IDs)
+    Scope: create SS-09 embedded-pty STORY FILES ONLY (new EPIC-08), continuing IDs after A.
+    NO BC edits, NO index edits. Story files only.
+    Report: list of created story IDs + BC-to-story mapping. Report next free ID for Burst C.
+    BCs: BC-2.09.001 (TUI PTY widget: vt100 parser/PseudoTerminal render/PtyOutput handler),
+    .002 (key_event_to_pty_bytes + KeyInput IPC), .003 (mouse_event_to_pty_bytes + SGR),
+    .004 (Kitty keyboard — clusters with .002), .005 (paste — clusters with .002),
+    .007 (scrollback navigation), .008 (EmbeddedTerminal/SessionCreation AppMode transitions),
+    .009 (permission badge + bell).
 
-  SS-05 (IPC):
-    BC-2.05.001  UDS server bind 0o600 + dir 0o700
-    BC-2.05.002  TUI UDS connect + InitialState
-    BC-2.05.003  SessionListUpdate fan-out
-    BC-2.05.005  PermissionPromptQueued
-    BC-2.05.006  TUI reconnect backoff
-    BC-2.05.007  TransportEvent::Disconnected
-    BC-2.05.008  Transport trait / UdsTransport
-    BC-2.05.009  PtyOutput broker fan-out
-    BC-2.05.010  new ClientToServer IPC variants + routing
-    BC-2.05.011  ScrollbackChunk* / ScrollbackComplete / PtyReset
-    NOTE: BC-2.05.004 already resolved → S-021 / S-032.
+  BURST C — vsdd-factory:story-writer (AFTER Burst B reports IDs)
+    Scope: create SS-03/SS-05/SS-06 DELTA story files only (additions to EPIC-03/05/06).
+    NO BC edits, NO index edits. Story files only.
+    Report: list of created story IDs + BC-to-story mapping.
+    SS-03 BCs: BC-2.03.001 (EngineModule trait/monocle-core), .002 (ClaudeCodeModule
+    strict-basename detect), .003 (HomeUnresolvable error path), .004 (ClaudeCodeModule
+    inherent methods/hook_paths), .005/.006/.007/.008 (ClaudeCodeModule::spawn_recipe() +
+    default + error handling — .006/.007/.008 may fold into the .005 spawn story).
+    SS-05 BCs: BC-2.05.001 (UDS bind 0o600), .002 (TUI UDS connect+InitialState),
+    .003 (SessionListUpdate fan-out), .005 (PermissionPromptQueued), .006 (TUI reconnect
+    backoff), .007 (TransportEvent::Disconnected), .008 (Transport trait/UdsTransport),
+    .009 (PtyOutput broker fan-out), .010 (new ClientToServer variants+routing), .011
+    (ScrollbackChunk*/Complete/PtyReset). SKIP BC-2.05.004 (already -> S-021/S-032).
+    SS-06 BC: BC-2.06.025 (multi-session grouped sessions panel + lifecycle actions).
 
-  SS-06 (TUI sessions panel):
-    BC-2.06.025  multi-session grouped sessions panel + lifecycle actions
+  BURST D — vsdd-factory:story-writer (runs after Burst C; independent of next story ID)
+    Scope: analyze 143 orphaned pre-pivot observe-only stories -> write RECOMMENDATION DOC.
+    Output file: .factory/stories/pre-pivot-disposition-recommendation.md
+    Per-story or per-group recommendation: archive / retire / mark-done-historical.
+    CRITICAL: DO NOT execute disposition. Orchestrator routes doc to human to RATIFY.
+    Bulk-archive BLOCKED until human ratifies. (D-305 constraint)
 
-  SS-08 (session-manager):
-    BC-2.08.001  spawn_session / SessionHostSpawner
-    BC-2.08.002  re-discovery + setsid in monocle-session-host
-    BC-2.08.003  kill_session
-    BC-2.08.004  daemon_start_sequence 8b rediscover_sessions
-    BC-2.08.005  GC task
-    BC-2.08.006  hook auto-injection in spawn path
-    BC-2.08.007  attach / detach
-    BC-2.08.008  SessionStateChanged broadcast
+  BURST E — vsdd-factory:product-owner (AFTER Burst C IDs are known; can run after Burst D)
+    Scope: resolve every S-TBD anchor in the 25 v1A BC files AND every
+    stories_tested=[S-TBD] in holdouts HS-EXP-011..015, using now-known IDs from Bursts A-C.
+    PO MUST NOT touch story body content — story-writer propagates body/AC changes in Burst F.
 
-  SS-09 (embedded-pty):
-    BC-2.09.001  TUI PTY widget: vt100 parser / PseudoTerminal render / PtyOutput handler
-    BC-2.09.002  key_event_to_pty_bytes + KeyInput IPC
-    BC-2.09.003  mouse_event_to_pty_bytes + SGR
-    BC-2.09.004  Kitty keyboard branch (same feature cluster as .002)
-    BC-2.09.005  bracketed paste (same feature cluster as .002)
-    BC-2.09.007  scrollback navigation
-    BC-2.09.008  EmbeddedTerminal / SessionCreation AppMode transitions
-    BC-2.09.009  permission badge + bell
+  BURST F — vsdd-factory:story-writer (AFTER product-owner Burst E)
+    Scope: integrate new stories into STORY-INDEX.md (S-033+, continuous), sprint-state.yaml,
+    wave schedule (define Wave 8+), dependency-graph. Propagate BC anchor changes from Burst E
+    into story bodies/acceptance criteria. New epics: EPIC-07 (SS-08), EPIC-08 (SS-09) plus
+    additions to EPIC-03 (engine-module), EPIC-05 (IPC), EPIC-06 (TUI).
+    Wave 7 stories remain DONE. New stories start at Wave 8+. No dependency cycles.
 
-  Holdouts with S-TBD anchors (resolve to the new story IDs):
-    HS-EXP-011  stories_tested=[S-TBD-session-manager]
-    HS-EXP-012  stories_tested=[S-TBD]
-    HS-EXP-013  stories_tested=[S-TBD]
-    HS-EXP-014  stories_tested=[S-TBD]
-    HS-EXP-015  stories_tested=[S-TBD]
+  BURST G — vsdd-factory:state-manager LAST (after Bursts A-F)
+    Scope: refresh indexes/citations, version bumps (BC-INDEX, STORY-INDEX, EVAL-INDEX,
+    sprint-state.yaml), update STATE.md, run compute-input-hash --update, POL-11 + POL-12.
+    Bookkeeping only — no spec content changes.
 
-  STEP 2 — integrate new stories into existing dependency graph + wave schedule.
-  Existing: STORY-INDEX v5.32 (EPIC-01..06, S-001..S-032), sprint-state.yaml v1.40.
-  Expected NEW epics: EPIC-07 (Session Manager / SS-08), EPIC-08 (Embedded PTY / SS-09),
-  + additions to EPIC-03 (engine-module SS-03), EPIC-05 (IPC SS-05), EPIC-06 (TUI SS-06).
-  New waves: Wave 8+ (WAVE 7 is DONE). story-writer must avoid dependency cycles.
-  Continuous numbering: next story is S-033+.
-
-  STEP 3 — adversarial STORY convergence (3 consecutive clean minimum; mandatory per orchestrator).
-  Follow-up: fresh consistency audit before any Phase-2 human gate.
-
-  ORCHESTRATOR REMINDER: when dispatching story-writer to create >8 stories, SPLIT into
-  "create" and "integrate" sub-bursts to avoid context-overflow.
-
-  PRE-EXISTING STORIES DISPOSITION (143 orphaned pre-pivot observe-only stories):
-  Human deferred decision to Phase-2. story-writer must decide:
-    - Archive / retire / mark-done-historical (these were authored under the observe-only scope).
-    - They are the source of the 143 UNRESOLVABLE input-hash entries (circular-dep residual).
-    - Do NOT carry them into the v1A story wave as active development targets.
+  POST-BURST: Phase-2 adversarial story convergence (3 consecutive clean, new cycle from 0).
+  Fresh consistency audit -> Phase-2 human approval gate -> Phase-3 TDD implementation.
 
   ============================================================================
 
@@ -1325,17 +1314,17 @@ next_session_resume_protocol: |
      Circular-dependency STALE residual documented (INPUT-HASH-CHILD-RECOMPUTE — non-blocking).
      POL-11 GREEN. POL-12 GREEN.
 
-  3. Phase-2 STORY DECOMPOSITION (vsdd-factory:story-writer) — NEXT (human approved "Begin Phase-2 now"):
-     THIS IS THE CURRENT ENTRY POINT FOR A FRESH SESSION.
-     a. Dispatch story-writer to resolve all S-TBD anchors in 25 v1A BCs + holdout stories_tested fields.
-     b. story-writer creates new stories S-033+ for all v1A BCs listed in the PHASE-2 PLAN section above.
-     c. story-writer adds new epics (EPIC-07 SS-08, EPIC-08 SS-09) + additions to EPIC-03/05/06.
-     d. story-writer integrates into STORY-INDEX v5.32 (continuous numbering S-033+) + sprint-state.yaml.
-     e. story-writer defines Wave 8+ wave schedule.
-     f. story-writer disposes of 143 orphaned pre-pivot observe-only stories (retire/archive/mark-done).
-     g. Adversarial story convergence: 3 consecutive clean passes (new cycle; counter starts at 0).
-     h. Fresh consistency audit before Phase-2 human gate.
-     ORCHESTRATOR SPLIT RULE: >8 stories → split into "create" + "integrate" sub-bursts.
+  3. Phase-2 STORY DECOMPOSITION — IN PROGRESS (D-304/D-305 ratified 2026-06-15):
+     IMMEDIATE NEXT ACTION: Burst A — vsdd-factory:story-writer creates SS-08 story files (EPIC-07, IDs from S-033).
+     Full 7-burst sequential plan in next_session_resume_protocol. Summary:
+     Burst A: story-writer — SS-08 story FILES ONLY (EPIC-07, IDs S-033+). No BC/index edits.
+     Burst B: story-writer — SS-09 story FILES ONLY (EPIC-08, continuing IDs). No BC/index edits.
+     Burst C: story-writer — SS-03/SS-05/SS-06 delta story files (EPIC-03/05/06 additions).
+     Burst D: story-writer — 143-story disposition RECOMMENDATION doc only (human must ratify; D-305).
+     Burst E: product-owner — resolve all S-TBD anchors in v1A BCs + HS-EXP-011..015.
+     Burst F: story-writer — integrate into STORY-INDEX, sprint-state.yaml, wave schedule (Wave 8+).
+     Burst G: state-manager LAST — version bumps, STATE.md, compute-input-hash, POL-11, POL-12.
+     Then: Phase-2 adversarial convergence (3 clean passes, counter starts at 0) + consistency audit + human gate.
 
   3a. Tooling tasks (devops-engineer, before Phase-4, non-blocking for Phase-2):
      POL-11-PINFORMAT-BLIND-SPOT: extend check_version_pins.py with Pattern for 'path.md vX.Y.Z §section'
@@ -1787,6 +1776,8 @@ D-047 through D-241 archived at: `cycles/cycle-001/decisions-archive.md` and `cy
 
 | ID | Decision | Date | Made By |
 |----|----------|------|---------|
+| D-304 | Human authorized AUTONOMOUS Phase-2 dispatch (2026-06-15). Orchestrator may run Phase-2 Bursts A–G (story-writer create/integrate/convergence bursts) without a per-burst plan-review gate. Bursts run sequentially; state-manager dispatched LAST in any burst that also runs other agents. STATE v7.54→v7.55. | 2026-06-15 | human |
+| D-305 | Pre-pivot 143-story disposition protocol (2026-06-15). story-writer produces a RECOMMENDATION document (archive/retire/mark-done-historical) at .factory/stories/pre-pivot-disposition-recommendation.md in Burst D. Orchestrator routes document to human for RATIFICATION before any disposition is executed. Bulk-archive of 143 orphaned observe-only stories BLOCKED until human ratifies. STATE v7.54→v7.55. | 2026-06-15 | human |
 | D-303 | Input-hash content-review COMPLETE + re-baseline DONE (D-303). Human D-302 directive satisfied: read-only triage of all 148 stale spec clusters via upstream git diffs found 0 semantic drift — all cosmetic (version-pin bumps, §Trace additions, consistency-only doc touches) or v1A-package-already-reviewed (prd.md §2.5/§2.8 v1A + version-pin + §Trace; ARCH-INDEX unchanged; product-brief/vision changes self-labeled consistency-only; CAPs have no SessionState refs; VPs trace only cosmetic BC-INDEX rows; no new normative error-code rows). 149 spec input-hashes re-baselined via compute-input-hash --update (UPDATED=149, UPDATE_FAILED=0, source files: specs/, plans/, planning/, cycles/ directories only — no code-delivery/ or stories/ touched). Circular-dependency STALE residual noted: compute-input-hash hashes full file content including input-hash fields; files that list each other as inputs (e.g., prd.md lists SS-daemon-lifecycle.md as input; SS-daemon-lifecycle.md lists prd.md as input) produce non-convergent hash cycles when input-hash fields change. This is a tool design limitation, non-blocking for Phase-2. Documented as INPUT-HASH-CHILD-RECOMPUTE in durable_task_register. POL-11 GREEN (341 active, 4065 historical). POL-12 GREEN (10 active, 13 historical). 143 orphaned pre-pivot observe-only stories remain deferred to Phase-2. Phase-1d FULLY COMPLETE: converged (D-300) + consistency-clean (D-301) + human-approved (D-302) + input-hash-rebaselined (D-303). READY for Phase-2 story decomposition. STATE v7.52→v7.53. | 2026-06-14 | state-manager |
 | D-301 | Phase-1d pre-gate consistency audit COMPLETE (D-301). Fresh-context consistency-validator found 4 gaps (1 BLOCKER + 2 IMPORTANT + 1 LOW) that the 3-clean adversarial convergence (Passes 55/56/57) + POL-11 both missed. All 4 fixed in this burst: GAP-1.1 [BLOCKER] BC-2.03.008 v1.0.3→v1.0.4 — Architecture Source live pins at line 108 were 2 generations stale (SS-session-manager.md v2.5.0→v2.6.0; SS-ipc.md v1.23.0→v1.23.2); Pass-51/52 cascade target lists excluded this BC and POL-11 is blind to the 'path.md vX.Y.Z §section' format; GAP-4.1 [IMPORTANT, = upgraded OBS-P57-001] BC-2.08.005 v1.0.2→v1.0.3 — §session_error_to_code() anchor in Architecture Source misattributed to SS-ipc.md; corrected to SS-session-manager.md (canonical home per SS-daemon-wiring-v2-delta:138); OBS-P57-001 upgraded from ratified-LOW deferral to IMPORTANT and FIXED; GAP-7.1 [IMPORTANT] BC-INDEX v1.41.0→v1.41.1 — SS-DTU preamble dtu-assessment pin v1.7.5→v1.7.6; GAP-7.2 [LOW] BC-INDEX duplicate separator removed. PO confirmatory sweep: 0 live stale pins remaining across all BCs. No normative behavior changed. Registry updated atomically (L-S027-004): BC-2.03.008→1.0.4, BC-2.08.005→1.0.3, BC-INDEX→1.41.1 (3 entries). POL-11-PINFORMAT-BLIND-SPOT codified in durable_task_register (CODIFICATION PENDING: devops-engineer to extend check_version_pins.py with Pattern for 'path.md vX.Y.Z §section' form). Convergence (3-clean gate Passes 55/56/57) stands — these were surgical pin/anchor fixes, no adversarial re-run required. POL-11 GREEN. POL-12 GREEN. STATE v7.50→v7.51. | 2026-06-14 | state-manager |
 | D-300 | Pass-57 CLEAN (0C/0I) — THIRD consecutive clean — PHASE-1D ADVERSARIAL SPEC CONVERGENCE COMPLETE. Rigorous independent 9-axis sweep (anchor-resolution, full-lifecycle, retired-concept, error-taxonomy, security, canonical-vs-delta mirror, cross-index, holdout realizability, deps/MSRV) all PASS. Zero novelty found. CONSECUTIVE-CLEAN COUNTER 2→3. Strict-3-clean gate satisfied (Passes 55/56/57 all CLEAN). OBS-P57-001 ratified as LOW deferral: BC-2.08.005:109 §Architecture Source cites "SS-ipc.md §session_error_to_code()" but that function is canonically in SS-session-manager.md; mapping content (InvalidSessionName→rename_failed) resolves correctly in SS-ipc taxonomy table AND cell co-cites SS-session-manager v2.6.0 §Terminated-in-grace matrix where the function lives; LOW label-imprecision, matches ratified citation style (OBS-1 / S-P45 precedent), implementer not misled, non-blocking. Added to ratified-LOW-deferrals list alongside OBS-1, S-P45-001/002, SS-IPC-181 marker. Cycle-closing note: process-gap findings from this convergence run (POL-11-MIRROR-TABLE-BLIND-SPOT / D-292, partial-fix-sibling recurrences Passes 47-54) are covered by existing durable_task_register entries; no new register items required — both patterns have mitigations codified (POL-11-MIRROR-TABLE-BLIND-SPOT: mitigation-applied-d292; PARTIAL-FIX-SIBLING: PARTIAL-FIX-SIBLING MITIGATION section F). Next: pre-gate validations (check-input-drift + fresh consistency audit) → human spec-package approval gate (CC-TUITERM-WIP-SIGNOFF + CC-GLOBAL-MOUSE-CAPTURE) → Phase-2 story decomposition. STATE v7.49→v7.50. POL-11 GREEN. POL-12 GREEN. | 2026-06-15 | state-manager |
