@@ -1,7 +1,7 @@
-# monocle — Resume From Here (Phase-2 next, D-303, 2026-06-14)
+# monocle — Resume From Here (Phase-2 next, D-305, 2026-06-15)
 
 Read this file first, then CLAUDE.md, then `.factory/STATE.md`
-(`next_session_resume_protocol` block, v7.54, for the full checkpoint +
+(`next_session_resume_protocol` block, v7.55, for the full checkpoint +
 section E ratified decisions + durable_task_register).
 
 ---
@@ -16,71 +16,84 @@ Both risk sign-offs SIGNED: CC-TUITERM-WIP-SIGNOFF + CC-GLOBAL-MOUSE-CAPTURE.
 Input-hash content-review DONE (D-303): 0 semantic drift across 148 stale clusters;
 149 spec input-hashes re-baselined; circular-dep STALE residual documented (non-blocking).
 
-Human said: **"Begin Phase-2 now."**
-Then asked for a durable checkpoint first — so resume target is Phase-2, NOT a Phase-1d continuation.
+Two new ratified human decisions (D-304/D-305, 2026-06-15):
+- **D-304**: Orchestrator may run Phase-2 Bursts A–G WITHOUT a per-burst plan-review gate.
+- **D-305**: 143 pre-pivot observe-only stories — story-writer writes a RECOMMENDATION doc
+  (Burst D); human must RATIFY before any disposition is executed. Bulk-archive BLOCKED.
 
 **Adversarial counter is MOOT for Phase-1d.** It RESETS for Phase-2 (new convergence cycle, 0 of 3 clean).
 
-develop @ 122eed5 — no v1A production code written.
+develop @ 2141adc — no v1A production code written.
 factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'` (live; do NOT trust a static SHA here).
-STATE.md = v7.54.
+STATE.md = v7.55.
 
 ---
 
-## Next Action: Phase-2 Delta Story Decomposition
+## Next Action: Phase-2 Burst A (IMMEDIATE)
 
-Dispatch `vsdd-factory:story-writer` to decompose the v1A control-center pivot spec
-package into implementable stories. This is a DELTA decomposition: new stories on top of
-the existing pre-pivot corpus (STORY-INDEX v5.32, EPIC-01..06, S-001..S-032).
+Dispatch `vsdd-factory:story-writer` for **Burst A**: create SS-08 session-manager story
+FILES ONLY (new EPIC-07), story IDs starting S-033. No BC edits, no index edits.
 
-### Phase-2 Steps
+### Full Phase-2 Burst A–G Dispatch Plan
 
-1. **story-writer creates stories** for all 25 v1A BCs (listed below), resolving every
-   `S-TBD` anchor in the BC files and every `stories_tested=[S-TBD]` in holdouts HS-EXP-011..015.
+Bursts run **SEQUENTIALLY** so story IDs do not collide. Each create burst reports the
+next free story ID before returning. state-manager is dispatched LAST in any burst
+that also runs other agents. Numbering is continuous from S-033.
 
-2. **story-writer integrates** new stories into STORY-INDEX v5.32 (continuous numbering
-   S-033+), sprint-state.yaml v1.40, and defines Wave 8+ in wave schedule.
-   New epics expected: EPIC-07 (Session Manager / SS-08), EPIC-08 (Embedded PTY / SS-09),
-   plus additions to EPIC-03 (SS-03 engine-module), EPIC-05 (SS-05 IPC), EPIC-06 (SS-06 TUI).
+**Burst A — vsdd-factory:story-writer**
+Create SS-08 session-manager STORY FILES ONLY (new EPIC-07), IDs starting S-033.
+No BC edits, no index edits. Report created IDs + BC-to-story mapping + next free ID.
+BCs: BC-2.08.001 (spawn_session/SessionHostSpawner), .002 (re-discovery + setsid in
+monocle-session-host), .003 (kill_session), .004 (daemon_start_sequence step-8b
+rediscover_sessions), .005 (GC task), .006 (hook auto-injection in spawn path),
+.007 (attach/detach), .008 (SessionStateChanged broadcast). Some may cluster.
 
-3. **Pre-pivot story disposition:** 143 orphaned observe-only stories deferred here.
-   story-writer decides: archive / retire / mark-done-historical. Do NOT carry them into
-   the v1A wave as active targets. These are also the source of the 143 UNRESOLVABLE
-   input-hash entries (circular-dep tool limitation; non-blocking).
+**Burst B — vsdd-factory:story-writer** (after Burst A reports IDs)
+Create SS-09 embedded-pty STORY FILES ONLY (new EPIC-08), continuing IDs after A.
+No BC edits, no index edits. Report created IDs + BC-to-story mapping + next free ID.
+BCs: BC-2.09.001 (TUI PTY widget: vt100 parser/PseudoTerminal render/PtyOutput handler),
+.002 (key_event_to_pty_bytes + KeyInput IPC), .003 (mouse_event_to_pty_bytes + SGR),
+.004 (Kitty keyboard — clusters with .002), .005 (paste — clusters with .002),
+.007 (scrollback navigation), .008 (EmbeddedTerminal/SessionCreation AppMode transitions),
+.009 (permission badge + bell).
 
-4. **Adversarial story convergence:** 3 consecutive clean passes (new cycle; starts at 0).
-   Fresh consistency audit before Phase-2 human gate.
+**Burst C — vsdd-factory:story-writer** (after Burst B reports IDs)
+Create SS-03/SS-05/SS-06 DELTA story files only (additions to EPIC-03/05/06).
+No BC edits, no index edits. Report created IDs + BC-to-story mapping.
+SS-03 BCs: BC-2.03.001..008 (EngineModule trait + ClaudeCodeModule spawn path;
+.006/.007/.008 may fold into the .005 spawn story).
+SS-05 BCs: BC-2.05.001 (UDS bind 0o600), .002 (TUI UDS connect+InitialState),
+.003 (SessionListUpdate fan-out), .005 (PermissionPromptQueued), .006 (TUI reconnect
+backoff), .007 (TransportEvent::Disconnected), .008 (Transport trait/UdsTransport),
+.009 (PtyOutput broker fan-out), .010 (new ClientToServer variants+routing), .011
+(ScrollbackChunk*/Complete/PtyReset). SKIP BC-2.05.004 (already -> S-021/S-032).
+SS-06 BC: BC-2.06.025 (multi-session grouped sessions panel + lifecycle actions).
 
-> ORCHESTRATOR SPLIT RULE: dispatching story-writer to create >8 stories → split into
-> "create" and "integrate" sub-bursts (context-overflow rule).
+**Burst D — vsdd-factory:story-writer** (after Burst C; independent of next story ID)
+Analyze 143 orphaned pre-pivot observe-only stories. Write RECOMMENDATION DOC at
+`.factory/stories/pre-pivot-disposition-recommendation.md`.
+Per-story or per-group: archive / retire / mark-done-historical.
+**CRITICAL**: DO NOT execute disposition. Orchestrator routes doc to human to RATIFY (D-305).
+Bulk-archive BLOCKED until human ratifies.
 
-### v1A BCs Needing Stories (by subsystem)
+**Burst E — vsdd-factory:product-owner** (after Burst C IDs are known; can run after Burst D)
+Resolve every S-TBD anchor in the 25 v1A BC files AND every `stories_tested=[S-TBD]` in
+holdouts HS-EXP-011..015, using now-known story IDs from Bursts A–C.
+PO MUST NOT touch story body content — story-writer propagates body/AC changes in Burst F.
 
-**SS-03 (engine-module):** BC-2.03.001 (EngineModule trait/monocle-core), .002 (ClaudeCodeModule
-strict-basename detect), .003 (HomeUnresolvable error path), .004 (ClaudeCodeModule inherent
-methods/hook_paths), .005/.006/.007/.008 (ClaudeCodeModule::spawn_recipe() + default + error
-handling — .006/.007/.008 may resolve to the same story as .005).
+**Burst F — vsdd-factory:story-writer** (AFTER product-owner Burst E)
+Integrate new stories into STORY-INDEX.md (S-033+, continuous), sprint-state.yaml,
+wave schedule (define Wave 8+), dependency-graph. Propagate BC anchor changes from Burst E.
+New epics: EPIC-07 (SS-08), EPIC-08 (SS-09) plus additions to EPIC-03, EPIC-05, EPIC-06.
+Wave 7 stories remain DONE. New stories at Wave 8+. No dependency cycles.
 
-**SS-05 (IPC):** BC-2.05.001 (UDS server bind 0o600), .002 (TUI UDS connect + InitialState),
-.003 (SessionListUpdate fan-out), .005 (PermissionPromptQueued), .006 (TUI reconnect backoff),
-.007 (TransportEvent::Disconnected), .008 (Transport trait/UdsTransport), .009 (PtyOutput broker
-fan-out), .010 (new ClientToServer IPC variants + routing), .011 (ScrollbackChunk*/Complete/PtyReset).
-NOTE: BC-2.05.004 already resolved to S-021/S-032.
+**Burst G — vsdd-factory:state-manager LAST** (after Bursts A–F)
+Refresh indexes/citations, version bumps (BC-INDEX, STORY-INDEX, EVAL-INDEX,
+sprint-state.yaml), update STATE.md, run compute-input-hash --update, POL-11, POL-12.
+Bookkeeping only — no spec content changes.
 
-**SS-06 (TUI sessions panel):** BC-2.06.025 (multi-session grouped sessions panel + lifecycle actions).
-
-**SS-08 (session-manager):** BC-2.08.001 (spawn_session/SessionHostSpawner), .002 (re-discovery +
-setsid in monocle-session-host), .003 (kill_session), .004 (daemon_start_sequence 8b
-rediscover_sessions), .005 (GC task), .006 (hook auto-injection in spawn path), .007
-(attach/detach), .008 (SessionStateChanged broadcast).
-
-**SS-09 (embedded-pty):** BC-2.09.001 (TUI PTY widget: vt100 parser/PseudoTerminal
-render/PtyOutput handler), .002 (key_event_to_pty_bytes + KeyInput IPC), .003
-(mouse_event_to_pty_bytes + SGR), .004 (Kitty keyboard branch — same cluster as .002),
-.005 (paste — same cluster as .002), .007 (scrollback navigation), .008 (EmbeddedTerminal/
-SessionCreation AppMode transitions), .009 (permission badge + bell).
-
-**Holdouts with S-TBD anchors:** HS-EXP-011/012/013/014/015 — resolve stories_tested to real story IDs.
+**Post-Burst**: Phase-2 adversarial story convergence (3 consecutive clean, counter from 0).
+Fresh consistency audit before Phase-2 human approval gate.
 
 ---
 
@@ -126,7 +139,7 @@ All versions derived from `.factory/specs/version-pin-registry.yaml` (source of 
 | ADR-0009 | v1.0.2 |
 | ADR-0010 | v1.6.0 |
 | ADR-0011 | v1.2.1 |
-| BC-INDEX | v1.41.0 (138 BCs; 25 v1A BCs) |
+| BC-INDEX | v1.41.1 (138 BCs; 25 v1A BCs) |
 | EVAL-INDEX | v1.15 |
 | STORY-INDEX | v5.32 |
 | sprint-state.yaml | v1.40 |
@@ -145,17 +158,20 @@ All versions derived from `.factory/specs/version-pin-registry.yaml` (source of 
 - **Scoped mouse capture**: enabled on EmbeddedTerminal ENTRY, disabled on EXIT. NOT global.
 - **Session lifecycle**: Launching / Running / Detached / Terminating / Terminated.
   Created and Killed are RETIRED.
-- **Terminated-in-grace action matrix**: rename→rename_failed; detach→idempotent Ok;
-  kill→idempotent Ok; resize→WARN-drop. BC-2.06.025 v1.5.0 Invariant 6 closes all cells.
+- **Terminated-in-grace action matrix**: rename->rename_failed; detach->idempotent Ok;
+  kill->idempotent Ok; resize->WARN-drop. BC-2.06.025 v1.5.0 Invariant 6 closes all cells.
 - **BC-2.06.025 Launching action rules**: kill ALLOWED; detach BLOCKED (session_not_ready);
   rename ALLOWED. EC-298/EC-299 added.
 - **session_not_ready producer**: DetachSession arm only (Launching, host_conn None).
-  Resize WARN-drops ALL errors (Invariant 6 Exception). Kill → kill_failed (PID fallback).
+  Resize WARN-drops ALL errors (Invariant 6 Exception). Kill -> kill_failed (PID fallback).
 - **hooks-settings.json**: 4 URL-bearing keys + 2 reserved-empty keys; SessionStart NOT a key.
 - **ADR-0006 constructors**: all v1A #[non_exhaustive] wire structs have compliant constructors.
 - **Version-less §Architecture Anchors**: navigational only; authoritative pins in §Architecture Source.
 - **Concurrent multi-TUI-client**: ratified FUTURE scope (v1B+). Not a v1A defect.
 - v1B (Interactive Tune) BCs/stories: NOT yet authored. Author when v1B scheduled.
+- **D-304**: Autonomous Phase-2 dispatch authorized. No per-burst plan-review gate.
+- **D-305**: 143-story pre-pivot disposition requires story-writer RECOMMENDATION first, then
+  human RATIFICATION before execution. Bulk-archive BLOCKED until ratified.
 
 ---
 
@@ -163,7 +179,7 @@ All versions derived from `.factory/specs/version-pin-registry.yaml` (source of 
 
 1. This file (NEXT-SESSION-RESUME.md) — concise entry point
 2. `/Users/jmagady/Dev/monocle/CLAUDE.md` — production-grade + agent-routing rules
-3. `.factory/STATE.md` `next_session_resume_protocol` block (v7.54) — full checkpoint,
+3. `.factory/STATE.md` `next_session_resume_protocol` block (v7.55) — full checkpoint,
    durable_task_register, section E ratified decisions
 
 ---
