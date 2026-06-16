@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "7.79"
+version: "7.80"
 status: active
 producer: state-manager
 timestamp: 2026-06-16T00:00:00Z
-phase: PIVOT-phase-2-adversarial-pass-24-next
-current_step: "Pass-23 FINDINGS (2026-06-16). 0 Critical / 1 Important / 1 Suggestion. ALL RESOLVED. F-P23-IMP-001: S-047 AC-007/AC-008 trace headers cited wrong postcondition numbers — AC-007 cited 'postcondition 1' but contiguity/gap→re-attach is §ScrollbackChunk PC-3 (not PC-1); AC-008 cited 'postcondition 2' but total_chunks validation is §ScrollbackDumpComplete PC-3 (not PC-2). story-writer: S-047 v1.3→v1.4 (headers corrected to subsection-scoped real clauses; AC bodies unchanged). Closes F-P20-CRIT-001 class for S-047: all AC-001..AC-012 headers now cite real subsection-scoped clauses. F-P23-SUG-001: wave-schedule Waves 4-7 navigational rows added to Wave Overview table (was missing; jumped from Wave 3 directly to Wave 8; rows derived from STORY-INDEX §Wave Summary: Wave 4 S-016/S-024/S-030=18pts, Wave 5 S-017..S-021=34pts, Wave 6 S-022/S-023/S-025/S-026=34pts, Wave 7 S-027/S-028/S-029/S-031=23pts; wave-schedule v1.8→v1.9). ADVERSARIAL COUNTER REMAINS 0/3 (Pass-23 not clean; fresh streak not advancing). Next = Pass-24 (clean-candidate 1/3). POL-11 PASS. POL-12 PASS. compute-input-hash updated (98 STALE→0). STATE v7.78→v7.79."
+phase: PIVOT-phase-2-adversarial-pass-25-next
+current_step: "Pass-24 CLEAN (2026-06-16). 0 Critical / 0 Important / 2 Suggestions only. Corpus NOT modified (clean-streak protection — byte-identical corpus preserved). ADVERSARIAL COUNTER ADVANCES 0/3 → 1/3 (clean-candidate 1 of 3 in fresh streak after Pass-22 reset). F-P24-SUG-001: S-038 body BC-table title for BC-2.08.006 = 'Hook Auto-Injection in Session-Host Spawn Path'; canonical (BC-INDEX/BC H1) = 'Hook Auto-Injection — --settings Arg Present in Session-Host Child Args Within 2s of Spawn'. Body title-label drift only; BC ID/frontmatter/AC traces correct. Deferred post-convergence (story-writer). F-P24-SUG-002: S-046 body BC-table title for BC-2.05.011 = 'ScrollbackChunk/ScrollbackDumpComplete/PtyReset Protocol'; canonical = 'New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset'. Paraphrased (semantically equivalent); sync for index symmetry post-convergence (story-writer). Both suggestions logged to durable_task_register. Next = Pass-25 (clean-candidate 2/3). POL-11 PASS. POL-12 PASS. STATE v7.79→v7.80."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE. D-224: Wave-6 GATE PASSED (develop @ 2a51a91). D-225: STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to wave-7-READY; points 177→169/195 reconciled to sprint-state. D-226: S-027 DELIVERED (PR #32 @ 3787ebd) — Wave 7: 1/4 done. D-227: S-031 DELIVERED (PR #33 @ 8451486). D-228: S-028 DELIVERED (PR #34 @ 682e5e5) — Wave 7: 3/4 done. develop @ 682e5e5. D-229: Zero-context resume checkpoint — S-029 human-authorized 2026-06-02. develop @ 1158e24. D-230: S-029 DELIVERED (PR #35 @ 48463fb) — Wave 7 COMPLETE (4/4). 32/33 done (192/195 pts). develop @ 48463fb. D-231: Wave-7-gate prerequisite sweep complete — SS-ipc v1.11.0, BC-2.06.021 v1.0.7, BC-INDEX v1.34, STORY-INDEX v5.30, citation atomicity propagation. POL-11/POL-12 PASS. S-027/S-028 story frontmatter status fixed. D-232: Wave-7 gate PASSED — Phase 3 COMPLETE. 1514 tests, 0 failures. F-W7G3-MED-001 fixed (PR #37 @ 6811103). HS-EXP-008 score 1.0. DTU SKIP (DTU-CLONE-STORY added as Phase 4 prereq). sprint-state v1.38. D-233: Phase-3→4 consistency cleanup — EVAL-INDEX v1.9, STORY-INDEX v5.31, BC-HOOK-034 v1.0.2 (typo fix), sprint-state v1.39. 28 story-file status fields corrected. Input-hash refresh (113→0+17 bookkeeping-residual). POL-11/POL-12 PASS. All MED/LOW audit findings RESOLVED. D-234: DTU clone false-negative corrected — S-DTU-001 (cargo binary dtu-claude-code-hooks-v1) validated fidelity 1.0000 (25/25 fixtures). Gate-2 DTU-VALIDATION corrected from SKIP to PASS. DTU-CLONE-STORY closed (RESOLVED-FALSE-PREMISE). Phase 4 UNBLOCKED. dtu_clones_built updated. PROC-DTU-VALIDATE-LOCATION process gap added. D-235: Daemon-wiring convergence — monocle-runtime binary now serves (main() wires daemon_start_sequence + run_server + UDS + tracing + ring-flush + 10s drain). SS-daemon-wiring-impl v1.3.0. SS-deps-pin-manifest v1.2.1. ARCH-INDEX v1.0.26. STORY-INDEX v5.32. sprint-state v1.40. S-DAEMON-WIRE-FIX-001 Wave-8 anchor. Resolved: ADV-W5GATE-HIGH-001, ADV-W3GATE-MED-002/004, ADV-W4GATE-MED-002, S-005-main-wiring, F-DW-HIGH-001. POL-11/POL-12 PASS. D-236: PRODUCT-VISION PIVOT — observe-only RETIRED; monocle → full TUI control center. Phases 4-7 SUSPENDED. D-237: Human ratified re-baselined-v1 control-center vision scope (4 capabilities: Launch, Embedded PTY, Multi-session/multi-project, Interactive Tune + already-built Observe+Control). DAEMON-OWNS-PTY locus. Hook auto-injection v1. embedded-pty-evaluation.md v1.0: primary = portable-pty 0.9.0 + vt100 0.16.2 + tui-term 0.3.4. NEXT: gene-source disposition → revised vision-synthesis → human gate. D-238: Vision approval gate PASSED. domain-monocle-vision-synthesis.md APPROVED at v2.1 by Joshua Magady as the canonical basis for the control-center re-baselined-v1 brief→architecture→story delta. HUMAN ESCALATION folded in at the gate: v1A persistence now REQUIRES that a graceful daemon-PROCESS restart SURVIVES (CASE 2 changed from 'lost' to 'survive'). Persistence principle renamed DAEMON-OWNS-PTY → 'session-host-owns-PTY; daemon coordinates/re-attaches': PTY masters + harness child processes owned by native detached per-session session-host processes (abduco/dtach-style) that outlive the daemon process; daemon re-attaches over UDS on restart. NO-TMUX preserved as default; external supervisor is architect-surfaced fallback only (requires human decision, not silent adoption). CASE 1 (TUI restart survives) and CASE 3 (hard crash → lost, re-launch) unchanged. New HIGH-priority architect question Q-8 (PTY-ownership-survival mechanism) added; NOTE: the already-built D-235 in-process daemon wiring will likely need rework to move PTY ownership out of the daemon process. Remaining architect-only open questions: Q-1 (PTY bytes over UDS), Q-2 (EngineModule/SessionManager surface), Q-7 (tui-term fork posture), plus PTY-throughput benchmark — all resolved during architecture delta. Architect must also reconcile the stale narrow keyboard scope in DISPOSITION-V2 rollup + embedded-pty-evaluation (superseded by full-fidelity ratification). NEXT: brief delta (product-owner) → architecture delta (architect) → story decomposition (story-writer). D-292: Pass-49 FIX BURST — F-P49-001 BC-INDEX+SS-conventions canonical SS version mirror tables converted to registry pointers (POL-11 blind spot closed); BC-INDEX→v1.40.7; SS-conventions errata-no-bump; S-P49-001 HS-EXP-011/012 cite-precision; EVAL-INDEX BC-INDEX citation updated. COUNTER = 0. Pass-50 next. D-293: Pass-50 FIX BURST — F-P50-001 host_conn-lifecycle contradiction resolved; SessionNotReady/session_not_ready 12-code taxonomy added; full cascade swept (9 spec files, 31 prose files); SS-ipc v1.23.0, SS-session-manager v2.5.0, SS-daemon-wiring-v2-delta v1.11.1, SS-engine-module-v2-delta v1.6.0, BC-2.08.003 v1.4.0, BC-2.05.010 v1.9.0, BC-2.08.007 v1.5.0, BC-2.03.008 v1.0.3, BC-INDEX v1.40.8. COUNTER = 0. Pass-51 next. D-294: Pass-51 FIX BURST — F-P51-001 session_not_ready producer = DetachSession arm only (resize WARN-dropped per Invariant 6 Exception); SS-session-manager v2.5.1, SS-ipc v1.23.1, SS-daemon-wiring-v2-delta v1.11.2, BC-2.05.010 v1.9.1, BC-2.08.007 v1.5.1, BC-2.06.025 v1.4.0 (Launching action rules Invariant 5 + EC-298/EC-299), BC-INDEX v1.40.9. POL-11 cascade ~82 literals across ~34 files. COUNTER = 0. Pass-52 next. D-295: Pass-52 FIX BURST — F-P52-001 Terminated-in-GC-grace action×state matrix closed; rename→rename_failed (backs BC-2.08.005 Inv 4), detach→idempotent Ok, kill→idempotent Ok (BC-2.08.003 Inv 2), resize→WARN-drop; no new wire codes/variants; SS-session-manager v2.6.0, SS-ipc v1.23.2, SS-daemon-wiring-v2-delta v1.11.3, BC-2.06.025 v1.5.0 (Invariant 6 + EC-300/301/302), BC-2.08.005 v1.0.2, BC-INDEX v1.41.0; POL-11 cascade 90 literals across 31 files; POL-11/POL-12 GREEN; COUNTER = 0. Pass-53 next. D-296: Pass-53 FIX BURST — F-P53-001 BC-2.08.006 PC-3 authority corrected BC-HOOK-007→BC-2.04.010; 4-URL+2-empty hooks-settings.json schema; SessionStart NOT a file key; SS-daemon-wiring errata-no-bump sibling; BC-2.08.006 v1.3.0; POL-11/POL-12 GREEN; COUNTER = 0. Pass-54 next. D-297: Pass-54 FIX BURST — F-P54-001 retired pause-during-dump doc-comment survivors removed from SS-session-manager (3 positions); errata-no-bump (v2.6.0 stays); snapshot-then-resume canonical; whole-class sweep 0 survivors; POL-11/POL-12 GREEN; COUNTER = 0. Pass-55 next. D-298: Pass-55 CLEAN (0C/0I) — retired-concept residue sweep across all 8 classes clean; all breadth axes sound; no spec text changed; COUNTER 0→1. Pass-56 next. D-299: Pass-56 CLEAN (0C/0I) — independent fresh-context 9-axis sweep (anchor-resolution, full-lifecycle, retired-concept, error-taxonomy, security, canonical-vs-delta mirror, cross-index, holdout realizability, deps/MSRV) all PASS; zero novelty; COUNTER 1→2. Pass-57 next = clean candidate 3 of 3. D-300: Pass-57 CLEAN (0C/0I) — THIRD consecutive clean; rigorous independent 9-axis sweep all PASS; zero novelty; COUNTER 2→3; PHASE-1D ADVERSARIAL SPEC CONVERGENCE COMPLETE. Strict-3-clean gate satisfied (Passes 55/56/57). OBS-P57-001 ratified LOW deferral. Next: pre-gate validations → human approval gate → Phase-2. D-304 (2026-06-15): Human authorized AUTONOMOUS Phase-2 dispatch — orchestrator may run Bursts A–G without per-burst plan-review gate (story-writer, product-owner, state-manager bursts run sequentially; state-manager dispatched LAST in any burst). D-305 (2026-06-15): Pre-pivot 143-story disposition — story-writer PRODUCES RECOMMENDATION (archive/retire/mark-done-historical) in Burst D, written to .factory/stories/pre-pivot-disposition-recommendation.md; orchestrator routes to human for RATIFICATION before execution. Bulk-archive BLOCKED until ratified. D-315 (2026-06-16): Pre-pivot disposition RATIFIED by Joshua Magady — keep all 3 active (S-032, S-DAEMON-WIRE-FIX-001, S-PHASE-3-PREP remain ACTIVE); 32 pre-pivot done stories (S-001..S-031 + S-DTU-001) classified DONE-HISTORICAL; 0 archived; 0 retired. Actual story count was 35 pre-pivot (not 143 estimated — 143 was an upper-bound estimate of unpublished Phase-2..4 stories that were never written). Bulk-archive NOT PERFORMED. D-305 caveat CLEARED."
-awaiting: "PHASE-2 ADVERSARIAL STORY CONVERGENCE — PASS-23 FINDINGS RESOLVED (2026-06-16). 0C/1I/1S. F-P23-IMP-001: S-047 v1.3→v1.4 AC-007/AC-008 trace headers corrected to subsection-scoped real clauses (§ScrollbackChunk PC-3 / §ScrollbackDumpComplete PC-3). F-P23-SUG-001: wave-schedule v1.8→v1.9 Waves 4-7 navigational rows added. ADVERSARIAL COUNTER REMAINS 0/3 (Pass-23 not clean; fresh streak not advancing). NEXT = Phase-2 adversarial Pass-24 (clean-candidate 1/3, NEW fresh streak after Pass-22 RESET): dispatch vsdd-factory:adversary fresh-context on full Phase-2 story corpus. 3 consecutive clean passes required. Fresh consistency audit (vsdd-factory:consistency-validator) before Phase-2 human approval gate. Phase-2 human approval gate unlocks Phase-3 TDD implementation for v1A Waves 8-9."
+awaiting: "PHASE-2 ADVERSARIAL STORY CONVERGENCE — PASS-24 CLEAN (2026-06-16). 0C/0I/2S. Corpus NOT modified (clean-streak protection). ADVERSARIAL COUNTER ADVANCES 0/3 → 1/3 (clean-candidate 1 of 3; fresh streak). F-P24-SUG-001: S-038 body BC-table title drift for BC-2.08.006 (deferred post-convergence; story-writer). F-P24-SUG-002: S-046 body BC-table title paraphrase for BC-2.05.011 (deferred post-convergence; story-writer). NEXT = Phase-2 adversarial Pass-25 (clean-candidate 2/3): dispatch vsdd-factory:adversary fresh-context on full Phase-2 story corpus. 2 more consecutive clean passes required. Fresh consistency audit (vsdd-factory:consistency-validator) before Phase-2 human approval gate. Phase-2 human approval gate unlocks Phase-3 TDD implementation for v1A Waves 8-9."
 durable_task_register:
   outstanding:
     - id: "INPUT-HASH-CHILD-RECOMPUTE"
@@ -555,6 +555,16 @@ durable_task_register:
       status: deferred-post-convergence
       detail: "Phase-2 Pass-20 (2026-06-16): F-P20-BCGAP-001. BC-2.08.006 (hook auto-injection) has no dedicated postcondition or invariant covering (a) atomicity of hooks-settings.json write via tempfile::persist, and (b) absolute canonicalization of hooks_settings_path before write. S-038 AC-006 (tempfile::persist write) and AC-009 (path canonicalization) currently anchor their trace headers to BC-2.08.006 Invariant 4 (timing guarantee: hook injection completes before first pre-tool-use event) plus the project-wide CLAUDE.md atomic-write convention and SS-conventions path-handling standard. These are valid citations — the behavior is governed by the cross-cutting conventions — but a future BC-2.08.006 revision should add explicit clauses for (a) and (b) so the contract is self-contained without relying on implementers reading CLAUDE.md conventions. Route to product-owner. Non-blocking for Phase-2 story convergence and Phase-3 implementation."
       blocking: false
+    - id: "F-P24-SUG-001"
+      subject: "[Phase-2 cosmetic] S-038 body BC-table title for BC-2.08.006 = 'Hook Auto-Injection in Session-Host Spawn Path'; canonical (BC-INDEX/BC H1) = 'Hook Auto-Injection — --settings Arg Present in Session-Host Child Args Within 2s of Spawn'. Body title-label drift only; BC ID/frontmatter/AC traces correct."
+      status: deferred-post-convergence
+      detail: "Phase-2 Pass-24 SUGGESTION (2026-06-16). S-038 body BC-table title for BC-2.08.006 uses the abbreviated label 'Hook Auto-Injection in Session-Host Spawn Path'. The canonical title per BC-2.08.006 H1 and BC-INDEX is 'Hook Auto-Injection — --settings Arg Present in Session-Host Child Args Within 2s of Spawn'. Impact: cosmetic title-label drift only; BC ID, frontmatter, and AC traces are all correct; no implementer is misled. DEFERRAL RATIONALE: corpus NOT modified during Pass-24 (clean-streak protection — any corpus edit resets the clean counter before it reaches 3; the fix is a single prose-string substitution in one story table cell). FIX WHEN: after Phase-2 adversarial convergence reaches 3 consecutive clean passes. Route to story-writer (owns S-038 story spec). Non-blocking."
+      blocking: false
+    - id: "F-P24-SUG-002"
+      subject: "[Phase-2 cosmetic] S-046 body BC-table title for BC-2.05.011 = 'ScrollbackChunk/ScrollbackDumpComplete/PtyReset Protocol'; canonical = 'New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset'. Paraphrased (semantically equivalent); sync for index symmetry post-convergence."
+      status: deferred-post-convergence
+      detail: "Phase-2 Pass-24 SUGGESTION (2026-06-16). S-046 body BC-table title for BC-2.05.011 uses the paraphrase 'ScrollbackChunk/ScrollbackDumpComplete/PtyReset Protocol'. The canonical title per BC-2.05.011 H1 and BC-INDEX is 'New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset'. Impact: cosmetic paraphrase (semantically equivalent — all 3 variant names are present); no normative BC content affected; no implementer is misled. Sync for index symmetry (BC-INDEX title vs story body label consistency). DEFERRAL RATIONALE: corpus NOT modified during Pass-24 (clean-streak protection). FIX WHEN: after Phase-2 adversarial convergence reaches 3 consecutive clean passes. Route to story-writer (owns S-046 story spec). Non-blocking."
+      blocking: false
   se_candidates:
     - id: SE-40
       occurrences: 2
@@ -569,10 +579,10 @@ durable_task_register:
     - "TALLY-GUARD (D-225): STATE running-tally must re-sum sprint-state per-story; summary.points_complete is a cache. Hand-increment drift produced +8 pts error + premature Phase-3-COMPLETE. L-W6-GATE-003."
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v7.79 (D-271..D-315+Pass-12..23) — 2026-06-16
+  ZERO-CONTEXT RESUME CHECKPOINT v7.80 (D-271..D-315+Pass-12..24) — 2026-06-16
   PIVOT: monocle → full TUI control center — PHASE-1D FULLY COMPLETE (D-303)
-  PHASE-2 DELTA STORY DECOMPOSITION COMPLETE — PASS-23 FINDINGS RESOLVED — PASS-24 NEXT
-  57 PASSES COMPLETE (Phase-1d); PASS-1..PASS-23 FINDINGS RESOLVED; 51 STORIES / 311 PTS
+  PHASE-2 DELTA STORY DECOMPOSITION COMPLETE — PASS-24 CLEAN — PASS-25 NEXT
+  57 PASSES COMPLETE (Phase-1d); PASS-1..PASS-23 FINDINGS RESOLVED; PASS-24 CLEAN; 51 STORIES / 311 PTS
   BC-INDEX v1.43.7; ARCH-INDEX v1.0.30; EVAL-INDEX v1.18; STORY-INDEX v5.44; SPRINT-STATE v1.45
   SS-ipc v1.24.0; SS-session-manager v2.6.1; SS-daemon-wiring-v2-delta v1.11.4
   SS-embedded-pty v1.7.0; SS-deps-pin-manifest-v2-delta v1.0.2; wave-schedule v1.9
@@ -585,12 +595,19 @@ next_session_resume_protocol: |
   CC-TUITERM-WIP-SIGNOFF SIGNED; CC-GLOBAL-MOUSE-CAPTURE SIGNED; POL-11 PASS; POL-12 PASS
   D-315 RATIFIED: pre-pivot disposition — keep 3 active (S-032/S-DAEMON-WIRE-FIX-001/S-PHASE-3-PREP);
   32 done-historical; 0 archive/retire; actual 35 pre-pivot (not 143 estimate)
-  ADVERSARIAL COUNTER: REMAINS 0/3 (Pass-23 not clean; F-P23-IMP-001 found Important; fresh streak
-  not advancing). Pass-24 = clean-candidate 1/3 (NEW fresh streak, Pass-22 reset still active).
-  F-P23-IMP-001 RESOLVED: S-047 v1.3→v1.4 AC-007 'postcondition 1' → '§ScrollbackChunk postcondition
+  ADVERSARIAL COUNTER: ADVANCES 1/3 (Pass-24 CLEAN; 0C/0I/2S; corpus NOT modified; clean-candidate 1 of 3; fresh streak after Pass-22 reset). Pass-25 = clean-candidate 2/3.
+  F-P24-SUG-001 DEFERRED: S-038 body BC-table title for BC-2.08.006 = 'Hook Auto-Injection in
+  Session-Host Spawn Path'; canonical = 'Hook Auto-Injection — --settings Arg Present in Session-Host
+  Child Args Within 2s of Spawn'. Body title-label drift only; BC ID/frontmatter/AC traces correct.
+  Logged to durable_task_register; fix post-convergence (story-writer).
+  F-P24-SUG-002 DEFERRED: S-046 body BC-table title for BC-2.05.011 = 'ScrollbackChunk/
+  ScrollbackDumpComplete/PtyReset Protocol'; canonical = 'New ServerToClient IPC Variants —
+  ScrollbackChunk, ScrollbackDumpComplete, PtyReset'. Paraphrased (semantically equivalent);
+  sync post-convergence for index symmetry (story-writer).
+  F-P23-IMP-001 RESOLVED (prior): S-047 v1.3→v1.4 AC-007 'postcondition 1' → '§ScrollbackChunk postcondition
   3'; AC-008 'postcondition 2' → '§ScrollbackDumpComplete postcondition 3'. Closes F-P20-CRIT-001
   class for S-047 — all AC-001..AC-012 headers now cite subsection-scoped real clauses.
-  F-P23-SUG-001 RESOLVED: wave-schedule v1.8→v1.9 — Waves 4-7 navigational rows added to Wave
+  F-P23-SUG-001 RESOLVED (prior): wave-schedule v1.8→v1.9 — Waves 4-7 navigational rows added to Wave
   Overview (was missing; rows from STORY-INDEX §Wave Summary: W4=18pts, W5=34pts, W6=34pts, W7=23pts).
   F-P22-IMP-001 RESOLVED (prior): S-044 3× BC-2.08.008 PC-9 → PC-6; S-044 v1.0→v1.1.
   F-P21-SUG-001 DEFERRED: S-040 AC-001 citation-scope looseness (BC-2.09.002 PC-2 vs SS-embedded-pty
@@ -772,14 +789,13 @@ next_session_resume_protocol: |
   PASS-22 FINDINGS RESOLVED (2026-06-16) — 0C/1I/1S. F-P22-IMP-001: S-044 contained 3 occurrences of 'BC-2.08.008 PC-9' — BC-2.08.008 has no PC-9; the TUI-exits-EmbeddedTerminal-on-Terminated obligation is PC-6. Fixed in (1) clustering-rationale YAML comment: "BC-2.08.008 PC-6 specifies that TUI-side EmbeddedTerminal exits on SessionStateChanged::Terminated"; (2) AC-010 body: "Burst A GAP-4 (BC-2.08.008 PC-6)"; (3) Previous Story Intelligence: "BC-2.08.008 PC-6 TUI-side obligation". story-writer: S-044 v1.0→v1.1. Corpus-wide prose cross-ref sweep: 15 other v1A stories clean (no 'BC-2.08.008 PC-9' literals found anywhere). F-P22-IMP-001 is the CLAUSE-CITATION class (AC trace headers) — now closed BOTH for trace-header form (Pass-20 audit) AND prose/comment cross-reference form (Pass-22 sweep). ADVERSARIAL COUNTER RESET 1/3 → 0/3 (Pass-22 found real Important that Pass-21 CLEAN missed — fresh-context catch validates the 3-clean gate requirement; clean streak RESET). Pass-23 = clean-candidate 1/3 (NEW fresh streak). POL-11 PASS; POL-12 PASS; compute-input-hash 98 STALE clusters updated. STATE v7.77→v7.78.
 
   NEXT STEPS (in order):
-  1. Phase-2 adversarial Pass-24 (clean-candidate 1/3, fresh streak — Pass-23 FINDINGS kept counter at 0/3):
-     dispatch vsdd-factory:adversary fresh-context on full Phase-2 story corpus; 3 consecutive clean required.
-  2. Pass-25 (clean-candidate 2/3) if Pass-24 CLEAN.
-  3. Pass-26 (clean-candidate 3/3) if Pass-25 CLEAN.
-  4. CONVERGENCE if Pass-26 CLEAN (counter reaches 3/3).
-  5. Fresh consistency audit (vsdd-factory:consistency-validator) after convergence.
-  6. Phase-2 human approval gate.
-  7. Phase-3 TDD implementation for v1A Waves 8-9 (S-033..S-048).
+  1. Phase-2 adversarial Pass-25 (clean-candidate 2/3, fresh streak — Pass-24 CLEAN advanced counter to 1/3):
+     dispatch vsdd-factory:adversary fresh-context on full Phase-2 story corpus; 2 more consecutive clean required.
+  2. Pass-26 (clean-candidate 3/3) if Pass-25 CLEAN.
+  3. CONVERGENCE if Pass-26 CLEAN (counter reaches 3/3).
+  4. Fresh consistency audit (vsdd-factory:consistency-validator) after convergence.
+  5. Phase-2 human approval gate.
+  6. Phase-3 TDD implementation for v1A Waves 8-9 (S-033..S-048).
   NOTE: F-P13-SUG-001 deferred (BC-2.06.024 cosmetic in closed-wave table; fix post-convergence).
   NOTE: F-P14-SUG-001 deferred (DropCounterUpdate field-name drift; out-of-perimeter; route architect).
   NOTE: F-P16-SUG-002 logged (wire-type crate-residency + variant-completeness check on adversarial wire-axis; non-blocking; route session-reviewer/devops).
@@ -793,6 +809,8 @@ next_session_resume_protocol: |
   NOTE: F-P22-IMP-001 RESOLVED — S-044 3× BC-2.08.008 PC-9 → PC-6 (S-044 v1.0→v1.1; clause-citation class closed for AC-trace-headers + prose/comment cross-refs).
   NOTE: F-P23-IMP-001 RESOLVED — S-047 v1.3→v1.4 AC-007 'postcondition 1' → '§ScrollbackChunk postcondition 3'; AC-008 'postcondition 2' → '§ScrollbackDumpComplete postcondition 3'. Closes F-P20-CRIT-001 class for S-047: all 12 ACs now cite subsection-scoped real clauses. AC bodies unchanged.
   NOTE: F-P23-SUG-001 RESOLVED — wave-schedule v1.8→v1.9: Waves 4-7 rows added to Wave Overview (W4=S-016/024/030 18pts; W5=S-017..021 34pts; W6=S-022/023/025/026 34pts; W7=S-027/028/029/031 23pts). Consistent with STORY-INDEX §Wave Summary. Total 311 pts reconciled.
+  NOTE: F-P24-SUG-001 DEFERRED — S-038 body BC-table title for BC-2.08.006 abbreviated ('Hook Auto-Injection in Session-Host Spawn Path' vs canonical full title); body-label drift only; BC ID/frontmatter/AC traces correct; fix post-convergence (story-writer).
+  NOTE: F-P24-SUG-002 DEFERRED — S-046 body BC-table title for BC-2.05.011 paraphrased ('ScrollbackChunk/ScrollbackDumpComplete/PtyReset Protocol' vs canonical); semantically equivalent; sync for index symmetry post-convergence (story-writer).
 
   D-315 RATIFIED (2026-06-16): pre-pivot disposition ratified. Keep all 3 active. 32 done-historical.
   0 archive/retire. bulk-archive NOT PERFORMED. See pre-pivot-disposition-recommendation.md v1.1.
@@ -800,18 +818,18 @@ next_session_resume_protocol: |
   ============================================================================
 
   ============================================================================
-  A. WHERE WE ARE (D-271..D-315+Pass-20-fix+Pass-21-CLEAN+Pass-22-fix, 2026-06-16)
+  A. WHERE WE ARE (D-271..D-315+Pass-20-fix+Pass-21-CLEAN+Pass-22-fix+Pass-23-fix+Pass-24-CLEAN, 2026-06-16)
   ============================================================================
 
   MODE: greenfield-with-reference-ingest.
-  PHASE: VSDD Phase-2 ADVERSARIAL STORY CONVERGENCE — PASS-23 FINDINGS RESOLVED (counter REMAINS 0/3). Pass-24 next (clean-candidate 1/3, NEW fresh streak).
+  PHASE: VSDD Phase-2 ADVERSARIAL STORY CONVERGENCE — PASS-24 CLEAN (counter 1/3). Pass-25 next (clean-candidate 2/3).
   develop @ 2141adc — UNCHANGED for production code (no v1A production code written yet).
   NO v1A production code written yet. Do NOT write v1A code yet.
   factory-artifacts: run `git -C .factory log -1 --format='%h %s'` for live HEAD.
 
   57 adversarial passes complete on the v1A control-center spec package (Phase-1d).
   PHASE-1D CONVERGENCE COMPLETE — strict 3-clean gate satisfied (Passes 55/56/57 all CLEAN).
-  Phase-2 adversarial story convergence started. Pass-1..Pass-22 FINDINGS all resolved or CLEAN. Pass-23 FINDINGS resolved (F-P23-IMP-001 S-047 AC-007/008 trace headers; F-P23-SUG-001 wave-schedule Waves 4-7 rows). Counter REMAINS 0/3 (Pass-23 not clean).
+  Phase-2 adversarial story convergence started. Pass-1..Pass-23 FINDINGS all resolved or CLEAN. Pass-24 CLEAN (0C/0I/2S — corpus NOT modified; clean-streak protection; 2 cosmetic suggestions deferred post-convergence). Counter ADVANCES 0/3 → 1/3.
 
   Phase-2 story corpus adversarial finding trajectory:
     Pass 1 (D-306): 5C/6I/5S — FINDINGS; all resolved; counter stays 0/3.
@@ -842,6 +860,7 @@ next_session_resume_protocol: |
     Pass 21 [Phase-2]: 0C/0I (CLEAN — counter ADVANCES 0→1; 2 LOW cosmetic suggestions deferred post-convergence; corpus NOT modified)
     Pass 22 [Phase-2]: 0C/1I/1S (FINDINGS — F-P22-IMP-001 S-044 3× BC-2.08.008 PC-9→PC-6; corpus-wide sweep 15 stories clean; S-044 v1.0→v1.1; counter RESET 1→0)
     Pass 23 [Phase-2]: 0C/1I/1S (FINDINGS — F-P23-IMP-001 S-047 AC-007/AC-008 trace headers corrected to subsection-scoped real clauses §ScrollbackChunk PC-3 / §ScrollbackDumpComplete PC-3; S-047 v1.3→v1.4; closes F-P20-CRIT-001 class for S-047. F-P23-SUG-001: wave-schedule v1.8→v1.9 Waves 4-7 navigational rows. counter REMAINS 0/3)
+    Pass 24 [Phase-2]: 0C/0I/2S (CLEAN — corpus NOT modified; clean-streak protection; F-P24-SUG-001: S-038 body BC-table title for BC-2.08.006 abbreviated vs canonical; body-label drift only; deferred post-convergence (story-writer). F-P24-SUG-002: S-046 body BC-table title for BC-2.05.011 paraphrased vs canonical; semantically equivalent; deferred post-convergence (story-writer). ADVERSARIAL COUNTER ADVANCES 0/3 → 1/3; clean-candidate 1 of 3; fresh streak)
     [Phase-1d trajectory below — passes 22-57 are Phase-1d numbering]
     Pass 22: 0C/3I (FINDINGS — counter RESET 2→0; sibling-BC cluster SS-09 scrollback/AppMode)
     Pass 23: 0C/2I  Pass 24: 0C/1I  Pass 25: 0C/1I  Pass 26: 0C/1I  Pass 27: 0C/1I  Pass 28: 0C/1I
