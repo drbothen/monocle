@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.41"
+version: "1.42"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-03T08:00:00Z
@@ -573,7 +573,7 @@ stories:
     started_at: null
     completed_at: null
     pr_url: null
-    notes: "Wave 9. Depends on S-039. BC: BC-2.09.006."
+    notes: "Wave 9. Depends on S-039. Blocks S-043 (S-043 AC-009 requires S-042's ResizePane handler to reset pty_scroll_offsets). BC: BC-2.09.006."
 
   - id: S-043
     title: "Scrollback Navigation — PtyScrollUp/Down, Per-Session Offsets, Configurable Capacity"
@@ -585,7 +585,7 @@ stories:
     started_at: null
     completed_at: null
     pr_url: null
-    notes: "Wave 9. Depends on S-039. BC: BC-2.09.007."
+    notes: "Wave 9. Depends on S-039, S-042 (S-042's ResizePane handler owns the pty_scroll_offsets reset). BC: BC-2.09.007."
 
   - id: S-044
     title: "EmbeddedTerminal + SessionCreation AppMode Transitions, SessionCreation Wizard, SpawnAck, and Permission Badge+Bell"
@@ -687,6 +687,11 @@ summary:
   # total_stories note: 49 = 33 Phase-3 stories (including S-PHASE-3-PREP and S-DTU-001) + 2 Wave-8
   #   pre-existing (S-032, S-DAEMON-WIRE-FIX-001) + 16 new v1A (S-033..S-048). Blocked count (1) is
   #   S-PHASE-3-PREP (blocked on vsdd-factory spec-kit-mcp rc.19+).
+  # v1.42 updates (2026-06-16):
+  # - Phase-2 adversarial Pass-5 fix cycle: S-042→S-043 dependency edge added.
+  #   S-042.notes updated: blocks S-043 (ResizePane handler owns pty_scroll_offsets reset per BC-2.09.001 Inv-6 / SS-embedded-pty.md §Scrollback offset invariants).
+  #   S-043.notes updated: depends on S-039 and S-042. Dependency is unidirectional; acyclicity confirmed.
+  #   Both Wave 9 stories; wave assignment unchanged. Graph remains ACYCLIC (S-042→S-043 terminal edge in Wave-9 DAG).
   # v1.41 updates (2026-06-15):
   # - Phase-2 Burst F Integration: 16 new v1A stories (S-033..S-048) added, all not_started.
   # - 2 new epics: EPIC-08 (Session Manager, SS-08, Wave 8, 6 stories, 38 pts) + EPIC-09 (Embedded PTY, SS-09, Wave 9, 6 stories, 42 pts).

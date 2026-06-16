@@ -1,10 +1,10 @@
 ---
 document_type: dependency-graph
 level: L4
-version: "1.9"
+version: "2.0"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-05-28T00:00:00Z
+timestamp: 2026-06-16T00:00:00Z
 phase: 2
 inputs:
   - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.27"}
@@ -344,6 +344,206 @@ Both gaps are L3 (test infrastructure design choices) with mandatory resolution 
 - 49/49 BCs traced (100%).
 - NFR-001/002/003/006 coverage now resolved by expansion stories (supersedes STORY-INDEX v3.0 GAP-P2-001..004 deferred classification).
 - 2 L3 test-infrastructure gaps registered (GAP-EXP-001, GAP-EXP-002).
+---
+
+# Wave 8–9 Dependency Graph (S-032..S-048)
+
+> This section covers the 18 stories added in the Phase-2 v1A expansion (S-032..S-048, Waves 8-9).
+> For Waves 4-7 graph, see the sections above.
+
+## Wave 8 DAG (S-032..S-038, S-DAEMON-WIRE-FIX-001, S-045..S-048)
+
+```mermaid
+flowchart TD
+    %% Wave 1-7 anchors (shown for dependency clarity — already done)
+    S005["S-005\nDaemon Exit\n(W3, done)"]:::done
+    S014["S-014\nEngineModule Trait\n(W2, done)"]:::done
+    S015["S-015\nClaudeCodeModule\n(W3, done)"]:::done
+    S016["S-016\nDaemon CLI\n(W4, done)"]:::done
+    S017["S-017\nDaemon Start Seq\n(W5, done)"]:::done
+    S018["S-018\nHook Routing + Bus\n(W5, done)"]:::done
+    S021["S-021\nUDS Server + Types\n(W5, done)"]:::done
+    S022["S-022\nTUI Connect + Push\n(W6, done)"]:::done
+    S025["S-025\nTUI Binary + Sessions\n(W6, done)"]:::done
+    S028["S-028\nFilter + Ribbon\n(W7, done)"]:::done
+    S032_old["S-032\n(daemon fan-out\ndeferred, W8, 5pts)"]:::wave8
+
+    %% Wave 8 stories
+    S033["S-033\nSession Manager Spawn\n(W8, 8pts)"]:::wave8
+    S034["S-034\nKillSession\n(W8, 8pts)"]:::wave8
+    S035["S-035\nAttachSession\n(W8, 8pts)"]:::wave8
+    S036["S-036\nRediscover Sessions\n(W8, 8pts)"]:::wave8
+    S037["S-037\nSession GC\n(W8, 3pts)"]:::wave8
+    S038["S-038\nHook Auto-Injection\n(W8, 3pts)"]:::wave8
+    SDWF["S-DAEMON-WIRE-FIX-001\nSecond-Signal Exit Codes\n(W8, 5pts)"]:::wave8
+    S045["S-045\nClaudeCode SpawnRecipe\n(W8, 5pts)"]:::wave8
+    S046["S-046\nPTY Fan-out Broker\n(W8, 5pts)"]:::wave8
+    S047["S-047\nIPC Lifecycle Variants\n(W8, 8pts)"]:::wave8
+    S048["S-048\nSessions Panel Multi-Project\n(W8, 8pts)"]:::wave8
+
+    %% Wave 8 edges
+    S014 --> S033
+    S015 --> S033
+    S017 --> S033
+    S021 --> S033
+
+    S033 --> S034
+    S033 --> S035
+    S033 --> S036
+    S033 --> S037
+    S033 --> S038
+
+    S034 --> S036
+    S034 --> S037
+    S035 --> S036
+
+    S015 --> S045
+    S033 --> S045
+
+    S021 --> S046
+    S032_old --> S046
+
+    S021 --> S047
+    S022 --> S047
+    S047 -.->|depends_on S-023| S047
+    S033 --> S047
+    S034 --> S047
+    S035 --> S047
+    S046 --> S047
+
+    S022 --> S048
+    S025 --> S048
+    S028 --> S048
+    S033 --> S048
+    S047 --> S048
+
+    S005 --> SDWF
+    S016 --> SDWF
+    S017 --> SDWF
+    S018 --> SDWF
+
+    classDef done fill:#6b7280,color:#fff,stroke:#374151
+    classDef wave8 fill:#ec4899,color:#fff,stroke:#be185d
+```
+
+**Wave 8 topological sort verification:**
+
+- S-033 (root): depends on S-014 (W2), S-015 (W3), S-017 (W5), S-021 (W5). All predecessors ≤W5. Earliest: W8. VALID.
+- S-034: depends on S-033 (W8). Earliest: W8 (serial within wave). VALID.
+- S-035: depends on S-033 (W8). Earliest: W8 (serial within wave). VALID.
+- S-036: depends on S-033 (W8), S-034 (W8), S-035 (W8). Earliest: W8 (serial within wave, last). VALID.
+- S-037: depends on S-033 (W8), S-034 (W8). Earliest: W8. VALID.
+- S-038: depends on S-033 (W8). Earliest: W8. VALID.
+- S-045: depends on S-015 (W3), S-033 (W8). Earliest: W8. VALID.
+- S-046: depends on S-021 (W5), S-032 (W8). Earliest: W8. VALID.
+- S-047: depends on S-021 (W5), S-022 (W6), S-023 (W6), S-033 (W8), S-034 (W8), S-035 (W8), S-046 (W8). Earliest: W8 (all within-wave deps must be complete). VALID.
+- S-048: depends on S-022 (W6), S-025 (W6), S-028 (W7), S-033 (W8), S-047 (W8). Earliest: W8. VALID.
+- S-DAEMON-WIRE-FIX-001: depends on S-005 (W3), S-016 (W4), S-017 (W5), S-018 (W5). Earliest: W8. VALID (deferred fix).
+
+**Wave 8 is acyclic. No cycles detected.**
+
+## Wave 9 DAG (S-039..S-044)
+
+```mermaid
+flowchart TD
+    %% Wave 8 anchors
+    S021["S-021\nUDS Server + Types\n(W5, done)"]:::done
+    S025["S-025\nTUI Binary + Sessions\n(W6, done)"]:::done
+    S033["S-033\nSession Manager Spawn\n(W8)"]:::wave8done
+    S035["S-035\nAttachSession\n(W8)"]:::wave8done
+    S040["S-040\nKeyboard Forwarding\n(W9, 8pts)"]:::wave9
+    S041["S-041\nMouse Forwarding SGR\n(W9, 5pts)"]:::wave9
+
+    %% Wave 9 stories
+    S039["S-039\nPTY Output Pipeline\n(W9, 8pts)"]:::wave9
+    S040["S-040\nKeyboard Forwarding\n(W9, 8pts)"]:::wave9
+    S041["S-041\nMouse Forwarding SGR\n(W9, 5pts)"]:::wave9
+    S042["S-042\nResize Debounce\n(W9, 5pts)"]:::wave9
+    S043["S-043\nScrollback Navigation\n(W9, 3pts)"]:::wave9
+    S044["S-044\nAppMode Transitions\n(W9, 13pts)"]:::wave9
+
+    %% Wave 9 edges
+    S021 --> S039
+    S025 --> S039
+    S035 --> S039
+
+    S039 --> S040
+    S039 --> S041
+    S039 --> S042
+    S039 --> S044
+
+    S040 --> S041
+    S040 --> S044
+
+    S041 --> S044
+
+    S033 --> S044
+    S035 --> S044
+
+    S042 --> S043
+
+    classDef done fill:#6b7280,color:#fff,stroke:#374151
+    classDef wave8done fill:#9ca3af,color:#fff,stroke:#6b7280
+    classDef wave9 fill:#06b6d4,color:#fff,stroke:#0e7490
+```
+
+**Wave 9 topological sort verification:**
+
+- S-039 (root): depends on S-021 (W5), S-025 (W6), S-035 (W8). Earliest: W9. VALID.
+- S-040: depends on S-039 (W9). Earliest: W9. VALID.
+- S-041: depends on S-040 (W9). Earliest: W9 (serial after S-040). VALID.
+- S-042: depends on S-039 (W9). Earliest: W9 (parallel with S-040). VALID.
+- S-043: depends on S-039 (W9), S-042 (W9). Earliest: W9 (serial after S-042). VALID.
+- S-044 (terminal): depends on S-033 (W8), S-035 (W8), S-040 (W9), S-041 (W9). Earliest: W9. VALID.
+
+**Wave 9 within-wave ordering (serial constraints):**
+- S-039 must be done before: S-040, S-041, S-042, S-043, S-044
+- S-040 must be done before: S-041, S-044
+- S-041 must be done before: S-044
+- S-042 must be done before: S-043
+
+**Wave 9 is acyclic. No cycles detected.**
+
+**Extended critical path (Waves 8-9):**
+...S-033 → S-035 → S-039 → S-040 → S-041 → S-044
+
+Critical path through Waves 8-9: S-033 (8pts) → S-035 (8pts) → S-039 (8pts) → S-040 (8pts) → S-041 (5pts) → S-044 (13pts) = 50 pts on path.
+
+## Wave 8-9 Dependency Adjacency Table
+
+| Story | Wave | Pts | Depends On | Blocks |
+|-------|------|-----|------------|--------|
+| S-032 | 8 | 5 | S-021, S-022, S-028 | S-046 |
+| S-033 | 8 | 8 | S-014, S-015, S-017, S-021 | S-034, S-035, S-036, S-037, S-038, S-045, S-047, S-048 |
+| S-034 | 8 | 8 | S-033 | S-036, S-037, S-047 |
+| S-035 | 8 | 8 | S-033 | S-036, S-039, S-047 |
+| S-036 | 8 | 8 | S-033, S-034, S-035 | — |
+| S-037 | 8 | 3 | S-033, S-034 | — |
+| S-038 | 8 | 3 | S-033 | — |
+| S-045 | 8 | 5 | S-015, S-033 | — |
+| S-046 | 8 | 5 | S-021, S-032 | S-047 |
+| S-047 | 8 | 8 | S-021, S-022, S-023, S-033, S-034, S-035, S-046 | S-048 |
+| S-048 | 8 | 8 | S-022, S-025, S-028, S-033, S-047 | — |
+| S-DAEMON-WIRE-FIX-001 | 8 | 5 | S-005, S-016, S-017, S-018 | — |
+| S-039 | 9 | 8 | S-021, S-025, S-035 | S-040, S-041, S-042, S-043, S-044 |
+| S-040 | 9 | 8 | S-039 | S-041, S-044 |
+| S-041 | 9 | 5 | S-040 | S-044 |
+| S-042 | 9 | 5 | S-039 | S-043 |
+| S-043 | 9 | 3 | S-039, S-042 | — |
+| S-044 | 9 | 13 | S-033, S-035, S-040, S-041 | — |
+
+## §Trace v2.0 — Wave 8-9 graph added (Pass-5 fix burst) (2026-06-16)
+
+**Bump:** 1.9 → 2.0.
+**Scope:** Added Wave 8-9 dependency graph section (S-032..S-048) per F-PASS5-SUG-001.
+Includes full Mermaid DAGs for Wave 8 and Wave 9, topological sort verification for both waves,
+extended critical path, and adjacency table. Confirms both waves acyclic.
+Wave 9 dependency S-042→S-043 added per SUG-003 fix (scroll offset reset ordering;
+`depends_on` on S-043 updated to `[S-039, S-042]`).
+**SE-16d PASS:** 2026-06-16 >= 2026-05-30.
+
+---
+
 ## §Trace v1.9 — POL-11 version-pin remediation (2026-05-30)
 
 **Bump:** 1.8 → 1.9.

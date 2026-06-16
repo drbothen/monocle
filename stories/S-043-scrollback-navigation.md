@@ -3,16 +3,16 @@ document_type: story
 level: L4
 story_id: S-043
 epic_id: EPIC-09
-version: "1.0"
+version: "1.1"
 status: draft
 producer: vsdd-factory:story-writer
-timestamp: 2026-06-15T00:00:00Z
+timestamp: 2026-06-16T00:00:00Z
 phase: 2
 points: 3
 wave: 9
 tdd_mode: strict
 priority: P1
-depends_on: [S-039]
+depends_on: [S-039, S-042]
 blocks: []
 target_module: monocle-tui
 subsystems: [SS-09]
@@ -152,7 +152,7 @@ bar shows `[scrolled back N rows]`.
   `scrollback_len` MUST be `> 0` at `vt100::Parser::new()` construction or there is no
   history to view (S-039 owns this; S-043 consumes the configured value).
 - [ ] Render status bar scrolled-back indicator: when `pty_scroll_offsets[focused] > 0`, append `[scrolled back N rows]` to the status bar in the embedded terminal layout.
-- [ ] Ensure `pty_scroll_offsets[session_id]` is reset to 0 in the `ResizePane` handler. This reset is OWNED BY S-042 (resize handler in `crates/monocle-tui/src/app.rs`); S-043 asserts its existence and adds it if absent (S-042 builds first in wave 9 dependencies). S-043 does NOT re-implement the resize handler — it verifies the reset is present.
+- [ ] Ensure `pty_scroll_offsets[session_id]` is reset to 0 in the `ResizePane` handler. This reset is OWNED BY S-042 (resize handler in `crates/monocle-tui/src/app.rs`); S-043 depends on S-042 (`depends_on: [S-039, S-042]`) so S-042 is always complete when S-043 is dispatched. S-043 does NOT re-implement the resize handler — it verifies the reset is present; if for any reason it is absent (implementation gap), S-043 adds it and flags the discrepancy.
 - [ ] Ensure `pty_scroll_offsets.remove(session_id)` is called in the session GC handler (`SessionState::Terminated`).
 - [ ] The `pty_scrollback_rows` config load is OWNED BY S-039 (see S-039 AC-008 and Architecture Compliance Rules). S-043 asserts its existence via `App::scrollback_rows` field (set by S-039); it does NOT re-load the config. If S-039 has not yet created the `App::scrollback_rows` field, verify this before implementing S-043 (dependency on S-039 must be complete).
 - [ ] Write unit test `test_BC_2_09_007_scrollup_increments_offset`: `PtyScrollUp` × 10; assert `pty_scroll_offsets["s1"] = 10`; other sessions unaffected.

@@ -3,10 +3,10 @@ document_type: story
 level: L4
 story_id: S-047
 epic_id: EPIC-05
-version: "1.0"
+version: "1.1"
 status: draft
 producer: vsdd-factory:story-writer
-timestamp: 2026-06-15T00:00:00Z
+timestamp: 2026-06-16T00:00:00Z
 phase: 2
 points: 8
 wave: 8
@@ -109,8 +109,8 @@ Rename is ALLOWED when the session is in `Launching` or `Running` state.
 client to the session's PTY output AND immediately initiates a scrollback dump sequence.
 The dump sequence is:
 1. Set `pending_pty_bytes = true` for this client (buffer live PTY bytes during dump).
-2. Stream `ServerToClient::ScrollbackChunk { session_id, chunk_seq: u32, data: Bytes }` packets.
-3. Send `ServerToClient::ScrollbackDumpComplete { session_id, total_chunks: u32, cursor_row: u16, cursor_col: u16, term_rows: u16, term_cols: u16 }`.
+2. Stream `ServerToClient::ScrollbackChunk { session_id, chunk_seq: u32, rows: Vec<Vec<SerializedCell>> }` packets (styled-cell rows model — NOT a byte stream).
+3. Send `ServerToClient::ScrollbackDumpComplete { session_id, total_chunks: u32, cursor_row: u16, cursor_col: u16, pty_rows: u16, pty_cols: u16 }`.
 4. Set `pending_pty_bytes = false`; flush buffered bytes as live PTY output.
 
 ### AC-007 (traces to BC-2.05.011 postcondition 1 — ScrollbackChunk contiguity)
@@ -127,8 +127,8 @@ contiguous and start from 0. If the client receives a chunk where
 When `ScrollbackDumpComplete` arrives:
 - Client validates `count_of_received_chunks == total_chunks`.
 - If mismatch: re-trigger AttachSession (restart dump).
-- If match: reconstruct the full screen from concatenated chunk data, apply
-  `cursor_row/cursor_col` and `term_rows/term_cols`, then replay buffered live PTY bytes.
+- If match: reconstruct the full screen from concatenated chunk rows (`Vec<Vec<SerializedCell>>`), apply
+  `cursor_row/cursor_col` and `pty_rows/pty_cols`, then replay buffered live PTY bytes.
 
 ### AC-009 (traces to BC-2.05.011 postcondition 3 — PtyReset clears buffer and re-triggers attach)
 
@@ -323,7 +323,7 @@ is in `monocle-tui`. These boundaries are enforced by the workspace dependency g
 | `tokio` | `=1.52.0` (EXACT) | Async dispatch, `mpsc::channel`, `spawn` |
 | `serde` | `^1` (features = ["derive"]) | `SpawnOptions`, all new IPC variants |
 | `serde_json` | `=1.0.149` (EXACT) | JSON framing of new variants |
-| `bytes` | `^1.11` | `ScrollbackChunk.data` field |
+| `bytes` | `^1.11` | `pending_pty_bytes: VecDeque<Bytes>` buffering during scrollback dump (AC-010) |
 | `thiserror` | `^2` | Error types in monocle-runtime routing layer |
 | `tracing` | `^0.1` | warn!/error! in IPC handler and scrollback task |
 

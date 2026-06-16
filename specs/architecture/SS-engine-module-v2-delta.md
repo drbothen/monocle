@@ -13,7 +13,7 @@ inputs:
   - research/domain-monocle-vision-synthesis.md
   - specs/architecture/SS-session-manager.md
   - specs/architecture/adr/ADR-0009-native-session-host-process-model.md
-input-hash: "fb4b394"
+input-hash: "0e6dddd"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---

@@ -1,10 +1,10 @@
 ---
 document_type: story-index
 level: L4
-version: "5.36"
+version: "5.37"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-06-03T08:30:00Z
+timestamp: 2026-06-16T00:00:00Z
 phase: 2
 inputs:
   - .factory/specs/prd.md
@@ -90,9 +90,9 @@ traces_to: .factory/specs/prd.md
 | S-037 | SessionManager GC Task — Terminated Sessions Removed After 10s Grace Period | EPIC-08 | 3 | 8 | draft | — |
 | S-038 | SessionManager Hook Auto-Injection — hooks-settings.json Writer + SpawnOptions.hooks_settings_path Population | EPIC-08 | 3 | 8 | draft | — |
 | S-039 | PTY Output Pipeline — vt100::Parser, PseudoTerminal Render, PtyOutput IPC Handler, Auto-Attach on First Entry | EPIC-09 | 8 | 9 | draft | S-040, S-041, S-042, S-043, S-044 |
-| S-040 | Full-Fidelity Keyboard Forwarding — key_event_to_pty_bytes, Kitty Protocol CSI u, and Bracketed Paste | EPIC-09 | 8 | 9 | draft | — |
-| S-041 | Mouse Forwarding — mouse_event_to_pty_bytes, SGR 1006 Scoped Entry/Exit, Out-of-Pane Clip | EPIC-09 | 5 | 9 | draft | — |
-| S-042 | PTY Resize Detection, 50ms Debounce, and ResizePane IPC | EPIC-09 | 5 | 9 | draft | — |
+| S-040 | Full-Fidelity Keyboard Forwarding — key_event_to_pty_bytes, Kitty Protocol CSI u, and Bracketed Paste | EPIC-09 | 8 | 9 | draft | S-041, S-044 |
+| S-041 | Mouse Forwarding — mouse_event_to_pty_bytes, SGR 1006 Scoped Entry/Exit, Out-of-Pane Clip | EPIC-09 | 5 | 9 | draft | S-044 |
+| S-042 | PTY Resize Detection, 50ms Debounce, and ResizePane IPC | EPIC-09 | 5 | 9 | draft | S-043 |
 | S-043 | Scrollback Navigation — PtyScrollUp/Down, Per-Session Offsets, Configurable Capacity | EPIC-09 | 3 | 9 | draft | — |
 | S-044 | EmbeddedTerminal + SessionCreation AppMode Transitions, SessionCreation Wizard, SpawnAck, and Permission Badge+Bell | EPIC-09 | 13 | 9 | draft | — |
 | S-045 | ClaudeCodeModule::spawn_recipe() — Happy Path, CCR Injection, Error Cases, and Default Trait Impl | EPIC-03 | 5 | 8 | draft | — |
@@ -117,7 +117,7 @@ traces_to: .factory/specs/prd.md
 | Wave 6 | S-022, S-023, S-025, S-026 | 34 | IPC + TUI integration — S-022 (serial prerequisite), then S-023 + S-025 (parallel after S-022), then S-026 (after S-023 + S-022). 34 pts. |
 | Wave 7 | S-027, S-028, S-029, S-031 | 23 | Polish: overlay rendering, filter, killer scenario, profile picker (parallel-eligible within wave) |
 | Wave 8 | S-032, S-DAEMON-WIRE-FIX-001, S-033, S-034, S-035, S-036, S-037, S-038, S-045, S-046, S-047, S-048 | 74 | Session Manager + delta IPC/TUI + spawn recipe: S-033 is Wave-8 root (serial prerequisite within wave); S-034/S-035/S-036/S-037/S-038/S-045/S-046/S-047/S-048 serial after their Wave-8 deps |
-| Wave 9 | S-039, S-040, S-041, S-042, S-043, S-044 | 42 | Embedded PTY: S-039 is Wave-9 root (serial prerequisite within wave); S-040/S-042/S-043 parallel after S-039; S-041 after S-040; S-044 after S-040+S-041 |
+| Wave 9 | S-039, S-040, S-041, S-042, S-043, S-044 | 42 | Embedded PTY: S-039 is Wave-9 root (serial prerequisite within wave); S-040/S-042 parallel after S-039; S-041 after S-040; S-043 after S-042; S-044 after S-040+S-041 |
 
 ## BC Coverage Table
 
@@ -201,10 +201,10 @@ traces_to: .factory/specs/prd.md
 | BC-2.03.006 | ClaudeCodeModule::spawn_recipe() — CCR Injection | S-045 | AC-004..AC-006 | YES |
 | BC-2.03.007 | ClaudeCodeModule::spawn_recipe() — Error Cases | S-045 | AC-007..AC-009 | YES |
 | BC-2.03.008 | EngineModule::spawn_recipe() Default Trait Impl | S-045 | AC-010..AC-011 | YES |
-| BC-2.05.009 | PtyOutput Fan-out Broker: Bounded Channel + Backpressure | S-046 | AC-001..AC-006 | YES |
-| BC-2.05.010 | IPC Lifecycle Variants: Spawn/Kill/Detach/Attach/Rename/Input/Resize | S-047 | AC-001..AC-009 | YES |
+| BC-2.05.009 | PtyOutput Fan-out Broker: Bounded Channel + Backpressure | S-046 | AC-001..AC-008 | YES |
+| BC-2.05.010 | IPC Lifecycle Variants: Spawn/Kill/Detach/Attach/Rename/Input/Resize | S-047 | AC-001..AC-012 | YES |
 | BC-2.05.011 | Scrollback Protocol: PtyReset/ScrollbackChunk/ScrollbackComplete | S-046 (PtyReset variant + broker emission), S-047 (TUI handler + scrollback protocol: AC-007..AC-010) | S-046: AC-005 (PtyReset emit); S-047: AC-007..AC-010 (scrollback + TUI reset) | YES |
-| BC-2.06.025 | Sessions Panel: Multi-Project Grouping, Lifecycle Actions, State-Aware Blocking | S-048 | AC-001..AC-010 | YES |
+| BC-2.06.025 | Sessions Panel: Multi-Project Grouping, Lifecycle Actions, State-Aware Blocking | S-048 | AC-001..AC-012 | YES |
 | BC-2.08.001 | SessionManager::spawn_session — SessionHostSpawner + SpawnAck Handshake | S-033 | AC-001..AC-007 | YES |
 | BC-2.08.002 | SessionManager::rediscover_sessions — setsid Persistence + State Handling | S-036 | AC-001..AC-006 | YES |
 | BC-2.08.003 | SessionManager::kill_session — DaemonToHost::Kill + Watchdog | S-034 | AC-001..AC-007 | YES |
@@ -218,8 +218,8 @@ traces_to: .factory/specs/prd.md
 | BC-2.09.003 | mouse_event_to_pty_bytes: SGR 1006 Encoding + Scoped Entry/Exit | S-041 | AC-001..AC-006 | YES |
 | BC-2.09.004 | Kitty Keyboard Protocol (CSI u) Support | S-040 | AC-006..AC-009 | YES |
 | BC-2.09.005 | Bracketed Paste: KeyInput::Paste IPC + ESC[?2004h/l Bracket Wrapping | S-040 | AC-010..AC-013 | YES |
-| BC-2.09.006 | PTY Resize: 50ms Debounce + ResizePane IPC | S-042 | AC-001..AC-005 | YES |
-| BC-2.09.007 | Scrollback Navigation: PtyScrollUp/Down + Per-Session Offsets | S-043 | AC-001..AC-005 | YES |
+| BC-2.09.006 | PTY Resize: 50ms Debounce + ResizePane IPC | S-042 | AC-001..AC-012 | YES |
+| BC-2.09.007 | Scrollback Navigation: PtyScrollUp/Down + Per-Session Offsets | S-043 | AC-001..AC-014 | YES |
 | BC-2.09.008 | EmbeddedTerminal + SessionCreation AppMode Transitions | S-044 | AC-001..AC-007 | YES |
 | BC-2.09.009 | Permission Badge + Bell on PermissionPromptQueued in EmbeddedTerminal | S-044 | AC-008..AC-011 | YES |
 
@@ -499,6 +499,22 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
 
+## §Trace v5.37
+
+**Phase-2 Pass-5 fix burst: AC range corrections, dep-graph pointer, S-042→S-043 dep edge** (2026-06-16):
+
+- **F-PASS5-IMP-001 (S-047 scrollback wire-shape):** AC-006 corrected: `ScrollbackChunk.data: Bytes` → `rows: Vec<Vec<SerializedCell>>`; `ScrollbackDumpComplete.term_rows/term_cols` → `pty_rows/pty_cols`. AC-008 corrected: "concatenated chunk data" → "concatenated chunk rows (`Vec<Vec<SerializedCell>>`)". Library table `bytes` usage description updated (not for ScrollbackChunk.data; for `pending_pty_bytes: VecDeque<Bytes>` — AC-010). S-047 bumped v1.0 → v1.1.
+- **F-PASS5-SUG-001 (dep-graph pointer):** `dependency-graph-expansion.md` extended with §Wave 8-9 Dependency Graph (v2.0) covering S-032..S-048 DAGs, topological sort verification (both waves acyclic), and adjacency table. §Trace pointer in this §Trace v5.33 corrected from non-existent "dependency-graph-expansion-v2 section" to `dependency-graph-expansion.md §Wave 8-9 Dependency Graph section, v2.0`.
+- **F-PASS5-SUG-002 (BC-2.05.009 AC range):** BC Coverage Table row for BC-2.05.009: `AC-001..AC-006` → `AC-001..AC-008` (S-046 has 8 ACs all tracing to BC-2.05.009).
+- **F-PASS5-SUG-003 (S-042→S-043 dep edge):** Added dependency edge S-042→S-043. Rationale: S-043 AC-009 requires the `ResizePane` handler in `app.rs` (owned by S-042) to add the `pty_scroll_offsets[session_id]=0` reset; S-043's correct behavior is to assert/add to S-042's handler, not to implement it from scratch. With the edge, S-042 is always complete when S-043 is dispatched. S-042 blocks updated `—` → `S-043`; S-043 depends_on updated `[S-039]` → `[S-039, S-042]`. Both story files bumped v1.0 → v1.1.
+- **Housekeeping AC ranges corrected:** BC-2.05.010 `AC-001..AC-009` → `AC-001..AC-012` (S-047 has 12 ACs); BC-2.09.006 `AC-001..AC-005` → `AC-001..AC-012` (S-042); BC-2.09.007 `AC-001..AC-005` → `AC-001..AC-014` (S-043); S-040/S-041 Blocks columns updated in story registry.
+- **BC-2.06.025 AC range fixed by state-manager (Pass-5 fix cycle follow-through):** BC Coverage Table row for BC-2.06.025: `AC-001..AC-010` → `AC-001..AC-012` (S-048 has 12 ACs; AC-011 traces to BC-2.06.025 PC-8/EC-300..302 Terminated actions; AC-012 traces to BC-2.06.025 PC-9 SessionSnapshot type).
+- SE-16d monotonicity: v5.37 timestamp 2026-06-16 >= v5.36 timestamp 2026-06-03. PASS.
+
+## §Trace v5.36
+
+See prior state — no §Trace v5.36 entry was written at commit time (version bumped without trace; state-manager gap). Content changes from v5.33→v5.36 are captured in sprint-state.yaml and STATE.md.
+
 ## §Trace v5.33
 
 **Phase-2 Burst F Integration: 16 new v1A stories (S-033..S-048) integrated** (2026-06-15):
@@ -516,7 +532,7 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
 - 25 v1A BCs covered (100%): BC-2.03.005..008, BC-2.05.009..011, BC-2.06.025, BC-2.08.001..008, BC-2.09.001..009.
 - Total stories: 35 → 51 (49 product + 1 DTU + 1 prep).
 - Total product points: 199 → 305; total all: 205 → 311.
-- Dependency graph acyclic verified (see dependency-graph-expansion-v2 section): Wave 8 stories use within-wave serial ordering (S-033 is root); Wave 9 stories serial after S-035 (Wave 8).
+- Dependency graph acyclic verified (see `dependency-graph-expansion.md` §Wave 8-9 Dependency Graph section, v2.0): Wave 8 stories use within-wave serial ordering (S-033 is root); Wave 9 stories serial after S-035 (Wave 8).
 - Critical path extended: ...S-033 → S-035 → S-039 → S-040 → S-041 → S-044.
 - sprint-state.yaml bumped v1.40 → v1.41 (16 new not_started entries; summary updated).
 - wave-schedule.md bumped v1.6 → v1.7 (Wave 8 + Wave 9 sections added).
