@@ -1,43 +1,43 @@
-# monocle — Resume From Here (Phase-2 adversarial convergence next, 2026-06-15)
+# monocle — Resume From Here (Phase-2 adversarial Pass-2 next, 2026-06-16)
 
 Read this file first, then CLAUDE.md, then `.factory/STATE.md`
-(`next_session_resume_protocol` block, v7.56, for the full checkpoint +
+(`next_session_resume_protocol` block, v7.57, for the full checkpoint +
 section E ratified decisions + durable_task_register).
 
 ---
 
-## Status at Pause — Phase-2 Delta Story Decomposition COMPLETE
+## Status at Pause — Phase-2 Adversarial Pass-1 Findings Resolved
 
-**Phase-2 delta story decomposition (Bursts A–G) is DONE.** factory-artifacts HEAD: `05a4a35`.
+**Phase-2 adversarial Pass-1 FINDINGS (5C/6I/5S) ALL RESOLVED.** factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'`.
 
 51 stories (311 pts) total: 32 done (192 pts, Phases 1-3), 16 not_started (v1A Waves 8-9),
 1 blocked (S-PHASE-3-PREP), 2 draft.
 
-BC-INDEX v1.42.0, EVAL-INDEX v1.16, STORY-INDEX v5.33, sprint-state v1.41, wave-schedule v1.7.
-25 v1A BC S-TBD anchors resolved to S-033..S-048. POL-11 PASS. POL-12 PASS.
-compute-input-hash: 100 clusters updated.
+BC-INDEX v1.43.4, ARCH-INDEX v1.0.29, EVAL-INDEX v1.16, STORY-INDEX v5.33, sprint-state v1.41, wave-schedule v1.7.
+SS-ipc v1.24.0, SS-session-manager v2.6.1, SS-daemon-wiring-v2-delta v1.11.4.
+POL-11 PASS (385 active). POL-12 PASS. compute-input-hash: 130 clusters updated.
 
 **D-305 outstanding**: pre-pivot disposition recommendation written
 (`.factory/stories/pre-pivot-disposition-recommendation.md`) — PENDING human ratification.
 Bulk-archive of pre-pivot stories BLOCKED until human ratifies.
 
-**Adversarial counter RESET to 0/3 for Phase-2 story convergence.**
-5 surfaced story gaps logged to durable_task_register (BURST-GAP-001..005).
+**Adversarial counter: 0/3** (Pass-1 not clean; Pass-2 = clean-candidate 1/3).
+5 original story gaps in durable_task_register (BURST-GAP-001..005) + F-P1-S-005 (process-gap).
 
 develop @ 2141adc — no v1A production code written.
-factory-artifacts HEAD: `05a4a35` (run `git -C .factory log -1 --format='%h %s'` to verify live HEAD).
-STATE.md = v7.56.
+STATE.md = v7.57.
 
 ---
 
-## Next Action: Phase-2 Adversarial Story Convergence (IMMEDIATE)
+## Next Action: Phase-2 Adversarial Pass-2 (IMMEDIATE)
 
-Dispatch `vsdd-factory:story-writer` for **Burst A**: create SS-08 session-manager story
-FILES ONLY (new EPIC-07), story IDs starting S-033. No BC edits, no index edits.
+Dispatch `vsdd-factory:adversary` fresh-context on the full Phase-2 story corpus
+(S-033..S-048 + epics EPIC-08/09 + STORY-INDEX v5.33 + sprint-state v1.41 + all updated BC files).
+Pass-2 = clean-candidate 1/3. Counter 0/3.
 
-### Phase-2 Burst A–G Complete (factory-artifacts 05a4a35)
+### Phase-2 Burst A–G + Pass-1 Fix Burst Complete
 
-All 7 bursts executed and committed to factory-artifacts.
+All 7 bursts executed and committed to factory-artifacts. Pass-1 findings resolved.
 
 | Burst | Agent | Deliverable | Status |
 |-------|-------|-------------|--------|
@@ -45,14 +45,13 @@ All 7 bursts executed and committed to factory-artifacts.
 | B | story-writer | S-039..S-044 (EPIC-09, Embedded PTY) | DONE |
 | C | story-writer | S-045..S-048 (EPIC-03/05/06 delta) | DONE |
 | D | story-writer | pre-pivot-disposition-recommendation.md | DONE — PENDING D-305 human ratification |
-| E | product-owner | 25 v1A BC S-TBD anchors resolved; BC-2.06.025 v1.5.1; HS-EXP-011..015 story IDs | DONE |
+| E | product-owner | 25 v1A BC S-TBD anchors resolved; BC-2.06.025 v1.5.3; HS-EXP-011..015 story IDs | DONE |
 | F | story-writer | STORY-INDEX v5.33, sprint-state v1.41, wave-schedule v1.7 | DONE |
-| G | state-manager | BC-INDEX v1.42.0, EVAL-INDEX v1.16, POL-11/POL-12 PASS, 100 input-hash clusters updated, STATE v7.56 | DONE |
+| G | state-manager | BC-INDEX v1.43.4, EVAL-INDEX v1.16, POL-11/POL-12 PASS, 130 input-hash clusters updated, STATE v7.57 | DONE |
+| Pass-1 fix | architect + product-owner + state-manager | SS-ipc v1.24.0, BC-2.09.008 v1.3.4, 30+ BC cascade, BC-INDEX v1.43.4 | DONE (D-306) |
 
-### Next: Phase-2 Adversarial Story Convergence
+### Next: Phase-2 Adversarial Pass-2
 
-Dispatch `vsdd-factory:adversary` fresh-context on the full Phase-2 story corpus
-(S-033..S-048 + epics EPIC-08/09 + STORY-INDEX v5.33 + sprint-state v1.41).
 3 consecutive clean passes required. Adversarial counter: 0/3.
 
 After convergence: fresh consistency audit (vsdd-factory:consistency-validator),
@@ -96,20 +95,20 @@ All versions derived from `.factory/specs/version-pin-registry.yaml` (source of 
 | domain-monocle-vision-synthesis.md | v2.2.3 (APPROVED) |
 | product-brief.md | v2.0.4 |
 | prd.md | v1.28.3 |
-| ARCH-INDEX | v1.0.28 |
-| SS-ipc | v1.23.2 |
-| SS-session-manager | v2.6.0 |
+| ARCH-INDEX | v1.0.29 |
+| SS-ipc | v1.24.0 |
+| SS-session-manager | v2.6.1 |
 | SS-embedded-pty | v1.6.0 |
 | SS-engine-module-v2-delta | v1.6.0 |
-| SS-daemon-wiring-v2-delta | v1.11.3 |
+| SS-daemon-wiring-v2-delta | v1.11.4 |
 | SS-deps-pin-manifest-v2-delta | v1.0.1 |
 | ADR-0009 | v1.0.2 |
 | ADR-0010 | v1.6.0 |
 | ADR-0011 | v1.2.1 |
-| BC-INDEX | v1.41.1 (138 BCs; 25 v1A BCs) |
-| EVAL-INDEX | v1.15 |
-| STORY-INDEX | v5.32 |
-| sprint-state.yaml | v1.40 |
+| BC-INDEX | v1.43.4 (138 BCs; 25 v1A BCs) |
+| EVAL-INDEX | v1.16 |
+| STORY-INDEX | v5.33 |
+| sprint-state.yaml | v1.41 |
 
 ---
 
@@ -126,7 +125,7 @@ All versions derived from `.factory/specs/version-pin-registry.yaml` (source of 
 - **Session lifecycle**: Launching / Running / Detached / Terminating / Terminated.
   Created and Killed are RETIRED.
 - **Terminated-in-grace action matrix**: rename->rename_failed; detach->idempotent Ok;
-  kill->idempotent Ok; resize->WARN-drop. BC-2.06.025 v1.5.1 Invariant 6 closes all cells.
+  kill->idempotent Ok; resize->WARN-drop. BC-2.06.025 v1.5.3 Invariant 6 closes all cells.
 - **BC-2.06.025 Launching action rules**: kill ALLOWED; detach BLOCKED (session_not_ready);
   rename ALLOWED. EC-298/EC-299 added.
 - **session_not_ready producer**: DetachSession arm only (Launching, host_conn None).
