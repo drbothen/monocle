@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-047
 epic_id: EPIC-05
-version: "1.3"
+version: "1.4"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -113,7 +113,7 @@ The dump sequence is:
 3. Send `ServerToClient::ScrollbackDumpComplete { session_id, total_chunks: u32, cursor_row: u16, cursor_col: u16, pty_rows: u16, pty_cols: u16 }`.
 4. Set `pending_pty_bytes = false`; flush buffered bytes as live PTY output.
 
-### AC-007 (traces to BC-2.05.011 postcondition 1 — ScrollbackChunk contiguity)
+### AC-007 (traces to BC-2.05.011 §ScrollbackChunk postcondition 3 — ScrollbackChunk contiguity)
 
 Each `ScrollbackChunk` for a given session MUST have `chunk_seq` values that are
 contiguous and start from 0. If the client receives a chunk where
@@ -122,7 +122,7 @@ contiguous and start from 0. If the client receives a chunk where
 - Send `ClientToServer::AttachSession` to restart the dump.
 - NOT attempt to reconstruct from out-of-order chunks.
 
-### AC-008 (traces to BC-2.05.011 postcondition 2 — ScrollbackDumpComplete validates total_chunks)
+### AC-008 (traces to BC-2.05.011 §ScrollbackDumpComplete postcondition 3 — ScrollbackDumpComplete validates total_chunks)
 
 When `ScrollbackDumpComplete` arrives:
 - Client validates `count_of_received_chunks == total_chunks`.
@@ -424,6 +424,7 @@ extensions — the client/server lifecycle message set — which is the core cap
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 1.4 | 2026-06-16 | vsdd-factory:story-writer | F-P23-IMP-001: AC-007 header corrected from "postcondition 1" to "§ScrollbackChunk postcondition 3" (contiguity/gap→re-attach is §ScrollbackChunk PC-3, not PC-1); AC-008 header corrected from "postcondition 2" to "§ScrollbackDumpComplete postcondition 3" (total_chunks validation is §ScrollbackDumpComplete PC-3, not PC-2). Closes F-P20-CRIT-001 class for S-047: all AC-001..AC-012 headers now cite subsection-scoped real clauses. AC bodies unchanged. |
 | 1.3 | 2026-06-16 | vsdd-factory:story-writer | Corpus-wide AC-trace-citation audit (F-P20-CRIT-001 class): re-anchored AC-002..AC-006 from flat global PC numbers (PC-5..PC-10) to subsection-scoped clauses (KillSession/KeyInput/ResizePane/DetachSession/RenameSession/AttachSession PC-1); AC-010 BC-2.05.011 invariant 1→6 (pending_pty_bytes); AC-011 invariant 4→6 (No-silent-failure); AC-012 invariant 5→invariant 6 / Architecture Source §ServerToClient::Error. AC bodies unchanged. |
 | 1.2 | 2026-06-16 | vsdd-factory:story-writer | F-P19-SUG-001: Bump BC-2.05.011 input pin "1.2.4" → "1.2.5" (metadata-only Story-Anchor delta; no behavioral change). |
 | 1.1 | 2026-06-16 | vsdd-factory:story-writer | Initial decomposition — F-P16-IMP-002 era; established 7 ClientToServer variants, SpawnOptions, ResizePane zero-dim clamp, scrollback protocol, and IPC handler arm ownership table. |

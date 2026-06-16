@@ -1,7 +1,7 @@
 ---
 document_type: plan-doc
 level: L4
-version: "1.8"
+version: "1.9"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
@@ -27,6 +27,10 @@ traces_to: "dependency-graph.md; implements wave execution schedule derived from
 | Wave 1 | S-DTU-001, S-001 | 8 | Full parallel | Wave 1 gate: both S-DTU-001 and S-001 green; CI matrix passing |
 | Wave 2 | S-002, S-003, S-004, S-005, S-006, S-010, S-011, S-013, S-014 | 41 | Partial parallel (internal order below) | Wave 2 gate: all 9 stories delivered and CI green |
 | Wave 3 | S-007, S-008, S-009, S-012, S-015 | 34 | 4 parallel + S-009 serial after S-008 (Decision 1) | Wave 3 gate: all 5 stories delivered; 22/22 BCs green |
+| Wave 4 | S-016, S-024, S-030 | 18 | Parallel-eligible (S-016, S-024, S-030 independent) | Wave 4 gate: daemon CLI + TUI core types + config crate delivered; DONE |
+| Wave 5 | S-017, S-018, S-019, S-020, S-021 | 34 | S-017 serial prerequisite; then S-018/S-019/S-020/S-021 parallel after S-017 | Wave 5 gate: daemon integration 5 stories delivered; DONE |
+| Wave 6 | S-022, S-023, S-025, S-026 | 34 | S-022 serial prerequisite; then S-023+S-025 parallel; S-026 after S-023+S-022 | Wave 6 gate: IPC + TUI integration 4 stories delivered; DONE |
+| Wave 7 | S-027, S-028, S-029, S-031 | 23 | Parallel-eligible within wave | Wave 7 gate: overlay/filter/killer-scenario/profile-picker 4 stories delivered; DONE |
 | Wave 8 | S-032, S-DAEMON-WIRE-FIX-001, S-033..S-038, S-045..S-048 | 74 | S-033 is root; tiered within-wave serial ordering (see §Wave 8) | Wave 8 gate: BC-2.08.001..008 + BC-2.05.009..011 + BC-2.06.025 + BC-2.03.005..008 green; adversarial 3 clean passes |
 | Wave 9 | S-039..S-044 | 42 | S-039 is root; S-040 and S-042 parallel after S-039; S-043 serial after S-042; S-041 after S-040; S-044 after S-040+S-041 | Wave 9 gate: BC-2.09.001..009 green; adversarial 3 clean passes |
 
@@ -261,6 +265,17 @@ Before dispatching Phase 3 (TDD Implementation):
 - [ ] Human approval: "Phase 2 story corpus approved; proceed to Phase 3 TDD"
 
 ---
+
+## §Trace v1.9
+
+**F-P23-SUG-001 — Waves 4-7 navigational rows added to Wave Overview table** (2026-06-16):
+- Wave Overview table was missing Waves 4, 5, 6, and 7 (all DONE), jumping from Wave 3 directly to Wave 8.
+- Added four navigational rows for Waves 4-7 derived from STORY-INDEX §Wave Summary (canonical wave table):
+  - Wave 4: S-016, S-024, S-030 (18 pts) — daemon CLI + TUI core types + config crate, DONE
+  - Wave 5: S-017..S-021 (34 pts) — daemon integration, DONE
+  - Wave 6: S-022, S-023, S-025, S-026 (34 pts) — IPC + TUI integration, DONE
+  - Wave 7: S-027, S-028, S-029, S-031 (23 pts) — polish (overlay/filter/killer scenario/profile picker), DONE
+- Wave Overview is now complete (Waves 0-9). No existing rows altered.
 
 ## §Trace v1.8
 
