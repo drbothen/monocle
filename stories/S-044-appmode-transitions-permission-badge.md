@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-044
 epic_id: EPIC-09
-version: "1.0"
+version: "1.1"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -34,7 +34,7 @@ traces_to: "Implements BC-2.09.008 (EmbeddedTerminal/SessionCreation AppMode ent
 # Implementing one without the other leaves an incomplete AppMode entry/exit contract. BC-2.09.009's
 # overlay_stack integration also extends the exit path defined by BC-2.09.008. The stories share
 # the same monocle-tui files (app.rs event handler, status bar renderer) with no additional seam.
-# Also captures the SS-09 obligation from Burst A GAP-4: BC-2.08.008 PC-9 specifies that TUI-side
+# Also captures the SS-09 obligation from Burst A GAP-4: BC-2.08.008 PC-6 specifies that TUI-side
 # EmbeddedTerminal exits on SessionStateChanged::Terminated — that TUI-side behavior is the SS-09 scope
 # of the Burst A gap and is specified in BC-2.09.008 Postconditions (exiting EmbeddedTerminal) PC-3.
 ---
@@ -127,7 +127,7 @@ When `ServerToClient::SessionStateChanged { session_id, new_state: Terminated }`
 - `AppMode` transitions to `prior`.
 - Status bar shows `[Session terminated]`.
 
-This is the TUI-side obligation of Burst A GAP-4 (BC-2.08.008 PC-9): the TUI MUST exit
+This is the TUI-side obligation of Burst A GAP-4 (BC-2.08.008 PC-6): the TUI MUST exit
 `EmbeddedTerminal` when the session it is displaying terminates. The daemon-side of this
 obligation (broadcasting `SessionStateChanged::Terminated`) is implemented in S-033/S-034.
 
@@ -249,7 +249,7 @@ When `overlay_stack` is empty and user presses Esc in `EmbeddedTerminal`:
 - **S-041** (mouse forwarding): Scoped `EnableMouseCapture`/`DisableMouseCapture` are already wired in `enter_embedded_terminal()` / `exit_embedded_terminal()`. Do NOT duplicate.
 - **S-026** (permission overlay core): `App::overlay_stack: VecDeque<PermissionModal>` exists. `PermissionPromptQueued` → `overlay_stack.push_back()` may already be wired. Verify; if so, this story ONLY adds the badge + bell side effect when `AppMode` is `EmbeddedTerminal` or `SessionCreation`.
 - **S-031** (profile picker): The `ProfilePicker` UI component exists. The wizard's Step 1 reuses it directly.
-- **GAP-4 from Burst A**: The `SessionStateChanged::Terminated` TUI-side auto-exit from `EmbeddedTerminal` was identified as a gap in Burst A (BC-2.08.008 PC-9 TUI-side obligation). This story is the canonical resolution vehicle. The session-manager-side broadcast (daemon → TUI) is live from S-033/S-034; the TUI handler is implemented here.
+- **GAP-4 from Burst A**: The `SessionStateChanged::Terminated` TUI-side auto-exit from `EmbeddedTerminal` was identified as a gap in Burst A (BC-2.08.008 PC-6 TUI-side obligation). This story is the canonical resolution vehicle. The session-manager-side broadcast (daemon → TUI) is live from S-033/S-034; the TUI handler is implemented here.
 
 ## Architecture Compliance Rules
 
@@ -349,3 +349,10 @@ Within the 30% context window bound for a Sonnet-class model (~200k = 60k max pe
 - S-044 depends on S-040 because S-040 establishes `enter_embedded_terminal()` / `exit_embedded_terminal()` and the Esc intercept in the event loop — both of which S-044 extends with wizard logic and overlay transitions.
 - S-044 depends on S-041 because S-041 wires the scoped mouse capture into `enter_embedded_terminal()` / `exit_embedded_terminal()`. S-044 must not duplicate that wiring.
 - S-044 does not block other SS-09 stories — it is the final story in the EPIC-09 dependency chain.
+
+## Trace
+
+| Version | Date | Author | Change |
+|---------|------|--------|--------|
+| 1.1 | 2026-06-16 | story-writer | F-P22-IMP-001: Replace all 3 occurrences of "BC-2.08.008 PC-9" with "BC-2.08.008 PC-6". BC-2.08.008 has no PC-9; the TUI-exits-EmbeddedTerminal-on-Terminated obligation is PC-6 (§"When the TUI is in AppMode::EmbeddedTerminal … receives SessionStateChanged::Terminated"). Fixed in: clustering-rationale YAML comment (~line 37), AC-010 body (~line 130), Previous Story Intelligence section (~line 252). |
+| 1.0 | 2026-06-15 | story-writer | Initial authoring — Phase-2 Burst A SS-09 decomposition. |
