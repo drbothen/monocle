@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "7.82"
+version: "7.83"
 status: active
 producer: state-manager
 timestamp: 2026-06-16T00:00:00Z
-phase: PIVOT-phase-2-adversarial-convergence-COMPLETE
-current_step: "Pass-26 CLEAN (2026-06-16). 0 Critical / 0 Important. THIRD consecutive clean pass (Passes 24/25/26). ADVERSARIAL COUNTER ADVANCES 2/3 → 3/3. PHASE-2 ADVERSARIAL STORY CONVERGENCE COMPLETE — strict-3-clean gate satisfied. Story corpus: 51 stories / 311 pts, 16 new v1A stories (S-033..S-048), 2 new epics (EPIC-08/EPIC-09), Waves 8-9. All 25 v1A BCs + 5 holdouts anchored. Corpus NOT modified (clean-streak protection — byte-identical corpus preserved). POL-11 PASS. POL-12 PASS. STATE v7.81→v7.82."
+phase: PIVOT-phase-2-pre-gate-validation-COMPLETE
+current_step: "PAUSED for laptop relocation at Phase-2 CONVERGENCE COMPLETE (3/3). Pre-gate validations DONE: consistency GATE-AUDIT PASS (0 blockers; 2 important + 5 advisory maintenance findings logged F-GATE-IMP-001/002 + F-GATE-ADV-001..004, routed to state-manager/story-writer); input-drift CLEAN (TOTAL=410, MATCH=131, STALE=21, UNCOMPUTED=1, NOINPUT=257; all 21 stale = known circular-hash-cascade residual class-b from Pass-22→23 multi-file refresh; 0 genuine drift). POL-11 PASS. POL-12 PASS. STATE v7.82→v7.83."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "D-047..D-174 archived at cycles/cycle-001/decisions-archive.md. D-175: Wave 4 gate PASSED. D-182: Wave 5 gate PASSED. D-183: Wave 6 AUTHORIZED. D-184: S-022 DELIVERED. D-185: S-023+S-025 AUTHORIZED. D-186: S-023 DELIVERED. D-188..D-221: see Decisions Log (archived in this file). D-222: S-025 DELIVERED (PR #28 @ 838477e). D-223: S-026 DELIVERED (PR #30 @ 9fb0d70) — Wave 6 COMPLETE. D-224: Wave-6 GATE PASSED (develop @ 2a51a91). D-225: STATE correction — phase-3-COMPLETE premature (Wave 7 of 7 remains); corrected to wave-7-READY; points 177→169/195 reconciled to sprint-state. D-226: S-027 DELIVERED (PR #32 @ 3787ebd) — Wave 7: 1/4 done. D-227: S-031 DELIVERED (PR #33 @ 8451486). D-228: S-028 DELIVERED (PR #34 @ 682e5e5) — Wave 7: 3/4 done. develop @ 682e5e5. D-229: Zero-context resume checkpoint — S-029 human-authorized 2026-06-02. develop @ 1158e24. D-230: S-029 DELIVERED (PR #35 @ 48463fb) — Wave 7 COMPLETE (4/4). 32/33 done (192/195 pts). develop @ 48463fb. D-231: Wave-7-gate prerequisite sweep complete — SS-ipc v1.11.0, BC-2.06.021 v1.0.7, BC-INDEX v1.34, STORY-INDEX v5.30, citation atomicity propagation. POL-11/POL-12 PASS. S-027/S-028 story frontmatter status fixed. D-232: Wave-7 gate PASSED — Phase 3 COMPLETE. 1514 tests, 0 failures. F-W7G3-MED-001 fixed (PR #37 @ 6811103). HS-EXP-008 score 1.0. DTU SKIP (DTU-CLONE-STORY added as Phase 4 prereq). sprint-state v1.38. D-233: Phase-3→4 consistency cleanup — EVAL-INDEX v1.9, STORY-INDEX v5.31, BC-HOOK-034 v1.0.2 (typo fix), sprint-state v1.39. 28 story-file status fields corrected. Input-hash refresh (113→0+17 bookkeeping-residual). POL-11/POL-12 PASS. All MED/LOW audit findings RESOLVED. D-234: DTU clone false-negative corrected — S-DTU-001 (cargo binary dtu-claude-code-hooks-v1) validated fidelity 1.0000 (25/25 fixtures). Gate-2 DTU-VALIDATION corrected from SKIP to PASS. DTU-CLONE-STORY closed (RESOLVED-FALSE-PREMISE). Phase 4 UNBLOCKED. dtu_clones_built updated. PROC-DTU-VALIDATE-LOCATION process gap added. D-235: Daemon-wiring convergence — monocle-runtime binary now serves (main() wires daemon_start_sequence + run_server + UDS + tracing + ring-flush + 10s drain). SS-daemon-wiring-impl v1.3.0. SS-deps-pin-manifest v1.2.1. ARCH-INDEX v1.0.26. STORY-INDEX v5.32. sprint-state v1.40. S-DAEMON-WIRE-FIX-001 Wave-8 anchor. Resolved: ADV-W5GATE-HIGH-001, ADV-W3GATE-MED-002/004, ADV-W4GATE-MED-002, S-005-main-wiring, F-DW-HIGH-001. POL-11/POL-12 PASS. D-236: PRODUCT-VISION PIVOT — observe-only RETIRED; monocle → full TUI control center. Phases 4-7 SUSPENDED. D-237: Human ratified re-baselined-v1 control-center vision scope (4 capabilities: Launch, Embedded PTY, Multi-session/multi-project, Interactive Tune + already-built Observe+Control). DAEMON-OWNS-PTY locus. Hook auto-injection v1. embedded-pty-evaluation.md v1.0: primary = portable-pty 0.9.0 + vt100 0.16.2 + tui-term 0.3.4. NEXT: gene-source disposition → revised vision-synthesis → human gate. D-238: Vision approval gate PASSED. domain-monocle-vision-synthesis.md APPROVED at v2.1 by Joshua Magady as the canonical basis for the control-center re-baselined-v1 brief→architecture→story delta. HUMAN ESCALATION folded in at the gate: v1A persistence now REQUIRES that a graceful daemon-PROCESS restart SURVIVES (CASE 2 changed from 'lost' to 'survive'). Persistence principle renamed DAEMON-OWNS-PTY → 'session-host-owns-PTY; daemon coordinates/re-attaches': PTY masters + harness child processes owned by native detached per-session session-host processes (abduco/dtach-style) that outlive the daemon process; daemon re-attaches over UDS on restart. NO-TMUX preserved as default; external supervisor is architect-surfaced fallback only (requires human decision, not silent adoption). CASE 1 (TUI restart survives) and CASE 3 (hard crash → lost, re-launch) unchanged. New HIGH-priority architect question Q-8 (PTY-ownership-survival mechanism) added; NOTE: the already-built D-235 in-process daemon wiring will likely need rework to move PTY ownership out of the daemon process. Remaining architect-only open questions: Q-1 (PTY bytes over UDS), Q-2 (EngineModule/SessionManager surface), Q-7 (tui-term fork posture), plus PTY-throughput benchmark — all resolved during architecture delta. Architect must also reconcile the stale narrow keyboard scope in DISPOSITION-V2 rollup + embedded-pty-evaluation (superseded by full-fidelity ratification). NEXT: brief delta (product-owner) → architecture delta (architect) → story decomposition (story-writer). D-292: Pass-49 FIX BURST — F-P49-001 BC-INDEX+SS-conventions canonical SS version mirror tables converted to registry pointers (POL-11 blind spot closed); BC-INDEX→v1.40.7; SS-conventions errata-no-bump; S-P49-001 HS-EXP-011/012 cite-precision; EVAL-INDEX BC-INDEX citation updated. COUNTER = 0. Pass-50 next. D-293: Pass-50 FIX BURST — F-P50-001 host_conn-lifecycle contradiction resolved; SessionNotReady/session_not_ready 12-code taxonomy added; full cascade swept (9 spec files, 31 prose files); SS-ipc v1.23.0, SS-session-manager v2.5.0, SS-daemon-wiring-v2-delta v1.11.1, SS-engine-module-v2-delta v1.6.0, BC-2.08.003 v1.4.0, BC-2.05.010 v1.9.0, BC-2.08.007 v1.5.0, BC-2.03.008 v1.0.3, BC-INDEX v1.40.8. COUNTER = 0. Pass-51 next. D-294: Pass-51 FIX BURST — F-P51-001 session_not_ready producer = DetachSession arm only (resize WARN-dropped per Invariant 6 Exception); SS-session-manager v2.5.1, SS-ipc v1.23.1, SS-daemon-wiring-v2-delta v1.11.2, BC-2.05.010 v1.9.1, BC-2.08.007 v1.5.1, BC-2.06.025 v1.4.0 (Launching action rules Invariant 5 + EC-298/EC-299), BC-INDEX v1.40.9. POL-11 cascade ~82 literals across ~34 files. COUNTER = 0. Pass-52 next. D-295: Pass-52 FIX BURST — F-P52-001 Terminated-in-GC-grace action×state matrix closed; rename→rename_failed (backs BC-2.08.005 Inv 4), detach→idempotent Ok, kill→idempotent Ok (BC-2.08.003 Inv 2), resize→WARN-drop; no new wire codes/variants; SS-session-manager v2.6.0, SS-ipc v1.23.2, SS-daemon-wiring-v2-delta v1.11.3, BC-2.06.025 v1.5.0 (Invariant 6 + EC-300/301/302), BC-2.08.005 v1.0.2, BC-INDEX v1.41.0; POL-11 cascade 90 literals across 31 files; POL-11/POL-12 GREEN; COUNTER = 0. Pass-53 next. D-296: Pass-53 FIX BURST — F-P53-001 BC-2.08.006 PC-3 authority corrected BC-HOOK-007→BC-2.04.010; 4-URL+2-empty hooks-settings.json schema; SessionStart NOT a file key; SS-daemon-wiring errata-no-bump sibling; BC-2.08.006 v1.3.0; POL-11/POL-12 GREEN; COUNTER = 0. Pass-54 next. D-297: Pass-54 FIX BURST — F-P54-001 retired pause-during-dump doc-comment survivors removed from SS-session-manager (3 positions); errata-no-bump (v2.6.0 stays); snapshot-then-resume canonical; whole-class sweep 0 survivors; POL-11/POL-12 GREEN; COUNTER = 0. Pass-55 next. D-298: Pass-55 CLEAN (0C/0I) — retired-concept residue sweep across all 8 classes clean; all breadth axes sound; no spec text changed; COUNTER 0→1. Pass-56 next. D-299: Pass-56 CLEAN (0C/0I) — independent fresh-context 9-axis sweep (anchor-resolution, full-lifecycle, retired-concept, error-taxonomy, security, canonical-vs-delta mirror, cross-index, holdout realizability, deps/MSRV) all PASS; zero novelty; COUNTER 1→2. Pass-57 next = clean candidate 3 of 3. D-300: Pass-57 CLEAN (0C/0I) — THIRD consecutive clean; rigorous independent 9-axis sweep all PASS; zero novelty; COUNTER 2→3; PHASE-1D ADVERSARIAL SPEC CONVERGENCE COMPLETE. Strict-3-clean gate satisfied (Passes 55/56/57). OBS-P57-001 ratified LOW deferral. Next: pre-gate validations → human approval gate → Phase-2. D-304 (2026-06-15): Human authorized AUTONOMOUS Phase-2 dispatch — orchestrator may run Bursts A–G without per-burst plan-review gate (story-writer, product-owner, state-manager bursts run sequentially; state-manager dispatched LAST in any burst). D-305 (2026-06-15): Pre-pivot 143-story disposition — story-writer PRODUCES RECOMMENDATION (archive/retire/mark-done-historical) in Burst D, written to .factory/stories/pre-pivot-disposition-recommendation.md; orchestrator routes to human for RATIFICATION before execution. Bulk-archive BLOCKED until ratified. D-315 (2026-06-16): Pre-pivot disposition RATIFIED by Joshua Magady — keep all 3 active (S-032, S-DAEMON-WIRE-FIX-001, S-PHASE-3-PREP remain ACTIVE); 32 pre-pivot done stories (S-001..S-031 + S-DTU-001) classified DONE-HISTORICAL; 0 archived; 0 retired. Actual story count was 35 pre-pivot (not 143 estimated — 143 was an upper-bound estimate of unpublished Phase-2..4 stories that were never written). Bulk-archive NOT PERFORMED. D-305 caveat CLEARED. D-320 (2026-06-16): Phase-2 adversarial Pass-25 CLEAN — counter 1/3→2/3; Pass-26 next (final clean candidate 3/3). D-321 (2026-06-16): Phase-2 adversarial Pass-26 CLEAN — counter 2/3→3/3; PHASE-2 ADVERSARIAL STORY CONVERGENCE COMPLETE (26 passes total, 3 consecutive clean: Passes 24/25/26). Story corpus: 51 stories / 311 pts, 16 new v1A stories (S-033..S-048), 2 new epics (EPIC-08 Session Manager, EPIC-09 Embedded PTY), Waves 8-9. All 25 v1A BCs + 5 holdouts anchored. Next: pre-gate validations (fresh consistency audit + input-hash drift check) → Phase-2 human approval gate."
-awaiting: "PHASE-2 ADVERSARIAL STORY CONVERGENCE COMPLETE (2026-06-16). Pass-26 CLEAN (0C/0I) — THIRD consecutive clean. ADVERSARIAL COUNTER 3/3. Strict-3-clean gate satisfied (Passes 24/25/26). Post-convergence deferred cosmetic suggestions pending cleanup burst before Phase-2 gate: F-P13-SUG-001, F-P20-BCGAP-001, F-P21-SUG-001/002, F-P24-SUG-001/002, F-P25-SUG-001, S-047 AC-009 §PtyReset qualifier. NEXT = Pre-Phase-2-gate validations: (1) fresh-context consistency-validator audit, (2) /vsdd-factory:check-input-drift, then (3) Phase-2 human approval gate."
+awaiting: "PAUSED for laptop relocation. Phase-2 CONVERGENCE COMPLETE (3/3). Pre-gate validations DONE. RESUME = optional post-convergence cleanup burst (clear F-GATE-IMP-001/002 + deferred cosmetic F-P*-SUG via state-manager + story-writer) THEN present Phase-2 human approval gate. The maintenance findings are non-blocking — the gate may also proceed without the cleanup if the human prefers."
 durable_task_register:
   outstanding:
     - id: "INPUT-HASH-CHILD-RECOMPUTE"
@@ -570,6 +570,42 @@ durable_task_register:
       status: deferred-post-convergence
       detail: "Phase-2 Pass-25 SUGGESTION (2026-06-16). STORY-INDEX BC Coverage Table has stale AC-range labels for S-044 (Wave 9, multi-BC story). BC-2.09.008 coverage row says 'AC-001..AC-007' but S-044 has AC-001..AC-015; BC-2.09.009 coverage row says 'AC-008..AC-011' but S-044 has AC-016..AC-021. The adversary also noted S-040's BC-2.09.005 and BC-2.09.002 coverage rows carry similarly approximate ranges. Impact: coverage-label drift only; BC IDs, anchor citations, Full-Coverage verdict, and in-story AC-trace headers are all correct; no implementer is misled about behavior. DEFERRAL RATIONALE: corpus NOT modified during Pass-25 (clean-streak protection — any corpus edit would require adversary review and risks resetting the clean counter before it reaches 3/3). FIX WHEN: after Phase-2 adversarial convergence reaches 3 consecutive clean passes. Route to story-writer to perform a one-time AC-range re-derivation sweep for the Wave-9 multi-BC stories' STORY-INDEX coverage rows. Non-blocking."
       blocking: false
+    - id: "F-GATE-IMP-001"
+      subject: "[Phase-2 pre-gate] sprint-state.yaml inputs[] + traces_to_full severely stale — BC-INDEX pin v1.23 vs actual v1.43.7; ARCH-INDEX v1.0.16 vs v1.0.30; SS-ipc v1.6.0 vs v1.24.0; traces_to_full STORY-INDEX v4.7 vs v5.44; missing SS-session-manager/SS-embedded-pty/SS-engine-module-v2-delta/SS-deps-pin-manifest-v2-delta inputs. Mechanical pin cascade."
+      status: pending
+      routing: state-manager
+      blocking: false
+      detail: "D-322 Phase-2 pre-gate consistency-validator audit (2026-06-16). sprint-state.yaml inputs[] carry v1A-era version pins (BC-INDEX v1.23, ARCH-INDEX v1.0.16, SS-ipc v1.6.0) that are severely stale vs current (v1.43.7, v1.0.30, v1.24.0 respectively). traces_to_full STORY-INDEX cites v4.7 vs canonical v5.44. Missing inputs: SS-session-manager, SS-embedded-pty, SS-engine-module-v2-delta, SS-deps-pin-manifest-v2-delta — all authored for the v1A control-center scope and directly affect story/BC traceability. The consistency-validator audit noted these as important-severity (full-coverage verification blocked for Phase-3 story decomposition context). Mechanical pin cascade: read current frontmatter versions from all affected docs and update sprint-state.yaml inputs[] and traces_to_full fields. Route to state-manager. Non-blocking for Phase-2 human gate; should be resolved in the optional post-convergence cleanup burst."
+    - id: "F-GATE-IMP-002"
+      subject: "[Phase-2 pre-gate] wave-schedule.md §Wave 8 Tier 1 S-032 dependency text says 'depends on S-021(W5), S-018(W5)' but canonical (frontmatter + dependency-graph) is S-021/S-022/S-028. Functionally correct (transitive), text stale."
+      status: pending
+      routing: story-writer
+      blocking: false
+      detail: "D-322 Phase-2 pre-gate consistency-validator audit (2026-06-16). wave-schedule.md §Wave 8 Tier 1 entry for S-032 (deferred daemon fan-out) states dependency on 'S-021(W5), S-018(W5)' in the narrative text. The canonical dependency per S-032 frontmatter and dependency-graph-expansion.md is S-021/S-022/S-028. The text is functionally not misleading (S-021 is correct; S-018 is a transitive ancestor of S-022/S-028) but the direct-edge cites are stale. Route to story-writer to update wave-schedule.md §Wave 8 Tier 1 S-032 dependency text to S-021/S-022/S-028 (direct edges per dep-graph). Non-blocking for Phase-2 human gate."
+    - id: "F-GATE-ADV-001"
+      subject: "[Phase-2 pre-gate advisory] status nomenclature split — sprint-state.yaml says not_started for S-033..S-048; STORY-INDEX + frontmatter say draft."
+      status: pending
+      routing: state-manager
+      blocking: false
+      detail: "D-322 Phase-2 pre-gate consistency-validator audit (2026-06-16). sprint-state.yaml carries status: not_started for all 16 v1A delta stories (S-033..S-048). The STORY-INDEX and individual story frontmatter files carry status: draft for these same stories. The difference is a nomenclature split (not_started vs draft) rather than a factual error — both mean 'authored but no implementation begun'. Non-blocking advisory. Route to state-manager to align sprint-state.yaml status values for S-033..S-048 to draft (matching STORY-INDEX + frontmatter canonical) in the optional cleanup burst."
+    - id: "F-GATE-ADV-002"
+      subject: "[Phase-2 pre-gate advisory] missing epic detail files E-04..E-09 in stories/epics/ — STORY-INDEX is canonical; epic_id is identifier not path."
+      status: pending
+      routing: story-writer
+      blocking: false
+      detail: "D-322 Phase-2 pre-gate consistency-validator audit (2026-06-16). The consistency-validator noted that stories/epics/ directory contains epic detail files only for EPIC-01 through EPIC-03; E-04 (EPIC-04 daemon wiring), E-05 (EPIC-05 sessions plane), E-06 (EPIC-06 permission overlay), E-07 (EPIC-07 profile picker), E-08 (EPIC-08 session manager), and E-09 (EPIC-09 embedded PTY) do not have corresponding detail files. STORY-INDEX is the canonical source for epic identity and story-to-epic assignment; the epic_id field in story frontmatter is an identifier, not a path. Missing detail files are non-blocking for Phase-3 implementation (stories carry full AC text). Advisory: route to story-writer to optionally create epic detail stubs for E-04..E-09 at a convenient time before Phase-3 begins."
+    - id: "F-GATE-ADV-003"
+      subject: "[Phase-2 pre-gate advisory] EVAL-INDEX inputs[] missing S-033..S-048 (esp. S-036/S-044/S-033/S-038/S-040/S-041 cited by HS-EXP-011..015) for Phase-4 evaluator context."
+      status: pending
+      routing: state-manager
+      blocking: false
+      detail: "D-322 Phase-2 pre-gate consistency-validator audit (2026-06-16). EVAL-INDEX.md inputs[] section does not list the 16 v1A delta stories (S-033..S-048) as inputs. This matters for Phase-4 holdout evaluation: HS-EXP-011..015 (the v1A holdout scenarios) cite specific stories as their primary evaluation targets — HS-EXP-011 cites S-036/S-044, HS-EXP-012 cites S-033, HS-EXP-013 cites S-038/S-040/S-041, etc. The holdout evaluator loading EVAL-INDEX will need story context for these scenarios. Advisory: route to state-manager to update EVAL-INDEX.md inputs[] to include S-033..S-048 story file paths (and their version pins) in the optional cleanup burst before Phase-4 starts."
+    - id: "F-GATE-ADV-004"
+      subject: "[Phase-2 pre-gate advisory] dependency-graph-expansion.md title/intro still say 'Waves 4-7'/'S-016 through S-031' despite covering Waves 8-9/S-032..S-048."
+      status: pending
+      routing: story-writer
+      blocking: false
+      detail: "D-322 Phase-2 pre-gate consistency-validator audit (2026-06-16). dependency-graph-expansion.md H1 title and introductory prose still reference 'Waves 4-7' and 'S-016 through S-031'. The document was expanded in Burst E / Pass-5 fix cycle to cover Waves 8-9 and S-032..S-048, but the title/intro header text was not updated to reflect the expanded coverage. Body sections covering the Wave 8-9 DAG and topological proof are present and correct; only the header-level description is stale. Advisory: route to story-writer to update H1 title and intro to 'Waves 4-9 / S-016 through S-048' (or equivalent) in the optional cleanup burst. Non-blocking for Phase-2 human gate."
   se_candidates:
     - id: SE-40
       occurrences: 2
@@ -584,59 +620,28 @@ durable_task_register:
     - "TALLY-GUARD (D-225): STATE running-tally must re-sum sprint-state per-story; summary.points_complete is a cache. Hand-increment drift produced +8 pts error + premature Phase-3-COMPLETE. L-W6-GATE-003."
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v7.82 (D-271..D-321+Pass-12..26) — 2026-06-16
+  ZERO-CONTEXT RESUME CHECKPOINT v7.83 (D-271..D-322) — 2026-06-16
+  PAUSED FOR LAPTOP RELOCATION
   PIVOT: monocle → full TUI control center — PHASE-1D FULLY COMPLETE (D-303)
   PHASE-2 DELTA STORY DECOMPOSITION COMPLETE — PASS-26 CLEAN — PHASE-2 ADVERSARIAL CONVERGENCE COMPLETE (3/3)
+  PRE-GATE VALIDATIONS DONE: consistency GATE-AUDIT PASS (0 blockers); input-drift CLEAN
   57 PASSES COMPLETE (Phase-1d); PASS-1..PASS-23 FINDINGS RESOLVED; PASS-24/25/26 CLEAN; 51 STORIES / 311 PTS
   BC-INDEX v1.43.7; ARCH-INDEX v1.0.30; EVAL-INDEX v1.18; STORY-INDEX v5.44; SPRINT-STATE v1.45
   SS-ipc v1.24.0; SS-session-manager v2.6.1; SS-daemon-wiring-v2-delta v1.11.4
   SS-embedded-pty v1.7.0; SS-deps-pin-manifest-v2-delta v1.0.2; wave-schedule v1.9
-  S-033 v1.5 (Pass-20 fix: F-P20-CRIT-001 AC-012 trace header → BC-2.08.008 PC-5)
-  S-038 v1.2 (Pass-20 fix: F-P20-CRIT-001 AC-005..010 trace headers re-anchored to real BC-2.08.006 clauses + conventions)
-  S-046 v1.3 (Pass-20 fix: F-P20-CRIT-001 AC-005..008 trace headers → real BC-2.05.009 invariants)
-  S-047 v1.4 (Pass-23 fix: F-P23-IMP-001 AC-007/008 trace headers → §ScrollbackChunk PC-3 / §ScrollbackDumpComplete PC-3; closes F-P20-CRIT-001 class for S-047)
-  S-048 v1.3 (Pass-19 fix: F-P19-IMP-001 7 fabricated BC-2.06.025 PC citations re-anchored to real clauses PC-1/PC-2/PC-3/PC-4/Inv4/Inv5/Inv6/PC-2; EC refs + AC bodies unchanged)
+  S-033 v1.5; S-038 v1.2; S-046 v1.3; S-047 v1.4; S-048 v1.3; S-044 v1.1
   SE-25 CLOSED GLOBALLY: depends_on↔blocks exact-inverse across all 51 stories + all 4 artifacts
   CC-TUITERM-WIP-SIGNOFF SIGNED; CC-GLOBAL-MOUSE-CAPTURE SIGNED; POL-11 PASS; POL-12 PASS
   D-315 RATIFIED: pre-pivot disposition — keep 3 active (S-032/S-DAEMON-WIRE-FIX-001/S-PHASE-3-PREP);
   32 done-historical; 0 archive/retire; actual 35 pre-pivot (not 143 estimate)
-  ADVERSARIAL COUNTER: 3/3 COMPLETE — PHASE-2 ADVERSARIAL STORY CONVERGENCE COMPLETE. Pass-26 CLEAN (0C/0I). Strict-3-clean gate satisfied (Passes 24/25/26).
-  F-P24-SUG-001 DEFERRED: S-038 body BC-table title for BC-2.08.006 = 'Hook Auto-Injection in
-  Session-Host Spawn Path'; canonical = 'Hook Auto-Injection — --settings Arg Present in Session-Host
-  Child Args Within 2s of Spawn'. Body title-label drift only; BC ID/frontmatter/AC traces correct.
-  Logged to durable_task_register; fix post-convergence (story-writer).
-  F-P24-SUG-002 DEFERRED: S-046 body BC-table title for BC-2.05.011 = 'ScrollbackChunk/
-  ScrollbackDumpComplete/PtyReset Protocol'; canonical = 'New ServerToClient IPC Variants —
-  ScrollbackChunk, ScrollbackDumpComplete, PtyReset'. Paraphrased (semantically equivalent);
-  sync post-convergence for index symmetry (story-writer).
-  F-P25-SUG-001 DEFERRED: STORY-INDEX BC Coverage Table stale AC-ranges for S-044 multi-BC rows —
-  BC-2.09.008 row says 'AC-001..AC-007' (actual AC-001..AC-015); BC-2.09.009 row says 'AC-008..
-  AC-011' (actual AC-016..AC-021). S-040 BC-2.09.005/002 rows have similar approximate ranges.
-  Coverage-label drift only; BC IDs/anchors/Full-Coverage verdict + in-story AC-traces all correct.
-  One-time AC-range re-derivation sweep for Wave-9 multi-BC stories' STORY-INDEX coverage rows
-  post-convergence. Logged to durable_task_register; route story-writer.
-  F-P23-IMP-001 RESOLVED (prior): S-047 v1.3→v1.4 AC-007 'postcondition 1' → '§ScrollbackChunk postcondition
-  3'; AC-008 'postcondition 2' → '§ScrollbackDumpComplete postcondition 3'. Closes F-P20-CRIT-001
-  class for S-047 — all AC-001..AC-012 headers now cite subsection-scoped real clauses.
-  F-P23-SUG-001 RESOLVED (prior): wave-schedule v1.8→v1.9 — Waves 4-7 navigational rows added to Wave
-  Overview (was missing; rows from STORY-INDEX §Wave Summary: W4=18pts, W5=34pts, W6=34pts, W7=23pts).
-  F-P22-IMP-001 RESOLVED (prior): S-044 3× BC-2.08.008 PC-9 → PC-6; S-044 v1.0→v1.1.
-  F-P21-SUG-001 DEFERRED: S-040 AC-001 citation-scope looseness (BC-2.09.002 PC-2 vs SS-embedded-pty
-  §Translation function); sequences architecturally valid; cosmetic; fix post-convergence (story-writer).
-  F-P21-SUG-002 DEFERRED: S-033 AC-012/AC-005 step-index label (SpawnAck as 'step 1' vs BC-2.08.008
-  PC-5 canonical 'step 2'); relative ordering correct; cosmetic; fix post-convergence (story-writer).
-  F-P20-BCGAP-001 DEFERRED: BC-2.08.006 lacks explicit atomic-write + path-canonicalization
-  postconditions; S-038 AC-006/AC-009 anchor to Inv4 + CLAUDE.md conventions (valid; non-blocking).
-  Route product-owner post-convergence.
-  F-P13-SUG-001 DEFERRED: BC-2.06.024 title stale in dep-graph-expansion.md:245 (cosmetic; historical
-  closed-wave table; fix post-convergence; route story-writer)
-  F-P14-SUG-001 DEFERRED: DropCounterUpdate field-name drift SS-ipc vs S-021/S-025 (pre-existing latent
-  inconsistency; outside v1A Phase-2 perimeter; non-blocking; route architect)
-  F-P16-SUG-002 LOGGED: add 'wire-type crate-residency + variant-completeness' check to adversarial
-  wire-axis (shared wire types like SessionState must reside in monocle-ipc and carry the full canonical
-  variant set); route session-reviewer/devops for axis/lint codification; non-blocking.
-  INPUT-HASH NOTE: 16 delta stories (S-033..S-048) retain input-hash: "[pending]" — YAML-object inputs
-  not parsed by compute-input-hash (known tool limitation PROC-COMPUTE-INPUT-HASH-YAML; non-blocking).
+  ADVERSARIAL COUNTER: 3/3 COMPLETE — PHASE-2 ADVERSARIAL STORY CONVERGENCE COMPLETE (Passes 24/25/26).
+  D-322 PRE-GATE AUDIT RESULTS:
+    consistency GATE-AUDIT PASS: 0 blockers / 2 important (F-GATE-IMP-001/002) / 5 advisory (F-GATE-ADV-001..004 + fold of ADV-005 into IMP-001). Full v1A coverage confirmed (25 BCs + 16 stories + 5 holdouts), correct anchors, scope aligned with D-238.
+    input-drift CLEAN: TOTAL=410, MATCH=131, STALE=21, UNCOMPUTED=1, NOINPUT=257. All 21 stale = known circular-hash-cascade residual class-b; 0 genuine drift. Non-blocking.
+  RESUME = optional post-convergence cleanup burst THEN Phase-2 human approval gate.
+  Cleanup burst: F-GATE-IMP-001 (state-manager: sprint-state inputs pin cascade) + F-GATE-IMP-002 (story-writer: wave-schedule S-032 dep text) + F-GATE-ADV-001 (state-manager: sprint-state not_started→draft) + F-GATE-ADV-002 (story-writer: epic detail stubs E-04..E-09) + F-GATE-ADV-003 (state-manager: EVAL-INDEX inputs S-033..S-048) + F-GATE-ADV-004 (story-writer: dep-graph-expansion title/intro Waves 4-9) + deferred cosmetic F-P13-SUG-001, F-P20-BCGAP-001, F-P21-SUG-001/002, F-P24-SUG-001/002, F-P25-SUG-001.
+  The maintenance findings are non-blocking — the gate may also proceed directly without the cleanup burst if the human prefers.
+  INPUT-HASH NOTE: 16 delta stories (S-033..S-048) retain input-hash: "[pending]" — YAML-object inputs not parsed by compute-input-hash (known tool limitation PROC-COMPUTE-INPUT-HASH-YAML; non-blocking).
   factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'` (do NOT trust a literal SHA here).
   develop HEAD: 2141adc (no v1A production code written; Phase-1d spec-only work).
   ============================================================================
@@ -800,9 +805,9 @@ next_session_resume_protocol: |
   PASS-22 FINDINGS RESOLVED (2026-06-16) — 0C/1I/1S. F-P22-IMP-001: S-044 contained 3 occurrences of 'BC-2.08.008 PC-9' — BC-2.08.008 has no PC-9; the TUI-exits-EmbeddedTerminal-on-Terminated obligation is PC-6. Fixed in (1) clustering-rationale YAML comment: "BC-2.08.008 PC-6 specifies that TUI-side EmbeddedTerminal exits on SessionStateChanged::Terminated"; (2) AC-010 body: "Burst A GAP-4 (BC-2.08.008 PC-6)"; (3) Previous Story Intelligence: "BC-2.08.008 PC-6 TUI-side obligation". story-writer: S-044 v1.0→v1.1. Corpus-wide prose cross-ref sweep: 15 other v1A stories clean (no 'BC-2.08.008 PC-9' literals found anywhere). F-P22-IMP-001 is the CLAUSE-CITATION class (AC trace headers) — now closed BOTH for trace-header form (Pass-20 audit) AND prose/comment cross-reference form (Pass-22 sweep). ADVERSARIAL COUNTER RESET 1/3 → 0/3 (Pass-22 found real Important that Pass-21 CLEAN missed — fresh-context catch validates the 3-clean gate requirement; clean streak RESET). Pass-23 = clean-candidate 1/3 (NEW fresh streak). POL-11 PASS; POL-12 PASS; compute-input-hash 98 STALE clusters updated. STATE v7.77→v7.78.
 
   NEXT STEPS (in order):
-  1. CONVERGENCE ACHIEVED — Pass-26 CLEAN (0C/0I); counter 3/3; strict-3-clean gate satisfied (Passes 24/25/26).
-  2. Post-convergence cosmetic cleanup burst (deferred suggestions — see NOTE lines below; non-blocking).
-  3. Pre-Phase-2-gate validations: (1) fresh-context consistency-validator audit, (2) /vsdd-factory:check-input-drift.
+  1. CONVERGENCE ACHIEVED — Pass-26 CLEAN (0C/0I); counter 3/3; strict-3-clean gate satisfied (Passes 24/25/26). [DONE]
+  2. Pre-Phase-2-gate validations: (1) fresh-context consistency-validator audit → GATE-AUDIT PASS (D-322); (2) /vsdd-factory:check-input-drift → INPUT-DRIFT CLEAN (D-322). [DONE]
+  3. OPTIONAL post-convergence cleanup burst: F-GATE-IMP-001 (sprint-state pin cascade) + F-GATE-IMP-002 (wave-schedule S-032 dep text) + F-GATE-ADV-001..004 + deferred cosmetic F-P*-SUG. NON-BLOCKING — gate may proceed without it.
   4. Phase-2 human approval gate.
   5. Phase-3 TDD implementation for v1A Waves 8-9 (S-033..S-048).
   NOTE: F-P13-SUG-001 deferred (BC-2.06.024 cosmetic in closed-wave table; fix post-convergence).
@@ -827,14 +832,19 @@ next_session_resume_protocol: |
   ============================================================================
 
   ============================================================================
-  A. WHERE WE ARE (D-271..D-315+Pass-20-fix+Pass-21-CLEAN+Pass-22-fix+Pass-23-fix+Pass-24-CLEAN+Pass-25-CLEAN, 2026-06-16)
+  A. WHERE WE ARE (D-271..D-322, 2026-06-16) — PAUSED for laptop relocation
   ============================================================================
 
   MODE: greenfield-with-reference-ingest.
-  PHASE: VSDD Phase-2 ADVERSARIAL STORY CONVERGENCE — COMPLETE. Pass-26 CLEAN (0C/0I). COUNTER 3/3. Strict-3-clean gate satisfied (Passes 24/25/26).
+  PHASE: VSDD Phase-2 ADVERSARIAL STORY CONVERGENCE — COMPLETE. Pass-26 CLEAN (0C/0I). COUNTER 3/3. Strict-3-clean gate satisfied (Passes 24/25/26). PRE-GATE VALIDATIONS DONE (D-322).
   develop @ 2141adc — UNCHANGED for production code (no v1A production code written yet).
   NO v1A production code written yet. Do NOT write v1A code yet.
   factory-artifacts: run `git -C .factory log -1 --format='%h %s'` for live HEAD.
+
+  D-322 PRE-GATE VALIDATIONS (2026-06-16):
+    Consistency-validator gate audit = GATE-AUDIT PASS (0 blockers / 2 important / 5 advisory). Full v1A coverage confirmed (25 BCs + 16 stories + 5 holdouts). Scope aligned with D-238. Phase-3-ready. Details in durable_task_register F-GATE-IMP-001/002 + F-GATE-ADV-001..004.
+    Input-hash drift check = INPUT-DRIFT CLEAN (TOTAL=410, MATCH=131, STALE=21, UNCOMPUTED=1, NOINPUT=257). All 21 stale = circular-hash-cascade residual (class b); 0 genuine drift. A 2-pass compute-input-hash --update is housekeeping, not a gate prerequisite.
+    POL-11 PASS (371 active, 4318 historical). POL-12 PASS.
 
   57 adversarial passes complete on the v1A control-center spec package (Phase-1d).
   PHASE-1D CONVERGENCE COMPLETE — strict 3-clean gate satisfied (Passes 55/56/57 all CLEAN).
