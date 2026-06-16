@@ -1,10 +1,10 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.16"
+version: "1.17"
 status: active
 producer: vsdd-factory:state-manager
-timestamp: 2026-06-15T00:00:00Z
+timestamp: 2026-06-16T00:00:00Z
 phase: 2
 visibility: holdout-evaluator-only
 inputs:
@@ -90,7 +90,7 @@ input-hash: "[pending]"
 | HS-EXP-010 | BC-2.05.005, BC-2.06.011, BC-2.06.016 | Timeout-resolved + disconnect-cleared overlap |
 | HS-EXP-011 | BC-2.08.002, BC-2.08.004, BC-2.05.006 | Session-host survives daemon restart; re-discovery + IPC reconnect integration |
 | HS-EXP-012 | BC-2.08.004 | UDS bind blocked until re-discovery complete (startup ordering/race window) |
-| HS-EXP-013 | BC-2.09.009, BC-2.06.008 | SUG-3: permission badge+bell within one render tick while in EmbeddedTerminal |
+| HS-EXP-013 | BC-2.09.008, BC-2.09.009, BC-2.06.008 | SUG-3: permission badge+bell within one render tick while in EmbeddedTerminal; Esc→exit→Overlay AppMode transition |
 | HS-EXP-014 | BC-2.08.006, BC-2.08.001, BC-HOOK-010 | Hook auto-injection with shared hooks-settings.json under concurrent spawns (shared-file model per BC-HOOK-010; no clobber because spawns read-only the shared file) |
 | HS-EXP-015 | BC-2.09.002, BC-2.09.003, BC-2.09.004, BC-2.09.005 | Full-fidelity keyboard forwarding: all v1A input classes (Kitty + SGR + bracketed paste) |
 
@@ -160,6 +160,12 @@ Phase 4 holdout evaluation MUST evaluate ALL holdout scenarios:
 **Bump:** 1.5 → 1.6.
 **Scope:** `traces_to:` field: `STORY-INDEX.md v4.7` → `STORY-INDEX.md v5.20` (Option 1 per ADR-0007 §Decision; EVAL-INDEX is an active INDEX document; its traces_to must reflect canonical current STORY-INDEX version).
 **SE-16d PASS:** 2026-05-30 >= 2026-05-30 (patch; no normative behavioral change).
+
+## §Trace v1.17 — F-P14-SUG-002: HS-EXP-013 BC Coverage Traceability row adds BC-2.09.008 (2026-06-16)
+
+**Bump:** 1.16 → 1.17.
+**Scope:** BC Coverage Traceability table row for HS-EXP-013 updated: `BC-2.09.009, BC-2.06.008` → `BC-2.09.008, BC-2.09.009, BC-2.06.008`. The Esc→exit→Overlay AppMode-transition mechanic in HS-EXP-013 step 8 is owned by BC-2.09.008 PC-1 (not BC-2.09.009 PC-5a/PC-5b, which is a restatement). Domain Invariant column updated to reflect BC-2.09.008's contribution. No other rows changed.
+**SE-16d PASS:** 2026-06-16 >= 2026-06-15 (v1.16). PASS.
 
 ## §Trace v1.16 — Phase-2 Burst G: HS-EXP-011..015 S-TBD anchors resolved (2026-06-15)
 

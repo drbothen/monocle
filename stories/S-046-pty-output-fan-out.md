@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-046
 epic_id: EPIC-05
-version: "1.0"
+version: "1.1"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -72,13 +72,18 @@ When sending to a per-client buffer fails `N` times consecutively:
 - The strike counter resets to 0 after any successful send to that client.
 - Clients are never silently removed without exhausting all 3 strikes (unless hardware error).
 
-### AC-004 (traces to BC-2.05.009 postcondition 4 — pty_drop_counter counts only OOM/receiver-gone)
+### AC-004 (traces to BC-2.05.009 PC-3 — pty_drop_counter is a stderr-WARN-only diagnostic; drops are surfaced to TUI via PtyReset per Invariant 5)
 
 The `pty_drop_counter` metric is incremented ONLY when a message is dropped due to an
 OOM-level failure (channel closed, receiver gone). It is NOT incremented on backpressure
-waits, per-client buffer-full strikes, or graceful disconnects. The counter is surfaced as
-a field in `ServerToClient::StatusUpdate` (alongside the existing `drop_counter` for IPC
-events), not in the TUI PTY display.
+waits, per-client buffer-full strikes, or graceful disconnects. When the counter increments,
+the PTY-broker logs a `WARN`-level structured trace entry to the session-host's stderr:
+`WARN: PTY channel drop #N for session <session_id>`. The counter is NOT surfaced over IPC
+and does NOT appear in any `ServerToClient` variant — there is no `ServerToClient::StatusUpdate`
+or similar counter-carrying variant in the IPC wire protocol. Actual PTY drops are surfaced
+to the TUI exclusively via `ServerToClient::PtyReset` (the 5-second status bar indicator
+is handled in S-047/S-048 — the broker's responsibility ends at emitting `PtyReset`, per
+BC-2.05.009 Invariant 5).
 
 ### AC-005 (traces to BC-2.05.009 postcondition 5 — PtyReset emitted on broker task drop)
 
@@ -219,7 +224,7 @@ story) and the client-side protocol (S-047). Both stories co-own BC-2.05.011 but
 | EC-203 | PTY produces frames faster than channel capacity (1024 items) | Caller blocks on `.send().await` — backpressure to PTY reader until channel drains |
 | EC-204 | `emit_pty_reset()` called with no clients registered | No-op; no error |
 | EC-205 | Hook event arrives exactly when PTY frame arrives | `biased; select!` guarantees hook event processed first |
-| EC-206 | `pty_drop_counter` is read during `StatusUpdate` emission | Read via `Arc<AtomicU64>::load(Ordering::Relaxed)` — safe under concurrent writers |
+| EC-206 | `pty_drop_counter` is read concurrently by the logger task | Read via `Arc<AtomicU64>::load(Ordering::Relaxed)` — safe under concurrent writers; no IPC emission path reads this counter |
 
 ## Token Budget Estimate
 
@@ -250,3 +255,10 @@ Well within the 20–30% context window constraint. No splitting needed.
 SS-05 owns this story's scope because the PTY output fan-out is a core IPC capability — it
 controls how session terminal output reaches connected TUI clients over the UDS channel
 managed by SS-05 per ARCH-INDEX Subsystem Registry SS-05 (monocle-ipc, daemon IPC layer).
+
+## Trace
+
+| Version | Date | Author | Change |
+|---------|------|--------|--------|
+| 1.0 | 2026-06-15 | vsdd-factory:story-writer | Initial decomposition |
+| 1.1 | 2026-06-16 | vsdd-factory:story-writer | F-P14-IMP-001: Rewrite AC-004 to conform to BC-2.05.009 PC-3 + Invariant 5 — `pty_drop_counter` is stderr-WARN-only; removed false `ServerToClient::StatusUpdate` reference (no such variant exists); corrected trace header from "postcondition 4" to "PC-3 + Invariant 5"; fixed EC-206 to remove `StatusUpdate` emission reference |

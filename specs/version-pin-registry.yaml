@@ -228,9 +228,9 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.16"
-  last_bump_commit: "[Burst-G D-305 — HS-EXP-011..015 Scenario Index + Wave Coverage Summary S-TBD placeholders resolved to canonical story IDs (S-036/S-044/S-033/S-038/S-040/S-041); BC-INDEX pin 1.41.1→1.42.0]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.17"
+  last_bump_commit: "[F-P14-SUG-002 — HS-EXP-013 BC Coverage Traceability row: added BC-2.09.008 (Esc→exit→Overlay AppMode-transition owner); HS-EXP-013 v1.0→v1.1 step-8 attribution fix]"
+  last_bump_date: "2026-06-16"
 
 nfr-catalog:
   path: specs/prd-supplements/nfr-catalog.md

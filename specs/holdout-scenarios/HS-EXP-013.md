@@ -1,19 +1,20 @@
 ---
 scenario_id: HS-EXP-013
 title: "Permission Badge+Bell While in EmbeddedTerminal — SUG-3 Guarantee: Prompt Never Silently Queued"
+version: "1.1"
 wave: 8
 stories_tested: [S-044]
-source_bcs: [BC-2.09.009, BC-2.06.008]
+source_bcs: [BC-2.09.008, BC-2.09.009, BC-2.06.008]
 severity: must-pass
 visibility: holdout-evaluator-only
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-03T12:00:00Z
+timestamp: 2026-06-16T00:00:00Z
 ---
 
 # HS-EXP-013: Permission Badge+Bell While in EmbeddedTerminal — SUG-3 Guarantee: Prompt Never Silently Queued
 
 **Wave:** 8
-**Source BC:** BC-2.09.009 (postconditions PC-1, PC-2, PC-3), BC-2.06.008 (PC-1: VecDeque push)
+**Source BC:** BC-2.09.008 (Esc→AppMode exit transition and overlay surface: postcondition exiting EmbeddedTerminal PC-1), BC-2.09.009 (badge+bell: postconditions PC-1, PC-2, PC-3), BC-2.06.008 (PC-1: VecDeque push)
 **Stories Tested:** S-044
 
 ## Setup
@@ -45,10 +46,13 @@ connected via UDS.
 
 7. Observe: the badge count increments (e.g., `[!2 prompts]`). A second bell is emitted.
 
-8. Press `Esc` in `AppMode::EmbeddedTerminal` (the canonical exit keybinding per BC-2.09.009
-   PC-5a: `Esc → AppMode transitions to prior`). Because `overlay_stack` is non-empty, per
-   BC-2.09.009 PC-5b the mode immediately transitions from `prior` to
-   `AppMode::Overlay { prior: Dashboard }`. TUI transitions to `AppMode::Overlay`.
+8. Press `Esc` in `AppMode::EmbeddedTerminal`. Per **BC-2.09.008 postcondition (exiting
+   EmbeddedTerminal) PC-1**, `Action::ExitEmbeddedTerminal` fires and `AppMode` transitions
+   to `prior` AppMode (typically `Dashboard`). Because `overlay_stack` is non-empty, the
+   same PC-1 chain (also reflected in S-044 AC-008) immediately transitions `AppMode` from
+   `prior` to `AppMode::Overlay { prior: Dashboard }`. TUI transitions to `AppMode::Overlay`.
+   (BC-2.09.009 PC-5a/PC-5b is a cross-referencing restatement of this BC-2.09.008 PC-1
+   mechanic — the authoritative AppMode-transition contract is BC-2.09.008.)
 
 9. Verify: `overlay_stack.len() == 2`; P1 and P2 are both present; the overlay renders the
    most recently added prompt (or the front of the stack per BC-2.06.009 rotation semantics).
@@ -85,3 +89,31 @@ as the queued prompt, even when in EmbeddedTerminal mode where PTY output is com
 capacity. The single-render-tick latency bound and the bell emission in a PTY-active state are
 timing properties that can only be validated by a combined end-to-end test with a running TUI in
 EmbeddedTerminal mode receiving concurrent PTY bytes and permission prompts.
+
+## §Trace v1.1
+
+**F-P14-SUG-002 — Step 8 BC attribution corrected: Esc→exit→Overlay transition is BC-2.09.008 PC-1, not BC-2.09.009 PC-5a/PC-5b** (2026-06-16):
+
+- **Finding (F-P14-SUG-002):** Step 8 attributed `Esc → AppMode transitions to prior` and the
+  follow-on `prior → AppMode::Overlay` chaining to "BC-2.09.009 PC-5a" and "BC-2.09.009 PC-5b"
+  respectively. The authoritative contract for the AppMode exit transition is **BC-2.09.008
+  postcondition (exiting EmbeddedTerminal) PC-1**, which specifies: `Action::ExitEmbeddedTerminal`
+  fires; `AppMode` transitions to `prior`; if `overlay_stack` is non-empty, `AppMode` immediately
+  transitions to `AppMode::Overlay { prior: Dashboard }`. S-044 AC-008 (which traces to
+  BC-2.09.008 PC-1 verbatim) confirms this ownership. BC-2.09.009 PC-5a/PC-5b is a
+  cross-referencing restatement of the BC-2.09.008 mechanic — it is not the authoritative source.
+
+- **Fix:** Step 8 now cites **BC-2.09.008 PC-1** as the authoritative AppMode-transition
+  contract, with a parenthetical noting that BC-2.09.009 PC-5a/PC-5b is a restatement.
+  The badge+bell steps (Steps 3, 7) correctly continue to cite BC-2.09.009 (unchanged).
+  `source_bcs` frontmatter updated to include BC-2.09.008 alongside BC-2.09.009 and BC-2.06.008.
+  Header `**Source BC:**` line updated to reflect the three-way split with per-BC scope labels.
+
+- **Realizability:** The step sequence and observable outcomes are unchanged. The correction is
+  attribution-only. HS-EXP-013 remains realizable against S-044's implementation scope.
+
+- **Version:** v1.0 (unversioned at authoring time) → v1.1 (PATCH: prose attribution fix; no
+  behavioral change to steps or satisfaction criteria).
+
+- **SE-16d monotonicity:** v1.1 timestamp 2026-06-16T00:00:00Z > v1.0 timestamp
+  2026-06-03T12:00:00Z. PASS.
