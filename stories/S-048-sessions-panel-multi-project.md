@@ -3,10 +3,10 @@ document_type: story
 level: L4
 story_id: S-048
 epic_id: EPIC-06
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:story-writer
-timestamp: 2026-06-15T00:00:00Z
+timestamp: 2026-06-16T00:00:00Z
 phase: 2
 points: 8
 wave: 8
@@ -37,8 +37,8 @@ traces_to: "Implements BC-2.06.025 — multi-session grouped sessions panel (Ses
 
 As a monocle TUI user, I want the sessions panel to show all running sessions grouped by
 `project_root` (alphabetically), with `[M]`/`[E]`/`[?]` provenance badges and `[!]` degraded
-indicators, and to let me perform lifecycle actions with keyboard shortcuts (`n`=spawn, `k`=kill,
-`d`=detach, `r`=rename, `D`=destroy) that are automatically blocked for sessions in incompatible
+indicators, and to let me perform lifecycle actions with keyboard shortcuts (`n`=spawn, `k`/`d`=kill,
+`r`=rename, `D`=detach) that are automatically blocked for sessions in incompatible
 states — so that I can manage multiple projects from a single TUI view without needing to track
 session state manually.
 
@@ -79,22 +79,19 @@ The badge is part of the rendered row text, not a separate column.
 
 The sessions panel handles the following keys when a session row is focused:
 - `n` — spawn a new session (opens spawn dialog or sends `SpawnSession` with defaults).
-- `k` — kill the focused session (sends `KillSession { session_id }`).
-- `d` — detach from the focused session (sends `DetachSession { session_id }`).
+- `k` or `d` — kill/terminate the focused session (both send `KillSession { session_id }`; `d` is the kill alias per BC-2.06.025 PC-3).
 - `r` — rename the focused session (opens inline rename input; sends `RenameSession` on confirm).
-- `D` (shift-d) — destroy the session and remove from view (alias for kill + acknowledge Terminated).
+- `D` (shift-d) — detach the focused session (sends `DetachSession { session_id }`).
 Each key is shown in the status bar hint line when the sessions panel is active.
 
-### AC-005 (traces to BC-2.06.025 invariant 3 — Launching state: kill=ALLOWED, detach=BLOCKED, rename=ALLOWED, D=BLOCKED)
+### AC-005 (traces to BC-2.06.025 invariant 5 — Launching state: kill=ALLOWED, detach=BLOCKED, rename=ALLOWED)
 
 When the focused session is in `Launching` state:
-- `k` (kill): ALLOWED — sends `KillSession { session_id: String }`. TUI transitions display to `Terminating`.
-  (Daemon enforces the actual state; TUI is optimistic.)
-- `d` (detach): BLOCKED — key press is ignored; status bar shows
-  `"Cannot detach: session is launching"` for 3 seconds.
-- `r` (rename): ALLOWED — sends `RenameSession` as normal.
-- `D` (destroy): BLOCKED — EC-298 (BC-2.06.025) prohibits D on Launching; status bar shows
-  `"Cannot destroy: session is launching"` for 3 seconds.
+- `k` or `d` (kill): ALLOWED — both send `KillSession { session_id: String }`. TUI transitions display to `Terminating`.
+  (Daemon enforces the actual state; TUI is optimistic.) `d` is the kill alias — it dispatches `KillSession`, not `DetachSession`.
+- `r` (rename): ALLOWED — sends `RenameSession` as normal (metadata operation; does not require active host_conn).
+- `D` (detach): BLOCKED — EC-298 (BC-2.06.025) prohibits `D`/DetachSession on Launching; key press is a no-op; status bar shows
+  `"Session launching — please wait"` for 3 seconds. A Launching session has no live host_conn to detach from.
 
 ### AC-006 (traces to BC-2.06.025 invariant 4 — Terminating=blanket block for all lifecycle actions)
 
@@ -104,15 +101,14 @@ When the focused session is in `Terminating` state:
   3 seconds in the status bar.
 - `n` (spawn new session) is NOT blocked (it is not scoped to the focused session).
 
-### AC-007 (traces to BC-2.06.025 invariant 5 — Terminated-in-grace=blanket block, F-P52-001)
+### AC-007 (traces to BC-2.06.025 invariant 6 — Terminated-in-grace=blanket block, F-P52-001)
 
 When the focused session is in `Terminated` state (within the grace retention window):
-- ALL lifecycle actions (`k`, `d`, `r`, `D`) are BLOCKED.
+- ALL lifecycle actions (`k`/`d`, `r`, `D`) are BLOCKED.
 - Status bar: `"Session has terminated"` for 3 seconds.
 - The session row REMAINS VISIBLE during the grace retention window; it is NOT automatically
-  removed from the list. Removal happens only on explicit `D` (destroy) action — but since
-  `D` is blocked on Terminated, removal happens when the grace window expires or the daemon
-  removes it from the next `SessionListUpdate`.
+  removed from the list. Removal happens when the grace window expires or the daemon
+  removes it from the next `SessionListUpdate`. There is no explicit user-triggered removal action.
 
 ### AC-008 (traces to BC-2.06.025 postcondition 5, EC-293 — k on Launching sends KillSession, transitions to Terminating)
 
@@ -131,11 +127,12 @@ When `k` is pressed on a `Terminating` session (EC-296):
 
 ### AC-010 (traces to BC-2.06.025 postcondition 7, EC-298 — D on Launching is BLOCKED)
 
-When `D` is pressed on a `Launching` session (EC-298 from BC-2.06.025):
-- No IPC message is sent.
-- Status bar shows `"Cannot destroy: session is launching"` for 3 seconds.
-- `D` is BLOCKED on `Launching` per BC-2.06.025 EC-298. Only `k` (kill) is permitted during
-  Launching; all other lifecycle actions (`d`, `r`, `D`) are blocked.
+When `D` (detach) is pressed on a `Launching` session (EC-298 from BC-2.06.025):
+- No IPC message is sent (`ClientToServer::DetachSession` is NOT dispatched).
+- Status bar shows `"Session launching — please wait"` for 3 seconds.
+- `D` (detach) is BLOCKED on `Launching` per BC-2.06.025 EC-298 and Invariant 5. A Launching
+  session has no established host_conn to detach from; dispatching `DetachSession` would cause the
+  daemon to return `session_not_ready`. Kill (`k`/`d`) and rename (`r`) remain ALLOWED during Launching.
 
 ### AC-011 (traces to BC-2.06.025 postcondition 8, EC-300..302 — all actions blocked on Terminated)
 
@@ -339,8 +336,8 @@ Within the 20–30% context window constraint. No splitting needed.
   actions — the component base exists.
 - S-048 depends on S-033 because `SpawnSession` dispatch (pressing `n` in the sessions panel)
   calls into the daemon's `spawn_session()` established in S-033.
-- S-048 depends on S-047 because the lifecycle action keys (`k`, `d`, `r`, `D`) dispatch
-  `KillSession`, `DetachSession`, `RenameSession` IPC variants — all defined and routed in S-047.
+- S-048 depends on S-047 because the lifecycle action keys dispatch IPC variants defined and routed
+  in S-047: `k`/`d` (kill alias) → `KillSession`; `D` → `DetachSession`; `r` → `RenameSession`.
 - S-048 blocks nothing (it is the final story in Wave 8 for SS-06 multi-project scope).
 
 ## Subsystem Anchor Justification
@@ -353,4 +350,5 @@ display and interaction plane) per ARCH-INDEX Subsystem Registry SS-06.
 
 | Pass | Date | Change |
 |------|------|--------|
+| v1.2 | 2026-06-16 | F-P18-CRIT-001: Corrected inverted key→action mapping throughout. (1) Narrative: `d`=detach/`D`=destroy replaced with `k`/`d`=kill/`D`=detach (no destroy action). (2) AC-004: `d`→DetachSession removed; `k` or `d` → KillSession (d is kill alias per BC-2.06.025 PC-3); `D` → DetachSession. (3) AC-005: corrected Launching-state rules — `k`/`d` (kill) ALLOWED, `r` (rename) ALLOWED, `D` (detach) BLOCKED per EC-298/Invariant 5; removed fabricated "Cannot destroy:" status message; status bar now shows "Session launching — please wait" for `D`; BC trace updated from invariant 3 to invariant 5. (4) AC-007: BC trace updated from invariant 5 to invariant 6 (Terminated-in-grace); removed fabricated "destroy" removal-action prose. (5) AC-010: EC-298 correctly applied to `D`=detach being blocked on Launching (not "destroy"); status bar message corrected to "Session launching — please wait". (6) Dependency justification: wire command mapping clarified to `k`/`d`→KillSession, `D`→DetachSession, `r`→RenameSession. |
 | v1.1 | 2026-06-16 | F-P16-IMP-002: (1) Corrected `SessionState` Task enumeration from 4 variants to the canonical 5 (added `Detached`; noted `Created`/`Killed` are retired); noted S-033 owns the definition in monocle-ipc per F-P16-IMP-001. (2) Added AC-013 (BC-2.06.025 PC-1): state indicator renders all 5 canonical states exhaustively including `Detached`. (3) Added AC-014 (BC-2.06.025 PC-2): Enter on `Detached` session sends `ClientToServer::AttachSession`; TUI transitions to `AppMode::EmbeddedTerminal` on `SessionStateChanged{Running}`. (4) Updated `handle_key` task to reference AC-014. (5) Added tests for AC-013 and AC-014 to the test task list. |
