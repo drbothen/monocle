@@ -3,10 +3,10 @@ document_type: story
 level: L4
 story_id: S-045
 epic_id: EPIC-03
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:story-writer
-timestamp: 2026-06-15T00:00:00Z
+timestamp: 2026-06-16T00:00:00Z
 phase: 2
 points: 5
 wave: 8
@@ -130,8 +130,11 @@ returns the overlay map only; the merge is performed by `monocle-session-host` a
 - [ ] Add `SessionError::EngineError(#[from] EngineError)` variant to the `SessionError` enum in
       `monocle-runtime/src/session_manager/mod.rs` (canonical location per S-033; if not already
       present from S-033, add it here — do NOT create a separate error module).
-- [ ] Add `"binary_not_found"` and `"invalid_spawn_arg"` arms to `session_error_to_code()` for
-      `IpcOp::Spawn` (per BC-2.03.007 PC-3/PC-7).
+- [ ] **Verify (do NOT re-add):** `session_error_to_code()` (authored in S-033) already maps
+      `EngineError::BinaryNotFound => "binary_not_found"` and
+      `EngineError::InvalidPath => "invalid_spawn_arg"` for `IpcOp::Spawn`
+      (per BC-2.03.007 PC-3/PC-7); do NOT re-add — these arms are part of the
+      S-033-authored function.
 - [ ] Write unit tests in `monocle-runtime/tests/spawn_recipe.rs`:
       - `test_BC_2_03_005_spawn_recipe_happy_path_binary_args_env_cwd` (AC-001/002/009)
       - `test_BC_2_03_005_spawn_recipe_ccr_none_env_monocle_id_only` (AC-004)

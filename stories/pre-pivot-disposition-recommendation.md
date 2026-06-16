@@ -1,21 +1,33 @@
 ---
 document_type: recommendation
 level: planning
-version: "1.0"
-status: draft
+version: "1.1"
+status: ratified
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
+ratified_by: "Joshua Magady"
+ratification_date: "2026-06-16"
+ratification_decision: "D-315"
 phase: phase-2-burst-d
-traces_to: ".factory/STATE.md D-305"
-ratification_required: true
-bulk_archive_blocked: true
+traces_to: ".factory/STATE.md D-305, D-315"
+ratification_required: false
+bulk_archive_blocked: false
 ---
 
 # Pre-Pivot Story Disposition Recommendation
 
-> **D-305 CONSTRAINT: This document requires human ratification before ANY disposition is
-> executed. DO NOT archive, retire, delete, move, or change the status of any story until
-> Joshua Magady reviews and approves this recommendation. Bulk-archive is BLOCKED.**
+> **RATIFIED 2026-06-16 (D-315) by Joshua Magady.**
+> **Decision: Keep all 3 active (S-032, S-DAEMON-WIRE-FIX-001, S-PHASE-3-PREP remain ACTIVE).**
+> **32 pre-pivot done stories (S-001..S-031 + S-DTU-001) classified DONE-HISTORICAL.**
+> **0 stories archived. 0 stories retired. Bulk-archive: NOT PERFORMED (correctly).**
+> **No story file status fields changed. No STORY-INDEX changes. No sprint-state changes.**
+
+---
+
+> **D-305 CONSTRAINT (SUPERSEDED by D-315 ratification):** This document was created with a
+> D-305 constraint requiring human ratification before ANY disposition is executed. Ratification
+> was provided by Joshua Magady on 2026-06-16 (D-315). The ratification decision confirmed the
+> recommendations exactly as written: keep all 3 active; 32 done-historical; 0 archive/retire.
 
 ---
 

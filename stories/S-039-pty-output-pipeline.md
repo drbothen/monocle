@@ -3,10 +3,10 @@ document_type: story
 level: L4
 story_id: S-039
 epic_id: EPIC-09
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:story-writer
-timestamp: 2026-06-15T00:00:00Z
+timestamp: 2026-06-16T00:00:00Z
 phase: 2
 points: 8
 wave: 9
@@ -261,4 +261,4 @@ Within the 30% context window bound for a Sonnet-class model (~200k tokens = 60k
 - S-039 depends on S-021 because `ServerToClient::PtyOutput`, `ClientToServer::AttachSession`, and `ServerToClient::ScrollbackDumpComplete` wire types must exist in `monocle-ipc`.
 - S-039 depends on S-025 because the `App` struct and its basic IPC event loop infrastructure already exist; this story adds parser fields to that struct.
 - S-039 depends on S-035 because `AttachSession` → `ScrollbackChunk*` + `ScrollbackDumpComplete` is the session-host-side behavior that produces the dump this story consumes; S-035 must be built first.
-- S-039 blocks S-040/S-041/S-042/S-043/S-044 because all remaining SS-09 stories extend `App` with fields or behaviors that depend on `AppMode::EmbeddedTerminal` being defined (added here) and the parser infrastructure being present.
+- S-039 blocks S-040/S-042/S-043 (direct edges; S-041 and S-044 are transitive via S-040/S-041) because all remaining SS-09 stories extend `App` with fields or behaviors that depend on `AppMode::EmbeddedTerminal` being defined (added here) and the parser infrastructure being present.
