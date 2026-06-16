@@ -25,7 +25,7 @@ inputs:
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.1"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.09.001 (PTY output renders within 100ms; vt100::Parser pipeline; auto-attach on first entry; scrollback dump buffering and replay)"
-# BC status: BC-2.09.001 v1.3.3 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status: BC-2.09.001 v1.3.4 — non-empty; status draft pending Phase-2 adversarial convergence gate
 ---
 
 # S-039: PTY Output Pipeline — vt100::Parser, PseudoTerminal Render, PtyOutput IPC Handler, Auto-Attach on First Entry
@@ -84,6 +84,14 @@ When `App::enter_embedded_terminal(session_id)` is called for a session NOT pres
 - This mandate does NOT apply when entering `EmbeddedTerminal` from `SessionCreation::Launching`
   (new session; no historical state).
 
+**Re-attach after detach:** When the user detaches from a session (exits `EmbeddedTerminal` mode),
+`pty_dump_received` REMOVES the session_id entry. On the next call to `enter_embedded_terminal`
+for the same session_id, the session is again NOT present in `pty_dump_received`, and the full
+auto-attach + buffering + dump protocol runs again from the beginning. `pty_dump_received` marks
+"a complete dump was received for this continuous attach period"; it does NOT permanently suppress
+re-dumps across detach/re-attach cycles. This is consistent with S-047 AC-006 (re-attach triggers
+fresh dump from daemon side).
+
 ### AC-006 (traces to BC-2.09.001 invariant 2 — non-focused parsers always updated)
 
 For a `PtyOutput` message targeting a non-focused session:
@@ -135,6 +143,9 @@ processing normally. The `mpsc::channel(64)` provides 64 slots of burst absorpti
 - [ ] Initialize `vt100::Parser` for each session in `on_session_list_update()` and `on_initial_state()` using configured `scrollback_rows`.
 - [ ] Load `pty_scrollback_rows` from `~/.monocle/config.json` at TUI startup; clamp 1–10000; default 1000.
 - [ ] Remove parser + scroll offset + dump state on session GC (`SessionState::Terminated`).
+- [ ] On `App::exit_embedded_terminal(session_id)` (detach / exit EmbeddedTerminal mode):
+      `pty_dump_received.remove(&session_id)` so the next `enter_embedded_terminal` for the
+      same session re-runs the full attach + dump protocol (AC-005 re-attach clause).
 - [ ] Write unit test `test_BC_2_09_001_pty_output_renders_within_100ms`: tokio::time::pause, send `PtyOutput`, assert render tick, verify 100ms budget via mock.
 - [ ] Write unit test `test_BC_2_09_001_non_focused_parser_updated`: two sessions; only s2 focused; send `PtyOutput` for s1; assert s1 parser updated, no render of s1 PTY widget.
 - [ ] Write unit test `test_BC_2_09_001_auto_attach_on_first_entry_buffering`: simulate `AttachSession` → `ScrollbackChunk` + `ScrollbackDumpComplete`; assert buffered `PtyOutput` replayed after reset; `pty_dump_received` populated.
@@ -156,6 +167,11 @@ processing normally. The `mpsc::channel(64)` provides 64 slots of burst absorpti
 - `dump_in_progress` MUST be set to `true` BEFORE `AttachSession` is sent — not on first `ScrollbackChunk` receipt. Live `PtyOutput` may arrive before the first chunk.
 - IPC reader channel: `.send().await` (backpressure), never `.try_send()` (drop). Channel capacity 64.
 - `SCROLLBACK_ROWS` default 1000; max 10000; read from `~/.monocle/config.json:pty_scrollback_rows`.
+  **S-039 OWNS this config load** — no other story loads `pty_scrollback_rows`. S-043 (scrollback
+  navigation) consumes the already-loaded value via `App::scrollback_rows`; it does NOT re-load it.
+  S-042 (resize debounce) OWNS the `pty_scroll_offsets[session_id] = 0` reset in the `ResizePane`
+  handler. S-039 creates the `pty_scroll_offsets` HashMap; S-042 adds the reset on resize;
+  S-043 verifies the reset is present and asserts the S-042-owned behavior.
 - `AppMode::EmbeddedTerminal { session_id: String, prior: FocusSnapshot }` — `session_id` is String (UUID as String), not typed `uuid::Uuid`.
 - Forbidden dependency: `monocle-tui` MUST NOT depend on `monocle-runtime` internals (only on `monocle-ipc` for wire types and `monocle-core` for `AppMode`).
 

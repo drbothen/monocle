@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.1"
+version: "1.4.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md]
-input-hash: "6b20c74"
+input-hash: "081ebe8"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-08
@@ -64,7 +64,7 @@ and sends SIGKILL directly to the session-host PID. The sidecar is not immediate
    to `SessionState::Terminating` atomically with the Kill send.
 2. `ServerToClient::SessionStateChanged { session_id, new_state: Terminating }` is published
    to the broker BEFORE `ServerToClient::SessionListUpdate` — both under the `SessionManager`
-   mutex per BC-2.08.008 Invariant 4 and SS-daemon-wiring-v2-delta.md v1.11.3 §3b. TUI renders
+   mutex per BC-2.08.008 Invariant 4 and SS-daemon-wiring-v2-delta.md v1.11.4 §3b. TUI renders
    `[Terminating]` indicator on receipt of `SessionStateChanged{Terminating}`.
 3. When the session-host receives `DaemonToHost::Kill`:
    a. It sends SIGTERM to the harness child process.
@@ -121,7 +121,7 @@ and sends SIGKILL directly to the session-host PID. The sidecar is not immediate
    alive session-host — the re-discovery Detached-preservation behavior (BC-2.08.004 I3-005)
    does NOT exempt kill from SO_PEERCRED. Failure (uid mismatch) → session treated as dead;
    transition to `Terminated` immediately; `Ok(())` returned (sidecar updated, GC timer
-   started). Per SS-session-manager.md v2.6.0 §Per-session UDS security item 1: "SO_PEERCRED
+   started). Per SS-session-manager.md v2.6.1 §Per-session UDS security item 1: "SO_PEERCRED
    applies universally — attach, re-discovery, kill/detach re-connect. No exceptions."
 
 ## Edge Cases
@@ -161,7 +161,7 @@ and sends SIGKILL directly to the session-host PID. The sidecar is not immediate
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC defines the kill operation, a core session lifecycle action named explicitly in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager `kill_session()`); monocle-session-host (SIGTERM delivery) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.6.0 §SessionManager §Public API (kill_session signature); §Kill-path host_conn rules (post-spawn monitor; PID fallback for Launching race window); §Per-session UDS protocol (DaemonToHost::Kill, HostToDaemon::StateChanged, Goodbye); §Per-session UDS security item 1 (SO_PEERCRED universal — no coverage holes); SS-daemon-wiring-v2-delta.md v1.11.3 §3b (SessionStateChanged emission rule: Terminating then SessionListUpdate) |
+| Architecture Source | SS-session-manager.md v2.6.1 §SessionManager §Public API (kill_session signature); §Kill-path host_conn rules (post-spawn monitor; PID fallback for Launching race window); §Per-session UDS protocol (DaemonToHost::Kill, HostToDaemon::StateChanged, Goodbye); §Per-session UDS security item 1 (SO_PEERCRED universal — no coverage holes); SS-daemon-wiring-v2-delta.md v1.11.4 §3b (SessionStateChanged emission rule: Terminating then SessionListUpdate) |
 | Test Name | test_BC_2_08_003_kill_session_sigterm_within_500ms |
 
 ## Related BCs
@@ -261,3 +261,9 @@ SE-16d monotonicity: v1.4.0 timestamp 2026-06-14 > v1.3.1 timestamp 2026-06-13. 
   SIGTERM → SIGKILL escalation (10s) is specified in Invariant 4 per production-grade default
   (omitting escalation would leave zombie harness children in the wild).
 - SE-16d PASS: 2026-06-03T23:30:00Z (new artifact).
+
+## §Trace v1.4.2
+
+**Phase-2 Pass-1 fix burst — SS-session-manager v2.6.1 / SS-daemon-wiring-v2-delta v1.11.4 Architecture Source pin cascade** (2026-06-16T00:00:00Z):
+- Architecture Source pin(s) updated for SS-session-manager.md v2.6.0 → v2.6.1 and/or SS-daemon-wiring-v2-delta.md v1.11.3 → v1.11.4. Plain version-pin refresh — both SS spec bumps were SS-ipc Architecture Source cascade patches only; no normative API or invariant changes.
+- SE-16d monotonicity: v1.4.2 timestamp >= v1.4.1. PASS.

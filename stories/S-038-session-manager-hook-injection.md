@@ -25,7 +25,7 @@ inputs:
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.0"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.08.006 (hook auto-injection in session-host spawn path: --settings arg, hooks-settings.json with 4 URL-bearing + 2 reserved-empty hook entries, lock.app=monocle, shared-file lifecycle)"
-# BC status: BC-2.08.006 v1.3.1 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status: BC-2.08.006 v1.3.2 — non-empty; status draft pending Phase-2 adversarial convergence gate
 ---
 
 # S-038: SessionManager Hook Auto-Injection — --settings Arg in Session-Host Spawn Path
@@ -48,46 +48,50 @@ The 2-second window is the same spawn latency budget as BC-2.08.001 PC-1.
 
 ### AC-002 (traces to BC-2.08.006 postcondition 2 — hooks-settings.json content: 4 URL-bearing keys)
 
-`hooks-settings.json` MUST contain exactly the following 4 URL-bearing hook keys, each set
-to the monocle daemon's local IPC endpoint URL:
-1. `PreToolUse` → `"http://localhost:<hook_port>/hooks/pre-tool-use"` (or equivalent UDS hook URL)
-2. `PostToolUse` → `"http://localhost:<hook_port>/hooks/post-tool-use"`
-3. `Stop` → `"http://localhost:<hook_port>/hooks/stop"`
-4. `Notification` → `"http://localhost:<hook_port>/hooks/notification"`
+`hooks-settings.json` MUST contain exactly the following 4 URL-bearing hook keys (authority:
+BC-2.04.010 PC-3 / SS-daemon-wiring.md §Hook Tmpfile Generation):
+1. `"PreToolUse"` → curl POST `http://127.0.0.1:<daemon_port>/hooks/pre-tool-use` with `X-Monocle-Authorization: monocle-v1:<64-hex>` header
+2. `"Notification"` → curl POST `http://127.0.0.1:<daemon_port>/hooks/notification` with `X-Monocle-Authorization: monocle-v1:<64-hex>` header
+3. `"Stop"` → curl POST `http://127.0.0.1:<daemon_port>/hooks/stop` with `X-Monocle-Authorization: monocle-v1:<64-hex>` header
+4. `"UserPromptSubmit"` → curl POST `http://127.0.0.1:<daemon_port>/hooks/prompt-submit` with `X-Monocle-Authorization: monocle-v1:<64-hex>` header
 
-The exact key names, URL format, and port are defined in BC-2.04.010 (the hook protocol
-authority). The daemon's hook endpoint MUST be running before `spawn_session()` is called.
+The daemon's hook endpoint MUST be running before `spawn_session()` is called.
 
-### AC-003 (traces to BC-2.08.006 postcondition 3 — hooks-settings.json content: 2 reserved-empty keys)
+### AC-003 (traces to BC-2.08.006 postcondition 3 — hooks-settings.json content: 2 reserved-empty ARRAY keys)
 
-`hooks-settings.json` MUST contain exactly 2 reserved-empty hook keys (value: empty string `""`):
-1. `PreCompact` → `""`
-2. `PostCompact` → `""`
+`hooks-settings.json` MUST contain exactly 2 reserved-empty hook keys, each set to an
+**empty array** (NOT an empty string):
+1. `"PostToolUse": []` — reserved-empty array (forward-compat placeholder; Claude Code ignores hook types with empty arrays)
+2. `"PreCompact": []` — reserved-empty array (forward-compat placeholder)
 
-These keys are reserved for future use per BC-2.08.006 PC-3. Their presence ensures the
-settings file schema is stable across Claude Code versions that may check for key existence.
+The value MUST be an empty JSON array `[]`, NOT an empty string `""`. These keys are reserved for
+future use per BC-2.04.010 PC-3. Claude Code ignores hook types whose value is an empty array.
 
-### AC-004 (traces to BC-2.08.006 postcondition 4 — lock.app set to "monocle")
+### AC-004 (traces to BC-2.08.006 postcondition 3 — lock.app set to "monocle"; SessionStart is NOT a key)
 
-The `hooks-settings.json` MUST include a `lock.app` field set to `"monocle"`:
+The `hooks-settings.json` MUST include a `lock.app` field set to `"monocle"`. The canonical
+schema is (authority: BC-2.04.010 PC-3):
 
 ```json
 {
+  "hooks": {
+    "PreToolUse": "curl -s -X POST http://127.0.0.1:<port>/hooks/pre-tool-use -H 'X-Monocle-Authorization: monocle-v1:<64-hex>'",
+    "Notification": "curl -s -X POST http://127.0.0.1:<port>/hooks/notification -H 'X-Monocle-Authorization: monocle-v1:<64-hex>'",
+    "Stop": "curl -s -X POST http://127.0.0.1:<port>/hooks/stop -H 'X-Monocle-Authorization: monocle-v1:<64-hex>'",
+    "UserPromptSubmit": "curl -s -X POST http://127.0.0.1:<port>/hooks/prompt-submit -H 'X-Monocle-Authorization: monocle-v1:<64-hex>'",
+    "PostToolUse": [],
+    "PreCompact": []
+  },
   "lock": {
     "app": "monocle"
-  },
-  "hooks": {
-    "PreToolUse": "...",
-    "PostToolUse": "...",
-    "Stop": "...",
-    "Notification": "...",
-    "PreCompact": "",
-    "PostCompact": ""
   }
 }
 ```
 
-The exact JSON schema (field names, nesting depth) is defined in BC-2.04.010.
+`"SessionStart"` is NOT a key in this file. Claude Code invokes `POST /hooks/session-start`
+via its own internal lifecycle mechanism regardless of hooks-settings.json content; monocle's
+axum router handles it, but it is NOT configured through hooks-settings.json.
+The exact JSON schema (field names, nesting depth, URL format) is defined in BC-2.04.010.
 
 ### AC-005 (traces to BC-2.08.006 postcondition 5 — shared file; NOT per-session)
 
@@ -136,14 +140,19 @@ If the `hooks-settings.json` write fails during daemon initialization:
 - The daemon MUST NOT start (return `Err` from the startup sequence).
 - The error surfaces to the user via the daemon process exit code.
 
-### AC-012 (traces to BC-2.08.006 edge case EC-181 — hooks endpoint not yet available at spawn time)
+### AC-012 (traces to BC-2.08.006 invariant 4 / edge case EC-181 — hooks-settings.json guaranteed to exist at spawn time; EC-181 is UNREACHABLE)
 
-The hook endpoint is always initialized before IPC bind (per AC-007), so this race
-cannot occur in normal operation. However, if the hook endpoint URL is absent or
-unresolvable when `spawn_recipe()` is called, `spawn_session()` returns
-`Err(SessionError::ConfigError { reason: "hook endpoint unavailable" })` → wire code
-`"config_error"`. Test: simulate a `SessionManager` with no hook endpoint configured
-and assert `spawn_session()` returns `Err(ConfigError)`.
+EC-181 (hooks-settings.json missing `lock.app` filter) is an invariant violation at the
+daemon's hook-file writer, not a spawn-time error. The file is written at daemon startup
+BEFORE the IPC socket is bound (Invariant 4 of BC-2.08.006); no `SpawnSession` IPC can
+arrive before the file exists — the IPC bind step follows hook-file write in the daemon
+startup sequence. Therefore `hooks_settings_path` always points to an existing, valid file
+when `spawn_recipe()` runs. There is NO `ConfigError` SessionError variant and NO
+`"config_error"` wire code for this path.
+
+If the hook endpoint URL is structurally invalid (non-UTF-8 path) when `spawn_recipe()`
+is called, it surfaces as `EngineError::InvalidPath` → wire code `"invalid_spawn_arg"`
+(canonical error code from the 12-code taxonomy — no new code needed).
 
 ### AC-013 (traces to BC-2.08.006 edge case EC-182 — hooks-settings.json deleted between daemon startup and spawn)
 
@@ -157,24 +166,29 @@ in-memory hook endpoint URL before proceeding with the spawn. This ensures the
 
 - [ ] Define `HookEndpointConfig` struct in `monocle-runtime/src/session_manager/mod.rs` (or a sub-module):
   ```rust
+  /// Holds the 4 URL-bearing hook endpoint strings.
+  /// PostToolUse and PreCompact are ALWAYS written as reserved-empty arrays [];
+  /// they are NOT represented as String fields (BC-2.08.006 PC-3 / BC-2.04.010 PC-3).
   struct HookEndpointConfig {
       pre_tool_use: String,
-      post_tool_use: String,
-      stop: String,
       notification: String,
+      stop: String,
+      user_prompt_submit: String,
   }
   ```
 - [ ] Implement `write_hooks_settings_json(config: &HookEndpointConfig, path: &Path) -> Result<(), SessionError>` using `tempfile::NamedTempFile`, `serde_json`, and `tempfile::persist`. Set file mode 0o600 via `std::os::unix::fs::PermissionsExt`.
+  The JSON structure MUST be: `{ "hooks": { "PreToolUse": <url>, "Notification": <url>, "Stop": <url>, "UserPromptSubmit": <url>, "PostToolUse": [], "PreCompact": [] }, "lock": { "app": "monocle" } }`.
+  Write `PostToolUse` and `PreCompact` as JSON arrays `[]` (not strings). `serde_json::Value::Array(vec![])` is the correct Rust representation.
 - [ ] Call `write_hooks_settings_json()` during `SessionManager::new()` initialization (before IPC bind). Propagate error to caller.
 - [ ] Add `hooks_settings_path: PathBuf` field to `SessionManager`.
-- [ ] In `spawn_recipe()`: append `["--settings", hooks_settings_path.to_str().unwrap_or_default()]` to `SpawnRecipe.argv`. Guard: if `hooks_settings_path` is empty, return `Err(SessionError::ConfigError { reason: "hook endpoint unavailable".to_string() })`.
+- [ ] In `spawn_recipe()`: append `["--settings", <hooks_settings_path_str>]` to `SpawnRecipe.argv`. If `hooks_settings_path.to_str()` returns `None` (non-UTF-8 path), propagate as `EngineError::InvalidPath` → wire code `"invalid_spawn_arg"` (no new variant needed — this is an `EngineError`, not a `SessionError`). A well-formed daemon never reaches this branch (paths are validated at daemon startup), but the guard is required for production-grade defensive correctness.
 - [ ] In `spawn_recipe()`: if `hooks_settings_path` does not exist (`!path.exists()`), call `write_hooks_settings_json()` to re-write it (EC-182 re-write guard).
 - [ ] Write unit test `test_BC_2_08_006_spawn_includes_settings_arg`: mock `SessionHostSpawner` captures argv; `spawn_session()` called; assert argv contains `"--settings"` followed by the absolute hooks-settings path.
 - [ ] Write unit test `test_BC_2_08_006_hooks_settings_json_content`: write hooks-settings.json to tmp dir; read back; assert 4 URL-bearing keys present; assert 2 empty reserved keys present; assert `lock.app == "monocle"`.
 - [ ] Write unit test `test_BC_2_08_006_hooks_settings_json_atomic_write`: verify write uses `tempfile::persist` (test via file content atomicity under mock FS or by verifying the temp file never has partial content).
 - [ ] Write unit test `test_BC_2_08_006_startup_write_fail_aborts_daemon`: if `write_hooks_settings_json` returns Err, `SessionManager::new()` propagates the error; daemon start fails.
 - [ ] Write unit test `test_BC_2_08_006_missing_settings_file_rewrites_at_spawn`: delete hooks-settings.json after `SessionManager::new()`; call `spawn_session()`; assert file exists again; assert WARN logged; assert spawn succeeds.
-- [ ] Write unit test `test_BC_2_08_006_no_hook_endpoint_returns_config_error`: `SessionManager` constructed with no hook endpoint URL; `spawn_session()` → `Err(ConfigError { reason: "hook endpoint unavailable" })`.
+- [ ] Write unit test `test_BC_2_08_006_non_utf8_hooks_path_returns_invalid_spawn_arg`: `SessionManager` constructed with a non-UTF-8 `hooks_settings_path`; `spawn_recipe()` returns `EngineError::InvalidPath`; IPC handler maps to wire code `"invalid_spawn_arg"`.
 
 ## Previous Story Intelligence
 
@@ -191,7 +205,7 @@ in-memory hook endpoint URL before proceeding with the spawn. This ensures the
 - File permissions: 0o600. Session-host child processes run as the same user, so owner-read-only is sufficient.
 - JSON schema authority for hook key names and URL format: BC-2.04.010. This story MUST defer any ambiguous key naming to BC-2.04.010.
 - Forbidden dependency: `monocle-runtime` MUST NOT depend on `monocle-tui`.
-- The `ConfigError` SessionError variant may be new (not in the existing 9-variant taxonomy from S-033). If the S-033 taxonomy does not include `ConfigError`, this story must add it and update `session_error_to_code()` to map `ConfigError` → `"config_error"`. Do NOT reuse an existing error code with wrong semantics.
+- There is NO `ConfigError` SessionError variant and NO `"config_error"` wire code in this story. The canonical 12-code taxonomy (defined in SS-ipc.md §ServerToClient::Error, closed set for Phase 1) does not include `"config_error"`. EC-181 is UNREACHABLE by invariant (hooks-settings.json is written before IPC bind). Non-UTF-8 path errors are `EngineError::InvalidPath` → `"invalid_spawn_arg"` (existing code). Do NOT add any new `SessionError` variant or wire code in this story.
 
 ## Library and Framework Requirements
 
@@ -200,7 +214,7 @@ in-memory hook endpoint URL before proceeding with the spawn. This ensures the
 | `tempfile` | `"3"` | Atomic write of hooks-settings.json via `NamedTempFile` + `persist()` | SS-deps-pin-manifest.md |
 | `serde_json` | `=1.0.149` (exact) | Serialize hook config struct to JSON | SS-deps-pin-manifest.md |
 | `serde` | `"1"` (derive) | `Serialize` derive for hook config struct | SS-deps-pin-manifest.md |
-| `thiserror` | `"2"` | `SessionError::ConfigError` variant (may be new) | SS-deps-pin-manifest.md |
+| `thiserror` | `"2"` | `SessionError` enum (existing variants only; no new variant in this story) | SS-deps-pin-manifest.md |
 
 ## File Structure Requirements
 
@@ -209,7 +223,7 @@ Files to MODIFY:
 | File | Change |
 |------|--------|
 | `crates/monocle-runtime/src/session_manager/mod.rs` | Add `HookEndpointConfig`, `write_hooks_settings_json()`, `hooks_settings_path` field on `SessionManager`, extend `spawn_recipe()` to append `--settings` arg, add EC-182 re-write guard |
-| `crates/monocle-runtime/src/error.rs` (or wherever `SessionError` is defined) | Add `ConfigError { reason: String }` variant if not already present; update `session_error_to_code()` to map `ConfigError` → `"config_error"` |
+| `crates/monocle-runtime/src/error.rs` (or wherever `SessionError` is defined) | No new variant added. Verify `session_error_to_code()` exhaustive outer match still compiles after any S-033-introduced additions. |
 
 Files to VERIFY (no modification expected):
 
@@ -243,16 +257,16 @@ Estimate is comfortably within the 30% context window bound. No split required.
 | `write_hooks_settings_json()` | `monocle-runtime/src/session_manager/mod.rs` | Effectful (filesystem write via tempfile::persist) |
 | `HookEndpointConfig` struct | `monocle-runtime/src/session_manager/mod.rs` | Pure (data struct) |
 | `spawn_recipe()` extension | `monocle-runtime/src/session_manager/mod.rs` | Pure extension to existing function (argv append; no I/O in happy path) |
-| `SessionError::ConfigError` | `monocle-runtime/src/error.rs` | Pure (enum variant) |
+| Non-UTF-8 path guard in `spawn_recipe()` | `monocle-runtime/src/session_manager/mod.rs` | Pure (returns `EngineError::InvalidPath`; no new variant; uses existing error taxonomy) |
 
 ## Edge Cases
 
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
 | EC-180 | Daemon startup write fails | Log error; daemon MUST NOT start; error propagated |
-| EC-181 | Hook endpoint not yet available at spawn time | `spawn_session()` → `Err(ConfigError { reason: "hook endpoint unavailable" })` → wire `"config_error"` |
+| EC-181 | hooks-settings.json missing `lock.app` filter (regression) | INVARIANT VIOLATION at the daemon hook-file writer — not a spawn-time error. The file is written before IPC bind; no `SpawnSession` can arrive before the file exists. EC-181 is UNREACHABLE from the spawn path. The daemon's hook-file writer MUST include `lock.app = "monocle"` as an invariant (enforced by unit test `test_BC_2_08_006_hooks_settings_json_content`). |
 | EC-182 | hooks-settings.json deleted between daemon startup and spawn | Re-write at spawn time; WARN logged; spawn proceeds |
-| EC-183 | hooks-settings.json path contains non-UTF-8 bytes | `PathBuf::to_str()` returns None; log error; return `Err(ConfigError { reason: "hooks settings path is not valid UTF-8" })` |
+| EC-183 | hooks-settings.json path contains non-UTF-8 bytes | `PathBuf::to_str()` returns `None`; `spawn_recipe()` returns `EngineError::InvalidPath` → IPC handler maps to wire code `"invalid_spawn_arg"`. No new variant needed. |
 
 ## Subsystem Anchor Justifications
 
@@ -269,7 +283,7 @@ responsibility.
 
 ## Conflicts and Notes
 
-- BC-2.08.006 v1.3.1 references "BC-2.04.010 (not BC-HOOK-007)" as the authority for hook
+- BC-2.08.006 v1.3.2 references "BC-2.04.010 (not BC-HOOK-007)" as the authority for hook
   key names and URL format. The implementer MUST read BC-2.04.010 before finalizing the
   exact hook JSON schema. This story provides the structural wrapper; the payload is defined
   by BC-2.04.010.
@@ -277,6 +291,7 @@ responsibility.
   reserved-empty), BC-2.04.010 wins and this story's AC-002/AC-003 are superseded by
   BC-2.04.010. Surface this to the orchestrator if BC-2.04.010 is not available before
   implementation begins.
-- The `ConfigError` SessionError variant: if the S-033 9-variant taxonomy already includes
-  a variant that means "configuration is invalid or missing" with a `reason` field, use
-  that existing variant rather than adding a new one. Do NOT reuse a wrong-semantics code.
+- There is NO `ConfigError` SessionError variant and NO `"config_error"` wire code in this
+  story. The 12-code taxonomy (closed set for Phase 1) does not include `"config_error"`.
+  Non-UTF-8 path errors route to `EngineError::InvalidPath` → `"invalid_spawn_arg"`.
+  EC-181 (hooks-settings.json missing) is UNREACHABLE by daemon startup invariant.

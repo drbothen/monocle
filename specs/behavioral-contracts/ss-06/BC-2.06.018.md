@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.0"
+version: "1.1.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-01T00:00:00Z
 phase: 1a
 inputs: [prd-expansion-scope.md, architecture/SS-tui.md, architecture/ARCH-INDEX.md]
-input-hash: "89b4d96"
+input-hash: "e1ed8bb"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -54,7 +54,7 @@ and the daemon-side bounded event bus (BC-2.04.011).
 
    | Column | Source | Width |
    |--------|--------|-------|
-   | Timestamp | `HookEventRow::timestamp_micros` (daemon wall-clock, Unix epoch microseconds from `HookEventReceived::timestamp_micros` / `HookEventRecord::timestamp_micros`) formatted as UTC `HH:MM:SS.mmm`. `HookEventRow::received_at` (monotonic `Instant`) is used ONLY for ordering — NOT for display. See BC-2.05.004 v1.1.0 PC-1/PC-2. | 12 chars |
+   | Timestamp | `HookEventRow::timestamp_micros` (daemon wall-clock, Unix epoch microseconds from `HookEventReceived::timestamp_micros` / `HookEventRecord::timestamp_micros`) formatted as UTC `HH:MM:SS.mmm`. `HookEventRow::received_at` (monotonic `Instant`) is used ONLY for ordering — NOT for display. See BC-2.05.004 v1.1.1 PC-1/PC-2. | 12 chars |
    | Hook type | `HookType` display name (e.g., "PreToolUse", "Notification") | 16 chars |
    | Session ID | `HookEventRow::session_id` first 8 characters | 10 chars |
    | Latency | `HookEventRow::latency_ms` formatted as `NNNms` | 8 chars |
@@ -241,7 +241,7 @@ S-TBD — Implement Event Ribbon panel: column layout, newest-first prepend, bou
   Unix epoch microseconds from `HookEventReceived::timestamp_micros` /
   `HookEventRecord::timestamp_micros`) formatted as UTC `HH:MM:SS.mmm`. `received_at`
   (monotonic `Instant`) role explicitly documented as ordering-only, with cross-reference
-  to BC-2.05.004 v1.1.0 PC-1/PC-2 as the canonical source definition.
+  to BC-2.05.004 v1.1.1 PC-1/PC-2 as the canonical source definition.
 - **Implementation confirmed:** `event_ribbon.rs` `format_timestamp()` receives
   `row.timestamp_micros` (i64) and derives UTC wall-clock `HH:MM:SS.mmm` from it.
   `received_at` is stored in `HookEventRow` only for ordering (`received_at: Instant::now()`
@@ -251,3 +251,9 @@ S-TBD — Implement Event Ribbon panel: column layout, newest-first prepend, bou
   window cap, PENDING status, scroll behavior, panel width, and accumulation semantics
   are unchanged.
 - SE-16d monotonicity: v1.1.0 timestamp 2026-06-01T00:00:00Z > v1.0.5 timestamp 2026-05-29T00:00:00Z. PASS.
+
+## §Trace v1.1.1
+
+**Phase-2 Pass-1 fix burst — SS-ipc v1.24.0 Architecture Source pin cascade** (2026-06-16T00:00:00Z):
+- Cross-BC pin BC-2.05.004 v1.1.0 → v1.1.1 updated (2 occurrences). BC-2.05.004 bumped from v1.1.0 to v1.1.1 in the same Phase-2 Pass-1 fix burst (SS-ipc Architecture Source cascade); this BC referenced the prior version in its body prose.
+- SE-16d monotonicity: v1.1.1 timestamp >= v1.1.0. PASS.

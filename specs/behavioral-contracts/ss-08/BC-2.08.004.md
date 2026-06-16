@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.1"
+version: "1.3.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/SS-daemon-wiring-v2-delta.md]
-input-hash: "6712337"
+input-hash: "ddbb29a"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-08
@@ -57,11 +57,11 @@ seconds for the typical case of up to 8 sessions.
    a. `nix::sys::signal::kill(Pid::from_raw(pid), None)` probes process liveness.
    b. If alive: apply state-dependent handling:
       - **State `Launching` or `Running`:** Verify SO_PEERCRED peer uid matches daemon uid
-        (per SS-session-manager.md v2.6.0 §Per-session UDS security I5); if mismatch → log
+        (per SS-session-manager.md v2.6.1 §Per-session UDS security I5); if mismatch → log
         WARN, SIGTERM both pids, delete sidecar, skip. If uid matches: send `DaemonToHost::Attach`;
         wait up to 5s for the full `HostToDaemon::ScrollbackChunk*` + `HostToDaemon::ScrollbackDumpComplete`
         sequence (chunked scrollback protocol — `ScrollbackDump` single-message form is
-        RETIRED per SS-session-manager.md v2.6.0); on `ScrollbackDumpComplete` receipt, register
+        RETIRED per SS-session-manager.md v2.6.1); on `ScrollbackDumpComplete` receipt, register
         `SessionEntry` with `state: Running` and populate `host_conn`.
       - **State `Detached` (I3-005 fix):** Verify SO_PEERCRED; if uid matches: register
         `SessionEntry` with `state: Detached` and `host_conn: None`. DO NOT send
@@ -174,7 +174,7 @@ seconds for the typical case of up to 8 sessions.
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — re-discovery on daemon restart is explicitly named in CAP-008; this BC defines the complete re-discovery algorithm including the ordering guarantee |
 | Architecture Module | monocle-runtime (SessionManager `rediscover_sessions()`; `daemon_start_sequence` step 8b) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.6.0 §Daemon startup: session re-discovery (including §Re-discovery state handling — I4 all states covered; I3-002 Terminating watchdog; I3-005 Detached preservation); §session-state.json schema (schema_version history 1/2/3); SS-daemon-wiring-v2-delta.md v1.11.3 §daemon_start_sequence() — session re-discovery step (step 8b placement and insertion invariant) |
+| Architecture Source | SS-session-manager.md v2.6.1 §Daemon startup: session re-discovery (including §Re-discovery state handling — I4 all states covered; I3-002 Terminating watchdog; I3-005 Detached preservation); §session-state.json schema (schema_version history 1/2/3); SS-daemon-wiring-v2-delta.md v1.11.4 §daemon_start_sequence() — session re-discovery step (step 8b placement and insertion invariant) |
 | Test Name | test_BC_2_08_004_rediscovery_completes_before_uds_bind |
 
 ## Related BCs
@@ -276,3 +276,9 @@ VP-TBD — Re-discovery integration tests including timing (filled after VP crea
   design decision is production-grade and does not require human input — parallel I/O is the
   only correct choice for a startup sequence with a tight deadline.
 - SE-16d PASS: 2026-06-03T23:30:00Z (new artifact).
+
+## §Trace v1.3.2
+
+**Phase-2 Pass-1 fix burst — SS-session-manager v2.6.1 / SS-daemon-wiring-v2-delta v1.11.4 Architecture Source pin cascade** (2026-06-16T00:00:00Z):
+- Architecture Source pin(s) updated for SS-session-manager.md v2.6.0 → v2.6.1 and/or SS-daemon-wiring-v2-delta.md v1.11.3 → v1.11.4. Plain version-pin refresh — both SS spec bumps were SS-ipc Architecture Source cascade patches only; no normative API or invariant changes.
+- SE-16d monotonicity: v1.3.2 timestamp >= v1.3.1. PASS.

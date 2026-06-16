@@ -1,7 +1,7 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.28"
+version: "1.0.29"
 status: active
 producer: vsdd-factory:architect
 timestamp: 2026-06-03T23:30:00Z
@@ -773,6 +773,16 @@ tracked (not a silent-blindness path). No operative Phase-1 gate behavior change
 - NORMATIVE: version-pin-registry.yaml: ADR-0008 → v1.0.5; ARCH-INDEX → v1.0.24.
 - NORMATIVE: ARCH-INDEX version 1.0.23 → 1.0.24.
 - SE-16d PASS: 2026-05-30 >= chain high-water 2026-05-30 (sequential same-day patch).
+
+## §Trace v1.0.29
+
+**Phase-2 Pass-1 fix burst — SS-ipc v1.24.0 §Daemon-Side Per-Client Fan-out Channel** (2026-06-16):
+
+- NORMATIVE: SS-ipc.md bumped 1.23.2 → 1.24.0. New §Daemon-Side Per-Client Fan-out Channel section added by architect (F-P1-I-005 Phase-2 Pass-1 fix burst). Canonicalizes per-client channel item type as `mpsc::Sender<ServerToClient>` (capacity 64); broker input channel remains `Arc<Bytes>` capacity 1024. This closes the S-046 `HashMap<ClientId, mpsc::Sender<Arc<Bytes>>>` → `mpsc::Sender<ServerToClient>` conformance obligation.
+- INFORMATIONAL: Document Map token estimate for SS-ipc.md carried as `~3,200` in §Trace v1.0.14 (registration burst). SS-ipc.md is now larger; if a context-budget-sensitive agent encounters SS-ipc, actual token consumption may exceed this estimate. Token-estimate revision is a low-priority bookkeeping item; not blocking for Phase-2.
+- NORMATIVE: ARCH-INDEX version 1.0.28 → 1.0.29.
+- version-pin-registry.yaml: SS-ipc → v1.24.0 (updated in same fix burst by architect, per REGISTRY ATOMICITY rule).
+- SE-16d PASS: 2026-06-16 > chain high-water 2026-06-03 (monotonic).
 
 ## §Trace v1.0.23 — POL-11 version-pin remediation (2026-05-30)
 

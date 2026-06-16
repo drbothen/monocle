@@ -16,16 +16,17 @@ depends_on: [S-021, S-032]
 blocks: [S-047]
 target_module: monocle-runtime
 subsystems: [SS-05]
-behavioral_contracts: [BC-2.05.009]
+behavioral_contracts: [BC-2.05.009, BC-2.05.011]
 verification_properties: []
 estimated_days: 3
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.009.md, version: "1.5.2"}
-  - {path: .factory/specs/architecture/SS-ipc.md, version: "1.23.2"}
+  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.011.md, version: "1.2.1"}
+  - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
   - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.0"}
 input-hash: "[pending]"
-traces_to: "Implements BC-2.05.009 (PtyOutput fan-out broker — bounded channel with backpressure, per-client isolated buffer, 3-strike disconnect, PtyReset on client drop)"
-# BC status: BC-2.05.009 non-empty; status draft pending Phase-2 adversarial convergence gate
+traces_to: "Implements BC-2.05.009 (PtyOutput fan-out broker — bounded INPUT channel Arc<Bytes>(1024), per-client mpsc::Sender<ServerToClient>(64), 3-strike disconnect, PtyReset on broker task drop) and BC-2.05.011 (PtyReset variant definition — S-046 OWNS the ServerToClient::PtyReset variant; S-047 references it)"
+# BC status: BC-2.05.009 and BC-2.05.011 non-empty; status draft pending Phase-2 adversarial convergence gate
 ---
 
 # S-046: PtyOutput Fan-out Broker — Bounded Channel, Backpressure, and Client Lifecycle
@@ -49,12 +50,16 @@ NOT `unbounded_channel`). When the channel is full, the broker caller (PTY reade
 blocks on `.send().await` — it does NOT drop the message, does NOT yield and retry later,
 and does NOT log and continue. Backpressure propagates to the PTY reader.
 
-### AC-002 (traces to BC-2.05.009 postcondition 2 — per-client isolated write buffer capacity 64)
+### AC-002 (traces to BC-2.05.009 postcondition 2 — per-client isolated `mpsc::Sender<ServerToClient>` with capacity 64)
 
-Each connected IPC client has an isolated write buffer with capacity 64 items.
-- Buffer items are `Arc<Bytes>` slices of the original PTY frame.
-- Buffers are independent: a slow client's full buffer does NOT block writes to other clients.
-- The per-client buffer is initialized fresh on connect and discarded on disconnect.
+Each connected IPC client has an isolated per-client channel of type
+`mpsc::Sender<ServerToClient>` with capacity 64 (per SS-ipc.md §Daemon-Side Per-Client
+Fan-out Channel and architect adjudication Q1):
+- The broker wraps each raw PTY frame (`Arc<Bytes>`) as `ServerToClient::PtyOutput { session_id: String, bytes: Vec<u8> }` before sending to each per-client channel. `Arc<Bytes>` MUST NOT be the per-client channel item type — the channel carries `ServerToClient` messages.
+- `fan_out(session_id: &str, frame: Arc<Bytes>)` creates a `ServerToClient::PtyOutput { session_id: session_id.to_string(), bytes: frame.to_vec() }` and sends it to each subscribed client's channel.
+- Channels are independent: a slow client's full channel does NOT block sends to other clients (3-strike disconnect applies, not blocking send).
+- The per-client `mpsc::Sender<ServerToClient>` is initialized fresh on connect and discarded on disconnect.
+- The broker's INPUT channel (PTY reader task → broker) remains `Arc<Bytes>` with capacity 1024. This input channel carries raw PTY frames before wrapping.
 
 ### AC-003 (traces to BC-2.05.009 postcondition 3 — 3-strike disconnect for slow clients)
 
@@ -107,21 +112,22 @@ When a TUI receives `ServerToClient::PtyReset`, the TUI-side handler:
 ## Tasks
 
 - [ ] Add `PtyBroker` struct to `monocle-runtime/src/pty_broker.rs` (new file):
-      - Primary channel: `tokio::mpsc::channel::<Arc<Bytes>>(1024)`.
-      - Client registry: `HashMap<ClientId, mpsc::Sender<Arc<Bytes>>>` with strike counters
-        `HashMap<ClientId, u8>`.
-      - `register_client(id, capacity=64)` → returns the Receiver end.
-      - `unregister_client(id)` → removes and drops the per-client sender.
-      - `fan_out(frame: Arc<Bytes>)` → sends to all registered clients; applies 3-strike logic.
-      - `emit_pty_reset(session_id)` → broadcasts `ServerToClient::PtyReset { session_id }` to all clients.
+      - **INPUT channel** (PTY reader → broker): `tokio::mpsc::channel::<Arc<Bytes>>(1024)`. Carries raw PTY frame bytes before wrapping.
+      - **Per-client channels**: `HashMap<String, mpsc::Sender<ServerToClient>>` keyed by client_id (`String`). Each client channel has capacity 64. Strike counters: `HashMap<String, u8>`.
+      - `register_client(id: String, capacity: usize = 64)` → creates `mpsc::channel::<ServerToClient>(64)`, stores the Sender in registry, returns the Receiver end to the IPC writer task.
+      - `unregister_client(id: &str)` → removes and drops the per-client sender.
+      - `fan_out(session_id: &str, frame: Arc<Bytes>)` → wraps as `ServerToClient::PtyOutput { session_id: session_id.to_string(), bytes: frame.to_vec() }`, then sends to all registered client channels; applies 3-strike logic. `Arc<Bytes>` MUST NOT be the item type in per-client channels.
+      - `emit_pty_reset(session_id: &str)` → sends `ServerToClient::PtyReset { session_id: session_id.to_string() }` directly to all per-client channels (no Arc wrapping needed — already a `ServerToClient` message).
 - [ ] Implement the broker event loop as a `tokio::spawn`ed task using `tokio::select!` with
       hook/control arm biased per AC-006. Ensure `biased;` keyword is used in `select!` macro.
 - [ ] Add `pty_drop_counter: Arc<AtomicU64>` to the `DaemonState` struct and increment only on OOM-level channel failure.
 - [ ] Update `SessionManager::spawn_session()` (from S-033) to create a `PtyBroker` for each session
       and wire the PTY reader task → broker channel → per-client channels.
-- [ ] Add `ServerToClient::PtyReset { session_id: SessionId }` variant to the IPC message enum
-      (in `monocle-ipc/src/proto.rs`) — this is a new variant defined in BC-2.05.011 but needed here
-      for the broker to emit it.
+- [ ] Add `ServerToClient::PtyReset { session_id: String }` variant to the IPC message enum
+      (in `crates/monocle-ipc/src/lib.rs`, NOT `proto.rs` — canonical file per S-033/S-039/S-044)
+      — this is a new variant defined in BC-2.05.011 but needed here for the broker to emit it.
+      `session_id` MUST be `String` (UUID-as-String per SS-session-manager.md §session_id type ruling);
+      `SessionId` newtype MUST NOT appear in IPC wire types.
 - [ ] Write unit tests in `monocle-runtime/tests/pty_broker.rs`:
       - `test_BC_2_05_009_bounded_channel_backpressure_blocks_not_drops` (AC-001)
       - `test_BC_2_05_009_per_client_isolation_slow_client_does_not_block_fast` (AC-002)
@@ -139,21 +145,26 @@ the event bus: PTY bytes are NOT dispatched through the general event bus (they 
 latency and volume reasons). The PTY broker is a dedicated channel per-session, separate from
 the `SessionListUpdate` and hook-event buses from S-021/S-032.
 
-Important: the `ServerToClient::PtyReset` variant is ALSO defined in BC-2.05.011 (S-047). To
-avoid a dependency cycle (S-047 depends on S-046 for PtyReset emission), this story adds the
-variant to `monocle-ipc/src/proto.rs` as part of its task list. S-047 then references it without
-re-creating it.
+**Ownership note:** `ServerToClient::PtyReset { session_id: String }` is OWNED BY S-046
+(this story adds it to `crates/monocle-ipc/src/lib.rs`). S-047 depends on S-046 for the
+`PtyReset` variant to exist and references it without re-creating it. Both stories co-own
+BC-2.05.011: S-046 owns the daemon-side broker emission; S-047 owns the TUI-side protocol
+handler. This split is by-design to avoid a dependency cycle (S-047 depends on S-046).
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-ipc.md v1.23.2`:
-- PTY bytes do NOT travel through the general IPC framing for the broker fan-out.
-  They are multiplexed at the broker layer and then framed as `ServerToClient::PtyOutput`
-  messages for individual clients.
+From `architecture/SS-ipc.md v1.24.0` (§Daemon-Side Per-Client Fan-out Channel):
+- **Broker INPUT channel (PTY reader → broker):** `tokio::mpsc::channel::<Arc<Bytes>>(1024)`.
+  Raw PTY frames; `Arc<Bytes>` is the item type at this layer only.
+- **Per-client channel:** `mpsc::Sender<ServerToClient>` with capacity 64. The broker wraps
+  each frame as `ServerToClient::PtyOutput { session_id, bytes }` before per-client send.
+  `Arc<Bytes>` MUST NOT be the per-client channel item type.
+- `emit_pty_reset()` sends `ServerToClient::PtyReset { session_id }` directly to per-client
+  channels — no wrapping needed, it is already a `ServerToClient` variant.
 - `PtyReset` is a first-class `ServerToClient` variant, NOT a synthetic event.
 - `biased;` select! ensures hook events are never starved by PTY volume.
 
-From `architecture/SS-session-manager.md v2.6.0`:
+From `architecture/SS-session-manager.md v2.6.1`:
 - `DaemonState` owns all session-scoped resources; `PtyBroker` is created per-session inside
   `SessionManager::spawn_session()`.
 - `pty_drop_counter` is a daemon-global atomic, not a per-session counter.
@@ -178,9 +189,23 @@ No new dependencies. All three are in the workspace `Cargo.toml` already.
 |------|--------|-------|
 | `crates/monocle-runtime/src/pty_broker.rs` | CREATE | `PtyBroker` struct + event loop |
 | `crates/monocle-runtime/src/lib.rs` | MODIFY | Add `pub mod pty_broker;` |
-| `crates/monocle-runtime/src/session_manager.rs` | MODIFY | Wire PtyBroker into spawn_session() |
-| `crates/monocle-ipc/src/proto.rs` | MODIFY | Add `ServerToClient::PtyReset { session_id }` variant |
+| `crates/monocle-runtime/src/session_manager/mod.rs` | MODIFY | Wire PtyBroker into spawn_session() (canonical path: module dir, not flat .rs file) |
+| `crates/monocle-ipc/src/lib.rs` | MODIFY | Add `ServerToClient::PtyReset { session_id: String }` variant (canonical file per S-033/S-039/S-044; not proto.rs) |
 | `crates/monocle-runtime/tests/pty_broker.rs` | CREATE | Unit tests for all ACs |
+
+## Behavioral Contracts
+
+| BC | Title | Version | Ownership |
+|----|-------|---------|-----------|
+| BC-2.05.009 | PtyOutput Fan-out Broker — Bounded Channel, Backpressure, Per-Client Isolation, 3-Strike Disconnect | v1.5.2 | OWNED by S-046 |
+| BC-2.05.011 | ScrollbackChunk/ScrollbackDumpComplete/PtyReset Protocol | v1.2.1 | PtyReset variant OWNED by S-046; ScrollbackChunk/ScrollbackDumpComplete variants owned by S-047 |
+
+**Ownership clarification (S-046 vs S-047):** `ServerToClient::PtyReset { session_id: String }` is
+added to `monocle-ipc/src/lib.rs` in this story (S-046) because the broker needs to emit it when a
+PTY writer task is dropped. S-047 depends on S-046 for `PtyReset` to exist; S-047 adds the TUI-side
+handler for `PtyReset` (scrollback buffer clear + re-trigger `AttachSession`). `ServerToClient::PtyReset`
+is a BC-2.05.011 variant, but BC-2.05.011 is split across two stories — the broker-side emission (this
+story) and the client-side protocol (S-047). Both stories co-own BC-2.05.011 but at different layers.
 
 ## Edge Cases
 

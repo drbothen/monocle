@@ -20,14 +20,14 @@ behavioral_contracts: [BC-2.09.008, BC-2.09.009]
 verification_properties: []
 estimated_days: 6
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.008.md, version: "1.3.1"}
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.009.md, version: "1.1.2"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.008.md, version: "1.3.4"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.009.md, version: "1.1.3"}
   - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.6.0"}
-  - {path: .factory/specs/architecture/SS-ipc.md, version: "1.23.2"}
+  - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.1"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.09.008 (EmbeddedTerminal/SessionCreation AppMode enter/exit transitions; wizard auto-transition; SpawnAck; launching_session_id) and BC-2.09.009 (permission badge + bell while in EmbeddedTerminal or SessionCreation)"
-# BC status: BC-2.09.008 v1.3.2, BC-2.09.009 v1.1.3 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status: BC-2.09.008 v1.3.4, BC-2.09.009 v1.1.3 — non-empty; status draft pending Phase-2 adversarial convergence gate
 # Clustering rationale: BC-2.09.008 (AppMode transitions) and BC-2.09.009 (permission badge+bell) are clustered
 # because the badge-and-bell behavior fires INSIDE EmbeddedTerminal and SessionCreation modes, which BC-2.09.008 defines.
 # Implementing one without the other leaves an incomplete AppMode entry/exit contract. BC-2.09.009's
@@ -136,7 +136,15 @@ Attempting to enter `EmbeddedTerminal` for a non-Running session produces the fo
 - `Terminated`: no-op; status bar `"Session not running (state: Terminated)"`.
 - `Terminating`: no-op; status bar `"Session not running (state: Terminating)"`.
 - `Launching`: no-op; status bar `"Session launching — please wait"`.
-- `Detached`: NOT a no-op. `attach_session()` is triggered automatically. `EmbeddedTerminal` is entered after `SessionStateChanged { new_state: Running }` confirming re-attach.
+- `Detached`: NOT a no-op. `enter_embedded_terminal(session_id)` detects the session is not in
+  `pty_dump_received` (the entry was removed on the prior detach per S-039 AC-005 "Re-attach after
+  detach" clause), sets `dump_in_progress[session_id] = true` BEFORE sending `AttachSession`, then
+  sends `ClientToServer::AttachSession { session_id }` to the daemon. Any live `PtyOutput` arriving
+  while `dump_in_progress == true` is buffered in `pending_pty_bytes`. On `ScrollbackDumpComplete`,
+  the parser is reset and buffered bytes are replayed (identical to first-entry protocol in S-039
+  AC-005). `EmbeddedTerminal` mode is entered immediately (before the dump completes); the PTY widget
+  renders blank until the dump arrives. This is the canonical re-attach-after-detach dump protocol
+  (S-039 AC-005 / S-047 AC-006).
 
 `SessionState::Killed` does NOT exist in the reachable state set and MUST NOT be referenced.
 
@@ -300,7 +308,7 @@ Within the 30% context window bound for a Sonnet-class model (~200k = 60k max pe
 
 | BC | Title | Version |
 |----|-------|---------|
-| BC-2.09.008 | EmbeddedTerminal AppMode Enter/Exit Transitions; SessionCreation Wizard Auto-Transitions to EmbeddedTerminal | v1.3.1 |
+| BC-2.09.008 | EmbeddedTerminal AppMode Enter/Exit Transitions; SessionCreation Wizard Auto-Transitions to EmbeddedTerminal | v1.3.4 |
 | BC-2.09.009 | Permission Badge+Bell — Status Bar Badge + Audible Bell Within One Render Tick While in EmbeddedTerminal or SessionCreation | v1.1.2 |
 
 ## Architecture Mapping
@@ -322,6 +330,7 @@ Within the 30% context window bound for a Sonnet-class model (~200k = 60k max pe
 | EC-252 | SessionCreation spawn fails | Wizard → ProfilePicker with error banner |
 | EC-253 | SessionCreation cancelled via Esc | AppMode → prior; no session created |
 | EC-254 | Enter EmbeddedTerminal while daemon disconnected | IPC attach fails; status bar "Daemon disconnected"; Dashboard |
+| EC-303 | `SessionStateChanged { session_id: X }` received while in `SessionCreation::Launching` but `X` does not match `launching_session_id` | Event is silently ignored by the wizard — no AppMode transition. `launching_session_id` is populated from `SpawnAck` (point-to-point to requesting client) before any `SessionStateChanged { Launching }` broadcast arrives (causal step ordering + per-client FIFO guarantee per SS-ipc.md §SpawnAck §Delivery ordering). A non-matching `session_id` belongs to a concurrent spawn from another TUI client or a stale broadcast from a prior spawn — it MUST NOT trigger auto-advance to EmbeddedTerminal. Only `SessionStateChanged { new_state: Running, session_id: <matching launching_session_id> }` triggers auto-advance (AC-006 / BC-2.09.008 PC-6). |
 | EC-260 | Two PermissionPromptQueued in rapid succession | Badge `[2 pending permissions]`; two bells |
 | EC-261 | Prompt during SessionCreation::Launching | Badge shown; bell emitted; wizard continues |
 | EC-264 | Esc from EmbeddedTerminal with no pending overlays | AppMode → prior (Dashboard); no overlay |

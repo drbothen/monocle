@@ -10,7 +10,7 @@ producer: architect
 phase: pre-phase-1-architecture
 timestamp: 2026-05-18T05:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, SS-forward-compatibility.md, SS-deps-pin-manifest.md, SS-daemon-lifecycle.md, SS-permissions-phase1.md, planning/oq-research.md, semport/any-context-lazyclaude/any-context-lazyclaude-pass-8-final-synthesis-v2.md]
-input-hash: "977e9db"
+input-hash: "ce65f5e"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---

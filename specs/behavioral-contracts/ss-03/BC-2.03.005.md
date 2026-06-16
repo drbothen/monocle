@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.4"
+version: "1.1.5"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-engine-module-v2-delta.md, architecture/SS-session-manager.md]
-input-hash: "8438e80"
+input-hash: "467d1d8"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-03
@@ -122,7 +122,7 @@ per-session worktree applies). The returned recipe is consumed by `SessionManage
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the spawn recipe assembly for the ClaudeCodeModule adapter, which is the mechanism by which the engine abstraction enables monocle to launch Claude Code sessions |
 | L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness or factory workflow system — PC-4 explicitly states spawn_recipe() writes no files; the hooks-settings.json path is passed through as a CLI arg string only) |
 | Architecture Module | monocle-runtime (ClaudeCodeModule implementation — `monocle-runtime/src/engine/claude_code.rs`) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module-v2-delta.md v1.6.0 §ClaudeCodeModule::spawn_recipe() implementation spec (two-pronged null-byte detection — C34-001); SS-session-manager.md v2.6.0 §SpawnRecipe integration with EngineModule |
+| Architecture Source | SS-engine-module-v2-delta.md v1.6.0 §ClaudeCodeModule::spawn_recipe() implementation spec (two-pronged null-byte detection — C34-001); SS-session-manager.md v2.6.1 §SpawnRecipe integration with EngineModule |
 | Stories | S-045 |
 | Test Name | test_BC_2_03_005_spawn_recipe_happy_path_binary_args_env_cwd |
 
@@ -244,3 +244,9 @@ VP-TBD — spawn_recipe() happy-path unit tests (filled after VP creation)
   MONOCLE_SESSION_ID injection, cwd from project_root.
 - Architecture source: SS-engine-module-v2-delta.md v1.1.0 (IMP-5 InvalidPath fix applied). <!-- version-pin-historical: §Trace initial-production record; v1.1.0 is the spec version at BC authoring time -->
 - SE-16d PASS: 2026-06-03T23:30:00Z (new artifact).
+
+## §Trace v1.1.5
+
+**Phase-2 Pass-1 fix burst — SS-session-manager v2.6.1 / SS-daemon-wiring-v2-delta v1.11.4 Architecture Source pin cascade** (2026-06-16T00:00:00Z):
+- Architecture Source pin(s) updated for SS-session-manager.md v2.6.0 → v2.6.1 and/or SS-daemon-wiring-v2-delta.md v1.11.3 → v1.11.4. Plain version-pin refresh — both SS spec bumps were SS-ipc Architecture Source cascade patches only; no normative API or invariant changes.
+- SE-16d monotonicity: v1.1.5 timestamp >= v1.1.4. PASS.

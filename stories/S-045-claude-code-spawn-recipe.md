@@ -26,7 +26,7 @@ inputs:
   - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.008.md, version: "1.0.4"}
   - {path: .factory/specs/architecture/SS-engine-module-v2-delta.md, version: "1.6.0"}
   - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.0"}
-  - {path: .factory/specs/architecture/SS-ipc.md, version: "1.23.2"}
+  - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.03.005 (spawn_recipe happy path), BC-2.03.006 (CCR base URL injection), BC-2.03.007 (BinaryNotFound/InvalidPath errors), BC-2.03.008 (default UnsupportedOperation trait impl)"
 # BC status: BC-2.03.005/006/007/008 non-empty; status draft pending Phase-2 adversarial convergence gate
@@ -181,7 +181,7 @@ From `architecture/SS-engine-module-v2-delta.md v1.6.0`:
 - Model A (I27-001): `spawn_recipe()` is called INSIDE `spawn_session()` as its first step.
   The TUI sends `SpawnOptions`; the daemon builds `SpawnRecipe` daemon-side.
 
-From `architecture/SS-ipc.md v1.23.2`:
+From `architecture/SS-ipc.md v1.24.0`:
 - Wire codes `"binary_not_found"` and `"invalid_spawn_arg"` must be in the `ServerToClient::Error`
   taxonomy.
 

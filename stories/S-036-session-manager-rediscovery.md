@@ -27,7 +27,7 @@ inputs:
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.0"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.08.002 (session-host setsid + survival across graceful daemon restart) and BC-2.08.004 (rediscover_sessions: all alive sessions visible after restart within 5s; UDS bind blocked until complete)"
-# BC status: BC-2.08.002 v1.2.2, BC-2.08.004 v1.3.1 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status: BC-2.08.002 v1.2.3, BC-2.08.004 v1.3.2 — non-empty; status draft pending Phase-2 adversarial convergence gate
 ---
 
 # S-036: SessionManager::rediscover_sessions — setsid Persistence; All States Handled Within 5s; UDS Bind Blocked

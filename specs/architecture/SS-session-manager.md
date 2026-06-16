@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.6.0"
+version: "2.6.1"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -1122,7 +1122,7 @@ pub enum HostToDaemon {
     PtyReset,
 }
 
-// C5-002 (SS-ipc.md v1.23.2): SerializedCell and SerializedColor are defined in
+// C5-002 (SS-ipc.md v1.24.0): SerializedCell and SerializedColor are defined in
 // monocle-ipc (crate::ipc::SerializedCell / crate::ipc::SerializedColor) so both
 // monocle-session-host (writer) and monocle-tui (reader) share the type without a
 // cross-binary dependency. The canonical definition with full field documentation
@@ -1670,6 +1670,15 @@ Daemon removes stale socket files during GC in re-discovery (alongside sidecar d
 | BC-2.08.007 | SpawnRecipe: binary path resolved; cwd is project root; env carries CCR URL if applicable | P0 |
 
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
+
+---
+
+## §Trace v2.6.1
+
+**Phase-2 Pass-1 fix burst — SS-ipc v1.24.0 Architecture Source pin update** (2026-06-16T00:00:00Z):
+
+- §Supporting Types inline code comment updated: `SS-ipc.md v1.23.2` → `SS-ipc.md v1.24.0` (1 occurrence; C5-002 comment in §Supporting Types code block). Plain version-pin refresh — the §Supporting Types section (SerializedCell, SerializedColor) is structurally unchanged between v1.23.2 and v1.24.0.
+- SE-16d monotonicity: v2.6.1 timestamp 2026-06-16 > v2.6.0 timestamp 2026-06-14. PASS.
 
 ---
 

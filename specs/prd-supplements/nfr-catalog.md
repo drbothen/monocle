@@ -7,7 +7,7 @@ producer: vsdd-factory:product-owner
 timestamp: 2026-05-28T12:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/adr/ADR-0005-auth-header-dual-accept-canonical-x-monocle-authorization.md]
-input-hash: "94fdf70"
+input-hash: "a7ac792"
 traces_to: prd.md
 ---
 

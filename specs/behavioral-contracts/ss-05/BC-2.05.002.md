@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.7"
+version: "1.0.8"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T04:00:00Z
 phase: phase-1-expansion
 inputs: [prd-expansion-scope.md, architecture/SS-ipc.md, architecture/ARCH-INDEX.md]
-input-hash: "53de1b4"
+input-hash: "054a9d0"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-05
@@ -130,7 +130,7 @@ delivered as incremental push messages (no polling required).
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability Traceability §SS-05 — this BC specifies the connection handshake and initial-state push that is the entry point for all TUI-to-daemon transport |
 | L2 Domain Invariants | DI-001 (every hook event received by the daemon must be written to the JSONL ring before acknowledgement — the ring_tail in InitialState reflects events already durably written, satisfying DI-001 ordering); DI-002 (lock file must be present before connections accepted — Precondition 2 requires TUI to read the lock file before connecting, enforcing DI-002) |
 | Architecture Module | monocle-ipc (UdsTransport, framing, ServerToClient::InitialState) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-ipc.md v1.23.2 §Framing Protocol; SS-ipc.md v1.23.2 §Connection Lifecycle §Phase 1 Connect |
+| Architecture Source | SS-ipc.md v1.24.0 §Framing Protocol; SS-ipc.md v1.24.0 §Connection Lifecycle §Phase 1 Connect |
 | Cross-Ref | BC-2.05.001 (UDS socket that this BC connects to); BC-2.05.003..005 (subsequent push message types); BC-2.05.006 (reconnection on disconnect) |
 | Test File | `monocle-ipc/tests/connection_handshake.rs` |
 | Test Name | `test_BC_2_05_002_initial_state_push_on_connect` |
@@ -231,3 +231,9 @@ VP-TBD — Connection handshake and InitialState push verification properties (f
 - Architecture Source row: `SS-ipc.md v1.7.0 §Connection Lifecycle §Phase 1 Connect` → `SS-ipc.md v1.9.0 §Connection Lifecycle §Phase 1 Connect`.
 - Plain version-pin refresh. No substantive content propagation required — §Framing Protocol and §Connection Lifecycle §Phase 1 Connect section headings and content anchors are unchanged between v1.7.0 and v1.9.0.
 - SE-16d monotonicity: v1.0.6 timestamp >= v1.0.5. PASS.
+
+## §Trace v1.0.8
+
+**Phase-2 Pass-1 fix burst — SS-ipc v1.24.0 Architecture Source pin cascade** (2026-06-16T00:00:00Z):
+- Architecture Source SS-ipc pin v1.23.2 → v1.24.0 (2 occurrences). Plain version-pin refresh.
+- SE-16d monotonicity: v1.0.8 timestamp >= v1.0.7. PASS.

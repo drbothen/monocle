@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.2"
+version: "1.3.4"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-14T19:00:00Z
+timestamp: 2026-06-16T00:00:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md, architecture/SS-ipc.md]
-input-hash: "a3ff089"
+input-hash: "599efba"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-09
@@ -123,6 +123,7 @@ AppMode. A `Ctrl-D` or session termination also exits `EmbeddedTerminal` automat
 | EC-252 | `SessionCreation` spawn fails (daemon error) | Wizard returns to `ProfilePicker` with error banner; no session created |
 | EC-253 | `SessionCreation` cancelled via Esc (any step) | `AppMode` transitions to `prior`; no session created |
 | EC-254 | Enter `EmbeddedTerminal` while daemon is disconnected | IPC attach fails; status bar `"Daemon disconnected"`; AppMode stays in `Dashboard` |
+| EC-303 | `SessionStateChanged { session_id: X }` received while in `SessionCreation::Launching` but `X` does not match `launching_session_id` | Event is silently ignored by the wizard — no AppMode transition. `launching_session_id` is set from `SpawnAck` (point-to-point to requesting client) before any `SessionStateChanged { Launching }` broadcast arrives (causal step ordering + per-client FIFO guarantee in SS-ipc.md §SpawnAck §Delivery ordering). A non-matching `session_id` therefore belongs to a concurrent spawn from another TUI client or a stale broadcast from a prior spawn — it MUST NOT trigger auto-advance to EmbeddedTerminal. The wizard only auto-advances on `SessionStateChanged { new_state: Running, session_id: <matching launching_session_id> }` (PC-6). |
 
 ## Canonical Test Vectors
 
@@ -150,7 +151,7 @@ AppMode. A `Ctrl-D` or session termination also exits `EmbeddedTerminal` automat
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — session creation wizard and EmbeddedTerminal AppMode are both explicitly named in CAP-009; this BC covers the enter/exit transitions and the wizard auto-transition to EmbeddedTerminal |
 | Architecture Module | monocle-core (AppMode::EmbeddedTerminal, AppMode::SessionCreation variants, SessionCreationStep enum); monocle-tui (transition logic, wizard UI) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.6.0 §TUI AppMode Extensions (EmbeddedTerminal, SessionCreation with `launching_session_id: Option<String>`, SessionCreationStep — F-P41-IMP-001); §Session Creation Wizard (SpawnAck receipt + launching_session_id storage + auto-advance match logic); §State machine invariants; SS-ipc.md v1.23.2 §ServerToClient::SpawnAck (point-to-point delivery to requesting client; wizard storage and filtering obligation) |
+| Architecture Source | SS-embedded-pty.md v1.6.0 §TUI AppMode Extensions (EmbeddedTerminal, SessionCreation with `launching_session_id: Option<String>`, SessionCreationStep — F-P41-IMP-001); §Session Creation Wizard (SpawnAck receipt + launching_session_id storage + auto-advance match logic); §State machine invariants; SS-ipc.md v1.24.0 §ServerToClient::SpawnAck (point-to-point delivery to requesting client; wizard storage and filtering obligation) |
 | Test Name | test_BC_2_09_008_embedded_terminal_transitions |
 
 ## Related BCs
@@ -172,6 +173,36 @@ S-044 — Implement EmbeddedTerminal/SessionCreation AppMode transitions in mono
 ## VP Anchors
 
 VP-TBD — AppMode transition tests (filled after VP creation)
+
+## §Trace v1.3.3
+
+**Phase-2 Pass-1 fix burst — EC-303 added: SpawnAck/launching_session_id deterministic filter for non-matching SessionStateChanged events** (2026-06-16):
+
+- **Gap closed:** SS-ipc.md §ServerToClient::SpawnAck doc-comment (line 489) and
+  §ClientToServer::SpawnSession comment (line 574) both reference "EC-303" as the
+  normative edge case defining the deterministic `session_id` filter applied by the wizard
+  in `SessionCreation::Launching` when it receives `SessionStateChanged` events whose
+  `session_id` does NOT match `launching_session_id`. Prior to this patch, BC-2.09.008
+  had no edge case EC-303 (or equivalent). The forward-reference in SS-ipc.md pointed
+  to a non-existent EC — a genuine broken cross-reference.
+
+- **EC-303 (new):** `SessionStateChanged { session_id: X }` received in
+  `SessionCreation::Launching` where `X` does not match `launching_session_id`. Expected
+  behavior: wizard silently ignores the event. Only a `SessionStateChanged { new_state:
+  Running, session_id: <matching launching_session_id> }` triggers auto-advance (PC-6).
+  The EC cites the causal step ordering + per-client FIFO guarantee from
+  SS-ipc.md §SpawnAck §Delivery ordering as the basis for why non-matching events
+  indicate a different TUI client's spawn or a stale broadcast.
+
+- **EC number selection:** EC-303 is the next sequential number after EC-302 (the highest EC
+  in BC-2.06.025, the sibling BC authored immediately before BC-2.09.008 in the same burst).
+  EC-303 does NOT collide with BC-2.09.008's existing EC namespace (EC-250..EC-254). Using
+  303 matches the identifier already cited in SS-ipc.md — no renaming needed.
+
+- **PATCH bump: v1.3.2 → v1.3.3** (adds one new edge case; no postcondition or invariant
+  content changed; no existing behavioral obligations modified).
+
+SE-16d monotonicity: v1.3.3 timestamp 2026-06-16T00:00:00Z > v1.3.2 timestamp 2026-06-14T19:00:00Z. PASS.
 
 ## §Trace v1.3.2
 

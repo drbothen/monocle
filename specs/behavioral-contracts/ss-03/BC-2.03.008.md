@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.5"
+version: "1.0.7"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-engine-module-v2-delta.md]
-input-hash: "e117e2c"
+input-hash: "86f8a9f"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-03
@@ -53,9 +53,9 @@ that must be explicitly opted into, not accidentally inherited.
    an error to the TUI: `"Session spawn not supported for this harness"`. This banner is
    delivered via `ServerToClient::Error { code: "spawn_unsupported", message: "Session spawn not supported for this harness" }`
    — the `"spawn_unsupported"` wire code is the 11th entry in the `ServerToClient::Error`
-   code taxonomy (SS-ipc v1.23.2; 12 codes including `session_not_ready` added F-P50-001 — `spawn_unsupported` remains the 11th), mapped from `EngineError::UnsupportedOperation` via
+   code taxonomy (SS-ipc v1.24.0; 12 codes including `session_not_ready` added F-P50-001 — `spawn_unsupported` remains the 11th), mapped from `EngineError::UnsupportedOperation` via
    `session_error_to_code(IpcOp::Spawn, EngineError::UnsupportedOperation)` →
-   `"spawn_unsupported"` (SS-session-manager v2.6.0 §session_error_to_code). The session
+   `"spawn_unsupported"` (SS-session-manager v2.6.1 §session_error_to_code). The session
    creation wizard MUST present this error in the UI and return to the ProfilePicker step.
 4. The default impl is defined in the `EngineModule` trait body in `monocle-core/src/engine.rs`.
    It does NOT require any overriding `impl EngineModule for X` block — the default fires
@@ -105,7 +105,7 @@ that must be explicitly opted into, not accidentally inherited.
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the capability boundary for the engine abstraction: spawn is opt-in, not universal; the default Err impl enforces that boundary for all engines that do not explicitly support monocle-controlled session spawning |
 | L2 Domain Invariants | DI-006 (EngineModule implementations must be stateless — the default impl performs no I/O and returns a constant error value, satisfying stateless detection requirement; spawn_recipe() is not a detection method but the same stateless principle applies to non-overriding impls) |
 | Architecture Module | monocle-core (`EngineModule` trait default impl) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module-v2-delta.md v1.6.0 §spawn_recipe() — new trait method (default impl signature); SS-session-manager.md v2.6.0 §session_error_to_code — `EngineError::UnsupportedOperation` → `"spawn_unsupported"` arm (F-P44-IMP-001); SS-ipc.md v1.23.2 §`ServerToClient::Error` — `"spawn_unsupported"` as 11th wire code in taxonomy (12 total as of v1.23.2; `session_not_ready` is the 12th — F-P50-001; `spawn_unsupported` positional rank unchanged) |
+| Architecture Source | SS-engine-module-v2-delta.md v1.6.0 §spawn_recipe() — new trait method (default impl signature); SS-session-manager.md v2.6.1 §session_error_to_code — `EngineError::UnsupportedOperation` → `"spawn_unsupported"` arm (F-P44-IMP-001); SS-ipc.md v1.24.0 §`ServerToClient::Error` — `"spawn_unsupported"` as 11th wire code in taxonomy (12 total as of v1.23.2; `session_not_ready` is the 12th — F-P50-001; `spawn_unsupported` positional rank unchanged) |
 | Cross-Ref | BC-2.03.005 (ClaudeCodeModule overrides this default with the real spawn_recipe() implementation) |
 | Test Name | test_BC_2_03_008_default_spawn_recipe_unsupported_operation |
 
@@ -208,3 +208,15 @@ SE-16d monotonicity: v1.0.2 timestamp 2026-06-14 > v1.0.1 timestamp 2026-06-13. 
 - Covers: default trait method impl returning UnsupportedOperation; non-breaking trait addition;
   CodeMachineModule v1A capability boundary.
 - SE-16d PASS: 2026-06-03T23:30:00Z (new artifact).
+
+## §Trace v1.0.6
+
+**Phase-2 Pass-1 fix burst — SS-ipc v1.24.0 Architecture Source pin cascade** (2026-06-16T00:00:00Z):
+- Architecture Source SS-ipc pin v1.23.2 → v1.24.0 (1 occurrence). Plain version-pin refresh — §Daemon-Side Per-Client Fan-out Channel added to SS-ipc.md v1.24.0; pre-existing anchors in this BC are unaffected. Prose reference "SS-ipc v1.23.2" (non-.md format) also updated to "SS-ipc v1.24.0".
+- SE-16d monotonicity: v1.0.6 timestamp >= v1.0.5. PASS.
+
+## §Trace v1.0.7
+
+**Phase-2 Pass-1 fix burst — SS-session-manager v2.6.1 / SS-daemon-wiring-v2-delta v1.11.4 Architecture Source pin cascade** (2026-06-16T00:00:00Z):
+- Architecture Source pin(s) updated for SS-session-manager.md v2.6.0 → v2.6.1 and/or SS-daemon-wiring-v2-delta.md v1.11.3 → v1.11.4. Plain version-pin refresh — both SS spec bumps were SS-ipc Architecture Source cascade patches only; no normative API or invariant changes.
+- SE-16d monotonicity: v1.0.7 timestamp >= v1.0.6. PASS.

@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.3"
+version: "1.3.4"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md, architecture/adr/ADR-0011-pty-stack-native-portable-pty-vt100-tui-term.md]
-input-hash: "6ef24a5"
+input-hash: "6a784d9"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-09
@@ -132,7 +132,7 @@ TUI's IPC socket. This timing budget covers: IPC framing decode → `vt100::Pars
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — this BC defines the PTY byte pipeline performance contract: IPC → vt100 → tui-term within 100ms, which is the core of CAP-009's embedded PTY widget capability |
 | Architecture Module | monocle-tui (App::on_pty_output, pty_parsers, PseudoTerminal widget) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.6.0 §PTY Widget Pipeline; §Parser ownership in TUI; §O4 memory bound; §I7 per-session scroll offset; §EmbeddedTerminal ENTRY (auto-attach mandate, I11-001 PRONG A); SS-session-manager.md v2.6.0 §Screen-state transfer (C5); ADR-0011 v1.2.1 §Decision |
+| Architecture Source | SS-embedded-pty.md v1.6.0 §PTY Widget Pipeline; §Parser ownership in TUI; §O4 memory bound; §I7 per-session scroll offset; §EmbeddedTerminal ENTRY (auto-attach mandate, I11-001 PRONG A); SS-session-manager.md v2.6.1 §Screen-state transfer (C5); ADR-0011 v1.2.1 §Decision |
 | Test Name | test_BC_2_09_001_pty_output_renders_within_100ms |
 
 ## Related BCs
@@ -220,3 +220,9 @@ VP-TBD — PTY output render latency tests (filled after VP creation)
 - BC-2.09.001 authored for SS-09 (new subsystem) as part of the v1A control-center pivot BC burst.
 - 100ms latency bound from SS-embedded-pty.md architect proposal preserved verbatim.
 - SE-16d PASS: 2026-06-03T23:30:00Z (new artifact).
+
+## §Trace v1.3.4
+
+**Phase-2 Pass-1 fix burst — SS-session-manager v2.6.1 / SS-daemon-wiring-v2-delta v1.11.4 Architecture Source pin cascade** (2026-06-16T00:00:00Z):
+- Architecture Source pin(s) updated for SS-session-manager.md v2.6.0 → v2.6.1 and/or SS-daemon-wiring-v2-delta.md v1.11.3 → v1.11.4. Plain version-pin refresh — both SS spec bumps were SS-ipc Architecture Source cascade patches only; no normative API or invariant changes.
+- SE-16d monotonicity: v1.3.4 timestamp >= v1.3.3. PASS.

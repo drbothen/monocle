@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "ipc"
 subsystem: SS-05
-version: "1.23.2"
+version: "1.24.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -1452,6 +1452,101 @@ prompts are never re-pushed.
 
 ---
 
+## §Daemon-Side Per-Client Fan-out Channel
+
+### Canonical per-client channel item type
+
+The daemon maintains one per-connected-TUI-client `mpsc::Sender` for fan-out. The canonical
+item type for that sender is `ServerToClient`, NOT `Arc<Bytes>` or any raw-byte wrapper.
+
+```rust
+/// Per-client fan-out sender on the daemon side.
+/// One instance per connected TUI client; stored in the client registry alongside strike counters.
+type ClientSender = mpsc::Sender<ServerToClient>;
+```
+
+**Rationale:** The broker must emit both raw-PTY-output messages (`ServerToClient::PtyOutput`)
+AND structured control messages (`ServerToClient::PtyReset`, `ServerToClient::SessionListUpdate`,
+`ServerToClient::SpawnAck`, `ServerToClient::Error`, etc.) on the same per-client channel.
+A `Sender<Arc<Bytes>>` cannot carry an enum variant; it would require a separate control channel
+and coordination logic between two channels per client, violating the FIFO ordering guarantee
+(SpawnAck must precede `SessionStateChanged { Launching }` on the same channel — §Trace v1.21.0,
+F-P41-IMP-001).
+
+`ServerToClient::PtyOutput { session_id, bytes: Vec<u8> }` is the variant that carries raw PTY
+bytes. The broker task serializes each `Arc<Bytes>` PTY frame into a `ServerToClient::PtyOutput`
+variant before sending it on the per-client channel. This is the wrapping step described in the
+S-046 Architecture Compliance section ("multiplexed at the broker layer and then framed as
+`ServerToClient::PtyOutput` messages for individual clients").
+
+### Fan-out channel capacity
+
+The daemon-side per-client channel has capacity 64 items (`mpsc::channel(64)`). This matches the
+TUI-side reader channel capacity. The per-client capacity governs backpressure at the client
+isolation boundary: a slow TUI client fills its own per-client channel without blocking the broker
+from writing to other clients. Capacity 64 covers typical 16ms-cadence bursts without unbounded
+memory growth.
+
+### Broker task channel summary
+
+| Channel | Direction | Item type | Capacity | Owner |
+|---------|-----------|-----------|----------|-------|
+| Primary broker input | PTY reader → broker | `Arc<Bytes>` | 1024 | PTY reader task |
+| Per-client fan-out | broker → TUI client task | `ServerToClient` | 64 | Broker task |
+| TUI reader (client-side) | client task → TUI event loop | `IpcRead` | 64 | TUI reader task |
+
+The `Arc<Bytes>` type is used ONLY on the primary broker input channel (PTY bytes from the PTY
+reader task, before the broker wraps them in `ServerToClient::PtyOutput`). It must NOT appear
+as the item type of the per-client fan-out channel.
+
+### Daemon-side framing: broker → UDS writer task
+
+Each per-client channel item (`ServerToClient`) is serialized to JSON by the client's dedicated
+Tokio write task and written to the UDS socket via `write_framed`. The write task owns the
+`UdsServerTransport` (or the write half of it); the broker sends `ServerToClient` variants to
+the write task over the per-client `mpsc::channel(64)`, not raw bytes. This preserves the
+property that `ServerToClient` is the single typed boundary between the broker and each TUI
+client, at both the channel level and the wire-serialization level.
+
+---
+
+## §Trace v1.24.0
+
+**F-P1-I-005 — Daemon-side per-client fan-out channel item type canonicalized as `ServerToClient`** (2026-06-15):
+
+- **Finding (F-P1-I-005, IMPORTANT — Phase-2 adversarial Pass-1):** SS-ipc.md v1.23.2 was silent
+  on the Rust channel item type for the daemon's per-client fan-out sender. S-046 declared
+  `HashMap<ClientId, mpsc::Sender<Arc<Bytes>>>` (raw byte frames) in its broker task list,
+  but the broker must also emit `ServerToClient::PtyReset { session_id }` per AC-005 and
+  wrap PTY frames as `ServerToClient::PtyOutput` per the Architecture Compliance section. A
+  `Sender<Arc<Bytes>>` cannot carry a `ServerToClient` enum variant. Additionally, §Trace
+  v1.21.0 (F-P41-IMP-001) already documented `SpawnAck` being sent on "per-client `client_tx.send(...)`"
+  with the payload being `ServerToClient::SpawnAck` — implying the per-client channel item is
+  `ServerToClient`, not raw bytes.
+- **Decision — canonical type `ServerToClient`:** The per-client fan-out channel on the daemon
+  side carries `ServerToClient` variants. `Arc<Bytes>` is the item type ONLY on the primary
+  broker input channel (PTY reader → broker). The broker wraps each `Arc<Bytes>` frame into
+  `ServerToClient::PtyOutput { session_id, bytes: frame.to_vec() }` before sending it on the
+  per-client channel. This single channel carries all message classes (PTY output, PTY reset,
+  session list updates, spawn acks, errors) with FIFO ordering preserved end-to-end.
+- **Normative addition:** New section `§Daemon-Side Per-Client Fan-out Channel` added, defining:
+  - `type ClientSender = mpsc::Sender<ServerToClient>` as the canonical per-client sender type.
+  - Per-client capacity: 64 items.
+  - Channel summary table (broker input: `Arc<Bytes>` capacity 1024; per-client fan-out:
+    `ServerToClient` capacity 64; TUI reader: `IpcRead` capacity 64).
+  - Invariant: `Arc<Bytes>` MUST NOT appear as the item type of the per-client fan-out channel.
+- **Story impact:** S-046 task list declares `HashMap<ClientId, mpsc::Sender<Arc<Bytes>>>` — this
+  is inconsistent with this canonicalization. Story-writer must correct S-046 to declare
+  `HashMap<ClientId, mpsc::Sender<ServerToClient>>` with capacity 64. The `fan_out()` method
+  receives `Arc<Bytes>` from the PTY reader, wraps it into `ServerToClient::PtyOutput`, and
+  sends the variant on each per-client channel. The `emit_pty_reset()` method sends
+  `ServerToClient::PtyReset { session_id }` directly on each per-client channel.
+- **Semver: minor (v1.23.2 → v1.24.0)** — new normative section; canonical per-client channel
+  type added. No existing wire type changed; only the daemon-internal channel item type is
+  specified for the first time.
+
+---
+
 ## §Trace v1.23.2
 
 **F-P52-001 — Correct erroneous BC-2.06.025 characterization in §Trace v1.23.0** (2026-06-14):
@@ -1488,7 +1583,7 @@ prompts are never re-pushed.
 - **Additional gap (F-P52-001):** BC-2.06.025 also lacked a Terminated-in-grace panel guard
   before F-P52-001. A correct TUI (before F-P52-001) COULD dispatch `r` or `D` on a Terminated
   session shown with [X] during the 10s GC grace window. This gap is now closed:
-  SS-session-manager.md v2.6.0 specifies the daemon-side defensive disposition for all lifecycle
+  SS-session-manager.md v2.6.1 specifies the daemon-side defensive disposition for all lifecycle
   actions on Terminated-in-grace entries. BC-2.06.025 must add a Terminated panel guard (product-
   owner action); see SS-session-manager.md §Trace v2.6.0 for the BC reconciliation specification.
 

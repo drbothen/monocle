@@ -26,7 +26,7 @@ inputs:
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.1"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.08.001 (spawn_session with SessionHostSpawner; SessionEntry; sidecar; SpawnAck) and BC-2.08.008 (SessionStateChanged{Launching} broadcast on spawn)"
-# BC status: BC-2.08.001 v1.5.1, BC-2.08.008 v1.3.1 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status: BC-2.08.001 v1.5.3, BC-2.08.008 v1.3.3 — non-empty; status draft pending Phase-2 adversarial convergence gate
 ---
 
 # S-033: SessionManager::spawn_session — SessionHostSpawner, SessionEntry, Sidecar, SpawnAck, and SessionStateChanged{Launching}
@@ -113,6 +113,19 @@ When the spawner succeeds (`spawn()` returns `Ok(handle)`) but the sidecar write
 - If the process has not exited after 2 seconds, sends SIGKILL.
 - Returns `Err(SessionError::SidecarWriteFailed { ... })`.
 - No `SessionEntry` is added to the registry.
+
+### AC-009b (traces to BC-2.08.001 edge case — SpawnFailed: spawner.spawn() OS error → wire code "spawn_failed")
+
+When `spawn_recipe()` succeeds (returns `Ok(SpawnRecipe)`) but the subsequent
+`SessionHostSpawner::spawn(&recipe)` returns `Err(...)` (OS-level process spawn failure,
+distinct from EngineError before the spawner is called):
+- `spawn_session()` returns `Err(SessionError::SpawnFailed { reason: e.to_string() })`.
+- No sidecar is written; no `SessionEntry` is inserted into the registry.
+- No orphan-kill is needed (the OS did not successfully create the process).
+- The IPC handler maps `SessionError::SpawnFailed` to `ServerToClient::Error { code: "spawn_failed", message: reason }` via `session_error_to_code(IpcOp::Spawn, &e)`.
+- Test: `test_BC_2_08_001_spawn_failed_os_error_returns_spawn_failed_code` — `MockSessionHostSpawner`
+  configured to return `Err(...)` on `spawn()`; assert `SessionError::SpawnFailed` from
+  `spawn_session()`; assert IPC code `"spawn_failed"`; assert no `SessionEntry` in registry.
 
 ### AC-010 (traces to BC-2.08.008 postcondition 1 — no silent state transitions)
 

@@ -106,9 +106,9 @@ SS-forward-compatibility:
 
 SS-ipc:
   path: specs/architecture/SS-ipc.md
-  current_version: "1.23.2"
-  last_bump_commit: "[Pass-52 F-P52-001 D-295 — errata trace: false 'Running/Detached only' claim corrected; §Terminated-in-grace defensive action×state: detach→idempotent Ok, kill→idempotent Ok, resize→WARN-drop, rename→rename_failed; Terminated panel guard doc-comment added]"
-  last_bump_date: "2026-06-14"
+  current_version: "1.24.0"
+  last_bump_commit: "[Phase-2 Pass-1 F-P1-I-005 — §Daemon-Side Per-Client Fan-out Channel added; per-client channel item type canonicalized as ServerToClient (not Arc<Bytes>); broker input channel remains Arc<Bytes> capacity 1024; per-client capacity 64; S-046 must correct HashMap<ClientId,mpsc::Sender<Arc<Bytes>>> → mpsc::Sender<ServerToClient>]"
+  last_bump_date: "2026-06-15"
 
 SS-permissions-phase1:
   path: specs/architecture/SS-permissions-phase1.md
@@ -124,7 +124,7 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "2.6.0"
+  current_version: "2.6.1"
   last_bump_commit: "[Pass-52 F-P52-001 D-295 — §Terminated-in-grace defensive action×state matrix added: rename→rename_failed (backs BC-2.08.005 Inv 4 revive-not-allowed), detach→idempotent Ok, kill→idempotent Ok per BC-2.08.003 Inv 2, resize→WARN-drop; closes ALL action×state cells]"
   last_bump_date: "2026-06-14"
 
@@ -142,7 +142,7 @@ SS-engine-module-v2-delta:
 
 SS-daemon-wiring-v2-delta:
   path: specs/architecture/SS-daemon-wiring-v2-delta.md
-  current_version: "1.11.3"
+  current_version: "1.11.4"
   last_bump_commit: "[Pass-52 F-P52-001 D-295 — errata trace: Terminated-in-grace action×state disposition matrix added to error table; false 'Running/Detached only' SS-ipc claim corrected in §Trace]"
   last_bump_date: "2026-06-14"
 
@@ -198,15 +198,15 @@ ADR-0011:
 
 ARCH-INDEX:
   path: specs/architecture/ARCH-INDEX.md
-  current_version: "1.0.28"
-  last_bump_commit: "[D-240 consistency-convergence 2026-06-03 — SUG-4 token estimates, version rows updated for SS-session-manager/SS-embedded-pty/SS-engine-module-v2-delta/SS-daemon-wiring-v2-delta (at D-240 authoring time)]"
-  last_bump_date: "2026-06-03"
+  current_version: "1.0.29"
+  last_bump_commit: "[Phase-2 Pass-1 fix burst — §Trace v1.0.29: SS-ipc v1.24.0 per-client fan-out channel canonicalization registered]"
+  last_bump_date: "2026-06-16"
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.42.0"
-  last_bump_commit: "[Burst-G D-305 — 25 v1A BC anchor resolutions registered (S-TBD→S-033..S-048); BC-2.06.025 v1.5.1 noted; §Trace v1.42.0 added; BC count 138 unchanged]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.43.4"
+  last_bump_commit: "[Phase-2 Pass-1 fix burst cascade — §Trace v1.43.1: SS-ipc v1.24.0 Architecture Source pin propagation across BC-2.06.025/BC-2.08.001/BC-2.08.005/BC-2.08.008/BC-2.09.008]"
+  last_bump_date: "2026-06-16"
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
@@ -473,51 +473,51 @@ BC-2.04.012:
 
 BC-2.05.001:
   path: specs/behavioral-contracts/ss-05/BC-2.05.001.md
-  current_version: "1.3.1"
+  current_version: "1.3.2"
   last_bump_commit: "[set at S-028-arch-decisions burst 2026-06-01]"
   last_bump_date: "2026-06-01"
 
 BC-2.05.002:
   path: specs/behavioral-contracts/ss-05/BC-2.05.002.md
-  current_version: "1.0.7"
+  current_version: "1.0.8"
   last_bump_commit: "[set at S-028-arch-decisions burst 2026-06-01]"
   last_bump_date: "2026-06-01"
 
 BC-2.05.003:
   path: specs/behavioral-contracts/ss-05/BC-2.05.003.md
-  current_version: "1.0.5"
+  current_version: "1.0.6"
   last_bump_commit: "[set at S-028-arch-decisions burst 2026-06-01]"
   last_bump_date: "2026-06-01"
 
 BC-2.05.004:
   path: specs/behavioral-contracts/ss-05/BC-2.05.004.md
-  current_version: "1.1.0"
+  current_version: "1.1.1"
   last_bump_commit: "[set at S-028-arch-decisions burst 2026-06-01]"
   last_bump_date: "2026-06-01"
 
 BC-2.05.005:
   path: specs/behavioral-contracts/ss-05/BC-2.05.005.md
-  current_version: "1.7.1"
+  current_version: "1.7.2"
   last_bump_commit: "[set at S-028-arch-decisions burst 2026-06-01]"
   last_bump_date: "2026-06-01"
 
 BC-2.05.006:
   path: specs/behavioral-contracts/ss-05/BC-2.05.006.md
-  current_version: "1.0.5"
+  current_version: "1.0.6"
   last_bump_commit: "[set at S-028-arch-decisions burst 2026-06-01]"
   last_bump_date: "2026-06-01"
 
 BC-2.05.007:
   path: specs/behavioral-contracts/ss-05/BC-2.05.007.md
-  current_version: "1.0.5"
+  current_version: "1.0.6"
   last_bump_commit: "[set at S-028-arch-decisions burst 2026-06-01]"
   last_bump_date: "2026-06-01"
 
 BC-2.05.008:
   path: specs/behavioral-contracts/ss-05/BC-2.05.008.md
-  current_version: "1.0.8"
-  last_bump_commit: "[set at S-028-arch-decisions burst 2026-06-01]"
-  last_bump_date: "2026-06-01"
+  current_version: "1.0.9"
+  last_bump_commit: "[Phase-2 Pass-1 fix burst cascade — SS-ipc pin updated 1.23.2 → 1.24.0 in Architecture Source cell]"
+  last_bump_date: "2026-06-16"
 
 BC-2.06.001:
   path: specs/behavioral-contracts/ss-06/BC-2.06.001.md
@@ -623,7 +623,7 @@ BC-2.06.017:
 
 BC-2.06.018:
   path: specs/behavioral-contracts/ss-06/BC-2.06.018.md
-  current_version: "1.1.0"
+  current_version: "1.1.1"
   last_bump_commit: "e5288bd"
   last_bump_date: "2026-06-01"
 
@@ -653,9 +653,9 @@ BC-2.06.022:
 
 BC-2.06.023:
   path: specs/behavioral-contracts/ss-06/BC-2.06.023.md
-  current_version: "1.5.1"
-  last_bump_commit: "[set at S-028-arch-decisions burst 2026-06-01]"
-  last_bump_date: "2026-06-01"
+  current_version: "1.5.2"
+  last_bump_commit: "[Phase-2 Pass-1 fix burst cascade — SS-ipc pin updated 1.23.2 → 1.24.0 in Architecture Source cell]"
+  last_bump_date: "2026-06-16"
 
 BC-2.06.024:
   path: specs/behavioral-contracts/ss-06/BC-2.06.024.md
@@ -701,7 +701,7 @@ BC-2.07.006:
 
 BC-2.03.005:
   path: specs/behavioral-contracts/ss-03/BC-2.03.005.md
-  current_version: "1.1.4"
+  current_version: "1.1.5"
   last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-045; Traceability Stories row filled]"
   last_bump_date: "2026-06-15"
 
@@ -713,91 +713,91 @@ BC-2.03.006:
 
 BC-2.03.007:
   path: specs/behavioral-contracts/ss-03/BC-2.03.007.md
-  current_version: "1.2.3"
+  current_version: "1.2.5"
   last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-045 (clusters with BC-2.03.005)]"
   last_bump_date: "2026-06-15"
 
 BC-2.03.008:
   path: specs/behavioral-contracts/ss-03/BC-2.03.008.md
-  current_version: "1.0.5"
+  current_version: "1.0.7"
   last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-045 (clusters with BC-2.03.005)]"
   last_bump_date: "2026-06-15"
 
 BC-2.05.009:
   path: specs/behavioral-contracts/ss-05/BC-2.05.009.md
-  current_version: "1.5.3"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-046]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.5.5"
+  last_bump_commit: "[Phase-2 Pass-1 fix burst cascade — SS-ipc pin updated 1.23.2 → 1.24.0 in Architecture Source cell]"
+  last_bump_date: "2026-06-16"
 
 BC-2.05.010:
   path: specs/behavioral-contracts/ss-05/BC-2.05.010.md
-  current_version: "1.9.2"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-047]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.9.4"
+  last_bump_commit: "[Phase-2 Pass-1 fix burst cascade — SS-ipc pin updated 1.23.2 → 1.24.0 in Architecture Source cell]"
+  last_bump_date: "2026-06-16"
 
 BC-2.05.011:
   path: specs/behavioral-contracts/ss-05/BC-2.05.011.md
-  current_version: "1.2.2"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-047 (clusters with BC-2.05.010)]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.2.4"
+  last_bump_commit: "[Phase-2 Pass-1 fix burst cascade — SS-ipc pin updated 1.23.2 → 1.24.0 in Architecture Source cell]"
+  last_bump_date: "2026-06-16"
 
 BC-2.06.025:
   path: specs/behavioral-contracts/ss-06/BC-2.06.025.md
-  current_version: "1.5.1"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-048; Invariant 3 cross-reference note added for D/Launching → Invariant 5 redirect]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.5.3"
+  last_bump_commit: "[Phase-2 Pass-1 fix burst — SS-ipc pin updated 1.23.2 → 1.24.0 in Architecture Source cell]"
+  last_bump_date: "2026-06-16"
 
 BC-2.08.001:
   path: specs/behavioral-contracts/ss-08/BC-2.08.001.md
-  current_version: "1.5.1"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-033]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.5.3"
+  last_bump_commit: "[Phase-2 Pass-1 fix burst — SS-ipc pin updated 1.23.2 → 1.24.0 in Architecture Source cell]"
+  last_bump_date: "2026-06-16"
 
 BC-2.08.002:
   path: specs/behavioral-contracts/ss-08/BC-2.08.002.md
-  current_version: "1.2.2"
+  current_version: "1.2.3"
   last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-036]"
   last_bump_date: "2026-06-15"
 
 BC-2.08.003:
   path: specs/behavioral-contracts/ss-08/BC-2.08.003.md
-  current_version: "1.4.1"
+  current_version: "1.4.2"
   last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-034]"
   last_bump_date: "2026-06-15"
 
 BC-2.08.004:
   path: specs/behavioral-contracts/ss-08/BC-2.08.004.md
-  current_version: "1.3.1"
+  current_version: "1.3.2"
   last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-036]"
   last_bump_date: "2026-06-15"
 
 BC-2.08.005:
   path: specs/behavioral-contracts/ss-08/BC-2.08.005.md
-  current_version: "1.0.4"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-037]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.0.6"
+  last_bump_commit: "[Phase-2 Pass-1 fix burst — SS-ipc pin updated 1.23.2 → 1.24.0 in Architecture Source cell]"
+  last_bump_date: "2026-06-16"
 
 BC-2.08.006:
   path: specs/behavioral-contracts/ss-08/BC-2.08.006.md
-  current_version: "1.3.1"
+  current_version: "1.3.2"
   last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-038]"
   last_bump_date: "2026-06-15"
 
 BC-2.08.007:
   path: specs/behavioral-contracts/ss-08/BC-2.08.007.md
-  current_version: "1.5.2"
+  current_version: "1.5.3"
   last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-035]"
   last_bump_date: "2026-06-15"
 
 BC-2.08.008:
   path: specs/behavioral-contracts/ss-08/BC-2.08.008.md
-  current_version: "1.3.1"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-033/S-034/S-035 (distributed across Launching/Terminating-Terminated/Running-Detached)]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.3.3"
+  last_bump_commit: "[Phase-2 Pass-1 fix burst — SS-ipc pin updated 1.23.2 → 1.24.0 in Architecture Source cell]"
+  last_bump_date: "2026-06-16"
 
 BC-2.09.001:
   path: specs/behavioral-contracts/ss-09/BC-2.09.001.md
-  current_version: "1.3.3"
+  current_version: "1.3.4"
   last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-039]"
   last_bump_date: "2026-06-15"
 
@@ -839,9 +839,9 @@ BC-2.09.007:
 
 BC-2.09.008:
   path: specs/behavioral-contracts/ss-09/BC-2.09.008.md
-  current_version: "1.3.2"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-044]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.3.4"
+  last_bump_commit: "[Phase-2 Pass-1 fix burst — EC-303 SpawnAck non-matching-filter (PO); SS-ipc pin updated 1.23.2 → 1.24.0 in Architecture Source cell]"
+  last_bump_date: "2026-06-16"
 
 BC-2.09.009:
   path: specs/behavioral-contracts/ss-09/BC-2.09.009.md

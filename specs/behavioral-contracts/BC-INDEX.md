@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.42.0"
+version: "1.43.4"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-15T00:00:00Z
@@ -1224,6 +1224,89 @@ SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. 
 
 SE-16d monotonicity: v1.40.5 timestamp 2026-06-14T20:00:00Z > v1.40.4 timestamp 2026-06-14T19:00:00Z. PASS.
 
+## §Trace v1.43.4
+
+**Phase-2 Pass-1 fix burst (cascade, wave 4) — SS-session-manager v2.6.1 and SS-daemon-wiring-v2-delta v1.11.4 Architecture Source pin propagation** (2026-06-16):
+
+SS-session-manager bumped 2.6.0 → 2.6.1 and SS-daemon-wiring-v2-delta bumped 1.11.3 → 1.11.4 (SS-ipc v1.24.0 cascade patches). POL-11 sweep detected 16 BCs with stale Architecture Source pins for one or both SS specs.
+
+BC version bumps in this dispatch:
+- BC-2.03.005 v1.1.4 → v1.1.5, BC-2.03.007 v1.2.4 → v1.2.5, BC-2.03.008 v1.0.6 → v1.0.7 (SS-session-manager).
+- BC-2.05.009 v1.5.4 → v1.5.5, BC-2.05.010 v1.9.3 → v1.9.4, BC-2.05.011 v1.2.3 → v1.2.4 (SS-session-manager + SS-daemon-wiring-v2-delta).
+- BC-2.06.025 v1.5.2 → v1.5.3 (SS-session-manager + SS-daemon-wiring-v2-delta).
+- BC-2.08.001 v1.5.2 → v1.5.3, BC-2.08.002 v1.2.2 → v1.2.3, BC-2.08.003 v1.4.1 → v1.4.2, BC-2.08.004 v1.3.1 → v1.3.2, BC-2.08.005 v1.0.5 → v1.0.6, BC-2.08.006 v1.3.1 → v1.3.2, BC-2.08.007 v1.5.2 → v1.5.3, BC-2.08.008 v1.3.2 → v1.3.3.
+- BC-2.09.001 v1.3.3 → v1.3.4 (SS-session-manager).
+
+No BC H1 title changes. No BC ID additions or retirements. BC count unchanged: 138 active.
+BC-INDEX version: 1.43.3 → 1.43.4.
+
+SE-16d monotonicity: v1.43.4 timestamp 2026-06-16 = v1.43.3 timestamp 2026-06-16. PASS (same-day sequential patch).
+
+## §Trace v1.43.3
+
+**Phase-2 Pass-1 fix burst (cascade, wave 3) — BC-2.06.018 cross-BC pin update** (2026-06-16):
+
+POL-11 sweep third pass detected stale `BC-2.05.004 v1.1.0` live body-prose pin in BC-2.06.018. BC-2.05.004 was bumped to v1.1.1 in wave 2 of this burst. BC-2.06.018 updated to cite v1.1.1.
+
+BC version bumps in this dispatch:
+- BC-2.06.018 v1.1.0 → v1.1.1: Cross-BC pin `BC-2.05.004 v1.1.0` → `BC-2.05.004 v1.1.1` (2 occurrences in body prose).
+
+No BC H1 title changes. No BC ID additions or retirements. BC count unchanged: 138 active.
+BC-INDEX version: 1.43.2 → 1.43.3.
+
+SE-16d monotonicity: v1.43.3 timestamp 2026-06-16 = v1.43.2 timestamp 2026-06-16. PASS (same-day sequential patch).
+
+## §Trace v1.43.2
+
+**Phase-2 Pass-1 fix burst (cascade, wave 2) — SS-ipc v1.24.0 Architecture Source pin propagation to SS-03 and SS-05 BCs** (2026-06-16):
+
+POL-11 sweep second pass detected stale `SS-ipc.md v1.23.2` live Architecture Source cells in 9 additional BCs across SS-03 and SS-05. All updated to `SS-ipc.md v1.24.0`.
+
+BC version bumps in this dispatch:
+- BC-2.03.007 v1.2.3 → v1.2.4: Architecture Source SS-ipc pin v1.23.2 → v1.24.0 (3 occurrences).
+- BC-2.03.008 v1.0.5 → v1.0.6: Architecture Source SS-ipc pin v1.23.2 → v1.24.0 (1 occurrence).
+- BC-2.05.001 v1.3.1 → v1.3.2: Architecture Source SS-ipc pin v1.23.2 → v1.24.0 (1 occurrence).
+- BC-2.05.002 v1.0.7 → v1.0.8: Architecture Source SS-ipc pin v1.23.2 → v1.24.0 (2 occurrences).
+- BC-2.05.003 v1.0.5 → v1.0.6: Architecture Source SS-ipc pin v1.23.2 → v1.24.0 (2 occurrences).
+- BC-2.05.004 v1.1.0 → v1.1.1: Architecture Source SS-ipc pin v1.23.2 → v1.24.0 (2 occurrences).
+- BC-2.05.005 v1.7.1 → v1.7.2: Architecture Source SS-ipc pin v1.23.2 → v1.24.0 (3 occurrences).
+- BC-2.05.006 v1.0.5 → v1.0.6: Architecture Source SS-ipc pin v1.23.2 → v1.24.0 (2 occurrences).
+- BC-2.05.007 v1.0.5 → v1.0.6: Architecture Source SS-ipc pin v1.23.2 → v1.24.0 (2 occurrences).
+
+No BC H1 title changes. No BC ID additions or retirements. BC count unchanged: 138 active.
+BC-INDEX version: 1.43.1 → 1.43.2.
+
+SE-16d monotonicity: v1.43.2 timestamp 2026-06-16 = v1.43.1 timestamp 2026-06-16. PASS (same-day sequential patch).
+
+## §Trace v1.43.1
+
+**Phase-2 Pass-1 fix burst (cascade) — SS-ipc v1.24.0 Architecture Source pin propagation** (2026-06-16):
+
+POL-11 sweep after SS-ipc v1.23.2 → v1.24.0 bump detected stale `SS-ipc.md v1.23.2` live Architecture Source cells in 5 BCs. All updated to `SS-ipc.md v1.24.0`.
+
+BC version bumps in this dispatch:
+- BC-2.06.025 v1.5.1 → v1.5.2: Architecture Source SS-ipc pin v1.23.2 → v1.24.0 (4 occurrences: postconditions body × 3 + Architecture Source row).
+- BC-2.08.001 v1.5.1 → v1.5.2: Architecture Source SS-ipc pin v1.23.2 → v1.24.0 (1 occurrence: Architecture Source row).
+- BC-2.08.005 v1.0.4 → v1.0.5: Architecture Source SS-ipc pin v1.23.2 → v1.24.0 (3 occurrences including §Trace historical prose — those remain as history; live pin updated).
+- BC-2.08.008 v1.3.1 → v1.3.2: Architecture Source SS-ipc pin v1.23.2 → v1.24.0 (1 occurrence: Architecture Source row).
+- BC-2.09.008 v1.3.3 → v1.3.4: Architecture Source SS-ipc pin v1.23.2 → v1.24.0 (1 occurrence: Architecture Source row). Note: BC-2.09.008 v1.3.3 (EC-303) was §Trace v1.43.0; this patch cascades the SS-ipc Architecture Source forward.
+
+No BC H1 title changes. No BC ID additions or retirements. BC count unchanged: 138 active.
+BC-INDEX version: 1.43.0 → 1.43.1.
+
+SE-16d monotonicity: v1.43.1 timestamp 2026-06-16 = v1.43.0 timestamp 2026-06-16. PASS (same-day sequential patch).
+
+## §Trace v1.43.0
+
+**Phase-2 Pass-1 fix burst — BC-2.09.008 v1.3.3 (EC-303 SpawnAck non-matching-filter)** (2026-06-16):
+
+- BC-2.09.008 v1.3.2 → v1.3.3: EC-303 added by product-owner (F-P1-I-005 Phase-2 Pass-1 fix burst). EC-303 specifies the deterministic filter rule for `SessionStateChanged` events received while in `SessionCreation { step: Launching }`: events whose `session_id` does not match `launching_session_id` are silently ignored (not auto-advance triggers). Resolves the ambiguity where a concurrent session's `Running` state transition could spuriously advance the wizard. The SpawnAck receipt → `launching_session_id` population contract (BC-2.09.008 Step 4, added v1.3.0) now pairs with EC-303's non-matching-filter rule for a complete deterministic auto-advance specification.
+- No BC H1 title change. No BC ID additions or retirements. BC count unchanged: 138 active.
+- BC-INDEX version: 1.42.0 → 1.43.0.
+- version-pin-registry.yaml: BC-2.09.008 → v1.3.3 (updated in same fix burst by product-owner, per REGISTRY ATOMICITY rule).
+
+SE-16d monotonicity: v1.43.0 timestamp 2026-06-16 > v1.42.0 timestamp 2026-06-15. PASS.
+
 ## §Trace v1.42.0
 
 **Phase-2 Burst G — BC anchor resolutions registered; bookkeeping reconciliation** (2026-06-15):
@@ -1256,7 +1339,7 @@ SE-16d monotonicity: v1.41.1 timestamp 2026-06-14 > v1.41.0 timestamp 2026-06-15
   Sessions with `SessionState::Terminated` render `[X]` in the sessions panel during the 10s GC
   grace window (Invariant 4, pre-existing). Prior to v1.5.0, no lifecycle-action guard existed for
   Terminated-in-grace sessions — an implementer could dispatch `k`, `D`, or `r` on a corpse.
-  Gap closed per SS-session-manager.md v2.6.0 §Terminated-in-grace defensive action×state matrix
+  Gap closed per SS-session-manager.md v2.6.1 §Terminated-in-grace defensive action×state matrix
   (F-P52-001) specifying daemon-side dispositions (rename → `rename_failed`; detach → Ok(());
   kill → Ok(); resize → WARN-drop):
   - **Invariant 6 (new):** Blanket TUI-side block for Terminated-in-grace sessions. Kill (`k`/`d`),
@@ -1268,7 +1351,7 @@ SE-16d monotonicity: v1.41.1 timestamp 2026-06-14 > v1.41.0 timestamp 2026-06-15
     (`Err(InvalidSessionName{"session terminated"})` → `"rename_failed"` per BC-2.08.005 Inv 4).
   - **VP table:** Three new unit test VPs for Terminated-in-grace action guards.
   - **Traceability Cross-Ref expanded:** BC-2.08.003 Invariant 2; BC-2.08.005 Invariant 4;
-    SS-session-manager.md v2.6.0 §Terminated-in-grace defensive action×state matrix (F-P52-001).
+    SS-session-manager.md v2.6.1 §Terminated-in-grace defensive action×state matrix (F-P52-001).
   - **Architecture Source updated:** SS-session-manager.md v2.5.1 → v2.6.0; SS-ipc.md v1.23.1 →
     v1.23.2; SS-daemon-wiring-v2-delta.md v1.11.2 → v1.11.3.
   - **Pass-51 Launching rules NOT regressed.** Invariant 5 (kill ALLOWED, detach BLOCKED, rename
@@ -1278,7 +1361,7 @@ SE-16d monotonicity: v1.41.1 timestamp 2026-06-14 > v1.41.0 timestamp 2026-06-15
   Invariant 4 previously stated "rename_session() reviving a Terminated session — which is not
   allowed" without specifying the observable mechanism. Updated with the explicit error return:
   `Err(SessionError::InvalidSessionName { reason: "session terminated" })` → wire code
-  `"rename_failed"` per SS-session-manager.md v2.6.0 §Terminated-in-grace defensive action×state
+  `"rename_failed"` per SS-session-manager.md v2.6.1 §Terminated-in-grace defensive action×state
   matrix. TUI-side guard (BC-2.06.025 Invariant 6) cited as the mechanism making this a
   defensive/untrusted-client-only path. Architecture Source updated to v2.6.0 pin.
   SessionError 9-variant / 12-code counts NOT regressed — no new variants or wire codes.

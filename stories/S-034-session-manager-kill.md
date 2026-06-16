@@ -26,7 +26,7 @@ inputs:
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.0"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.08.003 (kill_session: SIGTERM via DaemonToHost::Kill within 500ms; Terminating/Terminated transitions; 12s watchdog) and BC-2.08.008 (SessionStateChanged{Terminating/Terminated} broadcast)"
-# BC status: BC-2.08.003 v1.4.1, BC-2.08.008 v1.3.1 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status: BC-2.08.003 v1.4.2, BC-2.08.008 v1.3.3 — non-empty; status draft pending Phase-2 adversarial convergence gate
 ---
 
 # S-034: SessionManager::kill_session — DaemonToHost::Kill Within 500ms; Terminating/Terminated Transitions; 12s Watchdog

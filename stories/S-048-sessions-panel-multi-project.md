@@ -22,7 +22,7 @@ estimated_days: 5
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.025.md, version: "1.5.0"}
   - {path: .factory/specs/architecture/SS-tui.md, version: "1.8.2"}
-  - {path: .factory/specs/architecture/SS-ipc.md, version: "1.23.2"}
+  - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
   - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.0"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.06.025 — multi-session grouped sessions panel (SessionSnapshot wire type, project_root grouping, lifecycle action keys n/k/d/r/D, state-aware blocking, [M]/[E]/[?]/[!] badges)"
@@ -46,8 +46,15 @@ session state manually.
 
 The sessions panel binds to `Vec<SessionSnapshot>` from `ServerToClient::SessionListUpdate`.
 It NEVER accesses `EnrichedSession` or any daemon-internal session type directly. The TUI
-receives only the fields available on `SessionSnapshot`: `session_id`, `display_name`,
-`project_root`, `state`, `spawned_by_monocle`, `is_degraded`, `worktree_root`, `pid`.
+receives only the fields available on the canonical `SessionSnapshot` struct
+(defined in `crates/monocle-ipc/src/lib.rs`, authority: SS-ipc.md §Supporting Types):
+`session_id: String`, `display_name: String`, `state: SessionState`, `harness_id: String`,
+`project_root: String`, `cwd: String`, `spawned_by_monocle: Option<bool>`,
+`started_at_micros: i64`, `pty_rows: u16`, `pty_cols: u16`,
+`degraded: bool`, `degraded_reason: Option<String>`.
+Note: the field is `degraded` (NOT `is_degraded`); there is no `worktree_root` field
+(the canonical struct has `cwd` for the effective working directory); there is no `pid` field.
+These canonical names MUST be used in TUI code; do NOT invent `is_degraded` or `worktree_root`.
 
 ### AC-002 (traces to BC-2.06.025 postcondition 2 — grouped by project_root, sorted alphabetically)
 
@@ -62,7 +69,8 @@ Each session row displays a provenance badge:
 - `[M]` when `spawned_by_monocle == Some(true)` (monocle-spawned).
 - `[E]` when `spawned_by_monocle == Some(false)` (externally-detected).
 - `[?]` when `spawned_by_monocle == None` (origin unknown).
-- `[!]` when `is_degraded == true` (appended after the provenance badge, e.g., `[M][!]`).
+- `[!]` when `degraded == true` (appended after the provenance badge, e.g., `[M][!]`).
+  Field name is `degraded` (canonical per SS-ipc.md §SessionSnapshot); NOT `is_degraded`.
 The badge is part of the rendered row text, not a separate column.
 
 ### AC-004 (traces to BC-2.06.025 postcondition 4 — lifecycle action key bindings)
@@ -75,15 +83,16 @@ The sessions panel handles the following keys when a session row is focused:
 - `D` (shift-d) — destroy the session and remove from view (alias for kill + acknowledge Terminated).
 Each key is shown in the status bar hint line when the sessions panel is active.
 
-### AC-005 (traces to BC-2.06.025 invariant 3 — Launching state: kill=ALLOWED, detach=BLOCKED, rename=ALLOWED)
+### AC-005 (traces to BC-2.06.025 invariant 3 — Launching state: kill=ALLOWED, detach=BLOCKED, rename=ALLOWED, D=BLOCKED)
 
 When the focused session is in `Launching` state:
-- `k` (kill): ALLOWED — sends `KillSession { session_id }`. TUI transitions display to `Terminating`.
+- `k` (kill): ALLOWED — sends `KillSession { session_id: String }`. TUI transitions display to `Terminating`.
   (Daemon enforces the actual state; TUI is optimistic.)
 - `d` (detach): BLOCKED — key press is ignored; status bar shows
   `"Cannot detach: session is launching"` for 3 seconds.
 - `r` (rename): ALLOWED — sends `RenameSession` as normal.
-- `D` (destroy): ALLOWED (same as kill during Launching).
+- `D` (destroy): BLOCKED — EC-298 (BC-2.06.025) prohibits D on Launching; status bar shows
+  `"Cannot destroy: session is launching"` for 3 seconds.
 
 ### AC-006 (traces to BC-2.06.025 invariant 4 — Terminating=blanket block for all lifecycle actions)
 
@@ -118,22 +127,13 @@ When `k` is pressed on a `Terminating` session (EC-296):
 - Status bar shows `"Session is terminating — action unavailable"` for 3 seconds.
 - The session row state is unchanged.
 
-### AC-010 (traces to BC-2.06.025 postcondition 7, EC-298 — D on Launching is no-op per blanket block)
+### AC-010 (traces to BC-2.06.025 postcondition 7, EC-298 — D on Launching is BLOCKED)
 
 When `D` is pressed on a `Launching` session (EC-298 from BC-2.06.025):
-- No IPC message is sent (Launching blocks D per BC-2.06.025 Invariant 3 — detach blocked;
-  D which implies "force-destroy" requires a running or attached session).
+- No IPC message is sent.
 - Status bar shows `"Cannot destroy: session is launching"` for 3 seconds.
-
-Wait — re-reading AC-005: for Launching, kill=ALLOWED and rename=ALLOWED. But `D` is listed
-as "ALLOWED (same as kill during Launching)" in AC-005. However EC-298 says `D on Launching=no-op`.
-The authoritative source is BC-2.06.025 EC-298 postcondition. `D` on Launching → no-op; status
-bar message. OVERRIDE: AC-005 bullet for `D` is corrected: `D` during Launching → BLOCKED, same
-as detach. Only `k` is allowed during Launching.
-
-Corrected AC-010 statement:
-- `D` on `Launching` → BLOCKED (consistent with EC-298).
-- Status bar: `"Cannot destroy: session is launching"`.
+- `D` is BLOCKED on `Launching` per BC-2.06.025 EC-298. Only `k` (kill) is permitted during
+  Launching; all other lifecycle actions (`d`, `r`, `D`) are blocked.
 
 ### AC-011 (traces to BC-2.06.025 postcondition 8, EC-300..302 — all actions blocked on Terminated)
 
@@ -145,31 +145,41 @@ When any of `k`, `d`, `r`, `D` is pressed on a `Terminated` session (EC-300, EC-
 ### AC-012 (traces to BC-2.06.025 postcondition 9 — panel receives SessionSnapshot, not EnrichedSession)
 
 A compile-time assertion or type annotation ensures the sessions panel component accepts
-`&[SessionSnapshot]` (from `monocle-ipc::proto::SessionSnapshot`), never
-`&[monocle_runtime::session::EnrichedSession]`. This constraint is enforced by the function
+`&[SessionSnapshot]` (from `monocle_ipc::SessionSnapshot` via `crates/monocle-ipc/src/lib.rs`),
+never `&[monocle_runtime::session::EnrichedSession]`. This constraint is enforced by the function
 signature of the panel's `render()` method.
 
 ## Tasks
 
 ### Data Model
-- [ ] Ensure `SessionSnapshot` is defined in `monocle-ipc/src/proto.rs` with fields:
-      `session_id: SessionId`, `display_name: String`, `project_root: PathBuf`,
-      `state: SessionState`, `spawned_by_monocle: Option<bool>`, `is_degraded: bool`,
-      `worktree_root: PathBuf`, `pid: Option<u32>`.
-- [ ] Ensure `SessionState` enum is defined in `monocle-ipc/src/proto.rs`:
+- [ ] Ensure `SessionSnapshot` is defined in `crates/monocle-ipc/src/lib.rs` with the canonical
+      fields per SS-ipc.md v1.24.0 §Supporting Types (authority: SS-ipc.md, not BC-2.06.025
+      which may use prose-level field names):
+      `session_id: String`, `display_name: String`, `state: SessionState`, `harness_id: String`,
+      `project_root: String`, `cwd: String`, `spawned_by_monocle: Option<bool>`,
+      `started_at_micros: i64`, `pty_rows: u16`, `pty_cols: u16`,
+      `degraded: bool` (NOT `is_degraded`), `degraded_reason: Option<String>`.
+      There is NO `worktree_root` field (use `cwd` for effective working dir) and NO `pid` field.
+      All wire IDs (`session_id`) are `String` (UUID-as-String) per SS-ipc v1.24.0 §Wire IDs.
+      Verify against the struct definition — do NOT add extra fields not in the canonical struct.
+- [ ] Ensure `SessionState` enum is defined in `crates/monocle-ipc/src/lib.rs`:
       `Launching`, `Running`, `Terminating`, `Terminated`.
       (Verify against S-033/S-034; add if not present; do not duplicate.)
 
 ### TUI Panel (monocle-tui)
 - [ ] Create `monocle-tui/src/panels/sessions_panel.rs`:
-      - `SessionsPanel` struct with `sessions: Vec<EnrichedSession>`, `focused_idx: usize`.
-      - `group_by_project_root()` method: returns `Vec<(PathBuf, Vec<&EnrichedSession>)>` sorted
-        alphabetically per AC-002.
+      - `SessionsPanel` struct with `sessions: Vec<SessionSnapshot>`, `focused_idx: usize`. <!-- structural-claim-historical: SS-tui.md §App struct carries Vec<EnrichedSession> (daemon-internal type from Phase-1 baseline); this story migrates SessionsPanel to Vec<SessionSnapshot> (wire type from monocle-ipc) as the v1A multi-session redesign intent -->
+        `SessionSnapshot` is imported from `monocle_ipc` — NEVER from `monocle_runtime`.
+      - `group_by_project_root()` method: returns `Vec<(String, Vec<&SessionSnapshot>)>` sorted
+        alphabetically per AC-002. Note: `SessionSnapshot.project_root` is `String` (wire type),
+        NOT `PathBuf`; group key is `String`.
       - `render(&self, frame: &mut Frame, area: Rect)` using ratatui `0.30` widgets.
       - Project root headers rendered as `Block` borders or styled list items.
       - Badge rendering per AC-003 (`[M]`, `[E]`, `[?]`, `[!]`).
 - [ ] Implement `SessionsPanel::handle_key(key: KeyEvent, sender: &mpsc::Sender<ClientToServer>)`
       with the state-aware dispatch table per AC-004..AC-011.
+      All IPC messages carry `session_id: String` (from `SessionSnapshot.session_id`) — never a
+      newtype `SessionId`; wire fields are plain `String` per SS-ipc v1.24.0 §Wire IDs.
 - [ ] Add status bar message queue integration: 3-second and 5-second timed messages per AC-005/006/007.
 - [ ] Wire `SessionsPanel` into the main TUI layout (replace or extend the existing session list
       from S-025/S-028 — confirm which component it extends).
@@ -212,9 +222,13 @@ From `architecture/SS-tui.md v1.8.2`:
 - Status bar message queue: timerbound messages use `Instant` + duration, checked on each
   frame render. Do NOT use `tokio::time::sleep` for status bar expiry in the render path.
 
-From `architecture/SS-ipc.md v1.23.2`:
+From `architecture/SS-ipc.md v1.24.0` (§Wire IDs):
 - `SessionSnapshot` is the IPC wire type for sessions in `ServerToClient::SessionListUpdate`.
   The TUI receives `Vec<SessionSnapshot>` and must not call into daemon internals.
+- All `session_id` fields in wire messages are `String` (UUID-as-String). `SessionId`/`ClientId`
+  newtypes are daemon-internal ONLY and MUST NOT appear in IPC message structs or TUI code.
+  Building an IPC message from a focused `SessionSnapshot`: use `snapshot.session_id.clone()`
+  directly — no `.into()` or newtype wrapping.
 
 From `architecture/SS-conventions-anti-patterns.md v1.32.6`:
 - No `println!` or `eprintln!` in TUI render paths.
@@ -242,7 +256,7 @@ No new dependencies added. All are existing workspace deps.
 | `crates/monocle-tui/src/panels/sessions_panel.rs` | CREATE | Main sessions panel widget + key handler |
 | `crates/monocle-tui/src/panels/mod.rs` | MODIFY (or CREATE) | `pub mod sessions_panel;` |
 | `crates/monocle-tui/src/main_layout.rs` (or equivalent) | MODIFY | Wire SessionsPanel into TUI layout, replacing/extending S-028 session list |
-| `crates/monocle-ipc/src/proto.rs` | MODIFY (if needed) | Add `SessionSnapshot` struct and `SessionState` enum if not present from S-033/S-034 |
+| `crates/monocle-ipc/src/lib.rs` | MODIFY (if needed) | Add `SessionSnapshot` struct and `SessionState` enum if not present from S-033/S-034 |
 | `crates/monocle-tui/tests/sessions_panel.rs` | CREATE | Unit tests for all ACs |
 
 ## Edge Cases
@@ -252,7 +266,7 @@ No new dependencies added. All are existing workspace deps.
 | EC-400 | Zero sessions in `SessionListUpdate` | Panel renders empty state: "No active sessions" message; `n` key still works (spawn new) |
 | EC-401 | All sessions have the same `project_root` | Single group header; all sessions listed under it; sorted by `display_name` |
 | EC-402 | `project_root` is empty string | Renders as `"(no project)"` header, sorted last |
-| EC-403 | Session `is_degraded=true` AND `spawned_by_monocle=None` | Badge renders as `[?][!]` |
+| EC-403 | Session `degraded=true` (NOT `is_degraded`) AND `spawned_by_monocle=None` | Badge renders as `[?][!]` |
 | EC-404 | Rapid consecutive `SessionListUpdate` messages (>10/sec during spawn storm) | Panel re-renders on each update using ratatui's lazy diffing; no panic, no partial state |
 | EC-405 | `focused_idx` points beyond the end of a group after a session is removed | Clamp `focused_idx` to `(num_sessions - 1).max(0)` on next render |
 | EC-406 | `r` (rename) on a `Running` session | Opens inline rename input; Enter confirms and sends `RenameSession`; Esc cancels (no IPC sent) |
@@ -264,7 +278,7 @@ No new dependencies added. All are existing workspace deps.
 | Category | Estimate |
 |----------|----------|
 | Story spec (this file) | ~6 500 tokens |
-| BC files (1 BC: BC-2.06.025 v1.5.1) | ~5 000 tokens |
+| BC files (1 BC: BC-2.06.025 v1.5.3) | ~5 000 tokens |
 | Architecture sections (SS-tui, SS-ipc, SS-session-manager) | ~3 500 tokens |
 | Existing code context (S-028 session list component, proto.rs, main_layout.rs) | ~5 000 tokens |
 | Test file to write | ~3 500 tokens |

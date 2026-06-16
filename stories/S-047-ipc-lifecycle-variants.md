@@ -22,7 +22,7 @@ estimated_days: 5
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.010.md, version: "1.9.1"}
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.011.md, version: "1.2.1"}
-  - {path: .factory/specs/architecture/SS-ipc.md, version: "1.23.2"}
+  - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
   - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.0"}
   - {path: .factory/specs/architecture/SS-conventions-anti-patterns.md, version: "1.32.6"}
 input-hash: "[pending]"
@@ -50,19 +50,27 @@ requests. The daemon receives `opts` and calls `engine_module.spawn_recipe(&opts
 build `SpawnRecipe` internally (Model A — I27-001). The TUI NEVER sends a `SpawnRecipe`
 directly. SpawnOptions includes `{ project_root, worktree_root, session_id, ccr_base_url, ... }`.
 
-### AC-002 (traces to BC-2.05.010 postcondition 5 — KillSession delivers SIGTERM)
+### AC-002 (traces to BC-2.05.010 postcondition 5 — KillSession delivers SIGTERM; idempotent on Terminating and Terminated)
 
-`ClientToServer::KillSession { session_id }` causes the daemon to send `SIGTERM` to the
-session's PTY process. If the process is in `Launching` state, the kill is ALLOWED per
-BC-2.06.025 lifecycle rules. If the process is in `Terminating` state, `KillSession` is
-rejected with error code `"session_not_ready"`.
+`ClientToServer::KillSession { session_id: String }` causes the daemon to send `SIGTERM` to the
+session's PTY process. `session_id` is a `String` (UUID-as-String) on the wire.
+If the process is in `Launching` state, the kill is ALLOWED per
+BC-2.06.025 lifecycle rules (BC-2.08.003 Invariant 3). If the process is in `Terminating`
+or `Terminated` state, `kill_session()` returns `Ok(())` (idempotent — kill is already
+in-flight or complete; no duplicate Kill sent) per BC-2.08.003 Invariant 2 and S-034 AC-007.
+The IPC handler MUST NOT return `"session_not_ready"` for a `Terminating` kill — that code
+is reserved for `DetachSession` on a `Launching` session (F-P50-001).
+No `ServerToClient::Error` is emitted for `KillSession` on a `Terminating` session — the
+IPC handler returns silently after the idempotent `Ok(())` from `kill_session()`.
 
 ### AC-003 (traces to BC-2.05.010 postcondition 6/7 — KeyInput and ResizePane routing)
 
-`ClientToServer::KeyInput { session_id, bytes: Vec<u8> }` — daemon writes `bytes` to the
-session's PTY master fd.
+`ClientToServer::KeyInput { session_id: String, bytes: Vec<u8> }` — daemon writes `bytes` to the
+session's PTY master fd. `session_id` is a `String` (UUID-as-String) on the wire. On failure
+(session not found or host dead), returns `ServerToClient::Error { code: "session_not_found" }`
+or `"attach_failed"` as appropriate per the 12-code taxonomy — no `"pty_write_failed"` code.
 
-`ClientToServer::ResizePane { session_id, rows: u16, cols: u16 }` — daemon issues
+`ClientToServer::ResizePane { session_id: String, rows: u16, cols: u16 }` — daemon issues
 `ioctl(TIOCSWINSZ)` on the PTY. Zero-dim clamp: if `rows == 0` OR `cols == 0`, clamp to 1
 before calling ioctl. After clamping, WARN-drop all ioctl errors (do NOT propagate resize
 errors as `ServerToClient::Error` — resize failures are advisory only per BC-2.05.010 PC-6
@@ -131,57 +139,91 @@ During a scrollback dump (between AttachSession receipt and ScrollbackDumpComple
 ### AC-011 (traces to BC-2.05.010 invariant 4 — No-silent-failure invariant)
 
 For all 7 `ClientToServer` variants (except ResizePane per AC-003 carve-out):
-- Every failure produces a `ServerToClient::Error { code: <one of the 12 wire codes>, message: String }`.
+- Every failure produces a `ServerToClient::Error { code: <one of the canonical 12 wire codes>, message: String }`.
 - The daemon NEVER silently ignores a message.
-- Unknown `ClientToServer` variants (forward-compatibility): return
-  `ServerToClient::Error { code: "unknown_command", message: "..." }`.
+- Unknown `ClientToServer` variants (forward-compatibility): the `#[non_exhaustive]` wildcard
+  arm maps them to `ServerToClient::Error { code: "invalid_request", message: "unknown variant" }` (the
+  generic catch-all code per the 12-code taxonomy). The phantom code `"unknown_command"` MUST NOT be used.
+- `KillSession` on `Terminating`/`Terminated`: idempotent `Ok(())` — NO `ServerToClient::Error` emitted
+  (idempotent success is NOT a failure). This is consistent with BC-2.08.003 Invariant 2.
 
-### AC-012 (traces to BC-2.05.010 invariant 5 — 12 wire error codes are the complete taxonomy)
+### AC-012 (traces to BC-2.05.010 invariant 5 — canonical 12 wire error codes are the CLOSED set for Phase 1)
 
-The complete set of wire error codes for `ServerToClient::Error.code` is:
-`"binary_not_found"`, `"invalid_spawn_arg"`, `"session_not_found"`, `"session_not_ready"`,
+The complete and closed set of wire error codes for `ServerToClient::Error.code` is the
+canonical 12-code taxonomy defined in SS-ipc.md §ServerToClient::Error v1A taxonomy
+(§402-§419). Every code used in this story MUST come from this closed list:
+
+| code | Trigger |
+|------|---------|
+| `"binary_not_found"` | `EngineError::BinaryNotFound` (harness binary not on PATH) |
+| `"invalid_spawn_arg"` | `EngineError::InvalidPath` (structurally invalid spawn arg) |
+| `"spawn_unsupported"` | `EngineError::UnsupportedOperation` (harness does not support spawning) |
+| `"spawn_failed"` | OS process spawn failure |
+| `"sidecar_write_failed"` | Sidecar write failed post-spawn |
+| `"session_id_collision"` | UUID v4 collision in registry |
+| `"session_not_found"` | Session ID not in registry |
+| `"attach_failed"` | `SessionError::SessionHostDead` on the attach-path |
+| `"kill_failed"` | `SessionError::SessionHostDead` on the kill-path |
+| `"rename_failed"` | `SessionManager::rename_session()` returned error |
+| `"session_not_ready"` | `SessionError::SessionNotReady` — DetachSession on Launching session (host_conn: None) |
+| `"invalid_request"` | Catch-all: `SessionError::Io`, unrecognized `ClientToServer` variants |
+
+No code outside this list SHALL be returned in Phase 1. The following phantom codes from
+prior drafts are REMOVED and MUST NOT appear in any implementation, test, or commentary:
 `"pty_write_failed"`, `"rename_rejected"`, `"kill_rejected"`, `"unknown_command"`,
-`"internal_error"`, `"spawn_unsupported"`, `"permission_denied"`, `"protocol_error"`.
-No code outside this list shall be returned. (`"binary_not_found"` and `"spawn_unsupported"`
-are from BC-2.03.007/BC-2.03.008.)
+`"internal_error"`, `"permission_denied"`, `"protocol_error"`. Any future code additions
+require an explicit SS-ipc.md update first (the taxonomy is a closed set for Phase 1).
+
+**KeyInput failure note**: `KeyInput` failures map to `"session_not_found"` (session ID absent
+from registry) or `"attach_failed"` (session host dead) — NOT a phantom `"pty_write_failed"` code.
+`"pty_write_failed"` is NOT in the 12-code taxonomy and MUST NOT be introduced.
 
 ## Tasks
 
 ### IPC Protocol (monocle-ipc)
-- [ ] Add 7 new `ClientToServer` variants to `monocle-ipc/src/proto.rs`:
+- [ ] Verify and/or add 7 `ClientToServer` variants to `crates/monocle-ipc/src/lib.rs`
+      (canonical file per S-033/S-039/S-044; NOT `proto.rs`):
       `SpawnSession { opts: SpawnOptions }`,
-      `KillSession { session_id: SessionId }`,
-      `KeyInput { session_id: SessionId, bytes: Vec<u8> }`,
-      `ResizePane { session_id: SessionId, rows: u16, cols: u16 }`,
-      `DetachSession { session_id: SessionId }`,
-      `RenameSession { session_id: SessionId, name: String }`,
-      `AttachSession { session_id: SessionId }`.
-- [ ] Add 3 new `ServerToClient` variants to `monocle-ipc/src/proto.rs`
+      `KillSession { session_id: String }`,
+      `KeyInput { session_id: String, bytes: Vec<u8> }`,
+      `ResizePane { session_id: String, rows: u16, cols: u16 }`,
+      `DetachSession { session_id: String }`,
+      `RenameSession { session_id: String, new_name: String }`,
+      `AttachSession { session_id: String }`.
+      All `session_id` fields are `String` (UUID-as-String per SS-session-manager.md §session_id type ruling).
+      `ClientId` and `SessionId` newtypes MUST NOT appear on the wire — daemon-internal only.
+- [ ] Verify and/or add 2 `ServerToClient` variants to `crates/monocle-ipc/src/lib.rs`
       (note: `PtyReset` was added in S-046; add `ScrollbackChunk` and `ScrollbackDumpComplete` here):
-      `ScrollbackChunk { session_id: SessionId, chunk_seq: u32, data: Bytes }`,
-      `ScrollbackDumpComplete { session_id: SessionId, total_chunks: u32, cursor_row: u16, cursor_col: u16, term_rows: u16, term_cols: u16 }`.
-- [ ] Add `SpawnOptions` struct to `monocle-ipc/src/proto.rs` (if not already present from S-033/S-045).
-      Fields: `project_root: PathBuf`, `worktree_root: PathBuf`, `session_id: SessionId`,
+      `ScrollbackChunk { session_id: String, chunk_seq: u32, rows: Vec<Vec<SerializedCell>> }`,
+      `ScrollbackDumpComplete { session_id: String, total_chunks: u32, cursor_row: u16, cursor_col: u16, pty_rows: u16, pty_cols: u16 }`.
+- [ ] Verify `SpawnOptions` struct in `crates/monocle-ipc/src/lib.rs` (if not already present from S-033/S-045).
+      All fields must use `String` for path-like fields that cross the wire, NOT typed newtypes:
+      `project_root: String`, `worktree_root: String`, `session_id: String`,
       `ccr_base_url: Option<String>`, `display_name: Option<String>`.
-- [ ] Add `"unknown_command"`, `"pty_write_failed"`, `"rename_rejected"`, `"kill_rejected"`,
-      `"permission_denied"`, `"protocol_error"` to the error code taxonomy comment in `proto.rs`
-      (joining existing codes from BC-2.03.007 and BC-2.05.010). These are documentation-only
-      constants; the actual matching is in `session_manager.rs`.
+      (`session_id` is filled by the daemon IPC handler via `opts.with_daemon_fields()`.)
+- [ ] Update error code taxonomy comment in the IPC module to document the canonical 12 codes
+      (matching the closed set in SS-ipc.md §ServerToClient::Error). Remove any phantom codes
+      from previous drafts (`"unknown_command"`, `"pty_write_failed"`, `"rename_rejected"`,
+      `"kill_rejected"`, `"permission_denied"`, `"protocol_error"`) if they appear.
 
 ### Daemon Routing (monocle-runtime)
 - [ ] Add match arms for all 7 new `ClientToServer` variants in the daemon's IPC dispatch loop
       (`monocle-runtime/src/ipc_handler.rs` or equivalent):
       - `SpawnSession` → call `session_manager.spawn_session(opts)` → return Ok or Error.
       - `KillSession` → `session_manager.kill_session(id)` with state-check.
-      - `KeyInput` → `session_manager.write_pty_bytes(id, bytes)` — on failure return
-        `ServerToClient::Error { code: "pty_write_failed" }`.
+      - `KeyInput` → `session_manager.send_key_input(id, bytes)` — on `Err(SessionNotFound)` return
+        `ServerToClient::Error { code: "session_not_found" }`; on `Err(SessionHostDead)` return
+        `ServerToClient::Error { code: "attach_failed" }`. Do NOT use `"pty_write_failed"` — it is
+        NOT in the canonical 12-code taxonomy (AC-012).
       - `ResizePane` → `session_manager.resize_pane(id, rows.max(1), cols.max(1))` — zero-dim
         clamp THEN call; WARN-drop all ioctl errors (no Error response).
       - `DetachSession` → detach client subscription; guard for Launching state.
       - `RenameSession` → update display_name, fan-out SessionListUpdate.
       - `AttachSession` → subscribe client + initiate scrollback dump sequence.
-- [ ] Add `pending_pty_bytes: HashMap<(SessionId, ClientId), VecDeque<Bytes>>` to `DaemonState`
-      (or per-session state struct) for in-flight scrollback buffering.
+- [ ] Add `pending_pty_bytes: HashMap<(String, String), VecDeque<Bytes>>` to `DaemonState`
+      (or per-session state struct) for in-flight scrollback buffering. Keys are
+      `(session_id: String, client_id: String)` — daemon-internal representation, consistent
+      with how the broker tracks per-client channels by string key.
 - [ ] Implement scrollback dump task in `monocle-runtime/src/scrollback.rs`:
       - Read PTY scrollback buffer (existing ring buffer from session state).
       - Chunk into ≤4 KiB `ScrollbackChunk` frames.
@@ -235,14 +277,21 @@ session state management directly in the handler.
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-ipc.md v1.23.2`:
+From `architecture/SS-ipc.md v1.24.0` (canonical version):
 - Model A (I27-001): SpawnSession carries `SpawnOptions`; daemon builds `SpawnRecipe` internally.
   Model B (TUI sends SpawnRecipe) is REJECTED by architecture decision. Do not implement Model B.
-- 256 KiB maximum IPC frame size still applies to ScrollbackChunk (chunk at ≤4 KiB to respect
+- **All wire `session_id` fields are `String`** (UUID-as-String). `ClientId` and `SessionId`
+  newtypes are daemon-INTERNAL ONLY and MUST NOT appear on the wire. `SpawnOptions.session_id`
+  is `String`. This is the canonical §session_id type ruling in SS-session-manager.md §session_id type ruling.
+- 256 KiB maximum IPC frame size still applies to ScrollbackChunk (chunk rows to respect
   the 256 KiB total frame limit with framing overhead).
 - `pending_pty_bytes` is a daemon-side struct, NOT a TUI-side struct. The TUI has a parallel
   accumulation buffer for chunks received during dump.
 - ResizePane zero-dim clamp MUST happen before the ioctl call — never pass 0 rows or 0 cols to ioctl.
+- **Canonical 12 wire codes ONLY** (closed set for Phase 1): `binary_not_found`, `invalid_spawn_arg`,
+  `spawn_unsupported`, `spawn_failed`, `sidecar_write_failed`, `session_id_collision`,
+  `session_not_found`, `attach_failed`, `kill_failed`, `rename_failed`, `session_not_ready`,
+  `invalid_request`. No other code may be introduced without a SS-ipc.md update.
 
 From `architecture/SS-conventions-anti-patterns.md v1.32.6`:
 - All new error types: `thiserror ^2` (NOT thiserror 1.x).
@@ -267,9 +316,9 @@ is in `monocle-tui`. These boundaries are enforced by the workspace dependency g
 
 | File | Action | Notes |
 |------|--------|-------|
-| `crates/monocle-ipc/src/proto.rs` | MODIFY | Add 7 new `ClientToServer` variants; add `ScrollbackChunk`, `ScrollbackDumpComplete` to `ServerToClient`; add `SpawnOptions` struct (if not present) |
+| `crates/monocle-ipc/src/lib.rs` | MODIFY | Add 7 new `ClientToServer` variants; add `ScrollbackChunk`, `ScrollbackDumpComplete` to `ServerToClient`; verify `SpawnOptions` struct (all wire fields use `String` — no typed newtypes) |
 | `crates/monocle-runtime/src/ipc_handler.rs` | MODIFY | Add match arms for all 7 new variants |
-| `crates/monocle-runtime/src/session_manager.rs` | MODIFY | Add `kill_session()`, `write_pty_bytes()`, `resize_pane()`, `rename_session()` methods |
+| `crates/monocle-runtime/src/session_manager/mod.rs` | MODIFY | Add `kill_session()`, `write_pty_bytes()`, `resize_pane()`, `rename_session()` methods (canonical path: module dir, not flat .rs file) |
 | `crates/monocle-runtime/src/scrollback.rs` | CREATE | Scrollback dump task implementation |
 | `crates/monocle-runtime/src/lib.rs` | MODIFY | Add `pub mod scrollback;` |
 | `crates/monocle-tui/src/ipc_receiver.rs` | MODIFY | Add handlers for ScrollbackChunk, ScrollbackDumpComplete, PtyReset (TUI-side) |
@@ -279,23 +328,28 @@ is in `monocle-tui`. These boundaries are enforced by the workspace dependency g
 
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
-| EC-300 | `AttachSession` for a session in `Terminating` state | `ServerToClient::Error { code: "session_not_ready" }` — blanket block per BC-2.06.025 lifecycle rules (Terminating) |
-| EC-301 | `KillSession` for unknown `session_id` | `ServerToClient::Error { code: "session_not_found" }` |
+| EC-300 | `AttachSession` for a session in `Terminating` state | `ServerToClient::Error { code: "attach_failed" }` — session is being killed; `SessionHostDead` is the nearest existing error on the attach path (see Terminated-in-grace disposition: `attach_session()` on Terminating → `SessionHostDead` → `"attach_failed"`) |
+| EC-301 | `KillSession` for a session in `Terminating` state | `kill_session()` returns `Ok(())` — idempotent (kill is in-flight; watchdog already running; no duplicate Kill sent) per BC-2.08.003 Invariant 2 and S-034 AC-007. IPC handler does NOT emit any `ServerToClient::Error`. `"session_not_ready"` MUST NOT be returned for kill on `Terminating` — that code is reserved exclusively for `DetachSession` on `Launching` (F-P50-001). |
+| EC-301b | `KillSession` for unknown `session_id` | `ServerToClient::Error { code: "session_not_found" }` |
 | EC-302 | `ResizePane { rows: 0, cols: 0 }` | Clamp to `{ rows: 1, cols: 1 }` then ioctl; WARN log; NO Error response to TUI |
-| EC-303 | `ResizePane { rows: 0, cols: 80 }` (only rows is 0) | Clamp rows to 1; cols stays 80; ioctl with `{ rows: 1, cols: 80 }` |
-| EC-304 | `KeyInput` arrives while session is in `Terminating` state | `ServerToClient::Error { code: "session_not_ready" }` |
+| EC-303 | `ResizePane { rows: 0, cols: 80 }` (only rows is 0) — BC-2.05.010 EC-303 | Clamp rows to 1; cols stays 80; ioctl with `{ rows: 1, cols: 80 }` |
+<!-- EC-303 disambiguation: This BC-2.05.010 EC-303 (ResizePane partial-zero clamp) is distinct from
+     the "EC-303" identifier used in SS-ipc.md §SpawnAck to refer to wizard session_id filtering
+     in BC-2.09.008 (S-044). Both are EC-303 within their respective BCs (BC-namespaced identifiers).
+     There is NO collision — they are different BCs. This note prevents cross-story confusion. -->
+| EC-304 | `KeyInput` arrives while session is in `Terminating` state | `ServerToClient::Error { code: "attach_failed" }` — session host is being killed; `SessionHostDead` maps to `"attach_failed"` on the key-input path (see SS-session-manager.md Terminated-in-grace matrix — `send_key_input()` on Terminating → `SessionHostDead` → `"attach_failed"`). `"session_not_ready"` is reserved for `DetachSession` on `Launching`; MUST NOT be used here. |
 | EC-305 | `ScrollbackChunk` arrives with `chunk_seq` gap (e.g., 0, 1, 3, missing 2) | Client discards all received chunks for that session; re-triggers `AttachSession` |
 | EC-306 | `ScrollbackDumpComplete.total_chunks` is 0 (empty session, no output yet) | Valid — client reconstructs empty screen with cursor at (0,0); replay zero pending bytes |
 | EC-307 | Session exits mid-scrollback dump | Daemon emits `PtyReset` instead of `ScrollbackDumpComplete`; TUI clears and re-attaches |
 | EC-308 | Two clients simultaneously request `AttachSession` for same session | Each gets an independent scrollback dump sequence; `pending_pty_bytes` is per session-client pair (not shared) |
-| EC-309 | Client sends unknown `ClientToServer` variant (forward compat) | `ServerToClient::Error { code: "unknown_command" }` — no panic, no silent drop |
+| EC-309 | Client sends unknown `ClientToServer` variant (forward compat) | `ServerToClient::Error { code: "invalid_request", message: "unknown variant" }` — no panic, no silent drop. `"unknown_command"` MUST NOT be used (it is not in the canonical 12-code taxonomy). |
 
 ## Token Budget Estimate
 
 | Category | Estimate |
 |----------|----------|
 | Story spec (this file) | ~6 000 tokens |
-| BC files (2 BCs: BC-2.05.010 v1.9.2 + BC-2.05.011 v1.2.2) | ~8 000 tokens |
+| BC files (2 BCs: BC-2.05.010 + BC-2.05.011) | ~8 000 tokens |
 | Architecture sections (SS-ipc, SS-session-manager, SS-conventions) | ~3 500 tokens |
 | Existing code context (proto.rs, ipc_handler.rs, session_manager.rs, ipc_receiver.rs) | ~5 000 tokens |
 | Test file to write | ~4 000 tokens |

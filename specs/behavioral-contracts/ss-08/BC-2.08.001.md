@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.1"
+version: "1.5.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-14T12:00:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/SS-engine-module-v2-delta.md, architecture/SS-ipc.md, architecture/adr/ADR-0009-native-session-host-process-model.md]
-input-hash: "47c7734"
+input-hash: "f7530c3"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-08
@@ -89,7 +89,7 @@ goes directly to `Launching`.
 4. `spawn_session()` returns `Ok(session_id)` (the UUID string).
 5. `ServerToClient::SessionStateChanged { session_id, new_state: Launching }` is published
    to the broker BEFORE `ServerToClient::SessionListUpdate` (both under the `SessionManager`
-   mutex per BC-2.08.008 Invariant 4 and SS-daemon-wiring-v2-delta.md v1.11.3 §3b).
+   mutex per BC-2.08.008 Invariant 4 and SS-daemon-wiring-v2-delta.md v1.11.4 §3b).
 
 ## Invariants
 
@@ -143,7 +143,7 @@ goes directly to `Launching`.
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC is the primary definition of the spawn operation that launches the session-host process and creates the session registry entry |
 | L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness — the sidecar is a monocle-owned file, not a harness file; the atomic write via tempfile::persist ensures no partial writes to monocle's own state) |
 | Architecture Module | monocle-runtime (SessionManager sub-module — `monocle-runtime/src/session_manager/mod.rs`) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.6.0 §SessionManager §Public API (`spawn_session(opts: SpawnOptions)` signature — Model A; `spawn_recipe()` called daemon-side as first step; UUID generated in IPC handler BEFORE spawn_session()); SS-session-manager.md v2.6.0 §session-state.json schema (schema_version 3); SS-session-manager.md v2.6.0 §session_error_to_code (spawn-path arms: `EngineError::BinaryNotFound` → `"binary_not_found"`, `EngineError::InvalidPath` → `"invalid_spawn_arg"`); SS-engine-module-v2-delta.md v1.6.0 §SpawnOptions and §SpawnRecipe types (Model A wire/internal type assignment — I27-001); SS-ipc.md v1.23.2 §`ClientToServer::SpawnSession { opts: SpawnOptions }` (wire variant — Model A) + §`ServerToClient::SpawnAck { session_id }` (new variant — F-P41-IMP-001); ADR-0009 v1.0.2 §Decision; SS-daemon-wiring-v2-delta.md v1.11.3 §3b (SessionStateChanged emission rule) |
+| Architecture Source | SS-session-manager.md v2.6.1 §SessionManager §Public API (`spawn_session(opts: SpawnOptions)` signature — Model A; `spawn_recipe()` called daemon-side as first step; UUID generated in IPC handler BEFORE spawn_session()); SS-session-manager.md v2.6.1 §session-state.json schema (schema_version 3); SS-session-manager.md v2.6.1 §session_error_to_code (spawn-path arms: `EngineError::BinaryNotFound` → `"binary_not_found"`, `EngineError::InvalidPath` → `"invalid_spawn_arg"`); SS-engine-module-v2-delta.md v1.6.0 §SpawnOptions and §SpawnRecipe types (Model A wire/internal type assignment — I27-001); SS-ipc.md v1.24.0 §`ClientToServer::SpawnSession { opts: SpawnOptions }` (wire variant — Model A) + §`ServerToClient::SpawnAck { session_id }` (new variant — F-P41-IMP-001); ADR-0009 v1.0.2 §Decision; SS-daemon-wiring-v2-delta.md v1.11.4 §3b (SessionStateChanged emission rule) |
 | Test Name | test_BC_2_08_001_spawn_session_entry_created_within_2s |
 
 ## Related BCs
@@ -347,3 +347,9 @@ changes from `spawn_session(recipe: SpawnRecipe, harness_id, profile_id, ...)` t
   preserved verbatim. The sidecar initial state is `Launching` not `Running` (session-host
   has not yet confirmed PTY ready); this distinction matters for re-discovery.
 - SE-16d PASS: 2026-06-03T23:30:00Z (new artifact).
+
+## §Trace v1.5.3
+
+**Phase-2 Pass-1 fix burst — SS-session-manager v2.6.1 / SS-daemon-wiring-v2-delta v1.11.4 Architecture Source pin cascade** (2026-06-16T00:00:00Z):
+- Architecture Source pin(s) updated for SS-session-manager.md v2.6.0 → v2.6.1 and/or SS-daemon-wiring-v2-delta.md v1.11.3 → v1.11.4. Plain version-pin refresh — both SS spec bumps were SS-ipc Architecture Source cascade patches only; no normative API or invariant changes.
+- SE-16d monotonicity: v1.5.3 timestamp >= v1.5.2. PASS.

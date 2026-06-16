@@ -28,7 +28,7 @@ inputs:
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.0"}
 input-hash: "[pending]"
 traces_to: "Discharges deferred daemon-side obligation from S-028 adversarial review: implements BC-2.05.004 PC-1/PC-2/INV-4 (daemon broadcasts ServerToClient::HookEventReceived with timestamp_micros equal to ring HookEventRecord::timestamp_micros; single clock capture). Un-stubs event_bus_fan_out_task in monocle-runtime/src/event_bus.rs."
-# Deferred-from: S-028 adversarial review found that BC-2.05.004 v1.1.0 PC-2 / INV-4
+# Deferred-from: S-028 adversarial review found that BC-2.05.004 v1.1.1 PC-2 / INV-4
 # (daemon-side timestamp_micros obligation) was unowned. S-021 implemented the IPC types
 # only; S-028 is TUI-consumer-only. This story owns the daemon producer path.
 # BC status: BC-2.05.004 behavioral_contracts array is non-empty. status must remain
@@ -64,7 +64,7 @@ At the time of that amendment, the daemon-side producer path was unowned:
   (S-021/S-022 scope)").
 
 This story makes the streaming event ribbon path live end-to-end and satisfies BC-2.05.004
-v1.1.0 PC-2 / INV-4 at the daemon producer.
+v1.1.1 PC-2 / INV-4 at the daemon producer.
 
 ## Acceptance Criteria
 
@@ -144,7 +144,7 @@ N/A — daemon-only change; no TUI rendering in scope (rendering is owned by S-0
 - **S-028** (Wave 7): TUI consumer of `HookEventReceived.timestamp_micros` — confirms the
   consumer contract before the producer is wired. This story MUST NOT be dispatched before
   S-028 is in the `done` state, because S-028's adversarial review is the source of the
-  BC-2.05.004 v1.1.0 amendment that this story discharges.
+  BC-2.05.004 v1.1.1 amendment that this story discharges.
 
 ### Blocks
 None — this story delivers a standalone daemon-side capability. The end-to-end event ribbon
@@ -166,8 +166,8 @@ path is complete when S-028 + S-032 are both done.
 | Artifact | Estimated Tokens |
 |----------|-----------------|
 | Story spec (this file) | ~2,500 |
-| BC-2.05.004 v1.1.0 | ~1,800 |
-| BC-2.05.002 v1.0.7 (ring_tail context) | ~1,200 |
+| BC-2.05.004 v1.1.1 | ~1,800 |
+| BC-2.05.002 v1.0.8 (ring_tail context) | ~1,200 |
 | BC-2.04.011 (event bus + drop counter) | ~1,500 |
 | SS-ipc.md v1.10.0 (message types + framing) <!-- version-pin-historical: authored against SS-ipc v1.10.0 at S-032 authoring time --> | ~3,000 |
 | SS-daemon-wiring.md v1.3.0 (fan-out task context) | ~2,000 |
@@ -313,7 +313,7 @@ Files to NOT modify:
   `remove_subscriber` are complete from S-021/S-022; no changes needed.
 - `crates/monocle-tui/` — TUI rendering of `timestamp_micros` is S-028 scope; no TUI
   changes in this story.
-- Any BC or spec file — BC-2.05.004 v1.1.0 is already correct; no spec amendments needed.
+- Any BC or spec file — BC-2.05.004 v1.1.1 is already correct; no spec amendments needed.
 
 ## Forbidden Dependencies
 
@@ -343,7 +343,7 @@ The following MUST NOT appear as new imports or `Cargo.toml` dependencies after 
   sender channels. The fan-out task writes to these channels; without S-022 they do not
   exist in the daemon start sequence.
 - S-032 depends on S-028 because S-028's adversarial review authored the BC-2.05.004
-  v1.1.0 amendment that defines PC-2 / INV-4 (the timestamp_micros equality obligation
+  v1.1.1 amendment that defines PC-2 / INV-4 (the timestamp_micros equality obligation
   this story discharges). Dispatching S-032 before S-028 is done would implement a BC
   that may still be evolving.
 - S-032 blocks nothing: it is an additive daemon-side capability that does not gate any
@@ -359,7 +359,7 @@ The following MUST NOT appear as new imports or `Cargo.toml` dependencies after 
 
 **Initial authoring** (2026-06-01T14:00:00Z):
 - S-032 created to anchor the deferred daemon-side obligation surfaced during S-028
-  adversarial review (BC-2.05.004 v1.1.0 PC-2 / INV-4 — `timestamp_micros` single
+  adversarial review (BC-2.05.004 v1.1.1 PC-2 / INV-4 — `timestamp_micros` single
   clock capture equality invariant).
 - Scope: un-stub `event_bus_fan_out_task`; add `timestamp_micros: i64` to
   `EventBusHookEvent` and `ServerToClient::HookEventReceived`; integrate with
@@ -367,7 +367,7 @@ The following MUST NOT appear as new imports or `Cargo.toml` dependencies after 
 - EPIC-05 assigned: IPC subsystem (SS-05) owns `HookEventReceived` message type;
   SS-04 owns the fan-out task location (`monocle-runtime`). Story touches both.
 - Wave 8 (post-Phase-3 / Phase-5 eligible) — does NOT block Wave 7 delivery.
-- Status: draft — BC-2.05.004 v1.1.0 is authored and canonical; this story satisfies
+- Status: draft — BC-2.05.004 v1.1.1 is authored and canonical; this story satisfies
   the Spec-First Gate (S-7.01) requirement that `behavioral_contracts` be non-empty.
 - Story discharges deferred finding from S-028: "daemon HookEventReceived broadcast stub
   + BC-2.05.004 PC-2 orphaned obligation".

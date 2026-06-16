@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.3"
+version: "1.5.5"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-ipc.md, architecture/SS-daemon-wiring-v2-delta.md, architecture/adr/ADR-0010-pty-bytes-over-shared-uds-ipc.md]
-input-hash: "ddee304"
+input-hash: "1773fd1"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-05
@@ -88,7 +88,7 @@ on normal channel fullness. Under normal backpressure, PTY bytes are never dropp
    within its own per-client send buffer and does NOT propagate backpressure to the PTY reader.
 
 3b. **Per-client send buffer isolation:** Each connected TUI client has a dedicated
-   `mpsc::channel::<ServerToClient>(64)` (capacity 64, per SS-ipc.md v1.23.2 §TUI IPC Read
+   `mpsc::channel::<ServerToClient>(64)` (capacity 64, per SS-ipc.md v1.24.0 §TUI IPC Read
    Loop Pattern canonical pattern — rationale: 64 covers typical burst sizes without unbounded
    memory growth; 64×256KiB=16MiB maximum in-flight per client). The broker uses `.try_send()`
    into the per-client channel (NOT `.send().await`). A dedicated per-client writer task drains
@@ -96,7 +96,7 @@ on normal channel fullness. Under normal backpressure, PTY bytes are never dropp
    consecutive full-buffer `.try_send()` failures for the same client, the broker disconnects
    that client and logs `WARN: slow TUI client disconnected`. Other clients are unaffected by
    the disconnected client's send-buffer pressure. This is the per-client backpressure
-   isolation model per SS-daemon-wiring-v2-delta.md v1.11.3 §5d.
+   isolation model per SS-daemon-wiring-v2-delta.md v1.11.4 §5d.
 4. **Forced parser-reset protocol on ANY PTY drop:** If a PTY byte is ever dropped (sender
    error, OOM, other extreme condition), the session-host sends `HostToDaemon::PtyReset`.
    The daemon propagates `ServerToClient::PtyReset { session_id }` to all TUI clients.
@@ -143,7 +143,7 @@ on normal channel fullness. Under normal backpressure, PTY bytes are never dropp
 | L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — PtyOutput fan-out extends the session/event/prompt push capability of CAP-005 with real-time PTY byte streaming, which is transported over the same shared UDS per ADR-0010 |
 | Architecture Module | monocle-ipc (`ServerToClient::PtyOutput` variant); monocle-runtime (session-host proxy task, broker fan-out) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-daemon-wiring-v2-delta.md v1.11.3 §broker fan-out — PtyOutput messages; ADR-0010 v1.6.0 §pty-bytes-over-shared-uds-ipc; SS-session-manager.md v2.6.0 §PTY reader thread; SS-ipc.md v1.23.2 §TUI IPC Read Loop Pattern (per-client channel capacity 64, rationale) |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.11.4 §broker fan-out — PtyOutput messages; ADR-0010 v1.6.0 §pty-bytes-over-shared-uds-ipc; SS-session-manager.md v2.6.1 §PTY reader thread; SS-ipc.md v1.24.0 §TUI IPC Read Loop Pattern (per-client channel capacity 64, rationale) |
 | Cross-Ref | BC-2.05.004 (fan-out semantics for slow-client disconnect); BC-2.04.011 (hook event drop counter — separate from PTY channel drop counter) |
 | Test Name | test_BC_2_05_009_pty_output_fan_out_bounded_channel |
 
@@ -272,3 +272,9 @@ VP-TBD — PtyOutput fan-out integration tests (filled after VP creation)
 - BC-2.05.009 authored for SS-05 as part of the v1A control-center pivot BC burst.
 - ADR-0010 channel capacity 1024 from architect spec preserved verbatim.
 - SE-16d PASS: 2026-06-03T23:30:00Z (new artifact).
+
+## §Trace v1.5.5
+
+**Phase-2 Pass-1 fix burst — SS-session-manager v2.6.1 / SS-daemon-wiring-v2-delta v1.11.4 Architecture Source pin cascade** (2026-06-16T00:00:00Z):
+- Architecture Source pin(s) updated for SS-session-manager.md v2.6.0 → v2.6.1 and/or SS-daemon-wiring-v2-delta.md v1.11.3 → v1.11.4. Plain version-pin refresh — both SS spec bumps were SS-ipc Architecture Source cascade patches only; no normative API or invariant changes.
+- SE-16d monotonicity: v1.5.5 timestamp >= v1.5.4. PASS.

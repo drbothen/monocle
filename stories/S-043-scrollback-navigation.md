@@ -130,11 +130,30 @@ bar shows `[scrolled back N rows]`.
 - [ ] Implement `Action::PtyScrollUp` handler in `crates/monocle-tui/src/app.rs`: increment `pty_scroll_offsets[focused_session_id]`; clamp to `parsers[id].screen().scrollback_len()`; no IPC.
 - [ ] Implement `Action::PtyScrollDown` handler in `crates/monocle-tui/src/app.rs`: decrement toward 0; no IPC.
 - [ ] Add `PtyScrollUp` and `PtyScrollDown` to the `Action` enum in `monocle-core` if absent; bind to configurable keys (default: `Ctrl+Up` / `Ctrl+Down` while in `EmbeddedTerminal`).
-- [ ] Thread `pty_scroll_offsets[focused_session_id]` into `render_embedded_terminal()` call in `crates/monocle-tui/src/ui/embedded_terminal.rs`: pass scroll offset to `PseudoTerminal::new(parser.screen_at_offset(offset))` (or equivalent tui-term API; check tui-term 0.3.4 API for scrollback rendering).
+- [ ] Thread `pty_scroll_offsets[focused_session_id]` into `render_embedded_terminal()` in
+  `crates/monocle-tui/src/ui/embedded_terminal.rs` using the canonical tui-term 0.3.4 scrollback
+  call sequence (authoritative: `.factory/specs/research/tui-term-0.3.4-scrollback-api.md`):
+  ```rust
+  // 1. Drive the scrollback offset on the Screen (mutates which rows the Screen reports):
+  parser.screen_mut().set_scrollback(offset);  // offset from pending pty_scroll_offsets
+  // 2. Hand the now-scrolled Screen (immutable ref) to the widget:
+  let widget = tui_term::widget::PseudoTerminal::new(parser.screen())
+      .block(/* optional */).style(/* optional */);
+  frame.render_widget(widget, area);
+  // 3. Read back clamped offset for status bar display:
+  let effective_offset = parser.screen().scrollback();  // 0 == live bottom
+  ```
+  `PseudoTerminal` has NO `.scrollback()`, `.viewport()`, or `.offset()` builder method in
+  0.3.4. The offset is applied entirely on the `vt100::Screen` via `set_scrollback(n)`.
+  `set_scrollback(0)` returns to live view. The value is auto-clamped by vt100 to actual
+  scrollback size — read back `screen().scrollback()` for the effective offset for the
+  status bar `[scrolled back N rows]` affordance.
+  `scrollback_len` MUST be `> 0` at `vt100::Parser::new()` construction or there is no
+  history to view (S-039 owns this; S-043 consumes the configured value).
 - [ ] Render status bar scrolled-back indicator: when `pty_scroll_offsets[focused] > 0`, append `[scrolled back N rows]` to the status bar in the embedded terminal layout.
-- [ ] Ensure `pty_scroll_offsets[session_id]` is reset to 0 in the `ResizePane` handler (S-042 may have added this; verify and add if missing).
+- [ ] Ensure `pty_scroll_offsets[session_id]` is reset to 0 in the `ResizePane` handler. This reset is OWNED BY S-042 (resize handler in `crates/monocle-tui/src/app.rs`); S-043 asserts its existence and adds it if absent (S-042 builds first in wave 9 dependencies). S-043 does NOT re-implement the resize handler — it verifies the reset is present.
 - [ ] Ensure `pty_scroll_offsets.remove(session_id)` is called in the session GC handler (`SessionState::Terminated`).
-- [ ] Load `pty_scrollback_rows` from `~/.monocle/config.json` at TUI startup and clamp 1–10000; use in `vt100::Parser::new()` initialization (S-039 may have added this; verify and add if missing).
+- [ ] The `pty_scrollback_rows` config load is OWNED BY S-039 (see S-039 AC-008 and Architecture Compliance Rules). S-043 asserts its existence via `App::scrollback_rows` field (set by S-039); it does NOT re-load the config. If S-039 has not yet created the `App::scrollback_rows` field, verify this before implementing S-043 (dependency on S-039 must be complete).
 - [ ] Write unit test `test_BC_2_09_007_scrollup_increments_offset`: `PtyScrollUp` × 10; assert `pty_scroll_offsets["s1"] = 10`; other sessions unaffected.
 - [ ] Write unit test `test_BC_2_09_007_scrolldown_decrements_floor_0`: at offset=0; `PtyScrollDown`; assert still 0; no error.
 - [ ] Write unit test `test_BC_2_09_007_clamp_at_max`: scroll past `scrollback_len()`; assert clamped.
@@ -148,7 +167,12 @@ bar shows `[scrolled back N rows]`.
 
 - **S-039** (PTY output pipeline): `App::pty_scroll_offsets: HashMap<String, usize>` is added in S-039. `vt100::Parser` initialization with `scrollback_rows` is also in S-039. Verify these are in place before adding duplicates.
 - **S-042** (resize debounce): `pty_scroll_offsets[session_id]` reset to 0 on resize may have been added in S-042. Verify and add if missing.
-- Check tui-term 0.3.4 API to confirm how scrollback viewport offset is passed to `PseudoTerminal`. If tui-term's `PseudoTerminal` does not directly support a viewport offset, the implementer should pass a sub-screen slice from `vt100::Screen`. Read the tui-term 0.3.4 crate documentation before implementing.
+- The tui-term 0.3.4 scrollback API is settled (`.factory/specs/research/tui-term-0.3.4-scrollback-api.md`
+  — HIGH confidence, docs.rs verified). `PseudoTerminal` has NO viewport offset builder in 0.3.4.
+  Scrollback is driven via `parser.screen_mut().set_scrollback(n)` BEFORE passing `parser.screen()`
+  to `PseudoTerminal::new(...)`. No sub-screen slice manipulation needed. The implementer MUST use
+  `screen_mut()` (mutable borrow) for `set_scrollback`, then `screen()` (immutable) for `PseudoTerminal`.
+  Do NOT add `renderer.scroll()` or `widget.scrollback()` calls — these methods do not exist in 0.3.4.
 
 ## Architecture Compliance Rules
 

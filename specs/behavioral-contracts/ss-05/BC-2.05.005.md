@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.7.1"
+version: "1.7.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-27T00:00:00Z
 phase: phase-1-expansion
 inputs: [prd-expansion-scope.md, architecture/SS-ipc.md, architecture/ARCH-INDEX.md]
-input-hash: "53de1b4"
+input-hash: "054a9d0"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-05
@@ -136,7 +136,7 @@ overlay entry.
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability Traceability §SS-05 — this BC specifies the permission decision routing path, which is the highest-stakes behavioral contract in the IPC subsystem: it connects the hook caller's 300ms window to the user's keypress |
 | L2 Domain Invariants | DI-001 (hook event written before ACK — this BC's PreToolUse POST is held open pending decision, not ACK'd immediately; DI-001 applies when the ACK is finally sent with the decision); DI-002 (lock file and auth token required before endpoints accept connections — Precondition 1 cites BC-2.04.007, which depends on the lock file being valid) |
 | Architecture Module | monocle-ipc (ServerToClient::PermissionPromptQueued, ClientToServer::PermissionDecision, oneshot registry) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-ipc.md v1.23.2 §Message Types §Server-to-Client Messages; SS-ipc.md v1.23.2 §Connection Lifecycle §Phase 2 Streaming Updates; SS-ipc.md v1.23.2 §Risk Mitigations §Multiple TUI Clients Resolving the Same Prompt |
+| Architecture Source | SS-ipc.md v1.24.0 §Message Types §Server-to-Client Messages; SS-ipc.md v1.24.0 §Connection Lifecycle §Phase 2 Streaming Updates; SS-ipc.md v1.24.0 §Risk Mitigations §Multiple TUI Clients Resolving the Same Prompt |
 | Cross-Ref | BC-2.04.007 (PreToolUse hook routing — produces the event that triggers this BC); BC-HOOK-001 (fail-open semantics on timeout); BC-HOOK-002 (fail-closed semantics on timeout); BC-2.05.007 (SOQ-3 — overlay cleared on disconnect); BC-2.06.011..BC-2.06.013 (TUI keybindings that send PermissionDecision) |
 | Test File | `monocle-ipc/tests/permission_prompt.rs` |
 | Test Name | `test_BC_2_05_005_permission_prompt_queued_and_resolved` |
@@ -256,3 +256,9 @@ VP-TBD — Permission prompt queued, resolved, and dual-resolution race verifica
 - Architecture Source row: all 3 occurrences of `SS-ipc.md v1.4.0` bumped to `SS-ipc.md v1.9.0`: §Message Types §Server-to-Client Messages; §Connection Lifecycle §Phase 2 Streaming Updates; §Risk Mitigations §Multiple TUI Clients Resolving the Same Prompt.
 - Plain version-pin refresh. No substantive content propagation required — all three section headings and content anchors are unchanged between v1.4.0 and v1.9.0.
 - SE-16d monotonicity: v1.7.0 timestamp >= v1.6.0. PASS.
+
+## §Trace v1.7.2
+
+**Phase-2 Pass-1 fix burst — SS-ipc v1.24.0 Architecture Source pin cascade** (2026-06-16T00:00:00Z):
+- Architecture Source SS-ipc pin v1.23.2 → v1.24.0 (3 occurrences). Plain version-pin refresh.
+- SE-16d monotonicity: v1.7.2 timestamp >= v1.7.1. PASS.

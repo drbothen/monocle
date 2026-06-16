@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "daemon-wiring-v2-delta"
 subsystem: SS-04
-version: "1.11.3"
+version: "1.11.4"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -404,7 +404,7 @@ can use it without importing daemon-internal types.
 > was retired in v1.4.0 (I6-002 fix) because it diverged from the SS-ipc.md canonical by
 > omitting the `degraded`/`degraded_reason` fields.
 >
-> **Current canonical field summary** (SS-ipc.md v1.23.2 §Supporting Types — authoritative):
+> **Current canonical field summary** (SS-ipc.md v1.24.0 §Supporting Types — authoritative):
 > `session_id`, `display_name`, `state`, `harness_id`, `project_root`, `cwd`,
 > `spawned_by_monocle: Option<bool>`, `started_at_micros: i64`, `pty_rows: u16`,
 > `pty_cols: u16`, `degraded: bool` (`#[serde(default)]`), `degraded_reason: Option<String>`
@@ -729,9 +729,16 @@ implementer creates `SessionManager` from scratch per SS-08.
 
 ---
 
+## §Trace v1.11.4
+
+**Phase-2 Pass-1 fix burst — SS-ipc v1.24.0 Architecture Source pin update** (2026-06-16T00:00:00Z):
+
+- §Supporting Types prose reference updated: `SS-ipc.md v1.23.2 §Supporting Types` → `SS-ipc.md v1.24.0 §Supporting Types` (1 occurrence; "Current canonical field summary" callout box). Plain version-pin refresh — the §Supporting Types section heading and content (SerializedCell, SerializedColor, SessionSnapshot field list) are structurally unchanged between v1.23.2 and v1.24.0. The new §Daemon-Side Per-Client Fan-out Channel section added in v1.24.0 does not affect the Supporting Types anchor used here.
+- SE-16d monotonicity: v1.11.4 timestamp 2026-06-16 > v1.11.3 timestamp 2026-06-14. PASS.
+
 ## §Trace v1.11.3
 
-**F-P52-001 — §3 handler arms confirmed correct for Terminated-in-grace dispatch; citation updated to SS-session-manager v2.6.0** (2026-06-14):
+**F-P52-001 — §3 handler arms confirmed correct for Terminated-in-grace dispatch; citation updated to SS-session-manager v2.6.1** (2026-06-14):
 
 - **Finding (F-P52-001, IMPORTANT):** F-P52-001 identified that `rename_session()` and
   `detach_session()` lacked documented dispositions for Terminated-in-grace sessions in
@@ -754,7 +761,7 @@ implementer creates `SessionManager` from scratch per SS-08.
   }
   ```
   When `rename_session()` returns `Err(SessionError::InvalidSessionName { reason: "session
-  terminated" })` for a Terminated-in-grace entry (per SS-session-manager.md v2.6.0 §Trace
+  terminated" })` for a Terminated-in-grace entry (per SS-session-manager.md v2.6.1 §Trace
   v2.6.0), `session_error_to_code(IpcOp::Rename, &e)` maps it to `"rename_failed"`. The
   handler already sends `ServerToClient::Error { code: "rename_failed", ... }`. Correct.
 
