@@ -19,7 +19,7 @@ inputs:
   - {path: .factory/stories/S-027-overlay-rendering-status-bar.md, version: "1.10"}
   - {path: .factory/stories/S-029-killer-scenario-test.md, version: "1.3"}
   - {path: .factory/stories/S-030-config-crate-foundation.md, version: "1.1"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.43.5"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.43.6"}
 traces_to: .factory/stories/STORY-INDEX.md
 input-hash: "[pending]"
 ---

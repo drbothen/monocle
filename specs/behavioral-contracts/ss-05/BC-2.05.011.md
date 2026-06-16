@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.4"
+version: "1.2.5"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:59:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-ipc.md, architecture/SS-session-manager.md, architecture/SS-daemon-wiring-v2-delta.md, architecture/adr/ADR-0010-pty-bytes-over-shared-uds-ipc.md]
-input-hash: "975c66e"
+input-hash: "4edd5b9"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-05
@@ -186,7 +186,10 @@ the retired single-message `HostToDaemon::ScrollbackDump`.
 
 ## Story Anchor
 
-S-047 — Implement ScrollbackChunk*/ScrollbackDumpComplete/PtyReset broker fan-out + TUI receiver
+- S-046 — Implement PtyOutput broker fan-out and session-host PTY reader bounded channel
+  (owns `ServerToClient::PtyReset` variant definition in monocle-ipc + broker emission in monocle-runtime)
+- S-047 — Implement new ClientToServer IPC variants and daemon routing
+  (owns `ServerToClient::ScrollbackChunk`, `ServerToClient::ScrollbackDumpComplete` variant definition + broker fan-out, TUI receiver/chunk accumulation/parser reset/reconstruction protocol)
 
 ## VP Anchors
 
@@ -242,6 +245,15 @@ VP-TBD — Scrollback dump integration tests and PtyReset unit tests (filled aft
 - `PtyReset` 5-second status bar indicator specified from SS-session-manager.md v1.5.0 §PTY
   reader thread §TUI-surfaced PTY drop indicator.
 - SE-16d PASS: 2026-06-03T23:59:00Z (new artifact).
+
+## §Trace v1.2.5
+
+**F-PASS6-SUG-002 fix — Story Anchor co-ownership: S-047-only → S-046 + S-047** (2026-06-16):
+- Story Anchor expanded to list both co-owning stories: S-046 (PtyReset variant definition +
+  broker emission) and S-047 (ScrollbackChunk*/ScrollbackDumpComplete + TUI receiver).
+- Bidirectionally symmetric with STORY-INDEX BC Coverage (which already listed both stories)
+  and with S-046 frontmatter (behavioral_contracts: [BC-2.05.009, BC-2.05.011]).
+- No behavioral content changed. Anchor metadata only.
 
 ## §Trace v1.2.4
 

@@ -26,7 +26,7 @@ inputs:
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.09.007 (scrollback 1000 default; configurable; PtyScrollUp/Down per-session offset navigation; status bar indicator)"
-# BC status at S-043 authoring time: BC-2.09.007 v1.1.2 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status: non-empty; status draft pending Phase-2 adversarial convergence gate (authoritative versions in inputs: frontmatter)
 ---
 
 # S-043: Scrollback Navigation — PtyScrollUp/Down, Per-Session Offsets, Configurable Capacity

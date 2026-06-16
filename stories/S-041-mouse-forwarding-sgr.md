@@ -26,7 +26,7 @@ inputs:
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.09.003 (mouse events forwarded to PTY in SGR encoding when in EmbeddedTerminal; scoped EnableMouseCapture; SGR 1006 mode)"
-# BC status at S-041 authoring time: BC-2.09.003 v1.5.1 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status: non-empty; status draft pending Phase-2 adversarial convergence gate (authoritative versions in inputs: frontmatter)
 # Clustering rationale: BC-2.09.003 is standalone because it adds distinct effectful terminal I/O:
 # EnableMouseCapture + SGR 1006 h/l writes at EmbeddedTerminal entry/exit — these are different lifecycle
 # operations from keyboard setup (S-040). The scoped mouse capture contract (CC-GLOBAL-MOUSE-CAPTURE gate)

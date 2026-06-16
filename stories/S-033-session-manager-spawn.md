@@ -27,7 +27,7 @@ inputs:
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.08.001 (spawn_session with SessionHostSpawner; SessionEntry; sidecar; SpawnAck) and BC-2.08.008 (SessionStateChanged{Launching} broadcast on spawn)"
-# BC status at S-033 authoring time: BC-2.08.001 v1.5.3, BC-2.08.008 v1.3.3 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status: non-empty; status draft pending Phase-2 adversarial convergence gate (authoritative versions in inputs: frontmatter)
 ---
 
 # S-033: SessionManager::spawn_session — SessionHostSpawner, SessionEntry, Sidecar, SpawnAck, and SessionStateChanged{Launching}

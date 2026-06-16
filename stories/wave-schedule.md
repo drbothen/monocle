@@ -1,7 +1,7 @@
 ---
 document_type: plan-doc
 level: L4
-version: "1.7"
+version: "1.8"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
@@ -28,7 +28,7 @@ traces_to: "dependency-graph.md; implements wave execution schedule derived from
 | Wave 2 | S-002, S-003, S-004, S-005, S-006, S-010, S-011, S-013, S-014 | 41 | Partial parallel (internal order below) | Wave 2 gate: all 9 stories delivered and CI green |
 | Wave 3 | S-007, S-008, S-009, S-012, S-015 | 34 | 4 parallel + S-009 serial after S-008 (Decision 1) | Wave 3 gate: all 5 stories delivered; 22/22 BCs green |
 | Wave 8 | S-032, S-DAEMON-WIRE-FIX-001, S-033..S-038, S-045..S-048 | 74 | S-033 is root; tiered within-wave serial ordering (see §Wave 8) | Wave 8 gate: BC-2.08.001..008 + BC-2.05.009..011 + BC-2.06.025 + BC-2.03.005..008 green; adversarial 3 clean passes |
-| Wave 9 | S-039..S-044 | 42 | S-039 is root; S-040/S-042/S-043 parallel after S-039; S-041 after S-040; S-044 after S-040+S-041 | Wave 9 gate: BC-2.09.001..009 green; adversarial 3 clean passes |
+| Wave 9 | S-039..S-044 | 42 | S-039 is root; S-040 and S-042 parallel after S-039; S-043 serial after S-042; S-041 after S-040; S-044 after S-040+S-041 | Wave 9 gate: BC-2.09.001..009 green; adversarial 3 clean passes |
 
 **Total implementation waves: 3 (+ Wave 0 pre-Phase-3) for Phase-3 original scope. v1A adds Waves 8–9.**
 **Phase 3 dispatch gate: Wave 3 complete + Wave 0 complete (S-PHASE-3-PREP)**
@@ -207,7 +207,7 @@ Note: S-009 moved to Wave 3 (Decision 1 — S-008→S-009 dependency added; S-00
 ## Wave 9: Embedded PTY (v1A)
 
 **Timing:** After Wave 8 gate passes.
-**Parallelism:** S-039 is the sequential root. After S-039: S-040, S-042, S-043 can run in parallel. S-041 waits for S-040. S-044 waits for S-040 AND S-041.
+**Parallelism:** S-039 is the sequential root. After S-039: S-040 and S-042 can run in parallel. S-043 runs serially after S-042 (S-042 owns the `pty_scroll_offsets[session_id]=0` reset in the ResizePane handler that S-043 verifies). S-041 waits for S-040. S-044 waits for S-040 AND S-041.
 
 ### Wave 9 Internal Ordering
 
@@ -216,8 +216,10 @@ Note: S-009 moved to Wave 3 (Decision 1 — S-008→S-009 dependency added; S-00
 
 **Tier 2 (after S-039):**
 - S-040: depends on S-039(W9)
-- S-042: depends on S-039(W9) — fully parallel with S-040/S-043
-- S-043: depends on S-039(W9) — fully parallel with S-040/S-042
+- S-042: depends on S-039(W9) — fully parallel with S-040 (S-042 blocks S-043)
+
+**Tier 2b (after S-042 — serial):**
+- S-043: depends on S-039(W9), S-042(W9) — serial after S-042; S-042 owns the pty_scroll_offsets reset that S-043 verifies
 
 **Tier 3 (after S-040):**
 - S-041: depends on S-040(W9)
@@ -230,7 +232,7 @@ Note: S-009 moved to Wave 3 (Decision 1 — S-008→S-009 dependency added; S-00
 | S-039 | PTY Output Pipeline | 8 | — (Wave 9 root) | draft |
 | S-040 | Full-Fidelity Keyboard Forwarding | 8 | S-039 | draft |
 | S-042 | PTY Resize Detection + Debounce | 5 | S-039 | draft |
-| S-043 | Scrollback Navigation | 3 | S-039 | draft |
+| S-043 | Scrollback Navigation | 3 | S-039, S-042 | draft |
 | S-041 | Mouse Forwarding | 5 | S-040 | draft |
 | S-044 | EmbeddedTerminal + SessionCreation AppMode Transitions | 13 | S-040, S-041 | draft |
 
@@ -259,6 +261,12 @@ Before dispatching Phase 3 (TDD Implementation):
 - [ ] Human approval: "Phase 2 story corpus approved; proceed to Phase 3 TDD"
 
 ---
+
+## §Trace v1.8
+
+**Pass-6 adversarial fix — S-042→S-043 serial ordering propagated to wave-schedule** (2026-06-16):
+- F-PASS6-IMP-001: Wave 9 was incorrectly describing S-043 as fully parallel with S-040/S-042 after S-039. S-043 depends on S-042 (canonical: S-042 owns the `pty_scroll_offsets[session_id]=0` reset in the ResizePane handler that S-043 verifies per AC-009 / invariant 3a). Corrected in four locations: Wave Overview table, Wave 9 Parallelism paragraph, Wave 9 Internal Ordering Tier 2 (S-042 annotation) + new Tier 2b (S-043 entry), and Wave 9 deps table S-043 "Depends On" column (S-039 → S-039, S-042).
+- Dependency graph confirmed acyclic: S-039 (root) → {S-040, S-042} → {S-041 via S-040; S-043 via S-042} → S-044 (via S-040+S-041). No new cycles.
 
 ## §Trace v1.7
 

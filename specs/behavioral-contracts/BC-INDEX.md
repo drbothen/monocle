@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.43.5"
+version: "1.43.6"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-15T00:00:00Z
@@ -1223,6 +1223,18 @@ SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. 
 - BC-INDEX version: 1.40.4 → 1.40.5. No BC ID additions or retirements. No H1 title changes.
 
 SE-16d monotonicity: v1.40.5 timestamp 2026-06-14T20:00:00Z > v1.40.4 timestamp 2026-06-14T19:00:00Z. PASS.
+
+## §Trace v1.43.6
+
+**Phase-2 Pass-6 fix burst — BC-2.05.011 v1.2.5 Story Anchor co-ownership: S-047-only → S-046+S-047** (2026-06-16):
+
+BC version bump in this dispatch:
+- BC-2.05.011 v1.2.4 → v1.2.5 (F-PASS6-SUG-002: Story Anchor expanded from S-047-only to S-046+S-047; bidirectionally symmetric with STORY-INDEX BC Coverage row which already listed both stories, and with S-046 frontmatter behavioral_contracts: [BC-2.05.009, BC-2.05.011]). Anchor metadata only — no behavioral content changed.
+
+No BC H1 title changes. No BC ID additions or retirements. BC count unchanged: 138 active.
+BC-INDEX version: 1.43.5 → 1.43.6.
+
+SE-16d monotonicity: v1.43.6 timestamp 2026-06-16 = v1.43.5 timestamp 2026-06-16. PASS (same-day sequential patch).
 
 ## §Trace v1.43.5
 

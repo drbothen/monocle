@@ -28,7 +28,7 @@ inputs:
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.09.002 (full-fidelity keyboard forwarding — all v1A input classes), BC-2.09.004 (Kitty keyboard protocol CSI u sequences), BC-2.09.005 (bracketed paste)"
-# BC status at S-040 authoring time: BC-2.09.002 v1.1.3, BC-2.09.004 v1.0.3, BC-2.09.005 v1.0.2 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status: non-empty; status draft pending Phase-2 adversarial convergence gate (authoritative versions in inputs: frontmatter)
 # Clustering rationale: BC-2.09.004 and BC-2.09.005 story anchors in their respective BCs both explicitly state "Same story as BC-2.09.002".
 # key_event_to_pty_bytes(), is_kitty_enhanced_key(), encode_kitty_key(), and bracketed-paste dispatch live in the same pure-core module.
 # All three BCs share the same monocle-core file, the same action dispatch arm, and the same KeyInput IPC send path.

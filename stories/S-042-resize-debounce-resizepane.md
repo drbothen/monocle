@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-042
 epic_id: EPIC-09
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -26,7 +26,6 @@ inputs:
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.09.006 (resize detection, 50ms debounce, ResizePane IPC, local parser immediate resize)"
-# BC status at S-042 authoring time: BC-2.09.006 v1.1.2 — non-empty; status draft pending Phase-2 adversarial convergence gate
 # NOTE: BC-2.09.006 was ABSENT from the original Burst B dispatch list but EXISTS in the BC file set.
 # It covers resize (PTY and parser resized within 2 render ticks; 50ms debounce) and must be covered per
 # the story-writer obligation to cover all v1A domain capabilities. This story is the coverage vehicle.
@@ -213,4 +212,4 @@ Within the 30% context window bound. No split required.
 
 **Dependency Anchors:**
 - S-042 depends on S-039 because S-039 adds `pty_parsers`, `AppMode::EmbeddedTerminal`, and the render loop infrastructure that resize detection hooks into.
-- S-042 does not block other SS-09 stories — it is an independent correctness feature (resize propagation) that can land in parallel with S-040/S-041/S-043/S-044 after S-039.
+- S-042 BLOCKS S-043 (listed in frontmatter `blocks: [S-043]`). S-042 owns the `pty_scroll_offsets[session_id]=0` reset in the ResizePane handler (Tasks checklist item: "Also reset `pty_scroll_offsets[session_id]` to 0"). S-043 verifies that reset is present (S-043 AC-009 / invariant 3a) and explicitly states "This reset is OWNED BY S-042". S-043 must not be dispatched until S-042 is complete. S-042 may land in parallel with S-040, S-041, and S-044 after S-039.

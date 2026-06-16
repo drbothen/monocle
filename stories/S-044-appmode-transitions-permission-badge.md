@@ -28,7 +28,7 @@ inputs:
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.09.008 (EmbeddedTerminal/SessionCreation AppMode enter/exit transitions; wizard auto-transition; SpawnAck; launching_session_id) and BC-2.09.009 (permission badge + bell while in EmbeddedTerminal or SessionCreation)"
-# BC status at S-044 authoring time: BC-2.09.008 v1.3.4, BC-2.09.009 v1.1.3 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status: non-empty; status draft pending Phase-2 adversarial convergence gate (authoritative versions in inputs: frontmatter)
 # Clustering rationale: BC-2.09.008 (AppMode transitions) and BC-2.09.009 (permission badge+bell) are clustered
 # because the badge-and-bell behavior fires INSIDE EmbeddedTerminal and SessionCreation modes, which BC-2.09.008 defines.
 # Implementing one without the other leaves an incomplete AppMode entry/exit contract. BC-2.09.009's

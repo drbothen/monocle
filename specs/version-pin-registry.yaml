@@ -204,14 +204,14 @@ ARCH-INDEX:
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.43.5"
-  last_bump_commit: "[Phase-2 Pass-2 fix burst — §Trace v1.43.5: SS-embedded-pty v1.7.0 Architecture Source pin propagation across BC-2.09.003/004/005/006/007/008/009]"
+  current_version: "1.43.6"
+  last_bump_commit: "[Phase-2 Pass-6 fix burst — §Trace v1.43.6: BC-2.05.011 v1.2.5 Story Anchor co-ownership S-047-only → S-046+S-047]"
   last_bump_date: "2026-06-16"
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.34"
-  last_bump_commit: "[Phase-2 Pass-2 fix burst — BC-2.05.011 co-ownership row S-046+S-047 added; story-writer conformance burst 10-fix]"
+  current_version: "5.37"
+  last_bump_commit: "[Phase-2 Pass-5 fix burst — S-042→S-043 dep edge; AC-range corrections BC-2.05.009/010/BC-2.09.006/007; S-040/S-041 Blocks columns]"
   last_bump_date: "2026-06-16"
 
 VP-INDEX:
@@ -737,8 +737,8 @@ BC-2.05.010:
 
 BC-2.05.011:
   path: specs/behavioral-contracts/ss-05/BC-2.05.011.md
-  current_version: "1.2.4"
-  last_bump_commit: "[Phase-2 Pass-1 fix burst cascade — SS-ipc pin updated 1.23.2 → 1.24.0 in Architecture Source cell]"
+  current_version: "1.2.5"
+  last_bump_commit: "[F-PASS6-SUG-002 fix — Story Anchor co-ownership S-047-only → S-046+S-047; anchor metadata only]"
   last_bump_date: "2026-06-16"
 
 BC-2.06.025:
