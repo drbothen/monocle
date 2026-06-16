@@ -1,40 +1,41 @@
-# monocle — Resume From Here (Phase-2 adversarial Pass-15 next, 2026-06-16)
+# monocle — Resume From Here (Phase-2 adversarial Pass-16 next, 2026-06-16)
 
 Read this file first, then CLAUDE.md, then `.factory/STATE.md`
-(`next_session_resume_protocol` block, v7.70, for the full checkpoint +
+(`next_session_resume_protocol` block, v7.71, for the full checkpoint +
 section E ratified decisions + durable_task_register).
 
 ---
 
-## Status at Pause — Phase-2 Adversarial Pass-14 Findings Resolved
+## Status at Pause — Phase-2 Adversarial Pass-15 Findings Resolved
 
-**Phase-2 adversarial Pass-14 FINDINGS (0C/1I/2S) — ALL RESOLVED.** factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'`.
+**Phase-2 adversarial Pass-15 FINDINGS (0C/1I/2S) — ALL RESOLVED.** factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'`.
 
 51 stories (311 pts) total: 32 done (192 pts, Phases 1-3), 16 not_started (v1A Waves 8-9),
 1 blocked (S-PHASE-3-PREP), 2 draft.
 
-BC-INDEX v1.43.7, ARCH-INDEX v1.0.30, EVAL-INDEX v1.17, STORY-INDEX v5.42, sprint-state v1.44, wave-schedule v1.8.
+BC-INDEX v1.43.7, ARCH-INDEX v1.0.30, EVAL-INDEX v1.17, STORY-INDEX v5.43, sprint-state v1.45, wave-schedule v1.8.
 SS-ipc v1.24.0, SS-session-manager v2.6.1, SS-daemon-wiring-v2-delta v1.11.4.
 SS-embedded-pty v1.7.0, SS-deps-pin-manifest-v2-delta v1.0.2.
 S-046 v1.1 (Pass-14: AC-004 rewritten per BC-2.05.009 PC-3). HS-EXP-013 v1.1 (Pass-14: step-8 BC attribution corrected).
-POL-11 PASS. POL-12 PASS. compute-input-hash: 98 clusters updated.
+STORY-INDEX v5.43 (Pass-15: S-045 title sync F-P15-IMP-001). S-039 v1.3 (Pass-15: ScrollbackDumpComplete annotation). sprint-state v1.45 (Pass-15: S-045 title sync).
+POL-11 PASS. POL-12 PASS. compute-input-hash updated.
 
 **D-315 RATIFIED**: pre-pivot disposition ratified by Joshua Magady (2026-06-16).
 Keep all 3 active (S-032, S-DAEMON-WIRE-FIX-001, S-PHASE-3-PREP). 32 done-historical. 0 archive/retire.
 pre-pivot-disposition-recommendation.md v1.1 (status: ratified). D-305 caveat CLEARED.
 
-**Adversarial counter: 0/3 — RESET** (Pass-14 found Important missed by Pass-13; fresh-context catch validated). Pass-15 = clean-candidate 1/3 (fresh streak).
+**Adversarial counter: 0/3 — RESET** (Pass-15 found Important + Suggestions; not clean). Pass-16 = clean-candidate 1/3 (fresh streak).
 5 original story gaps in durable_task_register (BURST-GAP-001..005) + F-P1-S-005 + F-P2-S03 (process-gaps) + F-P14-SUG-001 (DropCounterUpdate field-name drift; deferred; route architect).
 
 develop @ 2141adc — no v1A production code written.
-STATE.md = v7.70.
+STATE.md = v7.71.
 
 ---
 
 ## Next Action: Phase-2 Adversarial Pass-15 (IMMEDIATE)
 
 Dispatch `vsdd-factory:adversary` fresh-context on the full Phase-2 story corpus
-(S-033..S-048 + epics EPIC-08/09 + STORY-INDEX v5.42 + sprint-state v1.44 + all updated BC files).
+(S-033..S-048 + epics EPIC-08/09 + STORY-INDEX v5.43 + sprint-state v1.45 + all updated BC files).
 Pass-15 = clean-candidate 1/3 (fresh streak, counter reset). Counter 0/3.
 
 ### Phase-2 Burst A–G + Pass-1 through Pass-6 Fix Bursts Complete
@@ -61,13 +62,14 @@ All 7 bursts executed and committed to factory-artifacts. Pass-1 through Pass-6 
 | Pass-9 fix | story-writer + state-manager | S-033 v1.3 AC-009d BC-2.03.008 PC-3 spawn_unsupported; STORY-INDEX (at Pass-9 authoring time v5.41) 26 BC Coverage Title cells normalized; S-033 body BC table title aligned; version-pin-registry STORY-INDEX→5.41 | DONE (D-311) |
 | Pass-10 fix | story-writer + state-manager | S-045 v1.2 session_error_to_code task verify-not-readd; S-039 v1.2 blocks prose direct-edge S-040/S-042/S-043 (SE-25); D-315 pre-pivot ratification annotation | DONE (D-311) |
 | Pass-11 fix | story-writer + state-manager | S-045 v1.3 complete 9-surface verify-not-readd sweep; S-038 v1.1 Trace section + test-ref fix; sprint-state errata comment 49→51 | DONE (D-311) |
-| Pass-12 fix | story-writer + state-manager | SE-25 global bidirectional symmetry: 23 story blocks back-propagation; STORY-INDEX v5.42; dependency-graph-expansion v2.3 Wave 4-7 adjacency; sprint-state v1.44 S-032 blocks added | DONE |
+| Pass-12 fix | story-writer + state-manager | SE-25 global bidirectional symmetry: 23 story blocks back-propagation; STORY-INDEX v5.42 (at Pass-12 authoring time); dependency-graph-expansion v2.3 Wave 4-7 adjacency; sprint-state v1.44 S-032 blocks added | DONE |
 | Pass-13 CLEAN | — | 0C/0I/1S — CLEAN. Counter 0/3 → 1/3. F-P13-SUG-001 deferred (BC-2.06.024 stale title; cosmetic; closed-wave historical table; corpus unchanged). | DONE |
 | Pass-14 fix | story-writer + product-owner + state-manager | F-P14-IMP-001: S-046 v1.1 AC-004 rewrite (BC-2.05.009 PC-3; stderr-WARN-only; no StatusUpdate; PtyReset Invariant 5; EC-206); F-P14-SUG-002: HS-EXP-013 v1.1 + EVAL-INDEX v1.17 BC attribution; F-P14-SUG-001 logged deferred; ADVERSARIAL COUNTER RESET 1/3 → 0/3 | DONE |
+| Pass-15 fix | story-writer + state-manager | F-P15-IMP-001: STORY-INDEX (was v5.42 at Pass-15 authoring time)→v5.43 S-045 title synced to canonical H1; S-039 v1.2→v1.3 ScrollbackDumpComplete full-6-field-shape annotation; sprint-state (was v1.44)→v1.45 S-045 title sync; version-pin-registry STORY-INDEX→5.43. ADVERSARIAL COUNTER REMAINS 0/3 (Pass-15 not clean). | DONE |
 
-### Next: Phase-2 Adversarial Pass-15
+### Next: Phase-2 Adversarial Pass-16
 
-3 consecutive clean passes required. Adversarial counter: 0/3 (fresh streak; Pass-15 = clean-candidate 1/3).
+3 consecutive clean passes required. Adversarial counter: 0/3 (Pass-15 found findings; fresh streak reset). Pass-16 = clean-candidate 1/3.
 
 After convergence: fresh consistency audit (vsdd-factory:consistency-validator),
 then Phase-2 human approval gate, then Phase-3 TDD implementation for Waves 8-9.
@@ -76,7 +78,7 @@ then Phase-2 human approval gate, then Phase-3 TDD implementation for Waves 8-9.
 (S-032, S-DAEMON-WIRE-FIX-001, S-PHASE-3-PREP). 32 done-historical. 0 archive/retire.
 Bulk-archive NOT PERFORMED. D-305 caveat cleared.
 
-**Pass-14 resolved.** Counter RESET to 0/3 (fresh streak). Pass-15 = clean-candidate 1/3.
+**Pass-15 resolved.** Counter remains 0/3 (Pass-15 found findings; not clean). Pass-16 = clean-candidate 1/3 (fresh streak).
 
 ---
 
@@ -124,8 +126,8 @@ All versions derived from `.factory/specs/version-pin-registry.yaml` (source of 
 | ADR-0011 | v1.2.1 |
 | BC-INDEX | v1.43.7 (138 BCs; 25 v1A BCs) |
 | EVAL-INDEX | v1.17 |
-| STORY-INDEX | v5.42 |
-| sprint-state.yaml | v1.44 |
+| STORY-INDEX | v5.43 |
+| sprint-state.yaml | v1.45 |
 
 ---
 
