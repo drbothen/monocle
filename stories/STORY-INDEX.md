@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.40"
+version: "5.41"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -197,31 +197,31 @@ traces_to: .factory/specs/prd.md
 | BC-2.07.005 | Profile Picker: `Ctrl-P` Override Shows Picker | S-031 | AC-001, AC-002, AC-005..AC-007, AC-009, AC-010 | YES |
 | BC-2.07.006 | CCR Detection via `ccr_path` Config Field | S-030 | AC-009..AC-010 | YES |
 
-| BC-2.03.005 | ClaudeCodeModule::spawn_recipe() — Happy Path | S-045 | AC-001, AC-002, AC-008, AC-009 | YES |
-| BC-2.03.006 | ClaudeCodeModule::spawn_recipe() — CCR Injection | S-045 | AC-003, AC-004 | YES |
-| BC-2.03.007 | ClaudeCodeModule::spawn_recipe() — Error Cases | S-045 | AC-005, AC-006, AC-007 | YES |
-| BC-2.03.008 | EngineModule::spawn_recipe() Default Trait Impl | S-033 | AC-009c | YES |
-| BC-2.05.009 | PtyOutput Fan-out Broker: Bounded Channel + Backpressure | S-046 | AC-001..AC-008 | YES |
-| BC-2.05.010 | IPC Lifecycle Variants: Spawn/Kill/Detach/Attach/Rename/Input/Resize | S-047 | AC-001..AC-012 | YES |
-| BC-2.05.011 | Scrollback Protocol: PtyReset/ScrollbackChunk/ScrollbackComplete | S-046 (PtyReset variant + broker emission), S-047 (TUI handler + scrollback protocol: AC-007..AC-010) | S-046: AC-005 (PtyReset emit); S-047: AC-007..AC-010 (scrollback + TUI reset) | YES |
-| BC-2.06.025 | Sessions Panel: Multi-Project Grouping, Lifecycle Actions, State-Aware Blocking | S-048 | AC-001..AC-012 | YES |
-| BC-2.08.001 | SessionManager::spawn_session — SessionHostSpawner + SpawnAck Handshake | S-033 | AC-001..AC-009b | YES |
-| BC-2.08.002 | SessionManager::rediscover_sessions — setsid Persistence + State Handling | S-036 | AC-001..AC-002, AC-015 | YES |
-| BC-2.08.003 | SessionManager::kill_session — DaemonToHost::Kill + Watchdog | S-034 | AC-001..AC-011 | YES |
-| BC-2.08.004 | daemon_start_sequence step-8b: rediscover_sessions on Restart | S-036 | AC-003..AC-014 | YES |
-| BC-2.08.005 | SessionManager GC Task — Terminated Sessions Removed After 10s | S-037 | AC-001..AC-012 | YES |
-| BC-2.08.006 | Hook Auto-Injection: hooks-settings.json Writer + SpawnOptions.hooks_settings_path Population | S-038 | AC-001..AC-013 | YES |
-| BC-2.08.007 | SessionManager::attach_session / detach_session — Chunked Scrollback + SO_PEERCRED | S-035 | AC-001..AC-014 | YES |
-| BC-2.08.008 | SessionStateChanged Broadcast on All Session Lifecycle Transitions | S-033, S-034, S-035 | S-033: AC-010..AC-012 (Launching); S-034: AC-012 (Terminating/Terminated); S-035: AC-015 (Running/Detached) | YES |
-| BC-2.09.001 | PTY Output Pipeline: vt100::Parser + PseudoTerminal Render + PtyOutput IPC Handler | S-039 | AC-001..AC-007 | YES |
-| BC-2.09.002 | key_event_to_pty_bytes: ANSI/Kitty Encoding | S-040 | AC-001..AC-005 | YES |
-| BC-2.09.003 | mouse_event_to_pty_bytes: SGR 1006 Encoding + Scoped Entry/Exit | S-041 | AC-001..AC-006 | YES |
-| BC-2.09.004 | Kitty Keyboard Protocol (CSI u) Support | S-040 | AC-006..AC-009 | YES |
-| BC-2.09.005 | Bracketed Paste: KeyInput::Paste IPC + ESC[?2004h/l Bracket Wrapping | S-040 | AC-010..AC-013 | YES |
-| BC-2.09.006 | PTY Resize: 50ms Debounce + ResizePane IPC | S-042 | AC-001..AC-012 | YES |
-| BC-2.09.007 | Scrollback Navigation: PtyScrollUp/Down + Per-Session Offsets | S-043 | AC-001..AC-014 | YES |
-| BC-2.09.008 | EmbeddedTerminal + SessionCreation AppMode Transitions | S-044 | AC-001..AC-007 | YES |
-| BC-2.09.009 | Permission Badge + Bell on PermissionPromptQueued in EmbeddedTerminal | S-044 | AC-008..AC-011 | YES |
+| BC-2.03.005 | ClaudeCodeModule.spawn_recipe() — Happy-Path Recipe Assembly | S-045 | AC-001, AC-002, AC-008, AC-009 | YES |
+| BC-2.03.006 | ClaudeCodeModule.spawn_recipe() — CCR Base URL Injection | S-045 | AC-003, AC-004 | YES |
+| BC-2.03.007 | spawn_recipe() Error Cases — BinaryNotFound and InvalidPath | S-045 | AC-005, AC-006, AC-007 | YES |
+| BC-2.03.008 | Default spawn_recipe() Returns UnsupportedOperation | S-033 | AC-009c, AC-009d | YES |
+| BC-2.05.009 | PtyOutput Fan-Out — Per-Session Bounded Channel (1024) with Drop Counter (stderr WARN) + PtyReset TUI Recovery | S-046 | AC-001..AC-008 | YES |
+| BC-2.05.010 | New ClientToServer IPC Variants — SpawnSession, KillSession, KeyInput, ResizePane, DetachSession, RenameSession, AttachSession | S-047 | AC-001..AC-012 | YES |
+| BC-2.05.011 | New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset | S-046 (PtyReset variant + broker emission), S-047 (TUI handler + scrollback protocol: AC-007..AC-010) | S-046: AC-005 (PtyReset emit); S-047: AC-007..AC-010 (scrollback + TUI reset) | YES |
+| BC-2.06.025 | Multi-Session / Multi-Project Sessions Panel — Grouped by Project, Fast Switching, TUI Lifecycle Actions | S-048 | AC-001..AC-012 | YES |
+| BC-2.08.001 | Session Spawn — SessionHostSpawner Called Within 2s; SessionEntry Created | S-033 | AC-001..AC-009b | YES |
+| BC-2.08.002 | Session Persistence — session-host Survives Graceful Daemon Restart | S-036 | AC-001..AC-002, AC-015 | YES |
+| BC-2.08.003 | Session Kill — SIGTERM Delivered via DaemonToHost::Kill Within 500ms | S-034 | AC-001..AC-011 | YES |
+| BC-2.08.004 | Re-Discovery — All Alive Sessions Visible After Daemon Restart Within 5s; UDS Bind Blocked Until Complete | S-036 | AC-003..AC-014 | YES |
+| BC-2.08.005 | Session GC — Terminated Sessions Removed from Registry After 10s Grace Period | S-037 | AC-001..AC-012 | YES |
+| BC-2.08.006 | Hook Auto-Injection — `--settings` Arg Present in Session-Host Child Args Within 2s of Spawn | S-038 | AC-001..AC-013 | YES |
+| BC-2.08.007 | Attach/Detach — Chunked Scrollback (ScrollbackChunk*+ScrollbackDumpComplete) on Attach; session-host Stays Alive on Detach | S-035 | AC-001..AC-014 | YES |
+| BC-2.08.008 | SessionStateChanged — Daemon Emits on Every SessionState Transition; Delivered to All TUI Clients; Ordering Relative to SessionListUpdate | S-033, S-034, S-035 | S-033: AC-010..AC-012 (Launching); S-034: AC-012 (Terminating/Terminated); S-035: AC-015 (Running/Detached) | YES |
+| BC-2.09.001 | PTY Output Renders Within 100ms of Byte Receipt at TUI | S-039 | AC-001..AC-007 | YES |
+| BC-2.09.002 | Full-Fidelity Keyboard Forwarding — All v1A Input Classes Reach PTY stdin | S-040 | AC-001..AC-005 | YES |
+| BC-2.09.003 | Mouse Events Forwarded to PTY in SGR Encoding When in EmbeddedTerminal | S-041 | AC-001..AC-006 | YES |
+| BC-2.09.004 | Kitty Keyboard Protocol — Enhanced Key Events Forwarded as CSI u Sequences | S-040 | AC-006..AC-009 | YES |
+| BC-2.09.005 | Bracketed Paste — Paste Events Wrapped in Bracket Sequences Before Forwarding | S-040 | AC-010..AC-013 | YES |
+| BC-2.09.006 | Resize — PTY and Parser Resized Within 2 Render Ticks of Pane Area Change; 50ms Debounce | S-042 | AC-001..AC-012 | YES |
+| BC-2.09.007 | Scrollback — 1000 Rows Default; Configurable; PtyScrollUp/Down Navigate | S-043 | AC-001..AC-014 | YES |
+| BC-2.09.008 | EmbeddedTerminal AppMode Enter/Exit Transitions; SessionCreation Wizard Auto-Transitions to EmbeddedTerminal | S-044 | AC-001..AC-007 | YES |
+| BC-2.09.009 | Permission Badge+Bell — Status Bar Badge + Audible Bell Within One Render Tick While in EmbeddedTerminal or SessionCreation | S-044 | AC-008..AC-011 | YES |
 
 | BC-HOOK-001 | PreToolUse Hook Fail-Open Semantics (No Server Found) | S-DTU-001 | AC-001 | YES |
 | BC-HOOK-002 | Non-PreToolUse Hooks Fail-Closed (No Server Found) | S-DTU-001 | AC-001 | YES |
@@ -498,6 +498,14 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.41
+
+**Phase-2 Pass-9 fix burst: S-033 BC-2.03.008 PC-3 coverage (AC-009d) + BC Coverage Title normalization** (2026-06-16):
+
+- **F-PASS9-CRIT-001 (S-033 BC-2.03.008 PC-3 gap):** Added AC-009d to S-033 covering BC-2.03.008 PC-3 — the canonical wire code `"spawn_unsupported"` mapping for `EngineError::UnsupportedOperation`. AC-009d traces to BC-2.03.008 postcondition 3 and includes the EC-112 integration test vector (`test_BC_2_03_008_EC_112_unsupported_operation_maps_to_spawn_unsupported`). The `session_error_to_code()` task entry corrected to require `EngineError::UnsupportedOperation(_) => "spawn_unsupported"` BEFORE the `_ => "invalid_request"` fallback (per SS-session-manager.md §session_error_to_code). Architecture Compliance Rule corrected identically. S-033 bumped v1.2→v1.3. BC Coverage Table BC-2.03.008 AC range updated: `AC-009c` → `AC-009c, AC-009d`. Coverage status remains YES.
+- **F-PASS9-SUG-001 (BC Coverage Title normalization):** 26 BC Coverage Table Title cells normalized to verbatim BC-INDEX H1 text. Affected epics: EPIC-03 (BC-2.03.005..007, BC-2.03.008), EPIC-05 (BC-2.05.009..011), EPIC-06 (BC-2.06.025), EPIC-08 (BC-2.08.001..008), EPIC-09 (BC-2.09.001..009). No AC ranges or Coverage status changed — title-column alignment only.
+- SE-16d monotonicity: v5.41 timestamp 2026-06-16 >= v5.40 timestamp 2026-06-16. PASS.
 
 ## §Trace v5.40
 

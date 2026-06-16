@@ -210,8 +210,8 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.40"
-  last_bump_commit: "[Phase-2 Pass-8 fix burst — EPIC-08+EPIC-03 BC Coverage AC ranges corrected; S-045 AC renumber (AC-009→AC-008, AC-010→AC-009); §Trace v5.39+v5.40 appended]"
+  current_version: "5.41"
+  last_bump_commit: "[Phase-2 Pass-9 fix burst — BC-2.03.008 AC-009d PC-3 coverage added; 26 BC Coverage Title cells normalized to BC-INDEX canonical short form; §Trace v5.41 appended]"
   last_bump_date: "2026-06-16"
 
 VP-INDEX:

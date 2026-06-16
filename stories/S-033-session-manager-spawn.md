@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-033
 epic_id: EPIC-08
-version: "1.2"
+version: "1.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -145,6 +145,31 @@ override `spawn_recipe()` is called (a no-override test double):
 - Unit test `test_BC_2_03_008_default_spawn_recipe_unsupported_operation`: a no-override
   `EngineModule` impl returns `Err(EngineError::UnsupportedOperation("spawn_recipe"))`.
 
+### AC-009d (traces to BC-2.03.008 postcondition 3 — UnsupportedOperation maps to "spawn_unsupported" wire code)
+
+When `spawn_session()` calls `engine_module.spawn_recipe(&opts)` and the engine returns
+`Err(EngineError::UnsupportedOperation("spawn_recipe"))` (the default-impl path for a
+non-overriding engine), the IPC handler MUST surface this as
+`ServerToClient::Error { code: "spawn_unsupported", ... }`, NOT as `"invalid_request"`.
+
+This requires `session_error_to_code(IpcOp::Spawn, &e)` to resolve as follows:
+- Outer match on `SessionError::EngineError(inner)` → enters inner `EngineError` match.
+- Inner match on `EngineError::UnsupportedOperation(_)` → returns `"spawn_unsupported"`.
+- Inner `_ =>` fallback returns `"invalid_request"` ONLY for future non-exhaustive variants.
+
+**Canonical EC-112 integration test vector:**
+`session_error_to_code(IpcOp::Spawn, &SessionError::EngineError(EngineError::UnsupportedOperation("spawn_recipe"))) == "spawn_unsupported"`
+
+- Unit test `test_BC_2_03_008_EC_112_unsupported_operation_maps_to_spawn_unsupported`: assert
+  `session_error_to_code(IpcOp::Spawn, &SessionError::EngineError(UnsupportedOperation("spawn_recipe"))) == "spawn_unsupported"`.
+- Integration test: `MockEngineModule` with no `spawn_recipe()` override → `spawn_session(opts)` →
+  IPC handler sends `ServerToClient::Error { code: "spawn_unsupported" }` to the requesting client.
+
+**Relationship to AC-009c:** AC-009c covers "the default impl returns `Err(UnsupportedOperation)`";
+AC-009d covers "that `UnsupportedOperation` propagates through `session_error_to_code()` to the
+wire code `"spawn_unsupported"` — not collapsed to `"invalid_request"`." These are complementary:
+AC-009c validates the trait method; AC-009d validates the error mapping pathway.
+
 ### AC-010 (traces to BC-2.08.008 postcondition 1 — no silent state transitions)
 
 `SessionStateChanged` is emitted for EVERY `SessionState` transition without exception.
@@ -172,14 +197,15 @@ guaranteed by TWO properties:
 - [ ] Implement `SessionHostSpawner` trait (`spawn()` async fn) and `SpawnedHostHandle` struct.
 - [ ] Implement `RealSessionHostSpawner`: invokes `monocle-session-host` binary via `std::process::Command` with `pre_exec(|| setsid())` and passes `--session-id`, `--runtime-dir`, `--binary`, `--args`, `--env`, `--cwd` CLI args.
 - [ ] Implement `MockSessionHostSpawner`: in-memory fake that returns a configurable `Ok(SpawnedHostHandle)` or error; used in all unit tests.
-- [ ] Implement `session_error_to_code(op: IpcOp, e: &SessionError) -> &'static str` with full exhaustive outer match and mandatory `_ => "invalid_request"` on the inner `EngineError` match (per SS-session-manager.md §Error handling).
+- [ ] Implement `session_error_to_code(op: IpcOp, e: &SessionError) -> &'static str` with full exhaustive outer match on `SessionError` and, for the `SessionError::EngineError(inner)` arm, an inner match on `EngineError` that MUST include both arms in order: `EngineError::UnsupportedOperation(_) => "spawn_unsupported"` FIRST, then `_ => "invalid_request"` as the mandatory non-exhaustive fallback (per SS-session-manager.md §session_error_to_code and BC-2.03.008 PC-3). The `UnsupportedOperation` arm MUST NOT be absent or collapsed into the catch-all — that would be the F-P44-IMP-001 regression.
 - [ ] Implement `spawn_session(opts: SpawnOptions)`: call `spawn_recipe()` first, then `spawner.spawn()`, then write sidecar via `tempfile::persist`, then insert `SessionEntry{state: Launching, host_conn: None}`, then spawn post-spawn monitor `tokio::spawn`, then publish `SessionStateChanged{Launching}` + `SessionListUpdate` under mutex.
 - [ ] Implement post-spawn monitor as a `tokio::spawn` background task: polls UDS socket connectable (20ms backoff, 30s total timeout), verifies SO_PEERCRED, stores `host_conn: Some(SessionHostConnection { writer, proxy_task: None })`, receives `StateChanged` messages, on `StateChanged{Running}` starts PTY proxy task and transitions to Running state (emits `SessionStateChanged{Running}` + `SessionListUpdate`).
 - [ ] Implement IPC handler skeleton: generate UUID → send `SpawnAck` → call `opts.with_daemon_fields()` → call `spawn_session()` → on error send `ServerToClient::Error`.
 - [ ] Add `spawn_recipe(&self, opts: &SpawnOptions) -> Result<SpawnRecipe, EngineError>` to the `EngineModule` trait in `monocle-core/src/engine.rs` with a default impl returning `Err(EngineError::UnsupportedOperation("spawn_recipe"))`. (BC-2.03.008)
 - [ ] Define `EngineError` enum in `monocle-core/src/engine.rs`: `BinaryNotFound(String)`, `InvalidPath(String)`, `UnsupportedOperation(&'static str)`; derive `thiserror::Error`, `Debug`; apply `#[non_exhaustive]`. (BC-2.03.008)
 - [ ] Add `SpawnOptions` and `SpawnRecipe` type declarations (or re-exports per SS-engine-module-v2-delta.md) to `monocle-core/src/engine.rs` as required by the trait method signature. (BC-2.03.008)
-- [ ] Write unit test `test_BC_2_03_008_default_spawn_recipe_unsupported_operation`: a no-override `EngineModule` impl (test double) calls the default `spawn_recipe()` and asserts `Err(EngineError::UnsupportedOperation("spawn_recipe"))`. (BC-2.03.008)
+- [ ] Write unit test `test_BC_2_03_008_default_spawn_recipe_unsupported_operation`: a no-override `EngineModule` impl (test double) calls the default `spawn_recipe()` and asserts `Err(EngineError::UnsupportedOperation("spawn_recipe"))`. (BC-2.03.008 PC-1)
+- [ ] Write unit test `test_BC_2_03_008_EC_112_unsupported_operation_maps_to_spawn_unsupported`: assert `session_error_to_code(IpcOp::Spawn, &SessionError::EngineError(EngineError::UnsupportedOperation("spawn_recipe"))) == "spawn_unsupported"`. Verify `"invalid_request"` is NOT returned. (BC-2.03.008 PC-3 / EC-112)
 - [ ] Add `SessionError` enum with all 9 variants per SS-session-manager.md §SessionError taxonomy.
 - [ ] Add `From<EngineError> for SessionError` via `#[from]` on `EngineError(#[from] monocle_core::engine::EngineError)`.
 - [ ] Implement orphan-kill logic: on sidecar write failure, SIGTERM → 2s wait → SIGKILL to `SpawnedHostHandle.pid`.
@@ -203,7 +229,7 @@ guaranteed by TWO properties:
 - `session_id` is `String` everywhere — UUID v4 value, never a typed `uuid::Uuid` at IPC/registry boundaries (SS-session-manager.md §session_id type ruling).
 - All sidecar writes use `tempfile::persist`. No `std::fs::write` (CLAUDE.md conventions).
 - `SessionError` does NOT carry `#[non_exhaustive]`; the outer match in `session_error_to_code()` must be compiler-enforced exhaustive.
-- `EngineError` carries `#[non_exhaustive]`; the inner match MUST have `_ => "invalid_request"` — the compiler requires it because `EngineError` is cross-crate and non-exhaustive.
+- `EngineError` carries `#[non_exhaustive]`; the inner match in `session_error_to_code()` MUST include `EngineError::UnsupportedOperation(_) => "spawn_unsupported"` BEFORE the mandatory `_ => "invalid_request"` catch-all (per BC-2.03.008 PC-3 and SS-session-manager.md §session_error_to_code). The `UnsupportedOperation` arm MUST appear explicitly — omitting it and relying on the `_` fallback is the F-P44-IMP-001 regression pattern (collapses `UnsupportedOperation` to `"invalid_request"` instead of `"spawn_unsupported"`). The `_ =>` fallback is still required because `EngineError` is cross-crate and `#[non_exhaustive]`.
 - `SessionStateChanged` MUST be published BEFORE `SessionListUpdate` for the same transition. Both `.try_send()` calls under the same mutex hold.
 - Per-client channel capacity is 64 (`mpsc::channel(64)`). If `SessionStateChanged` succeeds but `SessionListUpdate` fails (buffer full), client is IMMEDIATELY disconnected (BC-2.08.008 PC-3).
 - Forbidden dependency: `monocle-runtime` MUST NOT depend on `monocle-tui`. The `monocle-tui` crate is a TUI consumer; `monocle-runtime` is the producer.
@@ -266,7 +292,7 @@ Estimate is within the 30% context window bound for a Sonnet-class model (~200k 
 
 | BC | Title | Version |
 |----|-------|---------|
-| BC-2.03.008 | EngineModule::spawn_recipe() Default Trait Impl — UnsupportedOperation for Non-Overriding Engines | (see inputs: frontmatter) |
+| BC-2.03.008 | Default spawn_recipe() Returns UnsupportedOperation | (see inputs: frontmatter) |
 | BC-2.08.001 | Session Spawn — SessionHostSpawner Called Within 2s; SessionEntry Created | (see inputs: frontmatter) |
 | BC-2.08.008 | SessionStateChanged — Daemon Emits on Every SessionState Transition; Delivered to All TUI Clients; Ordering Relative to SessionListUpdate | (see inputs: frontmatter) |
 
