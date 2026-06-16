@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-047
 epic_id: EPIC-05
-version: "1.2"
+version: "1.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -52,7 +52,7 @@ requests. The daemon receives `opts` and calls `engine_module.spawn_recipe(&opts
 build `SpawnRecipe` internally (Model A — I27-001). The TUI NEVER sends a `SpawnRecipe`
 directly. SpawnOptions includes `{ project_root, worktree_root, session_id, ccr_base_url, ... }`.
 
-### AC-002 (traces to BC-2.05.010 postcondition 5 — KillSession delivers SIGTERM; idempotent on Terminating and Terminated)
+### AC-002 (traces to BC-2.05.010 KillSession postcondition 2 — daemon calls kill_session(); idempotent on Terminating and Terminated)
 
 `ClientToServer::KillSession { session_id: String }` causes the daemon to send `SIGTERM` to the
 session's PTY process. `session_id` is a `String` (UUID-as-String) on the wire.
@@ -65,7 +65,7 @@ is reserved for `DetachSession` on a `Launching` session (F-P50-001).
 No `ServerToClient::Error` is emitted for `KillSession` on a `Terminating` session — the
 IPC handler returns silently after the idempotent `Ok(())` from `kill_session()`.
 
-### AC-003 (traces to BC-2.05.010 postcondition 6/7 — KeyInput and ResizePane routing via SessionManager → DaemonToHost)
+### AC-003 (traces to BC-2.05.010 KeyInput postcondition 1 / ResizePane postcondition 1 — KeyInput and ResizePane routing via SessionManager → DaemonToHost)
 
 `ClientToServer::KeyInput { session_id: String, bytes: Vec<u8> }` — the daemon IPC handler
 calls `session_manager.send_key_input(&session_id, bytes)`, which sends
@@ -86,7 +86,7 @@ Zero-dim clamp: if `rows == 0` OR `cols == 0`, clamp to 1 BEFORE sending `Daemon
 After clamping, WARN-drop all transport errors for resize (do NOT propagate as
 `ServerToClient::Error` — resize failures are advisory only per BC-2.05.010 PC-6 carve-out).
 
-### AC-004 (traces to BC-2.05.010 postcondition 8 — DetachSession blocks on Launching, defensive path only)
+### AC-004 (traces to BC-2.05.010 DetachSession postcondition 1 — DetachSession received; blocks on Launching, defensive path only)
 
 `ClientToServer::DetachSession { session_id }` — daemon stops forwarding PTY output to
 the requesting client but does NOT stop the session. If the session is in `Launching`
@@ -94,7 +94,7 @@ state, return `ServerToClient::Error { code: "session_not_ready", ... }` (defens
 — the TUI should not send DetachSession during Launching per BC-2.06.025; this error is
 a guard, not a primary flow).
 
-### AC-005 (traces to BC-2.05.010 postcondition 9 — RenameSession updates display name)
+### AC-005 (traces to BC-2.05.010 RenameSession postcondition 1 — RenameSession received; daemon calls rename_session(); updates display name)
 
 `ClientToServer::RenameSession { session_id, new_name: String }` — daemon calls
 `session_manager.rename_session(&session_id, new_name)`, which updates
@@ -103,7 +103,7 @@ clients. The field is `new_name` (canonical per SS-ipc.md §ClientToServer Renam
 and BC-2.05.010 PC-4a). `name` MUST NOT be used — it is an incorrect alias.
 Rename is ALLOWED when the session is in `Launching` or `Running` state.
 
-### AC-006 (traces to BC-2.05.010 postcondition 10 — AttachSession triggers scrollback dump sequence)
+### AC-006 (traces to BC-2.05.010 AttachSession postcondition 1 — AttachSession received; daemon calls attach_session(); triggers scrollback dump sequence)
 
 `ClientToServer::AttachSession { session_id }` — daemon begins subscribing the requesting
 client to the session's PTY output AND immediately initiates a scrollback dump sequence.
@@ -138,7 +138,7 @@ When `ServerToClient::PtyReset { session_id }` is received by the TUI:
 - Display a status bar message: "[PTY reset — <session_id_short>]" for 5 seconds.
 - Re-trigger `ClientToServer::AttachSession { session_id }` automatically.
 
-### AC-010 (traces to BC-2.05.011 invariant 1 — pending_pty_bytes buffer during dump)
+### AC-010 (traces to BC-2.05.011 invariant 6 — pending_pty_bytes buffer during dump)
 
 During a scrollback dump (between AttachSession receipt and ScrollbackDumpComplete send):
 - Live PTY bytes for this client are buffered in a `pending_pty_bytes: VecDeque<Bytes>`
@@ -149,7 +149,7 @@ During a scrollback dump (between AttachSession receipt and ScrollbackDumpComple
 - If the session exits during dump-in-progress, `PtyReset` is emitted instead of
   `ScrollbackDumpComplete`.
 
-### AC-011 (traces to BC-2.05.010 invariant 4 — No-silent-failure invariant)
+### AC-011 (traces to BC-2.05.010 invariant 6 — No-silent-failure invariant)
 
 For all 7 `ClientToServer` variants (except ResizePane per AC-003 carve-out):
 - Every failure produces a `ServerToClient::Error { code: <one of the canonical 12 wire codes>, message: String }`.
@@ -160,7 +160,7 @@ For all 7 `ClientToServer` variants (except ResizePane per AC-003 carve-out):
 - `KillSession` on `Terminating`/`Terminated`: idempotent `Ok(())` — NO `ServerToClient::Error` emitted
   (idempotent success is NOT a failure). This is consistent with BC-2.08.003 Invariant 2.
 
-### AC-012 (traces to BC-2.05.010 invariant 5 — canonical 12 wire error codes are the CLOSED set for Phase 1)
+### AC-012 (traces to BC-2.05.010 invariant 6 / BC-2.05.010 Architecture Source §ServerToClient::Error — canonical 12 wire error codes are the CLOSED set for Phase 1)
 
 The complete and closed set of wire error codes for `ServerToClient::Error.code` is the
 canonical 12-code taxonomy defined in SS-ipc.md §ServerToClient::Error v1A taxonomy
@@ -424,6 +424,7 @@ extensions — the client/server lifecycle message set — which is the core cap
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 1.3 | 2026-06-16 | vsdd-factory:story-writer | Corpus-wide AC-trace-citation audit (F-P20-CRIT-001 class): re-anchored AC-002..AC-006 from flat global PC numbers (PC-5..PC-10) to subsection-scoped clauses (KillSession/KeyInput/ResizePane/DetachSession/RenameSession/AttachSession PC-1); AC-010 BC-2.05.011 invariant 1→6 (pending_pty_bytes); AC-011 invariant 4→6 (No-silent-failure); AC-012 invariant 5→invariant 6 / Architecture Source §ServerToClient::Error. AC bodies unchanged. |
 | 1.2 | 2026-06-16 | vsdd-factory:story-writer | F-P19-SUG-001: Bump BC-2.05.011 input pin "1.2.4" → "1.2.5" (metadata-only Story-Anchor delta; no behavioral change). |
 | 1.1 | 2026-06-16 | vsdd-factory:story-writer | Initial decomposition — F-P16-IMP-002 era; established 7 ClientToServer variants, SpawnOptions, ResizePane zero-dim clamp, scrollback protocol, and IPC handler arm ownership table. |
 | 1.0 | 2026-06-15 | vsdd-factory:story-writer | Initial decomposition |

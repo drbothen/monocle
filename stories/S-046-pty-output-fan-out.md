@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-046
 epic_id: EPIC-05
-version: "1.2"
+version: "1.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -85,7 +85,7 @@ to the TUI exclusively via `ServerToClient::PtyReset` (the 5-second status bar i
 is handled in S-047/S-048 — the broker's responsibility ends at emitting `PtyReset`, per
 BC-2.05.009 Invariant 5).
 
-### AC-005 (traces to BC-2.05.009 postcondition 5 — PtyReset emitted on broker task drop)
+### AC-005 (traces to BC-2.05.009 invariant 4 — PtyReset emitted on broker task drop)
 
 When the PTY writer task for a session is dropped (session exit, OOM kill, unexpected error):
 - The broker emits `ServerToClient::PtyReset { session_id }` to ALL connected clients
@@ -93,7 +93,7 @@ When the PTY writer task for a session is dropped (session exit, OOM kill, unexp
 - The emit is fire-and-forget per-client (3-strike rules apply). Emission failure for one
   client does not prevent emission to others.
 
-### AC-006 (traces to BC-2.05.009 invariant 1 — hook events priority over PtyOutput in select!)
+### AC-006 (traces to BC-2.05.009 invariant 6 — hook events priority over PtyOutput in select!)
 
 The broker task uses `tokio::select!` with two arms:
 1. Hook/control event channel (higher priority — biased).
@@ -102,13 +102,13 @@ The broker task uses `tokio::select!` with two arms:
 When both arms are ready simultaneously, the hook/control event is always processed first.
 This prevents PTY saturation from delaying permission prompts or overlay commands.
 
-### AC-007 (traces to BC-2.05.009 invariant 2 — no global unbounded_channel for PTY)
+### AC-007 (traces to BC-2.05.009 invariant 3 — no .try_send(drop) on PTY reader channel; .send().await backpressure only; no global unbounded_channel)
 
 There is NO `tokio::mpsc::unbounded_channel` call in the PTY fan-out code path.
 `cargo grep unbounded_channel crates/monocle-runtime/src/` must return 0 results
 in files related to PTY output.
 
-### AC-008 (traces to BC-2.05.009 invariant 3 — PtyReset protocol triggers AttachSession re-trigger)
+### AC-008 (traces to BC-2.05.009 invariant 4 — PtyReset protocol triggers AttachSession re-trigger)
 
 When a TUI receives `ServerToClient::PtyReset`, the TUI-side handler:
 - Clears the local scrollback buffer for that session.
@@ -260,6 +260,7 @@ managed by SS-05 per ARCH-INDEX Subsystem Registry SS-05 (monocle-ipc, daemon IP
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 1.3 | 2026-06-16 | vsdd-factory:story-writer | Corpus-wide AC-trace-citation audit (F-P20-CRIT-001 class): AC-005 "postcondition 5"→"invariant 4" (PtyReset on drop); AC-006 "invariant 1"→"invariant 6" (hook priority); AC-007 "invariant 2"→"invariant 3" (backpressure/.send().await); AC-008 "invariant 3"→"invariant 4" (PtyReset protocol). AC bodies unchanged. |
 | 1.0 | 2026-06-15 | vsdd-factory:story-writer | Initial decomposition |
 | 1.2 | 2026-06-16 | vsdd-factory:story-writer | F-P19-SUG-001: Bump BC-2.05.011 input pin "1.2.4" → "1.2.5" (metadata-only Story-Anchor delta; no behavioral change). |
 | 1.1 | 2026-06-16 | vsdd-factory:story-writer | F-P14-IMP-001: Rewrite AC-004 to conform to BC-2.05.009 PC-3 + Invariant 5 — `pty_drop_counter` is stderr-WARN-only; removed false `ServerToClient::StatusUpdate` reference (no such variant exists); corrected trace header from "postcondition 4" to "PC-3 + Invariant 5"; fixed EC-206 to remove `StatusUpdate` emission reference |

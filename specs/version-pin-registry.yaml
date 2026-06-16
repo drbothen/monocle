@@ -228,8 +228,8 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.17"
-  last_bump_commit: "[F-P14-SUG-002 — HS-EXP-013 BC Coverage Traceability row: added BC-2.09.008 (Esc→exit→Overlay AppMode-transition owner); HS-EXP-013 v1.0→v1.1 step-8 attribution fix]"
+  current_version: "1.18"
+  last_bump_commit: "[F-P20-SUG-001 — HS-EXP-013 wave 8→9, HS-EXP-015 wave 8→9; Wave Coverage Summary split Wave 8/9; HS-EXP-013 v1.1→v1.2, HS-EXP-015 v1.2→v1.3]"
   last_bump_date: "2026-06-16"
 
 nfr-catalog:

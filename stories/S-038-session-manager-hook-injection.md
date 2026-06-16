@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-038
 epic_id: EPIC-08
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -95,27 +95,27 @@ via its own internal lifecycle mechanism regardless of hooks-settings.json conte
 axum router handles it, but it is NOT configured through hooks-settings.json.
 The exact JSON schema (field names, nesting depth, URL format) is defined in BC-2.04.010.
 
-### AC-005 (traces to BC-2.08.006 postcondition 5 — shared file; NOT per-session)
+### AC-005 (traces to BC-2.08.006 invariant 3 — shared file; NOT per-session)
 
 `hooks-settings.json` is a SHARED file written once per daemon startup, NOT once per
 session spawn. All sessions spawned by the daemon share the same `hooks-settings.json`
 at `<runtime_dir>/hooks-settings.json`. The file is NOT re-written on each `spawn_session()`
 call unless the daemon's hook endpoint URL changes.
 
-### AC-006 (traces to BC-2.08.006 postcondition 6 — atomic write via tempfile::persist)
+### AC-006 (traces to BC-2.08.006 invariant 4 / CLAUDE.md atomic-write convention — atomic write via tempfile::persist; no dedicated BC clause for atomicity)
 
 The initial write of `hooks-settings.json` (and any update) MUST use `tempfile::persist`
 for atomic rename-based write. No partial write is visible to spawned session-hosts.
 File mode: readable by owner only (0o600 on Unix).
 
-### AC-007 (traces to BC-2.08.006 postcondition 7 — file written before first spawn_session call)
+### AC-007 (traces to BC-2.08.006 invariant 4 — file written at daemon startup before any spawn_recipe() is called)
 
 `hooks-settings.json` MUST exist and be fully written before the FIRST `spawn_session()` call
 is dispatched. The daemon startup sequence MUST write the file during initialization
 (before the IPC listen socket is bound, so no client can issue `SpawnSession` before the file
 exists). If the write fails, the daemon MUST log a WARN and abort the startup sequence.
 
-### AC-008 (traces to BC-2.08.006 postcondition 8 — SpawnOptions.hooks_settings_path populated; argv injection owned by S-045)
+### AC-008 (traces to BC-2.08.006 postcondition 2 / architecture ownership boundary — SpawnOptions.hooks_settings_path carried to session-host args; argv injection chain per BC-2.03.005 PC-1)
 
 S-038 owns EXACTLY TWO responsibilities for hook injection:
 1. **Write the file** (`write_hooks_settings_json()` at `SessionManager::new()` initialization, before IPC bind).
@@ -132,13 +132,13 @@ via `SpawnOptions`; S-045 consumes it.
 - S-038 owns: `write_hooks_settings_json()`, `hooks_settings_path: PathBuf` on `SessionManager`, setting `opts.hooks_settings_path` before calling `spawn_recipe()`.
 - S-045 owns: reading `opts.hooks_settings_path` and appending `--settings <path>` to `SpawnRecipe.argv`.
 
-### AC-009 (traces to BC-2.08.006 invariant 1 — file path is canonicalized; no symlinks)
+### AC-009 (traces to BC-2.08.006 postcondition 1 / SS-conventions path handling — file path is canonicalized; no symlinks; no dedicated BC clause for canonicalization)
 
 The path passed in `--settings` MUST be an absolute, canonicalized path (via
 `std::fs::canonicalize` or equivalent). Relative paths and symlinks are NOT permitted.
 This prevents path resolution issues when the session-host process changes directory.
 
-### AC-010 (traces to BC-2.08.006 invariant 2 — authority for hook key names and URL format is BC-2.04.010)
+### AC-010 (traces to BC-2.08.006 postcondition 3 — hook key names and URL format authoritative source: BC-2.04.010 PC-3)
 
 This story does NOT define the hook key names or URL format. BC-2.04.010 is the single
 authoritative source for that contract. If BC-2.04.010 and BC-2.08.006 conflict on key
@@ -315,5 +315,6 @@ insertion into `SpawnRecipe.argv` is owned by S-045 (ClaudeCodeModule::spawn_rec
 
 | Version | Change | Pass |
 |---------|--------|------|
+| v1.2 | Corpus-wide AC-trace-citation audit (F-P20-CRIT-001 class): AC-005 "postcondition 5"→"invariant 3" (shared file); AC-006 "postcondition 6"→"invariant 4 / CLAUDE.md" (atomic write; no dedicated BC clause); AC-007 "postcondition 7"→"invariant 4" (write at startup); AC-008 "postcondition 8"→"postcondition 2 / architecture boundary"; AC-009 "invariant 1"→"postcondition 1 / SS-conventions" (canonicalization; no dedicated BC clause); AC-010 "invariant 2"→"postcondition 3" (BC-2.04.010 authority). AC bodies unchanged. Genuine BC gaps: AC-006 atomic write and AC-009 path canonicalization have no dedicated clause in BC-2.08.006 — both trace to project conventions. | Phase-2 |
 | v1.0 | Initial decomposition | Phase-2 |
 | v1.1 | F-P11-SUG-002 cross-ref correction: Tasks test name corrected to `test_BC_2_03_005_spawn_recipe_happy_path_binary_args_env_cwd` (dangling reference fixed) | Pass-11 |

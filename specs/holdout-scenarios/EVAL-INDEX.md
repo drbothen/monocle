@@ -1,10 +1,10 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.17"
+version: "1.18"
 status: active
 producer: vsdd-factory:state-manager
-timestamp: 2026-06-16T00:00:00Z
+timestamp: 2026-06-16T12:00:00Z
 phase: 2
 visibility: holdout-evaluator-only
 inputs:
@@ -52,9 +52,9 @@ input-hash: "[pending]"
 | HS-EXP-010 | Permission Overlay Lifecycle: Queue → Timeout-Resolved → Clear from Both Paths | 6 | S-022, S-026 | must-pass |
 | HS-EXP-011 | Session Survives Graceful Daemon Restart — PTY Stream Re-Attached, SessionEntry Visible | 8 | S-036 | must-pass |
 | HS-EXP-012 | Re-Discovery Completes Before UDS Bind — No TUI Connection Accepted During Discovery Window | 8 | S-036 | must-pass |
-| HS-EXP-013 | Permission Badge+Bell While in EmbeddedTerminal — SUG-3 Guarantee: Prompt Never Silently Queued | 8 | S-044 | must-pass |
+| HS-EXP-013 | Permission Badge+Bell While in EmbeddedTerminal — SUG-3 Guarantee: Prompt Never Silently Queued | 9 | S-044 | must-pass |
 | HS-EXP-014 | Hook Auto-Injection Under Concurrent Spawns — Shared hooks-settings.json Not Clobbered; All Sessions Get Correct `--settings` Arg | 8 | S-033, S-038 | must-pass |
-| HS-EXP-015 | Full-Fidelity Keyboard Forwarding — Kitty + SGR Mouse + Bracketed Paste Reach PTY stdin | 8 | S-040, S-041 | must-pass |
+| HS-EXP-015 | Full-Fidelity Keyboard Forwarding — Kitty + SGR Mouse + Bracketed Paste Reach PTY stdin | 9 | S-040, S-041 | must-pass |
 
 ---
 
@@ -66,10 +66,11 @@ input-hash: "[pending]"
 | Wave 5 | HS-EXP-001, HS-EXP-002 | S-017, S-018 | SOQ-2 ordering; fail-open timeout |
 | Wave 6 | HS-EXP-003, HS-EXP-004, HS-EXP-005, HS-EXP-006, HS-EXP-010 | S-022, S-023, S-025, S-026 | InitialState gap-free; SOQ-3 ordering; state rebuild; Ctrl-\\ survival |
 | Wave 7 | HS-EXP-008 | S-026, S-027, S-029 | Killer scenario ≤6 keystrokes |
-| Wave 8 | HS-EXP-011, HS-EXP-012, HS-EXP-013, HS-EXP-014, HS-EXP-015 | S-036, S-044, S-033, S-038, S-040, S-041 | Session persistence; re-discovery ordering; SUG-3 badge+bell; hook injection concurrency; keyboard fidelity |
+| Wave 8 | HS-EXP-011, HS-EXP-012, HS-EXP-014 | S-036, S-033, S-038 | Session persistence; re-discovery ordering; hook injection concurrency |
+| Wave 9 | HS-EXP-013, HS-EXP-015 | S-044, S-040, S-041 | SUG-3 badge+bell (EmbeddedTerminal); full-fidelity keyboard forwarding |
 
 **Total expansion holdout scenarios: 15**
-**Coverage: ≥1 scenario per wave (Wave 4-8 all covered)**
+**Coverage: ≥1 scenario per wave (Wave 4-9 all covered)**
 **Coverage: ≥1 scenario per BC grouping (SS-04, SS-05, SS-06, SS-07, SS-08, SS-09)**
 
 ---
@@ -98,13 +99,13 @@ input-hash: "[pending]"
 
 ## Relationship to Existing Holdout Scenarios
 
-This index covers Waves 4-7 only. The existing holdout scenarios for Waves 1-3 remain in
+This index covers Waves 4-9. The existing holdout scenarios for Waves 1-3 remain in
 `.factory/stories/holdout-scenarios.md` and are NOT superseded by this document.
 
 Phase 4 holdout evaluation MUST evaluate ALL holdout scenarios:
 - `.factory/stories/holdout-scenarios.md` — Waves 1-3 (HS-W1-001..HS-W3-006, 14 scenarios)
 - This index + scenario files — Waves 4-7 (HS-EXP-001..HS-EXP-010, 10 scenarios)
-- This index + scenario files — Wave 8 v1A (HS-EXP-011..HS-EXP-015, 5 scenarios)
+- This index + scenario files — Waves 8-9 v1A (HS-EXP-011..HS-EXP-015, 5 scenarios: HS-EXP-011/012/014 = Wave 8; HS-EXP-013/015 = Wave 9)
 - **Combined total: 29 holdout scenarios**
 
 ---
@@ -160,6 +161,18 @@ Phase 4 holdout evaluation MUST evaluate ALL holdout scenarios:
 **Bump:** 1.5 → 1.6.
 **Scope:** `traces_to:` field: `STORY-INDEX.md v4.7` → `STORY-INDEX.md v5.20` (Option 1 per ADR-0007 §Decision; EVAL-INDEX is an active INDEX document; its traces_to must reflect canonical current STORY-INDEX version).
 **SE-16d PASS:** 2026-05-30 >= 2026-05-30 (patch; no normative behavioral change).
+
+## §Trace v1.18 — F-P20-SUG-001: HS-EXP-013 and HS-EXP-015 wave corrected from 8 → 9 (2026-06-16)
+
+**Bump:** 1.17 → 1.18.
+**Scope:** Scenario Index table and Wave Coverage Summary corrected.
+- HS-EXP-013: Wave column `8` → `9`. Stories tested: S-044, which is Wave 9 per STORY-INDEX (EPIC-09, Wave 9 row: S-039/S-040/S-041/S-042/S-043/S-044).
+- HS-EXP-015: Wave column `8` → `9`. Stories tested: S-040, S-041, both Wave 9 per STORY-INDEX (EPIC-09 Embedded PTY scope).
+- Wave Coverage Summary: Wave 8 row revised to HS-EXP-011/012/014 only (S-036/S-033/S-038). Wave 9 row added: HS-EXP-013, HS-EXP-015 (S-044/S-040/S-041).
+- Coverage statement updated: "Wave 4-8 all covered" → "Wave 4-9 all covered".
+- HS-EXP-013 scenario file: v1.1 → v1.2 (wave: 8 → 9 + §Trace entry). HS-EXP-015 scenario file: v1.2 → v1.3 (wave: 8 → 9 + §Trace entry).
+- The `wave:` field convention is confirmed as **tested-story wave** (the wave of the stories the holdout exercises), not authoring wave. Evidence: EVAL-INDEX §Trace v1.10 set `wave: 8` concurrently with `stories_tested: [S-TBD-session-manager]` for Wave 8 stories, and EVAL-INDEX Wave Coverage Summary groups holdouts by tested-story wave throughout.
+**SE-16d PASS:** 2026-06-16 >= 2026-06-16 (same day as v1.17). PASS.
 
 ## §Trace v1.17 — F-P14-SUG-002: HS-EXP-013 BC Coverage Traceability row adds BC-2.09.008 (2026-06-16)
 

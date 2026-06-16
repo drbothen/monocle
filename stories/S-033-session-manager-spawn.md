@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-033
 epic_id: EPIC-08
-version: "1.4"
+version: "1.5"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -183,7 +183,7 @@ is NOT a transition and MUST NOT emit `SessionStateChanged`.
 send buffers (capacity 64 per SS-ipc.md §TUI IPC Read Loop Pattern). If no TUI clients are
 connected, the broker discards the message with no error.
 
-### AC-012 (traces to BC-2.08.008 postcondition 4b — SpawnAck before SessionStateChanged{Launching})
+### AC-012 (traces to BC-2.08.008 postcondition 5 — SpawnAck before SessionStateChanged{Launching})
 
 `ServerToClient::SpawnAck { session_id }` is delivered to the requesting TUI client BEFORE
 any broker-published `SessionStateChanged { Launching }` for the same session. This is
@@ -353,4 +353,5 @@ those belong to S-034, S-035, and S-047 respectively.
 
 | Pass | Date | Change |
 |------|------|--------|
+| v1.5 | 2026-06-16 | Corpus-wide AC-trace-citation audit (F-P20-CRIT-001 class): AC-012 "postcondition 4b"→"postcondition 5" (SpawnAck ordering guarantee is in BC-2.08.008 PC-5 §SessionCreation wizard auto-advance, not PC-4b §InitialState push). AC body unchanged. |
 | v1.4 | 2026-06-16 | F-P16-IMP-001: Moved `SessionState` definition from `monocle-runtime/src/session_manager/mod.rs` to `crates/monocle-ipc/src/lib.rs` (canonical wire-type location). Added 5-variant canonical list (Launching/Running/Detached/Terminating/Terminated; Created/Killed RETIRED). Updated Tasks, File Structure, and Architecture Compliance Rules accordingly. monocle-ipc MUST NOT depend on monocle-runtime — placing SessionState in monocle-ipc resolves the crate-residency issue and aligns with S-048. |

@@ -1,7 +1,8 @@
 ---
 scenario_id: HS-EXP-015
 title: "Full-Fidelity Keyboard Forwarding — Kitty + SGR Mouse + Bracketed Paste Reach PTY stdin in EmbeddedTerminal"
-wave: 8
+version: "1.3"
+wave: 9
 stories_tested: [S-040, S-041]
 source_bcs: [BC-2.09.002, BC-2.09.003, BC-2.09.004, BC-2.09.005]
 severity: must-pass
@@ -12,7 +13,7 @@ timestamp: 2026-06-03T23:45:00Z
 
 # HS-EXP-015: Full-Fidelity Keyboard Forwarding — Kitty + SGR Mouse + Bracketed Paste Reach PTY stdin in EmbeddedTerminal
 
-**Wave:** 8
+**Wave:** 9
 **Source BC:** BC-2.09.002 (PC-1..PC-5: input class forwarding), BC-2.09.003 (PC-1: SGR mouse), BC-2.09.004 (PC-1: Kitty CSI u), BC-2.09.005 (PC-1: bracketed paste)
 **Stories Tested:** S-040, S-041
 
@@ -97,6 +98,13 @@ tests the IPC channel's bounded ordering guarantee under load.
 ---
 
 ## §Trace
+
+### v1.3 — F-P20-SUG-001: wave label corrected from 8 → 9 (2026-06-16)
+
+- **Finding (F-P20-SUG-001):** `wave:` frontmatter and body `**Wave:**` heading carried `8`, but `stories_tested: [S-040, S-041]` and both S-040 (Full-Fidelity Keyboard Forwarding) and S-041 (Mouse Forwarding) are Wave 9 per STORY-INDEX (Wave 9 row: S-039/S-040/S-041/S-042/S-043/S-044, EPIC-09 Embedded PTY scope). The `wave:` field tracks the wave of the tested stories, not the authoring wave.
+- **Fix:** `wave: 8` → `wave: 9` in both frontmatter and body heading. `version:` field added to frontmatter (was absent). No behavioral change to steps or satisfaction criteria.
+- **Version:** v1.2 (implicit) → v1.3 (PATCH: metadata correction only).
+- **SE-16d PASS:** 2026-06-16 >= 2026-06-03 (v1.2 was authored 2026-06-03). PASS.
 
 ### v1.2 — Pass-8 S-P8-001: Normalize input-class count to 6 (2026-06-03)
 

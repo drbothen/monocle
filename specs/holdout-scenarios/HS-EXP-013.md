@@ -1,8 +1,8 @@
 ---
 scenario_id: HS-EXP-013
 title: "Permission Badge+Bell While in EmbeddedTerminal — SUG-3 Guarantee: Prompt Never Silently Queued"
-version: "1.1"
-wave: 8
+version: "1.2"
+wave: 9
 stories_tested: [S-044]
 source_bcs: [BC-2.09.008, BC-2.09.009, BC-2.06.008]
 severity: must-pass
@@ -13,7 +13,7 @@ timestamp: 2026-06-16T00:00:00Z
 
 # HS-EXP-013: Permission Badge+Bell While in EmbeddedTerminal — SUG-3 Guarantee: Prompt Never Silently Queued
 
-**Wave:** 8
+**Wave:** 9
 **Source BC:** BC-2.09.008 (Esc→AppMode exit transition and overlay surface: postcondition exiting EmbeddedTerminal PC-1), BC-2.09.009 (badge+bell: postconditions PC-1, PC-2, PC-3), BC-2.06.008 (PC-1: VecDeque push)
 **Stories Tested:** S-044
 
@@ -89,6 +89,13 @@ as the queued prompt, even when in EmbeddedTerminal mode where PTY output is com
 capacity. The single-render-tick latency bound and the bell emission in a PTY-active state are
 timing properties that can only be validated by a combined end-to-end test with a running TUI in
 EmbeddedTerminal mode receiving concurrent PTY bytes and permission prompts.
+
+## §Trace v1.2 — F-P20-SUG-001: wave label corrected from 8 → 9 (2026-06-16)
+
+- **Finding (F-P20-SUG-001):** `wave:` frontmatter and body `**Wave:**` heading carried `8`, but `stories_tested: [S-044]` and S-044 is Wave 9 per STORY-INDEX (Wave 9 row: S-039/S-040/S-041/S-042/S-043/S-044, EPIC-09 EmbeddedTerminal scope). The `wave:` field tracks the wave of the tested stories, not the authoring wave.
+- **Fix:** `wave: 8` → `wave: 9` in both frontmatter and body heading. No behavioral change to steps or satisfaction criteria.
+- **Version:** v1.1 → v1.2 (PATCH: metadata correction only).
+- **SE-16d PASS:** 2026-06-16 >= 2026-06-16 (same session as v1.17 EVAL-INDEX bump).
 
 ## §Trace v1.1
 
