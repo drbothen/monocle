@@ -1,99 +1,66 @@
-# monocle — Resume From Here (Phase-2 next, D-305, 2026-06-15)
+# monocle — Resume From Here (Phase-2 adversarial convergence next, 2026-06-15)
 
 Read this file first, then CLAUDE.md, then `.factory/STATE.md`
-(`next_session_resume_protocol` block, v7.55, for the full checkpoint +
+(`next_session_resume_protocol` block, v7.56, for the full checkpoint +
 section E ratified decisions + durable_task_register).
 
 ---
 
-## Status at Pause — Phase-1d FULLY COMPLETE
+## Status at Pause — Phase-2 Delta Story Decomposition COMPLETE
 
-**Phase-1d adversarial spec convergence is DONE.** 57 passes total.
-3 consecutive clean passes achieved (D-298/D-299/D-300 = Passes 55/56/57).
-Consistency audit DONE (D-301, 4 cross-doc gaps found and fixed).
-Human gate PASSED (D-302): v1A spec package APPROVED by Joshua Magady.
-Both risk sign-offs SIGNED: CC-TUITERM-WIP-SIGNOFF + CC-GLOBAL-MOUSE-CAPTURE.
-Input-hash content-review DONE (D-303): 0 semantic drift across 148 stale clusters;
-149 spec input-hashes re-baselined; circular-dep STALE residual documented (non-blocking).
+**Phase-2 delta story decomposition (Bursts A–G) is DONE.** factory-artifacts HEAD: `05a4a35`.
 
-Two new ratified human decisions (D-304/D-305, 2026-06-15):
-- **D-304**: Orchestrator may run Phase-2 Bursts A–G WITHOUT a per-burst plan-review gate.
-- **D-305**: 143 pre-pivot observe-only stories — story-writer writes a RECOMMENDATION doc
-  (Burst D); human must RATIFY before any disposition is executed. Bulk-archive BLOCKED.
+51 stories (311 pts) total: 32 done (192 pts, Phases 1-3), 16 not_started (v1A Waves 8-9),
+1 blocked (S-PHASE-3-PREP), 2 draft.
 
-**Adversarial counter is MOOT for Phase-1d.** It RESETS for Phase-2 (new convergence cycle, 0 of 3 clean).
+BC-INDEX v1.42.0, EVAL-INDEX v1.16, STORY-INDEX v5.33, sprint-state v1.41, wave-schedule v1.7.
+25 v1A BC S-TBD anchors resolved to S-033..S-048. POL-11 PASS. POL-12 PASS.
+compute-input-hash: 100 clusters updated.
+
+**D-305 outstanding**: pre-pivot disposition recommendation written
+(`.factory/stories/pre-pivot-disposition-recommendation.md`) — PENDING human ratification.
+Bulk-archive of pre-pivot stories BLOCKED until human ratifies.
+
+**Adversarial counter RESET to 0/3 for Phase-2 story convergence.**
+5 surfaced story gaps logged to durable_task_register (BURST-GAP-001..005).
 
 develop @ 2141adc — no v1A production code written.
-factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'` (live; do NOT trust a static SHA here).
-STATE.md = v7.55.
+factory-artifacts HEAD: `05a4a35` (run `git -C .factory log -1 --format='%h %s'` to verify live HEAD).
+STATE.md = v7.56.
 
 ---
 
-## Next Action: Phase-2 Burst A (IMMEDIATE)
+## Next Action: Phase-2 Adversarial Story Convergence (IMMEDIATE)
 
 Dispatch `vsdd-factory:story-writer` for **Burst A**: create SS-08 session-manager story
 FILES ONLY (new EPIC-07), story IDs starting S-033. No BC edits, no index edits.
 
-### Full Phase-2 Burst A–G Dispatch Plan
+### Phase-2 Burst A–G Complete (factory-artifacts 05a4a35)
 
-Bursts run **SEQUENTIALLY** so story IDs do not collide. Each create burst reports the
-next free story ID before returning. state-manager is dispatched LAST in any burst
-that also runs other agents. Numbering is continuous from S-033.
+All 7 bursts executed and committed to factory-artifacts.
 
-**Burst A — vsdd-factory:story-writer**
-Create SS-08 session-manager STORY FILES ONLY (new EPIC-07), IDs starting S-033.
-No BC edits, no index edits. Report created IDs + BC-to-story mapping + next free ID.
-BCs: BC-2.08.001 (spawn_session/SessionHostSpawner), .002 (re-discovery + setsid in
-monocle-session-host), .003 (kill_session), .004 (daemon_start_sequence step-8b
-rediscover_sessions), .005 (GC task), .006 (hook auto-injection in spawn path),
-.007 (attach/detach), .008 (SessionStateChanged broadcast). Some may cluster.
+| Burst | Agent | Deliverable | Status |
+|-------|-------|-------------|--------|
+| A | story-writer | S-033..S-038 (EPIC-08, Session Manager) | DONE |
+| B | story-writer | S-039..S-044 (EPIC-09, Embedded PTY) | DONE |
+| C | story-writer | S-045..S-048 (EPIC-03/05/06 delta) | DONE |
+| D | story-writer | pre-pivot-disposition-recommendation.md | DONE — PENDING D-305 human ratification |
+| E | product-owner | 25 v1A BC S-TBD anchors resolved; BC-2.06.025 v1.5.1; HS-EXP-011..015 story IDs | DONE |
+| F | story-writer | STORY-INDEX v5.33, sprint-state v1.41, wave-schedule v1.7 | DONE |
+| G | state-manager | BC-INDEX v1.42.0, EVAL-INDEX v1.16, POL-11/POL-12 PASS, 100 input-hash clusters updated, STATE v7.56 | DONE |
 
-**Burst B — vsdd-factory:story-writer** (after Burst A reports IDs)
-Create SS-09 embedded-pty STORY FILES ONLY (new EPIC-08), continuing IDs after A.
-No BC edits, no index edits. Report created IDs + BC-to-story mapping + next free ID.
-BCs: BC-2.09.001 (TUI PTY widget: vt100 parser/PseudoTerminal render/PtyOutput handler),
-.002 (key_event_to_pty_bytes + KeyInput IPC), .003 (mouse_event_to_pty_bytes + SGR),
-.004 (Kitty keyboard — clusters with .002), .005 (paste — clusters with .002),
-.007 (scrollback navigation), .008 (EmbeddedTerminal/SessionCreation AppMode transitions),
-.009 (permission badge + bell).
+### Next: Phase-2 Adversarial Story Convergence
 
-**Burst C — vsdd-factory:story-writer** (after Burst B reports IDs)
-Create SS-03/SS-05/SS-06 DELTA story files only (additions to EPIC-03/05/06).
-No BC edits, no index edits. Report created IDs + BC-to-story mapping.
-SS-03 BCs: BC-2.03.001..008 (EngineModule trait + ClaudeCodeModule spawn path;
-.006/.007/.008 may fold into the .005 spawn story).
-SS-05 BCs: BC-2.05.001 (UDS bind 0o600), .002 (TUI UDS connect+InitialState),
-.003 (SessionListUpdate fan-out), .005 (PermissionPromptQueued), .006 (TUI reconnect
-backoff), .007 (TransportEvent::Disconnected), .008 (Transport trait/UdsTransport),
-.009 (PtyOutput broker fan-out), .010 (new ClientToServer variants+routing), .011
-(ScrollbackChunk*/Complete/PtyReset). SKIP BC-2.05.004 (already -> S-021/S-032).
-SS-06 BC: BC-2.06.025 (multi-session grouped sessions panel + lifecycle actions).
+Dispatch `vsdd-factory:adversary` fresh-context on the full Phase-2 story corpus
+(S-033..S-048 + epics EPIC-08/09 + STORY-INDEX v5.33 + sprint-state v1.41).
+3 consecutive clean passes required. Adversarial counter: 0/3.
 
-**Burst D — vsdd-factory:story-writer** (after Burst C; independent of next story ID)
-Analyze 143 orphaned pre-pivot observe-only stories. Write RECOMMENDATION DOC at
-`.factory/stories/pre-pivot-disposition-recommendation.md`.
-Per-story or per-group: archive / retire / mark-done-historical.
-**CRITICAL**: DO NOT execute disposition. Orchestrator routes doc to human to RATIFY (D-305).
-Bulk-archive BLOCKED until human ratifies.
+After convergence: fresh consistency audit (vsdd-factory:consistency-validator),
+then Phase-2 human approval gate, then Phase-3 TDD implementation for Waves 8-9.
 
-**Burst E — vsdd-factory:product-owner** (after Burst C IDs are known; can run after Burst D)
-Resolve every S-TBD anchor in the 25 v1A BC files AND every `stories_tested=[S-TBD]` in
-holdouts HS-EXP-011..015, using now-known story IDs from Bursts A–C.
-PO MUST NOT touch story body content — story-writer propagates body/AC changes in Burst F.
-
-**Burst F — vsdd-factory:story-writer** (AFTER product-owner Burst E)
-Integrate new stories into STORY-INDEX.md (S-033+, continuous), sprint-state.yaml,
-wave schedule (define Wave 8+), dependency-graph. Propagate BC anchor changes from Burst E.
-New epics: EPIC-07 (SS-08), EPIC-08 (SS-09) plus additions to EPIC-03, EPIC-05, EPIC-06.
-Wave 7 stories remain DONE. New stories at Wave 8+. No dependency cycles.
-
-**Burst G — vsdd-factory:state-manager LAST** (after Bursts A–F)
-Refresh indexes/citations, version bumps (BC-INDEX, STORY-INDEX, EVAL-INDEX,
-sprint-state.yaml), update STATE.md, run compute-input-hash --update, POL-11, POL-12.
-Bookkeeping only — no spec content changes.
-
-**Post-Burst**: Phase-2 adversarial story convergence (3 consecutive clean, counter from 0).
-Fresh consistency audit before Phase-2 human approval gate.
+**Blocking prerequisite**: D-305 pre-pivot disposition recommendation
+(`.factory/stories/pre-pivot-disposition-recommendation.md`) requires human ratification
+before bulk-archive. Adversarial work and human gate are independent of D-305 ratification.
 
 ---
 
@@ -159,7 +126,7 @@ All versions derived from `.factory/specs/version-pin-registry.yaml` (source of 
 - **Session lifecycle**: Launching / Running / Detached / Terminating / Terminated.
   Created and Killed are RETIRED.
 - **Terminated-in-grace action matrix**: rename->rename_failed; detach->idempotent Ok;
-  kill->idempotent Ok; resize->WARN-drop. BC-2.06.025 v1.5.0 Invariant 6 closes all cells.
+  kill->idempotent Ok; resize->WARN-drop. BC-2.06.025 v1.5.1 Invariant 6 closes all cells.
 - **BC-2.06.025 Launching action rules**: kill ALLOWED; detach BLOCKED (session_not_ready);
   rename ALLOWED. EC-298/EC-299 added.
 - **session_not_ready producer**: DetachSession arm only (Launching, host_conn None).
