@@ -387,3 +387,50 @@ Key disciplines confirmed effective in Phase 1 Gate Pass burst (Round 22 / STATE
 - Next action (at v6.66): Dispatch Pass 39 adversary at 884401e (counter RESET 0/3).
 
 ---
+
+## Phase-2 Convergence Checkpoint (v7.83, 2026-06-16)
+
+ZERO-CONTEXT RESUME CHECKPOINT v7.83 (D-271..D-322) — 2026-06-16
+PAUSED FOR LAPTOP RELOCATION
+PIVOT: monocle → full TUI control center — PHASE-1D FULLY COMPLETE (D-303)
+PHASE-2 DELTA STORY DECOMPOSITION COMPLETE — PASS-26 CLEAN — ADVERSARIAL CONVERGENCE COMPLETE (3/3)
+PRE-GATE VALIDATIONS DONE: consistency GATE-AUDIT PASS (0 blockers); input-drift CLEAN
+57 PASSES COMPLETE (Phase-1d); PASS-1..PASS-23 FINDINGS RESOLVED; PASS-24/25/26 CLEAN; 51 STORIES / 311 PTS
+BC-INDEX v1.43.7; ARCH-INDEX v1.0.30; EVAL-INDEX v1.18; STORY-INDEX v5.44; SPRINT-STATE v1.45
+
+KEY DECISIONS:
+- D-304: Autonomous Phase-2 dispatch authorized; no per-burst plan-review gate
+- D-315: Pre-pivot disposition RATIFIED — keep 3 active (S-032/S-DAEMON-WIRE-FIX-001/S-PHASE-3-PREP); 32 done-historical; actual 35 pre-pivot (not 143 estimate); 0 archive/retire
+- D-238: session-host-owns-PTY; graceful daemon restart SURVIVES (CASE 2); NO-TMUX default
+- Spawn-path Model A: SpawnOptions on wire; SpawnRecipe daemon-internal
+- IPC schema: 12-code wire taxonomy; 9-variant SessionError; schema_version 3
+- PTY stack (ADR-0011): portable-pty 0.9.0 + vt100 0.16.2 + tui-term =0.3.4; MSRV 1.88
+- SessionState: 5 variants (Launching/Running/Detached/Terminating/Terminated) in monocle-ipc
+
+PHASE-2 DISPATCH PLAN — BURSTS A-G COMPLETE:
+BURST A DONE — S-033..S-038 (EPIC-08 Session Manager SS-08 BCs)
+BURST B DONE — S-039..S-044 (EPIC-09 Embedded PTY SS-09 BCs)
+BURST C DONE — S-045..S-048 (EPIC-03/05/06 delta additions)
+BURST D DONE — pre-pivot-disposition-recommendation.md (pending D-305 ratification)
+BURST E DONE — 25 v1A BC S-TBD anchors resolved; HS-EXP-011..015 resolved
+BURST F DONE — STORY-INDEX v5.33, sprint-state v1.41, wave-schedule v1.7, EPIC-08/09
+BURST G DONE — BC-INDEX v1.42.0, EVAL-INDEX v1.16, registry updated, POL-11/12 PASS
+
+ADVERSARIAL CONVERGENCE SUMMARY:
+Pass  1: 5C/8I   Pass  2: 5C/6I   Pass  3: 4C/9I   Pass  4: 1C/4I
+Pass  5: 2C/4I   Pass  6: 2C/2I   Pass  7: 1C/2I   Pass  8: 0C/2I
+Pass  9: 1C/0I   Pass 10: 0C/1I   Pass 11: 0C/1I   Pass 12: 0C/1I
+Pass 13: 0C/0I CLEAN(1)  Pass 14: 0C/1I RESET   Pass 15: 0C/1I   Pass 16: 0C/2I
+Pass 17: 0C/0I CLEAN(1)  Pass 18: 1C/0I RESET   Pass 19: 0C/1I   Pass 20: 0C/1I
+Pass 21: 0C/1I  Pass 22: 0C/1I  Pass 23: 0C/0I CLEAN(1)  Pass 24: 0C/0I CLEAN(2)
+Pass 25: 0C/0I CLEAN(?)  Pass 26: 0C/0I CLEAN(3/3) CONVERGENCE COMPLETE
+
+D-322 PRE-GATE AUDIT RESULTS:
+  consistency GATE-AUDIT PASS: 0 blockers / 2 important (F-GATE-IMP-001/002) / 5 advisory (F-GATE-ADV-001..004)
+  input-drift CLEAN: TOTAL=410, MATCH=131, STALE=21, UNCOMPUTED=1, NOINPUT=257
+  All 21 stale = known circular-hash-cascade residual class-b; 0 genuine drift.
+
+RESUME = optional post-convergence cleanup burst THEN Phase-2 human approval gate.
+
+factory-artifacts HEAD at checkpoint: run `git -C .factory log -1 --format='%h %s'`
+develop HEAD: 2141adc (no v1A production code written; Phase-1d spec-only work)
