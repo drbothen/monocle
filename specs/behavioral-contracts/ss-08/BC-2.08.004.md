@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.0"
+version: "1.3.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/SS-daemon-wiring-v2-delta.md]
-input-hash: "c937d2d"
+input-hash: "6712337"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-08
@@ -190,11 +190,16 @@ seconds for the typical case of up to 8 sessions.
 
 ## Story Anchor
 
-S-TBD — Implement daemon_start_sequence step 8b: rediscover_sessions() (filled by story-writer)
+S-036 — Implement daemon_start_sequence step 8b: rediscover_sessions()
 
 ## VP Anchors
 
 VP-TBD — Re-discovery integration tests including timing (filled after VP creation)
+
+## §Trace v1.3.1
+
+**Burst-E D-305 — Story Anchor resolved: S-TBD → S-036** (2026-06-15):
+- Story Anchor filled from Phase-2 Burst A story decomposition. No behavioral content changed.
 
 ## §Trace v1.3.0
 

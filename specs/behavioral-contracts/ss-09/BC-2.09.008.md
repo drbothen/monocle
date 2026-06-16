@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.1"
+version: "1.3.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-14T19:00:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md, architecture/SS-ipc.md]
-input-hash: "89c82eb"
+input-hash: "a3ff089"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-09
@@ -167,11 +167,16 @@ AppMode. A `Ctrl-D` or session termination also exits `EmbeddedTerminal` automat
 
 ## Story Anchor
 
-S-TBD — Implement EmbeddedTerminal/SessionCreation AppMode transitions in monocle-tui and monocle-core (filled by story-writer)
+S-044 — Implement EmbeddedTerminal/SessionCreation AppMode transitions in monocle-tui and monocle-core
 
 ## VP Anchors
 
 VP-TBD — AppMode transition tests (filled after VP creation)
+
+## §Trace v1.3.2
+
+**Burst-E D-305 — Story Anchor resolved: S-TBD → S-044** (2026-06-15):
+- Story Anchor filled from Phase-2 Burst B story decomposition. No behavioral content changed.
 
 ## §Trace v1.3.1
 

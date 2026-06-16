@@ -204,15 +204,15 @@ ARCH-INDEX:
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.41.1"
-  last_bump_commit: "[Pass-57 D-301 — GAP-7.1: SS-DTU preamble dtu-assessment pin v1.7.5→v1.7.6; GAP-7.2: duplicate separator removed; §Trace v1.41.1 added]" # version-pin-historical: changelog description of bump, not a live pin
-  last_bump_date: "2026-06-14"
+  current_version: "1.42.0"
+  last_bump_commit: "[Burst-G D-305 — 25 v1A BC anchor resolutions registered (S-TBD→S-033..S-048); BC-2.06.025 v1.5.1 noted; §Trace v1.42.0 added; BC count 138 unchanged]"
+  last_bump_date: "2026-06-15"
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.32"
-  last_bump_commit: "[D-235 daemon-wiring convergence 2026-06-03 — S-DAEMON-WIRE-FIX-001 Wave-8 deferral anchor added, S-032 Wave-8 formalized, sprint-state v1.40]"
-  last_bump_date: "2026-06-03"
+  current_version: "5.33"
+  last_bump_commit: "[Burst-F D-305 — Phase-2 delta story decomposition: S-033..S-048 added (Waves 8-9); EPIC-08/EPIC-09 added; BC coverage table filled for 25 v1A BCs; sprint-state v1.41]"
+  last_bump_date: "2026-06-15"
 
 VP-INDEX:
   path: specs/verification-properties/VP-INDEX.md
@@ -228,9 +228,9 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.15"
-  last_bump_commit: "[Pass-9 S-P9-001 — HS-EXP-014 stale schema v2 label corrected to schema v3 (schema_version: 3) per SS-session-manager v1.7.0]" # version-pin-historical: historical record of what Pass-9 changed; v1.7.0 is the spec version at time of that fix
-  last_bump_date: "2026-06-03"
+  current_version: "1.16"
+  last_bump_commit: "[Burst-G D-305 — HS-EXP-011..015 Scenario Index + Wave Coverage Summary S-TBD placeholders resolved to canonical story IDs (S-036/S-044/S-033/S-038/S-040/S-041); BC-INDEX pin 1.41.1→1.42.0]"
+  last_bump_date: "2026-06-15"
 
 nfr-catalog:
   path: specs/prd-supplements/nfr-catalog.md
@@ -701,153 +701,153 @@ BC-2.07.006:
 
 BC-2.03.005:
   path: specs/behavioral-contracts/ss-03/BC-2.03.005.md
-  current_version: "1.1.3"
-  last_bump_commit: "[Pass-34 C34-001 — EC-104b updated for two-pronged null-byte/non-UTF-8 InvalidPath detection (D-276)]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.1.4"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-045; Traceability Stories row filled]"
+  last_bump_date: "2026-06-15"
 
 BC-2.03.006:
   path: specs/behavioral-contracts/ss-03/BC-2.03.006.md
-  current_version: "1.1.1"
-  last_bump_commit: "[Pass-34 C34-001 — spawn_recipe() InvalidPath EngineError doc updated for two-pronged detection (D-276)]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.1.2"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-045 (clusters with BC-2.03.005)]"
+  last_bump_date: "2026-06-15"
 
 BC-2.03.007:
   path: specs/behavioral-contracts/ss-03/BC-2.03.007.md
-  current_version: "1.2.2"
-  last_bump_commit: "[Pass-34 C34-001 — Invariant-1 diagnostic separation restored: to_str() non-UTF-8 + as_bytes().contains(&0) null-byte scan (D-276)]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.2.3"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-045 (clusters with BC-2.03.005)]"
+  last_bump_date: "2026-06-15"
 
 BC-2.03.008:
   path: specs/behavioral-contracts/ss-03/BC-2.03.008.md
-  current_version: "1.0.4"
-  last_bump_commit: "[Pass-57 D-301 — GAP-1.1: arch-source live pins corrected to v2.6.0/v1.23.2 (2 cascade generations stale; missed by Pass-51/52 target lists + POL-11 blind to vX.Y.Z §section format)]" # version-pin-historical: changelog description of what was corrected; stale values are the old versions being fixed
-  last_bump_date: "2026-06-14"
+  current_version: "1.0.5"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-045 (clusters with BC-2.03.005)]"
+  last_bump_date: "2026-06-15"
 
 BC-2.05.009:
   path: specs/behavioral-contracts/ss-05/BC-2.05.009.md
-  current_version: "1.5.2"
-  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.5.3"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-046]"
+  last_bump_date: "2026-06-15"
 
 BC-2.05.010:
   path: specs/behavioral-contracts/ss-05/BC-2.05.010.md
-  current_version: "1.9.1"
-  last_bump_commit: "[Pass-51 F-P51-001 D-294 — §DetachSession PC-4 gains session_not_ready bullet; §ResizePane rationale expanded; arch-source pins bumped at Pass-51 time]" # version-pin-historical: changelog of Pass-51 bump; SS-ipc/SS-session-manager/SS-daemon-wiring versions cited were canonical at Pass-51 bump time
-  last_bump_date: "2026-06-14"
+  current_version: "1.9.2"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-047]"
+  last_bump_date: "2026-06-15"
 
 BC-2.05.011:
   path: specs/behavioral-contracts/ss-05/BC-2.05.011.md
-  current_version: "1.2.1"
-  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.2.2"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-047 (clusters with BC-2.05.010)]"
+  last_bump_date: "2026-06-15"
 
 BC-2.06.025:
   path: specs/behavioral-contracts/ss-06/BC-2.06.025.md
-  current_version: "1.5.0"
-  last_bump_commit: "[Pass-52 F-P52-001 D-295 — Invariant 6 (Terminated-in-grace panel guard: k/D/r blocked for Terminated state; same guard class as Terminating Invariant 5); EC-300 (kill-on-Terminated→idempotent Ok), EC-301 (detach-on-Terminated→idempotent Ok), EC-302 (rename-on-Terminated→rename_failed); VP refs added]"
-  last_bump_date: "2026-06-14"
+  current_version: "1.5.1"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-048; Invariant 3 cross-reference note added for D/Launching → Invariant 5 redirect]"
+  last_bump_date: "2026-06-15"
 
 BC-2.08.001:
   path: specs/behavioral-contracts/ss-08/BC-2.08.001.md
-  current_version: "1.5.0"
-  last_bump_commit: "[Pass-41 F-P41-IMP-001 D-283 — PC-1 UUID-locus clarified: daemon IPC handler generates UUID; SS-ipc v1.21.0 added to inputs; SpawnAck correlation mechanism referenced]" # version-pin-historical: changelog description at Pass-41 bump time; v1.21.0 was canonical then
-  last_bump_date: "2026-06-14"
+  current_version: "1.5.1"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-033]"
+  last_bump_date: "2026-06-15"
 
 BC-2.08.002:
   path: specs/behavioral-contracts/ss-08/BC-2.08.002.md
-  current_version: "1.2.1"
-  last_bump_commit: "[Pass-17 I17-001/S17-002 — pin ADR-0009 v1.0.2 §Decision + 2nd SS-session-manager v1.8.1 ref in Architecture-Source cell]" # version-pin-historical: changelog description; v1.8.1 is the SS-session-manager version at Pass-17 bump time
-  last_bump_date: "2026-06-04"
+  current_version: "1.2.2"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-036]"
+  last_bump_date: "2026-06-15"
 
 BC-2.08.003:
   path: specs/behavioral-contracts/ss-08/BC-2.08.003.md
-  current_version: "1.4.0"
-  last_bump_commit: "[Pass-50 F-P50-001 D-293 — PC-1 confirmed correct; kill-during-Launching-race PID-fallback path (→kill_failed) documented; host_conn.writer established during Launching via post-spawn monitor; arch-source pins bumped to SS-session-manager v2.5.0/SS-daemon-wiring-v2-delta v1.11.1]" # version-pin-historical: changelog description of Pass-50 bump; those were canonical versions at Pass-50 time
-  last_bump_date: "2026-06-14"
+  current_version: "1.4.1"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-034]"
+  last_bump_date: "2026-06-15"
 
 BC-2.08.004:
   path: specs/behavioral-contracts/ss-08/BC-2.08.004.md
-  current_version: "1.3.0"
-  last_bump_commit: "[Pass-47 F-P47-001 D-290 — Detached re-discovery MUST NOT emit SessionStateChanged (Option B); removed over-specified emission from PC-2b + EC-172; symmetry with Running/Launching re-discovery restored]"
-  last_bump_date: "2026-06-14"
+  current_version: "1.3.1"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-036]"
+  last_bump_date: "2026-06-15"
 
 BC-2.08.005:
   path: specs/behavioral-contracts/ss-08/BC-2.08.005.md
-  current_version: "1.0.3"
-  last_bump_commit: "[Pass-57 D-301 — GAP-4.1: §session_error_to_code() anchor misattributed to SS-ipc.md; corrected to SS-session-manager.md (canonical home per SS-daemon-wiring-v2-delta:138); OBS-P57-001 upgraded from ratified-LOW to IMPORTANT GAP-4.1 and fixed]"
-  last_bump_date: "2026-06-14"
+  current_version: "1.0.4"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-037]"
+  last_bump_date: "2026-06-15"
 
 BC-2.08.006:
   path: specs/behavioral-contracts/ss-08/BC-2.08.006.md
-  current_version: "1.3.0"
-  last_bump_commit: "[Pass-53 F-P53-001 D-296 — PC-3 authority corrected from BC-HOOK-007 (DTU gene-source clone) to BC-2.04.010 PC-3; 4-URL+2-empty hooks-settings.json schema; SessionStart NOT a file key]"
-  last_bump_date: "2026-06-14"
+  current_version: "1.3.1"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-038]"
+  last_bump_date: "2026-06-15"
 
 BC-2.08.007:
   path: specs/behavioral-contracts/ss-08/BC-2.08.007.md
-  current_version: "1.5.1"
-  last_bump_commit: "[Pass-51 F-P51-001 D-294 — detach defensive-branch note: detach BLOCKED/session_not_ready; arch-source pins bumped at Pass-51 time]" # version-pin-historical: changelog of Pass-51 bump; SS-session-manager/SS-daemon-wiring/SS-ipc versions cited were canonical at Pass-51 bump time
-  last_bump_date: "2026-06-14"
+  current_version: "1.5.2"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-035]"
+  last_bump_date: "2026-06-15"
 
 BC-2.08.008:
   path: specs/behavioral-contracts/ss-08/BC-2.08.008.md
-  current_version: "1.3.0"
-  last_bump_commit: "[Pass-47 F-P47-001 D-290 — re-discovery of unchanged persisted state is NOT a transition; removed 'Detached re-discovery registration' from PC-1 emission list + Invariant 1 no-exception clause; genuine-value-change rule enforced]"
-  last_bump_date: "2026-06-14"
+  current_version: "1.3.1"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-033/S-034/S-035 (distributed across Launching/Terminating-Terminated/Running-Detached)]"
+  last_bump_date: "2026-06-15"
 
 BC-2.09.001:
   path: specs/behavioral-contracts/ss-09/BC-2.09.001.md
-  current_version: "1.3.2"
-  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.3.3"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-039]"
+  last_bump_date: "2026-06-15"
 
 BC-2.09.002:
   path: specs/behavioral-contracts/ss-09/BC-2.09.002.md
-  current_version: "1.1.2"
-  last_bump_commit: "[Pass-37 F-P37-IMP-001 D-279 — Invariant 5 scoped mouse-capture corrected; sibling gap from Pass-36 BC-2.09.003 dismissal fixed]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.1.3"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-040]"
+  last_bump_date: "2026-06-15"
 
 BC-2.09.003:
   path: specs/behavioral-contracts/ss-09/BC-2.09.003.md
-  current_version: "1.5.0"
-  last_bump_commit: "[Pass-36 F-P36-IMP-001 D-278 — Invariant 3 rewritten: 1002 button-event tracking model; stale any-event/1003 claim removed; Moved UNREACHABLE on Unix; Drag delivered as Drag not Moved]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.5.1"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-041]"
+  last_bump_date: "2026-06-15"
 
 BC-2.09.004:
   path: specs/behavioral-contracts/ss-09/BC-2.09.004.md
-  current_version: "1.0.2"
-  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.0.3"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-040 (clusters with BC-2.09.002)]"
+  last_bump_date: "2026-06-15"
 
 BC-2.09.005:
   path: specs/behavioral-contracts/ss-09/BC-2.09.005.md
-  current_version: "1.0.1"
-  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.0.2"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-040 (clusters with BC-2.09.002)]"
+  last_bump_date: "2026-06-15"
 
 BC-2.09.006:
   path: specs/behavioral-contracts/ss-09/BC-2.09.006.md
-  current_version: "1.1.1"
-  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.1.2"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-042; missing anchor from original dispatch list]"
+  last_bump_date: "2026-06-15"
 
 BC-2.09.007:
   path: specs/behavioral-contracts/ss-09/BC-2.09.007.md
-  current_version: "1.1.1"
-  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.1.2"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-043]"
+  last_bump_date: "2026-06-15"
 
 BC-2.09.008:
   path: specs/behavioral-contracts/ss-09/BC-2.09.008.md
-  current_version: "1.3.1"
-  last_bump_commit: "[D-285 CV-SS-005 sibling — PC Step 4 causal-ordering expansion: same two-property guarantee (IPC handler sends SpawnAck step 2, spawn_session() step 4, broker emits Launching step 5) + per-client FIFO]"
-  last_bump_date: "2026-06-14"
+  current_version: "1.3.2"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-044]"
+  last_bump_date: "2026-06-15"
 
 BC-2.09.009:
   path: specs/behavioral-contracts/ss-09/BC-2.09.009.md
-  current_version: "1.1.2"
-  last_bump_commit: "[Pass-35 arch-source pin sweep D-277]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.1.3"
+  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-044]"
+  last_bump_date: "2026-06-15"
 
 BC-HOOK-039:
   path: specs/behavioral-contracts/ss-dtu/BC-HOOK-039.md

@@ -1,10 +1,10 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.15"
+version: "1.16"
 status: active
-producer: vsdd-factory:product-owner
-timestamp: 2026-06-03T23:45:00Z
+producer: vsdd-factory:state-manager
+timestamp: 2026-06-15T00:00:00Z
 phase: 2
 visibility: holdout-evaluator-only
 inputs:
@@ -19,7 +19,7 @@ inputs:
   - {path: .factory/stories/S-027-overlay-rendering-status-bar.md, version: "1.10"}
   - {path: .factory/stories/S-029-killer-scenario-test.md, version: "1.3"}
   - {path: .factory/stories/S-030-config-crate-foundation.md, version: "1.1"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.41.1"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.42.0"}
 traces_to: .factory/stories/STORY-INDEX.md
 input-hash: "[pending]"
 ---
@@ -50,11 +50,11 @@ input-hash: "[pending]"
 | HS-EXP-008 | Killer Scenario: Dual Prompt Resolved in 6 Keystrokes via ratatui TestBackend | 7 | S-029, S-026, S-027 | must-pass |
 | HS-EXP-009 | Daemon Binary: runtime_dir Level 4 Fail-Fast Produces Exit Code 70 Not 1 | 4 | S-016 | must-pass |
 | HS-EXP-010 | Permission Overlay Lifecycle: Queue → Timeout-Resolved → Clear from Both Paths | 6 | S-022, S-026 | must-pass |
-| HS-EXP-011 | Session Survives Graceful Daemon Restart — PTY Stream Re-Attached, SessionEntry Visible | 8 | S-TBD-session-manager | must-pass |
-| HS-EXP-012 | Re-Discovery Completes Before UDS Bind — No TUI Connection Accepted During Discovery Window | 8 | S-TBD-session-manager | must-pass |
-| HS-EXP-013 | Permission Badge+Bell While in EmbeddedTerminal — SUG-3 Guarantee: Prompt Never Silently Queued | 8 | S-TBD-embedded-pty | must-pass |
-| HS-EXP-014 | Hook Auto-Injection Under Concurrent Spawns — Shared hooks-settings.json Not Clobbered; All Sessions Get Correct `--settings` Arg | 8 | S-TBD-session-manager | must-pass |
-| HS-EXP-015 | Full-Fidelity Keyboard Forwarding — Kitty + SGR Mouse + Bracketed Paste Reach PTY stdin | 8 | S-TBD-embedded-pty | must-pass |
+| HS-EXP-011 | Session Survives Graceful Daemon Restart — PTY Stream Re-Attached, SessionEntry Visible | 8 | S-036 | must-pass |
+| HS-EXP-012 | Re-Discovery Completes Before UDS Bind — No TUI Connection Accepted During Discovery Window | 8 | S-036 | must-pass |
+| HS-EXP-013 | Permission Badge+Bell While in EmbeddedTerminal — SUG-3 Guarantee: Prompt Never Silently Queued | 8 | S-044 | must-pass |
+| HS-EXP-014 | Hook Auto-Injection Under Concurrent Spawns — Shared hooks-settings.json Not Clobbered; All Sessions Get Correct `--settings` Arg | 8 | S-033, S-038 | must-pass |
+| HS-EXP-015 | Full-Fidelity Keyboard Forwarding — Kitty + SGR Mouse + Bracketed Paste Reach PTY stdin | 8 | S-040, S-041 | must-pass |
 
 ---
 
@@ -66,7 +66,7 @@ input-hash: "[pending]"
 | Wave 5 | HS-EXP-001, HS-EXP-002 | S-017, S-018 | SOQ-2 ordering; fail-open timeout |
 | Wave 6 | HS-EXP-003, HS-EXP-004, HS-EXP-005, HS-EXP-006, HS-EXP-010 | S-022, S-023, S-025, S-026 | InitialState gap-free; SOQ-3 ordering; state rebuild; Ctrl-\\ survival |
 | Wave 7 | HS-EXP-008 | S-026, S-027, S-029 | Killer scenario ≤6 keystrokes |
-| Wave 8 | HS-EXP-011, HS-EXP-012, HS-EXP-013, HS-EXP-014, HS-EXP-015 | S-TBD-session-manager, S-TBD-embedded-pty | Session persistence; re-discovery ordering; SUG-3 badge+bell; hook injection concurrency; keyboard fidelity |
+| Wave 8 | HS-EXP-011, HS-EXP-012, HS-EXP-013, HS-EXP-014, HS-EXP-015 | S-036, S-044, S-033, S-038, S-040, S-041 | Session persistence; re-discovery ordering; SUG-3 badge+bell; hook injection concurrency; keyboard fidelity |
 
 **Total expansion holdout scenarios: 15**
 **Coverage: ≥1 scenario per wave (Wave 4-8 all covered)**
@@ -160,6 +160,21 @@ Phase 4 holdout evaluation MUST evaluate ALL holdout scenarios:
 **Bump:** 1.5 → 1.6.
 **Scope:** `traces_to:` field: `STORY-INDEX.md v4.7` → `STORY-INDEX.md v5.20` (Option 1 per ADR-0007 §Decision; EVAL-INDEX is an active INDEX document; its traces_to must reflect canonical current STORY-INDEX version).
 **SE-16d PASS:** 2026-05-30 >= 2026-05-30 (patch; no normative behavioral change).
+
+## §Trace v1.16 — Phase-2 Burst G: HS-EXP-011..015 S-TBD anchors resolved (2026-06-15)
+
+**Bump:** 1.15 → 1.16.
+**Scope:** Scenario Index table and Wave Coverage Summary HS-EXP-011..015 story placeholders resolved to canonical story IDs.
+- HS-EXP-011: `S-TBD-session-manager` → `S-036` (SessionManager::rediscover_sessions — setsid persistence + state handling)
+- HS-EXP-012: `S-TBD-session-manager` → `S-036` (same rediscovery story; both holdouts test BC-2.08.004 properties)
+- HS-EXP-013: `S-TBD-embedded-pty` → `S-044` (EmbeddedTerminal + SessionCreation AppMode transitions, permission badge+bell)
+- HS-EXP-014: `S-TBD-session-manager` → `S-033, S-038` (spawn + hook auto-injection stories)
+- HS-EXP-015: `S-TBD-embedded-pty` → `S-040, S-041` (keyboard forwarding + mouse forwarding stories)
+Wave Coverage Summary Wave 8 row updated accordingly.
+BC-INDEX input pin updated: `"1.41.1"` → `"1.42.0"` (BC-INDEX bumped in Burst G).
+The `stories_tested` frontmatter fields in the individual HS-EXP-011..015 scenario files were resolved by Burst E (product-owner) and contain the canonical story IDs.
+The historical note in §Trace v1.0 describing `stories_tested: [S-TBD-session-manager]` documents the original authoring state and is intentionally preserved as historical context.
+**SE-16d PASS:** 2026-06-15 >= 2026-06-15 (same day as v1.15 authoring; Burst G is same-session continuation).
 
 ## §Trace v1.15 — Pass-9 S-P9-001: HS-EXP-014 stale schema v2 label corrected to v3 (2026-06-03)
 

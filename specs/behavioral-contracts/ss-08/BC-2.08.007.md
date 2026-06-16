@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.1"
+version: "1.5.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md]
-input-hash: "1cd115a"
+input-hash: "6b20c74"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-08
@@ -158,11 +158,16 @@ background. The TUI can re-attach at any time.
 
 ## Story Anchor
 
-S-TBD — Implement SessionManager attach/detach (filled by story-writer)
+S-035 — Implement SessionManager attach/detach
 
 ## VP Anchors
 
 VP-TBD — Attach/detach integration tests (filled after VP creation)
+
+## §Trace v1.5.2
+
+**Burst-E D-305 — Story Anchor resolved: S-TBD → S-035** (2026-06-15):
+- Story Anchor filled from Phase-2 Burst A story decomposition. No behavioral content changed.
 
 ## §Trace v1.5.1
 

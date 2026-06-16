@@ -1,9 +1,9 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.41.1"
+version: "1.42.0"
 status: active
-producer: vsdd-factory:product-owner
+producer: vsdd-factory:state-manager
 timestamp: 2026-06-15T00:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
@@ -1223,6 +1223,19 @@ SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. 
 - BC-INDEX version: 1.40.4 → 1.40.5. No BC ID additions or retirements. No H1 title changes.
 
 SE-16d monotonicity: v1.40.5 timestamp 2026-06-14T20:00:00Z > v1.40.4 timestamp 2026-06-14T19:00:00Z. PASS.
+
+## §Trace v1.42.0
+
+**Phase-2 Burst G — BC anchor resolutions registered; bookkeeping reconciliation** (2026-06-15):
+
+- 25 v1A BCs (BC-2.03.005..008, BC-2.05.009..011, BC-2.06.025, BC-2.08.001..008, BC-2.09.001..009) had S-TBD story anchors resolved in Burst E (product-owner) to canonical story IDs: S-033..S-048. Story files, STORY-INDEX BC Coverage Table, and version-pin-registry.yaml updated by Bursts E and F.
+- BC-2.06.025 version bumped v1.5.0 → v1.5.1 in Burst E (Invariant 3 cross-reference note for Launching/Detached redirect to Invariant 5 added; anchor resolved to S-048).
+- BC count unchanged: 138 active (no additions, no retirements).
+- BC-INDEX version bumped 1.41.1 → 1.42.0 to register the v1A anchor-resolution completion as a milestone.
+- EVAL-INDEX updated to v1.16: Scenario Index and Wave Coverage Summary HS-EXP-011..015 S-TBD placeholders replaced with canonical story IDs.
+- No BC H1 title changes. No normative behavior changed.
+
+SE-16d monotonicity: v1.42.0 timestamp 2026-06-15 > v1.41.1 timestamp 2026-06-14. PASS.
 
 ## §Trace v1.41.1
 

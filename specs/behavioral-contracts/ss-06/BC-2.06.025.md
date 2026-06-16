@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.0"
+version: "1.5.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-14T01:00:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-tui.md, architecture/SS-session-manager.md]
-input-hash: "182abf8"
+input-hash: "bc6c2c5"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-06
@@ -124,6 +124,9 @@ pane.
    `pty_parsers[focused_session_id].screen()` for the preview pane. No IPC round-trip.
 3. The sessions panel list updates in real-time when `ServerToClient::SessionListUpdate`
    is received (adds/removes/updates rows without full panel re-render).
+   (For lifecycle keybinding rules during specific session states — in particular that `D`
+   (DetachSession) is BLOCKED and MUST NOT be dispatched while a session is in
+   `SessionState::Launching` — see Invariant 5. EC-298 documents this edge case.)
 4. Sessions with `SessionState::Terminated` are shown in the list with a `[X]` indicator
    until GC removes them (BC-2.08.005 10-second grace period).
    Sessions with `SessionState::Terminating` are shown with a `[Terminating]` indicator (a
@@ -242,11 +245,19 @@ pane.
 
 ## Story Anchor
 
-S-TBD — Implement multi-session grouped sessions panel with lifecycle actions (filled by story-writer)
+S-048 — Implement multi-session grouped sessions panel with lifecycle actions
 
 ## VP Anchors
 
 VP-TBD — Sessions panel multi-session render tests (filled after VP creation)
+
+## §Trace v1.5.1
+
+**Burst-E D-305 — Story Anchor resolved: S-TBD → S-048; Invariant 3 cross-reference note added for D/Launching rule** (2026-06-15):
+- Story Anchor filled from Phase-2 Burst C story decomposition. No behavioral content changed.
+- Invariant 3 (real-time list update): appended a parenthetical cross-reference note directing readers to Invariant 5 for lifecycle keybinding rules during Launching state, specifically that `D` (DetachSession) is BLOCKED. This closes the reference gap exposed by S-048 AC-010 ("per BC-2.06.025 Invariant 3 — detach blocked"), making Invariant 3 and EC-298 self-consistent for readers navigating from story-level references. The normative rule itself (BLOCKED `D` on Launching) has been in Invariant 5 since v1.4.0 and is unchanged. This is a clarifying cross-reference, not a new behavioral obligation.
+
+SE-16d monotonicity: v1.5.1 timestamp 2026-06-15 > v1.5.0 timestamp 2026-06-14. PASS.
 
 ## §Trace v1.5.0
 

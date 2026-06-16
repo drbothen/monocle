@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.2"
+version: "1.2.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-engine-module-v2-delta.md, architecture/SS-ipc.md, architecture/SS-session-manager.md]
-input-hash: "4b94690"
+input-hash: "921e3e8"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-03
@@ -149,11 +149,16 @@ matters for diagnostic accuracy.
 
 ## Story Anchor
 
-S-TBD — Same story as BC-2.03.005 (error handling in spawn_recipe(); filled by story-writer)
+S-045 — Same story as BC-2.03.005 (error handling in spawn_recipe())
 
 ## VP Anchors
 
 VP-TBD — spawn_recipe() error path unit tests (filled after VP creation)
+
+## §Trace v1.2.3
+
+**Burst-E D-305 — Story Anchor resolved: S-TBD → S-045** (2026-06-15):
+- Story Anchor filled from Phase-2 Burst C story decomposition (clusters with BC-2.03.005). No behavioral content changed.
 
 ## §Trace v1.2.2
 

@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.0"
+version: "1.3.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-14T18:00:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/SS-embedded-pty.md, architecture/SS-ipc.md, architecture/SS-daemon-wiring-v2-delta.md]
-input-hash: "a6a445c"
+input-hash: "9e59daa"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-08
@@ -217,11 +217,16 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
 
 ## Story Anchor
 
-S-TBD — Implement SessionStateChanged broadcast on every SessionEntry state transition (filled by story-writer)
+S-033, S-034, S-035 — Implement SessionStateChanged broadcast on every SessionEntry state transition (distributed: S-033 covers Launching transitions, S-034 covers Terminating/Terminated transitions, S-035 covers Running/Detached transitions)
 
 ## VP Anchors
 
 VP-TBD — SessionStateChanged emission and TUI response integration tests (filled after VP creation)
+
+## §Trace v1.3.1
+
+**Burst-E D-305 — Story Anchor resolved: S-TBD → S-033/S-034/S-035** (2026-06-15):
+- Story Anchor filled from Phase-2 Burst A story decomposition. BC-2.08.008 is distributed: S-033 covers Launching transitions, S-034 covers Terminating/Terminated, S-035 covers Running/Detached. No behavioral content changed.
 
 ## §Trace v1.3.0
 

@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.0"
+version: "1.5.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md]
-input-hash: "00179ba"
+input-hash: "511e350"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-09
@@ -171,11 +171,16 @@ All coordinate examples in this BC (and in BC-2.09.002 EC-213) assume:
 
 ## Story Anchor
 
-S-TBD — Implement mouse_event_to_pty_bytes() and SGR mode entry (filled by story-writer)
+S-041 — Implement mouse_event_to_pty_bytes() and SGR mode entry
 
 ## VP Anchors
 
 VP-TBD — Mouse event SGR encoding unit tests (filled after VP creation)
+
+## §Trace v1.5.1
+
+**Burst-E D-305 — Story Anchor resolved: S-TBD → S-041** (2026-06-15):
+- Story Anchor filled from Phase-2 Burst B story decomposition. No behavioral content changed.
 
 ## §Trace v1.5.0
 

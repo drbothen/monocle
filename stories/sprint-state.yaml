@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.40"
+version: "1.41"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-03T08:00:00Z
@@ -455,15 +455,208 @@ stories:
     pr_url: null
     notes: "Wave 8 draft. Anchored deferral from daemon-wiring adversarial Round-3 HIGH-2. BC-2.01.004 PC-8/INV-4 second-signal exit-code paths. Code carries CONTRACT GAP (S-DAEMON-WIRE-FIX-001) markers in lifecycle.rs. Architect design seam: SS-daemon-wiring-impl.md §Fix Addendum Round 2 §HIGH-2 (two-phase signal loop, DaemonState.second_sigterm AtomicBool). Does not block Phase 4 holdout evaluation. Excluded from Phase-3 totals by design."
 
+  - id: S-033
+    title: "SessionManager::spawn_session — SessionHostSpawner, SessionEntry, Sidecar, SpawnAck, and SessionStateChanged{Launching}"
+    epic: EPIC-08
+    wave: 8
+    points: 8
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 8 root for EPIC-08 (Session Manager). Foundational for S-034..S-038 and S-047/S-048. BCs: BC-2.08.001, BC-2.08.008."
+
+  - id: S-034
+    title: "SessionManager::kill_session — DaemonToHost::Kill Within 500ms; Terminating/Terminated Transitions; 12s Watchdog"
+    epic: EPIC-08
+    wave: 8
+    points: 8
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 8. Depends on S-033. BCs: BC-2.08.003, BC-2.08.008."
+
+  - id: S-035
+    title: "SessionManager::attach_session and detach_session — Chunked Scrollback, SO_PEERCRED, Session-Host Stays Alive"
+    epic: EPIC-08
+    wave: 8
+    points: 8
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 8. Depends on S-033. Blocks S-039 (PTY pipeline). BCs: BC-2.08.007, BC-2.08.008."
+
+  - id: S-036
+    title: "SessionManager::rediscover_sessions — setsid Persistence; All States Handled Within 5s; UDS Bind Blocked"
+    epic: EPIC-08
+    wave: 8
+    points: 8
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 8. Depends on S-033, S-034, S-035. BCs: BC-2.08.002, BC-2.08.004."
+
+  - id: S-037
+    title: "SessionManager GC Task — Terminated Sessions Removed After 10s Grace Period"
+    epic: EPIC-08
+    wave: 8
+    points: 3
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 8. Depends on S-033, S-034. BC: BC-2.08.005."
+
+  - id: S-038
+    title: "SessionManager Hook Auto-Injection — --settings Arg in Session-Host Spawn Path"
+    epic: EPIC-08
+    wave: 8
+    points: 3
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 8. Depends on S-033. BC: BC-2.08.006."
+
+  - id: S-039
+    title: "PTY Output Pipeline — vt100::Parser, PseudoTerminal Render, PtyOutput IPC Handler, Auto-Attach on First Entry"
+    epic: EPIC-09
+    wave: 9
+    points: 8
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 9 root for EPIC-09 (Embedded PTY). Foundational for S-040..S-044. Depends on S-021, S-025, S-035. BC: BC-2.09.001."
+
+  - id: S-040
+    title: "Full-Fidelity Keyboard Forwarding — key_event_to_pty_bytes, Kitty Protocol CSI u, and Bracketed Paste"
+    epic: EPIC-09
+    wave: 9
+    points: 8
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 9. Depends on S-039. Blocks S-041, S-044. BCs: BC-2.09.002, BC-2.09.004, BC-2.09.005."
+
+  - id: S-041
+    title: "Mouse Forwarding — mouse_event_to_pty_bytes, SGR 1006 Scoped Entry/Exit, Out-of-Pane Clip"
+    epic: EPIC-09
+    wave: 9
+    points: 5
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 9. Depends on S-040. Blocks S-044. BC: BC-2.09.003."
+
+  - id: S-042
+    title: "PTY Resize Detection, 50ms Debounce, and ResizePane IPC"
+    epic: EPIC-09
+    wave: 9
+    points: 5
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 9. Depends on S-039. BC: BC-2.09.006."
+
+  - id: S-043
+    title: "Scrollback Navigation — PtyScrollUp/Down, Per-Session Offsets, Configurable Capacity"
+    epic: EPIC-09
+    wave: 9
+    points: 3
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 9. Depends on S-039. BC: BC-2.09.007."
+
+  - id: S-044
+    title: "EmbeddedTerminal + SessionCreation AppMode Transitions, SessionCreation Wizard, SpawnAck, and Permission Badge+Bell"
+    epic: EPIC-09
+    wave: 9
+    points: 13
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 9. Depends on S-033, S-035, S-040, S-041. BCs: BC-2.09.008, BC-2.09.009."
+
+  - id: S-045
+    title: "ClaudeCodeModule::spawn_recipe() — Happy Path, CCR Injection, Error Cases, and Default Trait Impl"
+    epic: EPIC-03
+    wave: 8
+    points: 5
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 8. Depends on S-015, S-033. BCs: BC-2.03.005, BC-2.03.006, BC-2.03.007, BC-2.03.008."
+
+  - id: S-046
+    title: "PtyOutput Fan-out Broker — Bounded Channel, Backpressure, and Client Lifecycle"
+    epic: EPIC-05
+    wave: 8
+    points: 5
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 8. Depends on S-021, S-032. Blocks S-047. BC: BC-2.05.009."
+
+  - id: S-047
+    title: "IPC Lifecycle Variants — Spawn/Kill/Detach/Attach/Rename/Input/Resize + Scrollback Protocol"
+    epic: EPIC-05
+    wave: 8
+    points: 8
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 8. Depends on S-021, S-022, S-023, S-033, S-034, S-035, S-046. Blocks S-048. BCs: BC-2.05.010, BC-2.05.011."
+
+  - id: S-048
+    title: "Sessions Panel — Multi-Project Grouping, Lifecycle Actions, and State-Aware Blocking"
+    epic: EPIC-06
+    wave: 8
+    points: 8
+    status: not_started
+    assigned_to: null
+    started_at: null
+    completed_at: null
+    pr_url: null
+    notes: "Wave 8. Depends on S-022, S-025, S-028, S-033, S-047. BC: BC-2.06.025."
+
 summary:
-  total_stories: 33
-  not_started: 0
+  total_stories: 51
+  not_started: 16
   in_progress: 0
   review: 0
   done: 32
   ready: 0
   blocked: 1
-  total_points: 195
+  draft: 2
+  total_points: 311
   points_complete: 192
   wave_0_points: 3
   wave_1_points: 8
@@ -473,17 +666,36 @@ summary:
   wave_5_points: 34
   wave_6_points: 34
   wave_7_points: 23
+  wave_8_points: 74
+  wave_9_points: 42
   wave_7_gate_status: passed
   wave_7_gate_decision: D-232
   wave_7_gate_date: "2026-06-03"
   phase_3_status: COMPLETE
-  # WAVE-8 EXCLUSION NOTE: S-032 and S-DAEMON-WIRE-FIX-001 are Wave 8 draft stories tracked in
-  #   STORY-INDEX but EXCLUDED from sprint-state Phase-3 totals (33 stories / 195 pts) by design.
+  # WAVE-8/9 NOTE: total_points: 311 includes all waves (0-9). Phase-3 original deliverables remain 33 stories / 195 pts.
+  #   Wave 8 (74 pts) = S-032 (5) + S-DAEMON-WIRE-FIX-001 (5) + S-033..S-038 (38) + S-045..S-048 (26).
+  #   Wave 9 (42 pts) = S-039..S-044 (42).
+  #   S-032 and S-DAEMON-WIRE-FIX-001 were previously excluded from the Phase-3 195 pt total; they are now
+  #   included in wave_8_points and the full total_points: 311 corpus count.
   #   S-032 (EPIC-05, 5 pts): discharges deferred BC-2.05.004 v1.1.0 PC-2 daemon fan-out obligation.
-  #   S-DAEMON-WIRE-FIX-001 (EPIC-04, 5 pts): anchored deferral for second-signal exit-code paths
-  #     (BC-2.01.004 PC-8/INV-4 SigtermDuringDrain=143 / SigintDuringDrain=130). Code carries
-  #     CONTRACT GAP markers in lifecycle.rs. Design seam: SS-daemon-wiring-impl.md §HIGH-2.
-  #   Neither blocks Phase 4 holdout evaluation.
+  #   S-DAEMON-WIRE-FIX-001 (EPIC-04, 5 pts): anchored deferral for second-signal exit-code paths.
+  #   S-033..S-038 (EPIC-08, 38 pts): Session Manager v1A subsystem.
+  #   S-039..S-044 (EPIC-09, 42 pts): Embedded PTY v1A subsystem.
+  #   S-045 (EPIC-03, 5 pts): ClaudeCodeModule spawn_recipe() delta.
+  #   S-046..S-047 (EPIC-05, 13 pts): IPC lifecycle/scrollback/fan-out delta.
+  #   S-048 (EPIC-06, 8 pts): Sessions panel multi-project delta.
+  # total_stories note: 49 = 33 Phase-3 stories (including S-PHASE-3-PREP and S-DTU-001) + 2 Wave-8
+  #   pre-existing (S-032, S-DAEMON-WIRE-FIX-001) + 16 new v1A (S-033..S-048). Blocked count (1) is
+  #   S-PHASE-3-PREP (blocked on vsdd-factory spec-kit-mcp rc.19+).
+  # v1.41 updates (2026-06-15):
+  # - Phase-2 Burst F Integration: 16 new v1A stories (S-033..S-048) added, all not_started.
+  # - 2 new epics: EPIC-08 (Session Manager, SS-08, Wave 8, 6 stories, 38 pts) + EPIC-09 (Embedded PTY, SS-09, Wave 9, 6 stories, 42 pts).
+  # - 4 existing epics expanded: EPIC-03 (+S-045 5pts), EPIC-05 (+S-046 5pts, +S-047 8pts), EPIC-06 (+S-048 8pts).
+  # - Wave 8 expanded: 10 pts (S-032+S-DAEMON-WIRE-FIX-001) → 74 pts total (+ 64 new pts from S-033..S-038/S-045..S-048).
+  # - Wave 9 added: 42 pts (S-039..S-044).
+  # - total_stories: 33 (Phase-3 canonical, prior) → 51 (all tracked); not_started: 0 → 16; draft: 2 (unchanged); total_points: 195 (Phase-3 only) → 311 (full corpus, all waves).
+  # - 25 v1A BCs covered: BC-2.03.005..008, BC-2.05.009..011, BC-2.06.025, BC-2.08.001..008, BC-2.09.001..009.
+  # - STORY-INDEX bumped v5.32 → v5.33. wave-schedule.md bumped v1.6 → v1.7.
   # v1.40 updates (2026-06-03):
   # - S-032 formal story entry added to stories list (previously only in STORY-INDEX; sprint-state
   #   had no entry). Status: draft.

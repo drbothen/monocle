@@ -2,7 +2,7 @@
 scenario_id: HS-EXP-012
 title: "Re-Discovery Completes Before UDS Bind — No TUI Connection Accepted During Discovery Window"
 wave: 8
-stories_tested: [S-TBD-session-manager]
+stories_tested: [S-036]
 source_bcs: [BC-2.08.004]
 severity: must-pass
 visibility: holdout-evaluator-only
@@ -14,7 +14,7 @@ timestamp: 2026-06-03T12:00:00Z
 
 **Wave:** 8
 **Source BC:** BC-2.08.004 (PC-6 + Invariant 1: UDS bind MUST NOT precede re-discovery completion)
-**Stories Tested:** S-TBD-session-manager
+**Stories Tested:** S-036
 
 ## Setup
 

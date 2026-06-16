@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.1"
+version: "1.2.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:59:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-ipc.md, architecture/SS-session-manager.md, architecture/SS-daemon-wiring-v2-delta.md, architecture/adr/ADR-0010-pty-bytes-over-shared-uds-ipc.md]
-input-hash: "d731bca"
+input-hash: "da53182"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-05
@@ -186,11 +186,16 @@ the retired single-message `HostToDaemon::ScrollbackDump`.
 
 ## Story Anchor
 
-S-TBD — Implement ScrollbackChunk*/ScrollbackDumpComplete/PtyReset broker fan-out + TUI receiver (filled by story-writer)
+S-047 — Implement ScrollbackChunk*/ScrollbackDumpComplete/PtyReset broker fan-out + TUI receiver
 
 ## VP Anchors
 
 VP-TBD — Scrollback dump integration tests and PtyReset unit tests (filled after VP creation)
+
+## §Trace v1.2.2
+
+**Burst-E D-305 — Story Anchor resolved: S-TBD → S-047** (2026-06-15):
+- Story Anchor filled from Phase-2 Burst C story decomposition (clusters with BC-2.05.010). No behavioral content changed.
 
 ## §Trace v1.2.1
 

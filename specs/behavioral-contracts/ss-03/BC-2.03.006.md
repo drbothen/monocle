@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.1"
+version: "1.1.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-engine-module-v2-delta.md, architecture/SS-session-manager.md]
-input-hash: "14613b8"
+input-hash: "8438e80"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-03
@@ -110,11 +110,16 @@ the `SpawnRecipe.env` fields on top. The env map does NOT replace the full envir
 
 ## Story Anchor
 
-S-TBD — Same story as BC-2.03.005 (ClaudeCodeModule::spawn_recipe() implementation; filled by story-writer)
+S-045 — Same story as BC-2.03.005 (ClaudeCodeModule::spawn_recipe() implementation)
 
 ## VP Anchors
 
 VP-TBD — CCR base URL injection presence/absence unit tests (filled after VP creation)
+
+## §Trace v1.1.2
+
+**Burst-E D-305 — Story Anchor resolved: S-TBD → S-045** (2026-06-15):
+- Story Anchor filled from Phase-2 Burst C story decomposition (clusters with BC-2.03.005). No behavioral content changed.
 
 ## §Trace v1.1.1
 

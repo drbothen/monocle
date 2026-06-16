@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.0"
+version: "1.3.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/SS-engine-module-v2-delta.md]
-input-hash: "1e1dd54"
+input-hash: "88bb1f1"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-08
@@ -153,11 +153,16 @@ has `--settings` in its argv.
 
 ## Story Anchor
 
-S-TBD — Implement hook auto-injection in session spawn path (filled by story-writer)
+S-038 — Implement hook auto-injection in session spawn path
 
 ## VP Anchors
 
 VP-TBD — Hook injection end-to-end tests (filled after VP creation)
+
+## §Trace v1.3.1
+
+**Burst-E D-305 — Story Anchor resolved: S-TBD → S-038** (2026-06-15):
+- Story Anchor filled from Phase-2 Burst A story decomposition. No behavioral content changed.
 
 ## §Trace v1.3.0
 

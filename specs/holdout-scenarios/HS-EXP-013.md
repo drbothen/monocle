@@ -2,7 +2,7 @@
 scenario_id: HS-EXP-013
 title: "Permission Badge+Bell While in EmbeddedTerminal — SUG-3 Guarantee: Prompt Never Silently Queued"
 wave: 8
-stories_tested: [S-TBD-embedded-pty]
+stories_tested: [S-044]
 source_bcs: [BC-2.09.009, BC-2.06.008]
 severity: must-pass
 visibility: holdout-evaluator-only
@@ -14,7 +14,7 @@ timestamp: 2026-06-03T12:00:00Z
 
 **Wave:** 8
 **Source BC:** BC-2.09.009 (postconditions PC-1, PC-2, PC-3), BC-2.06.008 (PC-1: VecDeque push)
-**Stories Tested:** S-TBD-embedded-pty
+**Stories Tested:** S-044
 
 ## Setup
 

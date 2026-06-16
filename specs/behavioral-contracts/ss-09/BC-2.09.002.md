@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.2"
+version: "1.1.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md]
-input-hash: "00179ba"
+input-hash: "511e350"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-09
@@ -169,11 +169,16 @@ mouse events in SGR encoding, and bracketed paste. No keyboard class is deferred
 
 ## Story Anchor
 
-S-TBD — Implement key_event_to_pty_bytes() and KeyInput IPC send in monocle-tui (filled by story-writer)
+S-040 — Implement key_event_to_pty_bytes() and KeyInput IPC send in monocle-tui
 
 ## VP Anchors
 
 VP-TBD — Keyboard translation unit tests (filled after VP creation)
+
+## §Trace v1.1.3
+
+**Burst-E D-305 — Story Anchor resolved: S-TBD → S-040** (2026-06-15):
+- Story Anchor filled from Phase-2 Burst B story decomposition. No behavioral content changed.
 
 ## §Trace v1.1.2
 

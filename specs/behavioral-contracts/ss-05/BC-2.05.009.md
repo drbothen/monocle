@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.2"
+version: "1.5.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-ipc.md, architecture/SS-daemon-wiring-v2-delta.md, architecture/adr/ADR-0010-pty-bytes-over-shared-uds-ipc.md]
-input-hash: "590a74c"
+input-hash: "ddee304"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-05
@@ -159,11 +159,16 @@ on normal channel fullness. Under normal backpressure, PTY bytes are never dropp
 
 ## Story Anchor
 
-S-TBD — Implement PtyOutput broker fan-out and session-host PTY reader bounded channel (filled by story-writer)
+S-046 — Implement PtyOutput broker fan-out and session-host PTY reader bounded channel
 
 ## VP Anchors
 
 VP-TBD — PtyOutput fan-out integration tests (filled after VP creation)
+
+## §Trace v1.5.3
+
+**Burst-E D-305 — Story Anchor resolved: S-TBD → S-046** (2026-06-15):
+- Story Anchor filled from Phase-2 Burst C story decomposition. No behavioral content changed.
 
 ## §Trace v1.5.2
 

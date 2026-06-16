@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.1"
+version: "1.1.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md]
-input-hash: "00179ba"
+input-hash: "511e350"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-09
@@ -120,11 +120,16 @@ the parser must reflect the new size within 2 render ticks of the first dimensio
 
 ## Story Anchor
 
-S-TBD — Implement resize detection, debounce, ResizePane IPC in monocle-tui (filled by story-writer)
+S-042 — Implement resize detection, debounce, ResizePane IPC in monocle-tui
 
 ## VP Anchors
 
 VP-TBD — Resize debounce timing tests (filled after VP creation)
+
+## §Trace v1.1.2
+
+**Burst-E D-305 — Story Anchor resolved: S-TBD → S-042; BC-2.09.006 previously missing from Burst A/B anchor-fill dispatch list** (2026-06-15):
+- Story Anchor filled from Phase-2 Burst B story decomposition. S-042 was confirmed after Burst C. This is the missing-anchor fix from section E spec inconsistency resolution. No behavioral content changed.
 
 ## §Trace v1.1.1
 

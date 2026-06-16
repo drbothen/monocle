@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.0"
+version: "1.5.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-14T12:00:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/SS-engine-module-v2-delta.md, architecture/SS-ipc.md, architecture/adr/ADR-0009-native-session-host-process-model.md]
-input-hash: "b3c8aff"
+input-hash: "47c7734"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-08
@@ -164,11 +164,16 @@ goes directly to `Launching`.
 
 ## Story Anchor
 
-S-TBD — Implement SessionManager::spawn_session() with SessionHostSpawner (filled by story-writer)
+S-033 — Implement SessionManager::spawn_session() with SessionHostSpawner
 
 ## VP Anchors
 
 VP-TBD — Session spawn integration tests (filled after VP creation)
+
+## §Trace v1.5.1
+
+**Burst-E D-305 — Story Anchor resolved: S-TBD → S-033** (2026-06-15):
+- Story Anchor filled from Phase-2 Burst A story decomposition. No behavioral content changed.
 
 ## §Trace v1.5.0
 

@@ -2,7 +2,7 @@
 scenario_id: HS-EXP-011
 title: "Session Survives Graceful Daemon Restart — PTY Stream Re-Attached, SessionEntry Visible"
 wave: 8
-stories_tested: [S-TBD-session-manager]
+stories_tested: [S-036]
 source_bcs: [BC-2.08.002, BC-2.08.004, BC-2.05.006]
 severity: must-pass
 visibility: holdout-evaluator-only
@@ -14,7 +14,7 @@ timestamp: 2026-06-03T12:00:00Z
 
 **Wave:** 8
 **Source BC:** BC-2.08.002 (postconditions PC-1, PC-3), BC-2.08.004 (PC-1, PC-6 + Invariant 1), BC-2.05.006 (PC-1)
-**Stories Tested:** S-TBD-session-manager
+**Stories Tested:** S-036
 
 ## Setup
 

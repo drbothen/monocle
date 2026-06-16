@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.1"
+version: "1.1.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md]
-input-hash: "00179ba"
+input-hash: "511e350"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-09
@@ -140,11 +140,16 @@ widget renderer. Scrollback capacity is configurable via
 
 ## Story Anchor
 
-S-TBD — Implement scrollback navigation in monocle-tui (filled by story-writer)
+S-043 — Implement scrollback navigation in monocle-tui
 
 ## VP Anchors
 
 VP-TBD — Scrollback offset unit tests (filled after VP creation)
+
+## §Trace v1.1.2
+
+**Burst-E D-305 — Story Anchor resolved: S-TBD → S-043** (2026-06-15):
+- Story Anchor filled from Phase-2 Burst B story decomposition. No behavioral content changed.
 
 ## §Trace v1.1.1
 

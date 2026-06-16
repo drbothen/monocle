@@ -2,7 +2,7 @@
 scenario_id: HS-EXP-015
 title: "Full-Fidelity Keyboard Forwarding — Kitty + SGR Mouse + Bracketed Paste Reach PTY stdin in EmbeddedTerminal"
 wave: 8
-stories_tested: [S-TBD-embedded-pty]
+stories_tested: [S-040, S-041]
 source_bcs: [BC-2.09.002, BC-2.09.003, BC-2.09.004, BC-2.09.005]
 severity: must-pass
 visibility: holdout-evaluator-only
@@ -14,7 +14,7 @@ timestamp: 2026-06-03T23:45:00Z
 
 **Wave:** 8
 **Source BC:** BC-2.09.002 (PC-1..PC-5: input class forwarding), BC-2.09.003 (PC-1: SGR mouse), BC-2.09.004 (PC-1: Kitty CSI u), BC-2.09.005 (PC-1: bracketed paste)
-**Stories Tested:** S-TBD-embedded-pty
+**Stories Tested:** S-040, S-041
 
 ## Setup
 

@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.32"
+version: "5.33"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-03T08:30:00Z
@@ -34,11 +34,13 @@ traces_to: .factory/specs/prd.md
 |---------|------|-----------|-----------|---------|
 | EPIC-01 | Daemon Lifecycle | CAP-001 | SS-01 | S-001, S-002, S-003, S-004, S-005, S-006, S-007, S-008, S-009 |
 | EPIC-02 | Core Types and ABI | CAP-002 | SS-02 | S-010, S-011, S-012, S-013 |
-| EPIC-03 | Engine Module | CAP-003 | SS-03 | S-014, S-015 |
+| EPIC-03 | Engine Module | CAP-003 | SS-03 | S-014, S-015, S-045 |
 | EPIC-04 | Daemon Wiring | CAP-004 | SS-04 | S-016, S-017, S-018, S-019, S-020, S-DAEMON-WIRE-FIX-001 |
-| EPIC-05 | IPC | CAP-005 | SS-05 | S-021, S-022, S-023, S-032 |
-| EPIC-06 | TUI | CAP-006 | SS-06 | S-024, S-025, S-026, S-027, S-028, S-029 |
+| EPIC-05 | IPC | CAP-005 | SS-05 | S-021, S-022, S-023, S-032, S-046, S-047 |
+| EPIC-06 | TUI | CAP-006 | SS-06 | S-024, S-025, S-026, S-027, S-028, S-029, S-048 |
 | EPIC-07 | Config | CAP-007 | SS-07 | S-030, S-031 |
+| EPIC-08 | Session Manager | CAP-008 | SS-08 | S-033, S-034, S-035, S-036, S-037, S-038 |
+| EPIC-09 | Embedded PTY | CAP-009 | SS-09 | S-039, S-040, S-041, S-042, S-043, S-044 |
 | EPIC-DTU | Claude Code Hook Protocol Clone | CAP-001 (DTU) | — | S-DTU-001 |
 | EPIC-PREP | Phase 3 Pre-Implementation Prep | — | — | S-PHASE-3-PREP |
 
@@ -81,10 +83,26 @@ traces_to: .factory/specs/prd.md
 | S-031 | Profile Picker: Sticky-Per-Project Selection + Ctrl-P Override | EPIC-07 | 5 | 7 | done | — |
 | S-032 | Daemon Event-Bus Fan-Out: Broadcast HookEventReceived with daemon timestamp_micros | EPIC-05 | 5 | 8 | draft | — |
 | S-DAEMON-WIRE-FIX-001 | Second-Signal Exit Codes (SigtermDuringDrain=143, SigintDuringDrain=130) | EPIC-04 | 5 | 8 | draft | — |
+| S-033 | SessionManager::spawn_session — SessionHostSpawner, SessionEntry, Sidecar, SpawnAck, and SessionStateChanged{Launching} | EPIC-08 | 8 | 8 | draft | S-034, S-035, S-036, S-037, S-038 |
+| S-034 | SessionManager::kill_session — DaemonToHost::Kill Within 500ms; Terminating/Terminated Transitions; 12s Watchdog | EPIC-08 | 8 | 8 | draft | — |
+| S-035 | SessionManager::attach_session and detach_session — Chunked Scrollback, SO_PEERCRED, Session-Host Stays Alive | EPIC-08 | 8 | 8 | draft | — |
+| S-036 | SessionManager::rediscover_sessions — setsid Persistence; All States Handled Within 5s; UDS Bind Blocked | EPIC-08 | 8 | 8 | draft | — |
+| S-037 | SessionManager GC Task — Terminated Sessions Removed After 10s Grace Period | EPIC-08 | 3 | 8 | draft | — |
+| S-038 | SessionManager Hook Auto-Injection — --settings Arg in Session-Host Spawn Path | EPIC-08 | 3 | 8 | draft | — |
+| S-039 | PTY Output Pipeline — vt100::Parser, PseudoTerminal Render, PtyOutput IPC Handler, Auto-Attach on First Entry | EPIC-09 | 8 | 9 | draft | S-040, S-041, S-042, S-043, S-044 |
+| S-040 | Full-Fidelity Keyboard Forwarding — key_event_to_pty_bytes, Kitty Protocol CSI u, and Bracketed Paste | EPIC-09 | 8 | 9 | draft | — |
+| S-041 | Mouse Forwarding — mouse_event_to_pty_bytes, SGR 1006 Scoped Entry/Exit, Out-of-Pane Clip | EPIC-09 | 5 | 9 | draft | — |
+| S-042 | PTY Resize Detection, 50ms Debounce, and ResizePane IPC | EPIC-09 | 5 | 9 | draft | — |
+| S-043 | Scrollback Navigation — PtyScrollUp/Down, Per-Session Offsets, Configurable Capacity | EPIC-09 | 3 | 9 | draft | — |
+| S-044 | EmbeddedTerminal + SessionCreation AppMode Transitions, SessionCreation Wizard, SpawnAck, and Permission Badge+Bell | EPIC-09 | 13 | 9 | draft | — |
+| S-045 | ClaudeCodeModule::spawn_recipe() — Happy Path, CCR Injection, Error Cases, and Default Trait Impl | EPIC-03 | 5 | 8 | draft | — |
+| S-046 | PtyOutput Fan-out Broker — Bounded Channel, Backpressure, and Client Lifecycle | EPIC-05 | 5 | 8 | draft | S-047 |
+| S-047 | IPC Lifecycle Variants — Spawn/Kill/Detach/Attach/Rename/Input/Resize + Scrollback Protocol | EPIC-05 | 8 | 8 | draft | S-048 |
+| S-048 | Sessions Panel — Multi-Project Grouping, Lifecycle Actions, and State-Aware Blocking | EPIC-06 | 8 | 8 | draft | — |
 
-**Total stories:** 35 (33 product + 1 DTU + 1 prep)
-**Total points (product):** 199 (excl. DTU 3 pts and PREP 3 pts)
-**Total points (all):** 205
+**Total stories:** 51 (49 product + 1 DTU + 1 prep)
+**Total points (product):** 305 (excl. DTU 3 pts and PREP 3 pts)
+**Total points (all):** 311
 
 ## Wave Summary
 
@@ -98,7 +116,8 @@ traces_to: .factory/specs/prd.md
 | Wave 5 | S-017, S-018, S-019, S-020, S-021 | 34 | Daemon integration — S-017 (serial prerequisite), then S-018, S-019, S-020, S-021 (parallel after S-017). 34 pts. |
 | Wave 6 | S-022, S-023, S-025, S-026 | 34 | IPC + TUI integration — S-022 (serial prerequisite), then S-023 + S-025 (parallel after S-022), then S-026 (after S-023 + S-022). 34 pts. |
 | Wave 7 | S-027, S-028, S-029, S-031 | 23 | Polish: overlay rendering, filter, killer scenario, profile picker (parallel-eligible within wave) |
-| Wave 8 | S-032, S-DAEMON-WIRE-FIX-001 | 10 | Post-Phase-3 follow-up: daemon event-bus fan-out live wiring (S-032) + second-signal exit-code fix anchored deferral (S-DAEMON-WIRE-FIX-001) |
+| Wave 8 | S-032, S-DAEMON-WIRE-FIX-001, S-033, S-034, S-035, S-036, S-037, S-038, S-045, S-046, S-047, S-048 | 74 | Session Manager + delta IPC/TUI + spawn recipe: S-033 is Wave-8 root (serial prerequisite within wave); S-034/S-035/S-036/S-037/S-038/S-045/S-046/S-047/S-048 serial after their Wave-8 deps |
+| Wave 9 | S-039, S-040, S-041, S-042, S-043, S-044 | 42 | Embedded PTY: S-039 is Wave-9 root (serial prerequisite within wave); S-040/S-041/S-042/S-043 parallel after S-039; S-044 after S-040+S-041 |
 
 ## BC Coverage Table
 
@@ -178,6 +197,32 @@ traces_to: .factory/specs/prd.md
 | BC-2.07.005 | Profile Picker: `Ctrl-P` Override Shows Picker | S-031 | AC-001, AC-002, AC-005..AC-007, AC-009, AC-010 | YES |
 | BC-2.07.006 | CCR Detection via `ccr_path` Config Field | S-030 | AC-009..AC-010 | YES |
 
+| BC-2.03.005 | ClaudeCodeModule::spawn_recipe() — Happy Path | S-045 | AC-001..AC-003 | YES |
+| BC-2.03.006 | ClaudeCodeModule::spawn_recipe() — CCR Injection | S-045 | AC-004..AC-006 | YES |
+| BC-2.03.007 | ClaudeCodeModule::spawn_recipe() — Error Cases | S-045 | AC-007..AC-009 | YES |
+| BC-2.03.008 | EngineModule::spawn_recipe() Default Trait Impl | S-045 | AC-010..AC-011 | YES |
+| BC-2.05.009 | PtyOutput Fan-out Broker: Bounded Channel + Backpressure | S-046 | AC-001..AC-006 | YES |
+| BC-2.05.010 | IPC Lifecycle Variants: Spawn/Kill/Detach/Attach/Rename/Input/Resize | S-047 | AC-001..AC-009 | YES |
+| BC-2.05.011 | Scrollback Protocol: PtyReset/ScrollbackChunk/ScrollbackComplete | S-047 | AC-010..AC-014 | YES |
+| BC-2.06.025 | Sessions Panel: Multi-Project Grouping, Lifecycle Actions, State-Aware Blocking | S-048 | AC-001..AC-010 | YES |
+| BC-2.08.001 | SessionManager::spawn_session — SessionHostSpawner + SpawnAck Handshake | S-033 | AC-001..AC-007 | YES |
+| BC-2.08.002 | SessionManager::rediscover_sessions — setsid Persistence + State Handling | S-036 | AC-001..AC-006 | YES |
+| BC-2.08.003 | SessionManager::kill_session — DaemonToHost::Kill + Watchdog | S-034 | AC-001..AC-007 | YES |
+| BC-2.08.004 | daemon_start_sequence step-8b: rediscover_sessions on Restart | S-036 | AC-007..AC-009 | YES |
+| BC-2.08.005 | SessionManager GC Task — Terminated Sessions Removed After 10s | S-037 | AC-001..AC-005 | YES |
+| BC-2.08.006 | Hook Auto-Injection: --settings Arg in Session-Host Spawn Path | S-038 | AC-001..AC-004 | YES |
+| BC-2.08.007 | SessionManager::attach_session / detach_session — Chunked Scrollback + SO_PEERCRED | S-035 | AC-001..AC-008 | YES |
+| BC-2.08.008 | SessionStateChanged Broadcast on All Session Lifecycle Transitions | S-033, S-034, S-035 | S-033: AC-007 (Launching); S-034: AC-005..AC-006 (Terminating/Terminated); S-035: AC-008 (Detached) | YES |
+| BC-2.09.001 | PTY Output Pipeline: vt100::Parser + PseudoTerminal Render + PtyOutput IPC Handler | S-039 | AC-001..AC-007 | YES |
+| BC-2.09.002 | key_event_to_pty_bytes: ANSI/Kitty Encoding | S-040 | AC-001..AC-005 | YES |
+| BC-2.09.003 | mouse_event_to_pty_bytes: SGR 1006 Encoding + Scoped Entry/Exit | S-041 | AC-001..AC-006 | YES |
+| BC-2.09.004 | Kitty Keyboard Protocol (CSI u) Support | S-040 | AC-006..AC-009 | YES |
+| BC-2.09.005 | Bracketed Paste: KeyInput::Paste IPC + ESC[?2004h/l Bracket Wrapping | S-040 | AC-010..AC-013 | YES |
+| BC-2.09.006 | PTY Resize: 50ms Debounce + ResizePane IPC | S-042 | AC-001..AC-005 | YES |
+| BC-2.09.007 | Scrollback Navigation: PtyScrollUp/Down + Per-Session Offsets | S-043 | AC-001..AC-005 | YES |
+| BC-2.09.008 | EmbeddedTerminal + SessionCreation AppMode Transitions | S-044 | AC-001..AC-007 | YES |
+| BC-2.09.009 | Permission Badge + Bell on PermissionPromptQueued in EmbeddedTerminal | S-044 | AC-008..AC-011 | YES |
+
 | BC-HOOK-001 | PreToolUse Hook Fail-Open Semantics (No Server Found) | S-DTU-001 | AC-001 | YES |
 | BC-HOOK-002 | Non-PreToolUse Hooks Fail-Closed (No Server Found) | S-DTU-001 | AC-001 | YES |
 | BC-HOOK-003 | Notification Hook Filters on notification_type === 'permission_prompt' | S-DTU-001 | AC-001, AC-003 | YES |
@@ -187,8 +232,8 @@ traces_to: .factory/specs/prd.md
 | BC-HOOK-007 | Exactly Five Hook Types Registered; PostToolUse Intentionally Absent | S-DTU-001 | AC-001 | YES |
 | BC-HOOK-008..BC-HOOK-041 | Hooks-settings.json encoding, path, lifecycle, timeout, env, edge cases | S-DTU-001 | AC-001..AC-006 (fidelity gate) | YES |
 
-**BC Coverage: 22/22 product BCs Waves 1-3 (100%); 49/50 product BCs Waves 4-7 (BC-2.06.017 deferred — see GAP-P2-005; BC-2.06.024 added); 41/41 DTU gene-source BCs (100%); BC-2.05.004 PARTIAL — daemon producer path (PC-2/INV-4) deferred to S-032 Wave 8; BC-2.01.004 PARTIAL — second-signal exit-code paths (PC-8/INV-4) deferred to S-DAEMON-WIRE-FIX-001 Wave 8**
-**Total product BC coverage: 69/72 (BC-2.06.017 gap — GAP-P2-005; BC-2.05.004 partial — S-032 Wave 8; BC-2.01.004 partial — S-DAEMON-WIRE-FIX-001 Wave 8). Full coverage when S-032 and S-DAEMON-WIRE-FIX-001 both delivered.**
+**BC Coverage: 22/22 product BCs Waves 1-3 (100%); 49/50 product BCs Waves 4-7 (BC-2.06.017 deferred — see GAP-P2-005; BC-2.06.024 added); 25/25 v1A BCs Waves 8-9 (100%); 41/41 DTU gene-source BCs (100%); BC-2.05.004 PARTIAL — daemon producer path (PC-2/INV-4) deferred to S-032 Wave 8; BC-2.01.004 PARTIAL — second-signal exit-code paths (PC-8/INV-4) deferred to S-DAEMON-WIRE-FIX-001 Wave 8**
+**Total product BC coverage: 94/97 (BC-2.06.017 gap — GAP-P2-005; BC-2.05.004 partial — S-032 Wave 8; BC-2.01.004 partial — S-DAEMON-WIRE-FIX-001 Wave 8). Full coverage when S-032 and S-DAEMON-WIRE-FIX-001 both delivered. v1A BCs (SS-03 delta + SS-05 delta + SS-06 delta + SS-08 + SS-09): 25/25 (100%).**
 
 ## VP Coverage Table
 
@@ -453,6 +498,29 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.33
+
+**Phase-2 Burst F Integration: 16 new v1A stories (S-033..S-048) integrated** (2026-06-15):
+
+- 2 new epics added: EPIC-08 (Session Manager, SS-08) + EPIC-09 (Embedded PTY, SS-09).
+- 3 existing epics expanded: EPIC-03 (+ S-045), EPIC-05 (+ S-046, S-047), EPIC-06 (+ S-048).
+- 16 new stories added: S-033..S-048, all status: draft.
+  - EPIC-08 (Wave 8): S-033 (8 pts), S-034 (8 pts), S-035 (8 pts), S-036 (8 pts), S-037 (3 pts), S-038 (3 pts).
+  - EPIC-09 (Wave 9): S-039 (8 pts), S-040 (8 pts), S-041 (5 pts), S-042 (5 pts), S-043 (3 pts), S-044 (13 pts).
+  - EPIC-03 delta (Wave 8): S-045 (5 pts).
+  - EPIC-05 delta (Wave 8): S-046 (5 pts), S-047 (8 pts).
+  - EPIC-06 delta (Wave 8): S-048 (8 pts).
+- Wave 8 expanded: 10 pts (S-032 + S-DAEMON-WIRE-FIX-001) → 74 pts (10 prior + 64 new: 38 pts from S-033..S-038 + 26 pts from S-045..S-048).
+- Wave 9 added: 42 pts (S-039..S-044).
+- 25 v1A BCs covered (100%): BC-2.03.005..008, BC-2.05.009..011, BC-2.06.025, BC-2.08.001..008, BC-2.09.001..009.
+- Total stories: 35 → 51 (49 product + 1 DTU + 1 prep).
+- Total product points: 199 → 305; total all: 205 → 311.
+- Dependency graph acyclic verified (see dependency-graph-expansion-v2 section): Wave 8 stories use within-wave serial ordering (S-033 is root); Wave 9 stories serial after S-035 (Wave 8).
+- Critical path extended: ...S-033 → S-035 → S-039 → S-040 → S-041 → S-044.
+- sprint-state.yaml bumped v1.40 → v1.41 (16 new not_started entries; summary updated).
+- wave-schedule.md bumped v1.6 → v1.7 (Wave 8 + Wave 9 sections added).
+- SE-16d monotonicity: v5.33 timestamp 2026-06-15 >= v5.32 timestamp 2026-06-03. PASS.
 
 ## §Trace v5.32
 

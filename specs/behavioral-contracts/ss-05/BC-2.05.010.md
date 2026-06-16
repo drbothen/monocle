@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.9.1"
+version: "1.9.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:45:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-ipc.md, architecture/SS-daemon-wiring-v2-delta.md, architecture/SS-session-manager.md, architecture/SS-engine-module-v2-delta.md]
-input-hash: "5835327"
+input-hash: "8ad6942"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-05
@@ -269,11 +269,16 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 
 ## Story Anchor
 
-S-TBD — Implement new ClientToServer IPC variants and daemon routing (filled by story-writer)
+S-047 — Implement new ClientToServer IPC variants and daemon routing
 
 ## VP Anchors
 
 VP-TBD — IPC variant routing integration tests (filled after VP creation)
+
+## §Trace v1.9.2
+
+**Burst-E D-305 — Story Anchor resolved: S-TBD → S-047** (2026-06-15):
+- Story Anchor filled from Phase-2 Burst C story decomposition. No behavioral content changed.
 
 ## §Trace v1.9.0
 

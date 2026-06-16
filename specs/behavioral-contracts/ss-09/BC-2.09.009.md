@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.2"
+version: "1.1.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md, architecture/SS-tui.md]
-input-hash: "8a4ca08"
+input-hash: "73b17d0"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-09
@@ -134,11 +134,16 @@ sign-off.
 
 ## Story Anchor
 
-S-TBD — Implement permission badge + bell in EmbeddedTerminal status bar (filled by story-writer)
+S-044 — Implement permission badge + bell in EmbeddedTerminal status bar
 
 ## VP Anchors
 
 VP-TBD — Badge + bell unit tests (filled after VP creation)
+
+## §Trace v1.1.3
+
+**Burst-E D-305 — Story Anchor resolved: S-TBD → S-044** (2026-06-15):
+- Story Anchor filled from Phase-2 Burst B story decomposition. No behavioral content changed.
 
 ## §Trace v1.1.2
 

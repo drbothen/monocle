@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.1"
+version: "1.2.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/adr/ADR-0009-native-session-host-process-model.md]
-input-hash: "0036066"
+input-hash: "97185ad"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-08
@@ -130,11 +130,16 @@ client can connect.
 
 ## Story Anchor
 
-S-TBD — Implement session re-discovery and setsid in monocle-session-host (filled by story-writer)
+S-036 — Implement session re-discovery and setsid in monocle-session-host
 
 ## VP Anchors
 
 VP-TBD — Daemon restart integration test (filled after VP creation)
+
+## §Trace v1.2.2
+
+**Burst-E D-305 — Story Anchor resolved: S-TBD → S-036** (2026-06-15):
+- Story Anchor filled from Phase-2 Burst A story decomposition. No behavioral content changed.
 
 ## §Trace v1.2.1
 

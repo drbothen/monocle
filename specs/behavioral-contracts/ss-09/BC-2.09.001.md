@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.2"
+version: "1.3.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md, architecture/adr/ADR-0011-pty-stack-native-portable-pty-vt100-tui-term.md]
-input-hash: "3b7de75"
+input-hash: "6ef24a5"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-09
@@ -148,11 +148,16 @@ TUI's IPC socket. This timing budget covers: IPC framing decode → `vt100::Pars
 
 ## Story Anchor
 
-S-TBD — Implement TUI PTY widget (vt100 parser, PseudoTerminal render, PtyOutput IPC handler; filled by story-writer)
+S-039 — Implement TUI PTY widget (vt100 parser, PseudoTerminal render, PtyOutput IPC handler)
 
 ## VP Anchors
 
 VP-TBD — PTY output render latency tests (filled after VP creation)
+
+## §Trace v1.3.3
+
+**Burst-E D-305 — Story Anchor resolved: S-TBD → S-039** (2026-06-15):
+- Story Anchor filled from Phase-2 Burst B story decomposition. No behavioral content changed.
 
 ## §Trace v1.3.2
 

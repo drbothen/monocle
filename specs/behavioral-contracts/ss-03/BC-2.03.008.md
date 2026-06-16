@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-engine-module-v2-delta.md]
-input-hash: "dffb5cb"
+input-hash: "e117e2c"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-03
@@ -120,11 +120,16 @@ that must be explicitly opted into, not accidentally inherited.
 
 ## Story Anchor
 
-S-TBD — Same story as BC-2.03.005 (EngineModule trait extension with spawn_recipe() default; filled by story-writer)
+S-045 — Same story as BC-2.03.005 (EngineModule trait extension with spawn_recipe() default)
 
 ## VP Anchors
 
 VP-TBD — Default UnsupportedOperation unit test (filled after VP creation)
+
+## §Trace v1.0.5
+
+**Burst-E D-305 — Story Anchor resolved: S-TBD → S-045** (2026-06-15):
+- Story Anchor filled from Phase-2 Burst C story decomposition (clusters with BC-2.03.005). No behavioral content changed.
 
 ## §Trace v1.0.4
 

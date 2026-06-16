@@ -2,7 +2,7 @@
 scenario_id: HS-EXP-014
 title: "Hook Auto-Injection Under Concurrent Spawns — Shared hooks-settings.json Not Clobbered; All Sessions Get Correct `--settings` Arg"
 wave: 8
-stories_tested: [S-TBD-session-manager]
+stories_tested: [S-033, S-038]
 source_bcs: [BC-2.08.006, BC-2.08.001, BC-HOOK-010]
 severity: must-pass
 visibility: holdout-evaluator-only
@@ -15,7 +15,7 @@ modified: 2026-06-13T00:00:00Z
 
 **Wave:** 8
 **Source BC:** BC-2.08.006 (postconditions PC-1, PC-2), BC-2.08.001 (PC-1, PC-3), BC-HOOK-010 (PC-1, PC-3)
-**Stories Tested:** S-TBD-session-manager
+**Stories Tested:** S-033, S-038
 
 ## Setup
 
