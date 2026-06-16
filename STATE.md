@@ -2,7 +2,7 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "7.84"
+version: "7.85"
 status: active
 producer: state-manager
 timestamp: 2026-06-16T00:00:00Z
@@ -11,655 +11,35 @@ current_step: "Phase-2 adversarial convergence COMPLETE (3/3, Passes 24/25/26 cl
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-001..D-241 archived at cycles/cycle-001/decisions-archive.md. D-242..D-322 appended to cycles/cycle-001/decisions-archive.md §Phase-1d+Phase-2."
-awaiting: "PAUSED. Phase-2 CONVERGENCE COMPLETE (3/3). RESUME: Option A = optional cleanup burst (F-GATE-IMP-001/002 + F-GATE-ADV-001..004 + deferred F-P*-SUG) then Phase-2 human approval gate. Option B = proceed directly to gate (all findings non-blocking)."
-durable_task_register:
-  outstanding:
-    - id: "INPUT-HASH-CHILD-RECOMPUTE"
-      subject: "[process-gap] input-hash drift re-accumulates when fix-burst commits bump shared parent specs without recomputing child input-hashes in the same commit — CODIFICATION PENDING"
-      status: codification-pending
-      detail: "D-303 (2026-06-14): 149-file input-hash drift accumulated across Phase-1d adversarial convergence (D-241..D-302) because fix-burst commits bumped shared parent specs (prd.md, BC-INDEX, product-brief, vision-synthesis, SS docs) without recomputing dependent child input-hashes (BCs, VPs, story files, plan files) in the same factory-artifacts commit. The compute-input-hash tool also reveals a circular-dependency limitation: files that list each other as inputs (e.g., prd.md → SS-daemon-lifecycle.md → prd.md) produce non-convergent hash cycles — each --update pass makes the circular partner stale again. FOLLOW-UP 1 (primary, devops-engineer): convergence/fix-burst workflow (or a pre-commit hook on factory-artifacts) should run compute-input-hash --scan --update and commit the results whenever a shared parent spec is edited, preventing re-accumulation. FOLLOW-UP 2 (tool design, devops-engineer): consider whether compute-input-hash should hash only non-hash-field content of input files (to break circular-dependency oscillation) OR document that circular-input-dep STALE is expected/non-blocking. Route to devops-engineer before Phase-4 (or earlier, during Phase-2 prep). Non-blocking for Phase-2."
-      blocking: false
-    - id: "DEP-PIN-SWEEP-RULE"
-      subject: "[process-gap] extend POL-11 (or sibling check) to grep crate-name+version literals in spec prose against SS-deps-pin-manifest(-v2-delta) — root cause of I14-001"
-      status: pending
-      detail: "D-256 Pass-14 S14-001: POL-11 keys on artifact-ID version rows (e.g., 'SS-session-manager v1.8.0'), NOT on crate-name+version literals in prose (e.g., 'portable-pty 0.8.x'). I14-001 was a stale portable-pty 0.8.x literal in SS-session-manager §env-inheritance that escaped all prior POL-11 sweeps. Tooling enhancement: add a sibling check that greps spec prose for crate-pin literals and validates them against SS-deps-pin-manifest(-v2-delta) canonical versions. Route to devops-engineer when a POL-extension sprint is scheduled. Non-blocking; no production impact until v1A implementation begins."
-      blocking: false
-    - id: "POL-14-PARENTHETICAL-ANCHOR-PIN"
-      subject: "[process-gap CLOSED D-289] POL-11 blind spot for `path#anchor (vX.Y.Z)` parenthetical form in §Architecture Anchors — closed by POL-14 on develop @ 5d9d603"
-      status: closed-d289
-      detail: "D-289 Pass-46 F-P46-IMP-001: POL-11's ID↔version adjacency regex did not match the `path#anchor (vX.Y.Z)` form used in §Architecture Anchors sections of BC files. 11 stale pins across BC-2.08.001 (5), BC-2.08.008 (3), BC-2.09.008 (3) went undetected for multiple passes. Root-cause process-gap CLOSED by POL-14 (Pattern C detection in scripts/check_version_pins.py + CI pol-lint + lefthook, develop @ 5d9d603). Corpus-standard fix: §Architecture Anchors are now version-less navigational references; authoritative pins live only in §Architecture Source rows. Errata-no-bump (3 BCs; no version bump required). Lesson codified as POL-COVERAGE-BLIND-SPOT in Section F."
-      blocking: false
-    - id: "POL-11-MIRROR-TABLE-BLIND-SPOT"
-      subject: "[process-gap] POL-11 is blind to version literals embedded in markdown tables whose column headers don't match the ID↔version adjacency pattern — mitigation applied D-292 (retire hand-maintained registry mirrors in favor of pointers)"
-      status: mitigation-applied-d292
-      detail: "D-292 Pass-49 F-P49-001: BC-INDEX.md and SS-conventions-anti-patterns.md each carried a 'Canonical SS version table' — a 6-row markdown table of SS document → version mappings. These were hand-maintained mirrors of version-pin-registry.yaml. POL-11's ID↔version adjacency regex did not match markdown table cell values (e.g., '| SS-engine-module.md | v1.1.20 |') because the table cell form has separators and whitespace that break the adjacency check. Result: 4 of 6 rows silently drifted (SS-forward-compatibility v1.2.19→1.2.20, SS-engine-module v1.1.20→1.1.27, SS-deps-pin-manifest v1.1.17→1.2.1, SS-conventions v1.29.5→1.32.6) over multiple passes without POL-11 detection. MITIGATION APPLIED (D-292): both tables removed and replaced with explicit registry pointers to version-pin-registry.yaml (the authoritative source). Pattern is now retired — do not re-introduce hand-maintained version mirror tables in spec prose. CODIFICATION PENDING: add a check for markdown table-cell version literals against the registry to POL-11, or document this anti-pattern in the Cycle-Closing Checklist. Route to devops-engineer when a POL-extension sprint is scheduled. Non-blocking."
-      blocking: false
-    - id: "POL-11-PINFORMAT-BLIND-SPOT"
-      subject: "[process-gap CODIFICATION PENDING] POL-11 does NOT scan the 'path.md vX.Y.Z §section' live Architecture-Source pin format — confirmed: exited 0 with BC-2.03.008 two generations stale (GAP-1.1 D-301). 3rd POL-coverage blind-spot recurrence."
-      status: codification-pending
-      detail: "D-301 Phase-1d pre-gate consistency audit (Pass-57 sweep): BC-2.03.008 line-108 Architecture Source cell carried live pins 'SS-session-manager.md v2.5.0 §session_error_to_code' and 'SS-ipc.md v1.23.0 §ServerToClient::Error' in the 'path.md vX.Y.Z §section' format. check_version_pins.py exited 0 despite these pins being 2 generations stale (v2.6.0/v1.23.2 were canonical). Root cause: POL-11 ID-adjacency regex pattern does not recognize the 'path.md vX.Y.Z §section' form (section anchor suffix breaks adjacency match). This is the 3rd POL-coverage blind-spot recurrence: (1) D-289 Pass-46 POL-14 parenthetical form in §Architecture Anchors [CLOSED]; (2) D-292 Pass-49 markdown table-cell form [MITIGATION-APPLIED]; (3) D-301 'path.md vX.Y.Z §section' form in live §Architecture Source Traceability cells [CODIFICATION PENDING]. FOLLOW-UP: extend check_version_pins.py with a Pattern (analogous to POL-14 Pattern C) that catches 'SS-name.md vX.Y.Z §...' pins in live (non-§Trace) Architecture-Source cells; add to CI + lefthook. Route to devops-engineer before Phase-4 (or earlier). PO confirmatory sweep confirmed 0 live stale pins remaining across all BCs after D-301 fix. Non-blocking."
-      blocking: false
-    - id: "ADR-0010-TRACE-256-MARKER"
-      subject: "ADR-0010 §Trace v1.2.0 (and SS-daemon-wiring-v2-delta §Trace v1.2.0) narrate historical 'capacity 256' without an inline '[superseded by 64 in v1.3.0]' marker"
-      status: pending
-      detail: "D-257 Pass-15 S15-001: ADR-0010 §Trace v1.2.0 and SS-daemon-wiring-v2-delta §Trace v1.2.0 reference the historical 'capacity 256' value in changelog prose without an inline superseded-by marker. Normative bodies correctly carry 64. The missing marker is a changelog-legibility gap only — no normative contradiction. Deferred as housekeeping: bumping heavily-cited ADR-0010 standalone for a §Trace annotation is disproportionate. Fold into the next ADR-0010 edit (e.g., when a substantive normative change is required). Non-blocking Suggestion S15-001."
-      blocking: false
-    - id: "PRD-COUNT-CROSSCHECK-RULE"
-      subject: "[process-gap] add a structural-claim check (POL-12 sibling) asserting 'for each SS-NN, PRD §2.NN BC-table row count == BC-INDEX §Summary active count for SS-NN'"
-      status: pending
-      detail: "D-258 Pass-16 S16-001: PRD §2.8 omitted BC-2.08.008 (active P0 BC) for 15 adversarial passes because the Pass-15 cross-check verification artifact hand-typed the expected BC set as 'BC-2.08.001..007' (7 rows) instead of deriving from BC-INDEX §Summary (8 active BCs for SS-08). The hand-typed set was off by one and produced a false-green that cleared Pass-15. Root cause: cross-check artifacts that hand-enumerate expected sets are self-falsifying — an off-by-one in the hand-typed enumeration passes as CLEAN and hides a real omission for many passes. TOOLING ENHANCEMENT: add a check asserting that for each SS-NN, the PRD §2.NN BC-table row count equals the BC-INDEX §Summary active count for that subsystem — making a P0 BC missing from the PRD index a hard CI failure rather than a silent pass. Route to devops-engineer when a POL-extension sprint is scheduled. PROCESS RULE: PO must derive expected sets from BC-INDEX counts in future §2 sync sweeps — never hand-enumerate. Non-blocking tooling enhancement."
-      blocking: false
-    - id: "TD-MULTI-CLIENT-ATTACH-STORM-001"
-      subject: "concurrent multi-TUI-client attach-reset storm refinement — ratified-FUTURE scope boundary (BC-2.05.009 Invariant 2)"
-      status: ratified-future
-      detail: "D-253 Pass-11 I11-001 PRONG B adjudication: concurrent multi-TUI-client attach-storm (per-client unicast scrollback or attach-scoped fan-out instead of broadcast-reset-all) is explicitly ratified as out-of-v1A scope per BC-2.05.009 Invariant 2 ('v1A: single TUI client or first-win semantics for concurrent attach'). The current broadcast fan-out is forward-compatible infrastructure. Scope-boundary note added to SS-daemon-wiring-v2-delta v1.6.0. Specify the unicast/per-client protocol refinement when the multi-TUI-client capability is formally scheduled (v1B or later); current infra does not need rework. NOT a v1A defect."
-      blocking: false
-    - id: "DTU-CLONE-STORY"
-      subject: "DTU clone false-negative — RESOLVED D-234 (RESOLVED-FALSE-PREMISE)"
-      status: resolved-false-premise
-      detail: "RESOLVED D-234: the D-232 Gate-2 SKIP and this task's blocking: true classification were based on a false premise. The DTU clone EXISTS as S-DTU-001 (status: done, facade mode, wave 1, BC-HOOK-001..041). Binary dtu-claude-code-hooks-v1 lives in crates/monocle-test-harness/src/bin/dtu_server.rs (built at target/release/dtu-claude-code-hooks-v1). Validated on develop @ 90ae584: fidelity mean 1.0000 (25/25 fixtures, threshold 0.95), all 5 endpoints covered (pre-tool-use, notification, stop, session-start, prompt-submit), X-Claude-Code-Ide-Authorization header correct, BC-HOOK-034 filter passes, clippy + semgrep CLEAN. Gate-2 DTU-VALIDATION corrected to PASS (see wave-7-gate-report.md D-234 annotation). Phase 4 holdout-eval gate is UNBLOCKED. Root cause: dtu-validator tooling looked for .factory/dtu-clones/ docker dir and missed the cargo-binary clone location. Process gap tracked as PROC-DTU-VALIDATE-LOCATION."
-      blocking: false
-    - id: "PROC-DTU-VALIDATE-LOCATION"
-      subject: "[process-gap] DTU validation must check cargo-binary clone location, not only .factory/dtu-clones/ docker dir"
-      status: pending
-      detail: "D-234: two independent agents (wave-7 Gate-2 dtu-validator and Phase-3→4 consistency-audit HIGH-001) produced false-negative DTU-missing verdicts by looking for a .factory/dtu-clones/ docker-style directory. They MISSED the cargo-binary clone delivered as S-DTU-001 (crates/monocle-test-harness/src/bin/dtu_server.rs, binary target dtu-claude-code-hooks-v1). DTU validation tooling must check the actual clone artifact location as recorded in the DTU story (target_module field) rather than assuming a fixed .factory/dtu-clones/ path. Routing: agent-prompt improvement for vsdd-factory:dtu-validator and vsdd-factory:consistency-validator. Target: self-improvement epic or upstream vsdd-factory issue. Non-blocking."
-      blocking: false
-    - id: "ADV-W5GATE-HIGH-001"
-      subject: "daemon_start_sequence() doesn't wire DaemonState — RESOLVED D-235"
-      status: resolved
-      detail: "RESOLVED D-235: main() now wires daemon_start_sequence + run_server + UDS listener + tracing subscriber + durable ring-flush shutdown + 10s drain timeout. DaemonState fields (sock_file_path, ring) are wired. 16+ adversarial passes over 6 fix rounds, converged. Code on feat/daemon-wire-serve (PR pending merge)."
-      blocking: false
-    - id: "ADV-W5GATE-HIGH-002"
-      subject: "Duplicate S-009 handler dead code — cleanup needed (re-confirmed D-235)"
-      status: pending
-      detail: "Wave 5 gate adversarial: S-009 HTTP handler has a duplicate code path. Dead code is non-functional. Re-confirmed still present during D-235 daemon-wiring adversarial review. Route to implementer for cleanup fix-PR."
-      blocking: false
-    - id: "F-DW-HIGH-001"
-      subject: "CI false-green — daemon integration test was a sleep loop — RESOLVED D-235"
-      status: resolved
-      detail: "RESOLVED D-235: daemon-e2e-affordances CI job added on feat/daemon-wire-serve branch catches the real serve path. The pre-daemon-wiring test suite was green because the daemon binary ran a sleep loop with no assertions on actual service behavior. Resolved by implementing the real main() wiring + wiring test coverage."
-      blocking: false
-    - id: "HIGH-2-SECOND-SIGNAL-DEFER"
-      subject: "Second-signal exit codes (143/130) during drain — DEFERRED to S-DAEMON-WIRE-FIX-001 (Wave 8)"
-      status: deferred-wave-8
-      detail: "D-235 daemon-wiring adversarial Round-3 HIGH-2: DaemonExit::SigtermDuringDrain (exit 143) and SigintDuringDrain (exit 130) variants are defined in BC-2.01.004 INV-4 monitoring contract but NOT produced — a second SIGTERM/SIGINT during graceful drain currently hits the OS default. Explicit human-authorized deferral per CANONICAL PRINCIPLE rule 3 (future story anchor required): S-DAEMON-WIRE-FIX-001 (Wave 8, P1, 5pts, EPIC-04). CONTRACT GAP markers in crates/monocle-runtime/src/lifecycle.rs. NOT a loose item."
-      blocking: false
-    - id: "ADV-W5GATE-MED-001"
-      subject: "S-017 UDS socket creation spurious WARN on rebind"
-      status: pending
-      detail: "Wave 5 gate adversarial: S-017 daemon start emits spurious WARN on rebinding already-removed socket path. Add explicit pre-remove check."
-      blocking: false
-    - id: "ADV-W5GATE-MED-003"
-      subject: "HookEvent serde round-trip fragility — add constructors to monocle-core"
-      status: pending
-      detail: "Wave 5 gate adversarial: HookEvent deserialization relies on field-name stability without tagged union. Route to architect for BC update, then implementer."
-      blocking: false
-    - id: "#28"
-      subject: "prost/reqwest exact-patch pin verification"
-      status: partial
-      detail: "prost = '=0.14.1' VERIFIED. reqwest = '=0.13.0' exists but latest 0.13.x is 0.13.3 — reqwest not yet activated by any Phase 1 member. Architect adjudication needed when S-009 activates reqwest."
-      blocking: false
-    - id: "#34"
-      subject: "BC-2.03.001 PC-3 DeferUntil cleanup"
-      status: pending
-      detail: "BC-2.03.001 v1.0.7 PC-3 still enumerates DeferUntil in supporting types. Authority hierarchy resolves to story v1.4 + SS-engine-module v1.1.26 (no DeferUntil). PO mechanical fix."
-      blocking: false
-    - id: "BC-HOOK-034-typo"
-      subject: "BC-HOOK-034 typo decorated_by -> deprecated_by — RESOLVED D-233"
-      status: resolved
-      detail: "RESOLVED: product-owner fixed deprecated_by typo in D-233 Phase-3→4 consistency cleanup. BC-HOOK-034 bumped v1.0.1→v1.0.2."
-      blocking: false
-    - id: "VP-DTU-001"
-      subject: "VP-DTU-001 to be created by architect in Phase 4"
-      status: deferred-phase-4
-      detail: "All 41 BC-HOOK files cite VP-DTU-001 as verification property. Phase 4 deferral marker."
-      blocking: false
-    - id: "F-WAVE1-004"
-      subject: "Cron schedule collision audit.yml + dtu-fidelity.yml"
-      status: deferred-maintenance
-      detail: "Both 0 0 * * 0 UTC. Stagger to avoid cache thrash. Low impact."
-      blocking: false
-    - id: "F-WAVE1-005"
-      subject: "xtask not in cargo-deny [graph].targets"
-      status: deferred-maintenance
-      detail: "xtask is dev-tooling-only. Low likelihood Phase 1 risk. Document in deny.toml."
-      blocking: false
-    - id: "S-014-ADV-SS-engine-module-stale"
-      subject: "SS-engine-module.md HookDecision code blocks stale"
-      status: pending
-      detail: "S-014 adversary surfaced stale HookDecision code blocks in SS-engine-module.md. Architect update needed."
-      blocking: false
-    - id: "S-011-ADV-HookArgs-divergence"
-      subject: "HookArgs struct diverges from SS-permissions-phase1.md"
-      status: pending
-      detail: "S-011 adversary surfaced HookArgs struct definition diverging from SS-permissions-phase1.md canonical. Architect update needed."
-      blocking: false
-    - id: "S-013-ADV-prost-types-not-pinned"
-      subject: "prost-types not registered in SS-deps-pin-manifest"
-      status: pending
-      detail: "prost-types is a transitive dep but not explicitly registered in SS-deps-pin-manifest.md. Architect must add explicit pin."
-      blocking: false
-    - id: "S-005-main-wiring"
-      subject: "S-005 main.rs wiring: 10s drain timeout + second-signal detection + signal-path lock release — PARTIALLY RESOLVED D-235"
-      status: resolved
-      detail: "RESOLVED D-235: main() wires daemon_start_sequence + run_server + UDS + tracing + durable ring-flush + 10s drain timeout. Signal-path lock release wired. Second-signal exit codes (143/130) deferred to S-DAEMON-WIRE-FIX-001 (Wave 8) as documented HIGH-2 anchored deferral in SS-daemon-wiring-impl v1.3.0."
-      blocking: false
-    - id: "S-008-ADV-tempfile-spec"
-      subject: "AC-003 tempfile::persist spec wording divergence"
-      status: partial-closed
-      detail: "RingError #[non_exhaustive] fixed (bef6f4b). Remaining: AC-003 tempfile::persist spec wording (story-writer); BC-2.01.007 S-TBD anchor (PO)."
-      blocking: false
-    - id: "S-015-ADV-tracing-test"
-      subject: "tracing-test 0.2 not in SS-deps-pin-manifest"
-      status: pending
-      detail: "S-015 added tracing-test 0.2.6 with no-env-filter feature to monocle-runtime dev-deps. Not registered in SS-deps-pin-manifest.md. Architect must add."
-      blocking: false
-    - id: "SS-01-ProjectDirs-from"
-      subject: "SS-daemon-lifecycle.md ProjectDirs::new → ProjectDirs::from"
-      status: pending
-      detail: "SS-daemon-lifecycle.md line 269 uses ProjectDirs::new('monocle','monocle','monocle') — should be ::from per SS-config.md and BC-2.04.006. Architect maintenance item."
-      blocking: false
-    - id: "IMPL-HookDecision-serde"
-      subject: "HookDecision + HookResponse: add Serialize/Deserialize derives"
-      status: deferred-wave-5
-      detail: "Required for IPC wire transport. Must be done as part of S-021 or S-018 implementation."
-      blocking: false
-    - id: "IMPL-on-hook-Defer"
-      subject: "ClaudeCodeModule::on_hook() implement Defer routing logic"
-      status: deferred-wave-5
-      detail: "Current implementation returns Allow unconditionally (Phase 1 placeholder). S-018 must implement the Defer path."
-      blocking: false
-    - id: "ADV-W3GATE-MED-001"
-      subject: "last_hook_ts never written by hook handlers (future daemon wiring)"
-      status: pending
-      detail: "DaemonState.last_hook_ts field exists but hook handler paths never write it. Requires daemon wiring integration story."
-      blocking: false
-    - id: "ADV-W3GATE-MED-002"
-      subject: "Ring buffer DaemonState.ring never set to Some — RESOLVED D-235"
-      status: resolved
-      detail: "RESOLVED D-235: main() wires durable ring-flush shutdown + DaemonState.ring set to Some. ring_buffer_fill_pct now reflects actual ring state. Code on feat/daemon-wire-serve."
-      blocking: false
-    - id: "ADV-W3GATE-MED-003"
-      subject: "Only 1/5 hook endpoints tested in running-mode full-stack path"
-      status: pending
-      detail: "Full-stack integration tests cover only pre-tool endpoint. 4/5 endpoints lack coverage. Phase 4 integration story."
-      blocking: false
-    - id: "ADV-W3GATE-MED-004"
-      subject: "ring_buffer_fill_pct hardcoded to 0.0 — RESOLVED D-235"
-      status: resolved
-      detail: "RESOLVED D-235: same fix as ADV-W3GATE-MED-002 — ring wired in main(). ring_buffer_fill_pct now reflects real ring state."
-      blocking: false
-    - id: "ADV-W4GATE-MED-002"
-      subject: "tracing::error() no-ops in monocle CLI binary (no subscriber) — RESOLVED D-235"
-      status: resolved
-      detail: "RESOLVED D-235: monocle-runtime main() now initializes a tracing subscriber (tracing-subscriber 0.3 added as prod dep in SS-deps-pin-manifest v1.2.1). CLI binary startup errors now emit to the subscriber."
-      blocking: false
-    - id: "HS-EXP-009-hint"
-      subject: "Exit 70 missing stderr remediation hint for MONOCLE_RUNTIME_DIR"
-      status: pending
-      detail: "Daemon emits exit code 70 for invalid MONOCLE_RUNTIME_DIR but provides no stderr hint. BC-2.04.003 requires human-readable diagnostics."
-      blocking: false
-    - id: "PROC-SEMGREP-DECOUPLE"
-      subject: "Semgrep silently skipped for Waves 1-5 when Preflight failed-fast on protoc"
-      status: pending
-      detail: "Decouple Semgrep from Preflight fast-fail chain so it runs independently. Route to devops-engineer. Target: Wave 7 or maintenance sweep."
-      blocking: false
-    - id: "PROC-GATE-SKIPPED-LOUD"
-      subject: "Build+Test silently skipped for many prior CI runs — need GATE_SKIPPED loud indicator"
-      status: pending
-      detail: "CI gates that are skipped should emit a loud GATE_SKIPPED log line. Route to devops-engineer. Target: Wave 7 or maintenance sweep."
-      blocking: false
-    - id: "PROC-COMPUTE-INPUT-HASH-YAML"
-      subject: "bin/compute-input-hash does NOT handle YAML-object-style inputs (path/version pairs)"
-      status: pending
-      detail: "compute-input-hash parser treats YAML-object inputs as plain string values. Recurring class — occurred in S-023 and S-025 cycles. Route to devops-engineer or dx-engineer."
-      blocking: false
-    - id: "S-025-TODO-S023-MERGE"
-      subject: "Replace 2 TODO(S-023-merge) markers after S-025 rebase onto develop"
-      status: pending
-      detail: "app.rs has TODO(S-023-merge) at lines 586-615 and 630. After S-025 rebase onto develop, replace with real monocle_ipc imports. Mechanical substitution — implementer task post-rebase."
-      blocking: false
-    - id: "S-025-MAKE-MODAL-DEAD-CODE"
-      subject: "Dead make_modal test helpers — defer to S-026 dispatch"
-      status: pending
-      detail: "Pass 8 LOW finding: make_modal test helpers in monocle-tui are dead code until S-026 implements permission overlay."
-      blocking: false
-    - id: "PROC-BRANCH-PROTECTION-CONTEXTS"
-      subject: "Branch protection on develop has empty required-status-check contexts"
-      status: pending
-      detail: "develop branch protection rule has required-status-checks enabled but no specific check contexts configured (effectively a no-op). Requires admin escalation. Surface to human owner (Joshua Magady)."
-      blocking: false
-    - id: "F-S025-ADV13-NIT-003"
-      subject: "BC-2.06.016 v1.0.9 §Trace line 230 stale 'Follow-up required' note"
-      status: pending
-      detail: "BC-2.06.016 line 230 note about SS-tui line 668 is stale (already uses bracketed form per 740465d). Cosmetic. Routing: product-owner. Anchored to Task #9 post-merge PO sweep."
-      blocking: false
-    - id: "F-S025-ADV13-NIT-004"
-      subject: "BC-2.06.004 EC-079 line 104 cites non-production string 'Daemon offline'"
-      status: pending
-      detail: "Production has DAEMON_NOT_RUNNING_ERROR (full-screen panel) and DAEMON_OFFLINE_STATUS ('[daemon: offline]'). EC-079 ambiguous. Routing: product-owner. Anchored to Task #9 post-merge PO sweep."
-      blocking: false
-    - id: "F-S025-ADV20-PROC-001"
-      subject: "[process-gap] Test File Documentation Standards rule (SS-conventions update)"
-      status: pending
-      detail: "Spec version citations in test/production file doc comments must carry disambiguation anchor (F-D-NN, §section, or parenthetical). Routing: architect (SS-conventions-anti-patterns update). Anchored to Task #9 post-S-025 merge."
-      blocking: false
-    - id: "F-S025-PATH-B-CLAUDE-MD"
-      subject: "CLAUDE.md line 18 cites MSRV 1.86; Path B bumped Phase 1 MSRV to 1.88 — human action required"
-      status: pending
-      detail: "CLAUDE.md is human-maintained. Human action: update line 18 to: 'MSRV: Phase 1 = Rust 1.88 (time 0.3.47 floor per RUSTSEC-2026-0009 mitigation; original ratatui 0.30 floor was 1.86). Phase 3 = Rust 1.92 (wasmtime 44 requirement).' Non-blocking for S-025."
-      blocking: false
-    - id: "F-S025-ADV16-PROC-001"
-      subject: "[process-gap] agents must use cargo clippy --workspace --all-targets -- -D warnings to match CI"
-      status: pending
-      detail: "CI uses --all-targets; lib-only mode silently misses test-code violations. Codification target: next agent-prompt-refresh cycle."
-      blocking: false
-    - id: "F-S025-ADV16-PROC-002"
-      subject: "[process-gap] scripts/audit-table.md vendored copy and SS-engine-module.md canonical must update in same PR"
-      status: pending
-      detail: "scripts/audit-table.md is a vendored copy of the audit table from SS-engine-module.md. When canonical table changes, vendored copy must sync atomically in same PR."
-      blocking: false
-    - id: "F-S025-ADV22-PROC-001"
-      subject: "[process-gap] CI-enforced bare-filename architecture anchor resolution check"
-      status: pending
-      detail: "POL-11 (f0926fe) covers versioned pins. Bare-filename existence-check (SS-tui-core.md style) needs separate CI enforcement. Anchored to Task #9."
-      blocking: false
-    - id: "F-S025-ADV24-MED-001"
-      subject: "Cross-story S-026/27/28/31 inputs[] stale + done-story S-014..S-023 body prose stale"
-      status: partial
-      detail: "S-025 in-scope pins CLOSED (925c667). Cross-story + done-story body prose: DEFERRED to wave-gate (Task #9 anchored). POL-11 CI gate (f0926fe) will catch new instances."
-      blocking: false
-    - id: "F-S025-ADV24-MED-002"
-      subject: "VP-body SS-deps-pin-manifest.md v1.1.17 stale across 14 VP files (45 occurrences)"
-      status: pending
-      detail: "14 VP files (vp-001..vp-021), 45 occurrences citing SS-deps-pin-manifest.md v1.1.17 (canonical v1.2.0). ROUTING: phase-5 system-level deferral. Task #9 anchored. POL-11 (f0926fe) will gate further instances. NOTE: POL-11 excludes VP files from freshness enforcement (normative scope only); these will be addressed at phase-5."
-      blocking: false
-    - id: "Task-9-m8-S028-cross-story"
-      subject: "Task #9 m.8 — wave-gate sweep: S-028 lines 63+147 cross-story drift propagation (BC-5.39.002 PC2)"
-      status: pending
-      detail: "S-028 lines 63+147 still reference Vec<SessionState> type drift + structural-claim drift. Deferred per BC-5.39.002 PC2. story-writer sweep required at wave-gate. S-028 line 147 has structural-claim-deferrals.yaml authorized deferral entry (f0926fe)."
-      blocking: false
-    - id: "S-029-PROCESS-GAP-PC-LABEL-DRIFT"
-      subject: "S-029 story PC-N label drift (process-gap) — RESOLVED by story-writer v1.3"
-      status: resolved
-      detail: "S-029 adversarial review surfaced PC-N label drift in story spec. story-writer v1.3 corrected labels. RESOLVED prior to PR #35 merge. Closed D-230."
-      blocking: false
-    - id: "F-S025-ADV28-MED-001"
-      subject: "S-025 §Downstream Consumer Contract struct-shape — CLOSED (D-207)"
-      status: closed
-      detail: "See cycles/cycle-001/blocking-issues-resolved.md"
-      blocking: false
-    - id: "F-S025-ADV28-MED-002"
-      subject: "ADR-0008 §Canonical Source Registry off-by-2 — CLOSED (D-207)"
-      status: closed
-      detail: "See cycles/cycle-001/blocking-issues-resolved.md"
-      blocking: false
-    - id: "F-S025-ADV28-OBS-001"
-      subject: "[Pattern-of-Patterns] 3rd consecutive ADR same-burst internal-consistency defect — architect protocol enhancement"
-      status: pending
-      detail: "ADR-0006 (Pass 16) + ADR-0007 (Pass 26) + ADR-0008 (Pass 28): 3 consecutive ADRs had internal-consistency defects discovered in the immediately-following adversarial pass. Per S-7.02 3-instance rule: codification required. Proposed: architect pre-commit self-consistency check — re-read each cited canonical line range before committing any ADR. Anchored to Task #9 m.9 (NEW). Routing: architect protocol update."
-      blocking: false
-    - id: "F-S025-ADV28-OBS-002"
-      subject: "[worktree-vs-canonical App struct] Production app.rs 7-field App diverges from SS-tui.md §App struct 9-field canonical"
-      status: pending
-      detail: "3-way divergence: story v1.11 §Downstream Consumer Contract (5 fields, now historical-anchor annotated) vs canonical SS-tui.md §App struct (9 fields, v1.8.2) vs production app.rs (7 fields, 2d1188f). Story annotation resolves story layer. Spec-vs-implementation alignment requires architectural review. DEFERRED to phase-5 architectural-alignment. Not blocking for S-025 delivery."
-      blocking: false
-    - id: "ADR-HOOK-001"
-      subject: "MECHANICAL ADR self-consistency pre-commit hook (devops, ~3pts)"
-      status: pending
-      detail: "Architect armed ADR self-consistency discipline in SS-conventions v1.32.4 (D-209 Pass 30 tripwire). Manual discipline is codified. Follow-up: implement a MECHANICAL pre-commit hook for ADR files that detects: (1) bold version labels outside §Trace sections, (2) unescaped `|` in backtick table-cell regexes, (3) numbered-list discontinuity in Amendment History. Route to devops-engineer. Wave 7 anchor: dispatch alongside or after S-027/S-028 delivery, before Phase 4 holdout evaluation. Story scope ~3pts."
-      blocking: false
-    - id: "S-025-POST-MERGE-S1"
-      subject: "IpcManagerState::new() in monocle-tui/src/ipc.rs duplicates scaffolding in monocle-ipc — consolidation candidate"
-      status: pending
-      detail: "pr-reviewer suggestion (post-merge S-025): monocle-tui has its own IpcManagerState::new() that partially duplicates constructor scaffolding in monocle-ipc. Consolidation opportunity for a future EPIC-06 story (Wave 7 or post-Wave-6). Route to architect for scoping decision. Anchor: Wave 7 / EPIC-06 continuation."
-      blocking: false
-    - id: "S-025-POST-MERGE-TD1"
-      subject: "Sessions panel skeleton rows for future planes (Workflow/Harness/Static) — intentional per S-025 scope"
-      status: pending
-      detail: "pr-reviewer tech-debt (post-merge S-025): Sessions panel has skeleton rows for Workflow, Harness, and Static planes not yet implemented. This is intentional per S-025 scope definition (skeleton only). Closed by S-026 + downstream Wave 6/7 stories. No action needed until those stories are dispatched."
-      blocking: false
-    - id: "F-S025-ADV37-DEFER-001"
-      subject: "STORY-INDEX rows 150-153 stale BC→AC ranges — RESOLVED D-231"
-      status: resolved
-      detail: "RESOLVED: story-writer fixed in D-231 wave-7-gate sweep. STORY-INDEX v5.29→v5.30 with corrected AC ranges for BC-2.06.004/005/007 per §Trace v1.4 canonical: BC-2.06.004←AC-002/003/004/008/010; BC-2.06.005←AC-005/006/007; BC-2.06.007←AC-001/009. Systematic sweep of all other STORY-INDEX rows also completed; no other pre-renumbering staleness found."
-      blocking: false
-    - id: "F-S026-ADV6-DEFER-001"
-      subject: "offline-break reconnect paths — RESOLVED (PR #31 @ 2a51a91, D-224)"
-      status: resolved
-      detail: "See cycles/cycle-001/blocking-issues-resolved.md"
-      blocking: false
-    - id: "POINTS-TALLY-RECONCILE"
-      subject: "STATE running-tally drift — RESOLVED D-225"
-      status: resolved
-      detail: "See cycles/cycle-001/blocking-issues-resolved.md. GUARD: always re-sum sprint-state per-story points."
-      blocking: false
-    - id: "HS-EXP-006-TTY-CAVEAT"
-      subject: "Holdout HS-EXP-006 scored 0.85 — terminal raw-mode restore unobservable in non-TTY harness"
-      status: pending
-      detail: "Wave-6 holdout eval: HS-EXP-006 minimum satisfaction 0.85 (below mean 0.97) because clean terminal restore after Ctrl-\\ popup dismiss is unverifiable in a non-TTY subprocess harness. Confirm clean terminal restore in a TTY-backed demo or E2E harness in Phase 4 or at S-027. Route: e2e-tester/demo-recorder."
-      blocking: false
-    - id: "F-S026-ADV1-LOW-002"
-      subject: "PermissionDecisionKind naming divergence vs SS-ipc/BCs PermissionDecision naming — RESOLVED D-231"
-      status: resolved
-      detail: "RESOLVED: architect reconciled in D-231 wave-7-gate sweep. SS-ipc bumped to v1.11.0 with PermissionDecisionKind naming aligned. Citation propagation complete (BC-2.05.001-008, BC-2.06.023 Architecture Source rows updated). POL-11 PASS."
-      blocking: false
-    - id: "PROCESS-GAP-CI-PARITY-1"
-      subject: "[process-gap] CLAUDE.md Lint line missing --all-targets flag — agents run cargo clippy without test-target coverage; human CLAUDE.md edit required"
-      status: pending
-      detail: "CLAUDE.md 'Build/Test/Lint' section Lint line reads 'cargo clippy --workspace -- -D warnings' (lib targets only). CI runs --all-targets. Test-code lints (unwrap/expect) slip to CI. Resolved this cycle via clippy.toml allow-*-in-tests (SS-conventions v1.32.6). FOLLOW-UP: CLAUDE.md Lint line must be updated to 'cargo clippy --workspace --all-targets -- -D warnings'. Human-maintained file — human action required. Non-blocking."
-      blocking: false
-    - id: "PROCESS-GAP-CI-PARITY-2"
-      subject: "[process-gap] per-story delivery does not run POL-11/POL-12 locally pre-push; version-pin literal in test prose failed CI POL-11"
-      status: pending
-      detail: "Specialist agents do not run scripts/check_version_pins.py (POL-11) or scripts/check_structural_claims.py (POL-12) locally before declaring per-story delivery complete. A version-pin literal 'BC-2.06.024 v1.10' in test prose failed CI POL-11 and required fix-and-repush. FOLLOW-UP: per-story delivery skill should include POL-11/POL-12 local run as a pre-push gate step. Target: self-improvement epic or wave-gate codification in delivery skill."
-      blocking: false
-    - id: "F-S027-DOC-001"
-      subject: "BC-2.06.021 PC-3 stale 'or replaced' prose — RESOLVED D-231"
-      status: resolved
-      detail: "RESOLVED: product-owner fixed BC-2.06.021 PC-3 'or replaced' text in D-231 wave-7-gate sweep. BC-2.06.021 bumped to v1.0.7. BC-INDEX bumped to v1.34. Registry updated."
-      blocking: false
-    - id: "F-S027-DOC-002"
-      subject: "render_frame doc-comment references legacy [dropped:N] format"
-      status: pending
-      detail: "S-027 residual: render_frame() doc-comment contains stale reference to legacy [dropped:N] status bar format. Current format is per BC-2.06.019 v1.1.0. Non-blocking. Routing: implementer at wave-7-gate sweep."
-      blocking: false
-    - id: "F-S027-DOC-003"
-      subject: "overlay.rs / overlay_stub.rs stale docstrings"
-      status: pending
-      detail: "S-027 residual: overlay.rs and overlay_stub.rs contain docstrings referencing pre-S-027 placeholder behavior. Non-blocking cleanup. Routing: implementer at wave-7-gate sweep."
-      blocking: false
-    - id: "L-S027-004-PROCESS-GAP-REGISTRY-ATOMICITY"
-      subject: "[process-gap] version-pin-registry atomicity — RECURRENCE at D-242 (BC-2.06.025)"
-      status: pending
-      detail: "RESOLVED D-231 (first instance). RECURRENCE D-242-fix: BC-2.06.025 was bumped to v1.1.0 in the BC file as part of the D-242 O5 fix (spawned_by_monocle None→[?] + EC-295) but its registry entry remained at 1.0.0. Root cause: state-manager burst verification did not line-by-line diff the claimed 15-entry bump list against actual registry edits before pushing. ADDITIONAL PROCESS-GAP: state-manager checklist must include an explicit step — count claimed registry bumps vs. actual lines changed in version-pin-registry.yaml before commit. Routing: devops-engineer delivery-skill + state-manager checklist update."
-      blocking: false
-    - id: "F-S028-NIT-001"
-      subject: "S-028 ScrollUp/ScrollDown empty-sessions asymmetry — RESOLVED D-231 (confirmed no-op pre-gate sweep)"
-      status: resolved
-      detail: "RESOLVED D-231: reviewed in wave-7-gate sweep. Fix-PR delivered and merged prior to this sweep (part of the wave-7-gate sweep artifacts committed by pr-manager). Closed."
-      blocking: false
-    - id: "F-S028-NIT-002"
-      subject: "S-028 filter-mode ribbon selected_sid index-space mismatch — RESOLVED D-232 (fixed as F-W7G3-MED-001)"
-      status: resolved
-      detail: "RESOLVED D-232: surfaced at integration scope as F-W7G3-MED-001 during wave-7 adversarial gate review. Fixed in scope via PR #37 @ 6811103 — render_sessions_filter now returns the highlighted session_id from the filtered entry with index-space remap + render test. pr-reviewer CLEAN. Security-reviewer CLEAN. 9 CI checks green."
-      blocking: false
-    - id: "FLAKY-TIMING-5MS"
-      subject: "test_BC_2_06_010 5ms timing threshold — RESOLVED D-231"
-      status: resolved
-      detail: "RESOLVED: implementer widened threshold to 10ms in D-231 wave-7-gate sweep fix-PR. No more boundary flakes on loaded CI runners."
-      blocking: false
-    - id: "PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP"
-      subject: "[process-gap] architect committed implementation code directly to develop instead of spec+guidance — codify architect-spec-only role"
-      status: pending
-      detail: "S-028 cycle: architect committed implementation code directly to develop (commit 32f319e) instead of producing spec + routing to implementer-in-worktree. Reset + re-routed to implementer corrected the artifact. CODIFY: architect role = spec production only; all code must be written by implementer in an isolated worktree. Anti-pattern: architect writes Rust code in main session and commits to develop. Routing: orchestrator + delivery-skill update."
-      blocking: false
-    - id: "PROCESS-GAP-TMP-COMMIT-MSG-MIXUP"
-      subject: "[process-gap] parallel implementers reused /tmp commit-message files causing cross-branch mislabeled commits"
-      status: pending
-      detail: "S-028+S-031 parallel cycle: parallel implementers reused /tmp/commit-msg paths causing cross-branch mislabeled commits (881cde2 S-028 with S-031 message; 71e9426/5266acd misleading messages). CODIFY: each dispatch must use a unique per-story /tmp path (e.g., /tmp/commit-msg-S-028-<timestamp>) to prevent cross-contamination. Routing: orchestrator + delivery-skill update."
-      blocking: false
-    - id: "PROCESS-GAP-PRMANAGER-EARLY-RETURN"
-      subject: "[process-gap] pr-manager returned mid-process (after step 4/5) twice, requiring re-dispatch to complete merge"
-      status: pending
-      detail: "S-028 cycle: pr-manager agent returned control to orchestrator after step 4-5 of the 9-step PR workflow twice, requiring two re-dispatch cycles to complete the merge. Root cause: pr-manager does not have a completion-signal discipline. CODIFY: pr-manager must complete all 9 steps and emit an explicit COMPLETE signal before returning. Routing: orchestrator + pr-manager skill update."
-      blocking: false
-    - id: "ADR-HOOK-001-WIRING"
-      subject: "ADR self-consistency hook script delivered but NOT wired — HUMAN action required"
-      status: pending
-      detail: "D-231 wave-7-gate sweep: scripts/validate_adr_self_consistency.sh delivered on the fix-PR branch. Agent scope is blocked from wiring it into .claude/settings.json or the plugin hooks-registry — requires human to add it to project settings. Non-blocking. Routing: human action (Joshua Magady). Anchor: before Phase 4 start or at next human session."
-      blocking: false
-    - id: "SIGTERM-TERMINAL-RESTORE"
-      subject: "monocle-tui has no SIGTERM handler — terminal not restored on external kill"
-      status: pending
-      detail: "D-231: monocle-tui does not register a SIGTERM handler, so if the process is killed externally the terminal raw-mode is not restored. HS-EXP-006 residual caveat. Pre-existing architectural gap (crossterm does not install signal handlers by default). Phase 4+ quality item. Routing: architect + implementer. Non-blocking for wave-7-gate."
-      blocking: false
-    - id: "F-S028-NIT-002-DEFERRED"
-      subject: "S-028 event-ribbon selected_sid filter-index-space mismatch — RESOLVED D-232 (fixed as F-W7G3-MED-001 in scope)"
-      status: resolved
-      detail: "RESOLVED D-232: the D-231 deferred maintenance item surfaced at integration scope during wave-7 adversarial gate review as F-W7G3-MED-001 (MEDIUM severity). Fixed in scope via PR #37 @ 6811103. Both F-S028-NIT-002 and F-S028-NIT-002-DEFERRED are now closed."
-      blocking: false
-    - id: "PIVOT-CONTROL-CENTER"
-      subject: "PRODUCT-VISION PIVOT — monocle becomes full TUI control center (D-236); vision APPROVED D-238; delta in progress"
-      status: active-delta-in-progress
-      detail: "D-236 (2026-06-03): Human-directed vision pivot. monocle evolves from observe-only to full TUI control center: launch + manage + observe + tune + control; many sessions, many projects; never leave the TUI. A better lazyclaude AND claude-squad. Observe-only constraint (vision-synthesis v1.1.2, approved 2026-05-11) RETIRED. VSDD Phase 4/5/6/7 of the old observe-only scope SUSPENDED. Phase-1 substrate is built and reusable: daemon (now actually serves), hook ingestion, permission overlay (VecDeque<PromptModal>), EngineModule/FactoryAdapter traits, proto/ring, TUI rendering. D-237 (2026-06-03): Human ratified v1 capability scope and DAEMON-OWNS-PTY persistence locus. D-238 (2026-06-03): Vision APPROVED — domain-monocle-vision-synthesis.md v2.1 status:approved. Persistence principle renamed to 'session-host-owns-PTY; daemon coordinates/re-attaches'. CASE 2 survival now required (graceful daemon-PROCESS restart survives). Q-8 HIGH (PTY-ownership-survival) added for architect. D-235 daemon wiring likely needs rework. NEXT: brief delta (product-owner) → architecture delta (Q-8 HIGH, D-235 rework, input-doc reconciliation) → story decomposition. Remains active until delta lands."
-      blocking: false
-    - id: "CC-TUITERM-WIP-SIGNOFF"
-      subject: "Human risk-acceptance of tui-term 0.3.4 WIP-upstream — SIGNED D-302 (2026-06-14)"
-      status: signed-d302
-      detail: "SIGNED D-302 (2026-06-14) by Joshua Magady. tui-term =0.3.4 (pre-release/WIP) ACCEPTED as the ratified PTY stack: portable-pty 0.9.0 + vt100 0.16.2 + tui-term 0.3.4, MSRV 1.88, ADR-0011. Risk-acceptance signed before v1A story wave. CLOSED."
-      blocking: false
-    - id: "CC-GLOBAL-MOUSE-CAPTURE"
-      subject: "Human ratified scoped mouse-capture model — SIGNED D-302 (2026-06-14)"
-      status: signed-d302
-      detail: "SIGNED D-302 (2026-06-14) by Joshua Magady. Scoped mouse-capture model ACCEPTED: mouse capture enabled on EmbeddedTerminal ENTRY and disabled on EXIT; two-step sequence: (a) crossterm EnableMouseCapture + (b) ESC[?1006h for entry; reversed for exit. NOT globally active. If a future v1B story requires clickable monocle panels with globally-active mouse capture, human must approve separately before that BC is authored. v1A scoped model ratified. CLOSED for v1A scope."
-      blocking: false
-    - id: "SS-DAEMON-WIRING-SCROLLBACKDUMP-TERM"
-      subject: "SS-daemon-wiring-v2-delta.md lines ~195/~822 use bare retired noun 'ScrollbackDump' as parenthetical generic dump label"
-      status: pending
-      detail: "D-261 Pass-19 S19-001: SS-daemon-wiring-v2-delta.md at lines ~195 and ~822 use the bare retired noun 'ScrollbackDump' as a parenthetical generic label ('ScrollbackDump (ScrollbackChunk* + ScrollbackDumpComplete sequence)'), providing disambiguation but still leading with the retired term. Not a live normative survivor — the parenthetical makes the canonical types clear. Replace with 'ScrollbackChunk* + ScrollbackDumpComplete sequence' to eliminate the retired noun entirely. Deferred: bumping the heavily-cited SS-daemon-wiring-v2-delta standalone for this terminology polish is disproportionate. Fold into the next substantive SS-daemon-wiring-v2-delta edit. Non-blocking Suggestion S19-001."
-      blocking: false
-    - id: "ADR-0011-UPGRADE-TYPO"
-      subject: "ADR-0011 §Pin-policy line ~150 doubled word 'upgrade upgrade' — fold into next substantive ADR-0011 edit"
-      status: pending
-      detail: "D-262 Pass-20 S20-002: ADR-0011 §Pin-policy prose contains a doubled word 'upgrade upgrade' at approximately line 150. Non-blocking Suggestion only (typo cannot escalate to a correctness defect). Deferred as housekeeping: creating a standalone ADR-0011 bump + citation-sweep solely for a typo is disproportionate. Fold into the next substantive normative ADR-0011 edit."
-      blocking: false
-    - id: "S28-001"
-      subject: "SS-session-manager §Trace v2.0.0 Fix(c) cross-ref inaccuracy — states SpawnRecipe Serialize/Deserialize derives were removed in SS-engine-module-v2-delta v1.2.0 edit; they were RETAINED as harmless daemon-internal derives"
-      status: pending
-      detail: "D-270 Pass-28 S28-001: SS-session-manager §Trace v2.0.0 Fix(c) description states that SpawnRecipe Serialize/Deserialize derives were removed as part of the SS-engine-module-v2-delta v1.2.0 architectural change (SpawnRecipe demoted to daemon-internal). In actuality the Serialize/Deserialize derives were RETAINED on SpawnRecipe — they are harmless on a daemon-internal type (not a wire type), and removing them was not required. The §Trace changelog entry thus inaccurately describes what was changed. Non-blocking: the normative body of SS-session-manager v2.0.0 is correct; only the §Trace Fix(c) description is inaccurate. Deferred as §Trace housekeeping — a standalone SS-session-manager bump solely for a changelog annotation would trigger a disproportionate 25+ file propagation sweep. Fold into the next substantive SS-session-manager normative edit."
-      blocking: false
-    - id: "ENGINE-RS-DEVERSION"
-      subject: "[process-gap] crates/monocle-core/src/engine.rs doc-comment version pins should be de-versioned per CLAUDE.md CI-PARITY rule 3"
-      status: pending
-      detail: "D-277 session: engine.rs doc-comments cite specific spec version literals (e.g., 'SS-engine-module v1.x.y') which POL-11 flags when those specs bump. These were bumped during the D-277 propagation sweep to stay POL-11 green, but the anti-pattern of versioned literals in source doc-comments persists. CLAUDE.md CI-PARITY rule 3 states: 'Do NOT embed version-pin literals in test prose or source doc-comments (de-version them; POL-11 flags stale)'. Route to implementer for a develop cleanup commit (de-version the doc-comments to bare section references). Non-blocking."
-      blocking: false
-    - id: "BC-INDEX-TRACE-SS08-COUNT"
-      subject: "BC-INDEX §Trace line ~1337 stale 'SS-08 ... 7 BCs' (actual 8)"
-      status: pending
-      detail: "D-277 session: BC-INDEX §Trace at approximately line 1337 contains a historical count 'SS-08 ... 7 BCs' which reflects the pre-I16-001 state before BC-2.08.008 was added in D-258. The normative §Summary section correctly shows 8 BCs for SS-08. The §Trace entry is a historical annotation only; a standalone BC-INDEX bump to fix a §Trace count would trigger a disproportionate sweep. Fold into next substantive BC-INDEX normative edit. Non-blocking."
-      blocking: false
-    - id: "SS-IPC-181-REDUNDANT-HISTORICAL-MARKER"
-      subject: "SS-ipc.md line ~181 active cross-ref pin to SS-daemon-wiring-v2-delta v1.9.1 has a redundant version-pin-historical marker — NOW STALE (D-286 bumped to v1.10.0)"
-      status: pending
-      detail: "D-277 session: during the Pass-35 propagation sweep, SS-ipc.md line ~181 received a version-pin-historical marker on an active cross-ref pin to SS-daemon-wiring-v2-delta v1.9.1. The pin was current at the time but is POL-11-exempt (version-pin-historical annotation). D-286: SS-daemon-wiring-v2-delta bumped to v1.10.0 — the line ~181 pin is now STALE (still says v1.9.1) and POL-11 cannot catch it due to the historical marker. Action required: remove the version-pin-historical marker from SS-ipc line ~181 and update the version to v1.10.0 (or convert to version-free form citing only the section anchor). Non-blocking for Phase-1d convergence but should be addressed before Phase-2 story decomposition."
-      blocking: false
-    - id: "OBS-P57-001"
-      subject: "[housekeeping] BC-2.08.005:109 §Architecture Source cites 'SS-ipc.md §session_error_to_code()' but function is canonically in SS-session-manager.md — LOW label-imprecision, non-blocking"
-      status: deferred-housekeeping
-      detail: "D-300 Pass-57 OBS-P57-001: BC-2.08.005 §Architecture Source row at line ~109 cites 'SS-ipc.md §session_error_to_code()' as the source for the rename_failed/InvalidSessionName mapping. The function session_error_to_code() is canonically in SS-session-manager.md (not SS-ipc). However the mapping content (InvalidSessionName→rename_failed) resolves correctly: (1) SS-ipc taxonomy table lists rename_failed with the correct mapping; (2) the BC cell co-cites SS-session-manager v2.6.0 §Terminated-in-grace matrix where the function lives. Classified LOW: label-imprecision only, not a normative contradiction. Matches ratified citation style (OBS-1 / S-P45 precedent: non-normative navigational imprecision with independent-correct normative surface). Implementer is not misled (rename_failed mapping is unambiguous from SS-ipc taxonomy). Deferred to next substantive BC-2.08.005 edit. Non-blocking for Phase-2 story decomposition."
-      blocking: false
-    - id: "OBS-1-BC2.09.002-TRACE-LINE-NUMBERS"
-      subject: "[housekeeping] BC-2.09.002 Inv-5 §Trace cites stale SS-embedded-pty line numbers (254-258) for the scoped entry sequence; actual ENTRY block at 279-289"
-      status: deferred-housekeeping
-      detail: "D-282 Pass-40 OBS-1: navigational stale-line-number in a §Trace citation. Section-name anchors (§Crossterm-setup / §EmbeddedTerminal-ENTRY) resolve correctly and POL-13 passes; line numbers are an informal navigational aid, not the enforced anchor. No version bump required per the closed dead-anchor/navigational-reference precedent (C29-001 / D-275). Fix by updating the line-number references to 279-289 (entry) when BC-2.09.002 is next edited for a substantive reason — bumping a heavily-cited authoritative BC solely for a §Trace line-number is disproportionate. Non-blocking; zero implementation impact."
-      blocking: false
-    - id: "DEDUP-IPC-HANDLER-SKELETON"
-      subject: "[structural] de-duplicate the two normative IPC-handler skeletons (SS-session-manager §IPC handler is canonical; SS-daemon-wiring-v2-delta §3 should become reference-plus-delta) — duplication caused F-P43 despite CANONICAL PATTERN LOCK"
-      status: pending-orchestrator-action
-      detail: "D-286: architect recommendation. SS-session-manager §IPC handler and SS-daemon-wiring-v2-delta §3 both carry full normative Rust handler skeletons of the same ClientToServer dispatch; the F-P41 sweep updated the canonical but missed the delta sibling (root cause of F-P43). Production-grade fix: make SS-session-manager the single authoritative skeleton and restructure SS-daemon-wiring-v2-delta §3 to cross-reference it + retain only its legitimate delta annotations (IpcOp import note, error-routing summary table, §3b emission rule). Requires architect + PO awareness (summary table has normative force). Concrete orchestrator-directed action item (NOT tech-debt-register; NOT a vague 'later'). Schedule as a consistency task before/with Phase-2 story decomposition. Non-blocking for Phase-1d convergence (both skeletons currently in sync)."
-      blocking: false
-    - id: "OBS-HS-PROSE-PHASE4-PREP"
-      subject: "[housekeeping] two LOW holdout-prose imprecisions to tidy at Phase-4 holdout-prep — HS-EXP-014:46 omits child_pid from illustrative session-state.json field list; HS-EXP-013:54 step-9 says 'most recently added' vs BC-2.09.009 PC-5c canonical 'front=oldest'"
-      status: deferred-phase4-prep
-      detail: "D-288 Pass-45 S-P45-001 + S-P45-002: both are non-normative illustrative prose in holdout scenarios; neither contradicts a normative BC behaviorally (PASS/FAIL criteria are independent of the imprecise detail; S-P45-002 prose is hedged and cites the rotation-semantics BC). No implementer/evaluator is misled. Anchored to the Phase-4 holdout-evaluation prep pass (when HS scenarios get their dedicated pre-eval review): tidy HS-EXP-014:46 to include child_pid; align HS-EXP-013:54 step-9 to 'the front of the stack (oldest pending prompt) per BC-2.09.009 PC-5c'. Non-blocking for Phase-1d spec convergence."
-      blocking: false
-    - id: "BURST-GAP-001-S038-HOOK-SCHEMA"
-      subject: "[Phase-2 story gap] S-038 hook auto-injection defers JSON key name authority to BC-2.04.010 PC-3 — BC-2.04.010 must be read by implementer before coding S-038; adversary should verify S-038 AC task checklist aligns with BC-2.04.010 4-URL-key schema (PreToolUse/Notification/Stop/UserPromptSubmit + 2 reserved-empty)"
-      status: pending
-      detail: "D-305 Phase-2 Burst G surface: S-038 (hook auto-injection in spawn path) calls out BC-2.04.010 PC-3 as the authority for HookEndpointConfig JSON key names (4-URL keys + 2 reserved-empty keys). S-038 story body text at line ~182 says 'The exact URL format is deferred to BC-2.04.010'. BC-2.04.010 was fixed in D-296/Pass-53 (F-P53-001) to clarify the 4-URL+2-empty schema (SessionStart NOT a file key). Phase-2 adversarial review must verify S-038 acceptance criteria align with BC-2.04.010 v1.3.0's corrected 4-key schema (not 5-key or 6-key). If the adversary finds a mismatch, route to product-owner to align S-038. Non-blocking for Phase-2 story corpus completeness; must be resolved before S-038 Phase-3 implementation."
-      blocking: false
-    - id: "BURST-GAP-002-S033-SESSIONNOTREADY-VARIANT"
-      subject: "[Phase-2 story gap] S-033 story body lists 9-variant SessionError but does NOT explicitly enumerate SessionNotReady (added at D-293/Pass-50); adversary must verify S-033 AC task checklist mentions all 9 variants per SS-session-manager §SessionError taxonomy"
-      status: pending
-      detail: "D-305 Phase-2 Burst G surface: S-033 (session_manager spawn) was authored in Burst A (before the adversarial convergence that added SessionNotReady at D-293/Pass-50). S-033 task checklist at line ~148 says 'Add SessionError enum with all 9 variants per SS-session-manager.md §SessionError taxonomy' — which references the canonical source correctly. However S-033 does not name SessionNotReady in any EC or PC, and the spawn_session() path does not produce SessionNotReady (only DetachSession does per BC-2.08.007 + SS-session-manager). The gap: S-033 does not clarify that the spawn IPC handler DOES call session_error_to_code() which MUST have a branch for SessionNotReady even though spawn cannot produce it, making the match exhaustive. Phase-2 adversary should verify that the implementer reading S-033 will not accidentally produce a non-exhaustive match. If a gap is found, route to product-owner. Non-blocking for story corpus completeness."
-      blocking: false
-    - id: "BURST-GAP-003-S043-TUITERM-SCROLLBACK-API"
-      subject: "[Phase-2 story gap] S-043 scrollback-navigation notes tui-term 0.3.4 may not expose a direct viewport-offset API — implementer must check tui-term 0.3.4 source before coding; adversary should verify AC is API-verified, not just speculative"
-      status: pending
-      detail: "D-305 Phase-2 Burst G surface: S-043 (scrollback navigation, BC-2.09.007) task checklist at line ~151 reads: 'Check tui-term 0.3.4 API to confirm how scrollback viewport offset is passed to PseudoTerminal. If tui-term's PseudoTerminal does not directly support a viewport offset, the implementer should pass a sub-screen slice from vt100::Screen.' This is an unresolved API question that was left open in the story spec because tui-term 0.3.4 is WIP/pre-release (CC-TUITERM-WIP-SIGNOFF signed D-302) with incomplete documentation. Phase-2 adversarial review should flag if this uncertainty is not resolved at the AC level. If unresolved at Phase-3 kickoff, route to research-agent to read tui-term 0.3.4 source and pin the correct API path before dispatching the S-043 implementer. Non-blocking for Phase-2 story corpus acceptance; must be resolved before S-043 Phase-3 implementation."
-      blocking: false
-    - id: "BURST-GAP-004-S043-S042-CROSSSTORY-RESET"
-      subject: "[Phase-2 story gap] S-043 task checklist says 'S-042 may have added [pty_scroll_offsets reset in ResizePane]; verify and add if missing' — story writer left cross-story dependency as a verify-and-add directive rather than an explicit dependency"
-      status: pending
-      detail: "D-305 Phase-2 Burst G surface: S-043 task checklist line ~135 says '[ ] Ensure pty_scroll_offsets[session_id] is reset to 0 in the ResizePane handler (S-042 may have added this; verify and add if missing).' S-042 is the ResizePane story. This is a cross-story integration concern: if S-042 and S-043 are implemented by different agents and S-042 does not add the reset, S-043 must. The current wording creates an ambiguity — both stories might add the reset (duplication) or neither might (gap). Phase-2 adversarial review should verify the dependency is explicit in both stories (i.e., S-042 MUST add the reset, S-043 asserts its existence). If ambiguous, route to story-writer to clarify S-042 and/or S-043 task checklists. Non-blocking for Phase-2 story corpus completeness."
-      blocking: false
-    - id: "BURST-GAP-005-S039-S043-CROSSSTORY-CONFIG"
-      subject: "[Phase-2 story gap] S-043 task checklist says 'S-039 may have added [pty_scrollback_rows config load]; verify and add if missing' — same cross-story ambiguity as BURST-GAP-004 for config-load directive"
-      status: pending
-      detail: "D-305 Phase-2 Burst G surface: S-043 task checklist line ~137 says '[ ] Load pty_scrollback_rows from ~/.monocle/config.json at TUI startup and clamp 1-10000; use in vt100::Parser::new() initialization (S-039 may have added this; verify and add if missing).' S-039 is the PTY output pipeline story. Same ambiguity as BURST-GAP-004: either both or neither story adds the config load. Phase-2 adversarial review should verify this is unambiguously assigned to one story. If ambiguous, route to story-writer to clarify S-039 and/or S-043. Non-blocking for Phase-2 story corpus completeness."
-      blocking: false
-    - id: "F-P1-S-005"
-      subject: "[process-gap] POL-11 does NOT validate story-declared wire-error-code literals (e.g. 'session_not_ready', 'spawn_unsupported') or SessionError variant names against SS-ipc 12-code taxonomy and SS-session-manager 9-variant taxonomy — 3-instance codification threshold met (S-038/S-047/S-047)"
-      status: codification-pending
-      detail: "D-306 Phase-2 Pass-1 fix burst surface: F-P1-S-005 (Phase-2 Pass-1 adversarial finding). Three stories (S-038 hook-injection, S-047 ipc-lifecycle-variants, and S-047 ipc-lifecycle variants again) declared specific wire-error-code literals (e.g., 'session_not_ready', 'spawn_unsupported') and SessionError variant names in acceptance-criteria prose and task checklists. POL-11's ID↔version adjacency regex does NOT validate these literal strings against the SS-ipc 12-code closed taxonomy (SS-ipc.md §Wire Error Codes) or the SS-session-manager 9-variant SessionError enum. If the taxonomy changes (e.g., code added or renamed), story prose goes stale silently. 3-instance codification threshold per S-7.02 met. FOLLOW-UP: extend check_version_pins.py (or a sibling script) with a Pattern that validates story-declared wire-error-code literals and SessionError variant names against SS-ipc and SS-session-manager canonical lists. Route to devops-engineer. Non-blocking for Phase-2 story convergence."
-      blocking: false
-    - id: "F-P3-S02-PROCGAP"
-      subject: "[process-gap] add a 'refresh story inputs: BC version-pins to current' step to the convergence-fix-burst checklist — recurring drift between story input-pins and post-authoring BC bumps was flagged across Passes 1-3"
-      status: pending
-      detail: "D-308 Phase-2 Pass-3 fix cycle: F-P3-S02 process-gap. BC version pins in the 16 v1A story files (S-033..S-048) drifted from BC frontmatter versions because story authoring preceded several adversarial fix cycles that bumped BC files. This pattern recurred across Passes 1, 2, and 3. Root cause: no checklist step in the convergence-fix-burst workflow to refresh story inputs: BC pins after a fix cycle. FOLLOW-UP: add an explicit step to the convergence-fix-burst checklist requiring a corpus-wide refresh of story inputs: BC version pins after any adversarial fix cycle bumps BC frontmatter versions. The refresh is mechanical (read BC frontmatter version, update story pin) and low-risk. Route to devops-engineer (checklist/hook). Non-blocking."
-      blocking: false
-    - id: "F-P2-S03"
-      subject: "[spec-gap] verification_properties empty across all 16 v1A delta stories (S-033..S-048); VP-TBD anchors corpus-wide in BCs — VPs must be authored before Phase-6 formal hardening"
-      status: pending
-      detail: "D-307 Phase-2 Pass-2 fix burst surface: F-P2-S03 (Phase-2 Pass-2 adversarial suggestion). All 16 v1A delta stories (S-033..S-048) have empty verification_properties sections. Many BC files authored for the v1A control-center scope (SS-08/SS-09 BCs and other delta BCs) contain VP-TBD anchors (e.g., 'VP-TBD-SessionManager', 'VP-TBD-PTY') that were deferred at authoring time. VP authoring is not required for Phase-2 story convergence or Phase-3 TDD implementation (VPs are formal-hardening Phase-6 inputs), but must be completed before Phase-6 formal hardening begins. Route to product-owner when Phase-6 is scheduled. Non-blocking for Phase-2 and Phase-3."
-      blocking: false
-    - id: "F-P14-SUG-001"
-      subject: "DropCounterUpdate wire field-name drift — SS-ipc.md defines `DropCounterUpdate { count: u64 }` but done Wave-5/6 stories S-021/S-025 define/handle `DropCounterUpdate { drop_counter: u64 }`. Pre-existing latent inconsistency OUTSIDE the v1A Phase-2 story perimeter. Route architect."
-      status: deferred-post-phase-2
-      detail: "Phase-2 Pass-14 SUGGESTION (2026-06-16). SS-ipc.md canonical definition uses field name `count: u64` for DropCounterUpdate; done Phase-3 stories S-021 and S-025 define and handle `DropCounterUpdate { drop_counter: u64 }` (field name `drop_counter`). Pre-existing latent inconsistency in the done IPC work — outside the v1A Phase-2 story perimeter. The S-046 AC-004 fix in F-P14-IMP-001 removed the only v1A touchpoint that referenced StatusUpdate/DropCounterUpdate over IPC (pty_drop_counter is now stderr-WARN-only per BC-2.05.009 PC-3). Requires architect canonical field-name decision + possible implementation reconciliation. Non-blocking for Phase-2 story convergence and Phase-3 v1A implementation. Schedule for post-Phase-2 / IPC-maintenance pass or as part of the DEDUP-IPC-HANDLER-SKELETON work. Route: architect."
-      blocking: false
-    - id: "F-P13-SUG-001"
-      subject: "BC-2.06.024 title stale in dependency-graph-expansion.md:245 ('Tool Payload Rendering by Type' → canonical 'ToolPayload Body Rendering by Variant' per BC H1 + STORY-INDEX). Cosmetic; outside v1A perimeter."
-      status: deferred-post-convergence
-      detail: "Phase-2 Pass-13 SUGGESTION (2026-06-16). dependency-graph-expansion.md line 245 in the closed Waves-4-7 adjacency table cites BC-2.06.024 using the stale pre-rename title 'Tool Payload Rendering by Type'. The canonical title per BC-2.06.024 H1 and STORY-INDEX is 'ToolPayload Body Rendering by Variant'. This row is in the Closed Waves 4-7 section (historical audit trail only), outside the v1A active perimeter. Impact: cosmetic — no implementer is misled; no normative BC content is affected; PASS/FAIL criteria independent. DEFERRAL RATIONALE: corpus NOT modified during Pass-13 (clean-streak protection — any edit requires corpus-file change that would be reviewed by adversary and risks resetting the clean counter before it reaches 3; the fix is a single prose-string substitution in a historical table cell). FIX WHEN: after Phase-2 adversarial convergence reaches 3 consecutive clean passes. Route to story-writer (owns dependency-graph-expansion.md). Non-blocking."
-      blocking: false
-    - id: "F-P16-SUG-002"
-      subject: "[process-gap] add 'wire-type crate-residency + variant-completeness' check to adversarial wire-axis — shared wire types like SessionState/SessionSnapshot/SerializedCell must reside in monocle-ipc and carry the full canonical variant set; 1 instance (Pass-16 SessionState missing Detached + wrong crate)"
-      status: codification-pending
-      detail: "Phase-2 Pass-16 SUGGESTION (2026-06-16). F-P16-SUG-002: S-033 v1.3 placed SessionState in monocle-runtime/session_manager/mod.rs and enumerated only 4 variants (missing Detached). Root cause: the adversarial wire-axis did not have a 'crate-residency' check for shared wire types. Shared wire types (those used by IPC structs in monocle-ipc like SessionStateChanged, SessionSnapshot) MUST reside in monocle-ipc to prevent circular dependency; they must also carry the full canonical variant set. FOLLOW-UP: route to session-reviewer to add a 'wire-type crate-residency + variant-completeness' axis to the Phase-2 adversarial wire-axis checklist; route to devops-engineer to consider a lint check (e.g., semgrep rule ensuring SessionState is not defined in monocle-runtime). Non-blocking for Phase-2 story convergence and Phase-3 implementation."
-      blocking: false
-    - id: "F-P21-SUG-001"
-      subject: "[Phase-2 cosmetic] S-040 AC-001 cites Shift+Tab=\\x1b[Z / Ctrl+Arrow VT fallbacks per 'BC-2.09.002 PC-2 table' but those sequences live in SS-embedded-pty.md §Translation function, not literally in the BC-2.09.002 PC-2 table — citation-scope looseness only; sequences architecturally valid; deferred post-convergence"
-      status: deferred-post-convergence
-      detail: "Phase-2 Pass-21 SUGGESTION (2026-06-16). S-040 AC-001 trace citation references 'BC-2.09.002 PC-2 table' as the authority for the Shift+Tab=\\x1b[Z and Ctrl+Arrow VT fallback sequences. The sequences themselves are architecturally correct (per SS-embedded-pty.md §Translation function). However BC-2.09.002 PC-2 specifies the keyboard-fidelity postcondition at the behavioral contract level — it does not carry a literal VT-sequence table. The actual sequence definitions live in SS-embedded-pty.md §Translation function. Impact: cosmetic citation-scope looseness only; no implementer is misled (sequences are defined in SS-embedded-pty, which the implementer reads anyway). DEFERRAL RATIONALE: corpus NOT modified during Pass-21 (clean-streak protection). FIX WHEN: after Phase-2 adversarial convergence reaches 3 consecutive clean passes. Route to story-writer (owns S-040 story spec) to optionally co-cite SS-embedded-pty.md §Translation function alongside BC-2.09.002. Non-blocking."
-      blocking: false
-    - id: "F-P21-SUG-002"
-      subject: "[Phase-2 cosmetic] S-033 AC-012/AC-005 narrative labels SpawnAck as 'IPC-handler step 1' while BC-2.08.008 PC-5 / S-044 AC-006 number it 'step 2' (UUID-gen=step1, SpawnAck=step2) — relative ordering identical/correct; absolute step-index label differs only; deferred post-convergence"
-      status: deferred-post-convergence
-      detail: "Phase-2 Pass-21 SUGGESTION (2026-06-16). S-033 AC-012 and AC-005 task/trace narrative labels SpawnAck delivery as 'IPC-handler step 1'. BC-2.08.008 PC-5 (the canonical SpawnAck ordering guarantee spec) and S-044 AC-006 number UUID generation as step 1 and SpawnAck send as step 2. The relative ordering is identical and correct in all documents — UUID generation always precedes SpawnAck send. Only the absolute step-index label differs between S-033 (labels SpawnAck as step 1) and BC-2.08.008 PC-5 / S-044 (labels it step 2). Impact: cosmetic narrative inconsistency; implementer correctly derives UUID-gen before SpawnAck from any document; no behavioral divergence possible. DEFERRAL RATIONALE: corpus NOT modified during Pass-21 (clean-streak protection). FIX WHEN: after Phase-2 adversarial convergence reaches 3 consecutive clean passes. Route to story-writer to align S-033 AC-012/AC-005 step-index labels to BC-2.08.008 PC-5 canonical numbering (UUID-gen=step1, SpawnAck=step2). Non-blocking."
-      blocking: false
-    - id: "F-P20-BCGAP-001"
-      subject: "[spec-gap] BC-2.08.006 lacks a dedicated postcondition/invariant for (a) atomic hooks-settings.json write (tempfile::persist) and (b) hooks_settings_path absolute-canonicalization — S-038 AC-006/AC-009 currently anchor to BC-2.08.006 Invariant 4 (timing) + CLAUDE.md atomic-write convention + SS-conventions path handling. Valid citations, non-blocking. Route product-owner for future BC-2.08.006 revision."
-      status: deferred-post-convergence
-      detail: "Phase-2 Pass-20 (2026-06-16): F-P20-BCGAP-001. BC-2.08.006 (hook auto-injection) has no dedicated postcondition or invariant covering (a) atomicity of hooks-settings.json write via tempfile::persist, and (b) absolute canonicalization of hooks_settings_path before write. S-038 AC-006 (tempfile::persist write) and AC-009 (path canonicalization) currently anchor their trace headers to BC-2.08.006 Invariant 4 (timing guarantee: hook injection completes before first pre-tool-use event) plus the project-wide CLAUDE.md atomic-write convention and SS-conventions path-handling standard. These are valid citations — the behavior is governed by the cross-cutting conventions — but a future BC-2.08.006 revision should add explicit clauses for (a) and (b) so the contract is self-contained without relying on implementers reading CLAUDE.md conventions. Route to product-owner. Non-blocking for Phase-2 story convergence and Phase-3 implementation."
-      blocking: false
-    - id: "F-P24-SUG-001"
-      subject: "[Phase-2 cosmetic] S-038 body BC-table title for BC-2.08.006 = 'Hook Auto-Injection in Session-Host Spawn Path'; canonical (BC-INDEX/BC H1) = 'Hook Auto-Injection — --settings Arg Present in Session-Host Child Args Within 2s of Spawn'. Body title-label drift only; BC ID/frontmatter/AC traces correct."
-      status: deferred-post-convergence
-      detail: "Phase-2 Pass-24 SUGGESTION (2026-06-16). S-038 body BC-table title for BC-2.08.006 uses the abbreviated label 'Hook Auto-Injection in Session-Host Spawn Path'. The canonical title per BC-2.08.006 H1 and BC-INDEX is 'Hook Auto-Injection — --settings Arg Present in Session-Host Child Args Within 2s of Spawn'. Impact: cosmetic title-label drift only; BC ID, frontmatter, and AC traces are all correct; no implementer is misled. DEFERRAL RATIONALE: corpus NOT modified during Pass-24 (clean-streak protection — any corpus edit resets the clean counter before it reaches 3; the fix is a single prose-string substitution in one story table cell). FIX WHEN: after Phase-2 adversarial convergence reaches 3 consecutive clean passes. Route to story-writer (owns S-038 story spec). Non-blocking."
-      blocking: false
-    - id: "F-P24-SUG-002"
-      subject: "[Phase-2 cosmetic] S-046 body BC-table title for BC-2.05.011 = 'ScrollbackChunk/ScrollbackDumpComplete/PtyReset Protocol'; canonical = 'New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset'. Paraphrased (semantically equivalent); sync for index symmetry post-convergence."
-      status: deferred-post-convergence
-      detail: "Phase-2 Pass-24 SUGGESTION (2026-06-16). S-046 body BC-table title for BC-2.05.011 uses the paraphrase 'ScrollbackChunk/ScrollbackDumpComplete/PtyReset Protocol'. The canonical title per BC-2.05.011 H1 and BC-INDEX is 'New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset'. Impact: cosmetic paraphrase (semantically equivalent — all 3 variant names are present); no normative BC content affected; no implementer is misled. Sync for index symmetry (BC-INDEX title vs story body label consistency). DEFERRAL RATIONALE: corpus NOT modified during Pass-24 (clean-streak protection). FIX WHEN: after Phase-2 adversarial convergence reaches 3 consecutive clean passes. Route to story-writer (owns S-046 story spec). Non-blocking."
-      blocking: false
-    - id: "F-P25-SUG-001"
-      subject: "[Phase-2 cosmetic] STORY-INDEX BC Coverage Table stale AC-ranges for S-044 multi-BC rows — BC-2.09.008 row says 'AC-001..AC-007' (actual AC-001..AC-015); BC-2.09.009 row says 'AC-008..AC-011' (actual AC-016..AC-021). S-040's BC-2.09.005/002 rows have similar approximate ranges. One-time AC-range re-derivation sweep for Wave-9 multi-BC stories' STORY-INDEX coverage rows post-convergence. Route story-writer."
-      status: deferred-post-convergence
-      detail: "Phase-2 Pass-25 SUGGESTION (2026-06-16). STORY-INDEX BC Coverage Table has stale AC-range labels for S-044 (Wave 9, multi-BC story). BC-2.09.008 coverage row says 'AC-001..AC-007' but S-044 has AC-001..AC-015; BC-2.09.009 coverage row says 'AC-008..AC-011' but S-044 has AC-016..AC-021. The adversary also noted S-040's BC-2.09.005 and BC-2.09.002 coverage rows carry similarly approximate ranges. Impact: coverage-label drift only; BC IDs, anchor citations, Full-Coverage verdict, and in-story AC-trace headers are all correct; no implementer is misled about behavior. DEFERRAL RATIONALE: corpus NOT modified during Pass-25 (clean-streak protection — any corpus edit would require adversary review and risks resetting the clean counter before it reaches 3/3). FIX WHEN: after Phase-2 adversarial convergence reaches 3 consecutive clean passes. Route to story-writer to perform a one-time AC-range re-derivation sweep for the Wave-9 multi-BC stories' STORY-INDEX coverage rows. Non-blocking."
-      blocking: false
-    - id: "F-GATE-IMP-001"
-      subject: "[Phase-2 pre-gate] sprint-state.yaml inputs[] + traces_to_full severely stale — BC-INDEX pin v1.23 vs actual v1.43.7; ARCH-INDEX v1.0.16 vs v1.0.30; SS-ipc v1.6.0 vs v1.24.0; traces_to_full STORY-INDEX v4.7 vs v5.44; missing SS-session-manager/SS-embedded-pty/SS-engine-module-v2-delta/SS-deps-pin-manifest-v2-delta inputs. Mechanical pin cascade."
-      status: pending
-      routing: state-manager
-      blocking: false
-      detail: "D-322 Phase-2 pre-gate consistency-validator audit (2026-06-16). sprint-state.yaml inputs[] carry v1A-era version pins (BC-INDEX v1.23, ARCH-INDEX v1.0.16, SS-ipc v1.6.0) that are severely stale vs current (v1.43.7, v1.0.30, v1.24.0 respectively). traces_to_full STORY-INDEX cites v4.7 vs canonical v5.44. Missing inputs: SS-session-manager, SS-embedded-pty, SS-engine-module-v2-delta, SS-deps-pin-manifest-v2-delta — all authored for the v1A control-center scope and directly affect story/BC traceability. The consistency-validator audit noted these as important-severity (full-coverage verification blocked for Phase-3 story decomposition context). Mechanical pin cascade: read current frontmatter versions from all affected docs and update sprint-state.yaml inputs[] and traces_to_full fields. Route to state-manager. Non-blocking for Phase-2 human gate; should be resolved in the optional post-convergence cleanup burst."
-    - id: "F-GATE-IMP-002"
-      subject: "[Phase-2 pre-gate] wave-schedule.md §Wave 8 Tier 1 S-032 dependency text says 'depends on S-021(W5), S-018(W5)' but canonical (frontmatter + dependency-graph) is S-021/S-022/S-028. Functionally correct (transitive), text stale."
-      status: pending
-      routing: story-writer
-      blocking: false
-      detail: "D-322 Phase-2 pre-gate consistency-validator audit (2026-06-16). wave-schedule.md §Wave 8 Tier 1 entry for S-032 (deferred daemon fan-out) states dependency on 'S-021(W5), S-018(W5)' in the narrative text. The canonical dependency per S-032 frontmatter and dependency-graph-expansion.md is S-021/S-022/S-028. The text is functionally not misleading (S-021 is correct; S-018 is a transitive ancestor of S-022/S-028) but the direct-edge cites are stale. Route to story-writer to update wave-schedule.md §Wave 8 Tier 1 S-032 dependency text to S-021/S-022/S-028 (direct edges per dep-graph). Non-blocking for Phase-2 human gate."
-    - id: "F-GATE-ADV-001"
-      subject: "[Phase-2 pre-gate advisory] status nomenclature split — sprint-state.yaml says not_started for S-033..S-048; STORY-INDEX + frontmatter say draft."
-      status: pending
-      routing: state-manager
-      blocking: false
-      detail: "D-322 Phase-2 pre-gate consistency-validator audit (2026-06-16). sprint-state.yaml carries status: not_started for all 16 v1A delta stories (S-033..S-048). The STORY-INDEX and individual story frontmatter files carry status: draft for these same stories. The difference is a nomenclature split (not_started vs draft) rather than a factual error — both mean 'authored but no implementation begun'. Non-blocking advisory. Route to state-manager to align sprint-state.yaml status values for S-033..S-048 to draft (matching STORY-INDEX + frontmatter canonical) in the optional cleanup burst."
-    - id: "F-GATE-ADV-002"
-      subject: "[Phase-2 pre-gate advisory] missing epic detail files E-04..E-09 in stories/epics/ — STORY-INDEX is canonical; epic_id is identifier not path."
-      status: pending
-      routing: story-writer
-      blocking: false
-      detail: "D-322 Phase-2 pre-gate consistency-validator audit (2026-06-16). The consistency-validator noted that stories/epics/ directory contains epic detail files only for EPIC-01 through EPIC-03; E-04 (EPIC-04 daemon wiring), E-05 (EPIC-05 sessions plane), E-06 (EPIC-06 permission overlay), E-07 (EPIC-07 profile picker), E-08 (EPIC-08 session manager), and E-09 (EPIC-09 embedded PTY) do not have corresponding detail files. STORY-INDEX is the canonical source for epic identity and story-to-epic assignment; the epic_id field in story frontmatter is an identifier, not a path. Missing detail files are non-blocking for Phase-3 implementation (stories carry full AC text). Advisory: route to story-writer to optionally create epic detail stubs for E-04..E-09 at a convenient time before Phase-3 begins."
-    - id: "F-GATE-ADV-003"
-      subject: "[Phase-2 pre-gate advisory] EVAL-INDEX inputs[] missing S-033..S-048 (esp. S-036/S-044/S-033/S-038/S-040/S-041 cited by HS-EXP-011..015) for Phase-4 evaluator context."
-      status: pending
-      routing: state-manager
-      blocking: false
-      detail: "D-322 Phase-2 pre-gate consistency-validator audit (2026-06-16). EVAL-INDEX.md inputs[] section does not list the 16 v1A delta stories (S-033..S-048) as inputs. This matters for Phase-4 holdout evaluation: HS-EXP-011..015 (the v1A holdout scenarios) cite specific stories as their primary evaluation targets — HS-EXP-011 cites S-036/S-044, HS-EXP-012 cites S-033, HS-EXP-013 cites S-038/S-040/S-041, etc. The holdout evaluator loading EVAL-INDEX will need story context for these scenarios. Advisory: route to state-manager to update EVAL-INDEX.md inputs[] to include S-033..S-048 story file paths (and their version pins) in the optional cleanup burst before Phase-4 starts."
-    - id: "F-GATE-ADV-004"
-      subject: "[Phase-2 pre-gate advisory] dependency-graph-expansion.md title/intro still say 'Waves 4-7'/'S-016 through S-031' despite covering Waves 8-9/S-032..S-048."
-      status: pending
-      routing: story-writer
-      blocking: false
-      detail: "D-322 Phase-2 pre-gate consistency-validator audit (2026-06-16). dependency-graph-expansion.md H1 title and introductory prose still reference 'Waves 4-7' and 'S-016 through S-031'. The document was expanded in Burst E / Pass-5 fix cycle to cover Waves 8-9 and S-032..S-048, but the title/intro header text was not updated to reflect the expanded coverage. Body sections covering the Wave 8-9 DAG and topological proof are present and correct; only the header-level description is stale. Advisory: route to story-writer to update H1 title and intro to 'Waves 4-9 / S-016 through S-048' (or equivalent) in the optional cleanup burst. Non-blocking for Phase-2 human gate."
-    - id: "PROC-COMPUTE-INPUT-HASH-YAML-CLASS"
-      subject: "[process-gap] compute-input-hash does not parse YAML-object inputs: 16 v1A stories show [pending]"
-      status: pending
-      detail: "compute-input-hash parser treats YAML-object-style inputs (path/version pairs) as plain string values. All 16 v1A stories (S-033..S-048) have inputs stored as YAML objects and therefore show as [pending] rather than computed. Tooling fix needed before input-hash drift checking is meaningful for v1A stories. Route to devops-engineer. Non-blocking."
-      blocking: false
-    - id: "CIRCULAR-HASH-CASCADE-HOUSEKEEPING"
-      subject: "[housekeeping] 2-pass compute-input-hash --update to settle 21 known-stale circular-hash-cascade residuals"
-      status: pending
-      detail: "D-322 input-drift check: STALE=21 residuals are all class-b circular-hash-cascade (files that list each other as inputs; each --update pass re-stales the circular partner). Running a 2-pass --update sequence would settle the oscillation for now. Non-blocking; not required before Phase-2 gate. Route to state-manager at next opportunity."
-      blocking: false
-    - id: "F-P20-SUG-WIRE-CODE-LINT"
-      subject: "[process-gap] POL extension: validate story wire-error-code literals + SessionError variants vs SS-ipc/SS-session-manager closed taxonomies"
-      status: pending
-      detail: "Phase-2 Pass-20 Suggestion: add a POL check that validates wire-error-code literals in story AC bodies and SS specs against the closed wire taxonomies in SS-ipc (12-code) and SS-session-manager (9-variant SessionError). Route to devops-engineer when POL-extension sprint scheduled. Non-blocking."
-      blocking: false
-    - id: "S-047-AC009-PTYRESET-QUALIFIER"
-      subject: "S-047 AC-009 §PtyReset subsection qualifier (story-writer)"
-      status: pending
-      detail: "Phase-2 Pass-21 deferred cosmetic: S-047 AC-009 needs a §PtyReset subsection qualifier for clarity. story-writer cosmetic fix. Non-blocking."
-      blocking: false
-  se_candidates:
-    - id: SE-40
-      occurrences: 2
-      threshold: 3
-      description: "Orchestrator drives deliver-story from main session only; never delegates to sub-orchestrator that cannot spawn fresh-context specialists."
-      status: HELD per D-114
-  process_discoveries:
-    - "Full historical process_discoveries archived to cycles/cycle-001/burst-log.md (D-207 compaction)."
-    - "Key disciplines: L-001..L-021 (cycle-001/lessons.md); L-W6-S025-* (Passes 21-42); L-W6-S026-001/002/003; L-W6-GATE-001/002/003."
-    - "META-PATTERN BOUNDED (D-207): 18 instances. literal-pin→ADR-0007+POL-11; structural-claim→ADR-0008+POL-12. Both CI-gated (f0926fe). L-W6-S025-015 codified."
-    - "STRICT-3/3-CLEAN convergence vindicated (D-221): Passes 36+37 perimeter-clean missed in-perimeter Esc/q defects; Pass 38 fresh-context source-re-derivation caught them. L-W6-S025-019/021."
-    - "TALLY-GUARD (D-225): STATE running-tally must re-sum sprint-state per-story; summary.points_complete is a cache. Hand-increment drift produced +8 pts error + premature Phase-3-COMPLETE. L-W6-GATE-003."
+traces_to: "D-001..D-241 at cycles/cycle-001/decisions-archive.md. D-242..D-322 appended at cycles/cycle-001/decisions-archive.md §Phase-1d+Phase-2. Full durable_task_register YAML (122 entries) at cycles/cycle-001/task-register-full.yaml."
+awaiting: "PAUSED. Phase-2 CONVERGENCE COMPLETE (3/3). RESUME: Option A = optional cleanup burst then Phase-2 human approval gate. Option B = proceed directly to gate (all findings non-blocking)."
+dtu_required: true
+dtu_assessment: 2026-05-12
+dtu_clones_built: 2026-06-03
+dtu_services: [hook-endpoints-x5]
+current_cycle: cycle-001
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v7.84 — 2026-06-16
+  ZERO-CONTEXT RESUME CHECKPOINT v7.85 — 2026-06-16
   PAUSED FOR LAPTOP RELOCATION
   ============================================================================
   POSITION: Phase-2 story decomposition for v1A control-center scope.
   STATUS: ADVERSARIAL CONVERGENCE COMPLETE (3/3 consecutive clean passes).
   Passes 24/25/26 clean. 26 total passes. PRE-GATE VALIDATIONS DONE.
-  NEXT: Option A = cleanup burst then gate. Option B = gate directly.
+  NEXT: Option A = cleanup burst then gate. Option B = gate directly (faster).
 
   READ FIRST (in order):
   1. /Users/jmagady/Dev/monocle/NEXT-SESSION-RESUME.md  <- concise entry point
   2. /Users/jmagady/Dev/monocle/CLAUDE.md               <- production-grade + routing
-  3. This STATE.md                                      <- durable_task_register + history pointers
+  3. This STATE.md (task register table below)          <- task register + history pointers
 
-  CORPUS FACTS (v1A at Phase-2 convergence):
+  CORPUS FACTS at Phase-2 convergence:
   Stories: 51 total / 311 pts (32 done Phase 1-3; 16 not_started v1A Waves 8-9;
            1 blocked S-PHASE-3-PREP; 2 draft S-032/S-DAEMON-WIRE-FIX-001)
   New v1A: S-033..S-048 (16 stories); EPIC-08 Session Manager; EPIC-09 Embedded PTY
   Waves: 8-9; 25 v1A BCs; 5 holdouts HS-EXP-011..015 anchored
 
-  KEY VERSION PINS (pull exact current from .factory/specs/version-pin-registry.yaml):
+  KEY VERSION PINS (canonical source: .factory/specs/version-pin-registry.yaml):
   STORY-INDEX v5.44 | sprint-state v1.45 | wave-schedule v1.9
   dependency-graph-expansion v2.3 | BC-INDEX v1.43.7 | EVAL-INDEX v1.18
   ARCH-INDEX v1.0.30 | SS-ipc v1.24.0 | SS-session-manager v2.6.1
@@ -668,68 +48,52 @@ next_session_resume_protocol: |
   prd v1.28.3 | product-brief v2.0.4 | domain-monocle-vision-synthesis v2.2.3
 
   NEXT-ACTION OPTIONS:
-  Option A (preferred): Run cleanup burst FIRST, then gate.
-    Cleanup scope:
-    - state-manager: F-GATE-IMP-001 (sprint-state inputs pin cascade)
-                     F-GATE-ADV-001 (sprint-state not_started->draft for S-033..S-048)
-                     F-GATE-ADV-003 (EVAL-INDEX inputs S-033..S-048)
-    - story-writer:  F-GATE-IMP-002 (wave-schedule S-032 dep text)
-                     F-GATE-ADV-002 (epic detail stubs E-04..E-09)
-                     F-GATE-ADV-004 (dep-graph-expansion title/intro Waves 4-7->4-9)
-                     Deferred cosmetic: F-P13-SUG-001, F-P21-SUG-001/002, F-P24-SUG-001/002,
-                     F-P25-SUG-001, S-047-AC009-PTYRESET-QUALIFIER
-    - product-owner: F-P20-BCGAP-001 (BC-2.08.006 atomic-write + path-canonicalization clauses)
+  Option A (preferred): Run cleanup burst FIRST, then present Phase-2 gate.
+    state-manager: F-GATE-IMP-001 (sprint-state inputs pin cascade)
+                   F-GATE-ADV-001 (sprint-state not_started->draft for S-033..S-048)
+                   F-GATE-ADV-003 (EVAL-INDEX inputs S-033..S-048)
+    story-writer:  F-GATE-IMP-002 (wave-schedule S-032 dep text)
+                   F-GATE-ADV-002 (epic detail stubs E-04..E-09)
+                   F-GATE-ADV-004 (dep-graph-expansion title Waves 4-7->4-9)
+                   Deferred cosmetic: F-P13-SUG-001, F-P21-SUG-001/002,
+                   F-P24-SUG-001/002, F-P25-SUG-001, S-047-AC009-PTYRESET-QUALIFIER
+    product-owner: F-P20-BCGAP-001 (BC-2.08.006 atomic-write + path-canon clauses)
+    Then: re-run single confirming consistency check, then gate.
   Option B (fastest): Proceed directly to Phase-2 human approval gate.
     All findings are NON-BLOCKING.
 
   PHASE-2 HUMAN APPROVAL GATE CRITERIA:
-  Present to Joshua Magady for ratification:
   - Phase-2 adversarial story convergence COMPLETE (26 passes; 3 consecutive clean)
   - Story corpus: 51 stories / 311 pts; 16 new v1A stories S-033..S-048
   - 2 new epics EPIC-08/EPIC-09; Waves 8-9
   - All 25 v1A BCs anchored; 5 holdouts (HS-EXP-011..015) with story anchors
   - Consistency gate: PASS (0 blockers); Input-hash: CLEAN; POL-11/POL-12: PASS
-  On gate approval: Phase-3 TDD implementation for v1A Waves 8-9 (S-033..S-048)
+  On approval: Phase-3 TDD implementation for v1A Waves 8-9 (S-033..S-048) begins.
 
   MANDATORY PRE-PHASE-3 PREREQUISITES (surface at/after gate):
   1. DTU clone validated D-234 (S-DTU-001 fidelity 1.0) -- DONE
-  2. CI/CD verification: ci.yml + branch protection contexts (PROC-BRANCH-PROTECTION-CONTEXTS)
-  3. monocle-session-host new binary crate creation per SS-deps-pin-manifest-v2-delta
-  4. Per-story-delivery discipline: unique /tmp paths; architect=spec-only; pr-manager 9 steps
+  2. CI/CD: ci.yml + branch protection contexts (PROC-BRANCH-PROTECTION-CONTEXTS)
+  3. monocle-session-host new binary crate per SS-deps-pin-manifest-v2-delta
+  4. Per-story-delivery: unique /tmp paths; architect=spec-only; pr-manager 9 steps
 
   RATIFIED DECISIONS (do NOT re-litigate):
-  - D-238: session-host-owns-PTY; graceful daemon restart SURVIVES (CASE 2); NO tmux default
+  - D-238: session-host-owns-PTY; daemon restart SURVIVES (CASE 2); NO tmux default
   - D-304: Autonomous Phase-2 dispatch authorized; no per-burst plan-review gate
-  - D-315: Pre-pivot disposition RATIFIED (keep 3 active: S-032/S-DAEMON-WIRE-FIX-001/S-PHASE-3-PREP)
-    32 done-historical; actual pre-pivot count 35 (not 143 estimate); 0 archive/retire
+  - D-315: Pre-pivot disposition RATIFIED; 32 done-historical; 3 active kept
+    (S-032/S-DAEMON-WIRE-FIX-001/S-PHASE-3-PREP); actual pre-pivot count 35; 0 archive/retire
   - Spawn-path Model A: SpawnOptions on wire; SpawnRecipe daemon-internal
-  - IPC schema: 12-code wire taxonomy; 9-variant SessionError; schema_version 3
-  - PTY stack (ADR-0011): portable-pty 0.9.0 + vt100 0.16.2 + tui-term =0.3.4; MSRV 1.88
+  - IPC: 12-code wire taxonomy; 9-variant SessionError; schema_version 3
+  - PTY (ADR-0011): portable-pty 0.9.0 + vt100 0.16.2 + tui-term =0.3.4; MSRV 1.88
   - SessionState: 5 variants (Launching/Running/Detached/Terminating/Terminated) in monocle-ipc
-  - Full decision history: cycles/cycle-001/decisions-archive.md (D-001..D-241)
-    and appended Phase-1d+Phase-2 section (D-242..D-322)
+  - Full history: cycles/cycle-001/decisions-archive.md (D-001..D-322)
 
-  PHASE-2 DISPATCH — BURSTS A-G COMPLETE; ADVERSARIAL CONVERGENCE COMPLETE (26 passes)
+  KNOWN-FLAKY TESTS (do NOT flag as new findings):
+  cli_daemon_stop, factory_self_referential, test_BC_2_07_006,
+  wit-bindgen unmatched-skip, PATH isolation flake.
+
+  factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'`
+  develop HEAD: 2141adc (no v1A production code written)
   ============================================================================
-
-  BURST A DONE — S-033..S-038 created (EPIC-08, Session Manager, SS-08 BCs)
-  BURST B DONE — S-039..S-044 created (EPIC-09, Embedded PTY, SS-09 BCs)
-  BURST C DONE — S-045..S-048 created (EPIC-03/05/06 delta additions)
-  BURST D DONE — pre-pivot-disposition-recommendation.md written (PENDING human ratification D-305)
-  BURST E DONE — 25 v1A BC S-TBD anchors resolved to S-033..S-048; HS-EXP-011..015 resolved; BC-2.06.025 v1.5.1
-  BURST F DONE — STORY-INDEX v5.33, sprint-state v1.41, wave-schedule v1.7, EPIC-08/EPIC-09 defined
-  BURST G DONE — BC-INDEX v1.42.0, EVAL-INDEX v1.16, version-pin-registry updated, POL-11/POL-12 PASS, STATE v7.56
-  Adversarial convergence: 26 passes; trajectory in decisions-archive.md D-306..D-321.
-  Pass 24/25/26 CLEAN — strict-3-clean gate SATISFIED. CONVERGENCE COMPLETE.
-  [Pass 1-26 details archived in decisions-archive.md D-306..D-321]
-  KNOWN-FLAKY (DO NOT FLAG as new findings):
-    cli_daemon_stop, factory_self_referential, test_BC_2_07_006,
-    wit-bindgen unmatched-skip, PATH isolation flake.
-dtu_required: true
-dtu_assessment: 2026-05-12
-dtu_clones_built: 2026-06-03
-dtu_services: [hook-endpoints-x5]
-current_cycle: cycle-001
 ---
 
 # Pipeline State: Monocle
@@ -739,21 +103,140 @@ current_cycle: cycle-001
 | Phase | Status | Notes |
 |-------|--------|-------|
 | -1 Reference Ingest | DONE 2026-05-11 | 8 repos; semport/ |
-| 0.5-0.9 Brief + arch | DONE 2026-05-14 | D-054 gate. 22 BCs. |
-| 1 Spec Crystallization | DONE (D-170 APPROVED) | 70 BCs; 15-pass adversarial convergence. |
-| 2 Story Decomposition | DONE (D-173 APPROVED) | 33 original stories (pre-pivot). |
-| 3 TDD Implementation | COMPLETE (D-232) | 32/33 done, 192/195 pts. develop @ 6811103. |
-| PIVOT (D-236) | Vision revised | Observe-only RETIRED. Full TUI control center. |
-| Phase-1d Spec Delta | DONE (D-303) | 57 adversarial passes; 3/3 clean (Passes 55/56/57). |
-| Phase-2 Story Delta | CONVERGED (D-321) | 26 adversarial passes; 3/3 clean (Passes 24/25/26). |
-| Phase-2 Pre-Gate | DONE (D-322) | Consistency PASS; input-drift CLEAN. PAUSED. |
-| Phase-3 v1A | PENDING gate | 16 v1A stories (S-033..S-048), Waves 8-9. |
+| 0.5-0.9 Brief + market intel | DONE 2026-05-14 | brief v2.0.4; validate-brief VALID |
+| 1 Spec Crystallization | DONE D-170 APPROVED | 57-pass Phase-1d adversarial. 113 BCs. BC-INDEX v1.43.7 |
+| 2 Story Decomp v1A | CONVERGED — pre-gate | 26 passes (3/3 clean). 51 stories/311 pts. Pre-gate validations DONE. |
+| 3 TDD v1A Waves 8-9 | NOT STARTED | Blocked on Phase-2 gate. S-033..S-048 |
+| 3 TDD Waves 1-7 (pre-pivot) | COMPLETE D-232 | 32/33 done (192/195 pts). 1514 tests. develop @ 6811103 |
+| 4-7 | PENDING after Phase-3 v1A | Old observe-only scope superseded by v1A control-center |
 
 ## Blocking Issues
 
-None. All durable_task_register items non-blocking.
+None. All durable task register items are non-blocking.
+
+## Durable Task Register
+
+96 active tasks. Full YAML detail (all 122 entries including 26 resolved/closed): `cycles/cycle-001/task-register-full.yaml`.
+
+| ID | Status | Route | Block? | Subject (truncated) |
+|----|--------|-------|--------|---------------------|
+| F-GATE-IMP-001 | pending | state-mgr | n | sprint-state inputs pin cascade stale |
+| F-GATE-IMP-002 | pending | story-writer | n | wave-schedule S-032 dep text stale |
+| F-GATE-ADV-001 | pending | state-mgr | n | sprint-state not_started vs draft for S-033..S-048 |
+| F-GATE-ADV-002 | pending | story-writer | n | missing epic detail files E-04..E-09 |
+| F-GATE-ADV-003 | pending | state-mgr | n | EVAL-INDEX inputs missing S-033..S-048 |
+| F-GATE-ADV-004 | pending | story-writer | n | dep-graph-expansion title still Waves 4-7 |
+| F-P13-SUG-001 | deferred-post-conv | story-writer | n | BC-2.06.024 title in dep-graph |
+| F-P20-BCGAP-001 | deferred-post-conv | prod-owner | n | BC-2.08.006 atomic-write + path-canon clauses |
+| F-P21-SUG-001 | deferred-post-conv | story-writer | n | S-040 BC-2.09.002 citation scope |
+| F-P21-SUG-002 | deferred-post-conv | story-writer | n | S-033 SpawnAck step-label |
+| F-P24-SUG-001 | deferred-post-conv | story-writer | n | S-038 body BC-table title |
+| F-P24-SUG-002 | deferred-post-conv | story-writer | n | S-046 body BC-table title |
+| F-P25-SUG-001 | deferred-post-conv | story-writer | n | STORY-INDEX AC-ranges for S-044/S-040 multi-BC rows |
+| S-047-AC009-PTYRESET-QUALIFIER | deferred-post-conv | story-writer | n | S-047 AC-009 PtyReset subsection qualifier |
+| INPUT-HASH-CHILD-RECOMPUTE | codification-pending | devops | n | input-hash drift re-accumulates when parent specs bump |
+| DEP-PIN-SWEEP-RULE | pending | devops | n | extend POL-11 to grep crate-name+version prose literals |
+| POL-11-PINFORMAT-BLIND-SPOT | codification-pending | devops | n | POL-11 misses path.md vX.Y.Z section format |
+| ADR-0010-TRACE-256-MARKER | pending | architect | n | ADR-0010 Trace missing [superseded by 64 in v1.3.0] |
+| PRD-COUNT-CROSSCHECK-RULE | pending | devops | n | POL-12 sibling: PRD BC-table count vs BC-INDEX count |
+| PROC-DTU-VALIDATE-LOCATION | pending | devops | n | DTU validation misses cargo-binary clone location |
+| ADV-W5GATE-HIGH-002 | pending | implementer | n | Duplicate S-009 handler dead code |
+| HIGH-2-SECOND-SIGNAL-DEFER | deferred-wave-8 | implementer | n | Second-signal exit codes 143/130 deferred to S-DAEMON-WIRE-FIX-001 |
+| ADV-W5GATE-MED-001 | pending | implementer | n | S-017 UDS socket spurious WARN on rebind |
+| ADV-W5GATE-MED-003 | pending | architect | n | HookEvent serde round-trip fragility |
+| #28 | partial | architect | n | prost/reqwest exact-patch pin verification |
+| #34 | pending | prod-owner | n | BC-2.03.001 PC-3 DeferUntil cleanup |
+| VP-DTU-001 | deferred-phase-4 | architect | n | VP-DTU-001 to be created in Phase 4 |
+| F-WAVE1-004 | deferred-maintenance | devops | n | Cron schedule collision audit.yml + dtu-fidelity.yml |
+| F-WAVE1-005 | deferred-maintenance | devops | n | xtask not in cargo-deny graph.targets |
+| S-014-ADV-SS-engine-module-stale | pending | architect | n | SS-engine-module HookDecision code blocks stale |
+| S-011-ADV-HookArgs-divergence | pending | architect | n | HookArgs struct diverges from SS-permissions-phase1.md |
+| S-013-ADV-prost-types-not-pinned | pending | architect | n | prost-types not registered in SS-deps-pin-manifest |
+| S-008-ADV-tempfile-spec | partial-closed | story-writer | n | AC-003 tempfile::persist spec; BC-2.01.007 anchor |
+| S-015-ADV-tracing-test | pending | architect | n | tracing-test 0.2 not in SS-deps-pin-manifest |
+| SS-01-ProjectDirs-from | pending | architect | n | SS-daemon-lifecycle ProjectDirs::new -> ::from |
+| IMPL-HookDecision-serde | deferred-wave-5 | implementer | n | HookDecision + HookResponse Serialize/Deserialize derives |
+| IMPL-on-hook-Defer | deferred-wave-5 | implementer | n | ClaudeCodeModule::on_hook() Defer routing |
+| ADV-W3GATE-MED-001 | pending | implementer | n | last_hook_ts never written by hook handlers |
+| ADV-W3GATE-MED-003 | pending | implementer | n | Only 1/5 hook endpoints in full-stack test path |
+| HS-EXP-009-hint | pending | implementer | n | Exit 70 missing stderr remediation hint |
+| PROC-SEMGREP-DECOUPLE | pending | devops | n | Semgrep silently skipped when Preflight fails |
+| PROC-GATE-SKIPPED-LOUD | pending | devops | n | Build+Test silently skipped — need GATE_SKIPPED indicator |
+| PROC-COMPUTE-INPUT-HASH-YAML | pending | devops | n | compute-input-hash mishandles YAML-object inputs |
+| PROC-COMPUTE-INPUT-HASH-YAML-CLASS | pending | devops | n | 16 v1A stories show [pending] due to YAML-object parser gap |
+| CIRCULAR-HASH-CASCADE-HOUSEKEEPING | pending | state-mgr | n | 2-pass --update to settle 21 circular-hash-cascade stale |
+| S-025-TODO-S023-MERGE | pending | implementer | n | Replace 2 TODO(S-023-merge) markers post-rebase |
+| S-025-MAKE-MODAL-DEAD-CODE | pending | implementer | n | Dead make_modal test helpers until S-026 |
+| PROC-BRANCH-PROTECTION-CONTEXTS | pending | human | n | develop branch protection has empty required-check contexts |
+| F-S025-ADV13-NIT-003 | pending | prod-owner | n | BC-2.06.016 Trace stale follow-up note |
+| F-S025-ADV13-NIT-004 | pending | prod-owner | n | BC-2.06.004 EC-079 cites non-production string |
+| F-S025-ADV20-PROC-001 | pending | architect | n | Test File Documentation Standards rule (SS-conventions) |
+| F-S025-PATH-B-CLAUDE-MD | pending | human | n | CLAUDE.md MSRV 1.86->1.88 PENDING HUMAN ACTION |
+| F-S025-ADV16-PROC-001 | pending | devops | n | agents must use cargo clippy --all-targets to match CI |
+| F-S025-ADV16-PROC-002 | pending | devops | n | audit-table.md + SS-engine-module must sync atomically |
+| F-S025-ADV22-PROC-001 | pending | devops | n | CI-enforced bare-filename architecture anchor resolution |
+| F-S025-ADV24-MED-001 | partial | story-writer | n | Cross-story S-026/27/28/31 inputs[] + done-story body stale |
+| F-S025-ADV24-MED-002 | pending | story-writer | n | VP-body SS-deps-pin-manifest stale (14 VPs; phase-5 fix) |
+| Task-9-m8-S028-cross-story | pending | story-writer | n | S-028 lines 63+147 cross-story drift (BC-5.39.002 PC2) |
+| F-S025-ADV28-OBS-001 | pending | architect | n | 3rd consecutive ADR same-burst internal-consistency defect |
+| F-S025-ADV28-OBS-002 | pending | architect | n | ADR-0008 Canonical Source Registry + structural-claim pattern |
+| ADR-HOOK-001 | pending | architect | n | ADR-HOOK-001 wire-protocol decisions to migrate into new ADR |
+| ADR-HOOK-001-WIRING | pending | implementer | n | ADR-HOOK-001 wiring implementation |
+| S-025-POST-MERGE-S1 | pending | story-writer | n | S-025 post-merge PO sweep Task #9 |
+| S-025-POST-MERGE-TD1 | pending | architect | n | S-025 post-merge tech-debt items Task #9 |
+| F-S026-ADV1-LOW-002 | pending | architect | n | BC-2.06.023 low-finding from S-026 review |
+| PROCESS-GAP-CI-PARITY-1 | pending | human | n | CLAUDE.md Lint add --all-targets PENDING HUMAN ACTION |
+| PROCESS-GAP-CI-PARITY-2 | pending | devops | n | CI parity gap codification (second item) |
+| F-S027-DOC-002 | pending | tech-writer | n | S-027 doc finding #2 |
+| F-S027-DOC-003 | pending | tech-writer | n | S-027 doc finding #3 |
+| L-S027-004-PROCESS-GAP-REGISTRY-ATOMICITY | pending | devops | n | registry atomicity: spec bump + registry must be atomic |
+| F-S028-NIT-002-DEFERRED | deferred-post-conv | story-writer | n | S-028 nit #2 deferred post-convergence |
+| PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP | pending | devops | n | architect=spec-only; all code to implementer-in-worktree |
+| PROCESS-GAP-TMP-COMMIT-MSG-MIXUP | pending | devops | n | use unique /tmp paths per story dispatch |
+| PROCESS-GAP-PRMANAGER-EARLY-RETURN | pending | devops | n | pr-manager must complete all 9 steps |
+| SIGTERM-TERMINAL-RESTORE | pending | implementer | n | TUI terminal restore on SIGTERM |
+| SS-DAEMON-WIRING-SCROLLBACKDUMP-TERM | pending | architect | n | SS-daemon-wiring scrollback-dump terminal restore spec |
+| ADR-0011-UPGRADE-TYPO | pending | architect | n | ADR-0011 upgrade-path typo |
+| S28-001 | pending | story-writer | n | S-028 Trace housekeeping |
+| ENGINE-RS-DEVERSION | pending | architect | n | engine.rs deversion (doc-comment version literals) |
+| BC-INDEX-TRACE-SS08-COUNT | pending | prod-owner | n | BC-INDEX Trace SS-08 count discrepancy |
+| SS-IPC-181-REDUNDANT-HISTORICAL-MARKER | pending | architect | n | SS-ipc line 181 redundant historical marker |
+| OBS-P57-001 | deferred-housekeeping | architect | n | Phase-1d Pass-57 LOW observation |
+| OBS-1-BC2.09.002-TRACE-LINE-NUMBERS | deferred-housekeeping | architect | n | BC-2.09.002 Trace cites stale SS-embedded-pty line numbers |
+| DEDUP-IPC-HANDLER-SKELETON | pending-orch-action | architect | n | Dedup SS-session-manager IPC vs SS-daemon-wiring-v2-delta §3 |
+| OBS-HS-PROSE-PHASE4-PREP | deferred-phase4-prep | story-writer | n | HS-EXP-014/013 prose imprecisions for Phase-4 holdout-eval |
+| BURST-GAP-001-S038-HOOK-SCHEMA | pending | story-writer | n | S-038 hook schema gap |
+| BURST-GAP-002-S033-SESSIONNOTREADY-VARIANT | pending | story-writer | n | S-033 SessionNotReady variant gap |
+| BURST-GAP-003-S043-TUITERM-SCROLLBACK-API | pending | story-writer | n | S-043 tui-term scrollback API gap |
+| BURST-GAP-004-S043-S042-CROSSSTORY-RESET | pending | story-writer | n | S-043/S-042 cross-story reset gap |
+| BURST-GAP-005-S039-S043-CROSSSTORY-CONFIG | pending | story-writer | n | S-039/S-043 cross-story config gap |
+| F-P1-S-005 | pending | story-writer | n | Phase-2 Pass-1 story S-005 finding |
+| F-P2-S03 | pending | architect | n | Phase-2 Pass-2 S03 finding |
+| F-P14-SUG-001 | deferred-post-phase-2 | story-writer | n | Phase-2 Pass-14 Suggestion #1 (deferred post-Phase-2) |
+| F-P3-S02-PROCGAP | pending | devops | n | add refresh story input-pins to convergence burst checklist |
+| F-P16-SUG-002 | pending | sess-reviewer | n | add wire-type crate-residency adversarial axis |
+| F-P20-SUG-WIRE-CODE-LINT | pending | devops | n | POL: validate wire-error-code literals vs SS-ipc taxonomy |
+| SE-40 | held-D-114 | orchestrator | n | SE-40 (deliver-story from main session only; held) |
+
+## Resolved/Closed Tasks (archived)
+
+26 entries. Full detail at `cycles/cycle-001/task-register-full.yaml`:
+POL-14-PARENTHETICAL-ANCHOR-PIN, POL-11-MIRROR-TABLE-BLIND-SPOT, TD-MULTI-CLIENT-ATTACH-STORM-001,
+DTU-CLONE-STORY, ADV-W5GATE-HIGH-001, F-DW-HIGH-001, BC-HOOK-034-typo, S-005-main-wiring,
+ADV-W3GATE-MED-002, ADV-W3GATE-MED-004, ADV-W4GATE-MED-002, S-029-PROCESS-GAP-PC-LABEL-DRIFT,
+F-S025-ADV28-MED-001, F-S025-ADV28-MED-002, F-S025-ADV37-DEFER-001, F-S026-ADV6-DEFER-001,
+POINTS-TALLY-RECONCILE, F-S026-ADV1-LOW-002, F-S027-DOC-001, F-S028-NIT-001, F-S028-NIT-002,
+FLAKY-TIMING-5MS, F-S028-NIT-002-DEFERRED, PIVOT-CONTROL-CENTER, CC-TUITERM-WIP-SIGNOFF,
+CC-GLOBAL-MOUSE-CAPTURE.
 
 ## Decision History
 
-D-001..D-241: `cycles/cycle-001/decisions-archive.md` §Decisions (D-047 through D-241)
-D-242..D-322: `cycles/cycle-001/decisions-archive.md` §Decisions (D-242..D-322) — Phase-1d + Phase-2
+Full decisions archive: `cycles/cycle-001/decisions-archive.md`
+D-001..D-241: early phases; D-242..D-322: Phase-1d + Phase-2 (appended 2026-06-16)
+
+Key decisions last session:
+- D-304 (2026-06-15): Autonomous Phase-2 dispatch authorized
+- D-315 (2026-06-16): Pre-pivot disposition RATIFIED; 32 done-historical; 3 active kept
+- D-320 (2026-06-16): Phase-2 Pass-25 CLEAN (counter 2/3)
+- D-321 (2026-06-16): Phase-2 Pass-26 CLEAN — CONVERGENCE COMPLETE (3/3)
+- D-322 (2026-06-16): Pre-gate validations DONE — consistency PASS, drift CLEAN
