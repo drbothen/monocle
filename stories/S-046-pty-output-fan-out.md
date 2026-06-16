@@ -3,10 +3,10 @@ document_type: story
 level: L4
 story_id: S-046
 epic_id: EPIC-05
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:story-writer
-timestamp: 2026-06-15T00:00:00Z
+timestamp: 2026-06-16T00:00:00Z
 phase: 2
 points: 5
 wave: 8
@@ -21,7 +21,7 @@ verification_properties: []
 estimated_days: 3
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.009.md, version: "1.5.5"}
-  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.011.md, version: "1.2.4"}
+  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.011.md, version: "1.2.5"}
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
   - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
@@ -261,4 +261,5 @@ managed by SS-05 per ARCH-INDEX Subsystem Registry SS-05 (monocle-ipc, daemon IP
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 1.0 | 2026-06-15 | vsdd-factory:story-writer | Initial decomposition |
+| 1.2 | 2026-06-16 | vsdd-factory:story-writer | F-P19-SUG-001: Bump BC-2.05.011 input pin "1.2.4" → "1.2.5" (metadata-only Story-Anchor delta; no behavioral change). |
 | 1.1 | 2026-06-16 | vsdd-factory:story-writer | F-P14-IMP-001: Rewrite AC-004 to conform to BC-2.05.009 PC-3 + Invariant 5 — `pty_drop_counter` is stderr-WARN-only; removed false `ServerToClient::StatusUpdate` reference (no such variant exists); corrected trace header from "postcondition 4" to "PC-3 + Invariant 5"; fixed EC-206 to remove `StatusUpdate` emission reference |

@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-048
 epic_id: EPIC-06
-version: "1.2"
+version: "1.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -58,14 +58,14 @@ Note: the field is `degraded` (NOT `is_degraded`); there is no `worktree_root` f
 (the canonical struct has `cwd` for the effective working directory); there is no `pid` field.
 These canonical names MUST be used in TUI code; do NOT invent `is_degraded` or `worktree_root`.
 
-### AC-002 (traces to BC-2.06.025 postcondition 2 — grouped by project_root, sorted alphabetically)
+### AC-002 (traces to BC-2.06.025 postcondition 1 — grouped by project_root, sorted alphabetically)
 
 Sessions are visually grouped under project_root headers in the panel. Within each group,
 sessions are sorted by `display_name` (ascending). Groups themselves are sorted by
 `project_root` path (ascending, byte-order). An empty project_root is treated as
 `"(no project)"` and sorts last.
 
-### AC-003 (traces to BC-2.06.025 postcondition 3 — [M]/[E]/[?] provenance badges)
+### AC-003 (traces to BC-2.06.025 postcondition 4 — [M]/[E]/[?] provenance badges)
 
 Each session row displays a provenance badge:
 - `[M]` when `spawned_by_monocle == Some(true)` (monocle-spawned).
@@ -75,7 +75,7 @@ Each session row displays a provenance badge:
   Field name is `degraded` (canonical per SS-ipc.md §SessionSnapshot); NOT `is_degraded`.
 The badge is part of the rendered row text, not a separate column.
 
-### AC-004 (traces to BC-2.06.025 postcondition 4 — lifecycle action key bindings)
+### AC-004 (traces to BC-2.06.025 postcondition 3 — lifecycle action key bindings)
 
 The sessions panel handles the following keys when a session row is focused:
 - `n` — spawn a new session (opens spawn dialog or sends `SpawnSession` with defaults).
@@ -110,7 +110,7 @@ When the focused session is in `Terminated` state (within the grace retention wi
   removed from the list. Removal happens when the grace window expires or the daemon
   removes it from the next `SessionListUpdate`. There is no explicit user-triggered removal action.
 
-### AC-008 (traces to BC-2.06.025 postcondition 5, EC-293 — k on Launching sends KillSession, transitions to Terminating)
+### AC-008 (traces to BC-2.06.025 postcondition 3 Launching-state keybinding rules + invariant 5 — k on Launching sends KillSession, transitions to Terminating, EC-293)
 
 When `k` is pressed on a `Launching` session (EC-293 from BC-2.06.025):
 - `ClientToServer::KillSession { session_id }` is sent.
@@ -118,14 +118,14 @@ When `k` is pressed on a `Launching` session (EC-293 from BC-2.06.025):
   `SessionListUpdate` arrives). If the daemon returns `Error { code: "session_not_found" }`,
   the TUI resets to the last known `SessionListUpdate` state.
 
-### AC-009 (traces to BC-2.06.025 postcondition 6, EC-296 — k on Terminating is no-op)
+### AC-009 (traces to BC-2.06.025 invariant 4 — Terminating blanket block, EC-296: k on Terminating is no-op)
 
 When `k` is pressed on a `Terminating` session (EC-296):
 - No IPC message is sent.
 - Status bar shows `"Session is terminating — action unavailable"` for 3 seconds.
 - The session row state is unchanged.
 
-### AC-010 (traces to BC-2.06.025 postcondition 7, EC-298 — D on Launching is BLOCKED)
+### AC-010 (traces to BC-2.06.025 invariant 5 — Launching-state Detach BLOCKED, EC-298: D on Launching is no-op)
 
 When `D` (detach) is pressed on a `Launching` session (EC-298 from BC-2.06.025):
 - No IPC message is sent (`ClientToServer::DetachSession` is NOT dispatched).
@@ -134,14 +134,14 @@ When `D` (detach) is pressed on a `Launching` session (EC-298 from BC-2.06.025):
   session has no established host_conn to detach from; dispatching `DetachSession` would cause the
   daemon to return `session_not_ready`. Kill (`k`/`d`) and rename (`r`) remain ALLOWED during Launching.
 
-### AC-011 (traces to BC-2.06.025 postcondition 8, EC-300..302 — all actions blocked on Terminated)
+### AC-011 (traces to BC-2.06.025 invariant 6 — Terminated-in-grace blanket block F-P52-001, EC-300/EC-301/EC-302: all actions blocked on Terminated)
 
 When any of `k`, `d`, `r`, `D` is pressed on a `Terminated` session (EC-300, EC-301, EC-302):
 - No IPC message is sent.
 - Status bar: `"Session has terminated"` for 3 seconds.
 - The session row is not visually changed.
 
-### AC-012 (traces to BC-2.06.025 postcondition 9 — panel receives SessionSnapshot, not EnrichedSession)
+### AC-012 (traces to BC-2.06.025 postcondition 1 + precondition 2 — panel receives SessionSnapshot wire type, not EnrichedSession)
 
 A compile-time assertion or type annotation ensures the sessions panel component accepts
 `&[SessionSnapshot]` (from `monocle_ipc::SessionSnapshot` via `crates/monocle-ipc/src/lib.rs`),
@@ -350,5 +350,6 @@ display and interaction plane) per ARCH-INDEX Subsystem Registry SS-06.
 
 | Pass | Date | Change |
 |------|------|--------|
+| v1.3 | 2026-06-16 | F-P19-IMP-001: Corrected fabricated postcondition numbers in AC-002..AC-004 and AC-008..AC-012 trace headers. BC-2.06.025 has exactly 4 postconditions (PC-1: grouped list+wire-type+badges; PC-2: fast switching+Enter; PC-3: lifecycle keybindings; PC-4: [M]/[E]/[?] badges). Fixed AC-002 PC-2→PC-1 (grouping is PC-1); AC-003 PC-3→PC-4 ([M]/[E]/[?] badges); AC-004 PC-4→PC-3 (lifecycle keybindings). Fixed fabricated PC-5/6/7/8/9: AC-008 → PC-3 Launching-state rules + Invariant 5 (kill ALLOWED); AC-009 → Invariant 4 (Terminating blanket block); AC-010 → Invariant 5 (Detach BLOCKED on Launching); AC-011 → Invariant 6 (Terminated-in-grace blanket block, F-P52-001); AC-012 → PC-1 + Precondition 2 (SessionSnapshot wire type). EC references (EC-293/296/298/300-302) preserved — they were correct. AC bodies unchanged. |
 | v1.2 | 2026-06-16 | F-P18-CRIT-001: Corrected inverted key→action mapping throughout. (1) Narrative: `d`=detach/`D`=destroy replaced with `k`/`d`=kill/`D`=detach (no destroy action). (2) AC-004: `d`→DetachSession removed; `k` or `d` → KillSession (d is kill alias per BC-2.06.025 PC-3); `D` → DetachSession. (3) AC-005: corrected Launching-state rules — `k`/`d` (kill) ALLOWED, `r` (rename) ALLOWED, `D` (detach) BLOCKED per EC-298/Invariant 5; removed fabricated "Cannot destroy:" status message; status bar now shows "Session launching — please wait" for `D`; BC trace updated from invariant 3 to invariant 5. (4) AC-007: BC trace updated from invariant 5 to invariant 6 (Terminated-in-grace); removed fabricated "destroy" removal-action prose. (5) AC-010: EC-298 correctly applied to `D`=detach being blocked on Launching (not "destroy"); status bar message corrected to "Session launching — please wait". (6) Dependency justification: wire command mapping clarified to `k`/`d`→KillSession, `D`→DetachSession, `r`→RenameSession. |
 | v1.1 | 2026-06-16 | F-P16-IMP-002: (1) Corrected `SessionState` Task enumeration from 4 variants to the canonical 5 (added `Detached`; noted `Created`/`Killed` are retired); noted S-033 owns the definition in monocle-ipc per F-P16-IMP-001. (2) Added AC-013 (BC-2.06.025 PC-1): state indicator renders all 5 canonical states exhaustively including `Detached`. (3) Added AC-014 (BC-2.06.025 PC-2): Enter on `Detached` session sends `ClientToServer::AttachSession`; TUI transitions to `AppMode::EmbeddedTerminal` on `SessionStateChanged{Running}`. (4) Updated `handle_key` task to reference AC-014. (5) Added tests for AC-013 and AC-014 to the test task list. |

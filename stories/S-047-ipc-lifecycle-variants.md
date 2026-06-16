@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-047
 epic_id: EPIC-05
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -21,7 +21,7 @@ verification_properties: []
 estimated_days: 5
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.010.md, version: "1.9.4"}
-  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.011.md, version: "1.2.4"}
+  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.011.md, version: "1.2.5"}
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
   - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
   - {path: .factory/specs/architecture/SS-conventions-anti-patterns.md, version: "1.32.6"}
@@ -419,3 +419,11 @@ by S-033/S-034/S-035.
 SS-05 owns this story's scope because both BC-2.05.010 and BC-2.05.011 define IPC wire protocol
 extensions — the client/server lifecycle message set — which is the core capability of SS-05
 (monocle-ipc, daemon IPC layer) per ARCH-INDEX Subsystem Registry SS-05.
+
+## Trace
+
+| Version | Date | Author | Change |
+|---------|------|--------|--------|
+| 1.2 | 2026-06-16 | vsdd-factory:story-writer | F-P19-SUG-001: Bump BC-2.05.011 input pin "1.2.4" → "1.2.5" (metadata-only Story-Anchor delta; no behavioral change). |
+| 1.1 | 2026-06-16 | vsdd-factory:story-writer | Initial decomposition — F-P16-IMP-002 era; established 7 ClientToServer variants, SpawnOptions, ResizePane zero-dim clamp, scrollback protocol, and IPC handler arm ownership table. |
+| 1.0 | 2026-06-15 | vsdd-factory:story-writer | Initial decomposition |
