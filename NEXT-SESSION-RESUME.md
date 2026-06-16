@@ -1,42 +1,44 @@
-# monocle — Resume From Here (Phase-2 adversarial Pass-16 next, 2026-06-16)
+# monocle — Resume From Here (Phase-2 adversarial Pass-17 next, 2026-06-16)
 
 Read this file first, then CLAUDE.md, then `.factory/STATE.md`
-(`next_session_resume_protocol` block, v7.71, for the full checkpoint +
+(`next_session_resume_protocol` block, v7.72, for the full checkpoint +
 section E ratified decisions + durable_task_register).
 
 ---
 
-## Status at Pause — Phase-2 Adversarial Pass-15 Findings Resolved
+## Status at Pause — Phase-2 Adversarial Pass-16 Findings Resolved
 
-**Phase-2 adversarial Pass-15 FINDINGS (0C/1I/2S) — ALL RESOLVED.** factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'`.
+**Phase-2 adversarial Pass-16 FINDINGS (0C/2I/2S) — ALL RESOLVED.** factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'`.
 
 51 stories (311 pts) total: 32 done (192 pts, Phases 1-3), 16 not_started (v1A Waves 8-9),
 1 blocked (S-PHASE-3-PREP), 2 draft.
 
-BC-INDEX v1.43.7, ARCH-INDEX v1.0.30, EVAL-INDEX v1.17, STORY-INDEX v5.43, sprint-state v1.45, wave-schedule v1.8.
+BC-INDEX v1.43.7, ARCH-INDEX v1.0.30, EVAL-INDEX v1.17, STORY-INDEX v5.44, sprint-state v1.45, wave-schedule v1.8.
 SS-ipc v1.24.0, SS-session-manager v2.6.1, SS-daemon-wiring-v2-delta v1.11.4.
 SS-embedded-pty v1.7.0, SS-deps-pin-manifest-v2-delta v1.0.2.
-S-046 v1.1 (Pass-14: AC-004 rewritten per BC-2.05.009 PC-3). HS-EXP-013 v1.1 (Pass-14: step-8 BC attribution corrected).
-STORY-INDEX v5.43 (Pass-15: S-045 title sync F-P15-IMP-001). S-039 v1.3 (Pass-15: ScrollbackDumpComplete annotation). sprint-state v1.45 (Pass-15: S-045 title sync).
-POL-11 PASS. POL-12 PASS. compute-input-hash updated.
+S-033 v1.4 (Pass-16: F-P16-IMP-001 SessionState→monocle-ipc 5 variants; SessionEntry/SessionManager stay monocle-runtime).
+S-048 v1.1 (Pass-16: F-P16-IMP-002 Detached coverage AC-013/AC-014; 5-variant enum).
+STORY-INDEX v5.44 (Pass-16: BC-2.06.025 AC range AC-001..AC-012→AC-001..AC-014).
+POL-11 PASS. POL-12 PASS. compute-input-hash updated (99 STALE clusters).
 
 **D-315 RATIFIED**: pre-pivot disposition ratified by Joshua Magady (2026-06-16).
 Keep all 3 active (S-032, S-DAEMON-WIRE-FIX-001, S-PHASE-3-PREP). 32 done-historical. 0 archive/retire.
 pre-pivot-disposition-recommendation.md v1.1 (status: ratified). D-305 caveat CLEARED.
 
-**Adversarial counter: 0/3 — RESET** (Pass-15 found Important + Suggestions; not clean). Pass-16 = clean-candidate 1/3 (fresh streak).
+**Adversarial counter: 0/3 — REMAINS 0/3** (Pass-16 found Important + Suggestions; not clean). Pass-17 = clean-candidate 1/3 (fresh streak).
 5 original story gaps in durable_task_register (BURST-GAP-001..005) + F-P1-S-005 + F-P2-S03 (process-gaps) + F-P14-SUG-001 (DropCounterUpdate field-name drift; deferred; route architect).
+F-P16-SUG-002 logged: add 'wire-type crate-residency + variant-completeness' check to adversarial wire-axis (non-blocking process-gap; route session-reviewer/devops for codification).
 
 develop @ 2141adc — no v1A production code written.
-STATE.md = v7.71.
+STATE.md = v7.72.
 
 ---
 
-## Next Action: Phase-2 Adversarial Pass-15 (IMMEDIATE)
+## Next Action: Phase-2 Adversarial Pass-17 (IMMEDIATE)
 
 Dispatch `vsdd-factory:adversary` fresh-context on the full Phase-2 story corpus
-(S-033..S-048 + epics EPIC-08/09 + STORY-INDEX v5.43 + sprint-state v1.45 + all updated BC files).
-Pass-15 = clean-candidate 1/3 (fresh streak, counter reset). Counter 0/3.
+(S-033..S-048 + epics EPIC-08/09 + STORY-INDEX v5.44 + sprint-state v1.45 + all updated BC files).
+Pass-17 = clean-candidate 1/3 (fresh streak, counter remains 0/3). Counter 0/3.
 
 ### Phase-2 Burst A–G + Pass-1 through Pass-6 Fix Bursts Complete
 
@@ -66,10 +68,11 @@ All 7 bursts executed and committed to factory-artifacts. Pass-1 through Pass-6 
 | Pass-13 CLEAN | — | 0C/0I/1S — CLEAN. Counter 0/3 → 1/3. F-P13-SUG-001 deferred (BC-2.06.024 stale title; cosmetic; closed-wave historical table; corpus unchanged). | DONE |
 | Pass-14 fix | story-writer + product-owner + state-manager | F-P14-IMP-001: S-046 v1.1 AC-004 rewrite (BC-2.05.009 PC-3; stderr-WARN-only; no StatusUpdate; PtyReset Invariant 5; EC-206); F-P14-SUG-002: HS-EXP-013 v1.1 + EVAL-INDEX v1.17 BC attribution; F-P14-SUG-001 logged deferred; ADVERSARIAL COUNTER RESET 1/3 → 0/3 | DONE |
 | Pass-15 fix | story-writer + state-manager | F-P15-IMP-001: STORY-INDEX (was v5.42 at Pass-15 authoring time)→v5.43 S-045 title synced to canonical H1; S-039 v1.2→v1.3 ScrollbackDumpComplete full-6-field-shape annotation; sprint-state (was v1.44)→v1.45 S-045 title sync; version-pin-registry STORY-INDEX→5.43. ADVERSARIAL COUNTER REMAINS 0/3 (Pass-15 not clean). | DONE |
+| Pass-16 fix | story-writer + state-manager | F-P16-IMP-001: S-033 v1.4 SessionState moved to monocle-ipc (canonical 5 variants Launching/Running/Detached/Terminating/Terminated; Created/Killed RETIRED); SessionEntry/SessionManager stay monocle-runtime; monocle-ipc MUST NOT depend on monocle-runtime. F-P16-IMP-002: S-048 v1.1 AC-013 (BC-2.06.025 PC-1: all-5-state indicator) + AC-014 (BC-2.06.025 PC-2: Enter-on-Detached→AttachSession→EmbeddedTerminal); Detached added to SessionState task (4→5 variants). STORY-INDEX (was v5.43 at Pass-16 authoring time)→v5.44 BC-2.06.025 AC range AC-001..AC-012→AC-001..AC-014. version-pin-registry STORY-INDEX→5.44. F-P16-SUG-002 logged as process-gap codification follow-up (wire-type crate-residency + variant-completeness check on adversarial wire-axis; non-blocking; route session-reviewer/devops). ADVERSARIAL COUNTER REMAINS 0/3 (Pass-16 not clean). | DONE |
 
-### Next: Phase-2 Adversarial Pass-16
+### Next: Phase-2 Adversarial Pass-17
 
-3 consecutive clean passes required. Adversarial counter: 0/3 (Pass-15 found findings; fresh streak reset). Pass-16 = clean-candidate 1/3.
+3 consecutive clean passes required. Adversarial counter: 0/3 (Pass-16 found findings; not clean). Pass-17 = clean-candidate 1/3 (fresh streak).
 
 After convergence: fresh consistency audit (vsdd-factory:consistency-validator),
 then Phase-2 human approval gate, then Phase-3 TDD implementation for Waves 8-9.
@@ -78,7 +81,7 @@ then Phase-2 human approval gate, then Phase-3 TDD implementation for Waves 8-9.
 (S-032, S-DAEMON-WIRE-FIX-001, S-PHASE-3-PREP). 32 done-historical. 0 archive/retire.
 Bulk-archive NOT PERFORMED. D-305 caveat cleared.
 
-**Pass-15 resolved.** Counter remains 0/3 (Pass-15 found findings; not clean). Pass-16 = clean-candidate 1/3 (fresh streak).
+**Pass-16 resolved.** Counter remains 0/3 (Pass-16 found findings; not clean). Pass-17 = clean-candidate 1/3 (fresh streak).
 
 ---
 
@@ -126,7 +129,7 @@ All versions derived from `.factory/specs/version-pin-registry.yaml` (source of 
 | ADR-0011 | v1.2.1 |
 | BC-INDEX | v1.43.7 (138 BCs; 25 v1A BCs) |
 | EVAL-INDEX | v1.17 |
-| STORY-INDEX | v5.43 |
+| STORY-INDEX | v5.44 |
 | sprint-state.yaml | v1.45 |
 
 ---
