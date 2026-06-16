@@ -13,13 +13,13 @@ section E ratified decisions + durable_task_register).
 51 stories (311 pts) total: 32 done (192 pts, Phases 1-3), 16 not_started (v1A Waves 8-9),
 1 blocked (S-PHASE-3-PREP), 2 draft.
 
-BC-INDEX v1.43.7, ARCH-INDEX v1.0.30, EVAL-INDEX v1.18, STORY-INDEX v5.44, sprint-state v1.45, wave-schedule v1.8.
+BC-INDEX v1.43.7, ARCH-INDEX v1.0.30, EVAL-INDEX v1.18, STORY-INDEX v5.44, sprint-state v1.45, wave-schedule v1.9.
 SS-ipc v1.24.0, SS-session-manager v2.6.1, SS-daemon-wiring-v2-delta v1.11.4.
 SS-embedded-pty v1.7.0, SS-deps-pin-manifest-v2-delta v1.0.2.
 S-033 v1.5 (Pass-20: F-P20-CRIT-001 AC-012 trace header → BC-2.08.008 PC-5).
 S-038 v1.2 (Pass-20: F-P20-CRIT-001 AC-005..010 trace headers re-anchored to real BC-2.08.006 clauses + conventions).
 S-046 v1.3 (Pass-20: F-P20-CRIT-001 AC-005..008 trace headers → real BC-2.05.009 invariants).
-S-047 v1.3 (Pass-20: F-P20-CRIT-001 AC-002..006/010/011/012 trace headers → subsection-scoped BC-2.05.010/011 clauses).
+S-047 v1.4 (Pass-23: F-P23-IMP-001 AC-007/AC-008 trace headers → §ScrollbackChunk PC-3 / §ScrollbackDumpComplete PC-3; closes F-P20-CRIT-001 class for S-047).
 HS-EXP-013 v1.2 (Pass-20: F-P20-SUG-001 wave 8→9). HS-EXP-015 v1.3 (Pass-20: F-P20-SUG-001 wave 8→9; version field added).
 STORY-INDEX v5.44 (Pass-16: BC-2.06.025 AC range AC-001..AC-012→AC-001..AC-014).
 POL-11 PASS. POL-12 PASS. compute-input-hash updated (98 STALE clusters).
