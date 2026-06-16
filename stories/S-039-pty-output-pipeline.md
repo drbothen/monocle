@@ -228,7 +228,7 @@ Within the 30% context window bound for a Sonnet-class model (~200k tokens = 60k
 
 | BC | Title | Version |
 |----|-------|---------|
-| BC-2.09.001 | PTY Output Renders Within 100ms of Byte Receipt at TUI | v1.3.2 |
+| BC-2.09.001 | PTY Output Renders Within 100ms of Byte Receipt at TUI | (see inputs: frontmatter) |
 
 ## Architecture Mapping
 

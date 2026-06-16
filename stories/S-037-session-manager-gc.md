@@ -165,7 +165,6 @@ Files to MODIFY:
 | File | Change |
 |------|--------|
 | `crates/monocle-runtime/src/session_manager/mod.rs` | Add GC task launch at Terminated transition points (kill_session confirmation path, watchdog timeout path, post-spawn monitor startup-failure path); add `rename_session()` implementation |
-| `crates/monocle-runtime/src/ipc_handler.rs` | Add `ClientToServer::RenameSession` arm |
 
 ## Token Budget Estimate
 
@@ -184,7 +183,7 @@ Estimate is comfortably within the 30% context window bound. No split required.
 
 | BC | Title | Version |
 |----|-------|---------|
-| BC-2.08.005 | Session GC — Terminated Sessions Removed from Registry After 10s Grace Period | v1.0.3 |
+| BC-2.08.005 | Session GC — Terminated Sessions Removed from Registry After 10s Grace Period | (see inputs: frontmatter) |
 
 ## Architecture Mapping
 
@@ -192,7 +191,6 @@ Estimate is comfortably within the 30% context window bound. No split required.
 |-----------|------------|----------------|
 | GC task (per-session tokio::spawn) | `monocle-runtime/src/session_manager/mod.rs` | Effectful (tokio::time::sleep; mutex; filesystem; broker publish) |
 | `rename_session()` | `monocle-runtime/src/session_manager/mod.rs` | Effectful (sidecar write; broker publish) |
-| IPC handler `RenameSession` arm | `monocle-runtime/src/ipc_handler.rs` | Effectful (IPC dispatch; error propagation) |
 
 ## Edge Cases
 

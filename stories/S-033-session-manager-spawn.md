@@ -244,8 +244,8 @@ Estimate is within the 30% context window bound for a Sonnet-class model (~200k 
 
 | BC | Title | Version |
 |----|-------|---------|
-| BC-2.08.001 | Session Spawn — SessionHostSpawner Called Within 2s; SessionEntry Created | v1.5.0 |
-| BC-2.08.008 | SessionStateChanged — Daemon Emits on Every SessionState Transition; Delivered to All TUI Clients; Ordering Relative to SessionListUpdate | v1.3.0 |
+| BC-2.08.001 | Session Spawn — SessionHostSpawner Called Within 2s; SessionEntry Created | (see inputs: frontmatter) |
+| BC-2.08.008 | SessionStateChanged — Daemon Emits on Every SessionState Transition; Delivered to All TUI Clients; Ordering Relative to SessionListUpdate | (see inputs: frontmatter) |
 
 ## Architecture Mapping
 
@@ -268,6 +268,24 @@ Estimate is within the 30% context window bound for a Sonnet-class model (~200k 
 | EC-152 | UUID v4 collision on first attempt | Retry once; second collision → `Err(SessionIdCollision)` |
 | EC-153 | `spawn_session()` called while re-discovery running | Structurally impossible (re-discovery completes before UDS bind; TUI cannot connect earlier) |
 | Kill-before-socket-bind | `kill_session()` called while `host_conn` is still `None` during Launching (rare race) | PID-based SIGTERM/SIGKILL fallback; `Launching → Terminating` (covered by S-034) |
+
+## IPC Handler Arm Ownership Disambiguation
+
+S-033 authors the **`ClientToServer::SpawnSession`** arm in `monocle-runtime/src/ipc_handler.rs`.
+The canonical 7-arm split across the SS-08/SS-09 stories is:
+
+| IPC Handler Arm | Owning Story |
+|-----------------|-------------|
+| `ClientToServer::SpawnSession` | **S-033** (this story) |
+| `ClientToServer::KillSession` | S-034 |
+| `ClientToServer::AttachSession` | S-035 |
+| `ClientToServer::DetachSession` | S-035 |
+| `ClientToServer::KeyInput` | S-047 |
+| `ClientToServer::ResizePane` | S-047 |
+| `ClientToServer::RenameSession` | S-047 |
+
+S-033 MUST NOT add KillSession, AttachSession, DetachSession, KeyInput, ResizePane, or RenameSession arms —
+those belong to S-034, S-035, and S-047 respectively.
 
 ## Subsystem Anchor Justifications
 

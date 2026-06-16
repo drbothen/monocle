@@ -309,8 +309,8 @@ Within the 30% context window bound for a Sonnet-class model (~200k = 60k max pe
 
 | BC | Title | Version |
 |----|-------|---------|
-| BC-2.09.008 | EmbeddedTerminal AppMode Enter/Exit Transitions; SessionCreation Wizard Auto-Transitions to EmbeddedTerminal | v1.3.4 |
-| BC-2.09.009 | Permission Badge+Bell — Status Bar Badge + Audible Bell Within One Render Tick While in EmbeddedTerminal or SessionCreation | v1.1.2 |
+| BC-2.09.008 | EmbeddedTerminal AppMode Enter/Exit Transitions; SessionCreation Wizard Auto-Transitions to EmbeddedTerminal | (see inputs: frontmatter) |
+| BC-2.09.009 | Permission Badge+Bell — Status Bar Badge + Audible Bell Within One Render Tick While in EmbeddedTerminal or SessionCreation | (see inputs: frontmatter) |
 
 ## Architecture Mapping
 

@@ -186,7 +186,7 @@ Within the 30% context window bound. No split required.
 
 | BC | Title | Version |
 |----|-------|---------|
-| BC-2.09.006 | Resize — PTY and Parser Resized Within 2 Render Ticks of Pane Area Change; 50ms Debounce | v1.1.1 |
+| BC-2.09.006 | Resize — PTY and Parser Resized Within 2 Render Ticks of Pane Area Change; 50ms Debounce | (see inputs: frontmatter) |
 
 ## Architecture Mapping
 

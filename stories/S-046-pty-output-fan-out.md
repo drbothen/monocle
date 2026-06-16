@@ -199,8 +199,8 @@ No new dependencies. All three are in the workspace `Cargo.toml` already.
 
 | BC | Title | Version | Ownership |
 |----|-------|---------|-----------|
-| BC-2.05.009 | PtyOutput Fan-out Broker — Bounded Channel, Backpressure, Per-Client Isolation, 3-Strike Disconnect | v1.5.2 | OWNED by S-046 |
-| BC-2.05.011 | ScrollbackChunk/ScrollbackDumpComplete/PtyReset Protocol | v1.2.1 | PtyReset variant OWNED by S-046; ScrollbackChunk/ScrollbackDumpComplete variants owned by S-047 |
+| BC-2.05.009 | PtyOutput Fan-out Broker — Bounded Channel, Backpressure, Per-Client Isolation, 3-Strike Disconnect | (see inputs: frontmatter) | OWNED by S-046 |
+| BC-2.05.011 | ScrollbackChunk/ScrollbackDumpComplete/PtyReset Protocol | (see inputs: frontmatter) | PtyReset variant OWNED by S-046; ScrollbackChunk/ScrollbackDumpComplete variants owned by S-047 |
 
 **Ownership clarification (S-046 vs S-047):** `ServerToClient::PtyReset { session_id: String }` is
 added to `monocle-ipc/src/lib.rs` in this story (S-046) because the broker needs to emit it when a

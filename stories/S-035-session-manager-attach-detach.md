@@ -230,8 +230,8 @@ Files to MODIFY (all established by S-033):
 
 | BC | Title | Version |
 |----|-------|---------|
-| BC-2.08.007 | Attach/Detach — Chunked Scrollback (ScrollbackChunk*+ScrollbackDumpComplete) on Attach; session-host Stays Alive on Detach | v1.5.1 |
-| BC-2.08.008 | SessionStateChanged — Daemon Emits on Every SessionState Transition; Delivered to All TUI Clients; Ordering Relative to SessionListUpdate | v1.3.0 |
+| BC-2.08.007 | Attach/Detach — Chunked Scrollback (ScrollbackChunk*+ScrollbackDumpComplete) on Attach; session-host Stays Alive on Detach | (see inputs: frontmatter) |
+| BC-2.08.008 | SessionStateChanged — Daemon Emits on Every SessionState Transition; Delivered to All TUI Clients; Ordering Relative to SessionListUpdate | (see inputs: frontmatter) |
 
 ## Architecture Mapping
 
@@ -252,6 +252,25 @@ Files to MODIFY (all established by S-033):
 | EC-186 | `detach_session()` on a `Detached` session | `Ok(())` — idempotent; no duplicate Detach sent |
 | EC-187 | Session-host process died between detach and re-attach | UDS connect fails; liveness probe confirms dead; `SessionEntry.state → Terminated`; `Err(SessionHostDead)` → `"attach_failed"` |
 | EC-188 | `ScrollbackDumpComplete` not received within 5s | Session non-responsive; `Err(SessionHostDead)` → `"attach_failed"`; SIGTERM to session-host PID |
+
+## IPC Handler Arm Ownership Disambiguation
+
+S-035 authors the **`ClientToServer::AttachSession`** and **`ClientToServer::DetachSession`** arms
+in `monocle-runtime/src/ipc_handler.rs`.
+The canonical 7-arm split across the SS-08/SS-09 stories is:
+
+| IPC Handler Arm | Owning Story |
+|-----------------|-------------|
+| `ClientToServer::SpawnSession` | S-033 |
+| `ClientToServer::KillSession` | S-034 |
+| `ClientToServer::AttachSession` | **S-035** (this story) |
+| `ClientToServer::DetachSession` | **S-035** (this story) |
+| `ClientToServer::KeyInput` | S-047 |
+| `ClientToServer::ResizePane` | S-047 |
+| `ClientToServer::RenameSession` | S-047 |
+
+S-035 MUST NOT add SpawnSession, KillSession, KeyInput, ResizePane, or RenameSession arms —
+those belong to S-033, S-034, and S-047 respectively.
 
 ## Subsystem Anchor Justifications
 

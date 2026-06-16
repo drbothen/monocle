@@ -200,8 +200,8 @@ Files to MODIFY (all from S-033):
 
 | BC | Title | Version |
 |----|-------|---------|
-| BC-2.08.003 | Session Kill — SIGTERM Delivered via DaemonToHost::Kill Within 500ms | v1.4.0 |
-| BC-2.08.008 | SessionStateChanged — Daemon Emits on Every SessionState Transition; Delivered to All TUI Clients; Ordering Relative to SessionListUpdate | v1.3.0 |
+| BC-2.08.003 | Session Kill — SIGTERM Delivered via DaemonToHost::Kill Within 500ms | (see inputs: frontmatter) |
+| BC-2.08.008 | SessionStateChanged — Daemon Emits on Every SessionState Transition; Delivered to All TUI Clients; Ordering Relative to SessionListUpdate | (see inputs: frontmatter) |
 
 ## Architecture Mapping
 
@@ -221,6 +221,24 @@ Files to MODIFY (all from S-033):
 | EC-164 | Session state is `Detached` when `kill_session()` called | Fresh UDS connect + SO_PEERCRED + Kill; `Detached → Terminating` |
 | EC-165 | Concurrent `kill_session()` calls for same session_id | First call sends Kill; second call is idempotent `Ok(())` (state already Terminating or Terminated) |
 | EC-166 | `kill_session()` for unknown session_id | `Err(SessionError::SessionNotFound { session_id })` → wire code `"session_not_found"` |
+
+## IPC Handler Arm Ownership Disambiguation
+
+S-034 authors the **`ClientToServer::KillSession`** arm in `monocle-runtime/src/ipc_handler.rs`.
+The canonical 7-arm split across the SS-08/SS-09 stories is:
+
+| IPC Handler Arm | Owning Story |
+|-----------------|-------------|
+| `ClientToServer::SpawnSession` | S-033 |
+| `ClientToServer::KillSession` | **S-034** (this story) |
+| `ClientToServer::AttachSession` | S-035 |
+| `ClientToServer::DetachSession` | S-035 |
+| `ClientToServer::KeyInput` | S-047 |
+| `ClientToServer::ResizePane` | S-047 |
+| `ClientToServer::RenameSession` | S-047 |
+
+S-034 MUST NOT add SpawnSession, AttachSession, DetachSession, KeyInput, ResizePane, or RenameSession arms —
+those belong to S-033, S-035, and S-047 respectively.
 
 ## Subsystem Anchor Justifications
 

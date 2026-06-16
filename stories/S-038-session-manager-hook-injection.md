@@ -261,7 +261,7 @@ Estimate is comfortably within the 30% context window bound. No split required.
 
 | BC | Title | Version |
 |----|-------|---------|
-| BC-2.08.006 | Hook Auto-Injection in Session-Host Spawn Path | v1.3.0 |
+| BC-2.08.006 | Hook Auto-Injection in Session-Host Spawn Path | (see inputs: frontmatter) |
 
 ## Architecture Mapping
 

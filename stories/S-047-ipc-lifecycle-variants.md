@@ -220,10 +220,10 @@ from registry) or `"attach_failed"` (session host dead) — NOT a phantom `"pty_
       `"kill_rejected"`, `"permission_denied"`, `"protocol_error"`) if they appear.
 
 ### Daemon Routing (monocle-runtime)
-- [ ] Add match arms for all 7 new `ClientToServer` variants in the daemon's IPC dispatch loop
-      (`monocle-runtime/src/ipc_handler.rs` or equivalent):
-      - `SpawnSession` → call `session_manager.spawn_session(opts)` → return Ok or Error.
-      - `KillSession` → `session_manager.kill_session(id)` with state-check.
+- [ ] Add match arms for `KeyInput`, `ResizePane`, and `RenameSession` in the daemon's IPC dispatch
+      loop (`monocle-runtime/src/ipc_handler.rs`). These are the 3 arms owned by S-047.
+      The `SpawnSession`, `KillSession`, `AttachSession`, and `DetachSession` arms are authored by
+      S-033, S-034, and S-035 respectively — S-047 MUST NOT re-add or duplicate those arms.
       - `KeyInput` → `session_manager.send_key_input(id, bytes)` — on `Err(SessionNotFound)` return
         `ServerToClient::Error { code: "session_not_found" }`; on `Err(SessionHostDead)` return
         `ServerToClient::Error { code: "attach_failed" }`. Do NOT use `"pty_write_failed"` — it is
@@ -233,9 +233,8 @@ from registry) or `"attach_failed"` (session host dead) — NOT a phantom `"pty_
         `DaemonToHost::Resize { rows, cols }` to the session-host (which owns the PTY fd
         and calls ioctl). The daemon issues NO ioctl directly. WARN-drop all
         transport errors (no `ServerToClient::Error` response for resize).
-      - `DetachSession` → detach client subscription; guard for Launching state.
-      - `RenameSession` → update display_name, fan-out SessionListUpdate.
-      - `AttachSession` → subscribe client + initiate scrollback dump sequence.
+      - `RenameSession` → call `session_manager.rename_session(id, new_name)` → update display_name,
+        fan-out `SessionListUpdate`.
 - [ ] Add `pending_pty_bytes: HashMap<(String, String), VecDeque<Bytes>>` to `DaemonState`
       (or per-session state struct) for in-flight scrollback buffering. Keys are
       `(session_id: String, client_id: String)` — daemon-internal representation, consistent
@@ -333,8 +332,8 @@ is in `monocle-tui`. These boundaries are enforced by the workspace dependency g
 | File | Action | Notes |
 |------|--------|-------|
 | `crates/monocle-ipc/src/lib.rs` | MODIFY | Add 7 new `ClientToServer` variants; add `ScrollbackChunk`, `ScrollbackDumpComplete` to `ServerToClient`; verify `SpawnOptions` struct (all wire fields use `String` — no typed newtypes) |
-| `crates/monocle-runtime/src/ipc_handler.rs` | MODIFY | Add match arms for all 7 new variants |
-| `crates/monocle-runtime/src/session_manager/mod.rs` | MODIFY | Add `kill_session()`, `write_pty_bytes()`, `resize_pane()`, `rename_session()` methods (canonical path: module dir, not flat .rs file) |
+| `crates/monocle-runtime/src/ipc_handler.rs` | MODIFY | Add match arms for `KeyInput`, `ResizePane`, and `RenameSession` (3 arms owned by S-047); `SpawnSession`/`KillSession`/`AttachSession`/`DetachSession` arms are authored by S-033/S-034/S-035 — do NOT duplicate |
+| `crates/monocle-runtime/src/session_manager/mod.rs` | MODIFY | Add `write_pty_bytes()`, `resize_pane()`, and `rename_session()` methods; `kill_session()` is authored by S-034 (canonical path: module dir, not flat .rs file) |
 | `crates/monocle-runtime/src/scrollback.rs` | CREATE | Scrollback dump task implementation |
 | `crates/monocle-runtime/src/lib.rs` | MODIFY | Add `pub mod scrollback;` |
 | `crates/monocle-tui/src/ipc_receiver.rs` | MODIFY | Add handlers for ScrollbackChunk, ScrollbackDumpComplete, PtyReset (TUI-side) |
@@ -392,6 +391,28 @@ passes with the same story file.
   the scrollback dump references it when a session exits during dump.
 - S-047 blocks S-048 because the sessions panel (S-048) uses `KillSession`, `DetachSession`,
   `RenameSession` dispatch — these are the wire commands implemented in S-047.
+
+## IPC Handler Arm Ownership Disambiguation
+
+S-047 authors the **`ClientToServer::KeyInput`**, **`ClientToServer::ResizePane`**, and
+**`ClientToServer::RenameSession`** arms in `monocle-runtime/src/ipc_handler.rs`.
+The canonical 7-arm split across the SS-08/SS-09 stories is:
+
+| IPC Handler Arm | Owning Story |
+|-----------------|-------------|
+| `ClientToServer::SpawnSession` | S-033 |
+| `ClientToServer::KillSession` | S-034 |
+| `ClientToServer::AttachSession` | S-035 |
+| `ClientToServer::DetachSession` | S-035 |
+| `ClientToServer::KeyInput` | **S-047** (this story) |
+| `ClientToServer::ResizePane` | **S-047** (this story) |
+| `ClientToServer::RenameSession` | **S-047** (this story) |
+
+S-047 MUST NOT re-add or duplicate the SpawnSession, KillSession, AttachSession, or DetachSession
+arms — those arms are authored by S-033, S-034, and S-035 and already present in `ipc_handler.rs`
+when S-047 is dispatched. S-047 only adds the 3 arms above (KeyInput, ResizePane, RenameSession)
+and integrates the full dispatch loop by routing through the SessionManager methods established
+by S-033/S-034/S-035.
 
 ## Subsystem Anchor Justification
 

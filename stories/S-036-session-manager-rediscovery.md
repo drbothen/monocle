@@ -227,8 +227,8 @@ Files to MODIFY:
 
 | BC | Title | Version |
 |----|-------|---------|
-| BC-2.08.002 | Session Persistence — session-host Survives Graceful Daemon Restart | v1.2.1 |
-| BC-2.08.004 | Re-Discovery — All Alive Sessions Visible After Daemon Restart Within 5s; UDS Bind Blocked Until Complete | v1.3.0 |
+| BC-2.08.002 | Session Persistence — session-host Survives Graceful Daemon Restart | (see inputs: frontmatter) |
+| BC-2.08.004 | Re-Discovery — All Alive Sessions Visible After Daemon Restart Within 5s; UDS Bind Blocked Until Complete | (see inputs: frontmatter) |
 
 ## Architecture Mapping
 

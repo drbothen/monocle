@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.35"
+version: "5.36"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-03T08:30:00Z
@@ -117,7 +117,7 @@ traces_to: .factory/specs/prd.md
 | Wave 6 | S-022, S-023, S-025, S-026 | 34 | IPC + TUI integration — S-022 (serial prerequisite), then S-023 + S-025 (parallel after S-022), then S-026 (after S-023 + S-022). 34 pts. |
 | Wave 7 | S-027, S-028, S-029, S-031 | 23 | Polish: overlay rendering, filter, killer scenario, profile picker (parallel-eligible within wave) |
 | Wave 8 | S-032, S-DAEMON-WIRE-FIX-001, S-033, S-034, S-035, S-036, S-037, S-038, S-045, S-046, S-047, S-048 | 74 | Session Manager + delta IPC/TUI + spawn recipe: S-033 is Wave-8 root (serial prerequisite within wave); S-034/S-035/S-036/S-037/S-038/S-045/S-046/S-047/S-048 serial after their Wave-8 deps |
-| Wave 9 | S-039, S-040, S-041, S-042, S-043, S-044 | 42 | Embedded PTY: S-039 is Wave-9 root (serial prerequisite within wave); S-040/S-041/S-042/S-043 parallel after S-039; S-044 after S-040+S-041 |
+| Wave 9 | S-039, S-040, S-041, S-042, S-043, S-044 | 42 | Embedded PTY: S-039 is Wave-9 root (serial prerequisite within wave); S-040/S-042/S-043 parallel after S-039; S-041 after S-040; S-044 after S-040+S-041 |
 
 ## BC Coverage Table
 
