@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.43"
+version: "5.44"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -204,7 +204,7 @@ traces_to: .factory/specs/prd.md
 | BC-2.05.009 | PtyOutput Fan-Out — Per-Session Bounded Channel (1024) with Drop Counter (stderr WARN) + PtyReset TUI Recovery | S-046 | AC-001..AC-008 | YES |
 | BC-2.05.010 | New ClientToServer IPC Variants — SpawnSession, KillSession, KeyInput, ResizePane, DetachSession, RenameSession, AttachSession | S-047 | AC-001..AC-012 | YES |
 | BC-2.05.011 | New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset | S-046 (PtyReset variant + broker emission), S-047 (TUI handler + scrollback protocol: AC-007..AC-010) | S-046: AC-005 (PtyReset emit); S-047: AC-007..AC-010 (scrollback + TUI reset) | YES |
-| BC-2.06.025 | Multi-Session / Multi-Project Sessions Panel — Grouped by Project, Fast Switching, TUI Lifecycle Actions | S-048 | AC-001..AC-012 | YES |
+| BC-2.06.025 | Multi-Session / Multi-Project Sessions Panel — Grouped by Project, Fast Switching, TUI Lifecycle Actions | S-048 | AC-001..AC-014 (AC-013: PC-1 all-5-state indicator; AC-014: PC-2 Enter-on-Detached→AttachSession→EmbeddedTerminal) | YES |
 | BC-2.08.001 | Session Spawn — SessionHostSpawner Called Within 2s; SessionEntry Created | S-033 | AC-001..AC-009b | YES |
 | BC-2.08.002 | Session Persistence — session-host Survives Graceful Daemon Restart | S-036 | AC-001..AC-002, AC-015 | YES |
 | BC-2.08.003 | Session Kill — SIGTERM Delivered via DaemonToHost::Kill Within 500ms | S-034 | AC-001..AC-011 | YES |
@@ -498,6 +498,14 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.44
+
+**Phase-2 Pass-16 fix burst: BC-2.06.025 AC range AC-001..AC-012→AC-001..AC-014 (F-P16-IMP-001/002)** (2026-06-16):
+
+- **F-P16-IMP-001 (S-033 SessionState crate-residency):** BC Coverage Table row for BC-2.06.025 updated: `AC-001..AC-012` → `AC-001..AC-014` (S-048 now has 14 ACs; AC-013 traces to BC-2.06.025 PC-1 all-5-state indicator; AC-014 traces to BC-2.06.025 PC-2 Enter-on-Detached→AttachSession→EmbeddedTerminal).
+- **F-P16-IMP-002 (S-048 Detached coverage):** AC range annotation updated inline to capture AC-013 and AC-014 purpose.
+- SE-16d monotonicity: v5.44 timestamp 2026-06-16 >= v5.43 timestamp 2026-06-16. PASS.
 
 ## §Trace v5.43
 

@@ -210,8 +210,8 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.43"
-  last_bump_commit: "[Phase-2 Pass-15 fix cycle — S-045 Registry title synced to canonical H1 (F-P15-IMP-001 STORY-INDEX sibling)]"
+  current_version: "5.44"
+  last_bump_commit: "[Phase-2 Pass-16 fix cycle — BC-2.06.025 AC range AC-001..AC-012→AC-001..AC-014 (AC-013 PC-1 all-5-state; AC-014 PC-2 Enter-on-Detached; F-P16-IMP-001/002)]"
   last_bump_date: "2026-06-16"
 
 VP-INDEX:

@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-033
 epic_id: EPIC-08
-version: "1.3"
+version: "1.4"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -193,7 +193,8 @@ guaranteed by TWO properties:
 
 ## Tasks
 
-- [ ] Create `crates/monocle-runtime/src/session_manager/mod.rs` with `SessionManager`, `SessionEntry`, `SessionHostConnection`, `SessionState` structs and enums per SS-session-manager.md §SessionManager §SessionEntry §SessionHostConnection §Session lifecycle state machine.
+- [ ] Define `SessionState` enum in `crates/monocle-ipc/src/lib.rs` with exactly the canonical 5 variants: `Launching`, `Running`, `Detached`, `Terminating`, `Terminated`. (`Created` and `Killed` are retired variants — do NOT use them.) `SessionState` MUST live in `monocle-ipc`, not in `monocle-runtime`, because `SessionStateChanged { new_state: SessionState }` and `SessionSnapshot { state: SessionState }` are wire types in `monocle-ipc`. `monocle-ipc` MUST NOT depend on `monocle-runtime`; placing `SessionState` in `monocle-runtime` would create a circular dependency. (Consistent with S-048 which imports `SessionState` from `monocle_ipc`.) Add if not present from S-021; do not duplicate.
+- [ ] Create `crates/monocle-runtime/src/session_manager/mod.rs` with `SessionManager`, `SessionEntry`, `SessionHostConnection` structs and enums per SS-session-manager.md §SessionManager §SessionEntry §SessionHostConnection §Session lifecycle state machine. `SessionState` is imported from `monocle_ipc::SessionState` (defined in monocle-ipc, see task above) — do NOT redefine it in monocle-runtime.
 - [ ] Implement `SessionHostSpawner` trait (`spawn()` async fn) and `SpawnedHostHandle` struct.
 - [ ] Implement `RealSessionHostSpawner`: invokes `monocle-session-host` binary via `std::process::Command` with `pre_exec(|| setsid())` and passes `--session-id`, `--runtime-dir`, `--binary`, `--args`, `--env`, `--cwd` CLI args.
 - [ ] Implement `MockSessionHostSpawner`: in-memory fake that returns a configurable `Ok(SpawnedHostHandle)` or error; used in all unit tests.
@@ -226,6 +227,7 @@ guaranteed by TWO properties:
 ## Architecture Compliance Rules
 
 - `SessionManager` lives at `crates/monocle-runtime/src/session_manager/mod.rs` — NOT a separate crate (SS-session-manager.md §Location and crate).
+- `SessionState` is defined in `crates/monocle-ipc/src/lib.rs`, NOT in `monocle-runtime`. The wire types `SessionStateChanged { new_state: SessionState }` and `SessionSnapshot { state: SessionState }` live in `monocle-ipc`; placing `SessionState` in `monocle-runtime` would force `monocle-ipc` to depend on `monocle-runtime`, creating a circular dependency. `monocle-runtime` imports `SessionState` as `monocle_ipc::SessionState`. The canonical 5 variants are: `Launching`, `Running`, `Detached`, `Terminating`, `Terminated`. (`Created` and `Killed` are RETIRED — do not use them.)
 - `session_id` is `String` everywhere — UUID v4 value, never a typed `uuid::Uuid` at IPC/registry boundaries (SS-session-manager.md §session_id type ruling).
 - All sidecar writes use `tempfile::persist`. No `std::fs::write` (CLAUDE.md conventions).
 - `SessionError` does NOT carry `#[non_exhaustive]`; the outer match in `session_error_to_code()` must be compiler-enforced exhaustive.
@@ -256,7 +258,7 @@ Files to CREATE:
 
 | File | Purpose |
 |------|---------|
-| `crates/monocle-runtime/src/session_manager/mod.rs` | `SessionManager`, `SessionEntry`, `SessionHostConnection`, `SessionState`, `SessionHostSpawner` trait, `RealSessionHostSpawner`, `MockSessionHostSpawner`, `session_error_to_code()`, `SpawnedHostHandle`, `IpcOp` |
+| `crates/monocle-runtime/src/session_manager/mod.rs` | `SessionManager`, `SessionEntry`, `SessionHostConnection`, `SessionHostSpawner` trait, `RealSessionHostSpawner`, `MockSessionHostSpawner`, `session_error_to_code()`, `SpawnedHostHandle`, `IpcOp` — `SessionState` is imported from `monocle_ipc::SessionState` (NOT defined here) |
 | `crates/monocle-session-host/Cargo.toml` | New binary crate; deps: `portable-pty = "0.9"`, `vt100 = "0.16"`, `tokio = "=1.52"`, `serde = { version = "1", features = ["derive"] }`, `serde_json = "=1.0.149"`, `nix = "0.30"`, `monocle-ipc = { path = "../monocle-ipc" }` |
 | `crates/monocle-session-host/src/main.rs` | Session-host binary: parse CLI args, `setsid()`, open PTY, build `CommandBuilder`, spawn harness child, bind UDS, write sidecar, enter main event loop |
 
@@ -267,7 +269,7 @@ Files to MODIFY:
 | `crates/monocle-runtime/src/lib.rs` | Add `pub mod session_manager;`; add `session_manager: Arc<Mutex<SessionManager>>` to `DaemonState` |
 | `crates/monocle-runtime/src/ipc_handler.rs` (or equivalent IPC handler file) | Add `ClientToServer::SpawnSession` arm: UUID gen → `SpawnAck` → `with_daemon_fields` → `spawn_session()` → on error `ServerToClient::Error` |
 | `Cargo.toml` (workspace root) | Add `crates/monocle-session-host` to `[workspace.members]` |
-| `crates/monocle-ipc/src/lib.rs` | Ensure `ServerToClient::SpawnAck { session_id: String }` variant exists; add if absent |
+| `crates/monocle-ipc/src/lib.rs` | (1) Define `SessionState` enum with the canonical 5 variants: `Launching`, `Running`, `Detached`, `Terminating`, `Terminated` — add if absent from S-021, do not duplicate. This is the authoritative location for `SessionState` (wire type used by `SessionStateChanged` and `SessionSnapshot`). (2) Ensure `ServerToClient::SpawnAck { session_id: String }` variant exists; add if absent. |
 
 ## Token Budget Estimate
 
@@ -346,3 +348,9 @@ those belong to S-034, S-035, and S-047 respectively.
 - STORY-033 depends on S-017 because `DaemonState`, `daemon_start_sequence`, and the IPC handler infrastructure must exist.
 - STORY-033 depends on S-021 because `ClientToServer::SpawnSession`, `ServerToClient::SpawnAck`, `ServerToClient::SessionStateChanged`, `ServerToClient::SessionListUpdate`, and `Broker<Event>` wire types must exist in `monocle-ipc`.
 - STORY-033 blocks S-034/S-035/S-036/S-037/S-038 because all other SS-08 stories operate on `SessionManager` and `SessionEntry` types that are first defined in this story.
+
+## Trace
+
+| Pass | Date | Change |
+|------|------|--------|
+| v1.4 | 2026-06-16 | F-P16-IMP-001: Moved `SessionState` definition from `monocle-runtime/src/session_manager/mod.rs` to `crates/monocle-ipc/src/lib.rs` (canonical wire-type location). Added 5-variant canonical list (Launching/Running/Detached/Terminating/Terminated; Created/Killed RETIRED). Updated Tasks, File Structure, and Architecture Compliance Rules accordingly. monocle-ipc MUST NOT depend on monocle-runtime — placing SessionState in monocle-ipc resolves the crate-residency issue and aligns with S-048. |

@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-048
 epic_id: EPIC-06
-version: "1.0"
+version: "1.1"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -151,6 +151,40 @@ A compile-time assertion or type annotation ensures the sessions panel component
 never `&[monocle_runtime::session::EnrichedSession]`. This constraint is enforced by the function
 signature of the panel's `render()` method.
 
+### AC-013 (traces to BC-2.06.025 postcondition 1 — state indicator renders ALL 5 canonical states)
+
+The sessions panel state indicator column renders a visual label for ALL 5 canonical `SessionState`
+variants without panicking or falling through to an unhandled match arm:
+- `Launching` → indicator label `"Launching"` (or equivalent styled text).
+- `Running` → indicator label `"Running"`.
+- `Detached` → indicator label `"Detached"`.
+- `Terminating` → indicator label `"Terminating"`.
+- `Terminated` → indicator label `"Terminated"`.
+
+The match over `SessionState` in the render path MUST be exhaustive against all 5 variants.
+`Created` and `Killed` are retired variants and MUST NOT appear in the match.
+Test: `test_BC_2_06_025_state_indicator_renders_all_5_states` — constructs a `SessionSnapshot`
+for each of the 5 states and asserts the rendered row contains the expected indicator text.
+
+### AC-014 (traces to BC-2.06.025 postcondition 2 — Enter on Detached session sends AttachSession; transitions to EmbeddedTerminal)
+
+When the focused session is in `Detached` state and the user presses `Enter`:
+- `ClientToServer::AttachSession { session_id }` is sent immediately (using `snapshot.session_id.clone()` — no newtype wrapping).
+- The TUI transitions to `AppMode::EmbeddedTerminal` upon receiving
+  `ServerToClient::SessionStateChanged { session_id, new_state: SessionState::Running }` for the
+  same session (matching the optimistic/await pattern established in S-044 AC-011).
+  Alternatively, the TUI may optimistically transition to `AppMode::EmbeddedTerminal` immediately
+  after sending `AttachSession` if the optimistic pattern is used consistently in the codebase —
+  implementer resolves against the pattern chosen by S-044.
+- `Enter` on a `Detached` session MUST NOT be treated as a no-op. It is the re-attach trigger.
+- `Enter` on a `Running` session transitions to `AppMode::EmbeddedTerminal` directly (no IPC
+  `AttachSession` needed — the session is already attached). This is the existing S-025 AC-007/AC-008
+  behavior; this AC does NOT change it.
+Test: `test_BC_2_06_025_enter_on_detached_sends_attach_session` — creates a `SessionSnapshot` with
+`state: Detached`, simulates `Enter`, asserts `ClientToServer::AttachSession { session_id }` sent
+and that the TUI mode transitions to `EmbeddedTerminal` (or that the transition is triggered on
+`SessionStateChanged{Running}`).
+
 ## Tasks
 
 ### Data Model
@@ -164,9 +198,11 @@ signature of the panel's `render()` method.
       There is NO `worktree_root` field (use `cwd` for effective working dir) and NO `pid` field.
       All wire IDs (`session_id`) are `String` (UUID-as-String) per SS-ipc v1.24.0 §Wire IDs.
       Verify against the struct definition — do NOT add extra fields not in the canonical struct.
-- [ ] Ensure `SessionState` enum is defined in `crates/monocle-ipc/src/lib.rs`:
-      `Launching`, `Running`, `Terminating`, `Terminated`.
-      (Verify against S-033/S-034; add if not present; do not duplicate.)
+- [ ] Ensure `SessionState` enum is defined in `crates/monocle-ipc/src/lib.rs` with the canonical 5 variants:
+      `Launching`, `Running`, `Detached`, `Terminating`, `Terminated`.
+      (`Created` and `Killed` are retired variants — do NOT use them.)
+      S-033 owns the definition of `SessionState` in `crates/monocle-ipc/src/lib.rs` (wire-type location, per F-P16-IMP-001).
+      Verify against S-033; add if not present; do not duplicate. `monocle-ipc` MUST NOT depend on `monocle-runtime`.
 
 ### TUI Panel (monocle-tui)
 - [ ] Create `monocle-tui/src/panels/sessions_panel.rs`:
@@ -179,7 +215,9 @@ signature of the panel's `render()` method.
       - Project root headers rendered as `Block` borders or styled list items.
       - Badge rendering per AC-003 (`[M]`, `[E]`, `[?]`, `[!]`).
 - [ ] Implement `SessionsPanel::handle_key(key: KeyEvent, sender: &mpsc::Sender<ClientToServer>)`
-      with the state-aware dispatch table per AC-004..AC-011.
+      with the state-aware dispatch table per AC-004..AC-011, AC-014. Includes:
+      - `Enter` on `Detached` state → send `ClientToServer::AttachSession { session_id }` + transition to `AppMode::EmbeddedTerminal` (AC-014).
+      - `Enter` on `Running` state → transition to `AppMode::EmbeddedTerminal` directly (existing S-025 behavior; no IPC sent for already-attached session).
       All IPC messages carry `session_id: String` (from `SessionSnapshot.session_id`) — never a
       newtype `SessionId`; wire fields are plain `String` per SS-ipc v1.24.0 §Wire IDs.
 - [ ] Add status bar message queue integration: 3-second and 5-second timed messages per AC-005/006/007.
@@ -198,6 +236,8 @@ signature of the panel's `render()` method.
       - `test_BC_2_06_025_ec298_d_on_launching_no_op_blocked` (AC-010)
       - `test_BC_2_06_025_ec300_302_all_actions_blocked_terminated` (AC-011)
       - `test_BC_2_06_025_sessions_snapshot_type_not_enriched_session` (AC-012 — type assertion)
+      - `test_BC_2_06_025_state_indicator_renders_all_5_states` (AC-013 — exhaustive match over Launching/Running/Detached/Terminating/Terminated)
+      - `test_BC_2_06_025_enter_on_detached_sends_attach_session` (AC-014 — Enter on Detached sends AttachSession + transitions to EmbeddedTerminal)
 
 ## Previous Story Intelligence
 
@@ -308,3 +348,9 @@ Within the 20–30% context window constraint. No splitting needed.
 SS-06 owns this story's scope because the sessions panel is a TUI-plane component that manages
 session lifecycle visibility and user interaction — the domain of SS-06 (monocle-tui, session
 display and interaction plane) per ARCH-INDEX Subsystem Registry SS-06.
+
+## Trace
+
+| Pass | Date | Change |
+|------|------|--------|
+| v1.1 | 2026-06-16 | F-P16-IMP-002: (1) Corrected `SessionState` Task enumeration from 4 variants to the canonical 5 (added `Detached`; noted `Created`/`Killed` are retired); noted S-033 owns the definition in monocle-ipc per F-P16-IMP-001. (2) Added AC-013 (BC-2.06.025 PC-1): state indicator renders all 5 canonical states exhaustively including `Detached`. (3) Added AC-014 (BC-2.06.025 PC-2): Enter on `Detached` session sends `ClientToServer::AttachSession`; TUI transitions to `AppMode::EmbeddedTerminal` on `SessionStateChanged{Running}`. (4) Updated `handle_key` task to reference AC-014. (5) Added tests for AC-013 and AC-014 to the test task list. |
