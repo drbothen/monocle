@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.43.6"
+version: "1.43.7"
 status: active
 producer: vsdd-factory:state-manager
-timestamp: 2026-06-15T00:00:00Z
+timestamp: 2026-06-16T00:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "cbf13d5"
@@ -1223,6 +1223,18 @@ SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. 
 - BC-INDEX version: 1.40.4 → 1.40.5. No BC ID additions or retirements. No H1 title changes.
 
 SE-16d monotonicity: v1.40.5 timestamp 2026-06-14T20:00:00Z > v1.40.4 timestamp 2026-06-14T19:00:00Z. PASS.
+
+## §Trace v1.43.7
+
+**Phase-2 Pass-7 fix burst — BC-2.03.008 v1.0.8 Story Anchor re-anchor: S-045 → S-033** (2026-06-16):
+
+BC version bump in this dispatch:
+- BC-2.03.008 v1.0.7 → v1.0.8 (F-PASS7-CRIT-001: Story Anchor re-anchored from S-045 to S-033. Rationale: S-033 introduces the `EngineModule::spawn_recipe()` trait method signature + default impl + `EngineError` enum in `monocle-core/src/engine.rs`; the default `Err(UnsupportedOperation)` behavior defined by this BC is a trait-level concern delivered by S-033. S-045 retains only the `ClaudeCodeModule` concrete override (BC-2.03.005/006/007 anchors). Traceability §Stories row updated: S-033 (primary); S-045 (secondary cross-ref). S-045 frontmatter `behavioral_contracts:` array updated to remove BC-2.03.008; BC-2.03.008 retained as cross-reference input only with comment. STORY-INDEX BC Coverage row updated: BC-2.03.008 row repointed S-045 → S-033 (AC-009c). Dependency graph acyclicity unaffected: S-045 depends_on S-033; no self-loops; S023→S047 DAG node declared in dependency-graph-expansion v2.1.). Anchor metadata and traceability only — no behavioral content changed.
+
+No BC H1 title changes. No BC ID additions or retirements. BC count unchanged: 138 active.
+BC-INDEX version: 1.43.6 → 1.43.7.
+
+SE-16d monotonicity: v1.43.7 timestamp 2026-06-16 = v1.43.6 timestamp 2026-06-16. PASS (same-day sequential patch).
 
 ## §Trace v1.43.6
 

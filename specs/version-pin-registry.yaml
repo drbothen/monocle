@@ -204,14 +204,14 @@ ARCH-INDEX:
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.43.6"
-  last_bump_commit: "[Phase-2 Pass-6 fix burst — §Trace v1.43.6: BC-2.05.011 v1.2.5 Story Anchor co-ownership S-047-only → S-046+S-047]"
+  current_version: "1.43.7"
+  last_bump_commit: "[Phase-2 Pass-7 fix burst — §Trace v1.43.7: BC-2.03.008 v1.0.8 Story Anchor re-anchor S-045→S-033; STORY-INDEX BC Coverage row updated]"
   last_bump_date: "2026-06-16"
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.37"
-  last_bump_commit: "[Phase-2 Pass-5 fix burst — S-042→S-043 dep edge; AC-range corrections BC-2.05.009/010/BC-2.09.006/007; S-040/S-041 Blocks columns]"
+  current_version: "5.38"
+  last_bump_commit: "[Phase-2 Pass-7 fix burst — BC-2.03.008 BC Coverage row repointed S-045→S-033 (AC-009c); dependency-graph-expansion v2.0→v2.1 S-047 self-loop removed]"
   last_bump_date: "2026-06-16"
 
 VP-INDEX:
@@ -719,9 +719,9 @@ BC-2.03.007:
 
 BC-2.03.008:
   path: specs/behavioral-contracts/ss-03/BC-2.03.008.md
-  current_version: "1.0.7"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-045 (clusters with BC-2.03.005)]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.0.8"
+  last_bump_commit: "[F-PASS7-CRIT-001 — Story Anchor re-anchored S-045 → S-033 (trait-level default impl; dependency graph acyclicity fix)]"
+  last_bump_date: "2026-06-16"
 
 BC-2.05.009:
   path: specs/behavioral-contracts/ss-05/BC-2.05.009.md

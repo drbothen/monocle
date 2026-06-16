@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.37"
+version: "5.38"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -200,12 +200,12 @@ traces_to: .factory/specs/prd.md
 | BC-2.03.005 | ClaudeCodeModule::spawn_recipe() — Happy Path | S-045 | AC-001..AC-003 | YES |
 | BC-2.03.006 | ClaudeCodeModule::spawn_recipe() — CCR Injection | S-045 | AC-004..AC-006 | YES |
 | BC-2.03.007 | ClaudeCodeModule::spawn_recipe() — Error Cases | S-045 | AC-007..AC-009 | YES |
-| BC-2.03.008 | EngineModule::spawn_recipe() Default Trait Impl | S-045 | AC-010..AC-011 | YES |
+| BC-2.03.008 | EngineModule::spawn_recipe() Default Trait Impl | S-033 | AC-009c | YES |
 | BC-2.05.009 | PtyOutput Fan-out Broker: Bounded Channel + Backpressure | S-046 | AC-001..AC-008 | YES |
 | BC-2.05.010 | IPC Lifecycle Variants: Spawn/Kill/Detach/Attach/Rename/Input/Resize | S-047 | AC-001..AC-012 | YES |
 | BC-2.05.011 | Scrollback Protocol: PtyReset/ScrollbackChunk/ScrollbackComplete | S-046 (PtyReset variant + broker emission), S-047 (TUI handler + scrollback protocol: AC-007..AC-010) | S-046: AC-005 (PtyReset emit); S-047: AC-007..AC-010 (scrollback + TUI reset) | YES |
 | BC-2.06.025 | Sessions Panel: Multi-Project Grouping, Lifecycle Actions, State-Aware Blocking | S-048 | AC-001..AC-012 | YES |
-| BC-2.08.001 | SessionManager::spawn_session — SessionHostSpawner + SpawnAck Handshake | S-033 | AC-001..AC-007 | YES |
+| BC-2.08.001 | SessionManager::spawn_session — SessionHostSpawner + SpawnAck Handshake | S-033 | AC-001..AC-009b | YES |
 | BC-2.08.002 | SessionManager::rediscover_sessions — setsid Persistence + State Handling | S-036 | AC-001..AC-006 | YES |
 | BC-2.08.003 | SessionManager::kill_session — DaemonToHost::Kill + Watchdog | S-034 | AC-001..AC-007 | YES |
 | BC-2.08.004 | daemon_start_sequence step-8b: rediscover_sessions on Restart | S-036 | AC-007..AC-009 | YES |

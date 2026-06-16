@@ -16,22 +16,23 @@ depends_on: [S-015, S-033]
 blocks: []
 target_module: monocle-runtime
 subsystems: [SS-03]
-behavioral_contracts: [BC-2.03.005, BC-2.03.006, BC-2.03.007, BC-2.03.008]
+behavioral_contracts: [BC-2.03.005, BC-2.03.006, BC-2.03.007]
 verification_properties: []
 estimated_days: 3
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.005.md, version: "1.1.5"}
   - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.006.md, version: "1.1.2"}
   - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.007.md, version: "1.2.5"}
-  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.008.md, version: "1.0.7"}
+  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.008.md, version: "1.0.8"}
+    # BC-2.03.008 input retained for cross-reference; BC-2.03.008 is owned by S-033 (re-anchored Pass-7). This story verifies non-override behavior indirectly via the compile-check task.
   - {path: .factory/specs/architecture/SS-engine-module-v2-delta.md, version: "1.6.0"}
   - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
-traces_to: "Implements BC-2.03.005 (spawn_recipe happy path), BC-2.03.006 (CCR base URL injection), BC-2.03.007 (BinaryNotFound/InvalidPath errors), BC-2.03.008 (default UnsupportedOperation trait impl)"
-# BC status: BC-2.03.005/006/007/008 non-empty; status draft pending Phase-2 adversarial convergence gate
+traces_to: "Implements BC-2.03.005 (spawn_recipe happy path), BC-2.03.006 (CCR base URL injection), BC-2.03.007 (BinaryNotFound/InvalidPath errors). BC-2.03.008 (default UnsupportedOperation trait impl) is anchored to S-033 (trait method + EngineError defined there)."
+# BC status: BC-2.03.005/006/007 non-empty; status draft pending Phase-2 adversarial convergence gate. BC-2.03.008 re-anchored to S-033 (Pass-7 fix).
 ---
 
 # S-045: ClaudeCodeModule::spawn_recipe() — Happy Path, CCR Injection, Error Cases, and Default Trait Impl
@@ -102,19 +103,6 @@ When both `which::which("claude")` fails AND `hooks_settings_path` is invalid:
 - `spawn_recipe()` returns `Err(EngineError::BinaryNotFound("claude"))` — binary check is first.
 - Arg validation is never reached when the binary lookup fails (early return).
 
-### AC-008 (traces to BC-2.03.008 postcondition 1–5 — default impl returns UnsupportedOperation)
-
-When any `EngineModule` implementation that does NOT override `spawn_recipe()` is called
-(e.g., `CodeMachineModule`):
-- Returns `Err(EngineError::UnsupportedOperation("spawn_recipe"))` immediately.
-- No I/O, no filesystem access, no PATH lookup is performed.
-- The trait default impl is defined in `monocle-core/src/engine.rs` (NOT in any impl block).
-- Adding this default to the trait is NON-BREAKING for existing implementations: they compile
-  unchanged and inherit the default `Err` behavior.
-- On receiving `UnsupportedOperation`, the daemon surfaces
-  `ServerToClient::Error { code: "spawn_unsupported", message: "Session spawn not supported for this harness" }`
-  per BC-2.03.008 PC-3.
-
 ### AC-009 (traces to BC-2.03.005 invariant 1 — hooks_settings_path is CLI arg, not written by spawn_recipe)
 
 `spawn_recipe()` does NOT write `hooks-settings.json`. The `hooks_settings_path` is passed
@@ -129,12 +117,7 @@ returns the overlay map only; the merge is performed by `monocle-session-host` a
 
 ## Tasks
 
-- [ ] Add `spawn_recipe(&self, opts: &SpawnOptions) -> Result<SpawnRecipe, EngineError>` method to
-      the `EngineModule` trait in `monocle-core/src/engine.rs` with a default impl returning
-      `Err(EngineError::UnsupportedOperation("spawn_recipe"))`.
-- [ ] Define `EngineError` enum in `monocle-core/src/engine.rs` (or a sub-module):
-      `BinaryNotFound(String)`, `InvalidPath(String)`, `UnsupportedOperation(&'static str)`.
-      Derive `thiserror::Error`, `Debug`. Apply `#[non_exhaustive]`.
+- [ ] **Verify (do NOT re-add):** S-033 added `spawn_recipe(&self, opts: &SpawnOptions) -> Result<SpawnRecipe, EngineError>` default method + `EngineError` enum (`BinaryNotFound(String)`, `InvalidPath(String)`, `UnsupportedOperation(&'static str)`) to `monocle-core/src/engine.rs`. Compile-check that `use monocle_core::engine::{EngineModule, EngineError, SpawnOptions, SpawnRecipe};` resolves before proceeding. If not found, S-033 has not landed — block and surface to orchestrator.
 - [ ] Implement `ClaudeCodeModule::spawn_recipe()` in `monocle-runtime/src/engine/claude_code.rs`:
       - Step 1: `which::which("claude")` — on failure return `Err(EngineError::BinaryNotFound("claude"))`.
       - Step 2: two-pronged path check — Prong 1: `opts.hooks_settings_path.to_str()` returns `None`
@@ -157,16 +140,19 @@ returns the overlay map only; the merge is performed by `monocle-session-host` a
       - `test_BC_2_03_007_spawn_recipe_invalid_path_non_utf8` (AC-006 Prong 1)
       - `test_BC_2_03_007_spawn_recipe_invalid_path_null_byte` (AC-006 Prong 2)
       - `test_BC_2_03_007_spawn_recipe_binary_checked_first` (AC-007)
-      - `test_BC_2_03_008_default_spawn_recipe_unsupported_operation` (AC-008)
+      - Note: `test_BC_2_03_008_default_spawn_recipe_unsupported_operation` is owned by S-033 (BC-2.03.008 re-anchored per Pass-7 fix). Do NOT add it here.
 
 ## Previous Story Intelligence
 
 S-014 defined `EngineModule` trait in `monocle-core/src/engine.rs`. S-015 implemented
-`ClaudeCodeModule` with detect/enrich/metadata/on_hook/hook_paths. S-033 called
-`engine_module.spawn_recipe(&opts)?` as the FIRST step of `spawn_session()`. This story
-adds the missing `spawn_recipe()` method to both the trait and the `ClaudeCodeModule`
-implementation. The trait already exists; this is an additive method. The `SessionError::EngineError`
-bridge added in S-033 may already be present — verify before re-adding.
+`ClaudeCodeModule` with detect/enrich/metadata/on_hook/hook_paths. S-033 (Wave 8, before
+this story) added the `spawn_recipe()` DEFAULT TRAIT METHOD + `EngineError` enum to
+`monocle-core/src/engine.rs` (BC-2.03.008), and `spawn_session()` calls
+`engine_module.spawn_recipe(&opts)?` as its FIRST step. This story (S-045) adds ONLY the
+`ClaudeCodeModule::spawn_recipe()` concrete OVERRIDE (BC-2.03.005/006/007). The trait
+method already exists (from S-033); this is the implementation-side addition. The
+`SessionError::EngineError` bridge added in S-033 may already be present — verify before
+re-adding.
 
 `S-015` note: that story used `temp-env ^0.3` with `features = ["async_closure"]` for the
 `HomeUnresolvable` path tests. This story's tests do NOT require env manipulation (they mock
@@ -176,7 +162,7 @@ bridge added in S-033 may already be present — verify before re-adding.
 
 From `architecture/SS-engine-module-v2-delta.md v1.6.0`:
 - `spawn_recipe()` is a NEW trait method on `EngineModule` with a DEFAULT impl
-  (non-breaking addition per BC-2.03.008 PC-5).
+  (non-breaking addition; BC-2.03.008 owned by S-033 which defines the trait method + EngineError).
 - `EngineError` is a NEW type introduced in v1A — NOT an extension of `EngineMetadataError`.
 - The two-pronged null-byte detection is mandatory: `to_str()` alone cannot detect null bytes.
 - `SpawnRecipe` is daemon-internal — never crosses the IPC wire. Only `SpawnOptions` is on the wire.
@@ -229,7 +215,7 @@ No new dependencies added. `which` is already in `monocle-runtime` (BC-2.07.006 
 | Category | Estimate |
 |----------|----------|
 | Story spec (this file) | ~4 000 tokens |
-| BC files (4 BCs) | ~6 000 tokens |
+| BC files (3 BCs: BC-2.03.005/006/007; BC-2.03.008 cross-reference only) | ~5 000 tokens |
 | Architecture sections (SS-engine-module-v2-delta, SS-session-manager, SS-ipc excerpts) | ~3 000 tokens |
 | Existing code context (engine.rs, claude_code.rs, session_manager/mod.rs) | ~3 000 tokens |
 | Test file to write | ~2 000 tokens |
@@ -240,12 +226,14 @@ Well within the 20–30% context window constraint. Story does not need splittin
 ## Dependency Justification
 
 - S-045 depends on S-015 because `ClaudeCodeModule` and the `EngineModule` trait it extends
-  are implemented in S-015; adding `spawn_recipe()` is an extension of that struct.
-- S-045 depends on S-033 because `spawn_session()` calls `engine_module.spawn_recipe(&opts)?`
-  as its first step; the caller interface must exist before the callee is fully implemented.
-- S-045 blocks nothing directly (spawn_recipe is needed by spawn_session via S-033, but S-033
-  includes a stub in the story design to make the integration compile-able without this story
-  if needed; however in practice S-045 must complete before S-033 can pass its integration tests).
+  are implemented in S-015; adding `ClaudeCodeModule::spawn_recipe()` is an additive override
+  on that struct, which must exist first.
+- S-045 depends on S-033 because S-033 delivers BC-2.03.008 — the `spawn_recipe()` default
+  trait method + `EngineError` enum in `monocle-core/src/engine.rs`. S-033 compiles and passes
+  unit tests via the default `Err(UnsupportedOperation)` impl. S-045 adds the `ClaudeCodeModule`
+  concrete override (BC-2.03.005/006/007) that S-033's end-to-end integration tests require.
+  Wave-8 intra-wave order: S-033 BEFORE S-045. S-045 blocks nothing directly because all
+  downstream stories (S-034..S-038, S-047, S-048) depend on S-033 (not S-045 directly).
 
 ## Subsystem Anchor Justification
 

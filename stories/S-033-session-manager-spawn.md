@@ -16,12 +16,14 @@ depends_on: [S-014, S-015, S-017, S-021]
 blocks: [S-034, S-035, S-036, S-037, S-038]
 target_module: monocle-runtime
 subsystems: [SS-08]
-behavioral_contracts: [BC-2.08.001, BC-2.08.008]
+behavioral_contracts: [BC-2.03.008, BC-2.08.001, BC-2.08.008]
 verification_properties: []
 estimated_days: 4
 inputs:
+  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.008.md, version: "1.0.8"}
   - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.001.md, version: "1.5.3"}
   - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.008.md, version: "1.3.4"}
+  - {path: .factory/specs/architecture/SS-engine-module-v2-delta.md, version: "1.6.0"}
   - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
@@ -128,6 +130,21 @@ distinct from EngineError before the spawner is called):
   configured to return `Err(...)` on `spawn()`; assert `SessionError::SpawnFailed` from
   `spawn_session()`; assert IPC code `"spawn_failed"`; assert no `SessionEntry` in registry.
 
+### AC-009c (traces to BC-2.03.008 postcondition 1 — default spawn_recipe returns UnsupportedOperation)
+
+This story defines the `EngineModule::spawn_recipe()` trait method with a DEFAULT impl
+in `monocle-core/src/engine.rs`. When any `EngineModule` implementation that does NOT
+override `spawn_recipe()` is called (a no-override test double):
+- Returns `Err(EngineError::UnsupportedOperation("spawn_recipe"))` immediately.
+- No I/O, no filesystem access performed.
+- The `EngineError` enum is defined in `monocle-core/src/engine.rs` with variants:
+  `BinaryNotFound(String)`, `InvalidPath(String)`, `UnsupportedOperation(&'static str)`.
+- `EngineError` carries `#[non_exhaustive]`; the inner match in `session_error_to_code()`
+  MUST have `_ => "invalid_request"` fallback because `EngineError` is cross-crate and
+  non-exhaustive (the compiler requires it).
+- Unit test `test_BC_2_03_008_default_spawn_recipe_unsupported_operation`: a no-override
+  `EngineModule` impl returns `Err(EngineError::UnsupportedOperation("spawn_recipe"))`.
+
 ### AC-010 (traces to BC-2.08.008 postcondition 1 — no silent state transitions)
 
 `SessionStateChanged` is emitted for EVERY `SessionState` transition without exception.
@@ -159,6 +176,10 @@ guaranteed by TWO properties:
 - [ ] Implement `spawn_session(opts: SpawnOptions)`: call `spawn_recipe()` first, then `spawner.spawn()`, then write sidecar via `tempfile::persist`, then insert `SessionEntry{state: Launching, host_conn: None}`, then spawn post-spawn monitor `tokio::spawn`, then publish `SessionStateChanged{Launching}` + `SessionListUpdate` under mutex.
 - [ ] Implement post-spawn monitor as a `tokio::spawn` background task: polls UDS socket connectable (20ms backoff, 30s total timeout), verifies SO_PEERCRED, stores `host_conn: Some(SessionHostConnection { writer, proxy_task: None })`, receives `StateChanged` messages, on `StateChanged{Running}` starts PTY proxy task and transitions to Running state (emits `SessionStateChanged{Running}` + `SessionListUpdate`).
 - [ ] Implement IPC handler skeleton: generate UUID → send `SpawnAck` → call `opts.with_daemon_fields()` → call `spawn_session()` → on error send `ServerToClient::Error`.
+- [ ] Add `spawn_recipe(&self, opts: &SpawnOptions) -> Result<SpawnRecipe, EngineError>` to the `EngineModule` trait in `monocle-core/src/engine.rs` with a default impl returning `Err(EngineError::UnsupportedOperation("spawn_recipe"))`. (BC-2.03.008)
+- [ ] Define `EngineError` enum in `monocle-core/src/engine.rs`: `BinaryNotFound(String)`, `InvalidPath(String)`, `UnsupportedOperation(&'static str)`; derive `thiserror::Error`, `Debug`; apply `#[non_exhaustive]`. (BC-2.03.008)
+- [ ] Add `SpawnOptions` and `SpawnRecipe` type declarations (or re-exports per SS-engine-module-v2-delta.md) to `monocle-core/src/engine.rs` as required by the trait method signature. (BC-2.03.008)
+- [ ] Write unit test `test_BC_2_03_008_default_spawn_recipe_unsupported_operation`: a no-override `EngineModule` impl (test double) calls the default `spawn_recipe()` and asserts `Err(EngineError::UnsupportedOperation("spawn_recipe"))`. (BC-2.03.008)
 - [ ] Add `SessionError` enum with all 9 variants per SS-session-manager.md §SessionError taxonomy.
 - [ ] Add `From<EngineError> for SessionError` via `#[from]` on `EngineError(#[from] monocle_core::engine::EngineError)`.
 - [ ] Implement orphan-kill logic: on sidecar write failure, SIGTERM → 2s wait → SIGKILL to `SpawnedHostHandle.pid`.
@@ -172,8 +193,8 @@ guaranteed by TWO properties:
 
 - **S-017** (daemon-start-sequence): Implemented `daemon_start_sequence()` up to step 8; step 8b (`rediscover_sessions`) is the hook for S-036. `DaemonState` struct exists.
 - **S-021** (UDS server IPC types): `ClientToServer`, `ServerToClient`, `SessionStateChanged`, `SessionListUpdate` wire types exist in `monocle-ipc`. `Broker<Event>` and per-client `mpsc::channel(64)` pattern established.
-- **S-014** (EngineModule trait): `EngineModule::spawn_recipe()` trait method exists. `SpawnRecipe` and `SpawnOptions` types must be cross-checked against SS-engine-module-v2-delta.md v1.6.0 §SpawnOptions and §SpawnRecipe.
-- **S-015** (ClaudeCodeModule): `ClaudeCodeModule::spawn_recipe()` concrete implementation exists.
+- **S-014** (EngineModule trait, done Wave 2): `EngineModule` trait exists in `monocle-core/src/engine.rs`. `spawn_recipe()` does NOT yet exist — it is a v1A-pivot addition introduced by THIS story (S-033). `SpawnRecipe` and `SpawnOptions` types must be verified against SS-engine-module-v2-delta.md v1.6.0 §SpawnOptions and §SpawnRecipe before authoring them.
+- **S-015** (ClaudeCodeModule, done Wave 3): `ClaudeCodeModule` struct and its existing `EngineModule` impl exist. `ClaudeCodeModule::spawn_recipe()` does NOT yet exist — the concrete override is a v1A-pivot addition introduced by S-045 (Wave 8, after this story). THIS story (S-033) adds only the trait method + default impl + `EngineError` enum (BC-2.03.008); S-045 later adds the `ClaudeCodeModule` override (BC-2.03.005/006/007).
 - `DaemonState.session_manager: Arc<Mutex<SessionManager>>` must be wired by this story; confirm `DaemonState` struct in `monocle-runtime/src/lib.rs` does not already have a session_manager field.
 
 ## Architecture Compliance Rules
@@ -227,16 +248,17 @@ Files to MODIFY:
 | Source | Estimated Tokens |
 |--------|-----------------|
 | This story spec | ~4,000 |
+| BC-2.03.008 | ~1,500 |
 | BC-2.08.001 | ~3,500 |
 | BC-2.08.008 | ~3,500 |
 | SS-session-manager.md (session_manager struct, spawn_session, IPC handler, error taxonomy sections) | ~12,000 |
-| SS-engine-module-v2-delta.md (SpawnOptions, SpawnRecipe, EngineError) | ~4,000 |
+| SS-engine-module-v2-delta.md (SpawnOptions, SpawnRecipe, EngineError, spawn_recipe default) | ~4,000 |
 | SS-ipc.md (SpawnAck, SessionStateChanged, ClientToServer::SpawnSession) | ~3,000 |
 | SS-daemon-wiring-v2-delta.md (IPC handler pattern, §3b emission table) | ~3,000 |
 | SS-deps-pin-manifest.md + v2-delta (version pins) | ~2,000 |
 | Existing codebase (monocle-runtime lib.rs, monocle-ipc types, engine module) | ~8,000 |
 | Test files to write | ~4,000 |
-| **Total estimate** | **~47,000** |
+| **Total estimate** | **~48,500** |
 
 Estimate is within the 30% context window bound for a Sonnet-class model (~200k tokens = 60k max per story). No split required.
 
@@ -244,6 +266,7 @@ Estimate is within the 30% context window bound for a Sonnet-class model (~200k 
 
 | BC | Title | Version |
 |----|-------|---------|
+| BC-2.03.008 | EngineModule::spawn_recipe() Default Trait Impl — UnsupportedOperation for Non-Overriding Engines | (see inputs: frontmatter) |
 | BC-2.08.001 | Session Spawn — SessionHostSpawner Called Within 2s; SessionEntry Created | (see inputs: frontmatter) |
 | BC-2.08.008 | SessionStateChanged — Daemon Emits on Every SessionState Transition; Delivered to All TUI Clients; Ordering Relative to SessionListUpdate | (see inputs: frontmatter) |
 
@@ -292,8 +315,8 @@ those belong to S-034, S-035, and S-047 respectively.
 **SS-08 owns this story's scope** because `SessionManager` is the core component of SS-08 (session-manager subsystem), defined in SS-session-manager.md, and the spawn path is the entry point for all SS-08 session lifecycle operations.
 
 **Dependency Anchors:**
-- STORY-033 depends on S-014 because `EngineModule::spawn_recipe()` trait method must exist before `spawn_session()` can call it.
-- STORY-033 depends on S-015 because `ClaudeCodeModule::spawn_recipe()` is the concrete implementation invoked in the happy path.
+- STORY-033 depends on S-014 because the `EngineModule` trait in `monocle-core/src/engine.rs` must exist as a base before this story can extend it with `spawn_recipe()` (trait method + default impl + `EngineError`); S-014 authored the trait foundation.
+- STORY-033 depends on S-015 because the `ClaudeCodeModule` struct and its existing `EngineModule` impl must exist for integration-test references (the test double that exercises the default `UnsupportedOperation` impl verifies non-override behavior against the trait, not the concrete `ClaudeCodeModule`); S-015 authored the struct. Note: `ClaudeCodeModule::spawn_recipe()` does NOT yet exist at S-033 — that concrete override is delivered by S-045.
 - STORY-033 depends on S-017 because `DaemonState`, `daemon_start_sequence`, and the IPC handler infrastructure must exist.
 - STORY-033 depends on S-021 because `ClientToServer::SpawnSession`, `ServerToClient::SpawnAck`, `ServerToClient::SessionStateChanged`, `ServerToClient::SessionListUpdate`, and `Broker<Event>` wire types must exist in `monocle-ipc`.
 - STORY-033 blocks S-034/S-035/S-036/S-037/S-038 because all other SS-08 stories operate on `SessionManager` and `SessionEntry` types that are first defined in this story.

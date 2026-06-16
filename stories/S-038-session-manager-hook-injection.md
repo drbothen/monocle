@@ -236,7 +236,7 @@ Files to MODIFY:
 | File | Change |
 |------|--------|
 | `crates/monocle-runtime/src/session_manager/mod.rs` | Add `HookEndpointConfig`, `write_hooks_settings_json()`, `hooks_settings_path` field on `SessionManager`, populate `opts.hooks_settings_path` before `spawn_recipe()` call in `spawn_session()`, add EC-182 re-write guard in `spawn_session()` |
-| `crates/monocle-runtime/src/error.rs` (or wherever `SessionError` is defined) | No new variant added. Verify `session_error_to_code()` exhaustive outer match still compiles after any S-033-introduced additions. |
+| `crates/monocle-runtime/src/session_manager/mod.rs` | No new `SessionError` variant added. Verify `session_error_to_code()` exhaustive outer match still compiles after any S-033-introduced additions. (`SessionError` canonical location is `session_manager/mod.rs` per S-033.) |
 
 Files to VERIFY (no modification expected):
 

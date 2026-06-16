@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.7"
+version: "1.0.8"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-engine-module-v2-delta.md]
-input-hash: "46b487a"
+input-hash: "7da12a4"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-03
@@ -106,6 +106,7 @@ that must be explicitly opted into, not accidentally inherited.
 | L2 Domain Invariants | DI-006 (EngineModule implementations must be stateless — the default impl performs no I/O and returns a constant error value, satisfying stateless detection requirement; spawn_recipe() is not a detection method but the same stateless principle applies to non-overriding impls) |
 | Architecture Module | monocle-core (`EngineModule` trait default impl) per ARCH-INDEX Subsystem Registry SS-03 |
 | Architecture Source | SS-engine-module-v2-delta.md v1.6.0 §spawn_recipe() — new trait method (default impl signature); SS-session-manager.md v2.6.1 §session_error_to_code — `EngineError::UnsupportedOperation` → `"spawn_unsupported"` arm (F-P44-IMP-001); SS-ipc.md v1.24.0 §`ServerToClient::Error` — `"spawn_unsupported"` as 11th wire code in taxonomy (12 total as of v1.23.2; `session_not_ready` is the 12th — F-P50-001; `spawn_unsupported` positional rank unchanged) |
+| Stories | S-033 (primary — trait method + default impl deliverer); S-045 (secondary — ClaudeCodeModule concrete override; BC-2.03.005/006/007 anchor) |
 | Cross-Ref | BC-2.03.005 (ClaudeCodeModule overrides this default with the real spawn_recipe() implementation) |
 | Test Name | test_BC_2_03_008_default_spawn_recipe_unsupported_operation |
 
@@ -120,11 +121,21 @@ that must be explicitly opted into, not accidentally inherited.
 
 ## Story Anchor
 
-S-045 — Same story as BC-2.03.005 (EngineModule trait extension with spawn_recipe() default)
+S-033 — Introduces the `EngineModule::spawn_recipe()` trait method signature + default impl + `EngineError` enum in `monocle-core/src/engine.rs` (trait-level deliverable; all non-overriding impls inherit the default `Err(UnsupportedOperation)` from this story).
+
+Secondary reference: S-045 delivers the `ClaudeCodeModule` concrete override (BC-2.03.005/006/007 anchor). S-045 depends on S-033; the dependency graph is acyclic.
 
 ## VP Anchors
 
 VP-TBD — Default UnsupportedOperation unit test (filled after VP creation)
+
+## §Trace v1.0.8
+
+**F-PASS7-CRIT-001 adjudication (Approach 1) — Story Anchor re-anchored: S-045 → S-033** (2026-06-16):
+- **Story Anchor:** S-045 → S-033. Rationale: S-033 introduces the `EngineModule::spawn_recipe()` trait method signature + default impl + `EngineError` enum in `monocle-core/src/engine.rs`; the default `Err(UnsupportedOperation)` behavior defined by this BC is a trait-level concern delivered by S-033. S-045 retains only the `ClaudeCodeModule` concrete override (BC-2.03.005/006/007 anchors). S-045 depends on S-033; dependency graph is acyclic.
+- **Traceability §Stories row added:** S-033 (primary); S-045 (secondary cross-ref).
+- No behavioral content changed (preconditions, postconditions, invariants, ECs unmodified).
+- SE-16d monotonicity: v1.0.8 timestamp 2026-06-16 > v1.0.7 timestamp 2026-06-16. PASS.
 
 ## §Trace v1.0.5
 

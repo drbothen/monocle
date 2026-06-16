@@ -1,7 +1,7 @@
 ---
 document_type: dependency-graph
 level: L4
-version: "2.0"
+version: "2.1"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -405,7 +405,8 @@ flowchart TD
 
     S021 --> S047
     S022 --> S047
-    S047 -.->|depends_on S-023| S047
+    S023["S-023\nReconnect SOQ3\n(W6, done)"]:::done
+    S023 --> S047
     S033 --> S047
     S034 --> S047
     S035 --> S047
@@ -531,6 +532,19 @@ Critical path through Waves 8-9: S-033 (8pts) → S-035 (8pts) → S-039 (8pts) 
 | S-042 | 9 | 5 | S-039 | S-043 |
 | S-043 | 9 | 3 | S-039, S-042 | — |
 | S-044 | 9 | 13 | S-033, S-035, S-040, S-041 | — |
+
+## §Trace v2.1 — Pass-7 fix: S-047 self-loop removed, S-023 node declared (2026-06-16)
+
+**Bump:** 2.0 → 2.1.
+**Scope (F-PASS7-IMP-001):**
+- Wave 8 Mermaid DAG: replaced self-loop `S047 -.->|depends_on S-023| S047` with an explicit
+  `S023["S-023\nReconnect SOQ3\n(W6, done)"]:::done` node declaration + correct edge
+  `S023 --> S047`. S-023 is a real done dependency of S-047 per S-047 frontmatter
+  `depends_on: [S-021, S-022, S-023, S-033, S-034, S-035, S-046]`.
+- Wave 8 topological sort verification line for S-047 already cited S-023 (W6) as a
+  dependency — the DAG now matches that annotation.
+- Wave 8 confirmed acyclic; no other structural changes.
+**SE-16d PASS:** 2026-06-16 >= 2026-06-16.
 
 ## §Trace v2.0 — Wave 8-9 graph added (Pass-5 fix burst) (2026-06-16)
 
