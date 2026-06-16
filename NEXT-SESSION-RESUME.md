@@ -1,14 +1,14 @@
-# monocle — Resume From Here (Phase-2 adversarial Pass-10 next, 2026-06-16)
+# monocle — Resume From Here (Phase-2 adversarial Pass-11 next, 2026-06-16)
 
 Read this file first, then CLAUDE.md, then `.factory/STATE.md`
-(`next_session_resume_protocol` block, v7.65, for the full checkpoint +
+(`next_session_resume_protocol` block, v7.66, for the full checkpoint +
 section E ratified decisions + durable_task_register).
 
 ---
 
-## Status at Pause — Phase-2 Adversarial Pass-9 Findings Resolved
+## Status at Pause — Phase-2 Adversarial Pass-10 Findings Resolved
 
-**Phase-2 adversarial Pass-9 FINDINGS (1C/0I/1S) ALL RESOLVED.** factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'`.
+**Phase-2 adversarial Pass-10 FINDINGS (0C/1I/2S) — 1I RESOLVED.** factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'`.
 
 51 stories (311 pts) total: 32 done (192 pts, Phases 1-3), 16 not_started (v1A Waves 8-9),
 1 blocked (S-PHASE-3-PREP), 2 draft.
@@ -16,17 +16,18 @@ section E ratified decisions + durable_task_register).
 BC-INDEX v1.43.7, ARCH-INDEX v1.0.30, EVAL-INDEX v1.16, STORY-INDEX v5.41, sprint-state v1.43, wave-schedule v1.8.
 SS-ipc v1.24.0, SS-session-manager v2.6.1, SS-daemon-wiring-v2-delta v1.11.4.
 SS-embedded-pty v1.7.0, SS-deps-pin-manifest-v2-delta v1.0.2.
-POL-11 PASS (371 active). POL-12 PASS. compute-input-hash: 99 clusters updated.
+S-045 v1.2, S-039 v1.2 (Pass-10 fixes).
+POL-11 PASS (371 active, 4317 historical). POL-12 PASS. compute-input-hash: 98 clusters updated.
 
-**D-305 outstanding**: pre-pivot disposition recommendation written
-(`.factory/stories/pre-pivot-disposition-recommendation.md`) — PENDING human ratification.
-Bulk-archive of pre-pivot stories BLOCKED until human ratifies.
+**D-315 RATIFIED**: pre-pivot disposition ratified by Joshua Magady (2026-06-16).
+Keep all 3 active (S-032, S-DAEMON-WIRE-FIX-001, S-PHASE-3-PREP). 32 done-historical. 0 archive/retire.
+pre-pivot-disposition-recommendation.md v1.1 (status: ratified). D-305 caveat CLEARED.
 
-**Adversarial counter: 0/3** (Pass-9 not clean; Pass-10 = clean-candidate 1/3).
+**Adversarial counter: 0/3** (Pass-10 not clean; Pass-11 = clean-candidate 1/3).
 5 original story gaps in durable_task_register (BURST-GAP-001..005) + F-P1-S-005 + F-P2-S03 (process-gaps).
 
 develop @ 2141adc — no v1A production code written.
-STATE.md = v7.65.
+STATE.md = v7.66.
 
 ---
 
@@ -57,18 +58,19 @@ All 7 bursts executed and committed to factory-artifacts. Pass-1 through Pass-6 
 | Pass-6 fix | story-writer + product-owner + state-manager | wave-schedule v1.8 (S-042→S-043 4-location propagation); S-042 Dependency Justification + stale BC comment; 9 story authoring-note BC comments de-versioned; BC-2.05.011 v1.2.5 Story Anchor co-ownership; BC-INDEX v1.43.6 (at Pass-6 authoring time) | DONE (D-311) |
 | Pass-7 fix | architect + product-owner + story-writer + state-manager | BC-2.03.008 v1.0.8 Story Anchor S-045→S-033 (Approach 1); AC-009c; S-033 +BC-2.03.008 behavioral_contract; S-045 -BC-2.03.008 from behavioral_contracts; dep-graph-expansion v2.1 S-047 self-loop fixed; STORY-INDEX BC Coverage row (at Pass-7 authoring time v5.38); S-038 path; BC-INDEX v1.43.7 | DONE (D-311) |
 | Pass-8 fix | story-writer + state-manager | SE-25 bidirectional symmetry reconciliation across 4 artifacts; EPIC-08+EPIC-03 BC Coverage AC ranges corrected; S-045 AC renumber; dep-graph-expansion v2.2; STORY-INDEX v5.40 (at Pass-8 authoring time); sprint-state v1.43 S-033/034/035/039 blocks + S-038 canonical title; version-pin-registry STORY-INDEX→5.40 | DONE (D-311) |
-| Pass-9 fix | story-writer + state-manager | S-033 v1.3 AC-009d BC-2.03.008 PC-3 spawn_unsupported; STORY-INDEX v5.41 26 BC Coverage Title cells normalized; S-033 body BC table title aligned; version-pin-registry STORY-INDEX→5.41 | DONE (this burst) |
+| Pass-9 fix | story-writer + state-manager | S-033 v1.3 AC-009d BC-2.03.008 PC-3 spawn_unsupported; STORY-INDEX v5.41 26 BC Coverage Title cells normalized; S-033 body BC table title aligned; version-pin-registry STORY-INDEX→5.41 | DONE (D-311) |
+| Pass-10 fix | story-writer + state-manager | S-045 v1.2 session_error_to_code task verify-not-readd; S-039 v1.2 blocks prose direct-edge S-040/S-042/S-043 (SE-25); D-315 pre-pivot ratification annotation | DONE (this burst) |
 
-### Next: Phase-2 Adversarial Pass-10
+### Next: Phase-2 Adversarial Pass-11
 
 3 consecutive clean passes required. Adversarial counter: 0/3.
 
 After convergence: fresh consistency audit (vsdd-factory:consistency-validator),
 then Phase-2 human approval gate, then Phase-3 TDD implementation for Waves 8-9.
 
-**Blocking prerequisite**: D-305 pre-pivot disposition recommendation
-(`.factory/stories/pre-pivot-disposition-recommendation.md`) requires human ratification
-before bulk-archive. Adversarial work and human gate are independent of D-305 ratification.
+**D-315 RATIFIED** (2026-06-16): pre-pivot disposition ratified. Keep all 3 active
+(S-032, S-DAEMON-WIRE-FIX-001, S-PHASE-3-PREP). 32 done-historical. 0 archive/retire.
+Bulk-archive NOT PERFORMED. D-305 caveat cleared.
 
 ---
 
@@ -146,8 +148,10 @@ All versions derived from `.factory/specs/version-pin-registry.yaml` (source of 
 - **Wave 9 ordering**: S-042→S-043 serial (S-042 owns pty_scroll_offsets reset in ResizePane handler).
 - v1B (Interactive Tune) BCs/stories: NOT yet authored. Author when v1B scheduled.
 - **D-304**: Autonomous Phase-2 dispatch authorized. No per-burst plan-review gate.
-- **D-305**: 143-story pre-pivot disposition requires story-writer RECOMMENDATION first, then
-  human RATIFICATION before execution. Bulk-archive BLOCKED until ratified.
+- **D-305**: Pre-pivot disposition recommendation written; D-305 bulk-archive caveat now CLEARED.
+- **D-315**: Pre-pivot disposition RATIFIED (2026-06-16, Joshua Magady). Keep 3 active
+  (S-032, S-DAEMON-WIRE-FIX-001, S-PHASE-3-PREP). 32 done-historical. 0 archive/retire.
+  Actual pre-pivot story count: 35 (not 143 estimate). See pre-pivot-disposition-recommendation.md v1.1.
 
 ---
 
@@ -155,7 +159,7 @@ All versions derived from `.factory/specs/version-pin-registry.yaml` (source of 
 
 1. This file (NEXT-SESSION-RESUME.md) — concise entry point
 2. `/Users/jmagady/Dev/monocle/CLAUDE.md` — production-grade + agent-routing rules
-3. `.factory/STATE.md` `next_session_resume_protocol` block (v7.65) — full checkpoint,
+3. `.factory/STATE.md` `next_session_resume_protocol` block (v7.66) — full checkpoint,
    durable_task_register, section E ratified decisions
 
 ---
