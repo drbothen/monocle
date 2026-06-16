@@ -216,6 +216,7 @@ None. All durable task register items are non-blocking.
 | F-P3-S02-PROCGAP | pending | devops | n | add refresh story input-pins to convergence burst checklist |
 | F-P16-SUG-002 | pending | sess-reviewer | n | add wire-type crate-residency adversarial axis |
 | F-P20-SUG-WIRE-CODE-LINT | pending | devops | n | POL: validate wire-error-code literals vs SS-ipc taxonomy |
+| HS-EXP-006-TTY-CAVEAT | pending | implementer | n | HS-EXP-006 scored 0.85 — terminal raw-mode restore unobservable in non-TTY harness |
 | SE-40 | held-D-114 | orchestrator | n | SE-40 (deliver-story from main session only; held) |
 
 ## Resolved/Closed Tasks (archived)
