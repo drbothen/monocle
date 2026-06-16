@@ -1,40 +1,40 @@
-# monocle — Resume From Here (Phase-2 adversarial Pass-9 next, 2026-06-16)
+# monocle — Resume From Here (Phase-2 adversarial Pass-10 next, 2026-06-16)
 
 Read this file first, then CLAUDE.md, then `.factory/STATE.md`
-(`next_session_resume_protocol` block, v7.64, for the full checkpoint +
+(`next_session_resume_protocol` block, v7.65, for the full checkpoint +
 section E ratified decisions + durable_task_register).
 
 ---
 
-## Status at Pause — Phase-2 Adversarial Pass-8 Findings Resolved
+## Status at Pause — Phase-2 Adversarial Pass-9 Findings Resolved
 
-**Phase-2 adversarial Pass-8 FINDINGS (0C/2I/3S) ALL RESOLVED.** factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'`.
+**Phase-2 adversarial Pass-9 FINDINGS (1C/0I/1S) ALL RESOLVED.** factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'`.
 
 51 stories (311 pts) total: 32 done (192 pts, Phases 1-3), 16 not_started (v1A Waves 8-9),
 1 blocked (S-PHASE-3-PREP), 2 draft.
 
-BC-INDEX v1.43.7, ARCH-INDEX v1.0.30, EVAL-INDEX v1.16, STORY-INDEX v5.40, sprint-state v1.43, wave-schedule v1.8.
+BC-INDEX v1.43.7, ARCH-INDEX v1.0.30, EVAL-INDEX v1.16, STORY-INDEX v5.41, sprint-state v1.43, wave-schedule v1.8.
 SS-ipc v1.24.0, SS-session-manager v2.6.1, SS-daemon-wiring-v2-delta v1.11.4.
 SS-embedded-pty v1.7.0, SS-deps-pin-manifest-v2-delta v1.0.2.
-POL-11 PASS (373 active). POL-12 PASS. compute-input-hash: 99 clusters updated.
+POL-11 PASS (371 active). POL-12 PASS. compute-input-hash: 99 clusters updated.
 
 **D-305 outstanding**: pre-pivot disposition recommendation written
 (`.factory/stories/pre-pivot-disposition-recommendation.md`) — PENDING human ratification.
 Bulk-archive of pre-pivot stories BLOCKED until human ratifies.
 
-**Adversarial counter: 0/3** (Pass-8 not clean; Pass-9 = clean-candidate 1/3).
+**Adversarial counter: 0/3** (Pass-9 not clean; Pass-10 = clean-candidate 1/3).
 5 original story gaps in durable_task_register (BURST-GAP-001..005) + F-P1-S-005 + F-P2-S03 (process-gaps).
 
 develop @ 2141adc — no v1A production code written.
-STATE.md = v7.64.
+STATE.md = v7.65.
 
 ---
 
-## Next Action: Phase-2 Adversarial Pass-9 (IMMEDIATE)
+## Next Action: Phase-2 Adversarial Pass-10 (IMMEDIATE)
 
 Dispatch `vsdd-factory:adversary` fresh-context on the full Phase-2 story corpus
-(S-033..S-048 + epics EPIC-08/09 + STORY-INDEX v5.40 + sprint-state v1.43 + all updated BC files).
-Pass-9 = clean-candidate 1/3. Counter 0/3.
+(S-033..S-048 + epics EPIC-08/09 + STORY-INDEX v5.41 + sprint-state v1.43 + all updated BC files).
+Pass-10 = clean-candidate 1/3. Counter 0/3.
 
 ### Phase-2 Burst A–G + Pass-1 through Pass-6 Fix Bursts Complete
 
@@ -56,9 +56,10 @@ All 7 bursts executed and committed to factory-artifacts. Pass-1 through Pass-6 
 | Pass-5 fix | story-writer + state-manager | S-047 scrollback wire-shape; dep-graph-expansion v2.0 Wave 8-9 DAG; AC-range corrections; S-042→S-043 dep edge; STORY-INDEX v5.37 (at Pass-5 authoring time) | DONE (D-310) |
 | Pass-6 fix | story-writer + product-owner + state-manager | wave-schedule v1.8 (S-042→S-043 4-location propagation); S-042 Dependency Justification + stale BC comment; 9 story authoring-note BC comments de-versioned; BC-2.05.011 v1.2.5 Story Anchor co-ownership; BC-INDEX v1.43.6 (at Pass-6 authoring time) | DONE (D-311) |
 | Pass-7 fix | architect + product-owner + story-writer + state-manager | BC-2.03.008 v1.0.8 Story Anchor S-045→S-033 (Approach 1); AC-009c; S-033 +BC-2.03.008 behavioral_contract; S-045 -BC-2.03.008 from behavioral_contracts; dep-graph-expansion v2.1 S-047 self-loop fixed; STORY-INDEX BC Coverage row (at Pass-7 authoring time v5.38); S-038 path; BC-INDEX v1.43.7 | DONE (D-311) |
-| Pass-8 fix | story-writer + state-manager | SE-25 bidirectional symmetry reconciliation across 4 artifacts; EPIC-08+EPIC-03 BC Coverage AC ranges corrected; S-045 AC renumber; dep-graph-expansion v2.2; STORY-INDEX v5.40; sprint-state v1.43 S-033/034/035/039 blocks + S-038 canonical title; version-pin-registry STORY-INDEX→5.40 | DONE (this burst) |
+| Pass-8 fix | story-writer + state-manager | SE-25 bidirectional symmetry reconciliation across 4 artifacts; EPIC-08+EPIC-03 BC Coverage AC ranges corrected; S-045 AC renumber; dep-graph-expansion v2.2; STORY-INDEX v5.40 (at Pass-8 authoring time); sprint-state v1.43 S-033/034/035/039 blocks + S-038 canonical title; version-pin-registry STORY-INDEX→5.40 | DONE (D-311) |
+| Pass-9 fix | story-writer + state-manager | S-033 v1.3 AC-009d BC-2.03.008 PC-3 spawn_unsupported; STORY-INDEX v5.41 26 BC Coverage Title cells normalized; S-033 body BC table title aligned; version-pin-registry STORY-INDEX→5.41 | DONE (this burst) |
 
-### Next: Phase-2 Adversarial Pass-9
+### Next: Phase-2 Adversarial Pass-10
 
 3 consecutive clean passes required. Adversarial counter: 0/3.
 
@@ -115,7 +116,7 @@ All versions derived from `.factory/specs/version-pin-registry.yaml` (source of 
 | ADR-0011 | v1.2.1 |
 | BC-INDEX | v1.43.7 (138 BCs; 25 v1A BCs) |
 | EVAL-INDEX | v1.16 |
-| STORY-INDEX | v5.40 |
+| STORY-INDEX | v5.41 |
 | sprint-state.yaml | v1.43 |
 
 ---
@@ -154,7 +155,7 @@ All versions derived from `.factory/specs/version-pin-registry.yaml` (source of 
 
 1. This file (NEXT-SESSION-RESUME.md) — concise entry point
 2. `/Users/jmagady/Dev/monocle/CLAUDE.md` — production-grade + agent-routing rules
-3. `.factory/STATE.md` `next_session_resume_protocol` block (v7.64) — full checkpoint,
+3. `.factory/STATE.md` `next_session_resume_protocol` block (v7.65) — full checkpoint,
    durable_task_register, section E ratified decisions
 
 ---
