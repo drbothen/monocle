@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-039
 epic_id: EPIC-09
-version: "1.2"
+version: "1.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -207,7 +207,7 @@ Files to MODIFY:
 | `crates/monocle-tui/src/event_loop.rs` | Wire `ServerToClient::PtyOutput` arm in IPC dispatch; call `on_pty_output` then `request_render()` |
 | `crates/monocle-tui/src/ui/mod.rs` | `pub mod embedded_terminal;` |
 | `crates/monocle-tui/Cargo.toml` | Add `vt100 = "=0.16.2"`, `tui-term = "=0.3.4"` to dependencies |
-| `crates/monocle-ipc/src/lib.rs` | Add `ServerToClient::PtyOutput { session_id: String, bytes: Vec<u8> }`, `ClientToServer::AttachSession { session_id: String }`, `ServerToClient::ScrollbackDumpComplete { session_id: String }` variants if absent |
+| `crates/monocle-ipc/src/lib.rs` | Add `ServerToClient::PtyOutput { session_id: String, bytes: Vec<u8> }`, `ClientToServer::AttachSession { session_id: String }` variants if absent; reference `ServerToClient::ScrollbackDumpComplete` (full 6-field shape: `{ session_id, total_chunks, cursor_row, cursor_col, pty_rows, pty_cols }` — defined/owned by S-047 per SS-ipc; S-039 CONSUMES this variant, do NOT define or add a partial shape here) |
 
 ## Token Budget Estimate
 

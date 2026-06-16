@@ -210,8 +210,8 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.42"
-  last_bump_commit: "[Phase-2 Pass-12 fix cycle — SE-25 global bidirectional symmetry reconciliation; done-story blocks back-propagation; dependency-graph v2.3; sprint-state v1.44 S-032 blocks added]"
+  current_version: "5.43"
+  last_bump_commit: "[Phase-2 Pass-15 fix cycle — S-045 Registry title synced to canonical H1 (F-P15-IMP-001 STORY-INDEX sibling)]"
   last_bump_date: "2026-06-16"
 
 VP-INDEX:

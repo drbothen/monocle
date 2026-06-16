@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.42"
+version: "5.43"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -95,7 +95,7 @@ traces_to: .factory/specs/prd.md
 | S-042 | PTY Resize Detection, 50ms Debounce, and ResizePane IPC | EPIC-09 | 5 | 9 | draft | S-043 |
 | S-043 | Scrollback Navigation — PtyScrollUp/Down, Per-Session Offsets, Configurable Capacity | EPIC-09 | 3 | 9 | draft | — |
 | S-044 | EmbeddedTerminal + SessionCreation AppMode Transitions, SessionCreation Wizard, SpawnAck, and Permission Badge+Bell | EPIC-09 | 13 | 9 | draft | — |
-| S-045 | ClaudeCodeModule::spawn_recipe() — Happy Path, CCR Injection, Error Cases, and Default Trait Impl | EPIC-03 | 5 | 8 | draft | — |
+| S-045 | ClaudeCodeModule::spawn_recipe() — Happy Path, CCR Injection, and Error Cases (Concrete Override Only; Default Trait Impl is S-033) | EPIC-03 | 5 | 8 | draft | — |
 | S-046 | PtyOutput Fan-out Broker — Bounded Channel, Backpressure, and Client Lifecycle | EPIC-05 | 5 | 8 | draft | S-047 |
 | S-047 | IPC Lifecycle Variants — Spawn/Kill/Detach/Attach/Rename/Input/Resize + Scrollback Protocol | EPIC-05 | 8 | 8 | draft | S-048 |
 | S-048 | Sessions Panel — Multi-Project Grouping, Lifecycle Actions, and State-Aware Blocking | EPIC-06 | 8 | 8 | draft | — |
@@ -498,6 +498,14 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.43
+
+**Phase-2 Pass-15 fix burst: S-045 title sync (F-P15-IMP-001)** (2026-06-16):
+
+- **F-P15-IMP-001 (S-045 Registry title sibling lag):** Registry table row title for S-045 synced to canonical H1 in S-045-claude-code-spawn-recipe.md. Stale title "Happy Path, CCR Injection, Error Cases, and Default Trait Impl" replaced with "Happy Path, CCR Injection, and Error Cases (Concrete Override Only; Default Trait Impl is S-033)". BC-2.03.008 anchor to S-033 unchanged. No other STORY-INDEX surface contained the stale title.
+- **NOTE FOR STATE-MANAGER:** RESOLVED — sprint-state.yaml S-045 title synced in same Pass-15 fix burst commit (sprint-state v1.44→v1.45).
+- SE-16d monotonicity: v5.43 timestamp 2026-06-16 >= v5.42 timestamp 2026-06-16. PASS.
 
 ## §Trace v5.42
 
