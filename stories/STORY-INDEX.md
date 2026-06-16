@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.41"
+version: "5.42"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -50,38 +50,38 @@ traces_to: .factory/specs/prd.md
 |----------|-------|------|--------|------|--------|--------|
 | S-PHASE-3-PREP | spec-kit-mcp Integration Sweep | EPIC-PREP | 3 | 0 | draft | (Phase 3 gate) |
 | S-DTU-001 | Claude Code Hook Protocol DTU Clone | EPIC-DTU | 3 | 1 | done | S-009 |
-| S-001 | Cargo Workspace Init + CI/DevOps Setup | EPIC-01 | 5 | 1 | done | S-002, S-003, S-004, S-005, S-006, S-009, S-010, S-013 |
-| S-002 | Healthz Endpoint | EPIC-01 | 3 | 2 | done | S-003, S-005 |
-| S-003 | Status Endpoint | EPIC-01 | 5 | 2 | done | S-004, S-005, S-009, S-010 |
-| S-004 | Body Size Limit | EPIC-01 | 2 | 2 | done | S-009 |
-| S-005 | Graceful Shutdown | EPIC-01 | 5 | 2 | done | — |
-| S-006 | Lock File Atomic Lifecycle | EPIC-01 | 8 | 2 | done | S-005, S-007, S-008, S-009 |
-| S-009 | Auth Token Wire Format + Header Validation | EPIC-01 | 8 | 3 | done | — |
+| S-001 | Cargo Workspace Init + CI/DevOps Setup | EPIC-01 | 5 | 1 | done | S-002, S-003, S-004, S-005, S-006, S-009, S-010, S-013, S-016, S-030 |
+| S-002 | Healthz Endpoint | EPIC-01 | 3 | 2 | done | S-003, S-005, S-018 |
+| S-003 | Status Endpoint | EPIC-01 | 5 | 2 | done | S-004, S-005, S-009, S-010, S-018 |
+| S-004 | Body Size Limit | EPIC-01 | 2 | 2 | done | S-009, S-018 |
+| S-005 | Graceful Shutdown | EPIC-01 | 5 | 2 | done | S-DAEMON-WIRE-FIX-001 |
+| S-006 | Lock File Atomic Lifecycle | EPIC-01 | 8 | 2 | done | S-005, S-007, S-008, S-009, S-016, S-017 |
+| S-009 | Auth Token Wire Format + Header Validation | EPIC-01 | 8 | 3 | done | S-017, S-018 |
 | S-010 | Populate monocle-core ABI Version Constant (FC-03) | EPIC-02 | 5 | 2 | done | S-011, S-012, S-014 |
-| S-011 | Non-Exhaustive Enum Policy | EPIC-02 | 3 | 2 | done | S-012 |
-| S-013 | HookEnvelope Proto Wire Format | EPIC-02 | 5 | 2 | done | — |
-| S-014 | EngineModule Trait Definition | EPIC-03 | 5 | 2 | done | S-015 |
+| S-011 | Non-Exhaustive Enum Policy | EPIC-02 | 3 | 2 | done | S-012, S-024 |
+| S-013 | HookEnvelope Proto Wire Format | EPIC-02 | 5 | 2 | done | S-021 |
+| S-014 | EngineModule Trait Definition | EPIC-03 | 5 | 2 | done | S-015, S-018, S-021, S-024, S-033 |
 | S-007 | Crash Recovery Checkpoint | EPIC-01 | 5 | 3 | done | — |
-| S-008 | JSONL Ring Format Version | EPIC-01 | 5 | 3 | done | S-009 |
-| S-012 | FactoryAdapter Trait + VsddFactoryAdapter | EPIC-02 | 8 | 3 | done | — |
-| S-015 | ClaudeCodeModule Implementation | EPIC-03 | 8 | 3 | done | — |
-| S-016 | Daemon Binary Crate Init + CLI Subcommands | EPIC-04 | 5 | 4 | done | S-017, S-019 |
+| S-008 | JSONL Ring Format Version | EPIC-01 | 5 | 3 | done | S-009, S-017, S-020 |
+| S-012 | FactoryAdapter Trait + VsddFactoryAdapter | EPIC-02 | 8 | 3 | done | S-017 |
+| S-015 | ClaudeCodeModule Implementation | EPIC-03 | 8 | 3 | done | S-017, S-033, S-045 |
+| S-016 | Daemon Binary Crate Init + CLI Subcommands | EPIC-04 | 5 | 4 | done | S-017, S-019, S-DAEMON-WIRE-FIX-001 |
 | S-024 | TUI Core Types: AppMode, Action, FocusSnapshot, transition(), 5-Level Dispatch | EPIC-06 | 8 | 4 | done | S-025, S-026, S-031 |
 | S-030 | Config Crate: Atomic Write, Schema v1, Missing/Corrupted Default, CCR Detection | EPIC-07 | 5 | 4 | done | S-025, S-031 |
-| S-017 | Daemon Start Sequence (SOQ-2) + Hook Tmpfile Generation | EPIC-04 | 8 | 5 | done | S-018, S-019, S-020, S-021 |
-| S-018 | Hook Endpoint Routing + Bounded Event Bus with Drop Counter | EPIC-04 | 8 | 5 | done | S-022, S-029 |
+| S-017 | Daemon Start Sequence (SOQ-2) + Hook Tmpfile Generation | EPIC-04 | 8 | 5 | done | S-018, S-019, S-020, S-021, S-033, S-DAEMON-WIRE-FIX-001 |
+| S-018 | Hook Endpoint Routing + Bounded Event Bus with Drop Counter | EPIC-04 | 8 | 5 | done | S-022, S-029, S-DAEMON-WIRE-FIX-001 |
 | S-019 | Daemon Auto-Start on TUI Launch + MONOCLE_NO_AUTOSTART | EPIC-04 | 5 | 5 | done | S-023 |
 | S-020 | JSONL Ring Capacity and Rotation Policy | EPIC-04 | 5 | 5 | done | — |
-| S-021 | UDS Server Bind + IPC Transport + Core Message Types | EPIC-05 | 8 | 5 | done | S-022, S-028 |
-| S-022 | TUI Client Connect, Initial State Push, and Permission Message Types | EPIC-05 | 8 | 6 | done | S-023, S-025, S-026, S-029 |
-| S-023 | TUI Reconnect After Daemon Restart + SOQ-3 Overlay Clear | EPIC-05 | 5 | 6 | done | S-026 |
-| S-025 | TUI Binary Skeleton, Ctrl-\ Popup Integration, and Sessions Panel | EPIC-06 | 8 | 6 | done | S-027, S-028, S-031 |
+| S-021 | UDS Server Bind + IPC Transport + Core Message Types | EPIC-05 | 8 | 5 | done | S-022, S-028, S-032, S-033, S-039, S-046, S-047 |
+| S-022 | TUI Client Connect, Initial State Push, and Permission Message Types | EPIC-05 | 8 | 6 | done | S-023, S-025, S-026, S-029, S-032, S-047, S-048 |
+| S-023 | TUI Reconnect After Daemon Restart + SOQ-3 Overlay Clear | EPIC-05 | 5 | 6 | done | S-026, S-047 |
+| S-025 | TUI Binary Skeleton, Ctrl-\ Popup Integration, and Sessions Panel | EPIC-06 | 8 | 6 | done | S-027, S-028, S-031, S-039, S-048 |
 | S-026 | Permission Overlay: VecDeque Stack, Decision Keybindings, Esc Hide, SOQ-3 | EPIC-06 | 13 | 6 | done | S-027, S-029 |
 | S-027 | Permission Overlay Rendering, Diff Preview (similar 3), Status Bar | EPIC-06 | 8 | 7 | done | S-029 |
-| S-028 | Sessions Panel Nucleo Filter + Event Ribbon Rolling Log | EPIC-06 | 5 | 7 | done | — |
+| S-028 | Sessions Panel Nucleo Filter + Event Ribbon Rolling Log | EPIC-06 | 5 | 7 | done | S-032, S-048 |
 | S-029 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | EPIC-06 | 5 | 7 | done | — |
 | S-031 | Profile Picker: Sticky-Per-Project Selection + Ctrl-P Override | EPIC-07 | 5 | 7 | done | — |
-| S-032 | Daemon Event-Bus Fan-Out: Broadcast HookEventReceived with daemon timestamp_micros | EPIC-05 | 5 | 8 | draft | — |
+| S-032 | Daemon Event-Bus Fan-Out: Broadcast HookEventReceived with daemon timestamp_micros | EPIC-05 | 5 | 8 | draft | S-046 |
 | S-DAEMON-WIRE-FIX-001 | Second-Signal Exit Codes (SigtermDuringDrain=143, SigintDuringDrain=130) | EPIC-04 | 5 | 8 | draft | — |
 | S-033 | SessionManager::spawn_session — SessionHostSpawner, SessionEntry, Sidecar, SpawnAck, and SessionStateChanged{Launching} | EPIC-08 | 8 | 8 | draft | S-034, S-035, S-036, S-037, S-038, S-044, S-045, S-047, S-048 |
 | S-034 | SessionManager::kill_session — DaemonToHost::Kill Within 500ms; Terminating/Terminated Transitions; 12s Watchdog | EPIC-08 | 8 | 8 | draft | S-036, S-037, S-047 |
@@ -498,6 +498,38 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.42
+
+**SE-25 global bidirectional dependency-symmetry reconciliation — done-story back-propagation + Wave 8 cross-edges** (2026-06-16):
+
+- **Scope:** Complete global pass over all 51 stories. 23 stories updated; 0 depends_on changes (all changes are blocks additions/removals only). Topological sort ACYCLIC confirmed. No status/points/wave changes.
+- **S-001.blocks:** Added S-013, S-016, S-030 (S-013/S-016/S-030 all have depends_on:[...,S-001]). v1.10→v1.11.
+- **S-002.blocks:** Added S-018 (S-018.depends_on includes S-002). v1.1→v1.2.
+- **S-003.blocks:** Added S-018 (S-018.depends_on includes S-003). v1.8→v1.9.
+- **S-004.blocks:** Added S-018 (S-018.depends_on includes S-004). v1.1→v1.2.
+- **S-005.blocks:** Added S-DAEMON-WIRE-FIX-001 (S-DAEMON-WIRE-FIX-001.depends_on includes S-005). v1.7→v1.8.
+- **S-006.blocks:** Added S-016, S-017 (S-016/S-017.depends_on includes S-006). v1.7→v1.8.
+- **S-008.blocks:** Added S-017, S-020 (S-017/S-020.depends_on includes S-008). v1.4→v1.5.
+- **S-009.blocks:** Added S-017, S-018 (S-017/S-018.depends_on includes S-009). v1.8→v1.9.
+- **S-010.blocks:** Removed S-013 (S-013.depends_on=[S-001] only — S-010 is NOT a direct prerequisite of S-013). v1.3→v1.4. STORY-INDEX Registry already had S-013 removed; frontmatter now matches.
+- **S-011.blocks:** Added S-024 (S-024.depends_on includes S-011). v1.3→v1.4.
+- **S-012.blocks:** Added S-017 (S-017.depends_on includes S-012). v1.5→v1.6.
+- **S-013.blocks:** Added S-021 (S-021.depends_on includes S-013). v1.3→v1.4.
+- **S-014.blocks:** Added S-018, S-021, S-024, S-033 (all have depends_on:[...,S-014]). v1.7→v1.8.
+- **S-015.blocks:** Added S-017, S-033, S-045 (all have depends_on:[...,S-015]). v1.8→v1.9.
+- **S-016.blocks:** Added S-DAEMON-WIRE-FIX-001 (S-DAEMON-WIRE-FIX-001.depends_on includes S-016). v1.1→v1.2.
+- **S-017.blocks:** Added S-033, S-DAEMON-WIRE-FIX-001 (both have depends_on:[...,S-017]). v1.1→v1.2.
+- **S-018.blocks:** Added S-DAEMON-WIRE-FIX-001 (S-DAEMON-WIRE-FIX-001.depends_on includes S-018). v1.2→v1.3.
+- **S-021.blocks:** Added S-028, S-032, S-033, S-039, S-046, S-047 (all have depends_on:[...,S-021]). v1.1→v1.2.
+- **S-022.blocks:** Added S-032, S-047, S-048 (all have depends_on:[...,S-022]). v1.4→v1.5.
+- **S-023.blocks:** Added S-047 (S-047.depends_on includes S-023). v1.2→v1.3.
+- **S-025.blocks:** Added S-039, S-048 (both have depends_on:[...,S-025]). v1.14→v1.15.
+- **S-028.blocks:** Added S-032, S-048 (both have depends_on:[...,S-028]). v1.6→v1.7.
+- **S-032.blocks:** Added S-046 (S-046.depends_on includes S-032). v1.0→v1.1.
+- **STORY-INDEX Registry Blocks columns:** Updated for all 23 affected stories to match frontmatter exactly.
+- **dependency-graph-expansion.md:** Adjacency table updated for all affected Wave 4-7 stories; Wave 8-9 adjacency table corrected for S-021 back-propagation. SE-25 §Trace v2.3 added. dep-graph bumped v2.2→v2.3.
+- SE-16d monotonicity: v5.42 timestamp 2026-06-16 >= v5.41 timestamp 2026-06-16. PASS.
 
 ## §Trace v5.41
 

@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.43"
+version: "1.44"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-03T08:00:00Z
@@ -437,6 +437,7 @@ stories:
     wave: 8
     points: 5
     status: draft
+    blocks: [S-046]
     assigned_to: null
     started_at: null
     completed_at: null
@@ -687,6 +688,12 @@ summary:
   # total_stories note: 51 = 33 Phase-3 stories (including S-PHASE-3-PREP and S-DTU-001) + 2 Wave-8
   #   pre-existing (S-032, S-DAEMON-WIRE-FIX-001) + 16 new v1A (S-033..S-048). Blocked count (1) is
   #   S-PHASE-3-PREP (blocked on vsdd-factory spec-kit-mcp rc.19+).
+  # v1.44 updates (2026-06-16):
+  # - Phase-2 adversarial Pass-12 fix cycle (SE-25 global bidirectional symmetry — done-story back-propagation).
+  # - S-032: blocks: [] → [S-046] added. SE-25 symmetry: S-046.depends_on includes S-032; S-032.blocks must list S-046.
+  # - SE-25 symmetry confirmed globally across all 4 artifacts: story frontmatters (23 files),
+  #   STORY-INDEX Registry Blocks column (v5.42), dependency-graph-expansion v2.3, sprint-state v1.44.
+  #   Graph remains ACYCLIC. No status/points/wave changes.
   # v1.43 errata (2026-06-16): corrected comment arithmetic 49→51 (comment-only; machine-read total_stories: 51 was already correct).
   # v1.43 updates (2026-06-16):
   # - Phase-2 adversarial Pass-8 fix cycle (SE-25 bidirectional symmetry reconciliation).

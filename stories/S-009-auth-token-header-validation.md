@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-009
 epic_id: EPIC-01
-version: "1.8"
+version: "1.9"
 status: done
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:00:00Z
@@ -13,7 +13,7 @@ wave: 3
 tdd_mode: strict
 priority: P0
 depends_on: [S-001, S-003, S-004, S-006, S-008, S-DTU-001]
-blocks: []
+blocks: [S-017, S-018]
 target_module: monocle-runtime
 subsystems: [SS-01]
 behavioral_contracts: [BC-2.01.008, BC-2.01.009]

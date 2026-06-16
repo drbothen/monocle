@@ -210,8 +210,8 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.41"
-  last_bump_commit: "[Phase-2 Pass-9 fix burst — BC-2.03.008 AC-009d PC-3 coverage added; 26 BC Coverage Title cells normalized to BC-INDEX canonical short form; §Trace v5.41 appended]"
+  current_version: "5.42"
+  last_bump_commit: "[Phase-2 Pass-12 fix cycle — SE-25 global bidirectional symmetry reconciliation; done-story blocks back-propagation; dependency-graph v2.3; sprint-state v1.44 S-032 blocks added]"
   last_bump_date: "2026-06-16"
 
 VP-INDEX:

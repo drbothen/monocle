@@ -1,7 +1,7 @@
 ---
 document_type: dependency-graph
 level: L4
-version: "2.2"
+version: "2.3"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -178,20 +178,20 @@ Critical path length: 8 stories, 63 total points (5+8+8+8+8+13+8+5 = 63 pts on p
 
 | Story | Wave | Pts | Depends On | Blocks |
 |-------|------|-----|------------|--------|
-| S-016 | 4 | 5 | S-001, S-006 | S-017, S-019 |
+| S-016 | 4 | 5 | S-001, S-006 | S-017, S-019, S-DAEMON-WIRE-FIX-001 |
 | S-024 | 4 | 8 | S-011, S-014 | S-025, S-026, S-031 |
 | S-030 | 4 | 5 | S-001 | S-025, S-031 |
-| S-017 | 5 | 8 | S-016, S-006, S-008, S-009, S-015, S-012 | S-018, S-019, S-020, S-021 |
-| S-018 | 5 | 8 | S-017, S-002, S-003, S-004, S-009, S-014 | S-022, S-029 |
+| S-017 | 5 | 8 | S-016, S-006, S-008, S-009, S-015, S-012 | S-018, S-019, S-020, S-021, S-033, S-DAEMON-WIRE-FIX-001 |
+| S-018 | 5 | 8 | S-017, S-002, S-003, S-004, S-009, S-014 | S-022, S-029, S-DAEMON-WIRE-FIX-001 |
 | S-019 | 5 | 5 | S-016, S-017 | S-023 |
 | S-020 | 5 | 5 | S-008, S-017 | — |
-| S-021 | 5 | 8 | S-017, S-014, S-013 | S-022, S-028 |
-| S-022 | 6 | 8 | S-021, S-018 | S-023, S-025, S-026, S-029 |
-| S-023 | 6 | 5 | S-022, S-019 | S-026 |
-| S-025 | 6 | 8 | S-024, S-022, S-030 | S-027, S-028, S-031 |
+| S-021 | 5 | 8 | S-017, S-014, S-013 | S-022, S-028, S-032, S-033, S-039, S-046, S-047 |
+| S-022 | 6 | 8 | S-021, S-018 | S-023, S-025, S-026, S-029, S-032, S-047, S-048 |
+| S-023 | 6 | 5 | S-022, S-019 | S-026, S-047 |
+| S-025 | 6 | 8 | S-024, S-022, S-030 | S-027, S-028, S-031, S-039, S-048 |
 | S-026 | 6 | 13 | S-024, S-022, S-023 | S-027, S-029 |
 | S-027 | 7 | 8 | S-026, S-025 | S-029 |
-| S-028 | 7 | 5 | S-025, S-021 | — |
+| S-028 | 7 | 5 | S-025, S-021 | S-032, S-048 |
 | S-029 | 7 | 5 | S-026, S-027, S-022, S-018 | — |
 | S-031 | 7 | 5 | S-030, S-024, S-025 | — |
 
@@ -532,6 +532,42 @@ Critical path through Waves 8-9: S-033 (8pts) → S-035 (8pts) → S-039 (8pts) 
 | S-042 | 9 | 5 | S-039 | S-043 |
 | S-043 | 9 | 3 | S-039, S-042 | — |
 | S-044 | 9 | 13 | S-033, S-035, S-040, S-041 | — |
+
+## §Trace v2.3 — SE-25 global bidirectional dependency-symmetry reconciliation — done-story back-propagation (2026-06-16)
+
+**Bump:** 2.2 → 2.3.
+**Scope:** Complete global SE-25 pass covering all 51 stories. Wave 4-7 adjacency table updated; Wave 8-9 adjacency table was already correct.
+
+**Wave 4-7 adjacency table changes:**
+- **S-016.blocks:** Added S-DAEMON-WIRE-FIX-001 (S-DAEMON-WIRE-FIX-001.depends_on includes S-016).
+- **S-017.blocks:** Added S-033, S-DAEMON-WIRE-FIX-001 (both have depends_on:[...,S-017]).
+- **S-018.blocks:** Added S-DAEMON-WIRE-FIX-001 (S-DAEMON-WIRE-FIX-001.depends_on includes S-018).
+- **S-021.blocks:** Added S-028, S-032, S-033, S-039, S-046, S-047 (all have depends_on:[...,S-021]).
+- **S-022.blocks:** Added S-032, S-047, S-048 (all have depends_on:[...,S-022]).
+- **S-023.blocks:** Added S-047 (S-047.depends_on includes S-023).
+- **S-025.blocks:** Added S-039, S-048 (both have depends_on:[...,S-025]).
+- **S-028.blocks:** Added S-032, S-048 (both have depends_on:[...,S-028]).
+
+**Wave 8-9 adjacency table:** Unchanged — S-032→S-046 already correct from v2.2.
+
+**Full done-story corrections (Waves 1-3, tracked in frontmatter + STORY-INDEX only — not in this adjacency table which covers W4-7+):**
+- S-001.blocks += S-013, S-016, S-030
+- S-002.blocks += S-018
+- S-003.blocks += S-018
+- S-004.blocks += S-018
+- S-005.blocks += S-DAEMON-WIRE-FIX-001
+- S-006.blocks += S-016, S-017
+- S-008.blocks += S-017, S-020
+- S-009.blocks += S-017, S-018
+- S-010.blocks -= S-013 (frontmatter fix; Registry was already correct)
+- S-011.blocks += S-024
+- S-012.blocks += S-017
+- S-013.blocks += S-021
+- S-014.blocks += S-018, S-021, S-024, S-033
+- S-015.blocks += S-017, S-033, S-045
+
+**Topological sort remains ACYCLIC.** All SE-25 fixes are edge-completions (adding missing reverse edges) — no new forward edges created.
+**SE-16d PASS:** 2026-06-16 >= 2026-06-16.
 
 ## §Trace v2.2 — SE-25 bidirectional dependency-symmetry reconciliation (2026-06-16)
 
