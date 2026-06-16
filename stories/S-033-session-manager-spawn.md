@@ -22,11 +22,12 @@ estimated_days: 4
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.001.md, version: "1.5.0"}
   - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.008.md, version: "1.3.0"}
-  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.0"}
-  - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.1"}
+  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.08.001 (spawn_session with SessionHostSpawner; SessionEntry; sidecar; SpawnAck) and BC-2.08.008 (SessionStateChanged{Launching} broadcast on spawn)"
-# BC status: BC-2.08.001 v1.5.3, BC-2.08.008 v1.3.3 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status at S-033 authoring time: BC-2.08.001 v1.5.3, BC-2.08.008 v1.3.3 — non-empty; status draft pending Phase-2 adversarial convergence gate
 ---
 
 # S-033: SessionManager::spawn_session — SessionHostSpawner, SessionEntry, Sidecar, SpawnAck, and SessionStateChanged{Launching}

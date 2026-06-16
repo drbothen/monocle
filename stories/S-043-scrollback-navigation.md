@@ -21,11 +21,12 @@ verification_properties: []
 estimated_days: 2
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.007.md, version: "1.1.1"}
-  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.6.0"}
-  - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.1"}
+  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.7.0"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.09.007 (scrollback 1000 default; configurable; PtyScrollUp/Down per-session offset navigation; status bar indicator)"
-# BC status: BC-2.09.007 v1.1.2 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status at S-043 authoring time: BC-2.09.007 v1.1.2 — non-empty; status draft pending Phase-2 adversarial convergence gate
 ---
 
 # S-043: Scrollback Navigation — PtyScrollUp/Down, Per-Session Offsets, Configurable Capacity

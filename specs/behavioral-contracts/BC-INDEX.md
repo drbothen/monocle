@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.43.4"
+version: "1.43.5"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-15T00:00:00Z
@@ -1223,6 +1223,30 @@ SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. 
 - BC-INDEX version: 1.40.4 → 1.40.5. No BC ID additions or retirements. No H1 title changes.
 
 SE-16d monotonicity: v1.40.5 timestamp 2026-06-14T20:00:00Z > v1.40.4 timestamp 2026-06-14T19:00:00Z. PASS.
+
+## §Trace v1.43.5
+
+**Phase-2 Pass-2 fix burst — SS-embedded-pty v1.7.0 Architecture Source pin propagation across SS-09 BCs** (2026-06-16):
+
+SS-embedded-pty bumped 1.6.0 → 1.7.0 (F-P2-I06 — §Dependency Boundary + core-owned mirror types). POL-11 sweep detected 7 BCs with stale Architecture Source pins for SS-embedded-pty.
+
+BC version bumps in this dispatch:
+- BC-2.09.001 v1.3.4 → v1.3.5 (Architecture Source SS-embedded-pty pin 1.6.0→1.7.0).
+- BC-2.09.002 v1.1.3 → v1.1.4 (Architecture Source SS-embedded-pty pin 1.6.0→1.7.0).
+- BC-2.09.003 v1.5.1 → v1.5.2 (Architecture Source SS-embedded-pty pin 1.6.0→1.7.0; §Trace v1.4.0 in-prose v1.6.0 references annotated version-pin-historical).
+- BC-2.09.004 v1.0.3 → v1.0.4 (Architecture Source SS-embedded-pty pin 1.6.0→1.7.0).
+- BC-2.09.005 v1.0.2 → v1.0.3 (Architecture Source SS-embedded-pty pin 1.6.0→1.7.0).
+- BC-2.09.006 v1.1.2 → v1.1.3 (Architecture Source SS-embedded-pty pin 1.6.0→1.7.0).
+- BC-2.09.007 v1.1.2 → v1.1.3 (Architecture Source SS-embedded-pty pin 1.6.0→1.7.0).
+- BC-2.09.008 v1.3.3 → v1.3.4 (Architecture Source SS-embedded-pty pin 1.6.0→1.7.0; §Trace v1.2.0/v1.2.1 v1.6.0 references annotated version-pin-historical).
+- BC-2.09.009 v1.1.3 → v1.1.4 (Architecture Source SS-embedded-pty pin 1.6.0→1.7.0).
+- BC-2.06.025 v1.5.3 → v1.5.4 (Architecture Source SS-embedded-pty pin 1.6.0→1.7.0).
+- BC-2.08.008 v1.3.3 → v1.3.4 (Architecture Source SS-embedded-pty pin 1.6.0→1.7.0; §Trace v1.2.0/v1.2.1 v1.6.0 references annotated version-pin-historical).
+
+No BC H1 title changes. No BC ID additions or retirements. BC count unchanged: 138 active.
+BC-INDEX version: 1.43.4 → 1.43.5.
+
+SE-16d monotonicity: v1.43.5 timestamp 2026-06-16 = v1.43.4 timestamp 2026-06-16. PASS (same-day sequential patch).
 
 ## §Trace v1.43.4
 

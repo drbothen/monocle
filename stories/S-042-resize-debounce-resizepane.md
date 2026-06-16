@@ -21,11 +21,12 @@ verification_properties: []
 estimated_days: 3
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.006.md, version: "1.1.1"}
-  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.6.0"}
-  - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.1"}
+  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.7.0"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.09.006 (resize detection, 50ms debounce, ResizePane IPC, local parser immediate resize)"
-# BC status: BC-2.09.006 v1.1.2 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status at S-042 authoring time: BC-2.09.006 v1.1.2 — non-empty; status draft pending Phase-2 adversarial convergence gate
 # NOTE: BC-2.09.006 was ABSENT from the original Burst B dispatch list but EXISTS in the BC file set.
 # It covers resize (PTY and parser resized within 2 render ticks; 50ms debounce) and must be covered per
 # the story-writer obligation to cover all v1A domain capabilities. This story is the coverage vehicle.

@@ -1,7 +1,7 @@
 ---
 document_type: architecture-index
 level: L3
-version: "1.0.29"
+version: "1.0.30"
 status: active
 producer: vsdd-factory:architect
 timestamp: 2026-06-03T23:30:00Z
@@ -773,6 +773,16 @@ tracked (not a silent-blindness path). No operative Phase-1 gate behavior change
 - NORMATIVE: version-pin-registry.yaml: ADR-0008 → v1.0.5; ARCH-INDEX → v1.0.24.
 - NORMATIVE: ARCH-INDEX version 1.0.23 → 1.0.24.
 - SE-16d PASS: 2026-05-30 >= chain high-water 2026-05-30 (sequential same-day patch).
+
+## §Trace v1.0.30
+
+**Phase-2 Pass-2 fix burst — SS-embedded-pty v1.7.0 + SS-deps-pin-manifest-v2-delta v1.0.2** (2026-06-16):
+
+- NORMATIVE: SS-embedded-pty.md bumped 1.6.0 → 1.7.0. §Dependency Boundary section added by architect (F-P2-I06). Canonicalizes Option B core-owned mirror types (`PtyKeyEvent`, `PtyMouseEvent`, `PtyRect`) in `monocle-core` with no crossterm/ratatui dependency; `keyboard_conv.rs` conversion module lives in `monocle-tui`. Function signatures in §Full-Fidelity Keyboard Encoding and §Mouse support updated to use core-owned types.
+- NORMATIVE: SS-deps-pin-manifest-v2-delta.md bumped 1.0.1 → 1.0.2. §Story Pin Rule added: all v1A stories must pin BOTH `SS-deps-pin-manifest.md` (v1.2.1) and `SS-deps-pin-manifest-v2-delta.md` (v1.0.2) in their `inputs:` section.
+- NORMATIVE: ARCH-INDEX version 1.0.29 → 1.0.30.
+- version-pin-registry.yaml: SS-embedded-pty → v1.7.0; SS-deps-pin-manifest-v2-delta → v1.0.2 (both updated in same burst by architect, per REGISTRY ATOMICITY rule — verified present in registry).
+- SE-16d PASS: 2026-06-16 >= chain high-water 2026-06-16 (same-day follow-on burst; monotonic).
 
 ## §Trace v1.0.29
 

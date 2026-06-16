@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.4"
+version: "1.3.5"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-16T00:00:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md, architecture/SS-ipc.md]
-input-hash: "599efba"
+input-hash: "4367e18"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-09
@@ -151,7 +151,7 @@ AppMode. A `Ctrl-D` or session termination also exits `EmbeddedTerminal` automat
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — session creation wizard and EmbeddedTerminal AppMode are both explicitly named in CAP-009; this BC covers the enter/exit transitions and the wizard auto-transition to EmbeddedTerminal |
 | Architecture Module | monocle-core (AppMode::EmbeddedTerminal, AppMode::SessionCreation variants, SessionCreationStep enum); monocle-tui (transition logic, wizard UI) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.6.0 §TUI AppMode Extensions (EmbeddedTerminal, SessionCreation with `launching_session_id: Option<String>`, SessionCreationStep — F-P41-IMP-001); §Session Creation Wizard (SpawnAck receipt + launching_session_id storage + auto-advance match logic); §State machine invariants; SS-ipc.md v1.24.0 §ServerToClient::SpawnAck (point-to-point delivery to requesting client; wizard storage and filtering obligation) |
+| Architecture Source | SS-embedded-pty.md v1.7.0 §TUI AppMode Extensions (EmbeddedTerminal, SessionCreation with `launching_session_id: Option<String>`, SessionCreationStep — F-P41-IMP-001); §Session Creation Wizard (SpawnAck receipt + launching_session_id storage + auto-advance match logic); §State machine invariants; SS-ipc.md v1.24.0 §ServerToClient::SpawnAck (point-to-point delivery to requesting client; wizard storage and filtering obligation) |
 | Test Name | test_BC_2_09_008_embedded_terminal_transitions |
 
 ## Related BCs
@@ -214,7 +214,7 @@ SE-16d monotonicity: v1.3.3 timestamp 2026-06-16T00:00:00Z > v1.3.2 timestamp 20
 **F-P46-IMP-001 — §Architecture Anchors: version parentheticals stripped; version-less navigational convention adopted** (2026-06-14):
 
 - **Change:** Removed ` (vX.Y.Z)` parentheticals from all 3 entries in §Architecture Anchors (SS-embedded-pty.md ×2, SS-ipc.md). No normative content changed.
-- **Rationale:** Version pins in navigational anchors duplicate the authoritative §Architecture Source Traceability-table row (POL-11-enforced) and are invisible to POL-11's ID↔version adjacency regex when in the `` `path#anchor` (vX.Y.Z) `` form. Eliminating the duplication removes the drift class entirely. Authoritative version citations remain in the §Architecture Source table unchanged: SS-embedded-pty.md v1.6.0, SS-ipc.md v1.22.0.
+- **Rationale:** Version pins in navigational anchors duplicate the authoritative §Architecture Source Traceability-table row (POL-11-enforced) and are invisible to POL-11's ID↔version adjacency regex when in the `` `path#anchor` (vX.Y.Z) `` form. Eliminating the duplication removes the drift class entirely. Authoritative version citations remain in the §Architecture Source table unchanged: SS-embedded-pty.md v1.6.0 <!-- version-pin-historical: canonical at §Trace v1.3.1 authoring time; superseded by v1.7.0 at Phase-2 Pass-2 fix burst -->, SS-ipc.md v1.22.0 <!-- version-pin-historical: canonical at §Trace v1.3.1 authoring time -->.
 - **Bump disposition:** Errata-no-bump (navigational-anchor-only change, precedent D-275). BC version stays at v1.3.1.
 
 **CV-SS-005-SIBLING — PC Step 4 (Launching): expand FIFO-only ordering claim to state BOTH causal step ordering AND per-client FIFO (mirroring BC-2.08.008 v1.2.1 fix)** (2026-06-14):
@@ -254,7 +254,7 @@ SE-16d monotonicity: v1.3.3 timestamp 2026-06-16T00:00:00Z > v1.3.2 timestamp 20
 
 ## §Trace v1.3.0
 
-**F-P41-IMP-001 — Wizard Step 4 (Launching): SpawnAck receipt + launching_session_id storage; Step 5 (auto-advance): deterministic match against launching_session_id; arch-source pins to SS-embedded-pty v1.6.0 + SS-ipc v1.22.0** (2026-06-14):
+**F-P41-IMP-001 — Wizard Step 4 (Launching): SpawnAck receipt + launching_session_id storage; Step 5 (auto-advance): deterministic match against launching_session_id; arch-source pins to SS-embedded-pty v1.6.0 <!-- version-pin-historical: canonical at §Trace v1.3.0 authoring time; superseded by v1.7.0 at Phase-2 Pass-2 fix burst --> + SS-ipc v1.22.0 <!-- version-pin-historical -->** (2026-06-14):
 
 - **PC Step 4 (Launching) — SpawnAck receipt (normative addition):** When
   `ServerToClient::SpawnAck { session_id }` is received, the wizard stores it:
@@ -276,7 +276,7 @@ SE-16d monotonicity: v1.3.3 timestamp 2026-06-16T00:00:00Z > v1.3.2 timestamp 20
   to ProfilePicker. (SpawnAck was already sent by the daemon for the failed spawn; the
   id is now stale.)
 
-- **Arch-source pin:** SS-embedded-pty.md v1.6.0 → v1.6.0 (new `launching_session_id`
+- **Arch-source pin:** SS-embedded-pty.md v1.6.0 <!-- version-pin-historical: at §Trace v1.3.0 authoring time, pin was confirmed as v1.6.0 → v1.6.0 (no-op update); superseded by v1.7.0 at Phase-2 Pass-2 fix burst --> → v1.6.0 (new `launching_session_id`
   field in `AppMode::SessionCreation`; wizard SpawnAck wiring — F-P41-IMP-001);
   SS-ipc.md v1.22.0 added (SpawnAck variant). Architecture Anchors updated to match.
 

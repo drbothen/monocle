@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "deps-pin-manifest-v2-delta"
 subsystem: cross-cutting
-version: "1.0.1"
+version: "1.0.2"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -16,6 +16,7 @@ inputs:
 input-hash: "7d806f1"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
+# Story inputs: pin policy for v1A stories — see §Story Pin Rule below.
 ---
 
 # SS-deps-pin-manifest v2 Delta
@@ -24,10 +25,42 @@ project: monocle
 
 This document specifies additions to `SS-deps-pin-manifest.md` (the canonical dependency manifest)
 required by the v1A control-center pivot. All existing Phase-1 pins and policies in
-SS-deps-pin-manifest.md (v1.2.1) remain in effect. The implementer applies both documents.
+`SS-deps-pin-manifest.md` remain in effect. The implementer applies BOTH documents together.
+The base manifest's frontmatter `version:` field is the authoritative current version of that
+document; the v1.2.1 reference at initial authoring time is an audit-trail marker only.
 
 **When SS-deps-pin-manifest.md is updated to incorporate these changes, this delta document's
 version becomes SUPERSEDED.**
+
+## Story Pin Rule (v1A SS-08/SS-09 stories)
+
+This rule governs the `inputs:` frontmatter of all v1A wave 8-9 stories (S-033..S-048+).
+
+**Rule: BOTH manifests — base + v2-delta — in every v1A story `inputs:` block.**
+
+Rationale: Every v1A story operates inside a workspace that instantiates ALL crates. An
+implementer touching any v1A crate (including `monocle-runtime`, `monocle-ipc`, `monocle-tui`,
+`monocle-session-host`) must be aware of the full pin set. The cost of an extra input reference
+is zero; the cost of an implementer missing an exact pin (e.g. `tui-term = "=0.3.4"`) is a
+workspace Cargo resolution error or a wrong crate version in the build.
+
+Stories that touch only workspace-wide deps (tokio, serde, tracing, etc.) still need the
+v2-delta pin because the workspace Cargo.toml already imports the v1A crates as members, and
+the workspace resolver applies the full dep graph at resolution time. A story that declares
+only the base manifest is missing normative coverage of the PTY-stack pins.
+
+Per-story exception: if a story is explicitly scoped to a crate that predates v1A and has zero
+transitive dependency on `monocle-session-host` or `monocle-tui::embedded_terminal`, a waiver
+may be noted in the story file with explicit justification. No v1A SS-08/SS-09 stories meet
+this exception.
+
+**Canonical pin pair for all v1A stories:**
+```yaml
+inputs:
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "CURRENT"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "CURRENT"}
+```
+Replace `CURRENT` with the versions in `version-pin-registry.yaml` at story-write time.
 
 ---
 
@@ -196,6 +229,23 @@ ADR-0011:
 <!-- version-pin-historical: S27-001 fix — this authoring-time instruction was completed at D-239/D-240; ARCH-INDEX was bumped to v1.0.27 at that time. This line is retained as a historical record only and must NOT be actioned again. -->
 
 ---
+
+## §Trace v1.0.2
+
+**Story Pin Rule added** (2026-06-16):
+
+- **Finding:** v1A wave 8-9 stories (S-033..S-048) were inconsistently pinning either the base
+  manifest only, the v2-delta only, or neither — caused by the absence of an explicit Story Pin
+  Rule in this document. Story-writers had no normative policy to cite, so each defaulted to
+  whichever manifest seemed more immediately relevant to the story's primary crates.
+- **Fix:** Added §Story Pin Rule section establishing BOTH manifests as mandatory inputs for all
+  v1A stories, with rationale (full workspace dep graph at resolution time). Added frontmatter
+  comment pointer `# Story inputs: pin policy for v1A stories — see §Story Pin Rule below.`
+- **Scope:** No crate version changes. No normative pin policy changes. MSRV unchanged.
+- **State-manager action:** update `version-pin-registry.yaml` `SS-deps-pin-manifest-v2-delta`
+  entry to `current_version: "1.0.2"` in the same factory-artifacts commit.
+  Also reconcile story inputs for S-033..S-048 per architect ruling (see ruling report).
+- Semver: patch (v1.0.1 → v1.0.2) — normative policy addition (Story Pin Rule); no crate change.
 
 ## §Trace v1.0.1
 

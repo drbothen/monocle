@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.2"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md]
-input-hash: "0798a3e"
+input-hash: "a129a45"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-09
@@ -97,7 +97,7 @@ from typed keystrokes and disable auto-indentation/escaping during paste.
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — full-fidelity keyboard forwarding in CAP-009 includes paste operations; bracketed paste is a standard terminal feature required for accurate paste handling in embedded terminal mode |
 | Architecture Module | monocle-tui (EmbeddedTerminal event dispatch, paste handling) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.6.0 §Bracketed paste |
+| Architecture Source | SS-embedded-pty.md v1.7.0 §Bracketed paste |
 | Test Name | test_BC_2_09_005_bracketed_paste_wrapped_in_bracket_sequences |
 
 ## Related BCs

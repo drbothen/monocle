@@ -23,11 +23,12 @@ inputs:
   - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.002.md, version: "1.1.2"}
   - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.004.md, version: "1.0.2"}
   - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.005.md, version: "1.0.1"}
-  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.6.0"}
-  - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.1"}
+  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.7.0"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.09.002 (full-fidelity keyboard forwarding — all v1A input classes), BC-2.09.004 (Kitty keyboard protocol CSI u sequences), BC-2.09.005 (bracketed paste)"
-# BC status: BC-2.09.002 v1.1.3, BC-2.09.004 v1.0.3, BC-2.09.005 v1.0.2 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status at S-040 authoring time: BC-2.09.002 v1.1.3, BC-2.09.004 v1.0.3, BC-2.09.005 v1.0.2 — non-empty; status draft pending Phase-2 adversarial convergence gate
 # Clustering rationale: BC-2.09.004 and BC-2.09.005 story anchors in their respective BCs both explicitly state "Same story as BC-2.09.002".
 # key_event_to_pty_bytes(), is_kitty_enhanced_key(), encode_kitty_key(), and bracketed-paste dispatch live in the same pure-core module.
 # All three BCs share the same monocle-core file, the same action dispatch arm, and the same KeyInput IPC send path.
@@ -140,24 +141,26 @@ standard VT. The VT fallback is used; no panic; no silent loss.
 
 ## Tasks
 
-- [ ] Implement `key_event_to_pty_bytes(event: KeyEvent) -> Option<Vec<u8>>` in `crates/monocle-core/src/keyboard.rs` per the full BC-2.09.002 PC-2 key translation table.
-- [ ] Implement `is_kitty_enhanced_key(code: KeyCode, mods: KeyModifiers) -> bool` in `crates/monocle-core/src/keyboard.rs`.
-- [ ] Implement `encode_kitty_key(code: KeyCode, mods: KeyModifiers, kind: KeyEventKind) -> Vec<u8>` in `crates/monocle-core/src/keyboard.rs` using CSI u encoding: `ESC [ <codepoint> ; <1 + modifier_bits> u`.
+- [ ] Define core-owned mirror types in `crates/monocle-core/src/keyboard.rs` per SS-embedded-pty.md §Core-Owned Mirror Types: `PtyKeyCode`, `PtyKeyModifiers`, `PtyKeyEventKind`, `PtyKeyEvent`, `PtyMouseButton`, `PtyMouseEventKind`, `PtyMouseEvent`, `PtyRect`. These types carry NO crossterm/ratatui dependency.
+- [ ] Implement `key_event_to_pty_bytes(event: PtyKeyEvent) -> Option<Vec<u8>>` in `crates/monocle-core/src/keyboard.rs` per the full BC-2.09.002 PC-2 key translation table. Uses `PtyKeyEvent` (core-owned), NOT `crossterm::event::KeyEvent`.
+- [ ] Implement `is_kitty_enhanced_key(code: &PtyKeyCode, mods: PtyKeyModifiers) -> bool` in `crates/monocle-core/src/keyboard.rs`. Uses core-owned types only.
+- [ ] Implement `encode_kitty_key(code: &PtyKeyCode, mods: PtyKeyModifiers, kind: PtyKeyEventKind) -> Vec<u8>` in `crates/monocle-core/src/keyboard.rs` using CSI u encoding: `ESC [ <codepoint> ; <1 + modifier_bits> u`. Uses core-owned types only.
+- [ ] Create `crates/monocle-tui/src/keyboard_conv.rs` (NEW file — this story's scope): implement `crossterm_key_to_pty(e: crossterm::event::KeyEvent) -> PtyKeyEvent` conversion. This is the ONLY place crossterm types touch monocle-core's keyboard path. See SS-embedded-pty.md §Conversion in monocle-tui for the full conversion template.
 - [ ] Implement `fn_key_bytes(n: u8) -> Vec<u8>` helper for F1–F12 per BC-2.09.002 table.
 - [ ] Add `EmbeddedTerminal` keyboard dispatch arm in `crates/monocle-tui/src/event_loop.rs`:
-  - Match `Event::Key(event)`: check for Esc (→ `Action::ExitEmbeddedTerminal`); else call `key_event_to_pty_bytes(event)`; if `Some(bytes)`, send `ClientToServer::KeyInput { session_id, bytes }`.
+  - Match `Event::Key(event)`: check for Esc (→ `Action::ExitEmbeddedTerminal`); else call `keyboard_conv::crossterm_key_to_pty(event)` to get `PtyKeyEvent`, then call `key_event_to_pty_bytes(pty_event)`; if `Some(bytes)`, send `ClientToServer::KeyInput { session_id, bytes }`. Crossterm type is converted at this dispatch boundary via `keyboard_conv`; `monocle-core` functions see only `PtyKeyEvent`.
   - Match `Event::Paste(text)`: wrap as `\x1b[200~` + text + `\x1b[201~`; send `ClientToServer::KeyInput`.
 - [ ] Add global TUI startup keyboard setup in `crates/monocle-tui/src/event_loop.rs`: `PushKeyboardEnhancementFlags` (4 flags) + `EnableBracketedPaste`. Detect Kitty support via `CSI ? u` query; log TRACE if unsupported and skip flags.
 - [ ] Add global TUI exit cleanup: `PopKeyboardEnhancementFlags` + `DisableBracketedPaste`.
-- [ ] Write unit test `test_BC_2_09_002_keyboard_forwarding_printable`: `Char('a') + NONE + Press` → `[0x61]`.
-- [ ] Write unit test `test_BC_2_09_002_keyboard_forwarding_ctrl`: `Char('c') + CTRL + Press` → `[0x03]`.
-- [ ] Write unit test `test_BC_2_09_002_keyboard_forwarding_arrows`: all four arrows → `\x1b[A`–`\x1b[D`.
-- [ ] Write unit test `test_BC_2_09_002_keyboard_forwarding_fn_keys`: F1–F4 → `\x1bOP`–`\x1bOS`; F5 → `\x1b[15~`.
-- [ ] Write unit test `test_BC_2_09_002_keyboard_forwarding_release_discarded`: `Char('a') + NONE + Release` → `None`.
-- [ ] Write unit test `test_BC_2_09_002_keyboard_forwarding_ctrl_d_eot`: `Char('d') + CTRL + Press` → `[0x04]`.
+- [ ] Write unit test `test_BC_2_09_002_keyboard_forwarding_printable`: `PtyKeyEvent { code: PtyKeyCode::Char('a'), modifiers: PtyKeyModifiers::NONE, kind: PtyKeyEventKind::Press }` → `key_event_to_pty_bytes(event) == Some(vec![0x61])`. Tests the pure `monocle-core` function directly — no crossterm types in the test.
+- [ ] Write unit test `test_BC_2_09_002_keyboard_forwarding_ctrl`: `PtyKeyEvent { code: PtyKeyCode::Char('c'), modifiers: PtyKeyModifiers::CONTROL, kind: Press }` → `Some(vec![0x03])`.
+- [ ] Write unit test `test_BC_2_09_002_keyboard_forwarding_arrows`: all four `PtyKeyCode::Up/Down/Left/Right` → `\x1b[A`–`\x1b[D`.
+- [ ] Write unit test `test_BC_2_09_002_keyboard_forwarding_fn_keys`: `PtyKeyCode::F(1..=4)` → `\x1bOP`–`\x1bOS`; `F(5)` → `\x1b[15~`.
+- [ ] Write unit test `test_BC_2_09_002_keyboard_forwarding_release_discarded`: `PtyKeyEventKind::Release` → `None`.
+- [ ] Write unit test `test_BC_2_09_002_keyboard_forwarding_ctrl_d_eot`: `PtyKeyCode::Char('d') + PtyKeyModifiers::CONTROL + Press` → `Some(vec![0x04])`.
 - [ ] Write unit test `test_BC_2_09_002_esc_not_forwarded_directly`: separate dispatch test; Esc intercepted as `ExitEmbeddedTerminal` before `key_event_to_pty_bytes`.
-- [ ] Write unit test `test_BC_2_09_004_kitty_ctrl_shift_enter`: `encode_kitty_key(Enter, CTRL|SHIFT, Press)` → `\x1b[13;6u`.
-- [ ] Write unit test `test_BC_2_09_004_kitty_unsupported_fallback`: `is_kitty_enhanced_key` returns false; standard table used; no panic.
+- [ ] Write unit test `test_BC_2_09_004_kitty_ctrl_shift_enter`: `encode_kitty_key(&PtyKeyCode::Enter, PtyKeyModifiers::CONTROL | PtyKeyModifiers::SHIFT, PtyKeyEventKind::Press)` → `\x1b[13;6u`.
+- [ ] Write unit test `test_BC_2_09_004_kitty_unsupported_fallback`: `is_kitty_enhanced_key(&PtyKeyCode::Enter, PtyKeyModifiers::NONE)` returns false; standard table used; no panic.
 - [ ] Write unit test `test_BC_2_09_005_bracketed_paste_wrapped`: `Event::Paste("hello world")` → `\x1b[200~hello world\x1b[201~`.
 - [ ] Write unit test `test_BC_2_09_005_bracketed_paste_empty`: `Event::Paste("")` → `\x1b[200~\x1b[201~`.
 
@@ -174,7 +177,9 @@ standard VT. The VT fallback is used; no panic; no silent loss.
 - `Event::Paste` MUST be a separate dispatch branch. It is NOT a `KeyEvent`. Do NOT route through `key_event_to_pty_bytes()`.
 - Kitty flags enabled globally at startup (NOT gated on EmbeddedTerminal entry). Mouse capture is NOT enabled at startup (that is S-041's responsibility, scoped to EmbeddedTerminal entry).
 - `encode_kitty_key` modifier encoding: modifier_value = 1 + sum(active bits: Shift=1, Alt=2, Ctrl=4). This is `1 + shift_bit + alt_bit + ctrl_bit`, NOT bitflags.
-- Forbidden dependency: `monocle-core` MUST NOT depend on `monocle-tui`, `monocle-runtime`, or `crossterm` directly (only via feature flags or re-exports from `monocle-tui`).
+- Forbidden dependency: `monocle-core` MUST NOT depend on `monocle-tui`, `monocle-runtime`, `crossterm`, or `ratatui` — no exceptions, no feature-flag workarounds, no re-exports from `monocle-tui`. SS-tui.md §Scope states categorically: "`monocle-core` — pure data types. No I/O, no ratatui, no crossterm." This is the F-P2-I06 ruling (SS-embedded-pty.md §Dependency Boundary).
+- The pure keyboard functions in `monocle-core/src/keyboard.rs` use ONLY core-owned mirror types (`PtyKeyEvent`, `PtyKeyCode`, `PtyKeyModifiers`, `PtyKeyEventKind`). These are defined in the same file and carry no external crate dependency.
+- Conversion from crossterm types to Pty* types is confined to the NEW file `crates/monocle-tui/src/keyboard_conv.rs` (added in this story's scope). This file is the ONLY place in the workspace where crossterm types touch the monocle-core purity boundary. Adding any crossterm or ratatui type to `monocle-core/Cargo.toml` is FORBIDDEN.
 
 ## Library and Framework Requirements
 
@@ -190,14 +195,16 @@ Files to CREATE:
 
 | File | Purpose |
 |------|---------|
-| `crates/monocle-core/src/keyboard.rs` | `key_event_to_pty_bytes()`, `is_kitty_enhanced_key()`, `encode_kitty_key()`, `fn_key_bytes()` pure functions |
+| `crates/monocle-core/src/keyboard.rs` | Core-owned mirror types (`PtyKeyCode`, `PtyKeyModifiers`, `PtyKeyEventKind`, `PtyKeyEvent`, `PtyMouseButton`, `PtyMouseEventKind`, `PtyMouseEvent`, `PtyRect`); pure functions `key_event_to_pty_bytes()`, `is_kitty_enhanced_key()`, `encode_kitty_key()`, `fn_key_bytes()` — no crossterm/ratatui dep |
+| `crates/monocle-tui/src/keyboard_conv.rs` | `crossterm_key_to_pty()` conversion (NEW file, this story's scope — the ONLY place crossterm types touch the monocle-core purity boundary). S-041 extends this file with `crossterm_mouse_to_pty()` and `ratatui_rect_to_pty()` in that story's scope. |
 
 Files to MODIFY:
 
 | File | Change |
 |------|--------|
 | `crates/monocle-core/src/lib.rs` | `pub mod keyboard;` |
-| `crates/monocle-tui/src/event_loop.rs` | Add global Kitty+paste setup on TUI startup; add `EmbeddedTerminal` event dispatch arm (Key → key_event_to_pty_bytes → KeyInput send; Paste → bracket-wrap → KeyInput send; Esc intercept) |
+| `crates/monocle-tui/src/lib.rs` (or mod declaration file) | `pub mod keyboard_conv;` |
+| `crates/monocle-tui/src/event_loop.rs` | Add global Kitty+paste setup on TUI startup; add `EmbeddedTerminal` event dispatch arm (Key → `keyboard_conv::crossterm_key_to_pty(event)` → `key_event_to_pty_bytes(pty_event)` → KeyInput send; Paste → bracket-wrap → KeyInput send; Esc intercept) |
 | `crates/monocle-ipc/src/lib.rs` | Ensure `ClientToServer::KeyInput { session_id: String, bytes: Vec<u8> }` exists; add if absent |
 
 ## Token Budget Estimate
@@ -228,9 +235,11 @@ Within the 30% context window bound. No split required.
 
 | Component | Module/File | Pure/Effectful |
 |-----------|------------|----------------|
-| `key_event_to_pty_bytes()` | `monocle-core/src/keyboard.rs` | Pure core (no I/O; deterministic) |
-| `is_kitty_enhanced_key()` | `monocle-core/src/keyboard.rs` | Pure core (no I/O) |
-| `encode_kitty_key()` | `monocle-core/src/keyboard.rs` | Pure core (no I/O) |
+| `PtyKeyEvent`, `PtyKeyCode`, `PtyKeyModifiers`, `PtyKeyEventKind` (mirror types) | `monocle-core/src/keyboard.rs` | Pure core (data types; no crossterm/ratatui dep) |
+| `key_event_to_pty_bytes(event: PtyKeyEvent) -> Option<Vec<u8>>` | `monocle-core/src/keyboard.rs` | Pure core (no I/O; deterministic; uses Pty* types only) |
+| `is_kitty_enhanced_key(code: &PtyKeyCode, mods: PtyKeyModifiers) -> bool` | `monocle-core/src/keyboard.rs` | Pure core (no I/O) |
+| `encode_kitty_key(code: &PtyKeyCode, mods: PtyKeyModifiers, kind: PtyKeyEventKind) -> Vec<u8>` | `monocle-core/src/keyboard.rs` | Pure core (no I/O) |
+| `crossterm_key_to_pty(e: KeyEvent) -> PtyKeyEvent` | `monocle-tui/src/keyboard_conv.rs` (NEW) | Effectful shell boundary (infallible field-by-field crossterm → Pty* conversion; the ONLY place crossterm types touch the core purity boundary) |
 | EmbeddedTerminal key dispatch arm | `monocle-tui/src/event_loop.rs` | Effectful shell (IPC send) |
 | Bracketed paste dispatch arm | `monocle-tui/src/event_loop.rs` | Effectful shell (IPC send) |
 | Kitty flag setup (TUI startup/exit) | `monocle-tui/src/event_loop.rs` | Effectful shell (terminal device I/O) |

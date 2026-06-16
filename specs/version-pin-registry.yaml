@@ -130,9 +130,9 @@ SS-session-manager:
 
 SS-embedded-pty:
   path: specs/architecture/SS-embedded-pty.md
-  current_version: "1.6.0"
-  last_bump_commit: "[Pass-41 F-P41-IMP-001 D-283 — new AppMode::SessionCreation.launching_session_id: Option<String> field; auto-advance to EmbeddedTerminal matches SessionStateChanged{Running} against launching_session_id]"
-  last_bump_date: "2026-06-14"
+  current_version: "1.7.0"
+  last_bump_commit: "[F-P2-I06 ruling — monocle-core crossterm/ratatui dep boundary: Option B core-owned types (PtyKeyEvent, PtyMouseEvent, PtyRect); keyboard_conv conversion module in monocle-tui; canonical function signatures updated]"
+  last_bump_date: "2026-06-16"
 
 SS-engine-module-v2-delta:
   path: specs/architecture/SS-engine-module-v2-delta.md
@@ -148,9 +148,9 @@ SS-daemon-wiring-v2-delta:
 
 SS-deps-pin-manifest-v2-delta:
   path: specs/architecture/SS-deps-pin-manifest-v2-delta.md
-  current_version: "1.0.1"
-  last_bump_commit: "[Pass-27 S27-001 — stale ARCH-INDEX bump instruction annotated historical (S27-001); no normative change]"
-  last_bump_date: "2026-06-13"
+  current_version: "1.0.2"
+  last_bump_commit: "[Phase-2 Pass-2 — Story Pin Rule added; v1A story inputs policy established (BOTH manifests)]"
+  last_bump_date: "2026-06-16"
 
 # ───────────────────────────────────────────────────────────────────────────────
 # ADR files
@@ -198,21 +198,21 @@ ADR-0011:
 
 ARCH-INDEX:
   path: specs/architecture/ARCH-INDEX.md
-  current_version: "1.0.29"
-  last_bump_commit: "[Phase-2 Pass-1 fix burst — §Trace v1.0.29: SS-ipc v1.24.0 per-client fan-out channel canonicalization registered]"
+  current_version: "1.0.30"
+  last_bump_commit: "[Phase-2 Pass-2 fix burst — §Trace v1.0.30: SS-embedded-pty v1.7.0 F-P2-I06 + SS-deps-pin-manifest-v2-delta v1.0.2 Story Pin Rule; all 16 v1A stories inputs reconciled]"
   last_bump_date: "2026-06-16"
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.43.4"
-  last_bump_commit: "[Phase-2 Pass-1 fix burst cascade — §Trace v1.43.1: SS-ipc v1.24.0 Architecture Source pin propagation across BC-2.06.025/BC-2.08.001/BC-2.08.005/BC-2.08.008/BC-2.09.008]"
+  current_version: "1.43.5"
+  last_bump_commit: "[Phase-2 Pass-2 fix burst — §Trace v1.43.5: SS-embedded-pty v1.7.0 Architecture Source pin propagation across BC-2.09.003/004/005/006/007/008/009]"
   last_bump_date: "2026-06-16"
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.33"
-  last_bump_commit: "[Burst-F D-305 — Phase-2 delta story decomposition: S-033..S-048 added (Waves 8-9); EPIC-08/EPIC-09 added; BC coverage table filled for 25 v1A BCs; sprint-state v1.41]"
-  last_bump_date: "2026-06-15"
+  current_version: "5.34"
+  last_bump_commit: "[Phase-2 Pass-2 fix burst — BC-2.05.011 co-ownership row S-046+S-047 added; story-writer conformance burst 10-fix]"
+  last_bump_date: "2026-06-16"
 
 VP-INDEX:
   path: specs/verification-properties/VP-INDEX.md
@@ -743,8 +743,8 @@ BC-2.05.011:
 
 BC-2.06.025:
   path: specs/behavioral-contracts/ss-06/BC-2.06.025.md
-  current_version: "1.5.3"
-  last_bump_commit: "[Phase-2 Pass-1 fix burst — SS-ipc pin updated 1.23.2 → 1.24.0 in Architecture Source cell]"
+  current_version: "1.5.4"
+  last_bump_commit: "[Phase-2 Pass-2 fix burst — SS-embedded-pty arch-source pin 1.6.0→1.7.0]"
   last_bump_date: "2026-06-16"
 
 BC-2.08.001:
@@ -791,63 +791,63 @@ BC-2.08.007:
 
 BC-2.08.008:
   path: specs/behavioral-contracts/ss-08/BC-2.08.008.md
-  current_version: "1.3.3"
-  last_bump_commit: "[Phase-2 Pass-1 fix burst — SS-ipc pin updated 1.23.2 → 1.24.0 in Architecture Source cell]"
+  current_version: "1.3.4"
+  last_bump_commit: "[Phase-2 Pass-2 fix burst — SS-embedded-pty arch-source pin 1.6.0→1.7.0; §Trace v1.2.0/v1.2.1 v1.6.0 references annotated version-pin-historical]"
   last_bump_date: "2026-06-16"
 
 BC-2.09.001:
   path: specs/behavioral-contracts/ss-09/BC-2.09.001.md
-  current_version: "1.3.4"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-039]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.3.5"
+  last_bump_commit: "[Phase-2 Pass-2 fix burst — SS-embedded-pty arch-source pin 1.6.0→1.7.0]"
+  last_bump_date: "2026-06-16"
 
 BC-2.09.002:
   path: specs/behavioral-contracts/ss-09/BC-2.09.002.md
-  current_version: "1.1.3"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-040]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.1.4"
+  last_bump_commit: "[Phase-2 Pass-2 fix burst — SS-embedded-pty arch-source pin 1.6.0→1.7.0]"
+  last_bump_date: "2026-06-16"
 
 BC-2.09.003:
   path: specs/behavioral-contracts/ss-09/BC-2.09.003.md
-  current_version: "1.5.1"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-041]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.5.2"
+  last_bump_commit: "[Phase-2 Pass-2 fix burst — SS-embedded-pty arch-source pin 1.6.0→1.7.0; §Trace v1.4.0 v1.6.0 annotated version-pin-historical]"
+  last_bump_date: "2026-06-16"
 
 BC-2.09.004:
   path: specs/behavioral-contracts/ss-09/BC-2.09.004.md
-  current_version: "1.0.3"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-040 (clusters with BC-2.09.002)]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.0.4"
+  last_bump_commit: "[Phase-2 Pass-2 fix burst — SS-embedded-pty arch-source pin 1.6.0→1.7.0]"
+  last_bump_date: "2026-06-16"
 
 BC-2.09.005:
   path: specs/behavioral-contracts/ss-09/BC-2.09.005.md
-  current_version: "1.0.2"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-040 (clusters with BC-2.09.002)]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.0.3"
+  last_bump_commit: "[Phase-2 Pass-2 fix burst — SS-embedded-pty arch-source pin 1.6.0→1.7.0]"
+  last_bump_date: "2026-06-16"
 
 BC-2.09.006:
   path: specs/behavioral-contracts/ss-09/BC-2.09.006.md
-  current_version: "1.1.2"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-042; missing anchor from original dispatch list]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.1.3"
+  last_bump_commit: "[Phase-2 Pass-2 fix burst — SS-embedded-pty arch-source pin 1.6.0→1.7.0]"
+  last_bump_date: "2026-06-16"
 
 BC-2.09.007:
   path: specs/behavioral-contracts/ss-09/BC-2.09.007.md
-  current_version: "1.1.2"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-043]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.1.3"
+  last_bump_commit: "[Phase-2 Pass-2 fix burst — SS-embedded-pty arch-source pin 1.6.0→1.7.0]"
+  last_bump_date: "2026-06-16"
 
 BC-2.09.008:
   path: specs/behavioral-contracts/ss-09/BC-2.09.008.md
-  current_version: "1.3.4"
-  last_bump_commit: "[Phase-2 Pass-1 fix burst — EC-303 SpawnAck non-matching-filter (PO); SS-ipc pin updated 1.23.2 → 1.24.0 in Architecture Source cell]"
+  current_version: "1.3.5"
+  last_bump_commit: "[Phase-2 Pass-2 fix burst — SS-embedded-pty arch-source pin 1.6.0→1.7.0; §Trace v1.3.0/v1.3.1 v1.6.0 references annotated version-pin-historical]"
   last_bump_date: "2026-06-16"
 
 BC-2.09.009:
   path: specs/behavioral-contracts/ss-09/BC-2.09.009.md
-  current_version: "1.1.3"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-044]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.1.4"
+  last_bump_commit: "[Phase-2 Pass-2 fix burst — SS-embedded-pty arch-source pin 1.6.0→1.7.0]"
+  last_bump_date: "2026-06-16"
 
 BC-HOOK-039:
   path: specs/behavioral-contracts/ss-dtu/BC-HOOK-039.md

@@ -22,11 +22,12 @@ estimated_days: 4
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.003.md, version: "1.4.0"}
   - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.008.md, version: "1.3.0"}
-  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.0"}
-  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.0"}
+  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.08.003 (kill_session: SIGTERM via DaemonToHost::Kill within 500ms; Terminating/Terminated transitions; 12s watchdog) and BC-2.08.008 (SessionStateChanged{Terminating/Terminated} broadcast)"
-# BC status: BC-2.08.003 v1.4.2, BC-2.08.008 v1.3.3 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status at S-034 authoring time: BC-2.08.003 v1.4.2, BC-2.08.008 v1.3.3 — non-empty; status draft pending Phase-2 adversarial convergence gate
 ---
 
 # S-034: SessionManager::kill_session — DaemonToHost::Kill Within 500ms; Terminating/Terminated Transitions; 12s Watchdog

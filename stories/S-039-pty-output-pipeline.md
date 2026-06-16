@@ -21,11 +21,12 @@ verification_properties: []
 estimated_days: 4
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.001.md, version: "1.3.2"}
-  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.6.0"}
-  - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.1"}
+  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.7.0"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.09.001 (PTY output renders within 100ms; vt100::Parser pipeline; auto-attach on first entry; scrollback dump buffering and replay)"
-# BC status: BC-2.09.001 v1.3.4 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status at S-039 authoring time: BC-2.09.001 v1.3.4 — non-empty; status draft pending Phase-2 adversarial convergence gate
 ---
 
 # S-039: PTY Output Pipeline — vt100::Parser, PseudoTerminal Render, PtyOutput IPC Handler, Auto-Attach on First Entry

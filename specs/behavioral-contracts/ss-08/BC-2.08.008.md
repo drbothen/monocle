@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.3"
+version: "1.3.4"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-14T18:00:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/SS-embedded-pty.md, architecture/SS-ipc.md, architecture/SS-daemon-wiring-v2-delta.md]
-input-hash: "fe8447e"
+input-hash: "d9ff793"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-08
@@ -197,7 +197,7 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC defines the `SessionStateChanged` IPC message which is the primary notification mechanism for session lifecycle state transitions; it is the trigger for the wizard auto-advance and EmbeddedTerminal exit, both of which are core session lifecycle behaviors in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager state transitions → broker publish); monocle-ipc (`ServerToClient::SessionStateChanged` variant); monocle-tui (wizard auto-advance, EmbeddedTerminal exit handlers) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.6.1 §Session lifecycle state machine (state transitions, including re-discovery GC and Detached re-discovery; IPC handler generates UUID + sends SpawnAck before spawn_session()); SS-embedded-pty.md v1.6.0 §TUI AppMode Extensions (SessionCreation::Launching auto-transition to EmbeddedTerminal; `launching_session_id: Option<String>` field added — F-P41-IMP-001); SS-ipc.md v1.24.0 §ServerToClient::SpawnAck (new variant; per-client point-to-point delivery before SessionStateChanged{Launching}); SS-daemon-wiring-v2-delta.md v1.11.4 §3b (SessionStateChanged emission rule, ordered-pair-split-on-Full disconnect rule, rename-only-SessionListUpdate rule) |
+| Architecture Source | SS-session-manager.md v2.6.1 §Session lifecycle state machine (state transitions, including re-discovery GC and Detached re-discovery; IPC handler generates UUID + sends SpawnAck before spawn_session()); SS-embedded-pty.md v1.7.0 §TUI AppMode Extensions (SessionCreation::Launching auto-transition to EmbeddedTerminal; `launching_session_id: Option<String>` field added — F-P41-IMP-001); SS-ipc.md v1.24.0 §ServerToClient::SpawnAck (new variant; per-client point-to-point delivery before SessionStateChanged{Launching}); SS-daemon-wiring-v2-delta.md v1.11.4 §3b (SessionStateChanged emission rule, ordered-pair-split-on-Full disconnect rule, rename-only-SessionListUpdate rule) |
 | Cross-Ref | BC-2.09.008 (SessionCreation wizard auto-transition to EmbeddedTerminal on Running); BC-2.08.003 (kill → Terminating transition; 12s watchdog → Terminated); BC-2.05.003 (SessionListUpdate — emitted concurrently with SessionStateChanged for same transition) |
 | Test Name | test_BC_2_08_008_session_state_changed_emitted_on_every_transition |
 
@@ -254,7 +254,7 @@ VP-TBD — SessionStateChanged emission and TUI response integration tests (fill
 **F-P46-IMP-001 — §Architecture Anchors: version parentheticals stripped; version-less navigational convention adopted** (2026-06-14):
 
 - **Change:** Removed ` (vX.Y.Z)` parentheticals from all 3 entries in §Architecture Anchors (SS-session-manager.md, SS-embedded-pty.md, SS-ipc.md). No normative content changed.
-- **Rationale:** Version pins in navigational anchors duplicate the authoritative §Architecture Source Traceability-table row (POL-11-enforced) and are invisible to POL-11's ID↔version adjacency regex when in the `` `path#anchor` (vX.Y.Z) `` form. Eliminating the duplication removes the drift class entirely. Authoritative version citations remain in the §Architecture Source table unchanged: SS-session-manager.md v2.4.0, SS-embedded-pty.md v1.6.0, SS-ipc.md v1.22.0.
+- **Rationale:** Version pins in navigational anchors duplicate the authoritative §Architecture Source Traceability-table row (POL-11-enforced) and are invisible to POL-11's ID↔version adjacency regex when in the `` `path#anchor` (vX.Y.Z) `` form. Eliminating the duplication removes the drift class entirely. Authoritative version citations remain in the §Architecture Source table unchanged: SS-session-manager.md v2.4.0 <!-- version-pin-historical: at §Trace v1.2.1 authoring time -->, SS-embedded-pty.md v1.6.0 <!-- version-pin-historical: canonical at §Trace v1.2.1 authoring time; superseded by v1.7.0 at Phase-2 Pass-2 fix burst -->, SS-ipc.md v1.22.0 <!-- version-pin-historical: at §Trace v1.2.1 authoring time -->.
 - **Bump disposition:** Errata-no-bump (navigational-anchor-only change, precedent D-275). BC version stays at v1.2.1.
 
 **CV-SS-005 — PC-5 SpawnAck ordering guarantee completed with causal step ordering** (2026-06-14):
@@ -289,11 +289,11 @@ VP-TBD — SessionStateChanged emission and TUI response integration tests (fill
 
 ## §Trace v1.2.0
 
-**F-P41-IMP-001 — PC-5 destructure corrected to `launching_session_id`; EC-303 SpawnAck mechanism added; arch-source pins to SS-embedded-pty v1.6.0 + SS-ipc v1.22.0** (2026-06-14):
+**F-P41-IMP-001 — PC-5 destructure corrected to `launching_session_id`; EC-303 SpawnAck mechanism added; arch-source pins to SS-embedded-pty v1.6.0 <!-- version-pin-historical: canonical at §Trace v1.2.0 authoring time; superseded by v1.7.0 --> + SS-ipc v1.22.0 <!-- version-pin-historical -->** (2026-06-14):
 
 - **PC-5 destructure (normative rewrite):** The old pattern
   `AppMode::SessionCreation { step: Launching, session_id }` was incorrect — the struct
-  has no bare `session_id` field. Under F-P41-IMP-001 (SS-embedded-pty.md v1.6.0),
+  has no bare `session_id` field. Under F-P41-IMP-001 (SS-embedded-pty.md v1.6.0 <!-- version-pin-historical: version at §Trace v1.2.0 authoring time -->),
   `AppMode::SessionCreation` gains `launching_session_id: Option<String>` (populated from
   `ServerToClient::SpawnAck { session_id }` receipt). The correct destructure is:
   `AppMode::SessionCreation { step: Launching, launching_session_id: Some(session_id), .. }`.
@@ -309,7 +309,7 @@ VP-TBD — SessionStateChanged emission and TUI response integration tests (fill
   received (even though `SpawnAck` was already received for the failed spawn). Retry
   spawn re-populates from the new `SpawnAck`.
 
-- **Arch-source pin:** SS-embedded-pty.md v1.6.0 → v1.6.0 (new `launching_session_id`
+- **Arch-source pin:** SS-embedded-pty.md v1.6.0 <!-- version-pin-historical: at §Trace v1.2.0 authoring time, pin confirmed as v1.6.0 → v1.6.0 (no-op update); superseded by v1.7.0 at Phase-2 Pass-2 fix burst --> → v1.6.0 (new `launching_session_id`
   field in `AppMode::SessionCreation` — F-P41-IMP-001); SS-ipc.md v1.22.0 → v1.21.0
   (new `ServerToClient::SpawnAck` variant). Architecture Anchors updated to match.
 

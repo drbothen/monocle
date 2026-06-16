@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.33"
+version: "5.34"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-03T08:30:00Z
@@ -203,7 +203,7 @@ traces_to: .factory/specs/prd.md
 | BC-2.03.008 | EngineModule::spawn_recipe() Default Trait Impl | S-045 | AC-010..AC-011 | YES |
 | BC-2.05.009 | PtyOutput Fan-out Broker: Bounded Channel + Backpressure | S-046 | AC-001..AC-006 | YES |
 | BC-2.05.010 | IPC Lifecycle Variants: Spawn/Kill/Detach/Attach/Rename/Input/Resize | S-047 | AC-001..AC-009 | YES |
-| BC-2.05.011 | Scrollback Protocol: PtyReset/ScrollbackChunk/ScrollbackComplete | S-047 | AC-010..AC-014 | YES |
+| BC-2.05.011 | Scrollback Protocol: PtyReset/ScrollbackChunk/ScrollbackComplete | S-046 (PtyReset variant + broker emission), S-047 (TUI handler + scrollback protocol: AC-007..AC-010) | S-046: AC-005 (PtyReset emit); S-047: AC-007..AC-010 (scrollback + TUI reset) | YES |
 | BC-2.06.025 | Sessions Panel: Multi-Project Grouping, Lifecycle Actions, State-Aware Blocking | S-048 | AC-001..AC-010 | YES |
 | BC-2.08.001 | SessionManager::spawn_session — SessionHostSpawner + SpawnAck Handshake | S-033 | AC-001..AC-007 | YES |
 | BC-2.08.002 | SessionManager::rediscover_sessions — setsid Persistence + State Handling | S-036 | AC-001..AC-006 | YES |

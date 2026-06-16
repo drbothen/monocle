@@ -22,12 +22,13 @@ estimated_days: 6
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.008.md, version: "1.3.4"}
   - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.009.md, version: "1.1.3"}
-  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.6.0"}
+  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.7.0"}
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
-  - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.1"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.09.008 (EmbeddedTerminal/SessionCreation AppMode enter/exit transitions; wizard auto-transition; SpawnAck; launching_session_id) and BC-2.09.009 (permission badge + bell while in EmbeddedTerminal or SessionCreation)"
-# BC status: BC-2.09.008 v1.3.4, BC-2.09.009 v1.1.3 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status at S-044 authoring time: BC-2.09.008 v1.3.4, BC-2.09.009 v1.1.3 — non-empty; status draft pending Phase-2 adversarial convergence gate
 # Clustering rationale: BC-2.09.008 (AppMode transitions) and BC-2.09.009 (permission badge+bell) are clustered
 # because the badge-and-bell behavior fires INSIDE EmbeddedTerminal and SessionCreation modes, which BC-2.09.008 defines.
 # Implementing one without the other leaves an incomplete AppMode entry/exit contract. BC-2.09.009's
@@ -256,7 +257,7 @@ When `overlay_stack` is empty and user presses Esc in `EmbeddedTerminal`:
 - `SpawnAck` match must be gated: only process `SpawnAck { session_id }` while `AppMode::SessionCreation { step: Launching, .. }` is active. Ignore `SpawnAck` in any other AppMode.
 - `SessionStateChanged::Running` wizard auto-advance must match against `launching_session_id` — NOT against "any Running event". This is the EC-303 deterministic filter.
 - Bell (`\x07`) is written to `stdout()` via `print!("\x07")` or equivalent; it is NOT a crossterm command. Write directly, flush if necessary.
-- `overlay_stack` is a `VecDeque<PermissionModal>` (BC-2.06.026 / S-026 convention). The badge shows `len()` as "N pending permission(s)". The plural logic: N=1 → "1 pending permission"; N>1 → "N pending permissions".
+- `overlay_stack` is a `VecDeque<PromptModal>` (BC-2.06.008 / S-026 convention — BC-2.06.008 defines the VecDeque push-on-PermissionPromptQueued contract and is the authority for the overlay stack type). The badge shows `len()` as "N pending permission(s)". The plural logic: N=1 → "1 pending permission"; N>1 → "N pending permissions". Note: the type is `PromptModal` (not `PermissionModal`) per BC-2.06.008 Precondition 2.
 - `SessionState::Killed` does NOT exist. Any `match` on `SessionState` that includes `Killed` is a compile error.
 - Forbidden dependency: `monocle-tui` MUST NOT depend on `monocle-runtime`. Session state comes from IPC messages, not from internal `SessionManager` access.
 

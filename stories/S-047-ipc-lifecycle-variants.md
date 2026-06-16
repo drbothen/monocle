@@ -23,8 +23,10 @@ inputs:
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.010.md, version: "1.9.1"}
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.011.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
-  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.0"}
+  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
   - {path: .factory/specs/architecture/SS-conventions-anti-patterns.md, version: "1.32.6"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.05.010 (7 new ClientToServer variants + routing with SpawnOptions, no-silent-failure invariant, ResizePane zero-dim clamp) and BC-2.05.011 (ScrollbackChunk*/Complete/PtyReset server-to-client variants + pending_pty_bytes buffer + post-dump replay)"
 # BC status: BC-2.05.010 and BC-2.05.011 non-empty; status draft pending Phase-2 adversarial convergence gate
@@ -63,18 +65,26 @@ is reserved for `DetachSession` on a `Launching` session (F-P50-001).
 No `ServerToClient::Error` is emitted for `KillSession` on a `Terminating` session — the
 IPC handler returns silently after the idempotent `Ok(())` from `kill_session()`.
 
-### AC-003 (traces to BC-2.05.010 postcondition 6/7 — KeyInput and ResizePane routing)
+### AC-003 (traces to BC-2.05.010 postcondition 6/7 — KeyInput and ResizePane routing via SessionManager → DaemonToHost)
 
-`ClientToServer::KeyInput { session_id: String, bytes: Vec<u8> }` — daemon writes `bytes` to the
-session's PTY master fd. `session_id` is a `String` (UUID-as-String) on the wire. On failure
-(session not found or host dead), returns `ServerToClient::Error { code: "session_not_found" }`
-or `"attach_failed"` as appropriate per the 12-code taxonomy — no `"pty_write_failed"` code.
+`ClientToServer::KeyInput { session_id: String, bytes: Vec<u8> }` — the daemon IPC handler
+calls `session_manager.send_key_input(&session_id, bytes)`, which sends
+`DaemonToHost::KeyInput { bytes }` to the session-host over the per-session UDS control
+connection. The session-host owns the PTY master fd and writes `bytes` to it. The daemon
+NEVER holds the PTY master fd directly (PTY fd ownership is in the session-host process per
+SS-session-manager.md §monocle-session-host binary and ADR-0009/ADR-0010).
+`session_id` is a `String` (UUID-as-String) on the wire. On failure (session not found or
+host dead), returns `ServerToClient::Error { code: "session_not_found" }` or `"attach_failed"`
+as appropriate per the 12-code taxonomy — no `"pty_write_failed"` code.
 
-`ClientToServer::ResizePane { session_id: String, rows: u16, cols: u16 }` — daemon issues
-`ioctl(TIOCSWINSZ)` on the PTY. Zero-dim clamp: if `rows == 0` OR `cols == 0`, clamp to 1
-before calling ioctl. After clamping, WARN-drop all ioctl errors (do NOT propagate resize
-errors as `ServerToClient::Error` — resize failures are advisory only per BC-2.05.010 PC-6
-carve-out).
+`ClientToServer::ResizePane { session_id: String, rows: u16, cols: u16 }` — the daemon IPC
+handler calls `session_manager.resize_session(&session_id, rows.max(1), cols.max(1))`, which
+sends `DaemonToHost::Resize { rows, cols }` to the session-host over the control connection.
+The session-host calls `pty.resize(PtySize { rows, cols, .. })` and `parser.set_size(rows, cols)`
+(it owns the PTY; the daemon issues NO ioctl directly).
+Zero-dim clamp: if `rows == 0` OR `cols == 0`, clamp to 1 BEFORE sending `DaemonToHost::Resize`.
+After clamping, WARN-drop all transport errors for resize (do NOT propagate as
+`ServerToClient::Error` — resize failures are advisory only per BC-2.05.010 PC-6 carve-out).
 
 ### AC-004 (traces to BC-2.05.010 postcondition 8 — DetachSession blocks on Launching, defensive path only)
 
@@ -86,9 +96,12 @@ a guard, not a primary flow).
 
 ### AC-005 (traces to BC-2.05.010 postcondition 9 — RenameSession updates display name)
 
-`ClientToServer::RenameSession { session_id, name: String }` — daemon updates
-`session.display_name` in `DaemonState`. Propagates as `SessionListUpdate` fan-out to all
-clients. Rename is ALLOWED when the session is in `Launching` or `Running` state.
+`ClientToServer::RenameSession { session_id, new_name: String }` — daemon calls
+`session_manager.rename_session(&session_id, new_name)`, which updates
+`session.display_name` in the registry and publishes `SessionListUpdate` fan-out to all
+clients. The field is `new_name` (canonical per SS-ipc.md §ClientToServer RenameSession
+and BC-2.05.010 PC-4a). `name` MUST NOT be used — it is an incorrect alias.
+Rename is ALLOWED when the session is in `Launching` or `Running` state.
 
 ### AC-006 (traces to BC-2.05.010 postcondition 10 — AttachSession triggers scrollback dump sequence)
 
@@ -215,8 +228,11 @@ from registry) or `"attach_failed"` (session host dead) — NOT a phantom `"pty_
         `ServerToClient::Error { code: "session_not_found" }`; on `Err(SessionHostDead)` return
         `ServerToClient::Error { code: "attach_failed" }`. Do NOT use `"pty_write_failed"` — it is
         NOT in the canonical 12-code taxonomy (AC-012).
-      - `ResizePane` → `session_manager.resize_pane(id, rows.max(1), cols.max(1))` — zero-dim
-        clamp THEN call; WARN-drop all ioctl errors (no Error response).
+      - `ResizePane` → clamp `rows.max(1), cols.max(1)` (zero-dim guard) THEN call
+        `session_manager.resize_session(id, clamped_rows, clamped_cols)`, which sends
+        `DaemonToHost::Resize { rows, cols }` to the session-host (which owns the PTY fd
+        and calls ioctl). The daemon issues NO ioctl directly. WARN-drop all
+        transport errors (no `ServerToClient::Error` response for resize).
       - `DetachSession` → detach client subscription; guard for Launching state.
       - `RenameSession` → update display_name, fan-out SessionListUpdate.
       - `AttachSession` → subscribe client + initiate scrollback dump sequence.
@@ -269,7 +285,7 @@ in the daemon. S-034/S-035 implemented session enrichment and status machine. S-
 This story extends the phase-1 IPC protocol with 7 new client variants and 2 new server variants
 (PtyReset is already added in S-046). The extension is ADDITIVE — existing phase-1 variants are
 not modified. The `SpawnOptions` struct should be verified against S-033/S-045 before adding; if
-it already exists in `proto.rs`, skip the create step and confirm field parity.
+it already exists in `crates/monocle-ipc/src/lib.rs`, skip the create step and confirm field parity.
 
 Key lesson from S-033 review: `session_manager.rs` gained both the spawn path and error mapping
 in S-033. The IPC dispatch loop in S-047 calls into session_manager methods — it must NOT duplicate
@@ -287,7 +303,7 @@ From `architecture/SS-ipc.md v1.24.0` (canonical version):
   the 256 KiB total frame limit with framing overhead).
 - `pending_pty_bytes` is a daemon-side struct, NOT a TUI-side struct. The TUI has a parallel
   accumulation buffer for chunks received during dump.
-- ResizePane zero-dim clamp MUST happen before the ioctl call — never pass 0 rows or 0 cols to ioctl.
+- ResizePane zero-dim clamp MUST happen before sending `DaemonToHost::Resize` — never send 0 rows or 0 cols to the session-host. The session-host owns the PTY fd and calls ioctl; the daemon sends the clamped values only.
 - **Canonical 12 wire codes ONLY** (closed set for Phase 1): `binary_not_found`, `invalid_spawn_arg`,
   `spawn_unsupported`, `spawn_failed`, `sidecar_write_failed`, `session_id_collision`,
   `session_not_found`, `attach_failed`, `kill_failed`, `rename_failed`, `session_not_ready`,
@@ -331,8 +347,8 @@ is in `monocle-tui`. These boundaries are enforced by the workspace dependency g
 | EC-300 | `AttachSession` for a session in `Terminating` state | `ServerToClient::Error { code: "attach_failed" }` — session is being killed; `SessionHostDead` is the nearest existing error on the attach path (see Terminated-in-grace disposition: `attach_session()` on Terminating → `SessionHostDead` → `"attach_failed"`) |
 | EC-301 | `KillSession` for a session in `Terminating` state | `kill_session()` returns `Ok(())` — idempotent (kill is in-flight; watchdog already running; no duplicate Kill sent) per BC-2.08.003 Invariant 2 and S-034 AC-007. IPC handler does NOT emit any `ServerToClient::Error`. `"session_not_ready"` MUST NOT be returned for kill on `Terminating` — that code is reserved exclusively for `DetachSession` on `Launching` (F-P50-001). |
 | EC-301b | `KillSession` for unknown `session_id` | `ServerToClient::Error { code: "session_not_found" }` |
-| EC-302 | `ResizePane { rows: 0, cols: 0 }` | Clamp to `{ rows: 1, cols: 1 }` then ioctl; WARN log; NO Error response to TUI |
-| EC-303 | `ResizePane { rows: 0, cols: 80 }` (only rows is 0) — BC-2.05.010 EC-303 | Clamp rows to 1; cols stays 80; ioctl with `{ rows: 1, cols: 80 }` |
+| EC-302 | `ResizePane { rows: 0, cols: 0 }` | Clamp to `{ rows: 1, cols: 1 }`; send `DaemonToHost::Resize { rows: 1, cols: 1 }` to session-host; WARN log; NO Error response to TUI |
+| EC-303 | `ResizePane { rows: 0, cols: 80 }` (only rows is 0) — BC-2.05.010 EC-303 | Clamp rows to 1; cols stays 80; send `DaemonToHost::Resize { rows: 1, cols: 80 }` to session-host |
 <!-- EC-303 disambiguation: This BC-2.05.010 EC-303 (ResizePane partial-zero clamp) is distinct from
      the "EC-303" identifier used in SS-ipc.md §SpawnAck to refer to wizard session_id filtering
      in BC-2.09.008 (S-044). Both are EC-303 within their respective BCs (BC-namespaced identifiers).
@@ -351,7 +367,7 @@ is in `monocle-tui`. These boundaries are enforced by the workspace dependency g
 | Story spec (this file) | ~6 000 tokens |
 | BC files (2 BCs: BC-2.05.010 + BC-2.05.011) | ~8 000 tokens |
 | Architecture sections (SS-ipc, SS-session-manager, SS-conventions) | ~3 500 tokens |
-| Existing code context (proto.rs, ipc_handler.rs, session_manager.rs, ipc_receiver.rs) | ~5 000 tokens |
+| Existing code context (monocle-ipc/src/lib.rs, ipc_handler.rs, session_manager.rs, ipc_receiver.rs) | ~5 000 tokens |
 | Test file to write | ~4 000 tokens |
 | **Total estimated** | **~26 500 tokens** |
 

@@ -21,11 +21,12 @@ verification_properties: []
 estimated_days: 3
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.003.md, version: "1.5.0"}
-  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.6.0"}
-  - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.1"}
+  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.7.0"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.09.003 (mouse events forwarded to PTY in SGR encoding when in EmbeddedTerminal; scoped EnableMouseCapture; SGR 1006 mode)"
-# BC status: BC-2.09.003 v1.5.1 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status at S-041 authoring time: BC-2.09.003 v1.5.1 — non-empty; status draft pending Phase-2 adversarial convergence gate
 # Clustering rationale: BC-2.09.003 is standalone because it adds distinct effectful terminal I/O:
 # EnableMouseCapture + SGR 1006 h/l writes at EmbeddedTerminal entry/exit — these are different lifecycle
 # operations from keyboard setup (S-040). The scoped mouse capture contract (CC-GLOBAL-MOUSE-CAPTURE gate)
@@ -94,10 +95,14 @@ Mouse events with `event.column` or `event.row` outside the PTY pane `Rect` retu
 from `mouse_event_to_pty_bytes()` and are NOT forwarded. No spurious PTY mouse event is sent
 for clicks on the status bar or sessions panel.
 
-### AC-007 (traces to BC-2.09.003 invariant 2 — mouse_event_to_pty_bytes is pure)
+### AC-007 (traces to BC-2.09.003 invariant 2 — mouse_event_to_pty_bytes is pure; uses core-owned types)
 
-`mouse_event_to_pty_bytes(event: MouseEvent, pane_area: Rect) -> Option<Vec<u8>>` is a pure
-function with no I/O or state mutation. It lives in `monocle-core` (pure core), not `monocle-tui`.
+`mouse_event_to_pty_bytes(event: PtyMouseEvent, pane_area: PtyRect) -> Option<Vec<u8>>` is a pure
+function with no I/O or state mutation. It lives in `monocle-core/src/keyboard.rs` (pure core), not
+`monocle-tui`. The parameter types are `PtyMouseEvent` and `PtyRect` (core-owned mirror types defined
+in S-040's `monocle-core/src/keyboard.rs`), NOT `crossterm::event::MouseEvent` or `ratatui::layout::Rect`.
+The `monocle-tui` dispatch site converts crossterm/ratatui types via `keyboard_conv::crossterm_mouse_to_pty()`
+and `keyboard_conv::ratatui_rect_to_pty()` before calling this function (F-P2-I06 ruling).
 
 ### AC-008 (traces to BC-2.09.003 invariant 3 — 1002 button-event tracking; Moved unreachable on Unix)
 
@@ -122,18 +127,19 @@ No bytes sent.
 
 ## Tasks
 
-- [ ] Implement `mouse_event_to_pty_bytes(event: MouseEvent, pane_area: Rect) -> Option<Vec<u8>>` in `crates/monocle-core/src/keyboard.rs` (alongside key functions) per the complete base-Ps table and modifier-bit additive rule. Includes `Drag(btn)` arm (Ps = btn_base + 32) and `Moved` arm (Ps=35; UNREACHABLE on Unix — document in comment).
-- [ ] Add `Event::Mouse(event)` dispatch arm in the `EmbeddedTerminal` event loop section of `crates/monocle-tui/src/event_loop.rs`: call `mouse_event_to_pty_bytes(event, pane_area)`; if `Some(bytes)`, send `ClientToServer::KeyInput { session_id, bytes }`.
+- [ ] Implement `mouse_event_to_pty_bytes(event: PtyMouseEvent, pane_area: PtyRect) -> Option<Vec<u8>>` in `crates/monocle-core/src/keyboard.rs` (alongside key functions) per the complete base-Ps table and modifier-bit additive rule. Uses `PtyMouseEvent` and `PtyRect` (core-owned types from S-040). Includes `Drag(btn)` arm (Ps = btn_base + 32) and `Moved` arm (Ps=35; UNREACHABLE on Unix — document in comment).
+- [ ] Extend `crates/monocle-tui/src/keyboard_conv.rs` (created in S-040) with TWO new conversion functions per SS-embedded-pty.md §Conversion in monocle-tui: `crossterm_mouse_to_pty(e: crossterm::event::MouseEvent) -> PtyMouseEvent` and `ratatui_rect_to_pty(r: ratatui::layout::Rect) -> PtyRect`. These are the only additional crossterm/ratatui types that may appear in `keyboard_conv.rs` — confined to this file.
+- [ ] Add `Event::Mouse(event)` dispatch arm in the `EmbeddedTerminal` event loop section of `crates/monocle-tui/src/event_loop.rs`: convert via `keyboard_conv::crossterm_mouse_to_pty(event)` and `keyboard_conv::ratatui_rect_to_pty(pane_area)`, then call `mouse_event_to_pty_bytes(pty_event, pty_rect)`; if `Some(bytes)`, send `ClientToServer::KeyInput { session_id, bytes }`.
 - [ ] Extend `App::enter_embedded_terminal()` in `crates/monocle-tui/src/app.rs` with the scoped entry sequence: `EnableMouseCapture` then `print!("\x1b[?1006h")`.
 - [ ] Extend `App::exit_embedded_terminal()` in `crates/monocle-tui/src/app.rs` with the scoped exit sequence: `print!("\x1b[?1006l")` then `DisableMouseCapture`.
-- [ ] Wire `pane_area` from the last rendered frame into the event dispatch context so `mouse_event_to_pty_bytes()` can access it. Store `App::last_pty_pane_area: Rect` updated each render tick.
-- [ ] Write unit test `test_BC_2_09_003_mouse_events_sgr_encoded_left_press`: left-press at `(col=5, row=3)` at pane origin → `\x1b[<0;6;4M`.
-- [ ] Write unit test `test_BC_2_09_003_mouse_events_sgr_encoded_left_release`: left-release at same coords → `\x1b[<0;6;4m`.
-- [ ] Write unit test `test_BC_2_09_003_mouse_events_sgr_scroll_up`: scroll-up at `(col=20, row=10)` at pane origin → `\x1b[<64;21;11M`.
-- [ ] Write unit test `test_BC_2_09_003_drag_encoding`: `Drag(Left)` at `(col=10, row=5)` → `\x1b[<32;11;6M`.
-- [ ] Write unit test `test_BC_2_09_003_out_of_pane_returns_none`: click outside pane → `None`.
-- [ ] Write unit test `test_BC_2_09_003_1_indexed_origin`: click at pane origin `(col=pane.x, row=pane.y)` → `Px=1, Py=1`.
-- [ ] Write unit test `test_BC_2_09_003_modifier_bits_ctrl`: `Down(Left)` + Ctrl at pane origin → `\x1b[<16;1;1M` (`Ps_final = 0 | 16 = 16`).
+- [ ] Wire `pane_area` from the last rendered frame into the event dispatch context so `mouse_event_to_pty_bytes()` can access it. Store `App::last_pty_pane_area: ratatui::layout::Rect` updated each render tick (monocle-tui is allowed to hold a ratatui::Rect field; the conversion to PtyRect happens at the dispatch call site via `keyboard_conv::ratatui_rect_to_pty()`).
+- [ ] Write unit test `test_BC_2_09_003_mouse_events_sgr_encoded_left_press`: construct `PtyMouseEvent { kind: PtyMouseEventKind::Down(PtyMouseButton::Left), column: 5, row: 3, modifiers: PtyKeyModifiers::NONE }` with `pane_area = PtyRect { x: 0, y: 0, width: 80, height: 24 }`; assert `mouse_event_to_pty_bytes(event, pane_area) == Some("\x1b[<0;6;4M".as_bytes().to_vec())`. Tests pure monocle-core function directly.
+- [ ] Write unit test `test_BC_2_09_003_mouse_events_sgr_encoded_left_release`: `PtyMouseEventKind::Up(PtyMouseButton::Left)` → terminator `m` → `\x1b[<0;6;4m`.
+- [ ] Write unit test `test_BC_2_09_003_mouse_events_sgr_scroll_up`: `PtyMouseEventKind::ScrollUp` at `(col=20, row=10)` → `\x1b[<64;21;11M`.
+- [ ] Write unit test `test_BC_2_09_003_drag_encoding`: `PtyMouseEventKind::Drag(PtyMouseButton::Left)` at `(col=10, row=5)` → `\x1b[<32;11;6M`.
+- [ ] Write unit test `test_BC_2_09_003_out_of_pane_returns_none`: construct `PtyMouseEvent { column: 200, row: 200, .. }` where pane is 80x24; assert `None`.
+- [ ] Write unit test `test_BC_2_09_003_1_indexed_origin`: event at `(column=pane.x, row=pane.y)` → `Px=1, Py=1`.
+- [ ] Write unit test `test_BC_2_09_003_modifier_bits_ctrl`: `PtyMouseEventKind::Down(PtyMouseButton::Left)` + `PtyKeyModifiers::CONTROL` at pane origin → `\x1b[<16;1;1M` (`Ps_final = 0 | 16 = 16`).
 - [ ] Write integration test `test_BC_2_09_003_scoped_mouse_capture_lifecycle`: verify `EnableMouseCapture` called on entry; `DisableMouseCapture` called on exit; ordering verified via mock terminal backend.
 
 ## Previous Story Intelligence
@@ -144,7 +150,8 @@ No bytes sent.
 
 ## Architecture Compliance Rules
 
-- `mouse_event_to_pty_bytes()` is a pure function in `monocle-core/src/keyboard.rs`. No I/O.
+- `mouse_event_to_pty_bytes(event: PtyMouseEvent, pane_area: PtyRect)` is a pure function in `monocle-core/src/keyboard.rs`. No I/O. Uses ONLY core-owned `PtyMouseEvent` and `PtyRect` types — no crossterm or ratatui in the signature (F-P2-I06 ruling: SS-embedded-pty.md §Dependency Boundary, "monocle-core MUST NOT depend on crossterm or ratatui").
+- Conversion from `crossterm::event::MouseEvent` → `PtyMouseEvent` and `ratatui::layout::Rect` → `PtyRect` is confined to `crates/monocle-tui/src/keyboard_conv.rs` (extended in this story from S-040's base). This is the ONLY place crossterm/ratatui mouse types touch the monocle-core purity boundary.
 - `EnableMouseCapture` / `DisableMouseCapture` are effectful shell operations. They live in `App::enter_embedded_terminal()` / `App::exit_embedded_terminal()` in `monocle-tui`, NOT in `monocle-core`.
 - Scoped-capture invariant: `EnableMouseCapture` is NOT called at TUI startup. ANY change to global mouse capture requires human sign-off on CC-GLOBAL-MOUSE-CAPTURE per ADR and SS-embedded-pty.md §I3 UX tradeoff.
 - Coordinate indexing: 1-indexed output (`px = col - pane_area.x + 1`, `py = row - pane_area.y + 1`). The crossterm coordinate is 0-indexed terminal-window-relative; the SGR output is 1-indexed pane-relative.
@@ -165,9 +172,10 @@ Files to MODIFY:
 
 | File | Change |
 |------|--------|
-| `crates/monocle-core/src/keyboard.rs` | Add `mouse_event_to_pty_bytes(event: MouseEvent, pane_area: Rect) -> Option<Vec<u8>>` with complete Ps table (all variants including `Drag` and `Moved`) |
-| `crates/monocle-tui/src/app.rs` | Extend `enter_embedded_terminal()` with `EnableMouseCapture` + SGR 1006h; extend `exit_embedded_terminal()` with SGR 1006l + `DisableMouseCapture`; add `last_pty_pane_area: Rect` field |
-| `crates/monocle-tui/src/event_loop.rs` | Add `Event::Mouse(event)` arm in `EmbeddedTerminal` event dispatch section |
+| `crates/monocle-core/src/keyboard.rs` | Add `mouse_event_to_pty_bytes(event: PtyMouseEvent, pane_area: PtyRect) -> Option<Vec<u8>>` with complete Ps table (all variants including `Drag` and `Moved`). Uses core-owned `PtyMouseEvent`/`PtyRect` types from S-040. |
+| `crates/monocle-tui/src/keyboard_conv.rs` | Extend (created in S-040) with `crossterm_mouse_to_pty(e: MouseEvent) -> PtyMouseEvent` and `ratatui_rect_to_pty(r: Rect) -> PtyRect`. This is the ONLY place these crossterm/ratatui types touch the purity boundary. |
+| `crates/monocle-tui/src/app.rs` | Extend `enter_embedded_terminal()` with `EnableMouseCapture` + SGR 1006h; extend `exit_embedded_terminal()` with SGR 1006l + `DisableMouseCapture`; add `last_pty_pane_area: ratatui::layout::Rect` field |
+| `crates/monocle-tui/src/event_loop.rs` | Add `Event::Mouse(event)` arm in `EmbeddedTerminal` event dispatch section; convert via `keyboard_conv::crossterm_mouse_to_pty(event)` and `keyboard_conv::ratatui_rect_to_pty(pane_area)` before calling `mouse_event_to_pty_bytes()` |
 
 ## Token Budget Estimate
 
@@ -193,7 +201,8 @@ Within the 30% context window bound. No split required.
 
 | Component | Module/File | Pure/Effectful |
 |-----------|------------|----------------|
-| `mouse_event_to_pty_bytes()` | `monocle-core/src/keyboard.rs` | Pure core (no I/O; deterministic) |
+| `mouse_event_to_pty_bytes(event: PtyMouseEvent, pane_area: PtyRect)` | `monocle-core/src/keyboard.rs` | Pure core (no I/O; deterministic; uses core-owned Pty* types only; no crossterm/ratatui) |
+| `crossterm_mouse_to_pty()`, `ratatui_rect_to_pty()` | `monocle-tui/src/keyboard_conv.rs` (extended in this story) | Effectful shell boundary (infallible conversions; confined to keyboard_conv.rs) |
 | EmbeddedTerminal Mouse dispatch arm | `monocle-tui/src/event_loop.rs` | Effectful shell (IPC send) |
 | `EnableMouseCapture` + SGR 1006h on entry | `monocle-tui/src/app.rs` (enter_embedded_terminal) | Effectful shell (terminal device I/O) |
 | `DisableMouseCapture` + SGR 1006l on exit | `monocle-tui/src/app.rs` (exit_embedded_terminal) | Effectful shell (terminal device I/O) |

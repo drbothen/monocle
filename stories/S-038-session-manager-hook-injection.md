@@ -21,22 +21,24 @@ verification_properties: []
 estimated_days: 2
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.006.md, version: "1.3.0"}
-  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.0"}
-  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.0"}
+  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.08.006 (hook auto-injection in session-host spawn path: --settings arg, hooks-settings.json with 4 URL-bearing + 2 reserved-empty hook entries, lock.app=monocle, shared-file lifecycle)"
 # BC status: BC-2.08.006 v1.3.2 — non-empty; status draft pending Phase-2 adversarial convergence gate
 ---
 
-# S-038: SessionManager Hook Auto-Injection — --settings Arg in Session-Host Spawn Path
+# S-038: SessionManager Hook Auto-Injection — hooks-settings.json Writer + SpawnOptions.hooks_settings_path Population
 
 ## Narrative
 
-As the monocle daemon, I want to automatically inject the Claude Code hook settings file
-(`hooks-settings.json`) into the session-host's child argv when spawning a new session —
-so that every monocle-managed Claude Code session reports lifecycle events (pre-tool, post-tool,
-stop, notification, etc.) back to monocle via the hook protocol — without requiring the user to
-configure hooks manually in their Claude Code user settings.
+As the monocle daemon, I want to write the Claude Code hook settings file
+(`hooks-settings.json`) once at startup and populate `SpawnOptions.hooks_settings_path`
+before every session spawn — so that `ClaudeCodeModule::spawn_recipe()` (S-045) can append
+`--settings <path>` to the session-host argv, ensuring every monocle-managed Claude Code
+session reports lifecycle events (pre-tool, post-tool, stop, notification, etc.) back to
+monocle via the hook protocol without requiring the user to configure hooks manually.
 
 ## Acceptance Criteria
 
@@ -113,12 +115,22 @@ is dispatched. The daemon startup sequence MUST write the file during initializa
 (before the IPC listen socket is bound, so no client can issue `SpawnSession` before the file
 exists). If the write fails, the daemon MUST log a WARN and abort the startup sequence.
 
-### AC-008 (traces to BC-2.08.006 postcondition 8 — SpawnRecipe includes --settings arg)
+### AC-008 (traces to BC-2.08.006 postcondition 8 — SpawnOptions.hooks_settings_path populated; argv injection owned by S-045)
 
-`spawn_recipe()` — the internal method that converts `SpawnOptions` into a `SpawnRecipe` —
-MUST append `["--settings", "<path-to-hooks-settings.json>"]` to the `argv` vector it
-builds for the session-host child process. The `hooks_settings_path` field is a property
-of `SessionManager` (set during initialization; remains constant for the daemon's lifetime).
+S-038 owns EXACTLY TWO responsibilities for hook injection:
+1. **Write the file** (`write_hooks_settings_json()` at `SessionManager::new()` initialization, before IPC bind).
+2. **Populate `SpawnOptions.hooks_settings_path`**: before calling `engine_module.spawn_recipe(&opts)`,
+   `SessionManager::spawn_session()` MUST set `opts.hooks_settings_path = Some(self.hooks_settings_path.clone())`
+   so that `ClaudeCodeModule::spawn_recipe()` has the path available.
+
+The argv `["--settings", <path>]` injection into `SpawnRecipe.argv` is the responsibility of
+**S-045 (`ClaudeCodeModule::spawn_recipe()`)**, which reads `opts.hooks_settings_path` and appends
+the `--settings` arg. S-038 MUST NOT duplicate that injection — S-038 provides the path
+via `SpawnOptions`; S-045 consumes it.
+
+**Ownership boundary** (non-duplicable):
+- S-038 owns: `write_hooks_settings_json()`, `hooks_settings_path: PathBuf` on `SessionManager`, setting `opts.hooks_settings_path` before calling `spawn_recipe()`.
+- S-045 owns: reading `opts.hooks_settings_path` and appending `--settings <path>` to `SpawnRecipe.argv`.
 
 ### AC-009 (traces to BC-2.08.006 invariant 1 — file path is canonicalized; no symlinks)
 
@@ -181,14 +193,14 @@ in-memory hook endpoint URL before proceeding with the spawn. This ensures the
   Write `PostToolUse` and `PreCompact` as JSON arrays `[]` (not strings). `serde_json::Value::Array(vec![])` is the correct Rust representation.
 - [ ] Call `write_hooks_settings_json()` during `SessionManager::new()` initialization (before IPC bind). Propagate error to caller.
 - [ ] Add `hooks_settings_path: PathBuf` field to `SessionManager`.
-- [ ] In `spawn_recipe()`: append `["--settings", <hooks_settings_path_str>]` to `SpawnRecipe.argv`. If `hooks_settings_path.to_str()` returns `None` (non-UTF-8 path), propagate as `EngineError::InvalidPath` → wire code `"invalid_spawn_arg"` (no new variant needed — this is an `EngineError`, not a `SessionError`). A well-formed daemon never reaches this branch (paths are validated at daemon startup), but the guard is required for production-grade defensive correctness.
-- [ ] In `spawn_recipe()`: if `hooks_settings_path` does not exist (`!path.exists()`), call `write_hooks_settings_json()` to re-write it (EC-182 re-write guard).
-- [ ] Write unit test `test_BC_2_08_006_spawn_includes_settings_arg`: mock `SessionHostSpawner` captures argv; `spawn_session()` called; assert argv contains `"--settings"` followed by the absolute hooks-settings path.
+- [ ] In `SessionManager::spawn_session()`, before calling `engine_module.spawn_recipe(&opts)`: set `opts.hooks_settings_path = Some(self.hooks_settings_path.clone())` so `ClaudeCodeModule::spawn_recipe()` (S-045) can append `--settings <path>` to argv. S-038 MUST NOT duplicate the argv append — that is S-045's responsibility. Only populate the field.
+- [ ] EC-182 re-write guard (in `spawn_session()`, before populating `opts.hooks_settings_path`): if `self.hooks_settings_path` does not exist (`!self.hooks_settings_path.exists()`), call `write_hooks_settings_json()` to re-write it, log `tracing::warn!("hooks-settings.json missing at spawn time; re-writing")`, then proceed.
+- [ ] Write unit test `test_BC_2_08_006_spawn_options_hooks_settings_path_populated`: call `spawn_session()` on a `SessionManager` with a valid `hooks_settings_path`; intercept the `SpawnOptions` passed to `spawn_recipe()` (via mock `EngineModule`); assert `opts.hooks_settings_path == Some(self.hooks_settings_path)`. Do NOT assert `argv` here — that is S-045's test (`test_BC_2_03_008_spawn_recipe_appends_settings_arg`).
 - [ ] Write unit test `test_BC_2_08_006_hooks_settings_json_content`: write hooks-settings.json to tmp dir; read back; assert 4 URL-bearing keys present; assert 2 empty reserved keys present; assert `lock.app == "monocle"`.
 - [ ] Write unit test `test_BC_2_08_006_hooks_settings_json_atomic_write`: verify write uses `tempfile::persist` (test via file content atomicity under mock FS or by verifying the temp file never has partial content).
 - [ ] Write unit test `test_BC_2_08_006_startup_write_fail_aborts_daemon`: if `write_hooks_settings_json` returns Err, `SessionManager::new()` propagates the error; daemon start fails.
 - [ ] Write unit test `test_BC_2_08_006_missing_settings_file_rewrites_at_spawn`: delete hooks-settings.json after `SessionManager::new()`; call `spawn_session()`; assert file exists again; assert WARN logged; assert spawn succeeds.
-- [ ] Write unit test `test_BC_2_08_006_non_utf8_hooks_path_returns_invalid_spawn_arg`: `SessionManager` constructed with a non-UTF-8 `hooks_settings_path`; `spawn_recipe()` returns `EngineError::InvalidPath`; IPC handler maps to wire code `"invalid_spawn_arg"`.
+- [ ] Write unit test `test_BC_2_08_006_non_utf8_hooks_path_returned_from_spawn_recipe`: `SessionManager` constructed with a non-UTF-8 `hooks_settings_path`; `spawn_session()` calls `spawn_recipe()`; `ClaudeCodeModule::spawn_recipe()` (S-045) encounters a non-UTF-8 path in `opts.hooks_settings_path` and returns `EngineError::InvalidPath`; IPC handler maps to wire code `"invalid_spawn_arg"`. This test verifies the end-to-end path, not S-038's internal plumbing.
 
 ## Previous Story Intelligence
 
@@ -256,8 +268,8 @@ Estimate is comfortably within the 30% context window bound. No split required.
 |-----------|------------|----------------|
 | `write_hooks_settings_json()` | `monocle-runtime/src/session_manager/mod.rs` | Effectful (filesystem write via tempfile::persist) |
 | `HookEndpointConfig` struct | `monocle-runtime/src/session_manager/mod.rs` | Pure (data struct) |
-| `spawn_recipe()` extension | `monocle-runtime/src/session_manager/mod.rs` | Pure extension to existing function (argv append; no I/O in happy path) |
-| Non-UTF-8 path guard in `spawn_recipe()` | `monocle-runtime/src/session_manager/mod.rs` | Pure (returns `EngineError::InvalidPath`; no new variant; uses existing error taxonomy) |
+| `spawn_session()` — `opts.hooks_settings_path` population | `monocle-runtime/src/session_manager/mod.rs` | Pure step inside effectful spawn (field assignment; no I/O) |
+| EC-182 re-write guard in `spawn_session()` | `monocle-runtime/src/session_manager/mod.rs` | Effectful (conditional filesystem write via `write_hooks_settings_json()`) |
 
 ## Edge Cases
 
@@ -271,10 +283,12 @@ Estimate is comfortably within the 30% context window bound. No split required.
 ## Subsystem Anchor Justifications
 
 **SS-08 owns this story's scope** because hook auto-injection is defined in
-SS-session-manager.md §Hook settings injection and is part of `spawn_recipe()` which lives
-entirely in `monocle-runtime/src/session_manager/`. BC-2.04.010 defines the hook payload
-schema but the injection mechanism (writing the file and appending --settings) is SS-08's
-responsibility.
+SS-session-manager.md §SpawnRecipe integration with EngineModule (the authoritative section
+for the spawn path and `SpawnOptions` field population). S-038's responsibilities — writing
+`hooks-settings.json` at daemon startup and populating `opts.hooks_settings_path` before calling
+`spawn_recipe()` — are daemon-side SessionManager concerns. BC-2.04.010 defines the hook payload
+schema; BC-2.08.006 defines the daemon injection mechanism. The argv `["--settings", path]`
+insertion into `SpawnRecipe.argv` is owned by S-045 (ClaudeCodeModule::spawn_recipe()), not S-038.
 
 **Dependency Anchors:**
 - STORY-038 depends on S-033 because `spawn_recipe()`, `SpawnRecipe`, `SessionHostSpawner`,

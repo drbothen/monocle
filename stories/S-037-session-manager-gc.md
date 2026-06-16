@@ -21,8 +21,9 @@ verification_properties: []
 estimated_days: 2
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.005.md, version: "1.0.3"}
-  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.0"}
-  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.0"}
+  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.08.005 (GC task: Terminated sessions removed from registry after 10s grace period; sidecar + socket deleted; SessionListUpdate published)"
 # BC status: BC-2.08.005 v1.0.6 — non-empty; status draft pending Phase-2 adversarial convergence gate
@@ -201,6 +202,15 @@ Estimate is comfortably within the 30% context window bound. No split required.
 | EC-174 | GC fires; sidecar already deleted by session-host | `remove_file` ENOENT; trace log; no error; session removed from registry |
 | EC-175 | Two sessions terminate within 1s of each other | Two independent GC tasks; both fire at their own 10s mark; no interference |
 | EC-176 | TUI client disconnects before GC fires | GC fires at 10s; `SessionListUpdate` published; no connected clients receive it; no error |
+
+## Rename Ownership Disambiguation
+
+S-037 owns the **`rename_session()` method** on `SessionManager`
+(implementing BC-2.08.005/BC-2.08.008 PC-4a — metadata update, no state transition, `SessionListUpdate`
+only). This is a new method introduced in S-037. **Do not confuse** with S-047's
+`ClientToServer::RenameSession { session_id, new_name }` IPC arm (BC-2.05.010) — S-047 owns the IPC
+wire variant and calls `session_manager.rename_session()`. The method lives in SS-08; the IPC arm
+lives in SS-05. These are complementary, not duplicates.
 
 ## Subsystem Anchor Justifications
 

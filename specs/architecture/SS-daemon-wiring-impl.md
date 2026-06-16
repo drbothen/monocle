@@ -697,7 +697,7 @@ failed/slow clients from the list." This deferral is legitimate: full ribbon str
 requires S-021/S-022 IPC wiring, which BC-2.05.004 PC-2 obligation anchors to S-032.
 
 **No new tech-debt-register entry is required.** The deferral target is the real story
-`S-032` (Wave 8, EPIC-05, BC-2.05.004 PC-2 obligation, in STORY-INDEX v5.33 as
+`S-032` (Wave 8, EPIC-05, BC-2.05.004 PC-2 obligation, in STORY-INDEX v5.33 <!-- version-pin-historical: STORY-INDEX was at v5.33 at this §Trace authoring time; current canonical is v5.34 --> as
 "deferred daemon fan-out"). The comment in event_bus.rs constitutes a code-level anchor
 per CLAUDE.md Principle 3.
 

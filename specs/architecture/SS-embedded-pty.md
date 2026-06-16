@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "embedded-pty"
 subsystem: SS-09
-version: "1.6.0"
+version: "1.7.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -383,13 +383,284 @@ approve enabling global mouse capture and documenting the text-selection tradeof
 EmbeddedTerminal mode). This ensures enhanced key events are available immediately when the
 user enters embedded terminal mode. They are disabled on TUI exit via the cleanup sequence.
 
+---
+
+<a id="dependency-boundary-f-p2-i06"></a>
+### Dependency Boundary: monocle-core MUST NOT depend on crossterm or ratatui
+
+**Ruling for F-P2-I06 (Phase-2 adversarial Pass-2, 2026-06-16):**
+
+`monocle-core` carries an explicit architectural prohibition against crossterm and ratatui
+dependencies. SS-tui.md §Scope states: "`monocle-core` — pure data types … No I/O, no ratatui,
+no crossterm." This is the categorical rule; it is not nuanced to "no crossterm I/O only."
+The prohibition also covers ratatui (whose `Rect` type would appear as a parameter of
+`mouse_event_to_pty_bytes`). Existing precedents (nucleo, similar) confirm this: both are
+"ONLY in monocle-tui — NEVER monocle-core (purity boundary)" per monocle-tui/Cargo.toml.
+
+**Option A (feature-gated crossterm in monocle-core) is REJECTED** because:
+1. SS-tui.md §Scope explicitly forbids it without exception.
+2. A feature-flag crossterm dependency still means monocle-core unconditionally depends on
+   crossterm when the feature is enabled — the purity boundary is violated in the binary.
+3. Re-exports FROM monocle-tui into monocle-core would invert the dependency (monocle-core
+   must never depend on monocle-tui).
+
+**Canonical resolution: Option B — core-owned mirror types.** Define minimal mirror types in
+`monocle-core` that carry exactly the fields the pure translation functions need. The
+`monocle-tui` effectful shell converts crossterm/ratatui types to core-owned types at the
+event dispatch site before calling into `monocle-core`. This is identical in structure to the
+existing pattern: `AppMode`, `Action`, `PromptModal` are core-owned types constructed by
+monocle-tui from TUI framework events.
+
+#### Core-Owned Mirror Types (monocle-core/src/keyboard.rs)
+
+```rust
+// These types mirror crossterm/ratatui fields exactly, but live in monocle-core
+// so key_event_to_pty_bytes and mouse_event_to_pty_bytes remain crossterm/ratatui-free.
+// monocle-tui converts at the dispatch boundary (zero-cost field copy of primitives/enums).
+
+/// Mirror of crossterm::event::KeyCode.
+/// Variants cover only the v1A scope (BC-2.09.002 table). Add variants as BCs expand.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PtyKeyCode {
+    Char(char),
+    Enter, Backspace, Tab, BackTab, Esc, Delete, Insert,
+    Up, Down, Left, Right,
+    Home, End, PageUp, PageDown,
+    F(u8),
+    // Extend as needed for future BCs.
+    Null,
+}
+
+/// Mirror of crossterm::event::KeyModifiers (bitflags).
+/// Matches crossterm bit values exactly so monocle-tui conversion is a single cast.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PtyKeyModifiers(pub u8);
+
+impl PtyKeyModifiers {
+    pub const NONE:    Self = PtyKeyModifiers(0b0000_0000);
+    pub const SHIFT:   Self = PtyKeyModifiers(0b0000_0001);
+    pub const CONTROL: Self = PtyKeyModifiers(0b0000_0100);
+    pub const ALT:     Self = PtyKeyModifiers(0b0000_1000);
+
+    pub fn contains(self, other: Self) -> bool { self.0 & other.0 != 0 }
+    pub fn is_empty(self) -> bool { self.0 == 0 }
+}
+
+/// Mirror of crossterm::event::KeyEventKind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PtyKeyEventKind { Press, Repeat, Release }
+
+/// Mirror of crossterm::event::KeyEvent.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PtyKeyEvent {
+    pub code:      PtyKeyCode,
+    pub modifiers: PtyKeyModifiers,
+    pub kind:      PtyKeyEventKind,
+}
+
+/// Mirror of crossterm::event::MouseButton.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PtyMouseButton { Left, Middle, Right }
+
+/// Mirror of crossterm::event::MouseEventKind (v1A Ps table scope).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PtyMouseEventKind {
+    Down(PtyMouseButton),
+    Up(PtyMouseButton),
+    Drag(PtyMouseButton),
+    Moved,
+    ScrollUp, ScrollDown, ScrollLeft, ScrollRight,
+}
+
+/// Mirror of crossterm::event::MouseEvent fields used by mouse_event_to_pty_bytes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PtyMouseEvent {
+    pub kind:      PtyMouseEventKind,
+    pub column:    u16,
+    pub row:       u16,
+    pub modifiers: PtyKeyModifiers,  // reuse PtyKeyModifiers; same bit layout
+}
+
+/// Minimal pane area rectangle — mirrors ratatui::layout::Rect fields.
+/// monocle-core does NOT depend on ratatui. monocle-tui converts Rect → PtyRect
+/// at the event dispatch site.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PtyRect {
+    pub x:      u16,
+    pub y:      u16,
+    pub width:  u16,
+    pub height: u16,
+}
+```
+
+#### Conversion in monocle-tui (effectful shell boundary)
+
+These conversions live in `crates/monocle-tui/src/keyboard_conv.rs` (new file, S-040 scope).
+They are infallible field-by-field copies. No logic; no I/O.
+
+```rust
+// monocle-tui/src/keyboard_conv.rs
+//
+// Converts crossterm/ratatui types → monocle-core PtyKey*/PtyMouse*/PtyRect.
+// Called at the EmbeddedTerminal event dispatch site in event_loop.rs before
+// calling into monocle-core::keyboard functions.
+//
+// This is the ONLY place in the workspace where crossterm types touch the
+// monocle-core purity boundary. Adding any crossterm or ratatui type to
+// monocle-core/Cargo.toml is FORBIDDEN (SS-tui.md §Scope, F-P2-I06 ruling).
+
+use crossterm::event::{KeyEvent, KeyCode, KeyModifiers, KeyEventKind,
+                        MouseEvent, MouseEventKind, MouseButton};
+use ratatui::layout::Rect;
+use monocle_core::keyboard::{
+    PtyKeyEvent, PtyKeyCode, PtyKeyModifiers, PtyKeyEventKind,
+    PtyMouseEvent, PtyMouseEventKind, PtyMouseButton, PtyRect,
+};
+
+pub fn crossterm_key_to_pty(e: KeyEvent) -> PtyKeyEvent {
+    PtyKeyEvent {
+        code:      crossterm_keycode_to_pty(e.code),
+        modifiers: crossterm_mods_to_pty(e.modifiers),
+        kind:      crossterm_kind_to_pty(e.kind),
+    }
+}
+
+pub fn crossterm_mouse_to_pty(e: MouseEvent) -> PtyMouseEvent {
+    PtyMouseEvent {
+        kind:      crossterm_mouse_kind_to_pty(e.kind),
+        column:    e.column,
+        row:       e.row,
+        modifiers: crossterm_mods_to_pty(e.modifiers),
+    }
+}
+
+pub fn ratatui_rect_to_pty(r: Rect) -> PtyRect {
+    PtyRect { x: r.x, y: r.y, width: r.width, height: r.height }
+}
+
+fn crossterm_keycode_to_pty(c: KeyCode) -> PtyKeyCode {
+    match c {
+        KeyCode::Char(ch)  => PtyKeyCode::Char(ch),
+        KeyCode::Enter     => PtyKeyCode::Enter,
+        KeyCode::Backspace => PtyKeyCode::Backspace,
+        KeyCode::Tab       => PtyKeyCode::Tab,
+        KeyCode::BackTab   => PtyKeyCode::BackTab,
+        KeyCode::Esc       => PtyKeyCode::Esc,
+        KeyCode::Delete    => PtyKeyCode::Delete,
+        KeyCode::Insert    => PtyKeyCode::Insert,
+        KeyCode::Up        => PtyKeyCode::Up,
+        KeyCode::Down      => PtyKeyCode::Down,
+        KeyCode::Left      => PtyKeyCode::Left,
+        KeyCode::Right     => PtyKeyCode::Right,
+        KeyCode::Home      => PtyKeyCode::Home,
+        KeyCode::End       => PtyKeyCode::End,
+        KeyCode::PageUp    => PtyKeyCode::PageUp,
+        KeyCode::PageDown  => PtyKeyCode::PageDown,
+        KeyCode::F(n)      => PtyKeyCode::F(n),
+        _                  => PtyKeyCode::Null,  // unrecognized → None from key_event_to_pty_bytes
+    }
+}
+
+fn crossterm_mods_to_pty(m: KeyModifiers) -> PtyKeyModifiers {
+    let mut bits = 0u8;
+    if m.contains(KeyModifiers::SHIFT)   { bits |= PtyKeyModifiers::SHIFT.0; }
+    if m.contains(KeyModifiers::CONTROL) { bits |= PtyKeyModifiers::CONTROL.0; }
+    if m.contains(KeyModifiers::ALT)     { bits |= PtyKeyModifiers::ALT.0; }
+    PtyKeyModifiers(bits)
+}
+
+fn crossterm_kind_to_pty(k: KeyEventKind) -> PtyKeyEventKind {
+    match k {
+        KeyEventKind::Press   => PtyKeyEventKind::Press,
+        KeyEventKind::Repeat  => PtyKeyEventKind::Repeat,
+        KeyEventKind::Release => PtyKeyEventKind::Release,
+    }
+}
+
+fn crossterm_mouse_kind_to_pty(k: MouseEventKind) -> PtyMouseEventKind {
+    match k {
+        MouseEventKind::Down(b)   => PtyMouseEventKind::Down(cvt_btn(b)),
+        MouseEventKind::Up(b)     => PtyMouseEventKind::Up(cvt_btn(b)),
+        MouseEventKind::Drag(b)   => PtyMouseEventKind::Drag(cvt_btn(b)),
+        MouseEventKind::Moved     => PtyMouseEventKind::Moved,
+        MouseEventKind::ScrollUp  => PtyMouseEventKind::ScrollUp,
+        MouseEventKind::ScrollDown => PtyMouseEventKind::ScrollDown,
+        MouseEventKind::ScrollLeft => PtyMouseEventKind::ScrollLeft,
+        MouseEventKind::ScrollRight => PtyMouseEventKind::ScrollRight,
+    }
+}
+
+fn cvt_btn(b: MouseButton) -> PtyMouseButton {
+    match b {
+        MouseButton::Left   => PtyMouseButton::Left,
+        MouseButton::Middle => PtyMouseButton::Middle,
+        MouseButton::Right  => PtyMouseButton::Right,
+    }
+}
+```
+
+#### Call site in event_loop.rs
+
+```rust
+// monocle-tui/src/event_loop.rs — EmbeddedTerminal dispatch arm
+
+use crate::keyboard_conv::{crossterm_key_to_pty, crossterm_mouse_to_pty, ratatui_rect_to_pty};
+use monocle_core::keyboard::{key_event_to_pty_bytes, mouse_event_to_pty_bytes};
+
+// Key events:
+Event::Key(crossterm_key_event) if app_mode == EmbeddedTerminal => {
+    // Esc interception BEFORE conversion (per BC-2.09.002 Invariant 2).
+    if crossterm_key_event.code == crossterm::event::KeyCode::Esc
+       && crossterm_key_event.modifiers.is_empty()
+    {
+        dispatch(Action::ExitEmbeddedTerminal);
+    } else {
+        let pty_event = crossterm_key_to_pty(crossterm_key_event);
+        if let Some(bytes) = key_event_to_pty_bytes(pty_event) {
+            ipc_tx.send(ClientToServer::KeyInput { session_id, bytes }).await.ok();
+        }
+    }
+}
+
+// Mouse events:
+Event::Mouse(crossterm_mouse_event) if app_mode == EmbeddedTerminal => {
+    let pty_event = crossterm_mouse_to_pty(crossterm_mouse_event);
+    let pane      = ratatui_rect_to_pty(app.last_pty_pane_area);
+    if let Some(bytes) = mouse_event_to_pty_bytes(pty_event, pane) {
+        ipc_tx.send(ClientToServer::KeyInput { session_id, bytes }).await.ok();
+    }
+}
+```
+
+**Consequence for S-040 and S-041 tasks:** The Task lists in both stories specify
+`key_event_to_pty_bytes(event: KeyEvent)` and `mouse_event_to_pty_bytes(event: MouseEvent, pane_area: Rect)`
+as the function signatures. **These signatures are incorrect as stated.** The correct signatures are:
+
+```rust
+// monocle-core/src/keyboard.rs — canonical signatures (F-P2-I06 ruling)
+pub fn key_event_to_pty_bytes(event: PtyKeyEvent) -> Option<Vec<u8>>
+pub fn is_kitty_enhanced_key(code: &PtyKeyCode, mods: PtyKeyModifiers) -> bool
+pub fn encode_kitty_key(code: &PtyKeyCode, mods: PtyKeyModifiers, kind: PtyKeyEventKind) -> Vec<u8>
+pub fn mouse_event_to_pty_bytes(event: PtyMouseEvent, pane_area: PtyRect) -> Option<Vec<u8>>
+```
+
+Story-writer must align S-040 and S-041 task lists and Architecture Compliance Rules sections
+to use `PtyKeyEvent`, `PtyMouseEvent`, `PtyRect` and to reference the conversion module
+`monocle-tui/src/keyboard_conv.rs`.
+
+---
+
 ### Translation function
 
 ```rust
-/// Translate a crossterm KeyEvent to terminal byte sequences for PTY stdin.
+/// Translate a PtyKeyEvent to terminal byte sequences for PTY stdin.
 /// Returns None for events that should NOT be forwarded (e.g., pure modifier keys).
-pub fn key_event_to_pty_bytes(event: KeyEvent) -> Option<Vec<u8>> {
-    use crossterm::event::{KeyCode, KeyModifiers, KeyEventKind};
+/// Parameter is a PtyKeyEvent (core-owned type, not crossterm::KeyEvent).
+/// monocle-tui converts crossterm::KeyEvent → PtyKeyEvent at the dispatch boundary
+/// via keyboard_conv::crossterm_key_to_pty() before calling this function.
+/// See §Dependency Boundary above (F-P2-I06).
+pub fn key_event_to_pty_bytes(event: PtyKeyEvent) -> Option<Vec<u8>> {
+    use crate::keyboard::{PtyKeyCode, PtyKeyModifiers, PtyKeyEventKind};
 
     // Only forward Press and Repeat events; Release events are discarded.
     if event.kind == KeyEventKind::Release {
@@ -497,18 +768,22 @@ pub fn key_event_to_pty_bytes(event: KeyEvent) -> Option<Vec<u8>> {
 /// Encode a mouse event to the terminal byte sequence in SGR 1006 encoding.
 /// Called only when AppMode::EmbeddedTerminal is active (SGR mode enabled at entry).
 ///
-/// `pane_area`: the Rect of the PTY widget in TUI coordinates (used to:
+/// `event`: PtyMouseEvent (core-owned type, not crossterm::MouseEvent).
+/// `pane_area`: PtyRect (core-owned type, not ratatui::layout::Rect).
+/// monocle-tui converts crossterm::MouseEvent → PtyMouseEvent and Rect → PtyRect
+/// at the dispatch boundary via keyboard_conv functions. See §Dependency Boundary (F-P2-I06).
+///
+/// `pane_area`: PTY widget area in TUI coordinates (used to:
 ///   1. Clip events outside the pane (return None).
 ///   2. Convert terminal-local coordinates to pane-relative 1-indexed PTY coordinates.
 ///
-/// Parameter name: `pane_area` (canonical name in this spec and in BC-2.09.003 §X, which
-/// was updated to `pane_area` at BC-2.09.003 Pass-2 authoring time — see BC-2.09.003 §Trace v1.1.0 I5-003 note).
-/// The earlier name `screen_offset: Rect` was the pre-Pass-1 stub name and is retired.
+/// Parameter name: `pane_area` (canonical name per BC-2.09.003 §X; `screen_offset: Rect`
+/// was the pre-Pass-1 stub name and is retired).
 pub fn mouse_event_to_pty_bytes(
-    event: MouseEvent,
-    pane_area: Rect,
+    event: PtyMouseEvent,
+    pane_area: PtyRect,
 ) -> Option<Vec<u8>> {
-    use crossterm::event::{MouseButton, MouseEventKind};
+    use crate::keyboard::{PtyMouseButton, PtyMouseEventKind};
 
     // Clip: event outside pane area is not forwarded.
     let col = event.column;
@@ -585,9 +860,9 @@ pub fn mouse_event_to_pty_bytes(
     // Shift adds 4, Meta/Alt adds 8, Ctrl adds 16.
     let mods = event.modifiers;
     let mut ps_final = ps;
-    if mods.contains(crossterm::event::KeyModifiers::SHIFT) { ps_final |= 4; }
-    if mods.contains(crossterm::event::KeyModifiers::ALT)   { ps_final |= 8; }
-    if mods.contains(crossterm::event::KeyModifiers::CONTROL) { ps_final |= 16; }
+    if mods.contains(PtyKeyModifiers::SHIFT)   { ps_final |= 4; }
+    if mods.contains(PtyKeyModifiers::ALT)     { ps_final |= 8; }
+    if mods.contains(PtyKeyModifiers::CONTROL) { ps_final |= 16; }
 
     let seq = format!("\x1b[<{};{};{}{}", ps_final, px, py, terminator as char);
     Some(seq.into_bytes())
@@ -714,8 +989,13 @@ If spawn fails (daemon returns `ServerToClient::Error`), the wizard clears `laun
 | `AppMode::EmbeddedTerminal` | Pure core | State variant; no I/O |
 | `AppMode::SessionCreation` | Pure core | State variant; no I/O (F-P41-IMP-001: `launching_session_id: Option<String>` field added — still pure; in-memory only) |
 | `SessionCreationStep` | Pure core | Enum; no I/O |
-| `key_event_to_pty_bytes()` | Pure core | Input → bytes; no I/O; deterministic |
-| `mouse_event_to_pty_bytes()` | Pure core | Input → bytes; no I/O |
+| `PtyKeyEvent`, `PtyKeyCode`, `PtyKeyModifiers`, `PtyKeyEventKind` | Pure core | Core-owned mirror types; no crossterm dep in monocle-core (F-P2-I06) |
+| `PtyMouseEvent`, `PtyMouseEventKind`, `PtyMouseButton`, `PtyRect` | Pure core | Core-owned mirror types; no ratatui dep in monocle-core (F-P2-I06) |
+| `key_event_to_pty_bytes(PtyKeyEvent)` | Pure core | Input → bytes; no I/O; deterministic |
+| `mouse_event_to_pty_bytes(PtyMouseEvent, PtyRect)` | Pure core | Input → bytes; no I/O |
+| `keyboard_conv::crossterm_key_to_pty()` | Effectful shell (boundary) | crossterm→core conversion; lives in monocle-tui; calls only data copies |
+| `keyboard_conv::crossterm_mouse_to_pty()` | Effectful shell (boundary) | crossterm→core conversion; lives in monocle-tui |
+| `keyboard_conv::ratatui_rect_to_pty()` | Effectful shell (boundary) | Rect→PtyRect conversion; lives in monocle-tui |
 | `App::pty_parsers` | Effectful shell | `vt100::Parser.process()` is stateful mutation |
 | `App::dump_in_progress` | Pure core | `HashMap<String, bool>` flag; in-memory state only |
 | `App::pending_pty_bytes` | Pure core | `HashMap<String, Vec<Vec<u8>>>` buffer; in-memory accumulation only |
@@ -768,6 +1048,39 @@ Mitigation: integration tests use a PTY fixture corpus from `embedded-pty-evalua
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.7.0
+
+**F-P2-I06 ruling — monocle-core ↔ crossterm dependency boundary: canonical resolution** (2026-06-16):
+
+- **Finding (F-P2-I06, Phase-2 adversarial Pass-2):** S-040 contained a contradictory
+  statement: `key_event_to_pty_bytes(event: KeyEvent)` was specified to live in `monocle-core`
+  AND monocle-core was stated to be forbidden from depending on crossterm directly. The note
+  "only via feature flags or re-exports from monocle-tui" is architecturally incoherent:
+  re-exports from monocle-tui would invert the dependency (core cannot depend on tui); feature
+  flags on monocle-core for crossterm still violate the categorical "no crossterm" rule in
+  SS-tui.md §Scope. The same problem extended to `mouse_event_to_pty_bytes(event: MouseEvent,
+  pane_area: Rect)` which would require BOTH a crossterm AND a ratatui dep in monocle-core.
+- **Decision: Option B — core-owned mirror types.** Define `PtyKeyEvent`, `PtyKeyCode`,
+  `PtyKeyModifiers`, `PtyKeyEventKind`, `PtyMouseEvent`, `PtyMouseEventKind`, `PtyMouseButton`,
+  `PtyRect` in `monocle-core/src/keyboard.rs`. These are pure data structs/enums with no
+  external crate dependencies — identical in design to how `AppMode`, `Action`, and `PromptModal`
+  are core-owned types that monocle-tui constructs from TUI framework events.
+- **Conversion module:** `monocle-tui/src/keyboard_conv.rs` provides `crossterm_key_to_pty()`,
+  `crossterm_mouse_to_pty()`, and `ratatui_rect_to_pty()`. These are infallible field-by-field
+  copies. All crossterm and ratatui type references are confined to monocle-tui (the effectful
+  shell). monocle-core/Cargo.toml gains NO new dependencies.
+- **Canonical function signatures in monocle-core:**
+  `pub fn key_event_to_pty_bytes(event: PtyKeyEvent) -> Option<Vec<u8>>`
+  `pub fn mouse_event_to_pty_bytes(event: PtyMouseEvent, pane_area: PtyRect) -> Option<Vec<u8>>`
+  `pub fn is_kitty_enhanced_key(code: &PtyKeyCode, mods: PtyKeyModifiers) -> bool`
+  `pub fn encode_kitty_key(code: &PtyKeyCode, mods: PtyKeyModifiers, kind: PtyKeyEventKind) -> Vec<u8>`
+- **Story impact:** Story-writer must align S-040 and S-041 (Architecture Compliance Rules,
+  task list function signatures, File Structure table) to use core-owned types and reference
+  the `keyboard_conv` conversion module. The module purity table in this spec is updated.
+- **monocle-core Cargo.toml unchanged:** No new deps. `keyboard.rs` uses only Rust primitives.
+- Semver: minor (v1.6.0 → v1.7.0) — new §Dependency Boundary section, new core-owned type
+  definitions, corrected function signatures, new `keyboard_conv` module specification.
 
 ## §Trace v1.6.0
 

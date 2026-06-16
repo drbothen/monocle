@@ -23,7 +23,9 @@ inputs:
   - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.025.md, version: "1.5.0"}
   - {path: .factory/specs/architecture/SS-tui.md, version: "1.8.2"}
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
-  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.0"}
+  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
+  - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.06.025 — multi-session grouped sessions panel (SessionSnapshot wire type, project_root grouping, lifecycle action keys n/k/d/r/D, state-aware blocking, [M]/[E]/[?]/[!] badges)"
 # BC status: BC-2.06.025 non-empty; status draft pending Phase-2 adversarial convergence gate
@@ -235,7 +237,7 @@ From `architecture/SS-conventions-anti-patterns.md v1.32.6`:
 - `Arc<RwLock<>>` for shared theme/config state (if sessions panel needs config access).
 
 **Forbidden dependencies**: `monocle-tui` MUST NOT import from `monocle-runtime`. All types
-accessed via `monocle-ipc::proto` public API. If monocle-tui gains a dependency on
+accessed via `monocle_ipc` public API (from `crates/monocle-ipc/src/lib.rs`). If monocle-tui gains a dependency on
 `monocle-runtime`, the build MUST fail.
 
 ## Library and Framework Requirements
@@ -278,9 +280,9 @@ No new dependencies added. All are existing workspace deps.
 | Category | Estimate |
 |----------|----------|
 | Story spec (this file) | ~6 500 tokens |
-| BC files (1 BC: BC-2.06.025 v1.5.3) | ~5 000 tokens |
+| BC files (1 BC: BC-2.06.025) | ~5 000 tokens |
 | Architecture sections (SS-tui, SS-ipc, SS-session-manager) | ~3 500 tokens |
-| Existing code context (S-028 session list component, proto.rs, main_layout.rs) | ~5 000 tokens |
+| Existing code context (S-028 session list component, monocle-ipc/src/lib.rs, main_layout.rs) | ~5 000 tokens |
 | Test file to write | ~3 500 tokens |
 | **Total estimated** | **~23 500 tokens** |
 

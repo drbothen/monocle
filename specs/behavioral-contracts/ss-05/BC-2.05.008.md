@@ -7,7 +7,7 @@ producer: vsdd-factory:product-owner
 timestamp: 2026-05-30T00:00:00Z
 phase: phase-1-expansion
 inputs: [prd-expansion-scope.md, architecture/SS-ipc.md, architecture/ARCH-INDEX.md]
-input-hash: "054a9d0"
+input-hash: "0db530e"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-05
