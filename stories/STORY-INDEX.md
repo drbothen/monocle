@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.38"
+version: "5.40"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -83,13 +83,13 @@ traces_to: .factory/specs/prd.md
 | S-031 | Profile Picker: Sticky-Per-Project Selection + Ctrl-P Override | EPIC-07 | 5 | 7 | done | — |
 | S-032 | Daemon Event-Bus Fan-Out: Broadcast HookEventReceived with daemon timestamp_micros | EPIC-05 | 5 | 8 | draft | — |
 | S-DAEMON-WIRE-FIX-001 | Second-Signal Exit Codes (SigtermDuringDrain=143, SigintDuringDrain=130) | EPIC-04 | 5 | 8 | draft | — |
-| S-033 | SessionManager::spawn_session — SessionHostSpawner, SessionEntry, Sidecar, SpawnAck, and SessionStateChanged{Launching} | EPIC-08 | 8 | 8 | draft | S-034, S-035, S-036, S-037, S-038 |
-| S-034 | SessionManager::kill_session — DaemonToHost::Kill Within 500ms; Terminating/Terminated Transitions; 12s Watchdog | EPIC-08 | 8 | 8 | draft | — |
-| S-035 | SessionManager::attach_session and detach_session — Chunked Scrollback, SO_PEERCRED, Session-Host Stays Alive | EPIC-08 | 8 | 8 | draft | — |
+| S-033 | SessionManager::spawn_session — SessionHostSpawner, SessionEntry, Sidecar, SpawnAck, and SessionStateChanged{Launching} | EPIC-08 | 8 | 8 | draft | S-034, S-035, S-036, S-037, S-038, S-044, S-045, S-047, S-048 |
+| S-034 | SessionManager::kill_session — DaemonToHost::Kill Within 500ms; Terminating/Terminated Transitions; 12s Watchdog | EPIC-08 | 8 | 8 | draft | S-036, S-037, S-047 |
+| S-035 | SessionManager::attach_session and detach_session — Chunked Scrollback, SO_PEERCRED, Session-Host Stays Alive | EPIC-08 | 8 | 8 | draft | S-036, S-039, S-044, S-047 |
 | S-036 | SessionManager::rediscover_sessions — setsid Persistence; All States Handled Within 5s; UDS Bind Blocked | EPIC-08 | 8 | 8 | draft | — |
 | S-037 | SessionManager GC Task — Terminated Sessions Removed After 10s Grace Period | EPIC-08 | 3 | 8 | draft | — |
 | S-038 | SessionManager Hook Auto-Injection — hooks-settings.json Writer + SpawnOptions.hooks_settings_path Population | EPIC-08 | 3 | 8 | draft | — |
-| S-039 | PTY Output Pipeline — vt100::Parser, PseudoTerminal Render, PtyOutput IPC Handler, Auto-Attach on First Entry | EPIC-09 | 8 | 9 | draft | S-040, S-041, S-042, S-043, S-044 |
+| S-039 | PTY Output Pipeline — vt100::Parser, PseudoTerminal Render, PtyOutput IPC Handler, Auto-Attach on First Entry | EPIC-09 | 8 | 9 | draft | S-040, S-042, S-043 |
 | S-040 | Full-Fidelity Keyboard Forwarding — key_event_to_pty_bytes, Kitty Protocol CSI u, and Bracketed Paste | EPIC-09 | 8 | 9 | draft | S-041, S-044 |
 | S-041 | Mouse Forwarding — mouse_event_to_pty_bytes, SGR 1006 Scoped Entry/Exit, Out-of-Pane Clip | EPIC-09 | 5 | 9 | draft | S-044 |
 | S-042 | PTY Resize Detection, 50ms Debounce, and ResizePane IPC | EPIC-09 | 5 | 9 | draft | S-043 |
@@ -197,22 +197,22 @@ traces_to: .factory/specs/prd.md
 | BC-2.07.005 | Profile Picker: `Ctrl-P` Override Shows Picker | S-031 | AC-001, AC-002, AC-005..AC-007, AC-009, AC-010 | YES |
 | BC-2.07.006 | CCR Detection via `ccr_path` Config Field | S-030 | AC-009..AC-010 | YES |
 
-| BC-2.03.005 | ClaudeCodeModule::spawn_recipe() — Happy Path | S-045 | AC-001..AC-003 | YES |
-| BC-2.03.006 | ClaudeCodeModule::spawn_recipe() — CCR Injection | S-045 | AC-004..AC-006 | YES |
-| BC-2.03.007 | ClaudeCodeModule::spawn_recipe() — Error Cases | S-045 | AC-007..AC-009 | YES |
+| BC-2.03.005 | ClaudeCodeModule::spawn_recipe() — Happy Path | S-045 | AC-001, AC-002, AC-008, AC-009 | YES |
+| BC-2.03.006 | ClaudeCodeModule::spawn_recipe() — CCR Injection | S-045 | AC-003, AC-004 | YES |
+| BC-2.03.007 | ClaudeCodeModule::spawn_recipe() — Error Cases | S-045 | AC-005, AC-006, AC-007 | YES |
 | BC-2.03.008 | EngineModule::spawn_recipe() Default Trait Impl | S-033 | AC-009c | YES |
 | BC-2.05.009 | PtyOutput Fan-out Broker: Bounded Channel + Backpressure | S-046 | AC-001..AC-008 | YES |
 | BC-2.05.010 | IPC Lifecycle Variants: Spawn/Kill/Detach/Attach/Rename/Input/Resize | S-047 | AC-001..AC-012 | YES |
 | BC-2.05.011 | Scrollback Protocol: PtyReset/ScrollbackChunk/ScrollbackComplete | S-046 (PtyReset variant + broker emission), S-047 (TUI handler + scrollback protocol: AC-007..AC-010) | S-046: AC-005 (PtyReset emit); S-047: AC-007..AC-010 (scrollback + TUI reset) | YES |
 | BC-2.06.025 | Sessions Panel: Multi-Project Grouping, Lifecycle Actions, State-Aware Blocking | S-048 | AC-001..AC-012 | YES |
 | BC-2.08.001 | SessionManager::spawn_session — SessionHostSpawner + SpawnAck Handshake | S-033 | AC-001..AC-009b | YES |
-| BC-2.08.002 | SessionManager::rediscover_sessions — setsid Persistence + State Handling | S-036 | AC-001..AC-006 | YES |
-| BC-2.08.003 | SessionManager::kill_session — DaemonToHost::Kill + Watchdog | S-034 | AC-001..AC-007 | YES |
-| BC-2.08.004 | daemon_start_sequence step-8b: rediscover_sessions on Restart | S-036 | AC-007..AC-009 | YES |
-| BC-2.08.005 | SessionManager GC Task — Terminated Sessions Removed After 10s | S-037 | AC-001..AC-005 | YES |
-| BC-2.08.006 | Hook Auto-Injection: hooks-settings.json Writer + SpawnOptions.hooks_settings_path Population | S-038 | AC-001..AC-004 | YES |
-| BC-2.08.007 | SessionManager::attach_session / detach_session — Chunked Scrollback + SO_PEERCRED | S-035 | AC-001..AC-008 | YES |
-| BC-2.08.008 | SessionStateChanged Broadcast on All Session Lifecycle Transitions | S-033, S-034, S-035 | S-033: AC-007 (Launching); S-034: AC-005..AC-006 (Terminating/Terminated); S-035: AC-008 (Detached) | YES |
+| BC-2.08.002 | SessionManager::rediscover_sessions — setsid Persistence + State Handling | S-036 | AC-001..AC-002, AC-015 | YES |
+| BC-2.08.003 | SessionManager::kill_session — DaemonToHost::Kill + Watchdog | S-034 | AC-001..AC-011 | YES |
+| BC-2.08.004 | daemon_start_sequence step-8b: rediscover_sessions on Restart | S-036 | AC-003..AC-014 | YES |
+| BC-2.08.005 | SessionManager GC Task — Terminated Sessions Removed After 10s | S-037 | AC-001..AC-012 | YES |
+| BC-2.08.006 | Hook Auto-Injection: hooks-settings.json Writer + SpawnOptions.hooks_settings_path Population | S-038 | AC-001..AC-013 | YES |
+| BC-2.08.007 | SessionManager::attach_session / detach_session — Chunked Scrollback + SO_PEERCRED | S-035 | AC-001..AC-014 | YES |
+| BC-2.08.008 | SessionStateChanged Broadcast on All Session Lifecycle Transitions | S-033, S-034, S-035 | S-033: AC-010..AC-012 (Launching); S-034: AC-012 (Terminating/Terminated); S-035: AC-015 (Running/Detached) | YES |
 | BC-2.09.001 | PTY Output Pipeline: vt100::Parser + PseudoTerminal Render + PtyOutput IPC Handler | S-039 | AC-001..AC-007 | YES |
 | BC-2.09.002 | key_event_to_pty_bytes: ANSI/Kitty Encoding | S-040 | AC-001..AC-005 | YES |
 | BC-2.09.003 | mouse_event_to_pty_bytes: SGR 1006 Encoding + Scoped Entry/Exit | S-041 | AC-001..AC-006 | YES |
@@ -498,6 +498,28 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.40
+
+**SE-25 bidirectional dependency-symmetry reconciliation: S-033/S-035 blocks add S-044; S-039 blocks remove S-041/S-044** (2026-06-16):
+
+- **SE-25-FIX-001 (S-033.blocks add S-044):** S-044.depends_on includes S-033 (direct: S-044 directly uses `SessionEntry` struct defined in S-033). S-033.blocks updated `[S-034,S-035,S-036,S-037,S-038,S-045,S-047,S-048]` → `[S-034,S-035,S-036,S-037,S-038,S-044,S-045,S-047,S-048]`. S-033 bumped v1.1→v1.2.
+- **SE-25-FIX-002 (S-035.blocks add S-044):** S-044.depends_on includes S-035 (direct: S-044 directly calls `attach_session()` defined in S-035). S-035.blocks updated `[S-036,S-039,S-047]` → `[S-036,S-039,S-044,S-047]`. S-035 bumped v1.1→v1.2.
+- **SE-25-FIX-003 (S-039.blocks remove S-041 and S-044):** S-041.depends_on=[S-040] (not S-039); S-044.depends_on=[S-033,S-035,S-040,S-041] (not S-039). Both are transitive via S-040/S-041 chains. S-039.blocks updated `[S-040,S-041,S-042,S-043,S-044]` → `[S-040,S-042,S-043]`. S-039 bumped v1.0→v1.1.
+- **STORY-INDEX Registry Blocks columns updated to match** for S-033, S-035, S-039.
+- Topological sort confirmed ACYCLIC (wave assignments unchanged; S-044 remains W9; all SE-25 fixes are edge-direction corrections, not structural reorderings).
+- Prior "authorized exception" note in §Trace v5.39 for the 4 remaining asymmetries is superseded — all 4 asymmetries now resolved.
+- SE-16d monotonicity: v5.40 timestamp 2026-06-16 >= v5.39 timestamp 2026-06-16. PASS.
+
+## §Trace v5.39
+
+**Phase-2 Pass-8 fix burst: blocks symmetry, EPIC-08 BC Coverage AC ranges, S-045 AC renumber** (2026-06-16):
+
+- **F-P8-IMP-001 (blocks symmetry):** Backfilled `blocks` frontmatter on S-033, S-034, S-035 to match adjacency table v2.1. S-033.blocks: `[S-034,S-035,S-036,S-037,S-038]` → `[S-034,S-035,S-036,S-037,S-038,S-045,S-047,S-048]`. S-034.blocks: `[]` → `[S-036,S-037,S-047]`. S-035.blocks: `[]` → `[S-036,S-039,S-047]`. STORY-INDEX Registry Blocks columns for these three stories updated to match. All three stories bumped v1.0 → v1.1. Topological sort confirmed ACYCLIC. Remaining 4 asymmetries (S-039→S-041, S-039→S-044, S-044→S-033, S-044→S-035) are authorized by the adjacency table design (scheduling-blocks vs direct-prerequisite distinction).
+- **F-P8-IMP-002 (EPIC-08 BC Coverage sweep):** All 7 EPIC-08 BC Coverage rows corrected: BC-2.08.002 `AC-001..AC-006` → `AC-001..AC-002, AC-015` (S-036; only AC-001/002/015 trace to BC-2.08.002); BC-2.08.003 `AC-001..AC-007` → `AC-001..AC-011` (S-034 has 11 BC-2.08.003 ACs; AC-012 is the BC-2.08.008 AC); BC-2.08.004 `AC-007..AC-009` → `AC-003..AC-014` (S-036; AC-003..AC-014 trace to BC-2.08.004); BC-2.08.005 `AC-001..AC-005` → `AC-001..AC-012` (S-037 has 12 ACs); BC-2.08.006 `AC-001..AC-004` → `AC-001..AC-013` (S-038 has 13 ACs); BC-2.08.007 `AC-001..AC-008` → `AC-001..AC-014` (S-035 has 14 BC-2.08.007 ACs; AC-015 is the BC-2.08.008 AC); BC-2.08.008 S-033/AC ref `AC-007` → `AC-010..AC-012`; S-034/AC ref `AC-005..AC-006` → `AC-012`; S-035/AC ref `AC-008` → `AC-015`.
+- **F-P8-SUG-002 (S-045 AC renumber):** AC gap closed — AC-009→AC-008, AC-010→AC-009 (contiguous). Internal prose updated: test-comment `AC-001/002/010` → `AC-001/002/009`; File Structure requirement `AC-001..AC-008` → `AC-001..AC-009`. BC Coverage rows for BC-2.03.005/006/007 corrected to reflect actual trace mapping: BC-2.03.005 `AC-001..AC-003` → `AC-001, AC-002, AC-008, AC-009`; BC-2.03.006 `AC-004..AC-006` → `AC-003, AC-004`; BC-2.03.007 `AC-007..AC-009` → `AC-005, AC-006, AC-007`. S-045 bumped v1.0 → v1.1.
+- **F-P8-SUG-001 (sprint-state S-038 title — NOTE FOR STATE-MANAGER):** sprint-state.yaml S-038 title still uses old phrasing "-- settings Arg in Session-Host Spawn Path". Canonical title per STORY-INDEX/S-038 H1: "SessionManager Hook Auto-Injection — hooks-settings.json Writer + SpawnOptions.hooks_settings_path Population". State-manager must sync sprint-state.yaml on next commit.
+- SE-16d monotonicity: v5.39 timestamp 2026-06-16 >= v5.38 timestamp 2026-06-16. PASS.
 
 ## §Trace v5.37
 

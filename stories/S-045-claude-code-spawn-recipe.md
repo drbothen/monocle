@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-045
 epic_id: EPIC-03
-version: "1.0"
+version: "1.1"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -103,13 +103,13 @@ When both `which::which("claude")` fails AND `hooks_settings_path` is invalid:
 - `spawn_recipe()` returns `Err(EngineError::BinaryNotFound("claude"))` — binary check is first.
 - Arg validation is never reached when the binary lookup fails (early return).
 
-### AC-009 (traces to BC-2.03.005 invariant 1 — hooks_settings_path is CLI arg, not written by spawn_recipe)
+### AC-008 (traces to BC-2.03.005 invariant 1 — hooks_settings_path is CLI arg, not written by spawn_recipe)
 
 `spawn_recipe()` does NOT write `hooks-settings.json`. The `hooks_settings_path` is passed
 through as a CLI arg string (`--settings <path>`). The file is written by the daemon BEFORE
 `spawn_recipe()` is called (existing OQ-02 mechanism).
 
-### AC-010 (traces to BC-2.03.005 invariant 3 — env MERGED, not replaced)
+### AC-009 (traces to BC-2.03.005 invariant 3 — env MERGED, not replaced)
 
 The environment map (`recipe.env`) is an OVERLAY on the child process's inherited environment
 at spawn time. Variables not in `recipe.env` are inherited unchanged. `spawn_recipe()` itself
@@ -133,7 +133,7 @@ returns the overlay map only; the merge is performed by `monocle-session-host` a
 - [ ] Add `"binary_not_found"` and `"invalid_spawn_arg"` arms to `session_error_to_code()` for
       `IpcOp::Spawn` (per BC-2.03.007 PC-3/PC-7).
 - [ ] Write unit tests in `monocle-runtime/tests/spawn_recipe.rs`:
-      - `test_BC_2_03_005_spawn_recipe_happy_path_binary_args_env_cwd` (AC-001/002/010)
+      - `test_BC_2_03_005_spawn_recipe_happy_path_binary_args_env_cwd` (AC-001/002/009)
       - `test_BC_2_03_005_spawn_recipe_ccr_none_env_monocle_id_only` (AC-004)
       - `test_BC_2_03_006_spawn_recipe_ccr_base_url_injected` (AC-003)
       - `test_BC_2_03_007_spawn_recipe_binary_not_found` (AC-005)
@@ -196,7 +196,7 @@ No new dependencies added. `which` is already in `monocle-runtime` (BC-2.07.006 
 | `crates/monocle-core/src/engine.rs` | MODIFY | Add `spawn_recipe()` default method to `EngineModule` trait; add `EngineError` enum |
 | `crates/monocle-runtime/src/engine/claude_code.rs` | MODIFY | Implement `ClaudeCodeModule::spawn_recipe()` |
 | `crates/monocle-runtime/src/session_manager/mod.rs` | MODIFY (if needed) | Ensure `SessionError::EngineError(#[from] EngineError)` variant present (S-033 defined `SessionError` here; this is the canonical location) |
-| `crates/monocle-runtime/tests/spawn_recipe.rs` | CREATE | Unit tests for all AC-001..AC-008 |
+| `crates/monocle-runtime/tests/spawn_recipe.rs` | CREATE | Unit tests for all AC-001..AC-009 |
 
 ## Edge Cases
 

@@ -210,8 +210,8 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.38"
-  last_bump_commit: "[Phase-2 Pass-7 fix burst — BC-2.03.008 BC Coverage row repointed S-045→S-033 (AC-009c); dependency-graph-expansion v2.0→v2.1 S-047 self-loop removed]"
+  current_version: "5.40"
+  last_bump_commit: "[Phase-2 Pass-8 fix burst — EPIC-08+EPIC-03 BC Coverage AC ranges corrected; S-045 AC renumber (AC-009→AC-008, AC-010→AC-009); §Trace v5.39+v5.40 appended]"
   last_bump_date: "2026-06-16"
 
 VP-INDEX:

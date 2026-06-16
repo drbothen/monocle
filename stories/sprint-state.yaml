@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.42"
+version: "1.43"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-03T08:00:00Z
@@ -465,7 +465,7 @@ stories:
     started_at: null
     completed_at: null
     pr_url: null
-    notes: "Wave 8 root for EPIC-08 (Session Manager). Foundational for S-034..S-038 and S-047/S-048. BCs: BC-2.08.001, BC-2.08.008."
+    notes: "Wave 8 root for EPIC-08 (Session Manager). Blocks S-034, S-035, S-036, S-037, S-038, S-044, S-045, S-047, S-048. BCs: BC-2.08.001, BC-2.08.008."
 
   - id: S-034
     title: "SessionManager::kill_session — DaemonToHost::Kill Within 500ms; Terminating/Terminated Transitions; 12s Watchdog"
@@ -477,7 +477,7 @@ stories:
     started_at: null
     completed_at: null
     pr_url: null
-    notes: "Wave 8. Depends on S-033. BCs: BC-2.08.003, BC-2.08.008."
+    notes: "Wave 8. Depends on S-033. Blocks S-036, S-037, S-047. BCs: BC-2.08.003, BC-2.08.008."
 
   - id: S-035
     title: "SessionManager::attach_session and detach_session — Chunked Scrollback, SO_PEERCRED, Session-Host Stays Alive"
@@ -489,7 +489,7 @@ stories:
     started_at: null
     completed_at: null
     pr_url: null
-    notes: "Wave 8. Depends on S-033. Blocks S-039 (PTY pipeline). BCs: BC-2.08.007, BC-2.08.008."
+    notes: "Wave 8. Depends on S-033. Blocks S-036, S-039, S-044, S-047. BCs: BC-2.08.007, BC-2.08.008."
 
   - id: S-036
     title: "SessionManager::rediscover_sessions — setsid Persistence; All States Handled Within 5s; UDS Bind Blocked"
@@ -516,7 +516,7 @@ stories:
     notes: "Wave 8. Depends on S-033, S-034. BC: BC-2.08.005."
 
   - id: S-038
-    title: "SessionManager Hook Auto-Injection — --settings Arg in Session-Host Spawn Path"
+    title: "SessionManager Hook Auto-Injection — hooks-settings.json Writer + SpawnOptions.hooks_settings_path Population"
     epic: EPIC-08
     wave: 8
     points: 3
@@ -537,7 +537,7 @@ stories:
     started_at: null
     completed_at: null
     pr_url: null
-    notes: "Wave 9 root for EPIC-09 (Embedded PTY). Foundational for S-040..S-044. Depends on S-021, S-025, S-035. BC: BC-2.09.001."
+    notes: "Wave 9 root for EPIC-09 (Embedded PTY). Blocks S-040, S-042, S-043 (direct edges only; S-041/S-044 are transitive via S-040). Depends on S-021, S-025, S-035. BC: BC-2.09.001."
 
   - id: S-040
     title: "Full-Fidelity Keyboard Forwarding — key_event_to_pty_bytes, Kitty Protocol CSI u, and Bracketed Paste"
@@ -687,6 +687,17 @@ summary:
   # total_stories note: 49 = 33 Phase-3 stories (including S-PHASE-3-PREP and S-DTU-001) + 2 Wave-8
   #   pre-existing (S-032, S-DAEMON-WIRE-FIX-001) + 16 new v1A (S-033..S-048). Blocked count (1) is
   #   S-PHASE-3-PREP (blocked on vsdd-factory spec-kit-mcp rc.19+).
+  # v1.43 updates (2026-06-16):
+  # - Phase-2 adversarial Pass-8 fix cycle (SE-25 bidirectional symmetry reconciliation).
+  # - S-033 notes: blocks updated to full set S-034,S-035,S-036,S-037,S-038,S-044,S-045,S-047,S-048.
+  # - S-034 notes: blocks added (S-036, S-037, S-047) — was missing from notes.
+  # - S-035 notes: blocks updated to direct edges S-036, S-039, S-044, S-047.
+  # - S-038 title: canonical title sync to match STORY-INDEX + S-038 H1
+  #     OLD: "SessionManager Hook Auto-Injection — --settings Arg in Session-Host Spawn Path"
+  #     NEW: "SessionManager Hook Auto-Injection — hooks-settings.json Writer + SpawnOptions.hooks_settings_path Population"
+  # - S-039 notes: blocks updated to direct edges S-040, S-042, S-043 (transitive S-041, S-044 removed).
+  # - SE-25 symmetry confirmed: sprint-state notes now match story frontmatter blocks[], STORY-INDEX
+  #   Registry Blocks column, and dependency-graph-expansion v2.2 adjacency. Graph remains ACYCLIC.
   # v1.42 updates (2026-06-16):
   # - Phase-2 adversarial Pass-5 fix cycle: S-042→S-043 dependency edge added.
   #   S-042.notes updated: blocks S-043 (ResizePane handler owns pty_scroll_offsets reset per BC-2.09.001 Inv-6 / SS-embedded-pty.md §Scrollback offset invariants).

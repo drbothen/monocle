@@ -1,7 +1,7 @@
 ---
 document_type: dependency-graph
 level: L4
-version: "2.1"
+version: "2.2"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -497,8 +497,8 @@ flowchart TD
 - S-043: depends on S-039 (W9), S-042 (W9). Earliest: W9 (serial after S-042). VALID.
 - S-044 (terminal): depends on S-033 (W8), S-035 (W8), S-040 (W9), S-041 (W9). Earliest: W9. VALID.
 
-**Wave 9 within-wave ordering (serial constraints):**
-- S-039 must be done before: S-040, S-041, S-042, S-043, S-044
+**Wave 9 within-wave ordering (direct serial constraints only):**
+- S-039 must be done before: S-040, S-042, S-043 (direct dependents only; S-041 and S-044 are transitive)
 - S-040 must be done before: S-041, S-044
 - S-041 must be done before: S-044
 - S-042 must be done before: S-043
@@ -515,9 +515,9 @@ Critical path through Waves 8-9: S-033 (8pts) → S-035 (8pts) → S-039 (8pts) 
 | Story | Wave | Pts | Depends On | Blocks |
 |-------|------|-----|------------|--------|
 | S-032 | 8 | 5 | S-021, S-022, S-028 | S-046 |
-| S-033 | 8 | 8 | S-014, S-015, S-017, S-021 | S-034, S-035, S-036, S-037, S-038, S-045, S-047, S-048 |
+| S-033 | 8 | 8 | S-014, S-015, S-017, S-021 | S-034, S-035, S-036, S-037, S-038, S-044, S-045, S-047, S-048 |
 | S-034 | 8 | 8 | S-033 | S-036, S-037, S-047 |
-| S-035 | 8 | 8 | S-033 | S-036, S-039, S-047 |
+| S-035 | 8 | 8 | S-033 | S-036, S-039, S-044, S-047 |
 | S-036 | 8 | 8 | S-033, S-034, S-035 | — |
 | S-037 | 8 | 3 | S-033, S-034 | — |
 | S-038 | 8 | 3 | S-033 | — |
@@ -526,12 +526,24 @@ Critical path through Waves 8-9: S-033 (8pts) → S-035 (8pts) → S-039 (8pts) 
 | S-047 | 8 | 8 | S-021, S-022, S-023, S-033, S-034, S-035, S-046 | S-048 |
 | S-048 | 8 | 8 | S-022, S-025, S-028, S-033, S-047 | — |
 | S-DAEMON-WIRE-FIX-001 | 8 | 5 | S-005, S-016, S-017, S-018 | — |
-| S-039 | 9 | 8 | S-021, S-025, S-035 | S-040, S-041, S-042, S-043, S-044 |
+| S-039 | 9 | 8 | S-021, S-025, S-035 | S-040, S-042, S-043 |
 | S-040 | 9 | 8 | S-039 | S-041, S-044 |
 | S-041 | 9 | 5 | S-040 | S-044 |
 | S-042 | 9 | 5 | S-039 | S-043 |
 | S-043 | 9 | 3 | S-039, S-042 | — |
 | S-044 | 9 | 13 | S-033, S-035, S-040, S-041 | — |
+
+## §Trace v2.2 — SE-25 bidirectional dependency-symmetry reconciliation (2026-06-16)
+
+**Bump:** 2.1 → 2.2.
+**Scope (SE-25 strict bidirectional invariant):**
+- **Adjacency table fix — S-033.blocks:** Added S-044. Rationale: S-044.depends_on lists S-033 (direct — S-044 directly uses `SessionEntry` struct defined in S-033). S-033.blocks updated `[S-034,S-035,S-036,S-037,S-038,S-045,S-047,S-048]` → `[S-034,S-035,S-036,S-037,S-038,S-044,S-045,S-047,S-048]`.
+- **Adjacency table fix — S-035.blocks:** Added S-044. Rationale: S-044.depends_on lists S-035 (direct — S-044 directly calls `attach_session()` defined in S-035). S-035.blocks updated `[S-036,S-039,S-047]` → `[S-036,S-039,S-044,S-047]`.
+- **Adjacency table fix — S-039.blocks:** Removed S-041 and S-044. Rationale: S-041.depends_on=[S-040] only; S-044.depends_on=[S-033,S-035,S-040,S-041] only — neither lists S-039. S-039→S-041 and S-039→S-044 are transitive paths (via S-040, then S-041), not direct edges. S-039.blocks updated `[S-040,S-041,S-042,S-043,S-044]` → `[S-040,S-042,S-043]`.
+- **Wave 9 within-wave ordering section:** corrected "S-039 must be done before: S-040, S-041, S-042, S-043, S-044" to note direct dependents only (S-040, S-042, S-043).
+- Prior "authorized exception" claim in STORY-INDEX §Trace v5.39 for these 4 asymmetries is superseded — all resolved.
+- Topological sort remains ACYCLIC. Wave assignments unchanged (S-044 remains W9). Critical path S-033→S-035→S-039→S-040→S-041→S-044 unchanged (structural path; SE-25 fixes clarify edge-ownership, not path length).
+**SE-16d PASS:** 2026-06-16 >= 2026-06-16.
 
 ## §Trace v2.1 — Pass-7 fix: S-047 self-loop removed, S-023 node declared (2026-06-16)
 
