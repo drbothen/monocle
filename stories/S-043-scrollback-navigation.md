@@ -20,7 +20,7 @@ behavioral_contracts: [BC-2.09.007]
 verification_properties: []
 estimated_days: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.007.md, version: "1.1.1"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.007.md, version: "1.1.3"}
   - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.7.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}

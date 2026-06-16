@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.34"
+version: "5.35"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-03T08:30:00Z
@@ -88,7 +88,7 @@ traces_to: .factory/specs/prd.md
 | S-035 | SessionManager::attach_session and detach_session — Chunked Scrollback, SO_PEERCRED, Session-Host Stays Alive | EPIC-08 | 8 | 8 | draft | — |
 | S-036 | SessionManager::rediscover_sessions — setsid Persistence; All States Handled Within 5s; UDS Bind Blocked | EPIC-08 | 8 | 8 | draft | — |
 | S-037 | SessionManager GC Task — Terminated Sessions Removed After 10s Grace Period | EPIC-08 | 3 | 8 | draft | — |
-| S-038 | SessionManager Hook Auto-Injection — --settings Arg in Session-Host Spawn Path | EPIC-08 | 3 | 8 | draft | — |
+| S-038 | SessionManager Hook Auto-Injection — hooks-settings.json Writer + SpawnOptions.hooks_settings_path Population | EPIC-08 | 3 | 8 | draft | — |
 | S-039 | PTY Output Pipeline — vt100::Parser, PseudoTerminal Render, PtyOutput IPC Handler, Auto-Attach on First Entry | EPIC-09 | 8 | 9 | draft | S-040, S-041, S-042, S-043, S-044 |
 | S-040 | Full-Fidelity Keyboard Forwarding — key_event_to_pty_bytes, Kitty Protocol CSI u, and Bracketed Paste | EPIC-09 | 8 | 9 | draft | — |
 | S-041 | Mouse Forwarding — mouse_event_to_pty_bytes, SGR 1006 Scoped Entry/Exit, Out-of-Pane Clip | EPIC-09 | 5 | 9 | draft | — |
@@ -210,7 +210,7 @@ traces_to: .factory/specs/prd.md
 | BC-2.08.003 | SessionManager::kill_session — DaemonToHost::Kill + Watchdog | S-034 | AC-001..AC-007 | YES |
 | BC-2.08.004 | daemon_start_sequence step-8b: rediscover_sessions on Restart | S-036 | AC-007..AC-009 | YES |
 | BC-2.08.005 | SessionManager GC Task — Terminated Sessions Removed After 10s | S-037 | AC-001..AC-005 | YES |
-| BC-2.08.006 | Hook Auto-Injection: --settings Arg in Session-Host Spawn Path | S-038 | AC-001..AC-004 | YES |
+| BC-2.08.006 | Hook Auto-Injection: hooks-settings.json Writer + SpawnOptions.hooks_settings_path Population | S-038 | AC-001..AC-004 | YES |
 | BC-2.08.007 | SessionManager::attach_session / detach_session — Chunked Scrollback + SO_PEERCRED | S-035 | AC-001..AC-008 | YES |
 | BC-2.08.008 | SessionStateChanged Broadcast on All Session Lifecycle Transitions | S-033, S-034, S-035 | S-033: AC-007 (Launching); S-034: AC-005..AC-006 (Terminating/Terminated); S-035: AC-008 (Detached) | YES |
 | BC-2.09.001 | PTY Output Pipeline: vt100::Parser + PseudoTerminal Render + PtyOutput IPC Handler | S-039 | AC-001..AC-007 | YES |

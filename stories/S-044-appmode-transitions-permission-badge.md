@@ -20,7 +20,7 @@ behavioral_contracts: [BC-2.09.008, BC-2.09.009]
 verification_properties: []
 estimated_days: 6
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.008.md, version: "1.3.4"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.008.md, version: "1.3.5"}
   - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.009.md, version: "1.1.3"}
   - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.7.0"}
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}

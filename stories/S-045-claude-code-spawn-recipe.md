@@ -20,10 +20,10 @@ behavioral_contracts: [BC-2.03.005, BC-2.03.006, BC-2.03.007, BC-2.03.008]
 verification_properties: []
 estimated_days: 3
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.005.md, version: "1.1.3"}
-  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.006.md, version: "1.1.1"}
-  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.007.md, version: "1.2.2"}
-  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.008.md, version: "1.0.4"}
+  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.005.md, version: "1.1.5"}
+  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.006.md, version: "1.1.2"}
+  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.007.md, version: "1.2.5"}
+  - {path: .factory/specs/behavioral-contracts/ss-03/BC-2.03.008.md, version: "1.0.7"}
   - {path: .factory/specs/architecture/SS-engine-module-v2-delta.md, version: "1.6.0"}
   - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
@@ -145,7 +145,8 @@ returns the overlay map only; the merge is performed by `monocle-session-host` a
       - Step 4: Set `recipe.cwd = opts.worktree_root.clone()`.
       - Step 5: Return `Ok(SpawnRecipe { binary, args: ["--settings", path_str], env, cwd })`.
 - [ ] Add `SessionError::EngineError(#[from] EngineError)` variant to the `SessionError` enum in
-      `monocle-runtime/src/session_manager.rs` (if not already present from S-033).
+      `monocle-runtime/src/session_manager/mod.rs` (canonical location per S-033; if not already
+      present from S-033, add it here — do NOT create a separate error module).
 - [ ] Add `"binary_not_found"` and `"invalid_spawn_arg"` arms to `session_error_to_code()` for
       `IpcOp::Spawn` (per BC-2.03.007 PC-3/PC-7).
 - [ ] Write unit tests in `monocle-runtime/tests/spawn_recipe.rs`:
@@ -208,7 +209,7 @@ No new dependencies added. `which` is already in `monocle-runtime` (BC-2.07.006 
 |------|--------|-------|
 | `crates/monocle-core/src/engine.rs` | MODIFY | Add `spawn_recipe()` default method to `EngineModule` trait; add `EngineError` enum |
 | `crates/monocle-runtime/src/engine/claude_code.rs` | MODIFY | Implement `ClaudeCodeModule::spawn_recipe()` |
-| `crates/monocle-runtime/src/session_manager.rs` | MODIFY (if needed) | Ensure `SessionError::EngineError(#[from] EngineError)` variant present |
+| `crates/monocle-runtime/src/session_manager/mod.rs` | MODIFY (if needed) | Ensure `SessionError::EngineError(#[from] EngineError)` variant present (S-033 defined `SessionError` here; this is the canonical location) |
 | `crates/monocle-runtime/tests/spawn_recipe.rs` | CREATE | Unit tests for all AC-001..AC-008 |
 
 ## Edge Cases
@@ -230,7 +231,7 @@ No new dependencies added. `which` is already in `monocle-runtime` (BC-2.07.006 
 | Story spec (this file) | ~4 000 tokens |
 | BC files (4 BCs) | ~6 000 tokens |
 | Architecture sections (SS-engine-module-v2-delta, SS-session-manager, SS-ipc excerpts) | ~3 000 tokens |
-| Existing code context (engine.rs, claude_code.rs, session_manager.rs) | ~3 000 tokens |
+| Existing code context (engine.rs, claude_code.rs, session_manager/mod.rs) | ~3 000 tokens |
 | Test file to write | ~2 000 tokens |
 | **Total estimated** | **~18 000 tokens** |
 

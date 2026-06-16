@@ -20,7 +20,7 @@ behavioral_contracts: [BC-2.08.006]
 verification_properties: []
 estimated_days: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.006.md, version: "1.3.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.006.md, version: "1.3.2"}
   - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
@@ -169,9 +169,10 @@ is called, it surfaces as `EngineError::InvalidPath` → wire code `"invalid_spa
 ### AC-013 (traces to BC-2.08.006 edge case EC-182 — hooks-settings.json deleted between daemon startup and spawn)
 
 If `hooks-settings.json` is deleted by an external process between daemon startup and
-a `spawn_session()` call, `spawn_recipe()` MUST re-write the file using the cached
-in-memory hook endpoint URL before proceeding with the spawn. This ensures the
-`--settings` arg always points to a valid file.
+a `spawn_session()` call, `SessionManager::spawn_session()` MUST re-write the file using
+the cached in-memory hook endpoint URL before populating `opts.hooks_settings_path` and
+proceeding with the spawn. `spawn_recipe()` performs NO file I/O (BC-2.03.005 PC-3 / AC-002 of S-045).
+The re-write guard lives in `spawn_session()`, consistent with Tasks and AC-008.
 `tracing::warn!("hooks-settings.json missing at spawn time; re-writing")`.
 
 ## Tasks
@@ -204,7 +205,7 @@ in-memory hook endpoint URL before proceeding with the spawn. This ensures the
 
 ## Previous Story Intelligence
 
-- **S-033** (spawn): `spawn_recipe()` is introduced in S-033. S-038 extends `spawn_recipe()` to append the `--settings` arg. Coordinate: S-038 MUST be reviewed alongside S-033 to ensure the `SpawnRecipe.argv` extension is clean (not duplicated logic).
+- **S-033** (spawn): `spawn_recipe()` is introduced in S-033. S-038 does NOT modify `spawn_recipe()`. S-038 writes `hooks-settings.json` at daemon startup and populates `opts.hooks_settings_path` before the `spawn_recipe()` call in `spawn_session()`. The `--settings` argv injection into `SpawnRecipe.args` is owned by S-045 (`ClaudeCodeModule::spawn_recipe()`). Coordinate: S-038 and S-045 must be reviewed together to ensure the field-population (S-038) and the arg-injection (S-045) are complementary with no duplication.
 - The `HookEndpointConfig` values (URLs) come from the hook server started during daemon initialization (Phase 1 BC-2.04.NNN). S-038 does NOT spawn the hook server — it consumes the already-running server's URL. The exact URL format is deferred to BC-2.04.010; this story provides a `String`-typed field that the daemon's startup sequence fills in.
 - `tempfile::persist` pattern is already established in the sidecar write path (S-033). Re-use the same pattern here.
 - File permissions: `std::os::unix::fs::PermissionsExt::set_mode(0o600)` after persist.
@@ -212,7 +213,7 @@ in-memory hook endpoint URL before proceeding with the spawn. This ensures the
 ## Architecture Compliance Rules
 
 - `hooks-settings.json` written once at `SessionManager::new()`, not per spawn. Shared across all sessions.
-- `spawn_recipe()` appends `--settings <path>` to argv. The path is canonicalized at initialization time (stored in `hooks_settings_path: PathBuf`).
+- `ClaudeCodeModule::spawn_recipe()` (S-045) appends `--settings <path>` to `SpawnRecipe.args`. S-038 provides the path by setting `opts.hooks_settings_path` before calling `spawn_recipe()`; S-038 MUST NOT append `--settings` itself. The path is canonicalized at `SessionManager::new()` initialization (stored in `hooks_settings_path: PathBuf`).
 - `write_hooks_settings_json()` MUST use `tempfile::persist` (SS-conventions-anti-patterns.md §Atomic writes policy: all config files via `tempfile::persist`; no exceptions).
 - File permissions: 0o600. Session-host child processes run as the same user, so owner-read-only is sufficient.
 - JSON schema authority for hook key names and URL format: BC-2.04.010. This story MUST defer any ambiguous key naming to BC-2.04.010.
@@ -234,7 +235,7 @@ Files to MODIFY:
 
 | File | Change |
 |------|--------|
-| `crates/monocle-runtime/src/session_manager/mod.rs` | Add `HookEndpointConfig`, `write_hooks_settings_json()`, `hooks_settings_path` field on `SessionManager`, extend `spawn_recipe()` to append `--settings` arg, add EC-182 re-write guard |
+| `crates/monocle-runtime/src/session_manager/mod.rs` | Add `HookEndpointConfig`, `write_hooks_settings_json()`, `hooks_settings_path` field on `SessionManager`, populate `opts.hooks_settings_path` before `spawn_recipe()` call in `spawn_session()`, add EC-182 re-write guard in `spawn_session()` |
 | `crates/monocle-runtime/src/error.rs` (or wherever `SessionError` is defined) | No new variant added. Verify `session_error_to_code()` exhaustive outer match still compiles after any S-033-introduced additions. |
 
 Files to VERIFY (no modification expected):

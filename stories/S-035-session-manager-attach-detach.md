@@ -20,8 +20,8 @@ behavioral_contracts: [BC-2.08.007, BC-2.08.008]
 verification_properties: []
 estimated_days: 4
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.007.md, version: "1.5.1"}
-  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.008.md, version: "1.3.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.007.md, version: "1.5.3"}
+  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.008.md, version: "1.3.4"}
   - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}

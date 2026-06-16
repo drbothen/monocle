@@ -20,8 +20,8 @@ behavioral_contracts: [BC-2.05.009, BC-2.05.011]
 verification_properties: []
 estimated_days: 3
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.009.md, version: "1.5.2"}
-  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.011.md, version: "1.2.1"}
+  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.009.md, version: "1.5.5"}
+  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.011.md, version: "1.2.4"}
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
   - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
@@ -228,7 +228,7 @@ story) and the client-side protocol (S-047). Both stories co-own BC-2.05.011 but
 | Story spec (this file) | ~4 500 tokens |
 | BC files (1 BC) | ~3 000 tokens |
 | Architecture sections (SS-ipc, SS-session-manager excerpts) | ~2 000 tokens |
-| Existing code context (session_manager.rs, monocle-ipc/src/lib.rs, event bus from S-032) | ~3 000 tokens |
+| Existing code context (session_manager/mod.rs, monocle-ipc/src/lib.rs, event bus from S-032) | ~3 000 tokens |
 | Test file to write | ~2 500 tokens |
 | **Total estimated** | **~15 000 tokens** |
 

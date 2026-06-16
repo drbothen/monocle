@@ -20,8 +20,8 @@ behavioral_contracts: [BC-2.05.010, BC-2.05.011]
 verification_properties: []
 estimated_days: 5
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.010.md, version: "1.9.1"}
-  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.011.md, version: "1.2.1"}
+  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.010.md, version: "1.9.4"}
+  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.011.md, version: "1.2.4"}
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
   - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
   - {path: .factory/specs/architecture/SS-conventions-anti-patterns.md, version: "1.32.6"}
@@ -287,7 +287,7 @@ This story extends the phase-1 IPC protocol with 7 new client variants and 2 new
 not modified. The `SpawnOptions` struct should be verified against S-033/S-045 before adding; if
 it already exists in `crates/monocle-ipc/src/lib.rs`, skip the create step and confirm field parity.
 
-Key lesson from S-033 review: `session_manager.rs` gained both the spawn path and error mapping
+Key lesson from S-033 review: `session_manager/mod.rs` gained both the spawn path and error mapping
 in S-033. The IPC dispatch loop in S-047 calls into session_manager methods — it must NOT duplicate
 session state management directly in the handler.
 
@@ -367,7 +367,7 @@ is in `monocle-tui`. These boundaries are enforced by the workspace dependency g
 | Story spec (this file) | ~6 000 tokens |
 | BC files (2 BCs: BC-2.05.010 + BC-2.05.011) | ~8 000 tokens |
 | Architecture sections (SS-ipc, SS-session-manager, SS-conventions) | ~3 500 tokens |
-| Existing code context (monocle-ipc/src/lib.rs, ipc_handler.rs, session_manager.rs, ipc_receiver.rs) | ~5 000 tokens |
+| Existing code context (monocle-ipc/src/lib.rs, ipc_handler.rs, session_manager/mod.rs, ipc_receiver.rs) | ~5 000 tokens |
 | Test file to write | ~4 000 tokens |
 | **Total estimated** | **~26 500 tokens** |
 

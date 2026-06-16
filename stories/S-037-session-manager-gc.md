@@ -20,7 +20,7 @@ behavioral_contracts: [BC-2.08.005]
 verification_properties: []
 estimated_days: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.005.md, version: "1.0.3"}
+  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.005.md, version: "1.0.6"}
   - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
@@ -125,7 +125,7 @@ No interference between concurrent GC tasks.
   - After mutex release: `std::fs::remove_file(sidecar_path)` (ENOENT ok); `std::fs::remove_file(socket_path)` (ENOENT ok); log trace.
 - [ ] Implement `rename_session()` state guard: if `SessionEntry.state == Terminated`, return `Err(SessionError::InvalidSessionName { reason: "session terminated".to_string() })` immediately.
 - [ ] Implement `rename_session()` for non-Terminated sessions (metadata update: `display_name` field; update sidecar; publish `SessionListUpdate` only — NOT `SessionStateChanged`; per BC-2.08.008 PC-4a rename rule).
-- [ ] Add `ClientToServer::RenameSession { session_id, new_name }` arm to IPC handler: call `rename_session()` → on error send `ServerToClient::Error`.
+- [ ] NOTE — IPC arm NOT in this story's scope: `ClientToServer::RenameSession` IPC handler arm is owned by S-047 (BC-2.05.010 / "Rename Ownership Disambiguation" section below). S-037 owns ONLY `rename_session()` on `SessionManager`. The test `test_BC_2_08_005_rename_on_running_succeeds` exercises the method directly (bypassing IPC dispatch); wire-level dispatch is tested in S-047.
 - [ ] Write unit test `test_BC_2_08_005_terminated_session_gc_after_10s`: `tokio::time::pause()`; spawn session; inject Terminated; advance virtual time 10s; assert `SessionEntry` removed from registry; sidecar deleted; `SessionListUpdate` published. Wall clock not used.
 - [ ] Write unit test `test_BC_2_08_005_gc_sidecar_enoent_no_error`: mock sidecar pre-deleted; GC fires; `remove_file` ENOENT; no error; session removed from registry.
 - [ ] Write unit test `test_BC_2_08_005_rename_on_terminated_fails`: session in Terminated state; `rename_session()` → `Err(InvalidSessionName { reason: "session terminated" })`; wire code `"rename_failed"`.

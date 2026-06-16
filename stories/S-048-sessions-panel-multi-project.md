@@ -20,7 +20,7 @@ behavioral_contracts: [BC-2.06.025]
 verification_properties: []
 estimated_days: 5
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.025.md, version: "1.5.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-06/BC-2.06.025.md, version: "1.5.4"}
   - {path: .factory/specs/architecture/SS-tui.md, version: "1.8.2"}
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
   - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}

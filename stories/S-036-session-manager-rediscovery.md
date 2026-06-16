@@ -20,10 +20,10 @@ behavioral_contracts: [BC-2.08.002, BC-2.08.004]
 verification_properties: []
 estimated_days: 4
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.002.md, version: "1.2.1"}
-  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.004.md, version: "1.3.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.002.md, version: "1.2.3"}
+  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.004.md, version: "1.3.2"}
   - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
-  - {path: .factory/specs/architecture/SS-daemon-wiring-v2-delta.md, version: "1.11.3"}
+  - {path: .factory/specs/architecture/SS-daemon-wiring-v2-delta.md, version: "1.11.4"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
