@@ -10,7 +10,7 @@ producer: architect
 phase: pre-phase-1-architecture
 timestamp: 2026-05-18T12:00:00Z
 inputs: [product-brief.md, research/domain-monocle-vision-synthesis.md, SS-deps-pin-manifest.md, SS-permissions-phase1.md, SS-daemon-lifecycle.md, SS-conventions-anti-patterns.md, adr/ADR-0001-wasmtime-vs-wasmi.md, adr/ADR-0002-nucleo-acceptance-with-reeval-trigger.md, adr/ADR-0003-license-selection.md, planning/oq-research.md]
-input-hash: "c4f1fd4"
+input-hash: "97f882d"
 traces_to: architecture/ARCH-INDEX.md
 project: monocle
 ---

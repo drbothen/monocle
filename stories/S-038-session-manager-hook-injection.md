@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-038
 epic_id: EPIC-08
-version: "1.0"
+version: "1.1"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -196,7 +196,7 @@ The re-write guard lives in `spawn_session()`, consistent with Tasks and AC-008.
 - [ ] Add `hooks_settings_path: PathBuf` field to `SessionManager`.
 - [ ] In `SessionManager::spawn_session()`, before calling `engine_module.spawn_recipe(&opts)`: set `opts.hooks_settings_path = Some(self.hooks_settings_path.clone())` so `ClaudeCodeModule::spawn_recipe()` (S-045) can append `--settings <path>` to argv. S-038 MUST NOT duplicate the argv append — that is S-045's responsibility. Only populate the field.
 - [ ] EC-182 re-write guard (in `spawn_session()`, before populating `opts.hooks_settings_path`): if `self.hooks_settings_path` does not exist (`!self.hooks_settings_path.exists()`), call `write_hooks_settings_json()` to re-write it, log `tracing::warn!("hooks-settings.json missing at spawn time; re-writing")`, then proceed.
-- [ ] Write unit test `test_BC_2_08_006_spawn_options_hooks_settings_path_populated`: call `spawn_session()` on a `SessionManager` with a valid `hooks_settings_path`; intercept the `SpawnOptions` passed to `spawn_recipe()` (via mock `EngineModule`); assert `opts.hooks_settings_path == Some(self.hooks_settings_path)`. Do NOT assert `argv` here — that is S-045's test (`test_BC_2_03_008_spawn_recipe_appends_settings_arg`).
+- [ ] Write unit test `test_BC_2_08_006_spawn_options_hooks_settings_path_populated`: call `spawn_session()` on a `SessionManager` with a valid `hooks_settings_path`; intercept the `SpawnOptions` passed to `spawn_recipe()` (via mock `EngineModule`); assert `opts.hooks_settings_path == Some(self.hooks_settings_path)`. Do NOT assert `argv` here — that is S-045's test (`test_BC_2_03_005_spawn_recipe_happy_path_binary_args_env_cwd`, which asserts `recipe.args == ["--settings", path]` per BC-2.03.005 PC-1).
 - [ ] Write unit test `test_BC_2_08_006_hooks_settings_json_content`: write hooks-settings.json to tmp dir; read back; assert 4 URL-bearing keys present; assert 2 empty reserved keys present; assert `lock.app == "monocle"`.
 - [ ] Write unit test `test_BC_2_08_006_hooks_settings_json_atomic_write`: verify write uses `tempfile::persist` (test via file content atomicity under mock FS or by verifying the temp file never has partial content).
 - [ ] Write unit test `test_BC_2_08_006_startup_write_fail_aborts_daemon`: if `write_hooks_settings_json` returns Err, `SessionManager::new()` propagates the error; daemon start fails.
@@ -310,3 +310,10 @@ insertion into `SpawnRecipe.argv` is owned by S-045 (ClaudeCodeModule::spawn_rec
   story. The 12-code taxonomy (closed set for Phase 1) does not include `"config_error"`.
   Non-UTF-8 path errors route to `EngineError::InvalidPath` → `"invalid_spawn_arg"`.
   EC-181 (hooks-settings.json missing) is UNREACHABLE by daemon startup invariant.
+
+## Trace
+
+| Version | Change | Pass |
+|---------|--------|------|
+| v1.0 | Initial decomposition | Phase-2 |
+| v1.1 | F-P11-SUG-002 cross-ref correction: Tasks test name corrected to `test_BC_2_03_005_spawn_recipe_happy_path_binary_args_env_cwd` (dangling reference fixed) | Pass-11 |

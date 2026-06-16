@@ -684,9 +684,10 @@ summary:
   #   S-045 (EPIC-03, 5 pts): ClaudeCodeModule spawn_recipe() delta.
   #   S-046..S-047 (EPIC-05, 13 pts): IPC lifecycle/scrollback/fan-out delta.
   #   S-048 (EPIC-06, 8 pts): Sessions panel multi-project delta.
-  # total_stories note: 49 = 33 Phase-3 stories (including S-PHASE-3-PREP and S-DTU-001) + 2 Wave-8
+  # total_stories note: 51 = 33 Phase-3 stories (including S-PHASE-3-PREP and S-DTU-001) + 2 Wave-8
   #   pre-existing (S-032, S-DAEMON-WIRE-FIX-001) + 16 new v1A (S-033..S-048). Blocked count (1) is
   #   S-PHASE-3-PREP (blocked on vsdd-factory spec-kit-mcp rc.19+).
+  # v1.43 errata (2026-06-16): corrected comment arithmetic 49→51 (comment-only; machine-read total_stories: 51 was already correct).
   # v1.43 updates (2026-06-16):
   # - Phase-2 adversarial Pass-8 fix cycle (SE-25 bidirectional symmetry reconciliation).
   # - S-033 notes: blocks updated to full set S-034,S-035,S-036,S-037,S-038,S-044,S-045,S-047,S-048.

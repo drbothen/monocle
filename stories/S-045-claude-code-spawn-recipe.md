@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-045
 epic_id: EPIC-03
-version: "1.2"
+version: "1.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -35,7 +35,7 @@ traces_to: "Implements BC-2.03.005 (spawn_recipe happy path), BC-2.03.006 (CCR b
 # BC status: BC-2.03.005/006/007 non-empty; status draft pending Phase-2 adversarial convergence gate. BC-2.03.008 re-anchored to S-033 (Pass-7 fix).
 ---
 
-# S-045: ClaudeCodeModule::spawn_recipe() — Happy Path, CCR Injection, Error Cases, and Default Trait Impl
+# S-045: ClaudeCodeModule::spawn_recipe() — Happy Path, CCR Injection, and Error Cases (Concrete Override Only; Default Trait Impl is S-033)
 
 ## Narrative
 
@@ -127,9 +127,7 @@ returns the overlay map only; the merge is performed by `monocle-session-host` a
         when `opts.ccr_base_url` is `Some`.
       - Step 4: Set `recipe.cwd = opts.worktree_root.clone()`.
       - Step 5: Return `Ok(SpawnRecipe { binary, args: ["--settings", path_str], env, cwd })`.
-- [ ] Add `SessionError::EngineError(#[from] EngineError)` variant to the `SessionError` enum in
-      `monocle-runtime/src/session_manager/mod.rs` (canonical location per S-033; if not already
-      present from S-033, add it here — do NOT create a separate error module).
+- [ ] **Verify (do NOT re-add if already present):** `SessionError::EngineError(#[from] EngineError)` variant in the `SessionError` enum in `monocle-runtime/src/session_manager/mod.rs`. S-033 SHOULD have defined this variant; if it is present, do nothing. If it is absent (S-033 did not land the variant), add it here — do NOT create a separate error module. Surface a finding to the orchestrator if absent, since S-033 owns this variant.
 - [ ] **Verify (do NOT re-add):** `session_error_to_code()` (authored in S-033) already maps
       `EngineError::BinaryNotFound => "binary_not_found"` and
       `EngineError::InvalidPath => "invalid_spawn_arg"` for `IpcOp::Spawn`
@@ -164,8 +162,7 @@ re-adding.
 ## Architecture Compliance Rules
 
 From `architecture/SS-engine-module-v2-delta.md v1.6.0`:
-- `spawn_recipe()` is a NEW trait method on `EngineModule` with a DEFAULT impl
-  (non-breaking addition; BC-2.03.008 owned by S-033 which defines the trait method + EngineError).
+- `spawn_recipe()` trait method on `EngineModule` (DEFAULT impl returning `Err(UnsupportedOperation)`) + `EngineError` enum are AUTHORED BY S-033 (BC-2.03.008). S-045 MUST NOT re-define the trait method or the enum — doing so causes a duplicate-definition compiler error. S-045 adds ONLY the `ClaudeCodeModule` concrete override.
 - `EngineError` is a NEW type introduced in v1A — NOT an extension of `EngineMetadataError`.
 - The two-pronged null-byte detection is mandatory: `to_str()` alone cannot detect null bytes.
 - `SpawnRecipe` is daemon-internal — never crosses the IPC wire. Only `SpawnOptions` is on the wire.
@@ -196,7 +193,7 @@ No new dependencies added. `which` is already in `monocle-runtime` (BC-2.07.006 
 
 | File | Action | Notes |
 |------|--------|-------|
-| `crates/monocle-core/src/engine.rs` | MODIFY | Add `spawn_recipe()` default method to `EngineModule` trait; add `EngineError` enum |
+| `crates/monocle-core/src/engine.rs` | VERIFY (do NOT re-add) | `spawn_recipe()` default method + `EngineError` enum (`BinaryNotFound`, `InvalidPath`, `UnsupportedOperation`) are authored by S-033 (BC-2.03.008). Compile-check that `use monocle_core::engine::{EngineModule, EngineError, SpawnOptions, SpawnRecipe};` resolves. Do NOT re-define — duplicate-definition compiler error otherwise. |
 | `crates/monocle-runtime/src/engine/claude_code.rs` | MODIFY | Implement `ClaudeCodeModule::spawn_recipe()` |
 | `crates/monocle-runtime/src/session_manager/mod.rs` | MODIFY (if needed) | Ensure `SessionError::EngineError(#[from] EngineError)` variant present (S-033 defined `SessionError` here; this is the canonical location) |
 | `crates/monocle-runtime/tests/spawn_recipe.rs` | CREATE | Unit tests for all AC-001..AC-009 |
@@ -211,7 +208,7 @@ No new dependencies added. `which` is already in `monocle-runtime` (BC-2.07.006 
 | EC-104 | `hooks_settings_path` has `\xFF\xFE` non-UTF-8 bytes (Prong 1) | `Err(EngineError::InvalidPath(...))` — `"invalid_spawn_arg"` wire code |
 | EC-104b | `hooks_settings_path` is valid UTF-8 but contains embedded `\x00` null (Prong 2) | `Err(EngineError::InvalidPath(...))` — `to_str()` returns `Some` but explicit scan fires |
 | EC-108 | `claude` binary is on PATH but not executable | `spawn_recipe()` returns `Ok(recipe)` — executability is NOT checked here; failure at spawn time |
-| EC-112 | `CodeMachineModule.spawn_recipe()` called | Default impl returns `Err(EngineError::UnsupportedOperation("spawn_recipe"))` |
+| EC-112 | `CodeMachineModule.spawn_recipe()` called | Default impl (authored by S-033) returns `Err(EngineError::UnsupportedOperation("spawn_recipe"))`. S-045 does NOT modify this behavior — it applies automatically via the S-033 trait default. |
 
 ## Token Budget Estimate
 
@@ -243,3 +240,12 @@ Well within the 20–30% context window constraint. Story does not need splittin
 SS-03 owns this story's scope because `ClaudeCodeModule::spawn_recipe()` is the Phase 1
 implementation of the engine abstraction's spawn method — exactly the `ClaudeCodeModule` adapter
 that SS-03 governs per ARCH-INDEX Subsystem Registry SS-03 (monocle-runtime, ClaudeCodeModule).
+
+## Trace
+
+| Version | Change | Pass |
+|---------|--------|------|
+| v1.0 | Initial decomposition | Phase-2 |
+| v1.1 | BC-2.03.008 re-anchored to S-033; Pass-7 fix | Pass-7 |
+| v1.2 | File Structure table partial fix (Pass-9/10); BC-2.03.008 cross-ref in Token Budget; test note added to Tasks | Pass-9/10 |
+| v1.3 | F-P11-IMP-001 complete sweep: H1 title updated; File Structure table engine.rs row → VERIFY (do NOT re-add); Architecture Compliance Rules engine.rs ownership note strengthened; Tasks SessionError::EngineError task → verify-first; EC-112 clarified as S-033 default behavior; all surfaces consistently say VERIFY not ADD for S-033-owned symbols | Pass-11 |
