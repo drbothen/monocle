@@ -297,73 +297,52 @@ async fn test_BC_2_08_001_B002_production_sidecar_path_under_daemon_runtime_dir(
 
 /// B-003: When `post_spawn_monitor` connects to the session-host UDS, it MUST verify
 /// SO_PEERCRED (peer UID). On UID mismatch: session transitions to Terminated,
-/// sidecar is deleted, SessionStateChanged{Terminated} is broadcast.
+/// sidecar is deleted, SessionStateChanged{Terminated} is broadcast (EC-163).
 ///
-/// FAILS NOW: `post_spawn_monitor` has no SO_PEERCRED check. A mismatched-UID
-/// session would be silently accepted.
+/// The injectable `PeerCredVerifier` seam (commit 5aa313f) allows deterministic
+/// testing without a privileged subprocess: inject `FakePeerCredVerifier { allow: false }`
+/// to simulate a UID mismatch. The monitor calls `verifier.verify()` immediately after
+/// connecting (before reading any messages) and on `Err` executes the EC-163 path.
 ///
-/// Test strategy: use the `MockSessionHostSpawner` + `ControlledUdsMockSpawner`
-/// approach — bind a UDS socket, set up a spawner that points to it, call
-/// spawn_session(), then connect to the socket from a peer and assert the
-/// Terminated broadcast arrives because we can't forge a different UID in-process.
-///
-/// Since we cannot actually change our own UID in a test, we verify the STRUCTURAL
-/// contract: the post-spawn monitor MUST read the peer UID before processing any
-/// messages. We inject a mock "bad" peer by having the session-host socket send
-/// messages before the monitor can read the UID, and assert the monitor terminates
-/// the session rather than transitioning to Running.
-///
-/// Full UID mismatch testing requires a privileged test harness (different-UID process).
-/// This test verifies the ABSENCE of the check causes wrong behavior (the monitor
-/// SHOULD terminate the session on UID mismatch but currently does not call getsockopt
-/// at all), which we detect by observing that `post_spawn_monitor` does NOT abort
-/// when a malicious peer sends StateChanged{Running} (it should check UID first and abort).
-///
-/// NOTE: On current code this test is EXPECTED TO FAIL by asserting that the
-/// monitor performs a peer credential validation step. Since no such step exists,
-/// the monitor will accept any connection and transition to Running, which we assert
-/// MUST NOT happen when the UID verification rejects the peer.
-///
-/// Implementation note: to test UID mismatch we need a way to inject a fake UID.
-/// The test accepts that this is a compile-time / interface test: the monitor MUST
-/// expose a way to provide a `UidChecker` seam. Currently it does not, so this test
-/// documents that gap and fails by asserting the seam exists.
+/// This test drives the full EC-163 contract:
+/// - SessionStateChanged{Terminated} is broadcast.
+/// - The session entry in the registry is marked Terminated.
+/// - The sidecar file is GC'd (deleted from disk).
 #[tokio::test]
 async fn test_BC_2_08_001_B003_peercred_mismatch_terminates_session() {
+    use monocle_core::engine::SpawnRecipe;
     use monocle_ipc::server::{ClientEntry, CLIENT_CHANNEL_CAPACITY};
-    use monocle_ipc::types::ServerToClient;
+    use monocle_ipc::types::{ServerToClient, SessionState};
+    use monocle_runtime::session_manager::{
+        PeerCredVerifier, SessionError, SessionHostSpawner, SessionManager, SpawnedHostHandle,
+    };
 
-    // B-003 requires a UID-injection seam in post_spawn_monitor. Currently none exists.
-    // This test verifies the contract by:
-    // 1. Binding a UDS socket in the test.
-    // 2. Calling spawn_session with a spawner pointing to that socket.
-    // 3. The monitor connects; sends our peer UID.
-    // 4. The monitor MUST check the UID and abort (Terminated broadcast) if mismatch.
-    // 5. Since no UID check exists, the monitor will NOT send Terminated — this test fails.
-    //
-    // We verify the ABSENCE of the check by asserting that when we send
-    // StateChanged{Running} and the daemon does not have a UID check, it will
-    // transition to Running. But it SHOULD NOT (it should check UID first).
-    // The test asserts Terminated{session} is received — which currently will NOT happen.
+    // Local always-rejecting verifier: simulates UID mismatch without needing the
+    // `test-utils` feature (FakePeerCredVerifier is feature-gated; PeerCredVerifier
+    // trait is pub and unconditionally available).
+    struct RejectAllVerifier;
+    impl PeerCredVerifier for RejectAllVerifier {
+        fn verify(&self, _stream: &tokio::net::UnixStream) -> Result<(), SessionError> {
+            Err(SessionError::Io(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                "B-003 test: simulated UID mismatch (EC-163)",
+            )))
+        }
+    }
 
     let tmp = isolated_runtime_dir();
-    let socket_path = tmp.path().join("b003-test-peer.sock");
+    let socket_path = tmp.path().join("b003-reject-test.sock");
 
-    // Bind a server socket on the test side.
+    // Bind the UDS socket that the monitor will connect to.
     let listener =
         tokio::net::UnixListener::bind(&socket_path).expect("B-003: bind test UDS socket");
 
-    // Build a SessionManager with a spawner that returns our socket path.
-    use monocle_core::engine::SpawnRecipe;
-    use monocle_runtime::session_manager::SessionManager;
-
-    struct FixedSocketSpawner {
-        pid: u32,
+    struct FixedSocketSpawnerB3 {
         socket_path: PathBuf,
     }
 
     #[async_trait::async_trait]
-    impl SessionHostSpawner for FixedSocketSpawner {
+    impl SessionHostSpawner for FixedSocketSpawnerB3 {
         async fn spawn(
             &self,
             _session_id: &str,
@@ -371,16 +350,16 @@ async fn test_BC_2_08_001_B003_peercred_mismatch_terminates_session() {
             _runtime_dir: &std::path::Path,
         ) -> Result<SpawnedHostHandle, monocle_runtime::session_manager::SessionError> {
             Ok(SpawnedHostHandle {
-                pid: self.pid,
+                pid: 99_003,
                 socket_path: self.socket_path.clone(),
             })
         }
     }
 
-    struct SucceedingEngine;
+    struct EngineB3;
 
     #[async_trait::async_trait]
-    impl monocle_core::engine::EngineModule for SucceedingEngine {
+    impl monocle_core::engine::EngineModule for EngineB3 {
         fn id(&self) -> &'static str {
             "b003-engine"
         }
@@ -419,11 +398,6 @@ async fn test_BC_2_08_001_B003_peercred_mismatch_terminates_session() {
         }
     }
 
-    let spawner: Arc<dyn SessionHostSpawner> = Arc::new(FixedSocketSpawner {
-        pid: nix::unistd::getpid().as_raw() as u32, // our own PID (matching UID)
-        socket_path: socket_path.clone(),
-    });
-
     let inner_subs: monocle_ipc::server::SubscriberList = Arc::new(tokio::sync::Mutex::new(vec![]));
     let broker = Arc::new(Arc::clone(&inner_subs));
 
@@ -433,10 +407,15 @@ async fn test_BC_2_08_001_B003_peercred_mismatch_terminates_session() {
 
     let mut manager = SessionManager::new(
         tmp.path().to_path_buf(),
-        spawner,
+        Arc::new(FixedSocketSpawnerB3 {
+            socket_path: socket_path.clone(),
+        }),
         broker,
-        Arc::new(SucceedingEngine),
+        Arc::new(EngineB3),
     );
+
+    // Inject the rejecting verifier: simulates UID mismatch (EC-163).
+    manager.with_peer_cred_verifier(Arc::new(RejectAllVerifier));
 
     let session_id = "b003-session".to_string();
     let opts = monocle_core::engine::SpawnOptions::for_spawn_request(
@@ -453,46 +432,23 @@ async fn test_BC_2_08_001_B003_peercred_mismatch_terminates_session() {
         .await
         .expect("B-003: spawn_session must succeed");
 
-    // Drain the Launching broadcasts.
-    // Accept the connection from post_spawn_monitor.
-    let (mut peer, _addr) =
-        tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
-            .await
-            .expect("B-003: timed out waiting for post_spawn_monitor to connect")
-            .expect("B-003: accept failed");
+    // Verify the sidecar was written at Launching time.
+    let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+    assert!(
+        sidecar_path.exists(),
+        "B-003: sidecar must exist after spawn_session (before monitor connects)"
+    );
 
-    // B-003 requires the monitor to perform SO_PEERCRED check BEFORE reading any messages.
-    // Since no UID check exists, we simulate a "malicious" peer by just being the connecting
-    // party. The monitor MUST check our UID here.
-    //
-    // The test asserts that a UID MISMATCH path exists by checking that the monitor
-    // exposes a UID-seam interface. Since it does not, this test documents the gap.
-    //
-    // To make this test fail deterministically (not accidentally pass), we check
-    // whether the `post_spawn_monitor` function signature accepts a UID checker.
-    // Since it does not, we assert the Terminated broadcast happens — which will NOT
-    // happen on the current code because there is no UID check.
-    //
-    // The observable assertion: after the monitor connects without a UID check,
-    // SessionStateChanged{Terminated} MUST arrive for b003-session (EC-163 contract).
-    // This will currently NOT happen — the monitor will just read messages as normal.
-    // So the test fails because Terminated is never broadcast.
+    // Accept the connection from the post_spawn_monitor background task.
+    // The monitor calls FakePeerCredVerifier::verify() immediately — returns Err.
+    let (_peer, _addr) = tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
+        .await
+        .expect("B-003: timed out waiting for post_spawn_monitor to connect")
+        .expect("B-003: accept failed");
+    // _peer is kept alive to prevent immediate ECONNRESET on the monitor side;
+    // the monitor already received Err from verify() before sending any data.
 
-    // Send a StateChanged{Running} from our "peer" side to trigger the monitor.
-    // After that, if the monitor HAD a UID mismatch rejection, it would have aborted.
-    // Since it doesn't, it accepts and sends Running. We assert Terminated instead.
-    use tokio::io::AsyncWriteExt;
-    let msg = monocle_ipc::types::HostToDaemon::StateChanged {
-        new_state: monocle_ipc::types::SessionState::Running,
-        degraded_env: None,
-    };
-    let body = serde_json::to_vec(&msg).expect("serialize StateChanged");
-    let len = (body.len() as u32).to_le_bytes();
-    peer.write_all(&len).await.expect("write len");
-    peer.write_all(&body).await.expect("write body");
-
-    // Drain Launching + ListUpdate broadcasts (2 messages from spawn_session()).
-    // Then wait for Terminated broadcast (which should arrive after UID check).
+    // EC-163 ASSERTION 1: SessionStateChanged{Terminated} must be broadcast.
     let mut found_terminated = false;
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(3);
     loop {
@@ -502,26 +458,48 @@ async fn test_BC_2_08_001_B003_peercred_mismatch_terminates_session() {
         match tokio::time::timeout(std::time::Duration::from_millis(200), tui_rx.recv()).await {
             Ok(Some(ServerToClient::SessionStateChanged {
                 session_id: ref sid,
-                new_state: monocle_ipc::types::SessionState::Terminated,
+                new_state: SessionState::Terminated,
             })) if sid == "b003-session" => {
                 found_terminated = true;
                 break;
             }
-            Ok(Some(_)) => {} // Drain other messages
+            Ok(Some(_)) => {} // Drain Launching / ListUpdate
             Ok(None) | Err(_) => break,
         }
     }
 
     assert!(
         found_terminated,
-        "B-003 (EC-163): post_spawn_monitor MUST verify SO_PEERCRED on every UDS connection. \
-         On UID mismatch, it MUST broadcast SessionStateChanged{{Terminated}} and GC the sidecar. \
-         Currently no UID check exists in post_spawn_monitor — the monitor accepted the connection \
-         and transitioned to Running instead. \
-         Fix: add SO_PEERCRED verification (step 2 of SS-session-manager.md §Post-spawn monitor) \
-         before reading any messages. On mismatch: mark Terminated, GC sidecar, broadcast \
-         SessionStateChanged{{Terminated}} + SessionListUpdate."
+        "B-003 (EC-163): FakePeerCredVerifier{{allow: false}} simulates UID mismatch. \
+         post_spawn_monitor MUST broadcast SessionStateChanged{{Terminated}} immediately \
+         after verifier.verify() returns Err — before reading any messages. \
+         Got no Terminated broadcast within 3s."
     );
+
+    // EC-163 ASSERTION 2: sidecar must be GC'd (deleted) after mismatch.
+    // Give the monitor a short moment to complete the delete after the broadcast.
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    assert!(
+        !sidecar_path.exists(),
+        "B-003 (EC-163): post_spawn_monitor MUST delete the sidecar file on UID mismatch \
+         (GC step). Sidecar still exists at {:?}.",
+        sidecar_path
+    );
+
+    // EC-163 ASSERTION 3: session in registry must be Terminated.
+    let sessions = manager.session_list().await;
+    let snap = sessions.iter().find(|s| s.session_id == "b003-session");
+    // The session MAY have been removed from the registry OR left as Terminated.
+    // Both are acceptable; what is NOT acceptable is Running state.
+    if let Some(s) = snap {
+        assert_ne!(
+            s.state,
+            SessionState::Running,
+            "B-003 (EC-163): session MUST NOT be Running after UID mismatch rejection. \
+             Got Running — the monitor must have bypassed the verifier."
+        );
+    }
+    // If snap is None, the session was pruned from the registry — also acceptable for EC-163.
 }
 
 /// B-003b: When SO_PEERCRED MATCHES (same UID), the monitor must proceed normally to Running.
@@ -943,35 +921,69 @@ async fn test_BC_2_08_001_B004_sidecar_on_disk_deserializes_as_v3() {
 // B-005: Daemon-owned fields preserved after session-host overwrites sidecar
 // ---------------------------------------------------------------------------
 
-/// B-005: After the session-host overwrites the sidecar at startup step 8,
-/// daemon-owned fields (project_root, harness_id, profile_id, started_at) MUST
-/// be preserved. ONLY `child_pid` changes (set to Some(pid) by session-host).
-/// The `state` field MUST NOT be "Running" after session-host step-8 write.
+/// B-005: When the session-host overwrites the sidecar at startup step 8
+/// (setting child_pid and clobbering daemon-owned fields), the daemon MUST
+/// re-persist the sidecar from its authoritative SessionEntry on the
+/// Launching→Running transition, restoring project_root, harness_id, profile_id,
+/// and started_at to the daemon's canonical values while incorporating child_pid.
 ///
-/// FAILS NOW: No session-host overwrite protocol exists. The daemon has no
-/// mechanism to merge daemon-owned fields after session-host writes the sidecar.
-/// After B-005 is fixed, the daemon reads the session-host sidecar, merges
-/// daemon-owned fields, and re-persists.
+/// The mechanism: `post_spawn_monitor` reads the on-disk sidecar for child_pid,
+/// then re-writes the sidecar from daemon SessionEntry fields atomically
+/// (HIGH-003 / B-005 block in `post_spawn_monitor`).
 ///
-/// Test strategy: simulate the session-host overwrite by writing a sidecar that
-/// only sets child_pid (session-host step 8), then assert the daemon merges
-/// correctly. Since this protocol doesn't exist yet, the test asserts the merge
-/// behavior and fails.
+/// This test drives the full sequence:
+/// 1. spawn_session() writes the initial sidecar with daemon-owned fields.
+/// 2. A test UDS server simulates the session-host: writes a clobbered sidecar
+///    (bad project_root, bad harness_id, new child_pid) — step 8.
+/// 3. Sends StateChanged{Running} over the UDS to trigger the Running transition.
+/// 4. Asserts the re-persisted sidecar carries the DAEMON's authoritative field values,
+///    not the host's clobbered values — with child_pid populated.
 #[tokio::test]
 async fn test_BC_2_08_001_B005_daemon_owned_fields_preserved_after_host_overwrite() {
+    use monocle_core::engine::SpawnRecipe;
     use monocle_ipc::server::{ClientEntry, CLIENT_CHANNEL_CAPACITY};
-    use monocle_ipc::types::ServerToClient;
-    use monocle_runtime::session_manager::SessionManager;
+    use monocle_ipc::types::{ServerToClient, SessionState};
+    use monocle_runtime::session_manager::{
+        PeerCredVerifier, SessionError, SessionHostSpawner, SessionManager, SpawnedHostHandle,
+    };
+
+    // Local always-allowing verifier: simulates UID match without needing `test-utils` feature.
+    struct AllowAllVerifier;
+    impl PeerCredVerifier for AllowAllVerifier {
+        fn verify(&self, _stream: &tokio::net::UnixStream) -> Result<(), SessionError> {
+            Ok(())
+        }
+    }
 
     let tmp = isolated_runtime_dir();
-    let (tui_tx, _tui_rx) = tokio::sync::mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+    let socket_path = tmp.path().join("b005-test.sock");
 
-    let inner_subs: monocle_ipc::server::SubscriberList =
-        Arc::new(tokio::sync::Mutex::new(vec![ClientEntry::new(tui_tx)]));
+    let listener =
+        tokio::net::UnixListener::bind(&socket_path).expect("B-005: bind test UDS socket");
 
-    struct SucceedingEngine4;
+    struct FixedSocketSpawnerB5 {
+        socket_path: PathBuf,
+    }
+
     #[async_trait::async_trait]
-    impl monocle_core::engine::EngineModule for SucceedingEngine4 {
+    impl SessionHostSpawner for FixedSocketSpawnerB5 {
+        async fn spawn(
+            &self,
+            _session_id: &str,
+            _recipe: &SpawnRecipe,
+            _runtime_dir: &std::path::Path,
+        ) -> Result<SpawnedHostHandle, monocle_runtime::session_manager::SessionError> {
+            Ok(SpawnedHostHandle {
+                pid: 77_005,
+                socket_path: self.socket_path.clone(),
+            })
+        }
+    }
+
+    struct EngineB5;
+
+    #[async_trait::async_trait]
+    impl monocle_core::engine::EngineModule for EngineB5 {
         fn id(&self) -> &'static str {
             "b005-engine"
         }
@@ -1000,8 +1012,8 @@ async fn test_BC_2_08_001_B005_daemon_owned_fields_preserved_after_host_overwrit
         fn spawn_recipe(
             &self,
             opts: &monocle_core::engine::SpawnOptions,
-        ) -> Result<monocle_core::engine::SpawnRecipe, monocle_core::engine::EngineError> {
-            Ok(monocle_core::engine::SpawnRecipe::new(
+        ) -> Result<SpawnRecipe, monocle_core::engine::EngineError> {
+            Ok(SpawnRecipe::new(
                 PathBuf::from("claude"),
                 vec![],
                 std::collections::HashMap::new(),
@@ -1010,22 +1022,35 @@ async fn test_BC_2_08_001_B005_daemon_owned_fields_preserved_after_host_overwrit
         }
     }
 
-    let spawner: Arc<dyn SessionHostSpawner> = Arc::new(AlwaysSucceedSpawner { fake_pid: 77_005 });
-
+    let inner_subs: monocle_ipc::server::SubscriberList = Arc::new(tokio::sync::Mutex::new(vec![]));
     let broker = Arc::new(Arc::clone(&inner_subs));
+    let (tui_tx, mut tui_rx) =
+        tokio::sync::mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+    inner_subs.lock().await.push(ClientEntry::new(tui_tx));
+
     let mut manager = SessionManager::new(
         tmp.path().to_path_buf(),
-        spawner,
+        Arc::new(FixedSocketSpawnerB5 {
+            socket_path: socket_path.clone(),
+        }),
         broker,
-        Arc::new(SucceedingEngine4),
+        Arc::new(EngineB5),
     );
 
+    // Allow the connection: same-UID / matching scenario.
+    manager.with_peer_cred_verifier(Arc::new(AllowAllVerifier));
+
     let session_id = "b005-field-ownership".to_string();
+    // These are the DAEMON's authoritative field values.
+    let daemon_project_root = "/tmp/b005-daemon-project";
+    let daemon_harness_id = "claude-code";
+    let daemon_profile_id = "default";
+
     let opts = monocle_core::engine::SpawnOptions::for_spawn_request(
-        PathBuf::from("/tmp/b005-project"),
-        PathBuf::from("/tmp/b005-project"),
-        "claude-code".to_string(),
-        "default".to_string(),
+        PathBuf::from(daemon_project_root),
+        PathBuf::from(daemon_project_root),
+        daemon_harness_id.to_string(),
+        daemon_profile_id.to_string(),
         None,
     )
     .with_daemon_fields(session_id.clone(), tmp.path().join("hooks-settings.json"));
@@ -1036,73 +1061,139 @@ async fn test_BC_2_08_001_B005_daemon_owned_fields_preserved_after_host_overwrit
         .expect("B-005: spawn_session must succeed");
 
     let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
-    let original_contents = std::fs::read_to_string(&sidecar_path)
-        .expect("B-005: sidecar must have been written by spawn_session");
-    let original: serde_json::Value =
-        serde_json::from_str(&original_contents).expect("B-005: sidecar must parse as JSON");
 
-    let daemon_project_root = original["project_root"].as_str().unwrap_or("").to_string();
-    let daemon_harness_id = original["harness_id"].as_str().unwrap_or("").to_string();
-    let _daemon_profile_id = original["profile_id"].as_str().unwrap_or("").to_string();
-    let _daemon_started_at = original["started_at"].as_str().unwrap_or("").to_string();
+    // Read the daemon's started_at from the initial sidecar so we can assert it survives.
+    let initial_contents =
+        std::fs::read_to_string(&sidecar_path).expect("B-005: initial sidecar must exist");
+    let initial: serde_json::Value =
+        serde_json::from_str(&initial_contents).expect("B-005: initial sidecar must parse");
+    let daemon_started_at = initial["started_at"]
+        .as_str()
+        .expect("B-005: started_at must be present in initial sidecar")
+        .to_string();
 
-    // Simulate the session-host overwriting the sidecar at step 8.
-    // Session-host sets: child_pid = Some(54321), state = "Running" (its view).
-    // The daemon must PRESERVE project_root, harness_id, profile_id, started_at.
-    let mut host_overwrite = original.clone();
-    host_overwrite["child_pid"] = serde_json::json!(54321_u32);
-    host_overwrite["state"] = serde_json::json!("Running");
-    // Simulate session-host clobbering daemon fields (the defect scenario).
-    host_overwrite["project_root"] = serde_json::json!("/host-clobbered-project");
-    host_overwrite["harness_id"] = serde_json::json!("clobbered-harness");
+    // Accept connection from the post_spawn_monitor.
+    let (mut peer, _addr) =
+        tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
+            .await
+            .expect("B-005: timed out waiting for monitor to connect")
+            .expect("B-005: accept failed");
 
-    let overwrite_json = serde_json::to_string_pretty(&host_overwrite).expect("serialize");
-    std::fs::write(&sidecar_path, overwrite_json.as_bytes())
-        .expect("B-005: simulate session-host overwrite");
+    // Step 8 simulation: session-host writes its own version of the sidecar.
+    // It sets child_pid and clobbers daemon-owned fields (the defect scenario
+    // that the daemon re-persist must win over).
+    let host_sidecar = serde_json::json!({
+        "schema_version": 3,
+        "session_id": session_id,
+        "pid": 77_005_u32,
+        "socket_path": socket_path.to_string_lossy(),
+        "child_pid": 54321_u32,
+        "state": "Launching",
+        "project_root": "/host-clobbered-project",
+        "cwd": "/host-clobbered-cwd",
+        "harness_id": "clobbered-harness",
+        "profile_id": "clobbered-profile",
+        "started_at": "2000-01-01T00:00:00Z",
+        "display_name": "clobbered-display",
+        "pty_rows": 24,
+        "pty_cols": 80,
+        "kill_deadline_unix_ms": null
+    });
+    std::fs::write(
+        &sidecar_path,
+        serde_json::to_vec_pretty(&host_sidecar).expect("serialize host sidecar"),
+    )
+    .expect("B-005: simulate session-host step-8 sidecar write");
 
-    // Notify the daemon of the overwrite (B-005 protocol: after step 8, daemon re-reads
-    // sidecar and merges daemon-owned fields).
-    // Since no such protocol exists yet, we call the merge method directly.
-    // If the method doesn't exist, this will fail to compile — which is the red gate.
-    //
-    // NOTE: The merge method name is assumed to be `session_manager.merge_host_sidecar(session_id)`.
-    // If the method doesn't exist, this is a compile error (red gate).
-    // Since we cannot call a nonexistent method here, we simulate via the observable contract:
-    // after the post-spawn monitor receives StateChanged{Running}, it should re-read the sidecar
-    // and restore daemon-owned fields.
-    //
-    // Since this protocol doesn't exist yet, we assert the FINAL observable state:
-    // read the sidecar after the Running transition and assert daemon fields are preserved.
-    // The test fails because no merge happens — the host's clobbered values remain.
+    // Send StateChanged{Running} over UDS to trigger the daemon's Running transition
+    // and the authoritative re-persist of the sidecar.
+    use tokio::io::AsyncWriteExt;
+    let msg = monocle_ipc::types::HostToDaemon::StateChanged {
+        new_state: SessionState::Running,
+        degraded_env: None,
+    };
+    let body = serde_json::to_vec(&msg).expect("B-005: serialize StateChanged");
+    let len = (body.len() as u32).to_le_bytes();
+    peer.write_all(&len).await.expect("B-005: write len prefix");
+    peer.write_all(&body).await.expect("B-005: write body");
+
+    // Wait for SessionStateChanged{Running} broadcast — confirms Running transition done.
+    let mut reached_running = false;
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        if tokio::time::Instant::now() >= deadline {
+            break;
+        }
+        match tokio::time::timeout(std::time::Duration::from_millis(300), tui_rx.recv()).await {
+            Ok(Some(ServerToClient::SessionStateChanged {
+                session_id: ref sid,
+                new_state: SessionState::Running,
+            })) if sid == "b005-field-ownership" => {
+                reached_running = true;
+                break;
+            }
+            Ok(Some(_)) => {}
+            Ok(None) | Err(_) => break,
+        }
+    }
+    assert!(
+        reached_running,
+        "B-005: must receive SessionStateChanged{{Running}} to verify the re-persist ran"
+    );
+
+    // Give the monitor a short moment to flush the sidecar write.
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+
+    // B-005 PRIMARY ASSERTIONS: daemon-owned fields must survive the host clobber.
     let final_contents = std::fs::read_to_string(&sidecar_path)
-        .expect("B-005: sidecar must be readable after host overwrite");
+        .expect("B-005: sidecar must still exist after Running transition");
     let final_json: serde_json::Value =
         serde_json::from_str(&final_contents).expect("B-005: final sidecar must parse");
 
-    // These assertions will FAIL because the daemon does not restore daemon-owned fields.
     assert_eq!(
         final_json["project_root"].as_str().unwrap_or(""),
         daemon_project_root,
-        "B-005: project_root MUST be preserved after session-host overwrite. \
-         Got '{:?}', expected '{:?}'. \
-         Fix: daemon must re-merge daemon-owned fields after session-host writes sidecar.",
-        final_json["project_root"],
-        daemon_project_root
+        "B-005: project_root MUST be the daemon's authoritative value after re-persist. \
+         Host clobber '/host-clobbered-project' must NOT win. \
+         Daemon re-persist in post_spawn_monitor must restore daemon SessionEntry fields."
     );
 
     assert_eq!(
         final_json["harness_id"].as_str().unwrap_or(""),
         daemon_harness_id,
-        "B-005: harness_id MUST be preserved after session-host overwrite."
+        "B-005: harness_id MUST be the daemon's authoritative value after re-persist. \
+         Host clobber 'clobbered-harness' must NOT win."
     );
 
-    // `state` must NOT be "Running" written by the host alone — daemon owns the Running transition.
-    // After B-005 fix, the daemon re-writes the sidecar with Running state (see HIGH-003).
-    // Before fix: state is "Running" written by the host (incorrect: daemon doesn't merge).
-    assert_ne!(
-        final_json["project_root"].as_str().unwrap_or(""),
-        "/host-clobbered-project",
-        "B-005: session-host MUST NOT be allowed to clobber daemon-owned project_root field."
+    assert_eq!(
+        final_json["profile_id"].as_str().unwrap_or(""),
+        daemon_profile_id,
+        "B-005: profile_id MUST be the daemon's authoritative value after re-persist. \
+         Host clobber 'clobbered-profile' must NOT win."
+    );
+
+    assert_eq!(
+        final_json["started_at"].as_str().unwrap_or(""),
+        daemon_started_at,
+        "B-005: started_at MUST be the daemon's authoritative value after re-persist. \
+         Host clobber '2000-01-01T00:00:00Z' must NOT win."
+    );
+
+    // B-005 SECONDARY: state must be Running (daemon owns the state transition).
+    assert_eq!(
+        final_json["state"].as_str().unwrap_or(""),
+        "Running",
+        "B-005: state in re-persisted sidecar must be Running (daemon-owned transition)."
+    );
+
+    // B-005 SECONDARY: child_pid from the host-written sidecar must be incorporated.
+    // The daemon reads child_pid from the on-disk sidecar (which the host wrote) and
+    // includes it in the re-persisted sidecar.
+    assert_eq!(
+        final_json["child_pid"].as_u64().unwrap_or(0),
+        54321_u64,
+        "B-005: child_pid MUST be the value written by the session-host (54321). \
+         The daemon re-persist reads child_pid from the host sidecar and carries it forward."
     );
 }
 
