@@ -169,10 +169,12 @@ pub fn session_error_to_code(op: IpcOp, e: &SessionError) -> &'static str {
         SessionError::SpawnFailed { .. } => "spawn_failed",
         SessionError::SidecarWriteFailed { .. } => "sidecar_write_failed",
         SessionError::SessionIdCollision { .. } => "session_id_collision",
+        // LOW-001: Kill → "kill_failed"; all other ops (Attach, Detach, KeyInput, etc.)
+        // → "attach_failed". The `IpcOp::Attach` arm is kept explicit for clarity but
+        // the `_` arm is the canonical fallback per the mapping table.
         SessionError::SessionHostDead { .. } => match op {
             IpcOp::Kill => "kill_failed",
-            IpcOp::Attach => "attach_failed",
-            _ => "kill_failed",
+            _ => "attach_failed",
         },
         SessionError::InvalidSessionName { .. } => "rename_failed",
         SessionError::SessionNotReady { .. } => "session_not_ready",
@@ -217,9 +219,18 @@ pub trait SessionHostSpawner: Send + Sync + 'static {
     ) -> Result<SpawnedHostHandle, SessionError>;
 }
 
-/// Production implementation: spawns `monocle-session-host` via `std::process::Command`
-/// with `pre_exec(|| setsid())` so the child becomes a process group leader immune to
-/// SIGHUP when the daemon exits.
+/// Production implementation: spawns `monocle-session-host` via `std::process::Command::spawn`.
+///
+/// **`pre_exec` is NOT used.** `std::process::Command::pre_exec()` is `unsafe fn`
+/// (post-fork, pre-exec closure; async-signal-safety rules apply). `monocle-runtime`
+/// carries `#![forbid(unsafe_code)]`, so `pre_exec` is categorically prohibited here.
+///
+/// Process-group detachment is handled by the session-host binary itself: it calls
+/// `nix::unistd::setsid()` as its own startup step 2, making itself a process group
+/// leader immune to SIGHUP when the daemon exits. This is a safe Rust wrapper in the
+/// session-host binary — no unsafe code in the spawner is required or used.
+///
+/// See `SS-session-manager.md §Ruling C — setsid placement`.
 pub struct RealSessionHostSpawner {
     /// Absolute path to the `monocle-session-host` binary.
     /// Resolved via `std::env::current_exe().parent()` at daemon startup.
@@ -228,10 +239,12 @@ pub struct RealSessionHostSpawner {
 
 #[async_trait::async_trait]
 impl SessionHostSpawner for RealSessionHostSpawner {
-    /// Spawn `monocle-session-host` as a setsid'd child process.
+    /// Spawn `monocle-session-host` via plain `std::process::Command::spawn`.
     ///
-    /// Passes all recipe fields via CLI args. The child becomes a process group
-    /// leader via `setsid()` in `pre_exec` so it survives daemon exit (SIGHUP immune).
+    /// Passes all recipe fields via CLI args. The session-host binary calls
+    /// `nix::unistd::setsid()` as its own startup step 2, making itself a process group
+    /// leader immune to SIGHUP when the daemon exits. No `pre_exec` is used here
+    /// (`pre_exec` requires `unsafe`; `monocle-runtime` carries `#![forbid(unsafe_code)]`).
     async fn spawn(
         &self,
         session_id: &str,
@@ -567,18 +580,17 @@ impl SessionManager {
         }
 
         // AC-006 / EC-152: check for UUID collision before doing any work.
-        // MED-002: on first collision, regenerate UUID and retry once; on second collision, error.
-        let session_id = if self.sessions.lock().await.contains_key(&proposed_id) {
-            // First collision: regenerate UUID.
-            let new_id = uuid::Uuid::new_v4().to_string();
-            if self.sessions.lock().await.contains_key(&new_id) {
-                // Second consecutive collision: return error.
-                return Err(SessionError::SessionIdCollision { session_id: new_id });
-            }
-            new_id
-        } else {
-            proposed_id
-        };
+        // MED-002 (Ruling F): spawn_session() does NOT retry on collision — it returns
+        // Err(SessionIdCollision) immediately. The IPC handler is the SINGLE retry locus:
+        // on SessionIdCollision, the IPC handler generates a fresh UUID, sends a second
+        // SpawnAck to the requesting client, and calls spawn_session() again exactly once.
+        // A second collision → ServerToClient::Error { code: "session_id_collision" }.
+        if self.sessions.lock().await.contains_key(&proposed_id) {
+            return Err(SessionError::SessionIdCollision {
+                session_id: proposed_id,
+            });
+        }
+        let session_id = proposed_id;
 
         // Step 1 (BC-2.08.001 PC-1): call spawn_recipe() FIRST — before any OS process.
         let recipe: SpawnRecipe = self.engine_module.spawn_recipe(&opts)?;
@@ -1113,19 +1125,48 @@ async fn post_spawn_monitor(
                     "post-spawn monitor: received StateChanged"
                 );
 
-                if new_state == monocle_ipc::types::SessionState::Running {
-                    // MED-004 (I3-009): handle degraded_env before state transition.
-                    if let Some(true) = degraded_env {
-                        let mut guard = sessions.lock().await;
-                        if let Some(entry) = guard.get_mut(&session_id) {
-                            entry.degraded = true;
-                            entry.degraded_reason =
-                                Some("degraded environment detected".to_string());
+                // HIGH-001 (I3-009): Handle the Launching + degraded-env handshake.
+                //
+                // The session-host sends EITHER:
+                //   (a) StateChanged { new_state: Launching, degraded_env: Some([...]) }
+                //       as its FIRST message if HOME/PATH are missing; OR
+                //   (b) StateChanged { new_state: Running, degraded_env: None }
+                //       directly if the environment is healthy.
+                //
+                // On receiving (a): update SessionEntry.degraded/degraded_reason, do NOT
+                // change session state (it remains Launching), do NOT emit SessionStateChanged.
+                // The Running message follows as a separate message.
+                if new_state == monocle_ipc::types::SessionState::Launching {
+                    if let Some(ref missing) = degraded_env {
+                        if !missing.is_empty() {
+                            let reason = format!("Missing env: {}", missing.join(", "));
+                            // MED-003 (Ruling G): single mutex acquisition for the metadata update.
+                            let mut guard = sessions.lock().await;
+                            if let Some(entry) = guard.get_mut(&session_id) {
+                                entry.degraded = true;
+                                entry.degraded_reason = Some(reason.clone());
+                            }
+                            tracing::warn!(
+                                session_id = %session_id,
+                                missing_vars = ?missing,
+                                "post-spawn monitor: session-host reported degraded environment (I3-009)"
+                            );
                         }
                     }
+                    // Remain in the read loop — await the Running message.
+                    continue;
+                }
 
-                    // Transition session to Running and collect daemon-owned fields for
-                    // sidecar re-persist (HIGH-003 / B-005).
+                if new_state == monocle_ipc::types::SessionState::Running {
+                    // MED-003 (Ruling G): hold a SINGLE mutex acquisition across BOTH the
+                    // state-transition AND the session-list snapshot build.
+                    // Both the state_msg and list_msg are constructed under this ONE lock;
+                    // after the lock is released we send both outside the mutex.
+                    //
+                    // This eliminates the previous double-lock pattern (acquire-release for
+                    // state transition; acquire-release again for list snapshot) which left
+                    // a race window where a new client could see the session list change
+                    // before the SessionStateChanged message was in flight.
                     let (
                         project_root,
                         cwd,
@@ -1134,11 +1175,16 @@ async fn post_spawn_monitor(
                         started_at,
                         display_name,
                         session_host_pid,
+                        list_snapshot,
                     ) = {
+                        use monocle_core::engine::{EnrichedSession, SessionStatus};
                         let mut guard = sessions.lock().await;
-                        if let Some(entry) = guard.get_mut(&session_id) {
+
+                        // Transition state and collect all daemon-owned fields under a single
+                        // mutex acquisition (MED-003 / Ruling G: no double-lock).
+                        let fields = if let Some(entry) = guard.get_mut(&session_id) {
                             entry.state = SessionState::Running;
-                            let display_name = format!(
+                            let dn = format!(
                                 "{} — {}",
                                 entry.harness_id,
                                 entry
@@ -1147,21 +1193,84 @@ async fn post_spawn_monitor(
                                     .and_then(|n| n.to_str())
                                     .unwrap_or("unknown")
                             );
-                            (
+                            Some((
                                 entry.project_root.to_string_lossy().into_owned(),
                                 entry.cwd.to_string_lossy().into_owned(),
                                 entry.harness_id.clone(),
                                 entry.profile_id.clone(),
                                 entry.started_at.to_rfc3339(),
-                                display_name,
+                                dn,
                                 entry.session_host_pid,
-                            )
+                            ))
                         } else {
                             // Session was removed from registry before we could transition it.
                             tracing::warn!(session_id = %session_id, "post-spawn monitor: session entry not found for Running transition");
-                            break;
-                        }
-                    };
+                            None
+                        };
+
+                        let (
+                            project_root,
+                            cwd,
+                            harness_id,
+                            profile_id,
+                            started_at,
+                            display_name,
+                            session_host_pid,
+                        ) = match fields {
+                            Some(f) => f,
+                            None => break,
+                        };
+
+                        let snapshot: Vec<EnrichedSession> = guard
+                            .values()
+                            .map(|entry| {
+                                let status = match entry.state {
+                                    SessionState::Launching | SessionState::Running => {
+                                        SessionStatus::Active
+                                    }
+                                    SessionState::Detached => SessionStatus::Idle,
+                                    SessionState::Terminating | SessionState::Terminated => {
+                                        SessionStatus::Stopped
+                                    }
+                                    _ => {
+                                        tracing::warn!(
+                                            session_id = %entry.session_id,
+                                            state = ?entry.state,
+                                            "post-spawn monitor list builder: unrecognized session state; mapping to Stopped"
+                                        );
+                                        SessionStatus::Stopped
+                                    }
+                                };
+                                EnrichedSession::new(
+                                    entry.session_id.clone(),
+                                    entry.harness_id.clone(),
+                                    None,
+                                    None,
+                                    status,
+                                    None,
+                                    entry
+                                        .project_root
+                                        .file_name()
+                                        .and_then(|n| n.to_str())
+                                        .map(|s| s.to_string()),
+                                    Some(entry.started_at),
+                                    0,
+                                    None,
+                                )
+                            })
+                            .collect();
+
+                        (
+                            project_root,
+                            cwd,
+                            harness_id,
+                            profile_id,
+                            started_at,
+                            display_name,
+                            session_host_pid,
+                            snapshot,
+                        )
+                    }; // mutex guard dropped here
 
                     // HIGH-003 / B-005: Re-persist the sidecar with state:Running,
                     // restoring all daemon-owned fields after any session-host overwrites.
@@ -1226,50 +1335,14 @@ async fn post_spawn_monitor(
                     }
 
                     // Broadcast SessionStateChanged{Running} BEFORE SessionListUpdate
-                    // (BC-2.08.008 Invariant 4).
+                    // (BC-2.08.008 Invariant 4). Both messages were prepared under the
+                    // same mutex lock above (MED-003 / Ruling G).
                     let state_msg = monocle_ipc::types::ServerToClient::SessionStateChanged {
                         session_id: session_id.clone(),
                         new_state: SessionState::Running,
                     };
                     crate::ipc_server::broadcast_to_subscribers(&broker, state_msg).await;
 
-                    // Broadcast SessionListUpdate with current snapshot.
-                    // Uses EnrichedSession (the SessionListUpdate wire type) built inline.
-                    let list_snapshot: Vec<monocle_core::engine::EnrichedSession> = {
-                        use monocle_core::engine::{EnrichedSession, SessionStatus};
-                        let guard = sessions.lock().await;
-                        guard
-                            .values()
-                            .map(|entry| {
-                                let status = match entry.state {
-                                    SessionState::Launching | SessionState::Running => {
-                                        SessionStatus::Active
-                                    }
-                                    SessionState::Detached => SessionStatus::Idle,
-                                    SessionState::Terminating | SessionState::Terminated => {
-                                        SessionStatus::Stopped
-                                    }
-                                    _ => SessionStatus::Stopped,
-                                };
-                                EnrichedSession::new(
-                                    entry.session_id.clone(),
-                                    entry.harness_id.clone(),
-                                    None,
-                                    None,
-                                    status,
-                                    None,
-                                    entry
-                                        .project_root
-                                        .file_name()
-                                        .and_then(|n| n.to_str())
-                                        .map(|s| s.to_string()),
-                                    Some(entry.started_at),
-                                    0,
-                                    None,
-                                )
-                            })
-                            .collect()
-                    };
                     let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
                         sessions: list_snapshot,
                     };
@@ -1299,47 +1372,6 @@ pub struct RediscoveryReport {
     pub alive: usize,
     /// Number of dead/stale sidecars cleaned up.
     pub cleaned: usize,
-}
-
-// ---------------------------------------------------------------------------
-// IPC handler skeleton types (sidecar JSON schema stub)
-// ---------------------------------------------------------------------------
-
-/// Schema version 3 session-state.json sidecar (SS-session-manager.md §session-state.json schema).
-///
-/// Written atomically via `tempfile::persist` (no naked std::fs::write).
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct SessionSidecar {
-    /// Sidecar schema version — always 3 for new sidecars.
-    pub schema_version: u32,
-    /// Session UUID string.
-    pub session_id: String,
-    /// OS PID of the session-host process.
-    pub pid: u32,
-    /// Per-session UDS socket path.
-    pub socket_path: String,
-    /// Child PID of the harness process spawned by session-host (set by session-host at startup step 8).
-    pub child_pid: Option<u32>,
-    /// Lifecycle state string (e.g., `"Launching"`, `"Running"`).
-    pub state: String,
-    /// Project root directory (user-selected).
-    pub project_root: String,
-    /// Working directory (resolved worktree root or project_root).
-    pub cwd: String,
-    /// Harness identifier (e.g., `"claude-code"`).
-    pub harness_id: String,
-    /// Profile identifier.
-    pub profile_id: String,
-    /// ISO-8601 UTC spawn timestamp.
-    pub started_at: String,
-    /// Human-readable session display name.
-    pub display_name: String,
-    /// Initial PTY rows.
-    pub pty_rows: u16,
-    /// Initial PTY columns.
-    pub pty_cols: u16,
-    /// Kill deadline as Unix epoch milliseconds (non-null only when state == Terminating).
-    pub kill_deadline_unix_ms: Option<u64>,
 }
 
 // ---------------------------------------------------------------------------
@@ -1959,9 +1991,11 @@ mod tests {
         );
 
         // Deserialize and check required schema v3 fields.
+        // LOW-002: use monocle_ipc::types::SessionSidecarV3 (the canonical shared type)
+        // instead of the now-removed dead SessionSidecar (state: String) stub.
         let contents = std::fs::read_to_string(&sidecar_path).expect("sidecar must be readable");
-        let sidecar: SessionSidecar =
-            serde_json::from_str(&contents).expect("sidecar must parse as SessionSidecar");
+        let sidecar: monocle_ipc::types::SessionSidecarV3 =
+            serde_json::from_str(&contents).expect("sidecar must parse as SessionSidecarV3");
 
         assert_eq!(
             sidecar.schema_version, 3,
@@ -1971,9 +2005,12 @@ mod tests {
             sidecar.session_id, session_id,
             "sidecar session_id must match"
         );
+        // Mechanical type change: SessionSidecarV3.state is SessionState enum, not String.
+        // The behavioral assertion (state == Launching) is preserved.
         assert_eq!(
-            sidecar.state, "Launching",
-            "sidecar state must be 'Launching'"
+            sidecar.state,
+            monocle_ipc::types::SessionState::Launching,
+            "sidecar state must be Launching"
         );
         assert_eq!(sidecar.pty_rows, 24, "sidecar pty_rows must be 24");
         assert_eq!(sidecar.pty_cols, 80, "sidecar pty_cols must be 80");

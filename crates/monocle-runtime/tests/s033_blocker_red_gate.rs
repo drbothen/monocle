@@ -1986,15 +1986,21 @@ async fn test_BC_2_08_001_MED004_degraded_env_sets_session_degraded() {
             .expect("MED-004: timed out waiting for monitor to connect")
             .expect("MED-004: accept failed");
 
-    // Send StateChanged{Running, degraded_env: Some(true)} indicating degraded environment.
-    // NOTE: The implementation currently has degraded_env: Option<bool> (not Option<Vec<String>>
-    // as specified in SS-session-manager.md §I3-009). The boolean true means "degraded".
-    // The test asserts the behavioral contract: degraded_env=Some(true) MUST set
-    // SessionEntry.degraded=true. The full spec calls for Option<Vec<String>> (missing var names).
+    // MECHANICAL COMPILE FIX (BLOCKER-001): degraded_env changed from Option<bool> to
+    // Option<Vec<String>>. Minimal type fix applied here.
+    //
+    // BEHAVIORAL REWRITE REQUIRED FOR TEST-WRITER (tracked below):
+    // This test sends degraded_env on new_state:Running, but per HIGH-001 (Ruling 2),
+    // the degraded handshake is sent with new_state:Launching (BEFORE the Running message).
+    // This test must be rewritten to send TWO messages:
+    //   1. StateChanged { new_state: Launching, degraded_env: Some(vec!["HOME"]) }
+    //   2. StateChanged { new_state: Running, degraded_env: None }
+    // The current test will FAIL its snap.degraded assertion because the daemon
+    // only checks degraded_env on Launching messages.
     use tokio::io::AsyncWriteExt;
     let msg = monocle_ipc::types::HostToDaemon::StateChanged {
         new_state: SessionState::Running,
-        degraded_env: Some(true),
+        degraded_env: Some(vec!["HOME".to_string()]),
     };
     let body = serde_json::to_vec(&msg).unwrap();
     let len = (body.len() as u32).to_le_bytes();

@@ -268,12 +268,13 @@ fn step_build_command(args: &CliArgs) -> Result<portable_pty::CommandBuilder, Se
     Ok(cmd)
 }
 
-/// Step 6: Initialize vt100 parser with initial PTY dimensions.
+/// Step 6: Initialize vt100 parser with initial PTY dimensions and 1000-line scrollback.
 ///
-/// Returns a stub parser. The actual PTY-to-TUI byte relay (PtyBytes streaming)
-/// is implemented in S-047; for S-033 the parser is created but not actively used.
+/// Scrollback capacity: 1000 lines per SS-session-manager.md §Ruling A.
+/// The actual PTY-to-TUI byte relay (PtyBytes streaming) is implemented in S-047;
+/// for S-033 the parser is created but not actively used.
 fn step_init_vt100_parser(rows: u16, cols: u16) -> vt100::Parser {
-    vt100::Parser::new(rows, cols, 0)
+    vt100::Parser::new(rows, cols, 1000)
 }
 
 /// Step 7: Bind per-session UDS socket at `<runtime_dir>/session-<session_id>.sock`
@@ -310,11 +311,18 @@ async fn step_bind_uds(
     Ok(listener)
 }
 
-/// Step 8: Write session-state.json sidecar atomically via tempfile::persist.
+/// Step 8: Read-modify-write session-state.json sidecar (BLOCKER-002 / Ruling B).
 ///
-/// Schema version 3. No naked std::fs::write (CLAUDE.md conventions).
-/// The daemon writes an initial sidecar with `child_pid: None`; the session-host
-/// overwrites it with `child_pid: Some(pid)` at this step (SS-session-manager.md §Step 8).
+/// **Ownership protocol (SS-session-manager.md §Ruling B):**
+/// - The DAEMON wrote the initial sidecar with all fields populated and `child_pid: None`.
+/// - The SESSION-HOST sets ONLY `child_pid = Some(process_id())` and re-persists atomically.
+/// - The session-host MUST NOT overwrite daemon-owned fields: `state`, `project_root`,
+///   `cwd`, `harness_id`, `profile_id`, `started_at`, `display_name`, or any other field.
+///
+/// Implementation:
+/// 1. Read the existing `SessionSidecarV3` from disk (written by daemon at spawn).
+/// 2. Set `child_pid = Some(child_pid)`.
+/// 3. Write back atomically via `tempfile::persist` — no field clobber.
 async fn step_write_sidecar(args: &CliArgs, child_pid: u32) -> Result<(), SessionHostError> {
     use std::io::Write as _;
 
@@ -322,52 +330,30 @@ async fn step_write_sidecar(args: &CliArgs, child_pid: u32) -> Result<(), Sessio
         .runtime_dir
         .join(format!("session-{}.json", args.session_id));
 
-    let display_name = format!(
-        "{} — {}",
-        args.binary
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("unknown"),
-        args.cwd
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("unknown"),
-    );
+    // Step 1: read the daemon-written sidecar from disk.
+    let existing_json = std::fs::read_to_string(&sidecar_path).map_err(|e| {
+        SessionHostError::SidecarWriteFailed {
+            path: sidecar_path.to_string_lossy().into_owned(),
+            reason: format!("failed to read daemon-written sidecar: {e}"),
+        }
+    })?;
 
-    let sidecar = monocle_ipc::types::SessionSidecarV3 {
-        schema_version: 3,
-        session_id: args.session_id.clone(),
-        pid: std::process::id(),
-        socket_path: args
-            .runtime_dir
-            .join(format!("session-{}.sock", args.session_id))
-            .to_string_lossy()
-            .into_owned(),
-        child_pid: Some(child_pid),
-        state: monocle_ipc::types::SessionState::Running,
-        project_root: args.cwd.to_string_lossy().into_owned(),
-        cwd: args.cwd.to_string_lossy().into_owned(),
-        harness_id: args
-            .binary
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("unknown")
-            .to_string(),
-        profile_id: "default".to_string(),
-        started_at: chrono::Utc::now().to_rfc3339(),
-        display_name,
-        pty_rows: 24,
-        pty_cols: 80,
-        kill_deadline_unix_ms: None,
-    };
+    let mut sidecar: monocle_ipc::types::SessionSidecarV3 = serde_json::from_str(&existing_json)
+        .map_err(|e| SessionHostError::SidecarWriteFailed {
+            path: sidecar_path.to_string_lossy().into_owned(),
+            reason: format!("failed to deserialize daemon-written sidecar: {e}"),
+        })?;
 
+    // Step 2: set ONLY child_pid — do NOT touch any other daemon-owned field.
+    sidecar.child_pid = Some(child_pid);
+
+    // Step 3: serialize and persist atomically.
     let sidecar_json =
         serde_json::to_vec_pretty(&sidecar).map_err(|e| SessionHostError::SidecarWriteFailed {
             path: sidecar_path.to_string_lossy().into_owned(),
             reason: format!("JSON serialization failed: {e}"),
         })?;
 
-    // Atomic write via tempfile::persist — no naked std::fs::write.
     let dir = sidecar_path
         .parent()
         .ok_or_else(|| SessionHostError::SidecarWriteFailed {
@@ -376,7 +362,7 @@ async fn step_write_sidecar(args: &CliArgs, child_pid: u32) -> Result<(), Sessio
         })?;
 
     let mut tmp = tempfile::Builder::new()
-        .prefix(".session-sidecar-")
+        .prefix(".session-sidecar-host-")
         .suffix(".json.tmp")
         .tempfile_in(dir)
         .map_err(|e| SessionHostError::SidecarWriteFailed {
@@ -399,16 +385,37 @@ async fn step_write_sidecar(args: &CliArgs, child_pid: u32) -> Result<(), Sessio
     tracing::debug!(
         session_id = %args.session_id,
         child_pid = child_pid,
-        "session-host: sidecar written with child_pid"
+        "session-host: sidecar updated with child_pid (Ruling B read-modify-write)"
     );
 
     Ok(())
 }
 
+/// Send a single `HostToDaemon` message as a length-prefixed JSON frame.
+///
+/// Frame format: 4-byte LE u32 length + JSON body (per SS-session-manager.md §Per-session UDS protocol).
+async fn send_host_msg(
+    stream: &mut tokio::net::UnixStream,
+    msg: &monocle_ipc::types::HostToDaemon,
+) -> Result<(), SessionHostError> {
+    let body = serde_json::to_vec(msg)
+        .map_err(|e| SessionHostError::Io(std::io::Error::other(e.to_string())))?;
+    let len = body.len() as u32;
+    stream.write_all(&len.to_le_bytes()).await?;
+    stream.write_all(&body).await?;
+    stream.flush().await?;
+    Ok(())
+}
+
 /// Step 9: Main event loop.
 ///
-/// Accepts the daemon's control connection, sends `HostToDaemon::StateChanged{Running}`,
-/// then handles `DaemonToHost` messages (Kill, etc.) until shutdown.
+/// Accepts the daemon's control connection.
+///
+/// **HIGH-001 (I3-009) startup handshake:**
+/// 1. Check `HOME` and `PATH` in the current process environment.
+/// 2. If any are missing: send `StateChanged { new_state: Launching, degraded_env: Some([...]) }`
+///    as the FIRST message (before `Running`). The daemon sets `entry.degraded = true`.
+/// 3. Send `StateChanged { new_state: Running, degraded_env: None }` to signal readiness.
 ///
 /// Deferred handlers (Attach/Resize/KeyInput/Detach) return gracefully for S-033;
 /// they will be implemented in S-034/S-035/S-047.
@@ -428,18 +435,35 @@ async fn step_event_loop(
 
     tracing::debug!(session_id = %session_id, "session-host: daemon connected to control socket");
 
+    // HIGH-001 (I3-009): check critical env vars; send degraded handshake if missing.
+    let critical_vars = ["HOME", "PATH"];
+    let missing_vars: Vec<String> = critical_vars
+        .iter()
+        .filter(|&&var| std::env::var(var).is_err())
+        .map(|&var| var.to_string())
+        .collect();
+
+    if !missing_vars.is_empty() {
+        tracing::warn!(
+            session_id = %session_id,
+            missing = ?missing_vars,
+            "session-host: degraded environment detected — sending Launching+degraded handshake (I3-009)"
+        );
+        let degraded_msg = monocle_ipc::types::HostToDaemon::StateChanged {
+            new_state: monocle_ipc::types::SessionState::Launching,
+            degraded_env: Some(missing_vars),
+        };
+        send_host_msg(&mut stream, &degraded_msg).await?;
+    }
+
     // Send HostToDaemon::StateChanged{Running} as length-prefixed JSON.
+    // degraded_env is always None on the Running message (metadata was in the Launching message).
     let msg = monocle_ipc::types::HostToDaemon::StateChanged {
         new_state: monocle_ipc::types::SessionState::Running,
         degraded_env: None,
     };
 
-    let body = serde_json::to_vec(&msg)
-        .map_err(|e| SessionHostError::Io(std::io::Error::other(e.to_string())))?;
-    let len = body.len() as u32;
-    stream.write_all(&len.to_le_bytes()).await?;
-    stream.write_all(&body).await?;
-    stream.flush().await?;
+    send_host_msg(&mut stream, &msg).await?;
 
     tracing::info!(session_id = %session_id, "session-host: sent StateChanged{{Running}} to daemon");
 

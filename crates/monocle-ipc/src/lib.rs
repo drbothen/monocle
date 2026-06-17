@@ -32,3 +32,7 @@ pub mod server;
 pub mod transport;
 pub mod types;
 pub mod uds;
+
+// Re-export wire boundary types for convenient cross-crate access (C5-002, SS-ipc.md).
+// `monocle-session-host` and `monocle-tui` import these as `monocle_ipc::SerializedCell`.
+pub use types::{SerializedCell, SerializedColor};

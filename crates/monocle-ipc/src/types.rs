@@ -25,6 +25,65 @@ use monocle_core::engine::{EnrichedSession, SpawnOptions};
 pub use monocle_core::hook_events::HookType;
 use uuid::Uuid;
 
+// ---------------------------------------------------------------------------
+// SerializedCell / SerializedColor — wire boundary types for scrollback dump
+// (SS-ipc.md §Supporting Types, C5-002)
+//
+// Defined in monocle-ipc so both monocle-session-host (writer, constructs
+// Vec<Vec<SerializedCell>> from vt100::Screen) and monocle-tui (reader) share
+// the SAME type without a cross-binary dependency.
+// ---------------------------------------------------------------------------
+
+/// Terminal cell color as serialized for the scrollback dump wire format.
+///
+/// Covers the three color modes exposed by `vt100` 0.16:
+/// - `Default` — terminal default foreground or background.
+/// - `Ansi(u8)` — one of the 256 ANSI palette colors (0–255).
+/// - `Rgb(u8, u8, u8)` — 24-bit true color (r, g, b).
+///
+/// `#[non_exhaustive]` for forward compatibility if additional color modes are added.
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum SerializedColor {
+    /// Terminal default foreground or background color.
+    Default,
+    /// ANSI 256-color palette index (0–255).
+    Ansi(u8),
+    /// 24-bit true color (red, green, blue).
+    Rgb(u8, u8, u8),
+}
+
+/// A single terminal cell as serialized for the scrollback dump wire format.
+///
+/// Used in `HostToDaemon::ScrollbackChunk.rows` — each row is `Vec<SerializedCell>`.
+///
+/// `#[non_exhaustive]` per ADR-0006 constructor requirement (C5-002, C30-002):
+/// cross-crate construction (e.g., from `monocle-session-host`) uses `SerializedCell::new()`.
+#[non_exhaustive]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SerializedCell {
+    /// The UTF-8 character at this cell. Empty string for empty/null cells.
+    pub ch: String,
+    /// Foreground color.
+    pub fg: SerializedColor,
+    /// Background color.
+    pub bg: SerializedColor,
+    /// Cell attribute bitmask (5 bits used; `vt100` 0.16 layout):
+    /// bit 0 = bold, bit 1 = dim, bit 2 = italic, bit 3 = underline, bit 4 = inverse.
+    pub attrs: u8,
+}
+
+impl SerializedCell {
+    /// Construct a `SerializedCell`.
+    ///
+    /// Required because `SerializedCell` is `#[non_exhaustive]` — struct-literal
+    /// construction is forbidden outside `monocle-ipc::types` (Rust E0639).
+    /// Called by `monocle-session-host` when serializing a `vt100::Screen` snapshot.
+    pub fn new(ch: String, fg: SerializedColor, bg: SerializedColor, attrs: u8) -> Self {
+        Self { ch, fg, bg, attrs }
+    }
+}
+
 /// Ring format version constant — FC-01 forward-compatibility contract.
 ///
 /// Relocated from `monocle-runtime::ring` to `monocle-ipc::types` per architect decision
@@ -187,25 +246,94 @@ pub enum SessionState {
 /// Serialized as length-prefixed JSON (4-byte LE u32 + JSON body) on the per-session
 /// UDS control connection (`<runtime_dir>/session-<uuid>.sock`).
 ///
-/// `#[serde(tag = "type")]` uses the variant name lowercased (e.g., `state_changed`)
-/// per SS-session-manager.md §session-host to daemon protocol.
+/// `#[serde(tag = "type", rename_all = "snake_case")]` uses the variant name in snake_case
+/// (e.g., `state_changed`) per SS-session-manager.md §Per-session UDS protocol.
 ///
-/// S-033: minimum viable set for the Launching → Running transition.
-/// S-034/S-035: Kill/Detach result variants are added in those stories.
+/// All variants from SS-session-manager.md §Per-session UDS protocol are defined here.
+/// Handlers for Attach/KeyInput/Resize/Detach are `todo!()` stubs in S-034/S-035/S-047
+/// per Ruling A; the ENUM definitions exist now so the daemon can deserialize all messages.
 #[non_exhaustive]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum HostToDaemon {
     /// Session-host reports a lifecycle state transition.
     ///
-    /// Sent at startup (Launching → Running) and on termination (→ Terminated).
+    /// Sent at startup: first message is `StateChanged { new_state: Launching, degraded_env: Some([...]) }`
+    /// if env is degraded (I3-009 handshake), followed by `StateChanged { new_state: Running,
+    /// degraded_env: None }` when ready. On termination: `StateChanged { new_state: Terminated }`.
     StateChanged {
         /// The new lifecycle state.
         new_state: SessionState,
-        /// Optional degraded-env flag. `Some(true)` when HOME or PATH were not set.
-        /// `None` in normal operation.
-        degraded_env: Option<bool>,
+        /// Missing critical env vars detected at session-host startup (e.g., `["HOME", "PATH"]`).
+        /// `None` when env is healthy. `Some(vec![...])` listing the names of missing vars.
+        /// The daemon joins the names to form `SessionEntry.degraded_reason`:
+        /// `"Missing env: HOME, PATH"`. Backward-compat: `#[serde(default)]` deserializes
+        /// an absent field (from session-hosts that do not yet send this field) as `None`.
+        #[serde(default)]
+        degraded_env: Option<Vec<String>>,
     },
+    /// One chunk of the scrollback dump stream (sent in response to `DaemonToHost::Attach`).
+    ScrollbackChunk {
+        /// Row-major serialized vt100 screen cells for this chunk.
+        rows: Vec<Vec<crate::SerializedCell>>,
+        /// 0-indexed chunk sequence number.
+        chunk_seq: u32,
+    },
+    /// Sentinel terminating the scrollback dump stream.
+    ScrollbackDumpComplete {
+        /// Total number of chunks sent.
+        total_chunks: u32,
+        /// Cursor row at time of dump snapshot.
+        cursor_row: u16,
+        /// Cursor column at time of dump snapshot.
+        cursor_col: u16,
+        /// PTY rows at time of dump snapshot.
+        pty_rows: u16,
+        /// PTY columns at time of dump snapshot.
+        pty_cols: u16,
+    },
+    /// Live PTY output bytes forwarded from the harness child.
+    PtyBytes {
+        /// Raw PTY output bytes.
+        bytes: Vec<u8>,
+    },
+    /// Session-host is shutting down cleanly.
+    Goodbye,
+    /// PTY byte drop detected (channel sender returned Err). Daemon propagates as
+    /// `ServerToClient::PtyReset` to TUI clients.
+    PtyReset,
+}
+
+/// Messages sent from the daemon to the session-host over the per-session UDS socket.
+///
+/// Serialized as length-prefixed JSON (4-byte LE u32 + JSON body).
+/// `#[serde(tag = "type", rename_all = "snake_case")]` per SS-session-manager.md §Per-session UDS protocol.
+///
+/// All variants are defined here per Ruling E. Handler stubs (`todo!()`) for
+/// Attach/KeyInput/Resize/Detach in the session-host are spec-sanctioned per Ruling A;
+/// Kill is handled in S-034.
+#[non_exhaustive]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum DaemonToHost {
+    /// Request current scrollback dump + live-stream subscription.
+    Attach,
+    /// Send keyboard bytes to PTY stdin.
+    KeyInput {
+        /// Raw keyboard bytes to forward to the harness child's PTY stdin.
+        bytes: Vec<u8>,
+    },
+    /// Resize the PTY.
+    Resize {
+        /// New row count.
+        rows: u16,
+        /// New column count.
+        cols: u16,
+    },
+    /// Request graceful shutdown: SIGTERM the harness child, then clean exit.
+    Kill,
+    /// Detach the daemon from this session (session continues unattached).
+    Detach,
 }
 
 /// A snapshot of a single session (wire type for SessionListUpdate, InitialState).
