@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-033
 epic_id: EPIC-08
-version: "1.8"
+version: "1.9"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -24,7 +24,7 @@ inputs:
   - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.001.md, version: "1.5.3"}
   - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.008.md, version: "1.3.4"}
   - {path: .factory/specs/architecture/SS-engine-module-v2-delta.md, version: "1.6.0"}
-  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.7.1"}
+  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.7.2"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
@@ -96,9 +96,18 @@ After the `SessionEntry` is inserted and the sidecar is written:
 - Both publications happen under the `SessionManager` mutex (per BC-2.08.008 Invariant 4).
 - If a connected TUI client's per-client buffer is full and the ordered pair splits (SessionStateChanged delivered but SessionListUpdate dropped), the client is IMMEDIATELY disconnected (per BC-2.08.008 PC-3 split rule).
 
-### AC-006 (traces to BC-2.08.001 invariant 1 — session_id uniqueness; UUID collision handling)
+### AC-006 (traces to BC-2.08.001 invariant 1 — session_id uniqueness; UUID collision handling; SS-session-manager v2.7.2 Ruling F)
 
-The `SessionEntry` insertion MUST check for collision. If a collision is detected (UUID already in registry), the implementation MUST either retry (generate a new UUID) or return `Err(SessionError::SessionIdCollision { session_id })`. Auto-retry is one attempt; second collision returns the error.
+The `SessionEntry` insertion MUST check for collision. If a collision is detected (UUID already in registry), `spawn_session()` MUST return `Err(SessionError::SessionIdCollision { session_id })` immediately — it does NOT perform an internal retry (UUID generation is not `spawn_session()`'s responsibility; doing so would violate EC-152's "auto-retry is one attempt" constraint by doubling total attempts).
+
+The IPC handler is the SINGLE retry locus. On receiving `Err(SessionError::SessionIdCollision)` from `spawn_session()`, the IPC handler MUST:
+1. Generate a fresh UUID (`retry_id = uuid::Uuid::new_v4().to_string()`).
+2. Send a SECOND `ServerToClient::SpawnAck { session_id: retry_id.clone() }` to the requesting client BEFORE calling the retry `spawn_session()` — this updates the wizard's `launching_session_id` to the new UUID.
+3. Rebuild `opts` via `opts.with_daemon_fields(retry_id, hooks_settings_path)`.
+4. Call `spawn_session(retry_opts)` exactly ONCE.
+5. If the retry also returns `Err(SessionIdCollision)`, send `ServerToClient::Error { code: "session_id_collision", ... }` to the client.
+
+Total UUID attempts: 2 (initial + 1 retry). Auto-retry is one attempt; a second consecutive collision surfaces the error to the client.
 
 ### AC-007 (traces to BC-2.08.001 invariant 2 — atomic sidecar write)
 
@@ -201,9 +210,9 @@ guaranteed by TWO properties:
 - [ ] Implement `session_error_to_code(op: IpcOp, e: &SessionError) -> &'static str` with full exhaustive outer match on `SessionError` and, for the `SessionError::EngineError(inner)` arm, an inner match on `EngineError` that MUST include both arms in order: `EngineError::UnsupportedOperation(_) => "spawn_unsupported"` FIRST, then `_ => "invalid_request"` as the mandatory non-exhaustive fallback (per SS-session-manager.md §session_error_to_code and BC-2.03.008 PC-3). The `UnsupportedOperation` arm MUST NOT be absent or collapsed into the catch-all — that would be the F-P44-IMP-001 regression.
 - [ ] Implement `monocle-session-host/src/main.rs` minimum-viable binary: parse CLI args; call `setsid()`; open PTY pair; build CommandBuilder with env inheritance (I2-006); spawn harness child; init `vt100::Parser` stub; bind UDS at `<runtime_dir>/session-<session_id>.sock`; write sidecar via `tempfile::persist` with `child_pid: Some(child.process_id())`; send `HostToDaemon::StateChanged { new_state: Running, degraded_env: None }` over the per-session UDS; enter minimal event loop handling `DaemonToHost::Kill`. PTY output streaming, scrollback dump, keyboard forwarding, and resize are deferred (see SS-session-manager.md §Architecture Ruling A → S-039/S-035/S-047/S-042/S-044).
 - [ ] Define `SessionSidecarV3` struct in `crates/monocle-ipc/src/lib.rs` (per SS-session-manager.md §Ruling B) with the schema-v3 shape. Both `monocle-runtime` and `monocle-session-host` import it via `monocle_ipc::SessionSidecarV3`. Daemon writes it with `child_pid: None` at spawn; session-host overwrites with `child_pid: Some(pid)` at startup step 8.
-- [ ] Implement `spawn_session(opts: SpawnOptions)`: call `spawn_recipe()` first, then `spawner.spawn()`, then write sidecar via `tempfile::persist` using `monocle_ipc::SessionSidecarV3` as the serialization type (NOT an ad-hoc struct; `child_pid: None` at daemon's initial write), then insert `SessionEntry{state: Launching, host_conn: None}`, then spawn post-spawn monitor `tokio::spawn`, then publish `SessionStateChanged{Launching}` + `SessionListUpdate` under mutex.
+- [ ] Implement `spawn_session(opts: SpawnOptions)`: call `spawn_recipe()` first, then `spawner.spawn()`, then write sidecar via `tempfile::persist` using `monocle_ipc::SessionSidecarV3` as the serialization type (NOT an ad-hoc struct; `child_pid: None` at daemon's initial write), then check for `session_id` collision via `self.sessions.contains_key(&opts.session_id)` and return `Err(SessionError::SessionIdCollision { session_id: opts.session_id })` immediately if found — NO internal retry loop (UUID retry is the IPC handler's sole responsibility per SS-session-manager.md §Ruling F), then insert `SessionEntry{state: Launching, host_conn: None}`, then spawn post-spawn monitor `tokio::spawn`, then publish `SessionStateChanged{Launching}` + `SessionListUpdate` under mutex.
 - [ ] Implement post-spawn monitor as a `tokio::spawn` background task: polls UDS socket connectable (20ms backoff, 30s total timeout), verifies SO_PEERCRED, stores `host_conn: Some(SessionHostConnection { writer, proxy_task: None })`, receives `StateChanged` messages, on `StateChanged{Running}` starts PTY proxy task and transitions to Running state (emits `SessionStateChanged{Running}` + `SessionListUpdate`).
-- [ ] Implement IPC handler skeleton: generate UUID → send `SpawnAck` → call `opts.with_daemon_fields()` → call `spawn_session()` → on error send `ServerToClient::Error`.
+- [ ] Implement IPC handler skeleton for `ClientToServer::SpawnSession`: (1) generate UUID via `uuid::Uuid::new_v4().to_string()`; (2) send `ServerToClient::SpawnAck { session_id: session_id.clone() }` to the requesting client BEFORE calling `spawn_session()`; (3) call `opts.with_daemon_fields(session_id, hooks_settings_path)`; (4) call `spawn_session(opts)`; (5) on `Err(SessionError::SessionIdCollision)` — single collision-retry: generate fresh `retry_id`, send a SECOND `ServerToClient::SpawnAck { session_id: retry_id.clone() }` to the requesting client BEFORE the retry call (so the wizard tracks the correct session_id), rebuild opts via `opts.with_daemon_fields(retry_id, hooks_path)`, call `spawn_session(retry_opts)` once; if retry returns `SessionIdCollision`, send `ServerToClient::Error { code: "session_id_collision", ... }`; (6) on any other error, send `ServerToClient::Error` via `session_error_to_code(IpcOp::Spawn, &e)`. Per SS-session-manager.md §Ruling F: the IPC handler is the SINGLE retry locus; `spawn_session()` MUST NOT contain an internal UUID retry loop.
 - [ ] Add `spawn_recipe(&self, opts: &SpawnOptions) -> Result<SpawnRecipe, EngineError>` to the `EngineModule` trait in `monocle-core/src/engine.rs` with a default impl returning `Err(EngineError::UnsupportedOperation("spawn_recipe"))`. (BC-2.03.008)
 - [ ] Define `EngineError` enum in `monocle-core/src/engine.rs`: `BinaryNotFound(String)`, `InvalidPath(String)`, `UnsupportedOperation(&'static str)`; derive `thiserror::Error`, `Debug`; apply `#[non_exhaustive]`. (BC-2.03.008)
 - [ ] Add `SpawnOptions` and `SpawnRecipe` type declarations (or re-exports per SS-engine-module-v2-delta.md) to `monocle-core/src/engine.rs` as required by the trait method signature. (BC-2.03.008)
@@ -355,6 +364,7 @@ those belong to S-034, S-035, and S-047 respectively.
 
 | Pass | Date | Change |
 |------|------|--------|
+| v1.9 | 2026-06-17 | SS-session-manager v2.7.2 Ruling F propagation: (1) inputs[] SS-session-manager pin bumped 2.7.1→2.7.2. (2) AC-006: resolved ambiguous "either retry or return Err" — `spawn_session()` now RETURNS `Err(SessionError::SessionIdCollision { session_id })` on collision (NO internal retry); IPC handler is the SINGLE retry locus — on `SessionIdCollision` it regenerates a fresh UUID, sends a SECOND `SpawnAck { session_id: retry_id }` BEFORE the retry call, calls `spawn_session()` once; second consecutive collision surfaces the error to the client. Total attempts = 2. (3) spawn_session task: explicit NO internal retry loop language added. (4) IPC handler task: full 6-step collision-retry-with-second-SpawnAck procedure documented per Ruling F. |
 | v1.8 | 2026-06-16 | SS-session-manager v2.7.1 Rulings C+D propagation: (1) inputs[] SS-session-manager pin bumped 2.7.0→2.7.1. (2) Tasks: RealSessionHostSpawner task corrected — `pre_exec(|| setsid())` removed; replaced with explicit NO pre_exec note and reference to §Ruling C. `pre_exec` is `unsafe fn`; `monocle-runtime` is `#![forbid(unsafe_code)]`; session-host binary calls setsid() at startup step 2. (3) host_conn writer storage confirmed as S-033 scope (post-spawn monitor steps 1–5 are all S-033; Ruling D). |
 | v1.7 | 2026-06-16 | SS-session-manager v2.7.0 Rulings A+B propagation: (1) inputs[] SS-session-manager pin bumped 2.6.1→2.7.0. (2) Tasks: added minimum-viable session-host task (Ruling A step table: parse args, setsid, PTY open, CommandBuilder, spawn child, vt100::Parser stub, bind UDS, write sidecar with child_pid, send StateChanged{Running}, minimal Kill event loop; deferred: PTY streaming→S-039, scrollback→S-035, keyboard→S-047, resize→S-042, TUI→S-044). (3) Tasks: added SessionSidecarV3 definition task in monocle-ipc (Ruling B dual-writer ownership protocol). (4) Existing spawn_session sidecar-write task updated to reference `monocle_ipc::SessionSidecarV3` as the serialization type (not ad-hoc struct). (5) File Structure: monocle-session-host/Cargo.toml row adds `tempfile = "3"` dep (Ruling B atomic-write requirement). (6) monocle-ipc/src/lib.rs modify row adds SessionSidecarV3 definition (Ruling B). |
 | v1.6 | 2026-06-16 | F-P21-SUG-002: AC-012 SpawnAck step-label aligned to BC-2.08.008 PC-5 canonical numbering — "IPC-handler step 1" → "IPC-handler step 2" (UUID generation is step 1; SpawnAck send is step 2). Relative ordering identical and correct in both versions; only the absolute step-index label changed. |

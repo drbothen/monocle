@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "7.90"
+version: "7.91"
 status: active
 producer: state-manager
 timestamp: 2026-06-17T00:00:00Z
 phase: phase-3-v1A-wave-8
-current_step: "D-327 (2026-06-17): S-033 adversarial pass (post-rework) NOT CLEAN — production daemon_start_sequence unwired (session_manager None) + SO_PEERCRED comment-only + ad-hoc sidecar struct + false-green wiring/integration tests. Architect Rulings C (host-side setsid canonical; pre_exec unsafe fn forbidden in monocle-runtime) + D (host_conn writer storage is S-033 scope). SS-session-manager v2.7.0→v2.7.1; S-033 v1.7→v1.8. Remediation chain: test-writer (production-path tests) → implementer → security-reviewer → re-adversary (convergence counter 0/3)."
+current_step: "D-328 (2026-06-17): S-033 adversarial pass 2 (post-rework) NOT CLEAN — Rulings E/F/G issued. Ruling E: DaemonToHost/HostToDaemon types live in monocle-ipc (not sidecar); S-033 scope. Ruling F: EC-152 retry locus exclusively IPC handler + second SpawnAck; spawn_session no internal retry. Ruling G: single-lock atomicity — post-spawn monitor holds mutex across Running-transition try_send pair and EC-163/Terminated broadcast pair. SS-session-manager v2.7.1→v2.7.2; S-033 v1.8→v1.9. Prior B-series + security fixes confirmed solid. Remediation: implementer → test-writer → re-adversary (convergence counter 0/3)."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "D-001..D-241 at cycles/cycle-001/decisions-archive.md. D-242..D-327 appended at cycles/cycle-001/decisions-archive.md §Phase-1d+Phase-2+Phase-3. Full durable_task_register YAML (122 entries) at cycles/cycle-001/task-register-full.yaml."
-awaiting: "S-033 Wave 8 remediation: test-writer (production-path tests per SS-session-manager v2.7.1 Rulings A+B+C+D) → implementer (full impl) → security-reviewer → re-adversary pass (convergence counter 0/3). Branch protection (PROC-BRANCH-PROTECTION-CONTEXTS) still pending human/repo-admin action before first Wave 8 PR merge."
+awaiting: "S-033 Wave 8 remediation: implementer (Rulings E+F+G propagation to impl) → test-writer (tests for IPC-handler 6-step Task per Ruling F; atomicity per Ruling G) → re-adversary pass (convergence counter 0/3). Branch protection (PROC-BRANCH-PROTECTION-CONTEXTS) still pending human/repo-admin action before first Wave 8 PR merge."
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: 2026-06-03
@@ -20,13 +20,14 @@ dtu_services: [hook-endpoints-x5]
 current_cycle: cycle-001
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v7.90 — 2026-06-17
+  ZERO-CONTEXT RESUME CHECKPOINT v7.91 — 2026-06-17
   PHASE-3 v1A ACTIVE — WAVE 8 / S-033 REMEDIATION IN PROGRESS
   ============================================================================
   POSITION: Phase-3 TDD implementation, v1A control-center scope, Wave 8.
-  STATUS: S-033 post-rework adversarial pass NOT CLEAN (D-327). Architect
-  Rulings C+D issued. SS-session-manager v2.7.1, S-033 v1.8.
-  Convergence counter: 0/3. Remediation chain in progress.
+  STATUS: S-033 adversarial pass 2 NOT CLEAN (D-328). Architect Rulings
+  E+F+G issued. SS-session-manager v2.7.2, S-033 v1.9.
+  Convergence counter: 0/3. Batched remediation in progress.
+  B-series + security findings confirmed solid by adversary.
 
   READ FIRST (in order):
   1. /Users/jmagady/Dev/monocle/NEXT-SESSION-RESUME.md  <- concise entry point
@@ -42,17 +43,18 @@ next_session_resume_protocol: |
   KEY VERSION PINS (canonical source: .factory/specs/version-pin-registry.yaml):
   STORY-INDEX v5.45 | sprint-state v1.46 | wave-schedule v2.1
   dependency-graph-expansion v2.5 | BC-INDEX v1.43.8 | EVAL-INDEX v1.19
-  ARCH-INDEX v1.0.30 | SS-ipc v1.24.0 | SS-session-manager v2.7.1
+  ARCH-INDEX v1.0.30 | SS-ipc v1.24.0 | SS-session-manager v2.7.2
   SS-embedded-pty v1.7.0 | SS-engine-module-v2-delta v1.6.0
   SS-daemon-wiring-v2-delta v1.11.4 | SS-deps-pin-manifest-v2-delta v1.0.2
   prd v1.28.3 | product-brief v2.0.4 | domain-monocle-vision-synthesis v2.2.3
 
-  NEXT-ACTION (S-033 remediation):
-  1. test-writer: add production-path tests for setsid (Ruling C) + host_conn
-     writer storage (Ruling D) + daemon_start_sequence wiring + SO_PEERCRED.
-  2. implementer: full production implementation against new tests.
-  3. security-reviewer: review SO_PEERCRED implementation.
-  4. re-adversary pass (convergence counter 0/3).
+  NEXT-ACTION (S-033 batched remediation for Rulings E+F+G):
+  1. implementer: propagate Rulings E (DaemonToHost/HostToDaemon in monocle-ipc),
+     F (EC-152 retry exclusively IPC handler; spawn_session no internal retry;
+     second SpawnAck before retry), G (single-lock atomicity for Running-transition
+     try_send pair + EC-163/Terminated broadcast pair) to implementation.
+  2. test-writer: IPC-handler 6-step Task tests (Ruling F) + atomicity tests (Ruling G).
+  3. re-adversary pass (convergence counter 0/3).
   CI pre-requisites status:
     DTU clone: PASS (D-234, fidelity 1.0)
     ci.yml: PASS
@@ -67,11 +69,12 @@ next_session_resume_protocol: |
   - D-325: Phase-2 gate APPROVED; Phase-3 v1A active
   - D-326: S-033 Rulings A+B (scope + SessionSidecarV3 in monocle-ipc)
   - D-327: S-033 Rulings C+D (setsid host-side; host_conn storage S-033 scope)
+  - D-328: S-033 Rulings E+F+G (DaemonToHost/HostToDaemon in monocle-ipc; EC-152 retry IPC-handler-only + second SpawnAck; single-lock atomicity for Running/EC-163/Terminated pairs)
   - Spawn-path Model A: SpawnOptions on wire; SpawnRecipe daemon-internal
   - IPC: 12-code wire taxonomy; 9-variant SessionError; schema_version 3
   - PTY (ADR-0011): portable-pty 0.9.0 + vt100 0.16.2 + tui-term =0.3.4; MSRV 1.88
   - SessionState: 5 variants (Launching/Running/Detached/Terminating/Terminated) in monocle-ipc
-  - Full history: cycles/cycle-001/decisions-archive.md (D-001..D-327)
+  - Full history: cycles/cycle-001/decisions-archive.md (D-001..D-328)
 
   KNOWN-FLAKY TESTS (do NOT flag as new findings):
   cli_daemon_stop, factory_self_referential, test_BC_2_07_006,
@@ -227,3 +230,4 @@ D-001..D-241: early phases; D-242..D-325: Phase-1d + Phase-2 + Phase-3 gate (app
 Key decisions last session:
 - D-323 (2026-06-16): Phase-2 pre-gate cleanup burst COMPLETE. D-324: inputs-pin BLOCKER fix. D-325: Phase-2 gate APPROVED. D-326: S-033 adversarial Pass-1 rulings A+B (scope + SessionSidecarV3). SS-session-manager v2.7.0; S-033 v1.7.
 - D-327 (2026-06-17): S-033 adversarial pass (post-rework) NOT CLEAN. Findings: production daemon_start_sequence still unwired (session_manager None); SO_PEERCRED comment-only; ad-hoc sidecar struct (not SessionSidecarV3); false-green wiring/integration tests. Architect Ruling C: host-side setsid canonical (pre_exec is unsafe fn, monocle-runtime forbids unsafe; session-host handles setsid at startup step 2). Ruling D: host_conn writer storage is S-033 scope, not S-034. SS-session-manager v2.7.0→v2.7.1; S-033 v1.7→v1.8. Convergence counter 0/3. Remediation chain: test-writer → implementer → security-reviewer → re-adversary.
+- D-328 (2026-06-17): S-033 adversarial pass 2 (post-rework) NOT CLEAN. Prior B-series + security fixes confirmed solid. Architect Rulings E/F/G issued. Ruling E: DaemonToHost/HostToDaemon types are S-033 scope; defined in monocle-ipc (not ad-hoc sidecar). Ruling F: EC-152 retry locus exclusively the IPC handler (6-step Task); spawn_session returns Err(SessionIdCollision) on collision with no internal retry; IPC handler retries once with fresh UUID and sends second SpawnAck before retry spawn_session call; consecutive collision surfaces error to client. Ruling G: post-spawn monitor holds single mutex across Running-transition try_send pair (Running + event ribbon push) AND across EC-163/Terminated broadcast pair to prevent state-split. SS-session-manager v2.7.1→v2.7.2; S-033 v1.8→v1.9. Convergence counter 0/3. Batched remediation: implementer → test-writer → re-adversary.

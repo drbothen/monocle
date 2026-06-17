@@ -124,9 +124,9 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "2.7.1"
-  last_bump_commit: "[Rulings C+D — setsid placement (session-host startup step 2, not pre_exec; pre_exec is unsafe fn, monocle-runtime forbids unsafe) + host_conn writer storage in S-033 post-spawn monitor (not deferred to S-034)]"
-  last_bump_date: "2026-06-16"
+  current_version: "2.7.2"
+  last_bump_commit: "[Rulings E+F+G — DaemonToHost/HostToDaemon in monocle-ipc S-033 scope (MED-001); EC-152 retry locus exclusively IPC handler, spawn_session no internal retry (MED-002); post-spawn monitor holds single mutex across both Running-transition try_send calls (MED-003)]"
+  last_bump_date: "2026-06-17"
 
 SS-embedded-pty:
   path: specs/architecture/SS-embedded-pty.md
@@ -961,9 +961,9 @@ dependency-graph-expansion:
 
 S-033-session-manager-spawn:
   path: stories/S-033-session-manager-spawn.md
-  current_version: "1.8"
-  last_bump_commit: "[SS-session-manager v2.7.1 Rulings C+D propagation — pre_exec removed from RealSessionHostSpawner task (unsafe fn, monocle-runtime forbids unsafe; session-host handles setsid at startup step 2); host_conn writer storage confirmed S-033 scope (not S-034)]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.9"
+  last_bump_commit: "[SS-session-manager v2.7.2 Ruling F propagation — EC-152 retry locus = IPC handler only; spawn_session returns Err(SessionIdCollision) on collision (no internal retry); IPC handler retries once with fresh UUID and sends SECOND SpawnAck before retry spawn_session call; second consecutive collision surfaces error to client]"
+  last_bump_date: "2026-06-17"
 
 S-038-session-manager-hook-injection:
   path: stories/S-038-session-manager-hook-injection.md

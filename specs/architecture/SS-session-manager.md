@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.7.1"
+version: "2.7.2"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -2646,6 +2646,258 @@ S-033's post-spawn monitor task MUST complete all of steps 1–5 from §Post-spa
 
 The implementer MUST NOT defer step 3 (writer storage) to S-034. S-034's `kill_session()`
 uses the writer established in step 3 — it has nothing to establish.
+
+---
+
+### Ruling E — DaemonToHost crate residence: monocle-ipc, S-033 scope
+
+**Status:** AUTHORITATIVE. Resolves MED-001. Supplements Ruling D.
+
+#### Decision
+
+`DaemonToHost` and `HostToDaemon` enums MUST be defined in `monocle-ipc` in S-033 scope.
+Deferral to S-034 or any later story is NOT permitted.
+
+#### Rationale
+
+Ruling D establishes that S-033's post-spawn monitor stores `host_conn: Some(SessionHostConnection { writer, proxy_task: None })`. The `writer` is typed as `Arc<Mutex<UnixStream>>`. To write to the control connection, the implementer must frame `DaemonToHost` messages as length-prefixed JSON. Without `DaemonToHost` defined in a shared crate, the writer has no typed contract — the implementer is forced to either define an ad-hoc local type (creating a schema-drift risk identical to the one Ruling B resolved for `SessionSidecarV3`) or hand-write raw bytes (error-prone and unreviewed).
+
+The full `DaemonToHost` enum is already specified in §Per-session UDS protocol above:
+`Attach`, `KeyInput`, `Resize`, `Kill`, `Detach`. The full `HostToDaemon` enum is also
+specified: `ScrollbackChunk`, `ScrollbackDumpComplete`, `PtyBytes`, `StateChanged`,
+`Goodbye`, `PtyReset`. Both share the same length-prefix framing contract and both cross
+the daemon/session-host process boundary — they are wire types by definition.
+
+`monocle-ipc` is the shared wire-type crate; `SessionState`, `SessionSidecarV3`, and all
+daemon↔TUI wire types already live there. `DaemonToHost` and `HostToDaemon` belong there for
+the same reason. The post-spawn monitor (S-033) is the first code path that reads
+`HostToDaemon` messages from the session-host. The post-spawn monitor MUST exist in S-033.
+Therefore `HostToDaemon` (and its companion `DaemonToHost`) MUST exist in `monocle-ipc`
+before S-033 implementation is complete.
+
+#### Boundary ruling on variant completeness
+
+S-033 MUST define both enums with ALL variants listed in §Per-session UDS protocol. Variants
+whose handler is deferred (e.g., `Attach`, `KeyInput`, `Resize` implementations live in
+S-035/S-047/S-042) are still PRESENT in the enum definition with `#[non_exhaustive]` on
+`DaemonToHost` — the session-host receives messages with `todo!()` or `no-op` handler stubs
+in S-033. The enum definition is the contract; the handlers are the implementation.
+
+#### Implementer instruction (Ruling E)
+
+Add to `crates/monocle-ipc/src/lib.rs` (or a new `crates/monocle-ipc/src/session_protocol.rs`
+module re-exported from `lib.rs`):
+
+```rust
+/// Messages the daemon sends to the session-host over the per-session UDS control connection.
+/// Same 4-byte LE u32 length-prefix framing as the daemon UDS (SS-ipc.md §Framing).
+#[non_exhaustive]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum DaemonToHost {
+    Attach,
+    KeyInput { bytes: Vec<u8> },
+    Resize { rows: u16, cols: u16 },
+    Kill,
+    Detach,
+}
+
+/// Messages the session-host sends to the daemon over the per-session UDS control connection.
+#[non_exhaustive]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum HostToDaemon {
+    ScrollbackChunk { rows: Vec<Vec<monocle_ipc::SerializedCell>>, chunk_seq: u32 },
+    ScrollbackDumpComplete { total_chunks: u32, cursor_row: u16, cursor_col: u16, pty_rows: u16, pty_cols: u16 },
+    PtyBytes { bytes: Vec<u8> },
+    StateChanged {
+        new_state: SessionState,
+        #[serde(default)]
+        degraded_env: Option<Vec<String>>,
+    },
+    Goodbye,
+    PtyReset,
+}
+```
+
+`HostToDaemon::ScrollbackChunk` references `SerializedCell` which is already defined in
+`monocle-ipc`. Use the crate-internal type directly (no `monocle_ipc::` prefix needed inside
+the crate). Both enums MUST be exported at the `monocle_ipc` crate root.
+
+---
+
+### Ruling F — EC-152 UUID retry locus: IPC handler is the SINGLE retry locus
+
+**Status:** AUTHORITATIVE. Resolves MED-002. Amends the collision-handling text in §Pre-socket-bind orphan kill and makes EC-152 unambiguous.
+
+#### Decision
+
+The IPC handler (the `ClientToServer::SpawnSession` match arm) is the SINGLE canonical retry
+locus for UUID v4 collisions. `spawn_session()` MUST NOT perform its own retry loop.
+
+#### Rationale
+
+F-P41-IMP-001 (BC-2.08.001 v1.5.0) established that UUID generation lives in the IPC handler,
+not inside `spawn_session()`. `spawn_session()` receives an already-generated `session_id` via
+`opts.with_daemon_fields()`. If `spawn_session()` detects a collision (session_id already in
+registry), the correct response is `Err(SessionError::SessionIdCollision { session_id })` — it
+cannot regenerate a UUID because UUID generation is not its responsibility.
+
+The IPC handler, on receiving `Err(SessionError::SessionIdCollision)`, generates a new UUID,
+rebuilds `opts` via `opts.with_daemon_fields(new_uuid, hooks_path)`, and retries
+`spawn_session()` ONCE. If the retry also returns `SessionIdCollision`, the IPC handler sends
+`ServerToClient::Error { code: "session_id_collision", ... }` to the client. Total UUID
+attempts: 2 (initial + 1 retry). This matches BC-2.08.001 EC-152 ("retry once; second
+collision → error") exactly.
+
+#### Double-retry prohibition
+
+`spawn_session()` MUST NOT contain its own UUID regeneration loop or retry. Doing so would
+produce up to 4 UUID attempts total (IPC handler retries once → `spawn_session()` retries once
+= 4 attempts), which violates EC-152's "auto-retry is one attempt" constraint.
+
+The `session_id` insertion collision at line 403 of the §Pre-socket-bind orphan kill section
+references "second retry" — this refers to the IPC handler's second attempt (the single retry),
+not a second retry inside `spawn_session()`. The description at line 403 is correct in spirit
+but could be read as endorsing an internal retry. This ruling clarifies: **no internal retry
+inside `spawn_session()`**.
+
+#### Implementer instruction (Ruling F)
+
+`spawn_session()` implementation:
+```rust
+// On detecting session_id collision in the registry:
+if self.sessions.contains_key(&opts.session_id) {
+    return Err(SessionError::SessionIdCollision { session_id: opts.session_id });
+}
+// NO retry loop here. UUID retry is the IPC handler's responsibility.
+```
+
+IPC handler implementation:
+```rust
+ClientToServer::SpawnSession { opts } => {
+    let session_id = uuid::Uuid::new_v4().to_string();
+    let _ = client_tx.send(ServerToClient::SpawnAck { session_id: session_id.clone() }).await;
+    let opts = opts.with_daemon_fields(session_id, state.hooks_settings_path.clone());
+    let result = state.session_manager.lock().await.spawn_session(opts.clone()).await;
+    let result = match result {
+        Err(SessionError::SessionIdCollision { .. }) => {
+            // Single retry: generate a new UUID.
+            let retry_id = uuid::Uuid::new_v4().to_string();
+            let retry_opts = opts.with_daemon_fields(retry_id, state.hooks_settings_path.clone());
+            state.session_manager.lock().await.spawn_session(retry_opts).await
+        }
+        other => other,
+    };
+    match result {
+        Ok(_) => { /* broker emits SessionStateChanged{Launching} + SessionListUpdate */ }
+        Err(e) => {
+            let _ = client_tx.send(ServerToClient::Error {
+                code: session_error_to_code(IpcOp::Spawn, &e).to_string(),
+                message: e.to_string(),
+            }).await;
+        }
+    }
+}
+```
+
+Note: the `SpawnAck` is sent with the FIRST UUID before the retry path is known. If the retry
+uses a different UUID, the TUI's `launching_session_id` (set from `SpawnAck`) will be stale.
+The IPC handler MUST send a second `SpawnAck` with the retry UUID before calling the retry
+`spawn_session()`, so the wizard tracks the correct session_id. Add to the retry arm:
+```rust
+let _ = client_tx.send(ServerToClient::SpawnAck { session_id: retry_id.clone() }).await;
+```
+
+---
+
+### Ruling G — Running-transition broadcast-pair atomicity: single lock across both try_send calls
+
+**Status:** AUTHORITATIVE. Resolves MED-003.
+
+#### Decision
+
+The post-spawn monitor MUST hold the `SessionManager` mutex continuously across BOTH
+`try_send()` calls for the Running-transition broadcast pair (`SessionStateChanged{Running}` +
+`SessionListUpdate`). Per-client FIFO alone is NOT sufficient to satisfy BC-2.08.008 Invariant 4
+when the sender is a detached background task.
+
+#### Rationale
+
+BC-2.08.008 Invariant 4 states:
+
+> The mutex provides the atomicity window that prevents any other actor from interleaving posts
+> between the two `.try_send()` calls.
+
+The `spawn_session()` path holds the lock during the Launching-transition pair (step 5 of the
+IPC handler pattern). The post-spawn monitor is a detached `tokio::spawn` task; it re-acquires
+the mutex for step 3 (store `host_conn`) and again for step 5 (Running transition). If step 5
+acquires the mutex, broadcasts `SessionStateChanged{Running}`, releases the mutex, then
+re-acquires to broadcast `SessionListUpdate`, a concurrent spawn on another client could
+interleave its `SessionStateChanged{Launching}` between the two Running broadcasts.
+
+The invariant requires the Running pair to be non-interleaved by any third-party state
+mutation. This is only achievable if one mutex acquisition spans both `try_send()` calls.
+
+#### Implementer instruction (Ruling G)
+
+In the post-spawn monitor, step 5 must be structured as a SINGLE mutex lock scope:
+
+```rust
+// Step 5: Running transition + broadcast pair, under ONE lock acquisition.
+let mut sessions = self.sessions.lock().await; // one acquire
+let entry = sessions.get_mut(&session_id).ok_or(...)?;
+entry.state = SessionState::Running;
+entry.host_conn = Some(SessionHostConnection {
+    writer: entry.host_conn.take().unwrap().writer,
+    proxy_task: Some(tokio::spawn(pty_proxy_task(...))),
+});
+let snapshot = SessionSnapshot::from(entry);
+// Both try_send calls happen while sessions lock is held:
+self.broker.broadcast(Event::SessionStateChanged { session_id: session_id.clone(), new_state: SessionState::Running });
+self.broker.broadcast(Event::SessionListUpdate { sessions: vec![snapshot] });
+// lock released here (end of scope)
+```
+
+The same requirement applies to the EC-163 (UDS connect fails) and `StateChanged{Terminated}`
+(spawn-path failure) termination paths in the post-spawn monitor: each termination pair
+(`SessionStateChanged{Terminated}` + `SessionListUpdate`) MUST also be emitted under a single
+lock acquisition.
+
+This does NOT extend to the degraded-env metadata update (step 4, `StateChanged{Launching}` handshake):
+that update sets `entry.degraded` and `entry.degraded_reason` only, with no state transition
+and no `SessionStateChanged` emission. It may acquire and release the mutex independently.
+
+---
+
+## §Trace v2.7.2
+
+**Rulings E + F + G: DaemonToHost/HostToDaemon crate residence, EC-152 retry locus, Running-transition broadcast atomicity** (2026-06-17):
+
+- **Ruling E** added: `DaemonToHost` and `HostToDaemon` enums MUST be defined in `monocle-ipc`
+  in S-033 scope. Rationale: Ruling D established that S-033's post-spawn monitor stores
+  `host_conn` writer — the writer needs a typed contract. Both enums are wire types (process
+  boundary crossing between daemon and session-host); `monocle-ipc` is the established
+  shared wire-type crate. Full variant completeness required in S-033; handler stubs acceptable
+  for deferred variants (Attach → S-035, KeyInput → S-047, Resize → S-042). Resolves MED-001.
+
+- **Ruling F** added: UUID retry locus is EXCLUSIVELY the IPC handler (one retry: initial
+  UUID + one regenerated UUID = 2 total attempts). `spawn_session()` MUST NOT retry internally.
+  Double-retry (IPC handler + spawn_session each retry once = 4 total attempts) violates
+  BC-2.08.001 EC-152 "auto-retry is one attempt" constraint. Implementer instruction: on
+  `Err(SessionIdCollision)`, the IPC handler regenerates UUID, sends a second `SpawnAck` with
+  the new UUID (so wizard tracks correct session_id), then retries `spawn_session()` once.
+  Resolves MED-002.
+
+- **Ruling G** added: post-spawn monitor MUST hold the `SessionManager` mutex across BOTH
+  `try_send()` calls for the Running-transition broadcast pair. Per-client FIFO alone does not
+  prevent a concurrent spawn's Launching pair from interleaving between the two Running
+  broadcasts. BC-2.08.008 Invariant 4 "mutex provides the atomicity window" applies to ALL
+  broadcast-pair emissions including those from detached background tasks. Same applies to
+  the EC-163 and `StateChanged{Terminated}` termination pairs. The degraded-env metadata
+  update (step 4, no state transition) may hold the mutex independently. Resolves MED-003.
+
+- SE-16d monotonicity: v2.7.2 > v2.7.1. PASS.
 
 ---
 
