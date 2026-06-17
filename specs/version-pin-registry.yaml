@@ -124,8 +124,8 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "2.7.2"
-  last_bump_commit: "[Rulings E+F+G — DaemonToHost/HostToDaemon in monocle-ipc S-033 scope (MED-001); EC-152 retry locus exclusively IPC handler, spawn_session no internal retry (MED-002); post-spawn monitor holds single mutex across both Running-transition try_send calls (MED-003)]"
+  current_version: "2.7.3"
+  last_bump_commit: "[MED-002 disposition — monitor↔entry generation/epoch guard ruled out for v1; three-layer safety argument (UUID v4 collision probability + 10s GC timer interlock + outer Mutex serialization); deferred to S-036 with described mechanism (SessionEntry.generation: u64 + monitor capture/compare on EC-163 path); Ruling H added to §Post-spawn monitor]"
   last_bump_date: "2026-06-17"
 
 SS-embedded-pty:

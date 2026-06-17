@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.7.2"
+version: "2.7.3"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -474,6 +474,50 @@ that:
    the session-manager level (session in Launching, host_conn: None), the IPC handler WARN-drops
    it — no `ServerToClient::Error` is sent. The wire code `"session_not_ready"` is only reachable
    via the `DetachSession` arm.
+
+**Ruling H — Monitor↔entry epoch/generation guard (MED-002 disposition):**
+
+The post-spawn monitor is keyed only by `session_id: String` (UUID v4). An adversarial review
+(MED-002) raised the question of whether the monitor should capture a generation/epoch token at
+spawn time and compare it against the current `SessionEntry` before mutating state (e.g., on the
+EC-163 SO_PEERCRED mismatch path setting state=Terminated + GC).
+
+**Decision: no generation guard in v1. Deferred to S-036.**
+
+**Safety argument — three independent layers make the race structurally infeasible:**
+
+1. **UUID v4 collision probability.** A second `spawn_session()` call inserting a new entry
+   under a reused session_id requires the Terminated entry to have been GC'd first AND the
+   new UUID to collide. UUID v4 collision probability ≈ 2^(-122). The `SessionIdCollision`
+   error path (AC-006, EC-152) documents this as a handled invariant, not an operational risk.
+
+2. **GC timer interlock.** The `Terminated` GC timer (10 seconds; S-037) is the earliest an
+   entry can be removed from the registry. A `Launching` entry has NO removal timer — it stays
+   in the registry until it transitions to Running or Terminated. The post-spawn monitor's 30s
+   connect timeout cannot outlive the Terminated+GC+UUID-collision sequence without the 10s GC
+   timer having fired first. The monitor is alive during `Launching` only; by the time GC could
+   remove the entry (10s after Terminated), the monitor has long since exited (it transitions the
+   entry itself before reaching Terminated, or detects Terminating state and exits cleanly per item 7).
+
+3. **Outer `Mutex<SessionManager>` serialization.** Every entry removal (GC), every entry
+   insertion (`spawn_session()`), and every monitor mutation (`host_conn`, `state`) acquires the
+   same `&mut self` mutex. No interleaving is possible between removal and re-insertion. The
+   sequence (removal) → (new UUID generation) → (collision with removed key) → (insertion)
+   requires three separate mutex acquisitions and a 2^(-122) event in the middle.
+
+**Why S-036 is the correct deferral anchor:** S-036 owns `rediscover_sessions()`, which is the
+only path that registers `SessionEntry` records for sessions whose original post-spawn monitors
+are gone (daemon crashed and restarted). Re-discovery does NOT spawn a new post-spawn monitor
+(it connects directly, treating the session-host event loop as already running). If a future
+cycle introduces entry eviction with shorter TTLs or a new lifecycle path that narrows the
+safety margin above, S-036 is the correct story to add a `u64 generation` field to
+`SessionEntry` (incremented at insert) and have the monitor capture it at spawn time for a
+pre-mutation check. The mechanism would be: `if entry.generation != captured_generation { return; }`
+inside the mutex before any state mutation on the EC-163 path.
+
+**Implementation note for S-033:** no `generation` field is required. No generation-check is
+required in the post-spawn monitor. This ruling documents the decision and the deferred
+mechanism description for S-036.
 
 **`SessionError` taxonomy addition (F-P50-001):**
 ```rust
@@ -1678,6 +1722,28 @@ Daemon removes stale socket files during GC in re-discovery (alongside sidecar d
 | BC-2.08.007 | SpawnRecipe: binary path resolved; cwd is project root; env carries CCR URL if applicable | P0 |
 
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
+
+---
+
+## §Trace v2.7.3
+
+**MED-002 disposition — monitor↔entry generation guard ruled out for v1; deferred to S-036** (2026-06-17):
+
+- **Finding (adversarial review MED-002):** Post-spawn monitor is keyed only by `session_id: String`
+  with no generation/epoch token. On the EC-163 SO_PEERCRED mismatch path the monitor sets
+  `state=Terminated` and GCs the sidecar for whatever entry currently occupies that session_id —
+  if the key were removed and a different logical session re-inserted under a reused id during the
+  30s monitor connect window, the monitor could act on the wrong entry.
+- **Decision:** No generation guard in v1. Three-layer safety argument documented in §Post-spawn
+  monitor Ruling H: (1) UUID v4 collision ≈ 2^(-122); (2) 10s GC timer interlock prevents
+  removal during Launching state; (3) outer Mutex serializes all insert/remove/monitor mutations.
+  The sequence the finding describes requires all three independent layers to fail simultaneously.
+- **Deferral anchor:** S-036 (rediscover_sessions / SessionEntry lifecycle). If entry eviction
+  TTLs shorten or new lifecycle paths are added, S-036 is the correct story to add
+  `SessionEntry.generation: u64` + monitor capture/compare guard.
+- **Spec change:** Ruling H block added to §Post-spawn monitor section; version bumped 2.7.2→2.7.3.
+  No SessionEntry struct fields added. No S-033 task changes required.
+- SE-16d monotonicity: v2.7.3 timestamp 2026-06-17 > v2.7.2 timestamp 2026-06-17. PASS.
 
 ---
 

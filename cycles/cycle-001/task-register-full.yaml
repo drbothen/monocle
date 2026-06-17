@@ -611,6 +611,18 @@ durable_task_register:
       status: pending
       detail: "Phase-2 Pass-21 deferred cosmetic: S-047 AC-009 needs a §PtyReset subsection qualifier for clarity. story-writer cosmetic fix. Non-blocking."
       blocking: false
+    - id: "MED-002-monitor-generation-guard"
+      subject: "[deferred-S-036] post-spawn monitor lacks entry generation/epoch guard"
+      status: deferred-S-036
+      route: "architect/implementer"
+      blocking: false
+      detail: "S-033 adversarial pass 3 (post-batch) MED-002 disposition: Ruling H issued (SS-session-manager v2.7.3 §Post-spawn monitor). Post-spawn monitor does not currently capture a generation/epoch counter on the SessionEntry at monitor-spawn time and re-verify it before applying Running-transition. Safe in v1 per three-layer argument: (1) UUID v4 collision probability ≈ 2^(-122) — negligible; (2) Launching entries have no GC timer (only Running/Detached/Terminating/Terminated entries have the 10s GC timer), so GC cannot recycle the slot while spawn is in flight; (3) outer Mutex serialization prevents concurrent monitor-spawn racing with a hypothetical slot recycler. Deferred to S-036 (rediscover_sessions/SessionEntry lifecycle) to add SessionEntry.generation: u64 increment on allocation, captured at monitor spawn, compared on EC-163 path. spec_version_at_decision: SS-session-manager v2.7.3."
+    - id: "LOW-S033-SIDECAR-STRUCT-GUARD"
+      subject: "[process-gap] no CI structural-source guard forbidding ad-hoc SessionSidecar struct other than monocle_ipc::types::SessionSidecarV3"
+      status: pending
+      route: "devops"
+      blocking: false
+      detail: "S-033 adversarial pass 3 (post-batch) LOW finding: there is currently no grep-based CI check (POL-12 candidate) that enforces monocle_ipc::types::SessionSidecarV3 as the only permissible sidecar struct. A future implementer could accidentally re-introduce an ad-hoc SessionSidecar struct and bypass the canonicalization required by Ruling B (D-326). Guard should grep for struct.*SessionSidecar (or variant) across the workspace and fail CI if any match is NOT monocle_ipc::types::SessionSidecarV3 or a test double explicitly annotated #[cfg(test)]. Route to devops-engineer to add as a scripts/check_structural_claims.py (POL-12) rule. Non-blocking for S-033 merge."
   se_candidates:
     - id: SE-40
       occurrences: 2
