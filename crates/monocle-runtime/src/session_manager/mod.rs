@@ -439,14 +439,21 @@ impl SessionManager {
     /// 6. Publish `SessionStateChanged{Launching}` + `SessionListUpdate` under mutex.
     /// 7. Return `Ok(session_id)`.
     pub async fn spawn_session(&mut self, opts: SpawnOptions) -> Result<String, SessionError> {
-        let session_id = opts.session_id.clone();
+        let proposed_id = opts.session_id.clone();
 
         // AC-006 / EC-152: check for UUID collision before doing any work.
-        if self.sessions.lock().await.contains_key(&session_id) {
-            return Err(SessionError::SessionIdCollision {
-                session_id: session_id.clone(),
-            });
-        }
+        // MED-002: on first collision, regenerate UUID and retry once; on second collision, error.
+        let session_id = if self.sessions.lock().await.contains_key(&proposed_id) {
+            // First collision: regenerate UUID.
+            let new_id = uuid::Uuid::new_v4().to_string();
+            if self.sessions.lock().await.contains_key(&new_id) {
+                // Second consecutive collision: return error.
+                return Err(SessionError::SessionIdCollision { session_id: new_id });
+            }
+            new_id
+        } else {
+            proposed_id
+        };
 
         // Step 1 (BC-2.08.001 PC-1): call spawn_recipe() FIRST — before any OS process.
         let recipe: SpawnRecipe = self.engine_module.spawn_recipe(&opts)?;
