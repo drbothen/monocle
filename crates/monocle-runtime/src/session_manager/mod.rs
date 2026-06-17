@@ -273,9 +273,12 @@ impl SessionHostSpawner for RealSessionHostSpawner {
 
         let child = cmd.spawn().map_err(|e| {
             if e.kind() == std::io::ErrorKind::NotFound {
-                SessionError::EngineError(monocle_core::engine::EngineError::BinaryNotFound(
-                    self.session_host_bin.to_string_lossy().into_owned(),
-                ))
+                SessionError::SpawnFailed {
+                    reason: format!(
+                        "monocle-session-host binary not found at {:?}: {e}",
+                        self.session_host_bin
+                    ),
+                }
             } else {
                 SessionError::SpawnFailed {
                     reason: e.to_string(),
