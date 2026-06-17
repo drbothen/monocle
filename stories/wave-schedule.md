@@ -1,18 +1,18 @@
 ---
 document_type: plan-doc
 level: L4
-version: "2.0"
+version: "2.1"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
 phase: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.13"}
-  - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.16"}
-  - {path: .factory/specs/prd.md, version: "1.26.15"}
-  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.11"}
-  - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.7"}
-  - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.5"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.43.8"}
+  - {path: .factory/specs/verification-properties/VP-INDEX.md, version: "1.17"}
+  - {path: .factory/specs/prd.md, version: "1.28.3"}
+  - {path: .factory/specs/architecture/ARCH-INDEX.md, version: "1.0.30"}
+  - {path: .factory/specs/prd-supplements/nfr-catalog.md, version: "1.8"}
+  - {path: .factory/specs/prd-supplements/error-taxonomy.md, version: "1.6"}
 input-hash: "[live-state]"
 traces_to: "dependency-graph.md; implements wave execution schedule derived from topological sort"
 ---
@@ -265,6 +265,19 @@ Before dispatching Phase 3 (TDD Implementation):
 - [ ] Human approval: "Phase 2 story corpus approved; proceed to Phase 3 TDD"
 
 ---
+
+## §Trace v2.1 — D-324: inputs-pin refresh — BC-INDEX 1.13→1.43.8, VP-INDEX 1.16→1.17, prd 1.26.15→1.28.3, ARCH-INDEX 1.0.11→1.0.30, nfr-catalog 1.7→1.8, error-taxonomy 1.5→1.6 (2026-06-16)
+
+**Bump:** 2.0 → 2.1.
+**Scope (D-324 inputs-pin cascade refresh):**
+- BC-INDEX.md pin refreshed: `"1.13"` → `"1.43.8"` (canonical registry value; stale since v1.2 §Trace authoring, accumulated through 125 BC minor bumps).
+- VP-INDEX.md pin refreshed: `"1.16"` → `"1.17"` (canonical registry value; one minor bump).
+- prd.md pin refreshed: `"1.26.15"` → `"1.28.3"` (canonical registry value; PRD progressed through Phase-2 v1A expansion).
+- ARCH-INDEX.md pin refreshed: `"1.0.11"` → `"1.0.30"` (canonical registry value; ARCH-INDEX expanded with Phase-2 v1A subsystem additions).
+- nfr-catalog.md pin refreshed: `"1.7"` → `"1.8"` (canonical registry value).
+- error-taxonomy.md pin refreshed: `"1.5"` → `"1.6"` (canonical registry value).
+- No body content or wave structure changed. Inputs-pin refresh only.
+**SE-16d PASS:** 2026-06-16 >= 2026-06-16.
 
 ## §Trace v2.0
 

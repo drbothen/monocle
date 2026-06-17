@@ -949,14 +949,14 @@ S-DAEMON-WIRE-FIX-001-second-signal-exit-codes:
 
 wave-schedule:
   path: stories/wave-schedule.md
-  current_version: "2.0"
-  last_bump_commit: "[F-GATE-IMP-002 — S-032 Wave 8 dependency text corrected: S-021/S-018 → S-021/S-022/S-028]"
+  current_version: "2.1"
+  last_bump_commit: "[D-324 inputs-pin refresh — BC-INDEX 1.13→1.43.8, VP-INDEX 1.16→1.17, prd 1.26.15→1.28.3, ARCH-INDEX 1.0.11→1.0.30, nfr-catalog 1.7→1.8, error-taxonomy 1.5→1.6]"
   last_bump_date: "2026-06-16"
 
 dependency-graph-expansion:
   path: stories/dependency-graph-expansion.md
-  current_version: "2.4"
-  last_bump_commit: "[F-GATE-ADV-004 — Title/intro updated from 'Waves 4-7' to 'Waves 4-9'; F-P13-SUG-001 BC-2.06.024 title corrected]"
+  current_version: "2.5"
+  last_bump_commit: "[D-324 inputs-pin refresh — BC-INDEX 1.27→1.43.8, SS-ipc 1.6.0→1.24.0, STORY-INDEX 4.7→5.45]"
   last_bump_date: "2026-06-16"
 
 S-033-session-manager-spawn:

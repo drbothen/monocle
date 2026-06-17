@@ -1,21 +1,21 @@
 ---
 document_type: dependency-graph
 level: L4
-version: "2.4"
+version: "2.5"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
 phase: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.27"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.43.8"}
   - {path: .factory/specs/architecture/SS-daemon-wiring.md, version: "1.3.0"}
-  - {path: .factory/specs/architecture/SS-ipc.md, version: "1.6.0"}
+  - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
   - {path: .factory/specs/architecture/SS-tui.md, version: "1.8.2"}
   - {path: .factory/specs/architecture/SS-config.md, version: "1.3.0"}
-  - {path: .factory/stories/STORY-INDEX.md, version: "4.7"}
+  - {path: .factory/stories/STORY-INDEX.md, version: "5.45"}
   - {path: .factory/plans/phase-2-expansion-story-plan.md, version: "1.0"}
 input-hash: "[live-state]"
-traces_to: .factory/stories/STORY-INDEX.md
+traces_to: .factory/stories/STORY-INDEX.md v5.45
 ---
 
 # Dependency Graph: monocle Phase 2 Expansion (Waves 4-9)
@@ -534,6 +534,18 @@ Critical path through Waves 8-9: S-033 (8pts) → S-035 (8pts) → S-039 (8pts) 
 | S-042 | 9 | 5 | S-039 | S-043 |
 | S-043 | 9 | 3 | S-039, S-042 | — |
 | S-044 | 9 | 13 | S-033, S-035, S-040, S-041 | — |
+
+## §Trace v2.5 — D-324: inputs-pin refresh — BC-INDEX 1.27→1.43.8, SS-ipc 1.6.0→1.24.0, STORY-INDEX 4.7→5.45 (2026-06-16)
+
+**Bump:** 2.4 → 2.5.
+**Scope (D-324 inputs-pin cascade refresh):**
+- BC-INDEX.md pin refreshed: `"1.27"` → `"1.43.8"` (canonical registry value; stale by 16 minor bumps accumulated since dependency-graph v1.4 §Trace authoring).
+- SS-ipc.md pin refreshed: `"1.6.0"` → `"1.24.0"` (canonical registry value; SS-ipc underwent extensive Phase-2 v1A expansion through v1.24.0).
+- STORY-INDEX.md pin refreshed: `"4.7"` → `"5.45"` (canonical registry value; STORY-INDEX progressed through 51-story v1A expansion).
+- SS-daemon-wiring, SS-tui, SS-config, plans/phase-2-expansion-story-plan pins unchanged (all current in registry).
+- `traces_to` updated to include current STORY-INDEX version marker: `v5.45`.
+- No normative dependency data or body content changed. Inputs-pin refresh only.
+**SE-16d PASS:** 2026-06-16 >= 2026-06-16.
 
 ## §Trace v2.4 — F-GATE-ADV-004: title/intro updated Waves 4-7 → Waves 4-9 (2026-06-16)
 
