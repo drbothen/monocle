@@ -2803,7 +2803,7 @@ locus for UUID v4 collisions. `spawn_session()` MUST NOT perform its own retry l
 
 #### Rationale
 
-F-P41-IMP-001 (BC-2.08.001 v1.5.0) established that UUID generation lives in the IPC handler,
+F-P41-IMP-001 (BC-2.08.001 v1.5.3) established that UUID generation lives in the IPC handler,
 not inside `spawn_session()`. `spawn_session()` receives an already-generated `session_id` via
 `opts.with_daemon_fields()`. If `spawn_session()` detects a collision (session_id already in
 registry), the correct response is `Err(SessionError::SessionIdCollision { session_id })` — it

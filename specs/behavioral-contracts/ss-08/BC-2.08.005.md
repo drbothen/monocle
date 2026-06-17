@@ -68,7 +68,7 @@ immediately (no grace period for sidecars without a live process).
    Terminated session via `rename_session()` is not allowed — attempting `rename_session()` on
    a Terminated-in-grace session returns `Err(SessionError::InvalidSessionName { reason:
    "session terminated" })`, which maps to wire code `"rename_failed"` per
-   `session_error_to_code()` (SS-session-manager.md v2.6.1 §Terminated-in-grace defensive
+   `session_error_to_code()` (SS-session-manager.md v2.7.3 §Terminated-in-grace defensive
    action×state matrix, F-P52-001). The GC task is not cancellable; the rename error is the
    observable safety mechanism that prevents display_name mutation on a corpse. The TUI-side
    guard (BC-2.06.025 Invariant 6) ensures `"rename_failed"` with this reason is a
@@ -106,7 +106,7 @@ immediately (no grace period for sidecars without a live process).
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — GC is explicitly named in CAP-008; this BC defines the 10-second grace period, sidecar cleanup, and SessionListUpdate publication that constitute the GC policy |
 | Architecture Module | monocle-runtime (SessionManager GC tokio task) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.6.1 §Session GC policy; SS-session-manager.md v2.6.1 §Terminated-in-grace defensive action×state matrix (F-P52-001); SS-session-manager.md v2.6.1 §session_error_to_code() (InvalidSessionName → "rename_failed"); SS-ipc.md v1.24.0 §ServerToClient::Error taxonomy; SS-daemon-wiring-v2-delta.md v1.11.4 |
+| Architecture Source | SS-session-manager.md v2.7.3 §Session GC policy; SS-session-manager.md v2.7.3 §Terminated-in-grace defensive action×state matrix (F-P52-001); SS-session-manager.md v2.7.3 §session_error_to_code() (InvalidSessionName → "rename_failed"); SS-ipc.md v1.24.0 §ServerToClient::Error taxonomy; SS-daemon-wiring-v2-delta.md v1.11.4 |
 | Test Name | test_BC_2_08_005_terminated_session_gc_after_10s |
 
 ## Related BCs
@@ -135,7 +135,7 @@ VP-TBD — GC timing tests using tokio::time::pause (filled after VP creation)
 
 **P57-sweep — Architecture Source anchor misattribution correction: §session_error_to_code() moved from SS-ipc.md to SS-session-manager.md** (2026-06-14):
 - **Architecture Source (line 109 — live pin only):** The `§session_error_to_code()` anchor was incorrectly attributed to `SS-ipc.md v1.24.0`. Per `SS-daemon-wiring-v2-delta.md:138`, `session_error_to_code()` is defined in `SS-session-manager.md` (monocle-runtime), NOT `SS-ipc.md`. SS-ipc.md has no `§session_error_to_code()` section.
-- **Correction:** `SS-ipc.md v1.24.0 §session_error_to_code()` → `SS-session-manager.md v2.6.1 §session_error_to_code()`. SS-ipc.md v1.24.0 citation retained separately for `§ServerToClient::Error taxonomy` (which IS defined in SS-ipc.md). The functional semantic is unchanged — the error-to-code mapping still produces `"rename_failed"` from `InvalidSessionName { reason: "session terminated" }` — only the source document attribution is corrected.
+- **Correction:** `SS-ipc.md v1.24.0 §session_error_to_code()` → `SS-session-manager.md v2.7.3 §session_error_to_code()`. SS-ipc.md v1.24.0 citation retained separately for `§ServerToClient::Error taxonomy` (which IS defined in SS-ipc.md). The functional semantic is unchanged — the error-to-code mapping still produces `"rename_failed"` from `InvalidSessionName { reason: "session terminated" }` — only the source document attribution is corrected.
 - **Finding origin:** Phase-1d→human-gate fresh-context consistency audit (OBS-P57-001, upgraded to IMPORTANT severity by consistency lens). Confirmed by `SS-daemon-wiring-v2-delta.md:138`.
 - No behavioral content changed.
 - Patch bump: v1.0.2 → v1.0.3.
@@ -150,7 +150,7 @@ SE-16d monotonicity: v1.0.3 timestamp 2026-06-14 > v1.0.2 timestamp 2026-06-14. 
   possible after Terminated is entered" and cited "rename_session() revives a Terminated session
   — which is not allowed" as the motivating case. However, it did not specify the observable
   safety mechanism: what actually happens at the daemon layer if `rename_session()` IS called on
-  a Terminated-in-grace session. The architect closed this at SS-session-manager.md v2.6.1
+  a Terminated-in-grace session. The architect closed this at SS-session-manager.md v2.7.3
   §Terminated-in-grace defensive action×state matrix (F-P52-001):
   - `rename_session()` on Terminated-in-grace → `Err(SessionError::InvalidSessionName { reason:
     "session terminated" })` → wire code `"rename_failed"` via exhaustive `session_error_to_code()`.
@@ -202,6 +202,6 @@ SE-16d monotonicity: v1.0.2 timestamp 2026-06-14 > v1.0.1 timestamp 2026-06-13. 
 
 ## §Trace v1.0.6
 
-**Phase-2 Pass-1 fix burst — SS-session-manager v2.6.1 / SS-daemon-wiring-v2-delta v1.11.4 Architecture Source pin cascade** (2026-06-16T00:00:00Z):
+**Phase-2 Pass-1 fix burst — SS-session-manager v2.7.3 / SS-daemon-wiring-v2-delta v1.11.4 Architecture Source pin cascade** (2026-06-16T00:00:00Z):
 - Architecture Source pin(s) updated for SS-session-manager.md v2.6.0 → v2.6.1 and/or SS-daemon-wiring-v2-delta.md v1.11.3 → v1.11.4. Plain version-pin refresh — both SS spec bumps were SS-ipc Architecture Source cascade patches only; no normative API or invariant changes.
 - SE-16d monotonicity: v1.0.6 timestamp >= v1.0.5. PASS.

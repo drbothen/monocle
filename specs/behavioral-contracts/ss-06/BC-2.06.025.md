@@ -163,18 +163,18 @@ pane.
    - **Detach (`D`) on Terminated**: BLOCKED at TUI. No `ClientToServer::DetachSession` IPC
      dispatched. A Terminated session has no live session-host connection to detach from.
      Status bar shows "Session has terminated". (Daemon-side: detach_session() on Terminated
-     returns idempotent Ok(()) per SS-session-manager.md v2.6.1 §Terminated-in-grace defensive
+     returns idempotent Ok(()) per SS-session-manager.md v2.7.3 §Terminated-in-grace defensive
      action×state matrix — TUI guard makes this path unreachable from official TUI.)
    - **Rename (`r`) on Terminated**: BLOCKED at TUI. No `ClientToServer::RenameSession` IPC
      dispatched. If dispatched (e.g., from an untrusted client), the daemon returns
      `Err(SessionError::InvalidSessionName { reason: "session terminated" })` → wire code
-     `"rename_failed"` per SS-session-manager.md v2.6.1 §Terminated-in-grace defensive
+     `"rename_failed"` per SS-session-manager.md v2.7.3 §Terminated-in-grace defensive
      action×state matrix (F-P52-001) and BC-2.08.005 Invariant 4. Status bar shows
      "Session has terminated".
    This is a blanket block (mirrors the Terminating guard in Invariant 4). All three actions
    (`k`/`d`, `D`, `r`) are no-ops + status bar hint for Terminated-in-grace sessions.
    Cross-references: BC-2.08.005 Invariant 4 (revive-via-rename not allowed; GC task not
-   cancellable); SS-session-manager.md v2.6.1 §Terminated-in-grace defensive action×state
+   cancellable); SS-session-manager.md v2.7.3 §Terminated-in-grace defensive action×state
    matrix (F-P52-001).
 
 ## Edge Cases
@@ -193,7 +193,7 @@ pane.
 | EC-299 | `r` key on a `Launching` session | Rename is ALLOWED — `RenameSession` IPC dispatched normally. Rename is metadata-only (display_name); does not require an active host_conn. Per Invariant 5. |
 | EC-300 | `k` or `d` key on a `Terminated` (GC-grace) session | No-op — `ClientToServer::KillSession` is NOT dispatched. Kill is already complete. Status bar shows "Session has terminated". Per Invariant 6. |
 | EC-301 | `D` key on a `Terminated` (GC-grace) session | No-op — `ClientToServer::DetachSession` is NOT dispatched. Terminated session has no live host connection. Status bar shows "Session has terminated". Per Invariant 6. |
-| EC-302 | `r` key on a `Terminated` (GC-grace) session | No-op — `ClientToServer::RenameSession` is NOT dispatched. The daemon would return `Err(InvalidSessionName{"session terminated"})` → `"rename_failed"` if dispatched (BC-2.08.005 Invariant 4; SS-session-manager.md v2.6.1 §Terminated-in-grace matrix). Status bar shows "Session has terminated". Per Invariant 6. |
+| EC-302 | `r` key on a `Terminated` (GC-grace) session | No-op — `ClientToServer::RenameSession` is NOT dispatched. The daemon would return `Err(InvalidSessionName{"session terminated"})` → `"rename_failed"` if dispatched (BC-2.08.005 Invariant 4; SS-session-manager.md v2.7.3 §Terminated-in-grace matrix). Status bar shows "Session has terminated". Per Invariant 6. |
 
 ## Canonical Test Vectors
 
@@ -229,8 +229,8 @@ pane.
 | L2 Capability | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability traceability §SS-06 |
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability traceability — this BC extends the sessions panel capability in CAP-006 with multi-session, multi-project grouping, and lifecycle actions |
 | Architecture Module | monocle-tui (sessions panel renderer, session list grouping logic, lifecycle keybindings) per ARCH-INDEX Subsystem Registry SS-06 |
-| Architecture Source | SS-ipc.md v1.24.0 §SessionSnapshot (wire boundary type; `degraded` and `degraded_reason` fields; `spawned_by_monocle: Option<bool>` field); SS-session-manager.md v2.6.1 §SessionManager §Public API (session_list() returns Vec<SessionSnapshot>); SS-session-manager.md v2.6.1 §Terminated-in-grace defensive action×state matrix (F-P52-001); SS-embedded-pty.md v1.7.0 §Fast switching; SS-daemon-wiring-v2-delta.md v1.11.4 |
-| Cross-Ref | BC-2.05.010 §DetachSession PC-4 (session_not_ready is defensive/untrusted-client-only; official TUI never sends DetachSession during Launching — this BC's Invariant 5 is the normative target); BC-2.08.003 Invariant 2 (kill on Terminated is idempotent at daemon; TUI guard in Invariant 6 prevents dispatch); BC-2.08.003 Invariant 3 (kill on Launching is explicitly allowed; kill path uses host_conn.writer or PID fallback); BC-2.08.005 Invariant 4 (rename on Terminated → Err(InvalidSessionName{"session terminated"}) → "rename_failed"; GC task not cancellable — Invariant 6 of this BC is the TUI-side guard); BC-2.08.007 §Preconditions (detach) defensive note (TUI guard enforced here prevents session_not_ready on official TUI path); SS-session-manager.md v2.6.1 §Terminated-in-grace defensive action×state matrix (F-P52-001) (daemon-side dispositions: rename → Err/rename_failed; detach → idempotent Ok(()); kill → idempotent Ok(); resize → WARN-drop); BC-2.09.008 (SessionCreation wizard and EmbeddedTerminal enter) |
+| Architecture Source | SS-ipc.md v1.24.0 §SessionSnapshot (wire boundary type; `degraded` and `degraded_reason` fields; `spawned_by_monocle: Option<bool>` field); SS-session-manager.md v2.7.3 §SessionManager §Public API (session_list() returns Vec<SessionSnapshot>); SS-session-manager.md v2.7.3 §Terminated-in-grace defensive action×state matrix (F-P52-001); SS-embedded-pty.md v1.7.0 §Fast switching; SS-daemon-wiring-v2-delta.md v1.11.4 |
+| Cross-Ref | BC-2.05.010 §DetachSession PC-4 (session_not_ready is defensive/untrusted-client-only; official TUI never sends DetachSession during Launching — this BC's Invariant 5 is the normative target); BC-2.08.003 Invariant 2 (kill on Terminated is idempotent at daemon; TUI guard in Invariant 6 prevents dispatch); BC-2.08.003 Invariant 3 (kill on Launching is explicitly allowed; kill path uses host_conn.writer or PID fallback); BC-2.08.005 Invariant 4 (rename on Terminated → Err(InvalidSessionName{"session terminated"}) → "rename_failed"; GC task not cancellable — Invariant 6 of this BC is the TUI-side guard); BC-2.08.007 §Preconditions (detach) defensive note (TUI guard enforced here prevents session_not_ready on official TUI path); SS-session-manager.md v2.7.3 §Terminated-in-grace defensive action×state matrix (F-P52-001) (daemon-side dispositions: rename → Err/rename_failed; detach → idempotent Ok(()); kill → idempotent Ok(); resize → WARN-drop); BC-2.09.008 (SessionCreation wizard and EmbeddedTerminal enter) |
 | Test Name | test_BC_2_06_025_multi_session_grouped_by_project |
 
 ## Related BCs
@@ -268,7 +268,7 @@ SE-16d monotonicity: v1.5.1 timestamp 2026-06-15 > v1.5.0 timestamp 2026-06-14. 
   indicator (Invariant 4 prose) but had no corresponding lifecycle-action guard — a correct
   implementer following v1.4.0 would dispatch `k`, `D`, or `r` on a Terminated session still visible
   in the 10s GC grace window. The architect closed the daemon-side defensive dispositions for these
-  cases in SS-session-manager.md v2.6.1 §Terminated-in-grace defensive action×state matrix
+  cases in SS-session-manager.md v2.7.3 §Terminated-in-grace defensive action×state matrix
   (F-P52-001): rename → `Err(InvalidSessionName{"session terminated"})` → `"rename_failed"`;
   detach → idempotent `Ok(())`; kill → idempotent `Ok(())`; resize → WARN-drop.
 
@@ -289,7 +289,7 @@ SE-16d monotonicity: v1.5.1 timestamp 2026-06-15 > v1.5.0 timestamp 2026-06-14. 
 
 - **Traceability Cross-Ref expanded:** Added BC-2.08.003 Invariant 2 (kill idempotency at daemon),
   BC-2.08.005 Invariant 4 (rename-on-Terminated error return; GC task not cancellable), and
-  SS-session-manager.md v2.6.1 §Terminated-in-grace defensive action×state matrix (F-P52-001).
+  SS-session-manager.md v2.7.3 §Terminated-in-grace defensive action×state matrix (F-P52-001).
 
 - **Architecture Source updated:** SS-session-manager.md pin v2.5.1 → v2.6.0 (new
   §Terminated-in-grace defensive action×state matrix); SS-ipc.md pin v1.23.1 → v1.23.2;
@@ -426,6 +426,6 @@ SE-16d monotonicity: v1.4.0 timestamp 2026-06-14 > v1.3.1 timestamp 2026-06-14. 
 
 ## §Trace v1.5.3
 
-**Phase-2 Pass-1 fix burst — SS-session-manager v2.6.1 / SS-daemon-wiring-v2-delta v1.11.4 Architecture Source pin cascade** (2026-06-16T00:00:00Z):
+**Phase-2 Pass-1 fix burst — SS-session-manager v2.7.3 / SS-daemon-wiring-v2-delta v1.11.4 Architecture Source pin cascade** (2026-06-16T00:00:00Z):
 - Architecture Source pin(s) updated for SS-session-manager.md v2.6.0 → v2.6.1 and/or SS-daemon-wiring-v2-delta.md v1.11.3 → v1.11.4. Plain version-pin refresh — both SS spec bumps were SS-ipc Architecture Source cascade patches only; no normative API or invariant changes.
 - SE-16d monotonicity: v1.5.3 timestamp >= v1.5.2. PASS.

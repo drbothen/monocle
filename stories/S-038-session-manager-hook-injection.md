@@ -26,7 +26,7 @@ inputs:
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.08.006 (hook auto-injection in session-host spawn path: --settings arg, hooks-settings.json with 4 URL-bearing + 2 reserved-empty hook entries, lock.app=monocle, shared-file lifecycle)"
-# BC status: BC-2.08.006 v1.3.2 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status: BC-2.08.006 v1.4.0 — non-empty; status draft pending Phase-2 adversarial convergence gate
 ---
 
 # S-038: SessionManager Hook Auto-Injection — hooks-settings.json Writer + SpawnOptions.hooks_settings_path Population
@@ -298,7 +298,7 @@ insertion into `SpawnRecipe.argv` is owned by S-045 (ClaudeCodeModule::spawn_rec
 
 ## Conflicts and Notes
 
-- BC-2.08.006 v1.3.2 references "BC-2.04.010 (not BC-HOOK-007)" as the authority for hook
+- BC-2.08.006 v1.4.0 references "BC-2.04.010 (not BC-HOOK-007)" as the authority for hook
   key names and URL format. The implementer MUST read BC-2.04.010 before finalizing the
   exact hook JSON schema. This story provides the structural wrapper; the payload is defined
   by BC-2.04.010.

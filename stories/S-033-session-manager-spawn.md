@@ -96,7 +96,7 @@ After the `SessionEntry` is inserted and the sidecar is written:
 - Both publications happen under the `SessionManager` mutex (per BC-2.08.008 Invariant 4).
 - If a connected TUI client's per-client buffer is full and the ordered pair splits (SessionStateChanged delivered but SessionListUpdate dropped), the client is IMMEDIATELY disconnected (per BC-2.08.008 PC-3 split rule).
 
-### AC-006 (traces to BC-2.08.001 invariant 1 — session_id uniqueness; UUID collision handling; SS-session-manager v2.7.2 Ruling F)
+### AC-006 (traces to BC-2.08.001 invariant 1 — session_id uniqueness; UUID collision handling; SS-session-manager v2.7.3 Ruling F)
 
 The `SessionEntry` insertion MUST check for collision. If a collision is detected (UUID already in registry), `spawn_session()` MUST return `Err(SessionError::SessionIdCollision { session_id })` immediately — it does NOT perform an internal retry (UUID generation is not `spawn_session()`'s responsibility; doing so would violate EC-152's "auto-retry is one attempt" constraint by doubling total attempts).
 
@@ -360,7 +360,7 @@ those belong to S-034, S-035, and S-047 respectively.
 - STORY-033 depends on S-021 because `ClientToServer::SpawnSession`, `ServerToClient::SpawnAck`, `ServerToClient::SessionStateChanged`, `ServerToClient::SessionListUpdate`, and `Broker<Event>` wire types must exist in `monocle-ipc`.
 - STORY-033 blocks S-034/S-035/S-036/S-037/S-038 because all other SS-08 stories operate on `SessionManager` and `SessionEntry` types that are first defined in this story.
 
-## Trace
+## §Trace
 
 | Pass | Date | Change |
 |------|------|--------|

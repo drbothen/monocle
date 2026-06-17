@@ -132,7 +132,7 @@ TUI's IPC socket. This timing budget covers: IPC framing decode → `vt100::Pars
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — this BC defines the PTY byte pipeline performance contract: IPC → vt100 → tui-term within 100ms, which is the core of CAP-009's embedded PTY widget capability |
 | Architecture Module | monocle-tui (App::on_pty_output, pty_parsers, PseudoTerminal widget) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.7.0 §PTY Widget Pipeline; §Parser ownership in TUI; §O4 memory bound; §I7 per-session scroll offset; §EmbeddedTerminal ENTRY (auto-attach mandate, I11-001 PRONG A); SS-session-manager.md v2.6.1 §Screen-state transfer (C5); ADR-0011 v1.2.1 §Decision |
+| Architecture Source | SS-embedded-pty.md v1.7.0 §PTY Widget Pipeline; §Parser ownership in TUI; §O4 memory bound; §I7 per-session scroll offset; §EmbeddedTerminal ENTRY (auto-attach mandate, I11-001 PRONG A); SS-session-manager.md v2.7.3 §Screen-state transfer (C5); ADR-0011 v1.2.1 §Decision |
 | Test Name | test_BC_2_09_001_pty_output_renders_within_100ms |
 
 ## Related BCs
@@ -223,6 +223,6 @@ VP-TBD — PTY output render latency tests (filled after VP creation)
 
 ## §Trace v1.3.4
 
-**Phase-2 Pass-1 fix burst — SS-session-manager v2.6.1 / SS-daemon-wiring-v2-delta v1.11.4 Architecture Source pin cascade** (2026-06-16T00:00:00Z):
+**Phase-2 Pass-1 fix burst — SS-session-manager v2.7.3 / SS-daemon-wiring-v2-delta v1.11.4 Architecture Source pin cascade** (2026-06-16T00:00:00Z):
 - Architecture Source pin(s) updated for SS-session-manager.md v2.6.0 → v2.6.1 and/or SS-daemon-wiring-v2-delta.md v1.11.3 → v1.11.4. Plain version-pin refresh — both SS spec bumps were SS-ipc Architecture Source cascade patches only; no normative API or invariant changes.
 - SE-16d monotonicity: v1.3.4 timestamp >= v1.3.3. PASS.
