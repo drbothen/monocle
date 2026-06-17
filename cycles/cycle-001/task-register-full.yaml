@@ -623,6 +623,24 @@ durable_task_register:
       route: "devops"
       blocking: false
       detail: "S-033 adversarial pass 3 (post-batch) LOW finding: there is currently no grep-based CI check (POL-12 candidate) that enforces monocle_ipc::types::SessionSidecarV3 as the only permissible sidecar struct. A future implementer could accidentally re-introduce an ad-hoc SessionSidecar struct and bypass the canonicalization required by Ruling B (D-326). Guard should grep for struct.*SessionSidecar (or variant) across the workspace and fail CI if any match is NOT monocle_ipc::types::SessionSidecarV3 or a test double explicitly annotated #[cfg(test)]. Route to devops-engineer to add as a scripts/check_structural_claims.py (POL-12) rule. Non-blocking for S-033 merge."
+    - id: "F-W8INT-001"
+      subject: "[integration] SessionListUpdate carries Vec<EnrichedSession> — I3-009 degraded indicator never reaches TUI via wire"
+      status: pending
+      route: "wave-gate/architect"
+      blocking: false
+      detail: "S-033 adversarial pass 4 cross-story integration finding. SessionListUpdate carries Vec<EnrichedSession> which has no degraded/degraded_reason fields. The I3-009 degraded indicator (spec'd in SS-session-manager for degraded session state) therefore never propagates to the TUI over the wire. Requires an SS-08 broadcast wire-type decision: should the wire type remain EnrichedSession (and gain degraded/degraded_reason fields), or should it transition to SessionSnapshot (which already has this semantic)? This is a cross-story concern spanning the session-host (S-033) and the TUI session list rendering (S-028). Owning stories: S-021/S-028. Surface at Wave-8 integration gate for architect ruling before TUI rendering story is implemented."
+    - id: "F-W8INT-002"
+      subject: "[integration] SessionManager::session_list() unwired from snapshot_initial_state — spawned sessions absent from InitialState on reconnect"
+      status: pending
+      route: "wave-gate/architect"
+      blocking: false
+      detail: "S-033 adversarial pass 4 cross-story integration finding. SessionManager::session_list() is spec'd as the source for the InitialState IPC push (BC-2.05.002), but snapshot_initial_state does not call it; spawned sessions are therefore absent from the InitialState payload delivered on client reconnect. The fix requires bridging SessionManager sessions into snapshot_initial_state and reconciling with the hook-driven session_registry to avoid double-entries. Owning story: S-022 (BC-2.05.002). Surface at Wave-8 integration gate — the integration bridge design needs architect ruling before S-022 TDD implementation begins."
+    - id: "F-W8INT-003"
+      subject: "[integration] Two disjoint session sources clobber TUI roster — unified roster source/merge required"
+      status: pending
+      route: "wave-gate/architect"
+      blocking: false
+      detail: "S-033 adversarial pass 4 cross-story integration finding. There are currently two disjoint session sources: (1) SessionManager spawn path (S-033 scope) and (2) hook-driven session_registry. Both publish full-roster SessionListUpdate with whole-roster-replace semantics (BC-2.05.003 PC-2). Because each source independently replaces the full roster, they mutually clobber the TUI's session list depending on which broadcast arrives last. A unified roster source or explicit merge strategy is needed to ensure the TUI always holds a consistent union of both sources. Owning stories: S-018/S-028/S-033. Surface at Wave-8 integration gate — architect must define roster-merge strategy before the integration stories enter TDD."
   se_candidates:
     - id: SE-40
       occurrences: 2

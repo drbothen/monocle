@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "7.92"
+version: "7.93"
 status: active
 producer: state-manager
 timestamp: 2026-06-17T00:00:00Z
 phase: phase-3-v1A-wave-8
-current_step: "D-329 (2026-06-17): S-033 adversarial pass 3 (post-batch) — no CRITICAL; all prior fixes confirmed holding (worktree dfc6765). Ruling H: MED-002 monitor↔entry generation guard DEFERRED to S-036 (Ruling H, 3-layer safety). SS-session-manager v2.7.2→v2.7.3. Two durable tasks recorded: MED-002-monitor-generation-guard (deferred-S-036) + LOW-S033-SIDECAR-STRUCT-GUARD (pending/devops). Convergence counter 0/3 (continuing). Next: re-adversary pass 4."
+current_step: "D-330 (2026-06-17): S-033 adversarial pass 4 — no CRITICAL; all named fixes (HIGH-001/MED-001/LOW-001/LOW-004/MED-003 + Rulings A–H) confirmed holding. IMP-001 (monitor-spawn-before-Launching-broadcast ordering) + OBS-001 (orphan sidecar on collision) routed to implementer. Three cross-story integration findings F-W8INT-001/002/003 deferred to Wave-8 integration gate. Convergence counter 0/3 (pass 5 next after IMP-001/OBS-001 fix)."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-001..D-241 at cycles/cycle-001/decisions-archive.md. D-242..D-327 appended at cycles/cycle-001/decisions-archive.md §Phase-1d+Phase-2+Phase-3. Full durable_task_register YAML (122 entries) at cycles/cycle-001/task-register-full.yaml."
-awaiting: "S-033 Wave 8: adversarial pass 4 (convergence counter 0/3; pass 3 REMEDIATED — Ruling H MED-002 deferred to S-036, LOW-S033-SIDECAR-STRUCT-GUARD tracked). Branch protection (PROC-BRANCH-PROTECTION-CONTEXTS) pending human/repo-admin before first Wave 8 PR merge."
+traces_to: "D-001..D-241 at cycles/cycle-001/decisions-archive.md. D-242..D-330 appended at cycles/cycle-001/decisions-archive.md §Phase-1d+Phase-2+Phase-3. Full durable_task_register YAML (127 entries) at cycles/cycle-001/task-register-full.yaml."
+awaiting: "S-033 Wave 8: pass 4 REMEDIATED — IMP-001 (monitor-spawn ordering) + OBS-001 (orphan sidecar) to implementer; pass 5 next (convergence counter 0/3). Three integration findings F-W8INT-001/002/003 deferred to Wave-8 gate. Branch protection (PROC-BRANCH-PROTECTION-CONTEXTS) pending human/repo-admin before first Wave 8 PR merge."
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: 2026-06-03
@@ -20,14 +20,17 @@ dtu_services: [hook-endpoints-x5]
 current_cycle: cycle-001
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v7.92 — 2026-06-17
-  PHASE-3 v1A ACTIVE — WAVE 8 / S-033 ADVERSARIAL PASS 4 NEXT
+  ZERO-CONTEXT RESUME CHECKPOINT v7.93 — 2026-06-17
+  PHASE-3 v1A ACTIVE — WAVE 8 / S-033 ADVERSARIAL PASS 5 NEXT (after IMP-001/OBS-001 fix)
   ============================================================================
   POSITION: Phase-3 TDD implementation, v1A control-center scope, Wave 8.
-  STATUS: S-033 adversarial pass 3 REMEDIATED (D-329). Ruling H: MED-002
-  monitor generation guard DEFERRED to S-036. SS-session-manager v2.7.3,
-  S-033 v1.9 (no story bump — pass 3 only added ruling deferral, no impl change).
-  Convergence counter: 0/3. Next: adversarial pass 4.
+  STATUS: S-033 adversarial pass 4 REMEDIATED (D-330). No CRITICAL. All prior
+  named fixes (HIGH-001/MED-001/LOW-001/LOW-004/MED-003 + Rulings A–H) confirmed
+  holding. Two in-scope findings routed to implementer: IMP-001 (monitor-spawn-
+  before-Launching-broadcast ordering inversion) + OBS-001 (orphan sidecar on
+  collision). Three cross-story integration findings F-W8INT-001/002/003 deferred
+  to Wave-8 integration gate. SS-session-manager v2.7.3, S-033 v1.9.
+  Convergence counter: 0/3. Next: implementer fixes IMP-001/OBS-001, then pass 5.
 
   READ FIRST (in order):
   1. /Users/jmagady/Dev/monocle/NEXT-SESSION-RESUME.md  <- concise entry point
@@ -48,11 +51,13 @@ next_session_resume_protocol: |
   SS-daemon-wiring-v2-delta v1.11.4 | SS-deps-pin-manifest-v2-delta v1.0.2
   prd v1.28.3 | product-brief v2.0.4 | domain-monocle-vision-synthesis v2.2.3
 
-  NEXT-ACTION (S-033 convergence — pass 3 REMEDIATED, pass 4 next):
-  1. adversary: fresh-context pass 4 (convergence counter 0/3).
-     Check Rulings E/F/G/H all propagated; MED-002 deferral per Ruling H is intentional.
-     Worktree dfc6765 has current implementation.
-  2. If CLEAN → counter 1/3. If BLOCKED → architect rulings + remediation burst.
+  NEXT-ACTION (S-033 convergence — pass 4 REMEDIATED, pass 5 next):
+  1. implementer: fix IMP-001 (monitor-spawn-before-Launching-broadcast ordering
+     inversion) + OBS-001 (orphan sidecar cleanup on UUID collision path).
+     Worktree dfc6765 (or current HEAD) has current implementation.
+  2. adversary: fresh-context pass 5 (convergence counter 0/3).
+     F-W8INT-001/002/003 are cross-story/deferred — do NOT flag as new in-scope findings.
+  3. If CLEAN → counter 1/3. If BLOCKED → architect rulings + remediation burst.
   CI pre-requisites status:
     DTU clone: PASS (D-234, fidelity 1.0)
     ci.yml: PASS
@@ -69,11 +74,12 @@ next_session_resume_protocol: |
   - D-327: S-033 Rulings C+D (setsid host-side; host_conn storage S-033 scope)
   - D-328: S-033 Rulings E+F+G (DaemonToHost/HostToDaemon in monocle-ipc; EC-152 retry IPC-handler-only + second SpawnAck; single-lock atomicity for Running/EC-163/Terminated pairs)
   - D-329: S-033 Ruling H — MED-002 monitor↔entry generation guard DEFERRED to S-036; safe in v1 (3-layer argument); SS-session-manager v2.7.3
+  - D-330: pass 4 REMEDIATED; IMP-001+OBS-001 to implementer; F-W8INT-001/002/003 to Wave-8 gate
   - Spawn-path Model A: SpawnOptions on wire; SpawnRecipe daemon-internal
   - IPC: 12-code wire taxonomy; 9-variant SessionError; schema_version 3
   - PTY (ADR-0011): portable-pty 0.9.0 + vt100 0.16.2 + tui-term =0.3.4; MSRV 1.88
   - SessionState: 5 variants (Launching/Running/Detached/Terminating/Terminated) in monocle-ipc
-  - Full history: cycles/cycle-001/decisions-archive.md (D-001..D-328)
+  - Full history: cycles/cycle-001/decisions-archive.md (D-001..D-330)
 
   KNOWN-FLAKY TESTS (do NOT flag as new findings):
   cli_daemon_stop, factory_self_referential, test_BC_2_07_006,
@@ -104,7 +110,7 @@ None. All durable task register items are non-blocking.
 
 ## Durable Task Register
 
-98 active tasks. Full YAML detail (all 124 entries including 26 resolved/closed): `cycles/cycle-001/task-register-full.yaml`.
+101 active tasks. Full YAML detail (all 127 entries including 26 resolved/closed): `cycles/cycle-001/task-register-full.yaml`.
 
 | ID | Status | Route | Block? | Subject (truncated) |
 |----|--------|-------|--------|---------------------|
@@ -124,6 +130,9 @@ None. All durable task register items are non-blocking.
 | S-047-AC009-PTYRESET-QUALIFIER | CLOSED D-323 | story-writer | n | S-047 AC-009 PtyReset qualifier — SWEPT |
 | MED-002-monitor-generation-guard | deferred-S-036 | architect/implementer | n | post-spawn monitor lacks generation/epoch guard; DEFERRED to S-036; safe in v1 (Ruling H — 3-layer: UUID v4 2^-122 + no GC on Launching + outer Mutex); SS-session-manager v2.7.3 |
 | LOW-S033-SIDECAR-STRUCT-GUARD | pending | devops | n | [process-gap] no CI guard (POL-12 candidate) forbidding ad-hoc SessionSidecar other than monocle_ipc::types::SessionSidecarV3 |
+| F-W8INT-001 | pending | wave-gate/architect | n | [integration] SessionListUpdate carries Vec<EnrichedSession> (no degraded/degraded_reason); I3-009 degraded indicator never reaches TUI via wire. Requires SS-08 broadcast wire-type decision (EnrichedSession vs SessionSnapshot). Owners: S-021/S-028. Surface at Wave-8 integration gate. |
+| F-W8INT-002 | pending | wave-gate/architect | n | [integration] SessionManager::session_list() (spec'd "for InitialState IPC push") is unwired from snapshot_initial_state; spawned sessions absent from InitialState on reconnect. Bridge SessionManager sessions into InitialState (reconcile with hook-driven session_registry). Owner: S-022 (BC-2.05.002). Surface at Wave-8 integration gate. |
+| F-W8INT-003 | pending | wave-gate/architect | n | [integration] Two disjoint session sources (SessionManager spawn path + hook-driven session_registry) both publish full-roster SessionListUpdate with whole-roster-replace semantics (BC-2.05.003 PC-2) → mutually clobber the TUI roster. Needs unified roster source/merge. Owners: S-018/S-028/S-033. Surface at Wave-8 integration gate. |
 | INPUT-HASH-CHILD-RECOMPUTE | codification-pending | devops | n | input-hash drift re-accumulates when parent specs bump |
 | DEP-PIN-SWEEP-RULE | pending | devops | n | extend POL-11 to grep crate-name+version prose literals |
 | POL-11-PINFORMAT-BLIND-SPOT | codification-pending | devops | n | POL-11 misses path.md vX.Y.Z section format |
@@ -230,6 +239,7 @@ D-001..D-241: early phases; D-242..D-325: Phase-1d + Phase-2 + Phase-3 gate (app
 
 Key decisions last session:
 - D-323 (2026-06-16): Phase-2 pre-gate cleanup burst COMPLETE. D-324: inputs-pin BLOCKER fix. D-325: Phase-2 gate APPROVED. D-326: S-033 adversarial Pass-1 rulings A+B (scope + SessionSidecarV3). SS-session-manager v2.7.0; S-033 v1.7.
-- D-327 (2026-06-17): S-033 adversarial pass (post-rework) NOT CLEAN. Findings: production daemon_start_sequence still unwired (session_manager None); SO_PEERCRED comment-only; ad-hoc sidecar struct (not SessionSidecarV3); false-green wiring/integration tests. Architect Ruling C: host-side setsid canonical (pre_exec is unsafe fn, monocle-runtime forbids unsafe; session-host handles setsid at startup step 2). Ruling D: host_conn writer storage is S-033 scope, not S-034. SS-session-manager v2.7.0→v2.7.1; S-033 v1.7→v1.8. Convergence counter 0/3. Remediation chain: test-writer → implementer → security-reviewer → re-adversary.
-- D-328 (2026-06-17): S-033 adversarial pass 2 (post-rework) NOT CLEAN. Prior B-series + security fixes confirmed solid. Architect Rulings E/F/G issued. Ruling E: DaemonToHost/HostToDaemon types are S-033 scope; defined in monocle-ipc (not ad-hoc sidecar). Ruling F: EC-152 retry locus exclusively the IPC handler (6-step Task); spawn_session returns Err(SessionIdCollision) on collision with no internal retry; IPC handler retries once with fresh UUID and sends second SpawnAck before retry spawn_session call; consecutive collision surfaces error to client. Ruling G: post-spawn monitor holds single mutex across Running-transition try_send pair (Running + event ribbon push) AND across EC-163/Terminated broadcast pair to prevent state-split. SS-session-manager v2.7.1→v2.7.2; S-033 v1.8→v1.9. Convergence counter 0/3. Batched remediation: implementer → test-writer → re-adversary.
-- D-329 (2026-06-17): S-033 adversarial pass 3 (post-batch) — no CRITICAL findings; all prior fixes (HIGH-001 Launching-pair single-lock, MED-001 check-then-insert TOCTOU, LOW-001/004) confirmed holding (worktree dfc6765). Ruling H issued: MED-002 post-spawn monitor↔entry generation guard DEFERRED to S-036 — safe in v1 per 3-layer argument (UUID v4 2^-122, Launching entries exempt from GC timer, outer Mutex serialization). SS-session-manager v2.7.2→v2.7.3. MED-003 sidecar-atomicity test strengthening + LOW-002 CI guard tracked as MED-002-monitor-generation-guard + LOW-S033-SIDECAR-STRUCT-GUARD in durable register. Convergence counter still 0/3 (continuing). Note: worktree HEAD is moving (S-033 not yet merged); develop @ 50c195e unchanged.
+- D-327 (2026-06-17): S-033 adversarial pass (post-rework) NOT CLEAN. Rulings C+D (setsid host-side; host_conn storage S-033 scope). SS-session-manager v2.7.0→v2.7.1; S-033 v1.7→v1.8. Counter 0/3.
+- D-328 (2026-06-17): S-033 adversarial pass 2 NOT CLEAN. Rulings E+F+G (DaemonToHost/HostToDaemon in monocle-ipc; EC-152 retry IPC-handler-only + second SpawnAck; single-lock atomicity). SS-session-manager v2.7.1→v2.7.2; S-033 v1.8→v1.9. Counter 0/3.
+- D-329 (2026-06-17): S-033 adversarial pass 3 (post-batch) — no CRITICAL; all prior fixes confirmed holding (worktree dfc6765). Ruling H: MED-002 DEFERRED to S-036 (3-layer safety). SS-session-manager v2.7.2→v2.7.3. Counter 0/3.
+- D-330 (2026-06-17): S-033 adversarial pass 4 — no CRITICAL; all named fixes (HIGH-001/MED-001/LOW-001/LOW-004/MED-003 + Rulings A–H) confirmed holding. IMP-001 (monitor-spawn-before-Launching-broadcast ordering inversion) + LOW OBS-001 (orphan sidecar on collision) routed to implementer. Three cross-story integration findings F-W8INT-001/002/003 deferred to Wave-8 integration gate. Counter 0/3 (pass 5 next after IMP-001/OBS-001 fix). STATE v7.92→v7.93.
