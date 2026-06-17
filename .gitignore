@@ -44,3 +44,5 @@ target
 
 # Python bytecode cache
 scripts/__pycache__/
+
+.envrc
