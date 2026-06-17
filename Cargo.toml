@@ -9,6 +9,7 @@ members = [
     "crates/monocle-proto",
     "crates/monocle-test-harness",
     "crates/monocle-tui",
+    "crates/monocle-session-host",   # NEW v1A (S-033)
     "xtask",
 ]
 

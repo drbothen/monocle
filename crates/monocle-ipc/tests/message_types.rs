@@ -262,6 +262,10 @@ fn test_BC_2_05_008_client_to_server_permission_decision_allow_serde_roundtrip()
             assert_eq!(decoded_id, prompt_id);
             assert_eq!(decision, PermissionDecisionKind::Allow);
         }
+        // S-033 stub: SpawnSession is not expected in a PermissionDecision roundtrip test.
+        ClientToServer::SpawnSession { .. } => {
+            panic!("unexpected SpawnSession in message_types serde roundtrip test (Allow)");
+        }
     }
 }
 
@@ -284,6 +288,10 @@ fn test_BC_2_05_008_client_to_server_permission_decision_deny_serde_roundtrip() 
         } => {
             assert_eq!(decoded_id, prompt_id);
             assert_eq!(decision, PermissionDecisionKind::Deny);
+        }
+        // S-033 stub: SpawnSession is not expected in a PermissionDecision roundtrip test.
+        ClientToServer::SpawnSession { .. } => {
+            panic!("unexpected SpawnSession in message_types serde roundtrip test (Deny)");
         }
     }
 }

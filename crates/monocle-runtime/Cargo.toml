@@ -19,6 +19,9 @@ description = "Runtime daemon for monocle: hook ingestion, session lifecycle, au
 # When this feature is absent (production), neither env var is read nor compiled in.
 # HIGH-1 fix (SS-daemon-wiring-impl.md §Fix Addendum Round 2 HIGH-1).
 e2e-test-affordances = []
+# Enables MockSessionHostSpawner and other test-seam types for use by integration
+# tests in other crates (e.g., monocle-test-harness). Never enabled in production.
+test-utils = []
 
 [lints]
 workspace = true
@@ -43,7 +46,8 @@ tempfile = { workspace = true }
 serde_json = { workspace = true }
 serde = { workspace = true }
 directories = { workspace = true }
-nix = { workspace = true, features = ["signal", "process"] }
+nix = { workspace = true, features = ["signal", "process", "user"] }
+which = { workspace = true }
 axum = { workspace = true }
 chrono = { workspace = true }
 thiserror = { workspace = true }
@@ -51,6 +55,14 @@ anyhow = { workspace = true }
 async-trait = { workspace = true }
 
 [dev-dependencies]
+# Self-dependency with test-utils feature: activates the test-utils feature for
+# integration tests in tests/ (which run as separate crates and do NOT see cfg(test)
+# from the library). This enables `with_peer_cred_verifier` (CWE-602 gate, SEC-001)
+# in integration tests while keeping the production build free of it.
+# Cargo 1.78+ supports self-referential dev-dependencies. Cargo 1.88 is used here.
+# NOTE: production `cargo build -p monocle` does NOT activate test-utils (dev-deps
+# are never included in non-dev builds). The binary crate does not declare test-utils.
+monocle-runtime = { path = ".", features = ["test-utils"] }
 # temp-env: test-only; declared inline (NOT workspace = true) per story AC-006.
 # Required for BC-ENGINE-002-ERR test isolation using async_with_vars.
 # SS-deps-pin-manifest.md v1.2.1 §Dev Dependencies.

@@ -9,8 +9,8 @@ use std::path::PathBuf;
 
 use async_trait::async_trait;
 use monocle_core::engine::{
-    EngineMetadata, EngineMetadataError, EngineModule, EnrichedSession, HookDecision, HookResponse,
-    ProcessSnapshot,
+    EngineError, EngineMetadata, EngineMetadataError, EngineModule, EnrichedSession, HookDecision,
+    HookResponse, ProcessSnapshot, SpawnOptions, SpawnRecipe,
 };
 use monocle_core::hook_events::HookEvent;
 use monocle_core::hook_events::HookType;
@@ -419,5 +419,48 @@ impl EngineModule for ClaudeCodeModule {
             // Wildcard arm required by #[non_exhaustive] — fail-open for Phase 4 variants.
             _ => HookResponse::new(HookDecision::Allow),
         }
+    }
+
+    /// Build the spawn recipe for a Claude Code session (BC-2.03.008 PC-2).
+    ///
+    /// Resolves the `claude` binary via `which::which("claude")`.
+    /// Returns `Err(BinaryNotFound)` if `claude` is not on PATH.
+    ///
+    /// Recipe fields:
+    /// - `binary`: absolute path to `claude` as resolved by `which`.
+    /// - `args`: `["--settings", "<hooks_settings_path>"]` so the session-host
+    ///   invokes Claude Code with the monocle-managed hooks settings file.
+    /// - `env`: injects `ANTHROPIC_BASE_URL` if `opts.ccr_base_url` is `Some`.
+    ///   PATH and HOME are inherited from the spawned process environment (not set here).
+    /// - `cwd`: `opts.worktree_root` — NEVER hardcoded to `project_root`.
+    fn spawn_recipe(&self, opts: &SpawnOptions) -> Result<SpawnRecipe, EngineError> {
+        // Locate the claude binary on PATH.
+        let binary = which::which("claude").map_err(|e| {
+            EngineError::BinaryNotFound(format!("claude binary not found on PATH: {e}"))
+        })?;
+
+        // hooks_settings_path must be valid UTF-8 for CLI transport.
+        let hooks_settings_str = opts
+            .hooks_settings_path
+            .to_str()
+            .ok_or_else(|| {
+                EngineError::InvalidPath(format!(
+                    "hooks_settings_path is not valid UTF-8: {:?}",
+                    opts.hooks_settings_path
+                ))
+            })?
+            .to_string();
+
+        let args = vec!["--settings".to_string(), hooks_settings_str];
+
+        // Inject ANTHROPIC_BASE_URL if CCR is configured.
+        let mut env = HashMap::new();
+        if let Some(ref base_url) = opts.ccr_base_url {
+            env.insert("ANTHROPIC_BASE_URL".to_string(), base_url.clone());
+        }
+
+        let cwd = opts.worktree_root.clone();
+
+        Ok(SpawnRecipe::new(binary, args, env, cwd))
     }
 }

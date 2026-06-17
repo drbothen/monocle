@@ -318,6 +318,33 @@ pub struct DaemonState {
     pub uds_transport: Option<monocle_ipc::uds::UdsTransport>,
 
     // -------------------------------------------------------------------------
+    // S-033 fields: SessionManager
+    // -------------------------------------------------------------------------
+    /// SessionManager — daemon-side coordinator for session-host processes (S-033).
+    ///
+    /// `None` — not yet initialized (daemon startup before session-manager wiring).
+    /// `Some(manager)` — live session manager. The IPC handler calls
+    ///   `session_manager.lock().await.spawn_session(opts)` on `ClientToServer::SpawnSession`.
+    ///
+    /// Protected by a `tokio::sync::Mutex` because `SessionManager` is manipulated by
+    /// async lifecycle methods called from the per-client IPC task.
+    pub session_manager: Option<tokio::sync::Mutex<crate::session_manager::SessionManager>>,
+
+    /// Session ID generator used by the IPC SpawnSession handler (EC-152 seam).
+    ///
+    /// Production default: `UuidV4Generator` — generates a fresh UUID v4 on every call.
+    /// Production code NEVER replaces this with a non-UUID-v4 generator.
+    ///
+    /// Tests (under `cfg(any(test, feature = "test-utils"))`) may replace this with a
+    /// `SequencedIdGenerator` to inject a scripted collision sequence and exercise the
+    /// EC-152 two-attempt retry path in `handle_spawn_session` deterministically.
+    ///
+    /// SEC-001: `SequencedIdGenerator` is defined under
+    /// `cfg(any(test, feature = "test-utils"))` and cannot be constructed in production
+    /// binaries. The only reachable generator in production is `UuidV4Generator`.
+    pub session_id_gen: std::sync::Arc<dyn crate::session_manager::SessionIdGenerator>,
+
+    // -------------------------------------------------------------------------
     // Test-only fields: engine decision injection
     //
     // These fields are Option<_> (zero cost when None) and are NEVER set by
@@ -396,6 +423,32 @@ impl DaemonState {
             pending_decisions: None,
             ipc_subscribers: None,
             uds_transport: None,
+            // S-033 MED-011: wire SessionManager with RealSessionHostSpawner at construction.
+            // DaemonState::new() is the unit-test constructor AND the daemon-start baseline.
+            // session_manager must be Some(_) so handle_spawn_session() can call it.
+            session_manager: {
+                use crate::engine::claude_code::ClaudeCodeModule;
+                use crate::session_manager::{RealSessionHostSpawner, SessionManager};
+                use std::sync::Arc;
+                let spawner = Arc::new(RealSessionHostSpawner {
+                    session_host_bin: std::env::current_exe()
+                        .ok()
+                        .and_then(|p| p.parent().map(|d| d.join("monocle-session-host")))
+                        .unwrap_or_else(|| std::path::PathBuf::from("monocle-session-host")),
+                });
+                let engine = Arc::new(ClaudeCodeModule::new(String::new()));
+                let empty_subscribers: monocle_ipc::server::SubscriberList =
+                    Arc::new(tokio::sync::Mutex::new(vec![]));
+                let broker = Arc::new(Arc::clone(&empty_subscribers));
+                let runtime_dir = std::env::temp_dir();
+                Some(tokio::sync::Mutex::new(SessionManager::new(
+                    runtime_dir,
+                    spawner,
+                    broker,
+                    engine,
+                )))
+            },
+            session_id_gen: std::sync::Arc::new(crate::session_manager::UuidV4Generator),
             hook_decision_override: None,
             hook_delay_ms: None,
             hook_outer_delay_ms: None,

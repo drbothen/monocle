@@ -88,3 +88,18 @@ pub mod ipc_server;
 /// - [`hooks::SessionRegistry`]: session lifecycle state tracker
 /// - [`hooks::SessionState`]: Active / Stopped
 pub mod hooks;
+
+/// Session Manager — daemon-side coordinator for session-host processes (S-033).
+///
+/// Implements BC-2.08.001 (spawn_session), BC-2.08.008 (SessionStateChanged broadcast),
+/// and BC-2.03.008 (spawn_recipe default + EngineError bridge).
+///
+/// Key exports:
+/// - [`session_manager::SessionManager`]: main coordinator struct.
+/// - [`session_manager::SessionError`]: error taxonomy.
+/// - [`session_manager::IpcOp`]: operation context for error code mapping.
+/// - [`session_manager::session_error_to_code`]: SessionError → wire code mapping.
+/// - [`session_manager::SessionHostSpawner`]: spawner trait (test seam).
+/// - [`session_manager::RealSessionHostSpawner`]: production spawner.
+/// - [`session_manager::SpawnedHostHandle`]: spawn result type.
+pub mod session_manager;

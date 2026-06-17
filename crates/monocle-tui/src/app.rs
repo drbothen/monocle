@@ -2010,6 +2010,29 @@ pub fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
                 timestamp_micros,
             );
         }
+        // S-033 variants: handled by TUI stories S-033/S-036/S-037/S-047.
+        // Stub arms prevent non-exhaustive match compilation failure.
+        // The TUI implementation is authored by the respective story implementers.
+        ServerToClient::SpawnAck { .. } => {
+            // SpawnAck is received by the TUI after sending ClientToServer::SpawnSession.
+            // The TUI uses the session_id to track the in-progress spawn.
+            // Implementation: S-033 TUI story.
+            tracing::debug!("SpawnAck received (S-033 stub — TUI handler not yet implemented)");
+        }
+        ServerToClient::SessionStateChanged { .. } => {
+            // SessionStateChanged is broadcast by the daemon for every state transition.
+            // The TUI updates session panel state indicators.
+            // Implementation: S-033 TUI story.
+            tracing::debug!(
+                "SessionStateChanged received (S-033 stub — TUI handler not yet implemented)"
+            );
+        }
+        ServerToClient::Error { code, message } => {
+            // Error is sent by the daemon when a lifecycle operation fails.
+            // The TUI displays a banner or error indicator.
+            // Implementation: S-033 TUI story.
+            tracing::warn!("ServerToClient::Error {{ code: {code}, message: {message} }} received (S-033 stub)");
+        }
     }
     Ok(())
 }

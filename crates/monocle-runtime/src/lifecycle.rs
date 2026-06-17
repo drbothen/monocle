@@ -654,6 +654,29 @@ pub async fn daemon_start_sequence(
         pending_decisions: Some(Arc::new(crate::permissions::PendingDecisionRegistry::new())),
         ipc_subscribers: Some(Arc::clone(&ipc_subscribers)),
         uds_transport: Some(uds_transport),
+        // B-001/B-002: Wire SessionManager with the daemon's REAL ipc_subscribers and runtime_dir.
+        // Uses RealSessionHostSpawner resolved from current_exe parent directory.
+        // ClaudeCodeModule is the Phase-1 engine. The broker is Arc<Arc<...>> (double-Arc per
+        // SessionManager::new() contract: broker: Arc<SubscriberList> where
+        // SubscriberList = Arc<Mutex<Vec<ClientEntry>>>).
+        session_manager: {
+            use crate::engine::claude_code::ClaudeCodeModule;
+            use crate::session_manager::{RealSessionHostSpawner, SessionManager};
+            let session_host_bin = std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|d| d.join("monocle-session-host")))
+                .unwrap_or_else(|| std::path::PathBuf::from("monocle-session-host"));
+            let spawner = Arc::new(RealSessionHostSpawner { session_host_bin });
+            let engine = Arc::new(ClaudeCodeModule::new(String::new()));
+            let broker = Arc::new(Arc::clone(&ipc_subscribers));
+            Some(tokio::sync::Mutex::new(SessionManager::new(
+                runtime_dir.to_path_buf(),
+                spawner,
+                broker,
+                engine,
+            )))
+        },
+        session_id_gen: std::sync::Arc::new(crate::session_manager::UuidV4Generator),
         hook_decision_override: None,
         hook_delay_ms: None, // Unit-test override only; not set via env var.
         // HIGH-1 fix: MONOCLE_HOOK_DELAY_MS env var is gated behind the `e2e-test-affordances`

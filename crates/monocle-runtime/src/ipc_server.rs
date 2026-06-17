@@ -170,6 +170,10 @@ async fn spawn_client_task(
                             &subscribers,
                         ).await;
                     }
+                    // S-033: SpawnSession handler (BC-2.08.001 §IPC handler pattern)
+                    Ok(ClientToServer::SpawnSession { opts }) => {
+                        handle_spawn_session(opts, &tx, &state).await;
+                    }
                     Err(IpcError::Disconnected) => {
                         tracing::debug!("TUI client disconnected (EOF)");
                         break;
@@ -268,6 +272,143 @@ pub async fn broadcast_to_subscribers(subscribers: &SubscriberList, msg: ServerT
     }
 
     *subs = live;
+}
+
+// ---------------------------------------------------------------------------
+// S-033: SpawnSession IPC handler
+// ---------------------------------------------------------------------------
+
+/// Handle a `ClientToServer::SpawnSession` message from a TUI client.
+///
+/// IPC handler canonical steps (BC-2.08.001 §IPC handler pattern, F-P41-IMP-001):
+/// 1. Generate UUID v4 → session_id.
+/// 2. Send `ServerToClient::SpawnAck { session_id }` to requesting client ONLY.
+/// 3. Fill daemon-owned fields via `opts.with_daemon_fields(session_id, hooks_settings_path)`.
+/// 4. Call `spawn_session(opts)` on the session_manager.
+/// 5. On error: send `ServerToClient::Error { code, message }` to requesting client.
+///
+/// EC-152: on first `SessionIdCollision`, regenerate UUID once, send a second SpawnAck with
+/// the new ID, then retry. On second collision, send `Error{code:"session_id_collision"}`.
+///
+/// `spawn_session()` itself publishes `SessionStateChanged{Launching}` + `SessionListUpdate`
+/// to the broker on success (BC-2.08.001 PC-5, BC-2.08.008 Invariant 4).
+async fn handle_spawn_session(
+    opts: monocle_core::engine::SpawnOptions,
+    client_tx: &tokio::sync::mpsc::Sender<ServerToClient>,
+    state: &DaemonState,
+) {
+    use crate::session_manager::{session_error_to_code, IpcOp, SessionError};
+
+    // Derive hooks_settings_path from lock_file_path parent + "hooks-settings.json".
+    // If lock_file_path is empty (test path), fall back to temp_dir.
+    let hooks_settings_path = if state.lock_file_path.is_empty() {
+        std::env::temp_dir().join("hooks-settings.json")
+    } else {
+        std::path::Path::new(&state.lock_file_path)
+            .parent()
+            .unwrap_or_else(|| std::path::Path::new("/tmp"))
+            .join("hooks-settings.json")
+    };
+
+    // Step 1: generate session_id via the injectable seam (EC-152 / Ruling F).
+    // Production: state.session_id_gen is UuidV4Generator → uuid::Uuid::new_v4().to_string().
+    // Tests: may inject SequencedIdGenerator to force deterministic collision sequences.
+    let session_id = state.session_id_gen.next_id();
+
+    // Step 2 (AC-012): send SpawnAck BEFORE spawn_session() — must be the first message.
+    let _ = client_tx
+        .send(ServerToClient::SpawnAck {
+            session_id: session_id.clone(),
+        })
+        .await;
+
+    // Step 3: fill daemon-owned fields.
+    let opts = opts.with_daemon_fields(session_id.clone(), hooks_settings_path.clone());
+
+    // Retrieve session_manager (must be Some after MED-011 wiring).
+    let sm = match state.session_manager.as_ref() {
+        Some(sm) => sm,
+        None => {
+            tracing::error!("handle_spawn_session: session_manager is None (daemon wiring bug)");
+            let _ = client_tx
+                .send(ServerToClient::Error {
+                    code: "invalid_request".to_string(),
+                    message: "session_manager not initialized".to_string(),
+                })
+                .await;
+            return;
+        }
+    };
+
+    // Step 4: call spawn_session().
+    //
+    // IMPORTANT: The lock guard from `sm.lock().await` lives for the duration of the
+    // entire `match` scrutinee expression. To avoid a self-deadlock when the collision
+    // arm tries to re-acquire the same mutex, we must store the result in a let binding
+    // first (which drops the guard), then match on the stored result.
+    let spawn_result = sm.lock().await.spawn_session(opts.clone()).await;
+    match spawn_result {
+        Ok(_) => {
+            // Success: spawn_session publishes SessionStateChanged{Launching} + SessionListUpdate.
+        }
+        Err(SessionError::SessionIdCollision { .. }) => {
+            // EC-152: first collision — regenerate via the seam and retry once.
+            let new_id = state.session_id_gen.next_id();
+
+            // Send a second SpawnAck with the regenerated ID before retry.
+            let _ = client_tx
+                .send(ServerToClient::SpawnAck {
+                    session_id: new_id.clone(),
+                })
+                .await;
+
+            let opts2 = opts.with_daemon_fields(new_id, hooks_settings_path);
+            // Lock is already released (guard dropped after spawn_result was bound above).
+            let retry_result = sm.lock().await.spawn_session(opts2).await;
+            match retry_result {
+                Ok(_) => {}
+                Err(e) => {
+                    // EC-152: second collision → send error.
+                    let _ = client_tx
+                        .send(ServerToClient::Error {
+                            code: session_error_to_code(IpcOp::Spawn, &e).to_string(),
+                            message: e.to_string(),
+                        })
+                        .await;
+                }
+            }
+        }
+        Err(e) => {
+            // Step 5: on error, send Error to requesting client.
+            let _ = client_tx
+                .send(ServerToClient::Error {
+                    code: session_error_to_code(IpcOp::Spawn, &e).to_string(),
+                    message: e.to_string(),
+                })
+                .await;
+        }
+    }
+}
+
+/// Test-only public wrapper for `handle_spawn_session`.
+///
+/// Exposes the private IPC handler to tests in `session_manager/mod.rs` and
+/// integration tests (tests/ directory) that exercise:
+/// - BLOCKER-001 regression guard (no panic from todo!())
+/// - AC-001/AC-012: SpawnAck ordering before SessionStateChanged{Launching}
+/// - EC-152: UUID collision retry in the IPC handler
+///
+/// Available under both `cfg(test)` (unit tests) and `feature = "test-utils"`
+/// (integration tests linked via dev-dependency with test-utils feature).
+///
+/// NEVER call this from production code. The cfg guard enforces that.
+#[cfg(any(test, feature = "test-utils"))]
+pub async fn handle_spawn_session_pub(
+    opts: monocle_core::engine::SpawnOptions,
+    client_tx: &tokio::sync::mpsc::Sender<ServerToClient>,
+    state: &DaemonState,
+) {
+    handle_spawn_session(opts, client_tx, state).await
 }
 
 /// Route a `PermissionDecision` from a TUI client to the pending-decision registry.

@@ -464,6 +464,10 @@ async fn test_BC_2_06_022_killer_scenario_accept() {
                 "BC-2.06.022 PC-2 step 5: `y` must send Allow (Accept-Once) decision"
             );
         }
+        // S-033 stub: SpawnSession is not expected in this PermissionDecision test context.
+        ClientToServer::SpawnSession { .. } => {
+            panic!("unexpected SpawnSession in PermissionDecision test (PC-2 step 5)");
+        }
     }
 
     // Step 6: Modal must still be in overlay_stack — not popped on send (BC-2.06.023).
@@ -685,6 +689,10 @@ async fn test_BC_2_06_022_killer_scenario_multi_prompt() {
                 "BC-2.06.022 PC-3: `n` must send Deny"
             );
         }
+        // S-033 stub: SpawnSession is not expected in this PermissionDecision test context.
+        ClientToServer::SpawnSession { .. } => {
+            panic!("unexpected SpawnSession in PermissionDecision test (PC-3 received1)");
+        }
     }
 
     // Step 5: MockDaemon sends PermissionPromptResolved for P1 over the REAL UDS socket.
@@ -752,6 +760,10 @@ async fn test_BC_2_06_022_killer_scenario_multi_prompt() {
                 PermissionDecisionKind::Allow,
                 "BC-2.06.022 PC-3: `y` must send Allow"
             );
+        }
+        // S-033 stub: SpawnSession is not expected in this PermissionDecision test context.
+        ClientToServer::SpawnSession { .. } => {
+            panic!("unexpected SpawnSession in PermissionDecision test (PC-3 received2)");
         }
     }
 
@@ -931,6 +943,10 @@ async fn test_BC_2_06_022_killer_scenario_accept_always() {
                  per BC-2.06.022 Step 2 / binding.rs:252"
             );
         }
+        // S-033 stub: SpawnSession is not expected in this PermissionDecision test context.
+        ClientToServer::SpawnSession { .. } => {
+            panic!("unexpected SpawnSession in PermissionDecision test (KS-001 received_a)");
+        }
     }
 
     // Overlay_stack is NOT modified on send — awaiting PermissionPromptResolved from daemon.
@@ -994,6 +1010,10 @@ async fn test_BC_2_06_022_killer_scenario_accept_always() {
                 PermissionDecisionKind::Allow,
                 "KS-001: `y` must send Allow"
             );
+        }
+        // S-033 stub: SpawnSession is not expected in this PermissionDecision test context.
+        ClientToServer::SpawnSession { .. } => {
+            panic!("unexpected SpawnSession in PermissionDecision test (KS-001 received_y)");
         }
     }
 
@@ -1446,6 +1466,10 @@ async fn test_BC_2_06_022_killer_scenario_isolation_parallel_safe() {
                 "isolation: App A `y` must route Allow to Daemon A"
             );
         }
+        // S-033 stub: SpawnSession not expected in this test path.
+        ClientToServer::SpawnSession { .. } => {
+            panic!("unexpected SpawnSession in isolation test for Daemon A");
+        }
     }
 
     // Verify Daemon B received Deny for pid_b (not contaminated by App A's Allow).
@@ -1467,6 +1491,10 @@ async fn test_BC_2_06_022_killer_scenario_isolation_parallel_safe() {
                 PermissionDecisionKind::Deny,
                 "isolation: App B `n` must route Deny to Daemon B"
             );
+        }
+        // S-033 stub: SpawnSession not expected in this test path.
+        ClientToServer::SpawnSession { .. } => {
+            panic!("unexpected SpawnSession in isolation test for Daemon B");
         }
     }
 
