@@ -3,10 +3,10 @@ document_type: story
 level: L4
 story_id: S-034
 epic_id: EPIC-08
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:story-writer
-timestamp: 2026-06-15T00:00:00Z
+timestamp: 2026-06-17T00:00:00Z
 phase: 2
 points: 8
 wave: 8
@@ -136,7 +136,7 @@ No silent transitions permitted.
   - SessionNotFound: return `Err(SessionError::SessionNotFound { session_id })`.
 - [ ] Implement 12s watchdog task: `tokio::spawn` + `tokio::time::sleep(Duration::from_secs(12))` → on timeout: SIGKILL to session-host PID → update sidecar → emit `SessionStateChanged{Terminated}` + `SessionListUpdate`; on `StateChanged::Terminated` received first: GC timer (defer to S-037).
 - [ ] Implement session-host `DaemonToHost::Kill` handler in `monocle-session-host/src/main.rs`: SIGTERM to harness child; 10s wait; SIGKILL escalation; send `HostToDaemon::StateChanged{Terminated}`; send `HostToDaemon::Goodbye`; remove socket file.
-- [ ] Add `ClientToServer::KillSession { session_id }` arm to IPC handler: call `kill_session()` → on error send `ServerToClient::Error`.
+- [ ] Add `ClientToServer::KillSession { session_id }` arm to IPC handler in `monocle-runtime/src/ipc_server.rs`: call `kill_session()` → on error send `ServerToClient::Error`.
 - [ ] Write unit test `test_BC_2_08_003_kill_session_sigterm_within_500ms`: mock session-host; verify `DaemonToHost::Kill` sent within 500ms; state → Terminating; on mock confirmation → Terminated; sidecar updated.
 - [ ] Write unit test `test_BC_2_08_003_kill_session_idempotent_on_terminated`: kill on already-Terminated session → `Ok(())`.
 - [ ] Write unit test `test_BC_2_08_003_kill_session_idempotent_on_terminating`: kill on Terminating → `Ok(())`.
@@ -180,7 +180,7 @@ Files to MODIFY (all from S-033):
 | File | Change |
 |------|--------|
 | `crates/monocle-runtime/src/session_manager/mod.rs` | Add `kill_session()` implementation; add watchdog task; add `kill_deadline_unix_ms` write on Terminating transition |
-| `crates/monocle-runtime/src/ipc_handler.rs` | Add `ClientToServer::KillSession` arm |
+| `crates/monocle-runtime/src/ipc_server.rs` | Add `ClientToServer::KillSession` arm |
 | `crates/monocle-session-host/src/main.rs` | Add `DaemonToHost::Kill` handler in main event loop |
 
 ## Token Budget Estimate
@@ -210,7 +210,7 @@ Files to MODIFY (all from S-033):
 | `kill_session()` | `monocle-runtime/src/session_manager/mod.rs` | Effectful (IPC send; OS signal; state mutation) |
 | 12s watchdog task | `monocle-runtime/src/session_manager/mod.rs` | Effectful (tokio::spawn; SIGKILL; sidecar write; broker publish) |
 | `DaemonToHost::Kill` handler | `crates/monocle-session-host/src/main.rs` | Effectful (SIGTERM/SIGKILL to child; StateChanged message; socket cleanup) |
-| IPC handler `KillSession` arm | `monocle-runtime/src/ipc_handler.rs` | Effectful (IPC dispatch) |
+| IPC handler `KillSession` arm | `monocle-runtime/src/ipc_server.rs` | Effectful (IPC dispatch) |
 
 ## Edge Cases
 
@@ -224,7 +224,7 @@ Files to MODIFY (all from S-033):
 
 ## IPC Handler Arm Ownership Disambiguation
 
-S-034 authors the **`ClientToServer::KillSession`** arm in `monocle-runtime/src/ipc_handler.rs`.
+S-034 authors the **`ClientToServer::KillSession`** arm in `monocle-runtime/src/ipc_server.rs`.
 The canonical 7-arm split across the SS-08/SS-09 stories is:
 
 | IPC Handler Arm | Owning Story |
