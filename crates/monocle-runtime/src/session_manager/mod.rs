@@ -15,7 +15,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
-use tokio::net::UnixStream;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
@@ -573,11 +572,13 @@ impl SessionManager {
             let broker_arc = Arc::clone(&self.broker);
             let monitor_session_id = session_id.clone();
             let monitor_socket_path = socket_path.clone();
+            let monitor_sidecar_path = sidecar_path.clone();
 
             tokio::spawn(async move {
                 post_spawn_monitor(
                     monitor_session_id,
                     monitor_socket_path,
+                    monitor_sidecar_path,
                     sessions_arc,
                     broker_arc,
                 )
@@ -831,6 +832,7 @@ impl SessionManager {
 async fn post_spawn_monitor(
     session_id: String,
     socket_path: PathBuf,
+    sidecar_path: PathBuf,
     sessions: Arc<tokio::sync::Mutex<HashMap<String, SessionEntry>>>,
     broker: Arc<monocle_ipc::server::SubscriberList>,
 ) {
@@ -841,11 +843,10 @@ async fn post_spawn_monitor(
     // On connect, split into read/write halves so we can store the write half in
     // host_conn while using the read half for the message loop.
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(30);
-    let (mut reader, writer) = loop {
+    let stream = loop {
         match UnixStream::connect(&socket_path).await {
             Ok(s) => {
-                let (r, w) = s.into_split();
-                break (r, w);
+                break s;
             }
             Err(_) => {
                 if tokio::time::Instant::now() >= deadline {
@@ -863,17 +864,52 @@ async fn post_spawn_monitor(
 
     tracing::debug!(session_id = %session_id, "post-spawn monitor: connected to session-host UDS");
 
-    // Store the write half in the session entry as the control connection.
-    // Wrap in OwnedWriteHalf via a reconstituted UnixStream for the SessionHostConnection.
-    // Since SessionHostConnection expects Arc<Mutex<UnixStream>>, we need to store the
-    // write half differently. For now, store a reconnected stream for writing.
-    // The read loop uses `reader` directly.
-    //
-    // Note: We can't easily put OwnedWriteHalf into Arc<Mutex<UnixStream>>.
-    // For S-033 scope (Launching→Running), host_conn is only needed for Kill (S-034).
-    // Store None in host_conn here; S-034 will wire it properly.
-    // The read loop uses the reader half we have.
-    drop(writer); // writer stored as host_conn in S-034; drop for now to avoid leak
+    // B-003 (EC-163): SO_PEERCRED UID verification.
+    // Before reading any messages, verify the connecting peer's UID matches the daemon's UID.
+    // A mismatch indicates a non-daemon process tried to impersonate a session-host — EC-163.
+    // On mismatch: mark session Terminated, GC the sidecar, broadcast Terminated, and return.
+    let daemon_uid = nix::unistd::getuid().as_raw();
+    let peer_uid = stream.peer_cred().map(|cred| cred.uid()).ok();
+    if peer_uid != Some(daemon_uid) {
+        tracing::warn!(
+            session_id = %session_id,
+            ?peer_uid,
+            daemon_uid = daemon_uid,
+            "post-spawn monitor: SO_PEERCRED UID mismatch — terminating session (EC-163)"
+        );
+        // Mark session as Terminated.
+        {
+            let mut guard = sessions.lock().await;
+            if let Some(entry) = guard.get_mut(&session_id) {
+                entry.state = SessionState::Terminated;
+            }
+        }
+        // GC the sidecar.
+        let _ = std::fs::remove_file(&sidecar_path);
+        // Broadcast Terminated to all TUI subscribers.
+        let terminated_msg = monocle_ipc::types::ServerToClient::SessionStateChanged {
+            session_id: session_id.clone(),
+            new_state: SessionState::Terminated,
+        };
+        crate::ipc_server::broadcast_to_subscribers(&broker, terminated_msg).await;
+        return;
+    }
+
+    // Split into read/write halves AFTER the UID check.
+    let (mut reader, writer) = stream.into_split();
+
+    // HIGH-001: store the write half in host_conn in the session entry.
+    // Wrapped in Arc<Mutex> so the entry holds ownership while the read loop runs.
+    // S-034 will use this writer to send DaemonToHost::Kill messages.
+    {
+        let mut guard = sessions.lock().await;
+        if let Some(entry) = guard.get_mut(&session_id) {
+            entry.host_conn = Some(SessionHostConnection {
+                writer: Arc::new(Mutex::new(writer)),
+                proxy_task: None,
+            });
+        }
+    }
 
     // Read messages from the session-host until StateChanged{Running} or timeout.
     let read_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(30);
@@ -930,7 +966,10 @@ async fn post_spawn_monitor(
         };
 
         match msg {
-            monocle_ipc::types::HostToDaemon::StateChanged { new_state, .. } => {
+            monocle_ipc::types::HostToDaemon::StateChanged {
+                new_state,
+                degraded_env,
+            } => {
                 tracing::debug!(
                     session_id = %session_id,
                     ?new_state,
@@ -938,11 +977,114 @@ async fn post_spawn_monitor(
                 );
 
                 if new_state == monocle_ipc::types::SessionState::Running {
-                    // Transition session to Running.
-                    {
+                    // MED-004 (I3-009): handle degraded_env before state transition.
+                    if let Some(true) = degraded_env {
+                        let mut guard = sessions.lock().await;
+                        if let Some(entry) = guard.get_mut(&session_id) {
+                            entry.degraded = true;
+                            entry.degraded_reason =
+                                Some("degraded environment detected".to_string());
+                        }
+                    }
+
+                    // Transition session to Running and collect daemon-owned fields for
+                    // sidecar re-persist (HIGH-003 / B-005).
+                    let (
+                        project_root,
+                        cwd,
+                        harness_id,
+                        profile_id,
+                        started_at,
+                        display_name,
+                        session_host_pid,
+                    ) = {
                         let mut guard = sessions.lock().await;
                         if let Some(entry) = guard.get_mut(&session_id) {
                             entry.state = SessionState::Running;
+                            let display_name = format!(
+                                "{} — {}",
+                                entry.harness_id,
+                                entry
+                                    .project_root
+                                    .file_name()
+                                    .and_then(|n| n.to_str())
+                                    .unwrap_or("unknown")
+                            );
+                            (
+                                entry.project_root.to_string_lossy().into_owned(),
+                                entry.cwd.to_string_lossy().into_owned(),
+                                entry.harness_id.clone(),
+                                entry.profile_id.clone(),
+                                entry.started_at.to_rfc3339(),
+                                display_name,
+                                entry.session_host_pid,
+                            )
+                        } else {
+                            // Session was removed from registry before we could transition it.
+                            tracing::warn!(session_id = %session_id, "post-spawn monitor: session entry not found for Running transition");
+                            break;
+                        }
+                    };
+
+                    // HIGH-003 / B-005: Re-persist the sidecar with state:Running,
+                    // restoring all daemon-owned fields after any session-host overwrites.
+                    // Read the on-disk sidecar (which may have been written by the session-host
+                    // at step 8 with child_pid set) and merge daemon-owned fields before
+                    // re-persisting atomically.
+                    {
+                        // Try to read the existing sidecar for child_pid (written by session-host).
+                        let existing_child_pid: Option<u32> =
+                            std::fs::read_to_string(&sidecar_path)
+                                .ok()
+                                .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+                                .and_then(|v| v["child_pid"].as_u64())
+                                .map(|n| n as u32);
+
+                        let sidecar = monocle_ipc::types::SessionSidecarV3 {
+                            schema_version: 3,
+                            session_id: session_id.clone(),
+                            pid: session_host_pid,
+                            socket_path: socket_path.to_string_lossy().into_owned(),
+                            child_pid: existing_child_pid,
+                            state: monocle_ipc::types::SessionState::Running,
+                            project_root: project_root.clone(),
+                            cwd: cwd.clone(),
+                            harness_id: harness_id.clone(),
+                            profile_id: profile_id.clone(),
+                            started_at: started_at.clone(),
+                            display_name: display_name.clone(),
+                            pty_rows: 24,
+                            pty_cols: 80,
+                            kill_deadline_unix_ms: None,
+                        };
+
+                        let sidecar_json = serde_json::to_vec_pretty(&sidecar).ok();
+                        if let Some(json_bytes) = sidecar_json {
+                            if let Some(parent) = sidecar_path.parent() {
+                                let write_result: Result<(), std::io::Error> = (|| {
+                                    let mut tmp = tempfile::Builder::new()
+                                        .prefix(".session-sidecar-running-")
+                                        .suffix(".json.tmp")
+                                        .tempfile_in(parent)?;
+                                    use std::io::Write as _;
+                                    tmp.write_all(&json_bytes)?;
+                                    tmp.persist(&sidecar_path).map_err(|e| e.error)?;
+                                    Ok(())
+                                })(
+                                );
+                                if let Err(e) = write_result {
+                                    tracing::warn!(
+                                        session_id = %session_id,
+                                        error = %e,
+                                        "post-spawn monitor: failed to re-persist sidecar with Running state"
+                                    );
+                                } else {
+                                    tracing::debug!(
+                                        session_id = %session_id,
+                                        "post-spawn monitor: sidecar re-persisted with Running state"
+                                    );
+                                }
+                            }
                         }
                     }
 
