@@ -1,0 +1,40 @@
+[package]
+name = "monocle-session-host"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Per-session supervisor process: owns PTY master, vt100 parser, harness child handle, and per-session UDS socket (S-033)."
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "monocle-session-host"
+path = "src/main.rs"
+
+[dependencies]
+# PTY stack (v1A additions per SS-deps-pin-manifest-v2-delta.md §New Crates)
+portable-pty  = "0.9"
+vt100         = "0.16"
+
+# Workspace dependencies
+tokio         = { workspace = true }
+serde         = { workspace = true }
+serde_json    = { workspace = true }
+nix           = { workspace = true, features = ["process"] }
+thiserror     = { workspace = true }
+tracing       = { workspace = true }
+chrono        = { workspace = true }
+uuid          = { workspace = true }
+
+# IPC wire types (SessionState, DaemonToHost, HostToDaemon, SerializedCell)
+monocle-ipc   = { path = "../monocle-ipc" }
+
+# Structured logging for session-host process (stderr; not shared with daemon runtime).
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Atomic sidecar writes (no naked std::fs::write — CLAUDE.md conventions).
+tempfile      = { workspace = true }

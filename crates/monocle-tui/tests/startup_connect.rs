@@ -603,9 +603,8 @@ fn test_bc_2_06_004_inv1_ac010_no_client_disconnect_message() {
         decision: PermissionDecisionKind::Allow,
     };
 
-    // Exhaustive match: if ClientDisconnect were added, this would fail to compile.
-    // The #[deny(unreachable_patterns)] attr would catch any extra arms if we tried
-    // to add a `ClientDisconnect => {}` arm here.
+    // Exhaustive match: any new ClientToServer variant added in the future will cause
+    // a compile error here, forcing a conscious decision about this test's handling.
     match msg {
         ClientToServer::PermissionDecision {
             prompt_id,
@@ -616,6 +615,10 @@ fn test_bc_2_06_004_inv1_ac010_no_client_disconnect_message() {
                 !prompt_id.is_nil(),
                 "AC-010: PermissionDecision prompt_id must be non-nil"
             );
+        }
+        // S-033 stub: SpawnSession is not expected in this PermissionDecision round-trip test.
+        ClientToServer::SpawnSession { .. } => {
+            panic!("unexpected SpawnSession in PermissionDecision round-trip test");
         }
     }
 }

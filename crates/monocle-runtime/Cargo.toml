@@ -19,6 +19,9 @@ description = "Runtime daemon for monocle: hook ingestion, session lifecycle, au
 # When this feature is absent (production), neither env var is read nor compiled in.
 # HIGH-1 fix (SS-daemon-wiring-impl.md §Fix Addendum Round 2 HIGH-1).
 e2e-test-affordances = []
+# Enables MockSessionHostSpawner and other test-seam types for use by integration
+# tests in other crates (e.g., monocle-test-harness). Never enabled in production.
+test-utils = []
 
 [lints]
 workspace = true

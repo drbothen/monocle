@@ -2,6 +2,9 @@
 ///
 /// Tests in `engine_module_surface.rs` (VP-019 AST audit suite) verify structural
 /// conformance to BC-2.03.001 and SS-engine-module.md v1.1.27.
+///
+/// S-033: adds `EngineError`, `SpawnOptions`, `SpawnRecipe`, and `spawn_recipe()` default
+/// method per BC-2.03.008 and SS-engine-module-v2-delta.md §spawn_recipe-new-trait-method.
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -34,6 +37,19 @@ pub trait EngineModule: Send + Sync + 'static {
 
     /// Process an inbound hook event, returning the dispatch decision.
     async fn on_hook(&self, event: HookEvent) -> HookResponse;
+
+    /// Return the recipe needed to spawn a session under monocle's daemon.
+    ///
+    /// Default impl returns `Err(EngineError::UnsupportedOperation("spawn_recipe"))`.
+    /// Only engines that support monocle-controlled session spawning implement this.
+    /// Phase 1: `ClaudeCodeModule` override is added by S-045.
+    ///
+    /// BC-2.03.008 PC-1: a no-override `EngineModule` MUST return this exact error.
+    /// BC-2.03.008 PC-3: `session_error_to_code()` maps `UnsupportedOperation` to
+    /// `"spawn_unsupported"` (not `"invalid_request"`) — F-P44-IMP-001.
+    fn spawn_recipe(&self, _opts: &SpawnOptions) -> Result<SpawnRecipe, EngineError> {
+        Err(EngineError::UnsupportedOperation("spawn_recipe"))
+    }
 }
 
 /// Human-readable harness metadata.
@@ -364,4 +380,145 @@ pub enum EngineMetadataError {
     /// Platform home directory could not be resolved.
     #[error("platform home directory unresolvable (BaseDirs::new() returned None)")]
     HomeUnresolvable,
+}
+
+// ---------------------------------------------------------------------------
+// S-033: spawn_recipe() types — BC-2.03.008 + SS-engine-module-v2-delta.md
+// ---------------------------------------------------------------------------
+
+/// Errors from `EngineModule::spawn_recipe()`.
+///
+/// `#[non_exhaustive]` for Phase 3 WASM engine forward-compatibility.
+/// The inner match in `session_error_to_code()` MUST include a `_ => "invalid_request"`
+/// fallback because this type is cross-crate and non-exhaustive.
+///
+/// Phase 1 variants: `BinaryNotFound`, `InvalidPath`, `UnsupportedOperation`.
+/// The `UnsupportedOperation` arm MUST appear explicitly in `session_error_to_code()` BEFORE
+/// the `_ =>` fallback — omitting it is the F-P44-IMP-001 regression pattern.
+#[non_exhaustive]
+#[derive(Debug, thiserror::Error)]
+pub enum EngineError {
+    /// The harness binary was not found on PATH (e.g., `which::which("claude")` failed).
+    /// Wire code: `"binary_not_found"`.
+    #[error("binary not found: {0}")]
+    BinaryNotFound(String),
+
+    /// An argument to spawn_recipe() is invalid (e.g., non-UTF-8 or null-byte in path).
+    /// Wire code: `"invalid_spawn_arg"`.
+    #[error("invalid path argument: {0}")]
+    InvalidPath(String),
+
+    /// The EngineModule does not support monocle-controlled spawning.
+    /// Default impl of `spawn_recipe()` returns this variant (BC-2.03.008 PC-1).
+    /// Wire code: `"spawn_unsupported"` (F-P44-IMP-001).
+    #[error("unsupported operation: {0}")]
+    UnsupportedOperation(&'static str),
+}
+
+/// The spawn recipe produced by an `EngineModule`.
+///
+/// `SessionManager` uses this to build the `monocle-session-host` command line.
+/// Daemon-internal — never transmitted over IPC directly.
+/// All fields MUST be set by the implementing module.
+///
+/// `#[non_exhaustive]` per ADR-0006: field additions (new harness CLI flags) arise from
+/// Claude Code version bumps requiring coordinated BC revisions.
+#[non_exhaustive]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SpawnRecipe {
+    /// Absolute path to the harness binary.
+    pub binary: PathBuf,
+    /// CLI arguments (e.g., `["--settings", "/tmp/monocle-hooks-abc.json"]`).
+    /// The `hooks_settings_path` from `SpawnOptions` MUST be passed here as `--settings`.
+    pub args: Vec<String>,
+    /// Environment variables to OVERLAY on top of the session-host process's inherited env.
+    /// Keys present here override any matching key in the inherited env.
+    /// PATH/HOME are preserved from the inherited base env.
+    pub env: HashMap<String, String>,
+    /// Working directory for the harness child process.
+    /// Populated from `SpawnOptions.worktree_root`. NEVER hardcoded to `project_root`.
+    pub cwd: PathBuf,
+}
+
+impl SpawnRecipe {
+    /// ADR-0006 constructor: required because `SpawnRecipe` is `#[non_exhaustive]` and
+    /// constructed cross-crate inside `ClaudeCodeModule::spawn_recipe()` in `monocle-runtime`.
+    pub fn new(
+        binary: PathBuf,
+        args: Vec<String>,
+        env: HashMap<String, String>,
+        cwd: PathBuf,
+    ) -> Self {
+        Self {
+            binary,
+            args,
+            env,
+            cwd,
+        }
+    }
+}
+
+/// Options passed from the TUI via `ClientToServer::SpawnSession { opts }` to the daemon,
+/// and then from the IPC handler to `SessionManager::spawn_session(opts)` and from there
+/// to `EngineModule::spawn_recipe(&opts)`.
+///
+/// I27-001 (Model A): `SpawnOptions` is the IPC wire type. `SpawnRecipe` is daemon-internal.
+/// The TUI populates `project_root`, `worktree_root`, `harness_id`, `profile_id`, and
+/// `ccr_base_url`. The daemon IPC handler fills `session_id` and `hooks_settings_path` on
+/// receipt before calling `SessionManager::spawn_session(opts)`.
+#[non_exhaustive]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SpawnOptions {
+    /// Project root directory (user-selected in the wizard; used for display grouping).
+    pub project_root: PathBuf,
+    /// Working directory for the harness child process (resolved git worktree root or
+    /// `project_root`).
+    pub worktree_root: PathBuf,
+    /// Harness identifier selected by the user (e.g., `"claude-code"`, `"codemachine"`).
+    pub harness_id: String,
+    /// Harness profile ID selected by the user in the SessionCreation wizard.
+    pub profile_id: String,
+    /// Pre-generated session UUID (filled by daemon IPC handler, never by TUI).
+    pub session_id: String,
+    /// Path where the daemon has already written the shared hooks-settings.json.
+    /// The EngineModule MUST include `"--settings <hooks_settings_path>"` in recipe args.
+    pub hooks_settings_path: PathBuf,
+    /// If CCR is detected and a base URL is configured, this carries the URL.
+    /// The EngineModule MUST inject this as `ANTHROPIC_BASE_URL` in `env` if present.
+    pub ccr_base_url: Option<String>,
+}
+
+impl SpawnOptions {
+    /// TUI-side constructor (ADR-0006): populates the 5 TUI-owned fields.
+    /// The two daemon-owned fields (`session_id`, `hooks_settings_path`) are initialized
+    /// to placeholder values; the daemon ALWAYS overwrites them via `with_daemon_fields()`
+    /// before calling `spawn_session()`.
+    pub fn for_spawn_request(
+        project_root: PathBuf,
+        worktree_root: PathBuf,
+        harness_id: String,
+        profile_id: String,
+        ccr_base_url: Option<String>,
+    ) -> Self {
+        Self {
+            project_root,
+            worktree_root,
+            harness_id,
+            profile_id,
+            ccr_base_url,
+            session_id: String::new(),
+            hooks_settings_path: PathBuf::new(),
+        }
+    }
+
+    /// Daemon-side consuming builder: fills the two daemon-owned fields.
+    /// Called in the IPC handler immediately upon receipt of `ClientToServer::SpawnSession`,
+    /// BEFORE passing `SpawnOptions` to `spawn_session()`.
+    pub fn with_daemon_fields(self, session_id: String, hooks_settings_path: PathBuf) -> Self {
+        Self {
+            session_id,
+            hooks_settings_path,
+            ..self
+        }
+    }
 }

@@ -20,7 +20,7 @@
 //! it from here, breaking the potential circular dependency that would arise from
 //! `monocle-ipc` importing from `monocle-runtime` (which already depends on `monocle-ipc`).
 
-use monocle_core::engine::EnrichedSession;
+use monocle_core::engine::{EnrichedSession, SpawnOptions};
 // HookType is already non_exhaustive + serde in monocle-core; re-export for downstream consumers.
 pub use monocle_core::hook_events::HookType;
 use uuid::Uuid;
@@ -90,6 +90,183 @@ impl HookEventRecord {
             hook_type,
             tool_name,
             tool_input,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// S-033: SessionState (wire type — authoritative location per architecture compliance rule)
+// SessionState lives in monocle-ipc, NOT monocle-runtime, because SessionStateChanged
+// { new_state: SessionState } and SessionSnapshot { state: SessionState } are wire types.
+// monocle-ipc MUST NOT depend on monocle-runtime; placing SessionState in monocle-runtime
+// would create a circular dependency.
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// S-033: SessionSidecarV3 — shared session-state.json schema (Ruling B)
+// Lives in monocle-ipc so both monocle-runtime and monocle-session-host import the
+// SAME type. This is the byte-level schema agreement mechanism: any change to the
+// struct will produce a compile-time error in both crates simultaneously (HIGH-009).
+// ---------------------------------------------------------------------------
+
+/// Session-state.json sidecar, schema version 3.
+///
+/// Shared between `monocle-runtime` (daemon writer at spawn — `child_pid: None`) and
+/// `monocle-session-host` (writer at startup step 8 — `child_pid: Some(pid)`).
+/// Both crates import this from `monocle-ipc`. The serde schema is the byte-level
+/// agreement; compile errors propagate to both crates on struct change.
+///
+/// **Ownership protocol (SS-session-manager.md §Ruling B):**
+/// - Daemon writes all fields first with `child_pid: None`.
+/// - Session-host overwrites the sidecar with `child_pid: Some(pid)` at startup step 8,
+///   after the PTY is open and the harness child is spawned.
+/// - Both writes are atomic via `tempfile::persist`.
+///
+/// **Forward compat:** `#[serde(default)]` on `kill_deadline_unix_ms` allows schema v1/v2
+/// sidecars to deserialize into this struct with the field absent → `None`.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SessionSidecarV3 {
+    /// Always 3 for this struct version.
+    pub schema_version: u32,
+    /// Session UUID string.
+    pub session_id: String,
+    /// OS PID of the session-host process (daemon's initial write).
+    pub pid: u32,
+    /// Per-session UDS socket path: `<runtime_dir>/session-<uuid>.sock`.
+    pub socket_path: String,
+    /// Harness child PID. `None` in daemon's initial write; populated by session-host at step 8.
+    pub child_pid: Option<u32>,
+    /// Lifecycle state. `Launching` in daemon's initial write; updated on transitions.
+    pub state: SessionState,
+    /// User-selected project directory (wizard Step 2).
+    pub project_root: String,
+    /// Resolved worktree root (equals `project_root` when no worktree configured).
+    pub cwd: String,
+    /// Harness identifier (e.g., `"claude-code"`).
+    pub harness_id: String,
+    /// Profile identifier.
+    pub profile_id: String,
+    /// ISO-8601 UTC spawn timestamp (e.g., `chrono::Utc::now().to_rfc3339()`).
+    pub started_at: String,
+    /// Human-readable session display name.
+    pub display_name: String,
+    /// Initial PTY rows.
+    pub pty_rows: u16,
+    /// Initial PTY cols.
+    pub pty_cols: u16,
+    /// Kill deadline as Unix epoch milliseconds.
+    /// `null` unless `state == Terminating`. Forward-compat: absent in v1/v2 sidecars → `None`.
+    #[serde(default)]
+    pub kill_deadline_unix_ms: Option<u64>,
+}
+
+/// Session lifecycle state machine.
+///
+/// The canonical 5 variants. `Created` and `Killed` are RETIRED — do NOT use them.
+///
+/// `#[non_exhaustive]` per SS-session-manager.md §Session lifecycle state machine.
+/// Serialize/Deserialize for session-state.json sidecar and IPC wire transport.
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum SessionState {
+    /// session-host process spawned; waiting for `StateChanged { new_state: Running }`.
+    /// Initial state written to sidecar at spawn time.
+    Launching,
+    /// session-host alive, daemon attached, PTY streaming to broker.
+    Running,
+    /// TUI or daemon explicitly detached; session-host still alive.
+    Detached,
+    /// kill_session() called; awaiting HostToDaemon::StateChanged { Terminated }.
+    Terminating,
+    /// Harness child exited. Terminal state.
+    Terminated,
+}
+
+/// Messages sent from the session-host process to the daemon over the per-session UDS socket.
+///
+/// Serialized as length-prefixed JSON (4-byte LE u32 + JSON body) on the per-session
+/// UDS control connection (`<runtime_dir>/session-<uuid>.sock`).
+///
+/// `#[serde(tag = "type")]` uses the variant name lowercased (e.g., `state_changed`)
+/// per SS-session-manager.md §session-host to daemon protocol.
+///
+/// S-033: minimum viable set for the Launching → Running transition.
+/// S-034/S-035: Kill/Detach result variants are added in those stories.
+#[non_exhaustive]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum HostToDaemon {
+    /// Session-host reports a lifecycle state transition.
+    ///
+    /// Sent at startup (Launching → Running) and on termination (→ Terminated).
+    StateChanged {
+        /// The new lifecycle state.
+        new_state: SessionState,
+        /// Optional degraded-env flag. `Some(true)` when HOME or PATH were not set.
+        /// `None` in normal operation.
+        degraded_env: Option<bool>,
+    },
+}
+
+/// A snapshot of a single session (wire type for SessionListUpdate, InitialState).
+///
+/// Carries the daemon-observable session metadata for display in the TUI sessions panel.
+#[non_exhaustive]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SessionSnapshot {
+    /// Session UUID string.
+    pub session_id: String,
+    /// Harness identifier (e.g., `"claude-code"`).
+    pub harness_id: String,
+    /// Profile identifier.
+    pub profile_id: String,
+    /// Human-readable session name. Defaults to `"<harness_id> — <project_root_basename>"`.
+    pub display_name: String,
+    /// Project root directory.
+    pub project_root: String,
+    /// Working directory (resolved worktree root or project_root).
+    pub cwd: String,
+    /// Current lifecycle state.
+    pub state: SessionState,
+    /// ISO-8601 UTC spawn timestamp.
+    pub started_at: String,
+    /// True when the session-host detected missing critical env vars (HOME, PATH).
+    pub degraded: bool,
+    /// Human-readable degraded reason, if degraded.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub degraded_reason: Option<String>,
+}
+
+impl SessionSnapshot {
+    /// Construct a `SessionSnapshot`.
+    ///
+    /// Required because `SessionSnapshot` is `#[non_exhaustive]` — struct-literal
+    /// construction is forbidden outside `monocle-ipc::types` (Rust E0639).
+    /// Called from `monocle-runtime::session_manager` to build `session_list()`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        session_id: String,
+        harness_id: String,
+        profile_id: String,
+        display_name: String,
+        project_root: String,
+        cwd: String,
+        state: SessionState,
+        started_at: String,
+        degraded: bool,
+        degraded_reason: Option<String>,
+    ) -> Self {
+        Self {
+            session_id,
+            harness_id,
+            profile_id,
+            display_name,
+            project_root,
+            cwd,
+            state,
+            started_at,
+            degraded,
+            degraded_reason,
         }
     }
 }
@@ -211,12 +388,49 @@ pub enum ServerToClient {
         /// Cumulative event drops since daemon start.
         drop_counter: u64,
     },
+
+    // -----------------------------------------------------------------------
+    // S-033 variants (BC-2.08.001, BC-2.08.008)
+    // -----------------------------------------------------------------------
+    /// Immediate acknowledgement of a `ClientToServer::SpawnSession` request.
+    ///
+    /// Sent to the REQUESTING client ONLY (not broadcast) BEFORE `spawn_session()`
+    /// is called, in the IPC handler. The TUI uses `session_id` to track the
+    /// in-progress spawn (F-P41-IMP-001, BC-2.08.001 PC-1).
+    SpawnAck {
+        /// The UUID v4 string generated by the daemon IPC handler for this spawn.
+        session_id: String,
+    },
+
+    /// A session's lifecycle state changed.
+    ///
+    /// Published to ALL TUI clients via the broker. MUST be sent BEFORE
+    /// `SessionListUpdate` for the same transition (BC-2.08.008 Invariant 4).
+    SessionStateChanged {
+        /// The session whose state changed.
+        session_id: String,
+        /// The new lifecycle state.
+        new_state: SessionState,
+    },
+
+    /// An IPC operation failed.
+    ///
+    /// Sent to the requesting client when a lifecycle operation returns a
+    /// `SessionError`. The `code` field maps to the v1A IPC error code taxonomy
+    /// in SS-session-manager.md §session_error_to_code().
+    Error {
+        /// Machine-readable error code (e.g., `"binary_not_found"`, `"spawn_failed"`).
+        code: String,
+        /// Human-readable error message (from `SessionError::to_string()`).
+        message: String,
+    },
 }
 
 /// Messages sent from TUI clients to the daemon.
 ///
 /// Phase 1 has a single client-to-server message: `PermissionDecision`.
-/// The enum is left open for Phase 2+ additions (e.g., explicit disconnect, ping).
+/// S-033 adds `SpawnSession` (BC-2.08.001 PC-1 / SS-session-manager.md §IPC handler pattern).
+/// The enum is left open for Phase 2+ additions.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type")]
 pub enum ClientToServer {
@@ -228,6 +442,20 @@ pub enum ClientToServer {
         prompt_id: Uuid,
         /// The user's decision: approve or deny.
         decision: PermissionDecisionKind,
+    },
+
+    // -----------------------------------------------------------------------
+    // S-033 variant (BC-2.08.001 — spawn a new session)
+    // -----------------------------------------------------------------------
+    /// Request the daemon to spawn a new session.
+    ///
+    /// The TUI populates `project_root`, `worktree_root`, `harness_id`, `profile_id`,
+    /// and `ccr_base_url` in `opts`. The daemon fills `session_id` and
+    /// `hooks_settings_path` via `opts.with_daemon_fields()` on receipt, then calls
+    /// `spawn_session(opts)` (BC-2.08.001 §IPC handler pattern).
+    SpawnSession {
+        /// Spawn parameters from the SessionCreation wizard.
+        opts: SpawnOptions,
     },
 }
 

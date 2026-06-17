@@ -147,6 +147,10 @@ fn test_BC_2_06_011_accept_once_y_sends_allow_ipc_modal_stays_in_stack() {
                 "BC-2.06.011 PC-1: decision must be Allow for `y` (Accept-Once)"
             );
         }
+        // S-033 stub: SpawnSession is not expected in this PermissionDecision test context.
+        ClientToServer::SpawnSession { .. } => {
+            panic!("unexpected SpawnSession in overlay_decision test (BC-2.06.011 PC-1 y)");
+        }
     }
 }
 
@@ -188,6 +192,10 @@ fn test_BC_2_06_011_accept_once_enter_sends_allow_ipc_modal_stays() {
                 PermissionDecisionKind::Allow,
                 "BC-2.06.011 PC-1: Enter must send Allow decision"
             );
+        }
+        // S-033 stub: SpawnSession is not expected in this PermissionDecision test context.
+        ClientToServer::SpawnSession { .. } => {
+            panic!("unexpected SpawnSession in overlay_decision test (BC-2.06.011 PC-1 Enter)");
         }
     }
 }
@@ -260,6 +268,12 @@ fn test_BC_2_06_012_accept_always_uppercase_a_sends_accept_always_modal_stays() 
                 "BC-2.06.012 PC-1: decision must be AcceptAlways for `A`"
             );
         }
+        // S-033 stub: SpawnSession is not expected in this PermissionDecision test context.
+        ClientToServer::SpawnSession { .. } => {
+            panic!(
+                "unexpected SpawnSession in overlay_decision test (BC-2.06.012 PC-1 AcceptAlways)"
+            );
+        }
     }
 }
 
@@ -328,6 +342,10 @@ fn test_BC_2_06_013_reject_n_sends_deny_modal_stays_in_stack() {
                 "BC-2.06.013 PC-1: decision must be Deny for `n`"
             );
         }
+        // S-033 stub: SpawnSession is not expected in this PermissionDecision test context.
+        ClientToServer::SpawnSession { .. } => {
+            panic!("unexpected SpawnSession in overlay_decision test (BC-2.06.013 PC-1 n)");
+        }
     }
 }
 
@@ -374,6 +392,10 @@ fn test_BC_2_06_013_reject_r_sends_deny_modal_stays_in_stack() {
                 PermissionDecisionKind::Deny,
                 "BC-2.06.013 PC-1: `r` must send Deny decision"
             );
+        }
+        // S-033 stub: SpawnSession is not expected in this PermissionDecision test context.
+        ClientToServer::SpawnSession { .. } => {
+            panic!("unexpected SpawnSession in overlay_decision test (BC-2.06.013 PC-1 r)");
         }
     }
 }
@@ -427,6 +449,10 @@ fn test_BC_2_06_011_accept_once_uses_front_prompt_id_in_multi_stack() {
                 "BC-2.06.011 Invariant 1: PermissionDecision must use FRONT (P1), not P2"
             );
             assert_eq!(decision, PermissionDecisionKind::Allow);
+        }
+        // S-033 stub: SpawnSession is not expected in this PermissionDecision test context.
+        ClientToServer::SpawnSession { .. } => {
+            panic!("unexpected SpawnSession in overlay_decision test (BC-2.06.011 Invariant 1 multi-stack)");
         }
     }
 }

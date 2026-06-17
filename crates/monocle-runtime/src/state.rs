@@ -318,6 +318,19 @@ pub struct DaemonState {
     pub uds_transport: Option<monocle_ipc::uds::UdsTransport>,
 
     // -------------------------------------------------------------------------
+    // S-033 fields: SessionManager
+    // -------------------------------------------------------------------------
+    /// SessionManager — daemon-side coordinator for session-host processes (S-033).
+    ///
+    /// `None` — not yet initialized (daemon startup before session-manager wiring).
+    /// `Some(manager)` — live session manager. The IPC handler calls
+    ///   `session_manager.lock().await.spawn_session(opts)` on `ClientToServer::SpawnSession`.
+    ///
+    /// Protected by a `tokio::sync::Mutex` because `SessionManager` is manipulated by
+    /// async lifecycle methods called from the per-client IPC task.
+    pub session_manager: Option<tokio::sync::Mutex<crate::session_manager::SessionManager>>,
+
+    // -------------------------------------------------------------------------
     // Test-only fields: engine decision injection
     //
     // These fields are Option<_> (zero cost when None) and are NEVER set by
@@ -396,6 +409,31 @@ impl DaemonState {
             pending_decisions: None,
             ipc_subscribers: None,
             uds_transport: None,
+            // S-033 MED-011: wire SessionManager with RealSessionHostSpawner at construction.
+            // DaemonState::new() is the unit-test constructor AND the daemon-start baseline.
+            // session_manager must be Some(_) so handle_spawn_session() can call it.
+            session_manager: {
+                use std::sync::Arc;
+                use crate::session_manager::{SessionManager, RealSessionHostSpawner};
+                use crate::engine::claude_code::ClaudeCodeModule;
+                let spawner = Arc::new(RealSessionHostSpawner {
+                    session_host_bin: std::env::current_exe()
+                        .ok()
+                        .and_then(|p| p.parent().map(|d| d.join("monocle-session-host")))
+                        .unwrap_or_else(|| std::path::PathBuf::from("monocle-session-host")),
+                });
+                let engine = Arc::new(ClaudeCodeModule::new(String::new()));
+                let empty_subscribers: monocle_ipc::server::SubscriberList =
+                    Arc::new(tokio::sync::Mutex::new(vec![]));
+                let broker = Arc::new(Arc::clone(&empty_subscribers));
+                let runtime_dir = std::env::temp_dir();
+                Some(tokio::sync::Mutex::new(SessionManager::new(
+                    runtime_dir,
+                    spawner,
+                    broker,
+                    engine,
+                )))
+            },
             hook_decision_override: None,
             hook_delay_ms: None,
             hook_outer_delay_ms: None,

@@ -654,6 +654,7 @@ pub async fn daemon_start_sequence(
         pending_decisions: Some(Arc::new(crate::permissions::PendingDecisionRegistry::new())),
         ipc_subscribers: Some(Arc::clone(&ipc_subscribers)),
         uds_transport: Some(uds_transport),
+        session_manager: None, // S-033: wired in daemon_start_sequence step 9b (post-rediscovery)
         hook_decision_override: None,
         hook_delay_ms: None, // Unit-test override only; not set via env var.
         // HIGH-1 fix: MONOCLE_HOOK_DELAY_MS env var is gated behind the `e2e-test-affordances`

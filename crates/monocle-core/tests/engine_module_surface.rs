@@ -88,8 +88,12 @@ fn find_engine_module_trait(file: &syn::File) -> &ItemTrait {
 
 /// Exercises VP-019 probe 19.a and AC-001.
 ///
-/// `EngineModule` MUST have exactly 5 trait methods with the canonical names:
-/// `id`, `metadata`, `detect`, `enrich`, `on_hook`.
+/// `EngineModule` MUST have exactly 6 trait methods with the canonical names:
+/// `id`, `metadata`, `detect`, `enrich`, `on_hook`, `spawn_recipe`.
+///
+/// The 6th method `spawn_recipe` was added by S-033 (BC-2.03.008) as a default-impl
+/// method. The original 5-method surface is superseded; all post-S-033 implementations
+/// inherit the default `spawn_recipe` that returns `Err(EngineError::UnsupportedOperation)`.
 #[test]
 fn test_BC_2_03_001_vp019_19a_exactly_5_methods_with_canonical_names() {
     let file = parse_engine_rs();
@@ -107,15 +111,23 @@ fn test_BC_2_03_001_vp019_19a_exactly_5_methods_with_canonical_names() {
         })
         .collect();
 
-    let expected: HashSet<String> = ["id", "metadata", "detect", "enrich", "on_hook"]
-        .iter()
-        .map(|s| s.to_string())
-        .collect();
+    // S-033 (BC-2.03.008): `spawn_recipe` added as 6th method with default impl.
+    let expected: HashSet<String> = [
+        "id",
+        "metadata",
+        "detect",
+        "enrich",
+        "on_hook",
+        "spawn_recipe",
+    ]
+    .iter()
+    .map(|s| s.to_string())
+    .collect();
 
     assert_eq!(
         method_names.len(),
-        5,
-        "EngineModule must have exactly 5 methods; found {}: {method_names:?}",
+        6,
+        "EngineModule must have exactly 6 methods (5 original + spawn_recipe from S-033); found {}: {method_names:?}",
         method_names.len(),
     );
     assert_eq!(
