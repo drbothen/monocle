@@ -341,7 +341,7 @@ impl SessionHostSpawner for MockSessionHostSpawner {
 #[allow(dead_code)]
 struct SessionHostConnection {
     /// Write half of the per-session UDS control connection.
-    writer: Arc<Mutex<UnixStream>>,
+    writer: Arc<Mutex<tokio::net::unix::OwnedWriteHalf>>,
     /// Background task proxying session-host PTY output to daemon broker.
     /// None during Launching; started at Launching → Running transition.
     proxy_task: Option<JoinHandle<()>>,
