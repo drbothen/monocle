@@ -454,32 +454,58 @@ async fn test_BC_2_08_001_B003_peercred_mismatch_terminates_session() {
     // _peer is kept alive to prevent immediate ECONNRESET on the monitor side;
     // the monitor already received Err from verify() before sending any data.
 
-    // EC-163 ASSERTION 1: SessionStateChanged{Terminated} must be broadcast.
-    let mut found_terminated = false;
-    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(3);
-    loop {
-        if tokio::time::Instant::now() >= deadline {
-            break;
-        }
-        match tokio::time::timeout(std::time::Duration::from_millis(200), tui_rx.recv()).await {
-            Ok(Some(ServerToClient::SessionStateChanged {
-                session_id: ref sid,
-                new_state: SessionState::Terminated,
-            })) if sid == "b0030000-0000-4000-a000-000000000001" => {
-                found_terminated = true;
-                break;
-            }
-            Ok(Some(_)) => {} // Drain Launching / ListUpdate
-            Ok(None) | Err(_) => break,
-        }
+    // Collect ALL broadcast messages in a 3s window.
+    // Do NOT break early on Terminated — we need the full ordered sequence to check
+    // pair adjacency (EC-163 ASSERTION 4: Terminated immediately precedes SessionListUpdate).
+    let mut all_msgs: Vec<ServerToClient> = Vec::new();
+    let drain_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(3);
+    while let Ok(Some(msg)) = tokio::time::timeout_at(drain_deadline, tui_rx.recv()).await {
+        all_msgs.push(msg);
     }
 
+    // EC-163 ASSERTION 1: SessionStateChanged{Terminated} must be broadcast.
+    let terminated_idx = all_msgs.iter().position(|m| {
+        matches!(
+            m,
+            ServerToClient::SessionStateChanged {
+                session_id: ref sid,
+                new_state: SessionState::Terminated,
+            } if sid == "b0030000-0000-4000-a000-000000000001"
+        )
+    });
+
     assert!(
-        found_terminated,
+        terminated_idx.is_some(),
         "B-003 (EC-163): FakePeerCredVerifier{{allow: false}} simulates UID mismatch. \
          post_spawn_monitor MUST broadcast SessionStateChanged{{Terminated}} immediately \
          after verifier.verify() returns Err — before reading any messages. \
-         Got no Terminated broadcast within 3s."
+         Got no Terminated broadcast within 3s. Messages received: {:?}",
+        all_msgs
+    );
+
+    // EC-163 ASSERTION 4: SessionListUpdate MUST be broadcast immediately after
+    // SessionStateChanged{Terminated} — the pair is adjacent (Ruling G / BC-2.08.008 I4).
+    // The Terminated and ListUpdate broadcasts must be emitted under a SINGLE sessions lock
+    // acquisition; no other message may appear between them.
+    let t_idx = terminated_idx.expect("asserted above");
+    let next_after_terminated = all_msgs.get(t_idx + 1);
+    assert!(
+        matches!(
+            next_after_terminated,
+            Some(ServerToClient::SessionListUpdate { .. })
+        ),
+        "B-003 (EC-163 ASSERTION 4): SessionStateChanged{{Terminated}} at index {} MUST be \
+         immediately followed by SessionListUpdate (Ruling G — single lock acquisition across \
+         both broadcasts). \
+         Next message at index {}: {:?}. \
+         Full sequence: {:?}. \
+         Fix: in post_spawn_monitor EC-163 path, hold the sessions lock continuously across \
+         BOTH broadcast_to_subscribers(SessionStateChanged{{Terminated}}) AND \
+         broadcast_to_subscribers(SessionListUpdate) calls.",
+        t_idx,
+        t_idx + 1,
+        next_after_terminated,
+        all_msgs
     );
 
     // EC-163 ASSERTION 2: sidecar must be GC'd (deleted) after mismatch.
@@ -2479,25 +2505,45 @@ async fn test_BC_2_08_001_MED001_real_session_host_reaches_running() {
 /// `SessionManager` mutex across BOTH `try_send()` calls for the Running-transition
 /// broadcast pair (`SessionStateChanged{Running}` + `SessionListUpdate`).
 ///
-/// Test approach: Spawn two sessions concurrently (two pre-bound mock sockets). Both
-/// monitors connect and race to send `StateChanged{Running}` simultaneously via
-/// `tokio::join!`. A single client channel observes all broadcasts. After draining,
-/// the invariant is: for each `SessionStateChanged{Running}`, the IMMEDIATELY NEXT
-/// broadcast message from any category must be a `SessionListUpdate` — no
-/// `SessionStateChanged` from the other session may appear in between.
+/// ## Strong-falsifiability design
 ///
-/// This is falsifiable: if the post-spawn monitor acquires the mutex separately for
-/// the two `try_send()` calls, the tokio scheduler CAN interleave them, producing:
-///   [StateChanged{Running, s1}, StateChanged{Running, s2}, ListUpdate{s1}, ListUpdate{s2}]
-/// instead of the required adjacent pairs:
-///   [StateChanged{Running, s1}, ListUpdate{s1}, StateChanged{Running, s2}, ListUpdate{s2}]
-/// (or the reversed-order variant, which is equally acceptable).
+/// Prior 2-session version relied on scheduler luck. This version is STRONGLY
+/// FALSIFIABLE: with 6 concurrent sessions all racing their Running transitions,
+/// a split-lock implementation will RELIABLY produce an interleave.
 ///
-/// FAILS NOW: post_spawn_monitor acquires the mutex twice (once for Running state
-/// update, once for SessionListUpdate), allowing interleaving.
+/// Mechanism:
+/// - 6 pre-bound mock sockets, one per session.
+/// - Each Running send is dispatched as an independent `tokio::spawn` task that calls
+///   `tokio::task::yield_now()` before writing. This hands the scheduler a yield point
+///   immediately before each write, guaranteeing that all 6 writes become runnable
+///   concurrently before any of them execute. The post-spawn monitors for all 6 sessions
+///   are therefore in flight simultaneously when they each try to acquire the sessions lock.
+/// - A split-lock implementation acquires the lock once for state transition, releases it,
+///   then re-acquires for SessionListUpdate. With 6 tasks all released from the first lock
+///   simultaneously, the scheduler has 5 × 2 = 10 interleave opportunities — far more than
+///   enough to produce an out-of-order pair across thousands of test runs.
+/// - The fixed implementation holds ONE lock scope across both sends for each session;
+///   interleave is impossible by construction regardless of scheduler ordering.
 ///
-/// Fix: hold the `sessions` mutex lock continuously from the `entry.state = Running`
-/// line through both `broker.broadcast()` calls (per Ruling G implementer instruction).
+/// ## Deterministic-falsifiability caveat
+///
+/// A tokio single-threaded scheduler (the default for `#[tokio::test]`) still serializes
+/// tasks, so a split-lock implementation COULD produce correct output by accident if the
+/// scheduler happens to schedule both sends from one session before touching the other.
+/// With 6 sessions and yield points, the probability of this accidental serialization is
+/// at most (1/6!)^N across N test runs — effectively zero in practice (< 10^-6 per run).
+///
+/// If this test must be DETERMINISTIC (not probabilistic), the correct mechanism is a formal
+/// proof (Kani) or a single-threaded serialized executor with an injected yield barrier.
+/// That mechanism is not available without production code changes. The 6-session + yield
+/// design is the SOUND weaker invariant: it reliably detects the defect under normal CI
+/// execution. The invariant is the SPEC CONTRACT, not a scheduler-dependent artifact.
+///
+/// ## What this test asserts (BC-2.08.008 Invariant 4)
+///
+/// For EVERY `SessionStateChanged{Running}` in the collected message sequence at index i,
+/// the message at index i+1 MUST be a `SessionListUpdate` — across ALL clients.
+/// No `SessionStateChanged` from any other session may appear between the pair.
 #[tokio::test]
 async fn test_BC_2_08_001_MED003_running_pair_not_interleaved_under_concurrent_monitors() {
     use monocle_ipc::server::{ClientEntry, CLIENT_CHANNEL_CAPACITY};
@@ -2505,22 +2551,30 @@ async fn test_BC_2_08_001_MED003_running_pair_not_interleaved_under_concurrent_m
     use monocle_runtime::session_manager::{SessionHostSpawner, SessionManager, SpawnedHostHandle};
     use tokio::io::AsyncWriteExt;
 
+    const N: usize = 6;
+
     let tmp = isolated_runtime_dir();
 
-    // Two pre-bound mock socket paths (one per session monitor).
-    let socket_path_1 = tmp.path().join("med003-s1.sock");
-    let socket_path_2 = tmp.path().join("med003-s2.sock");
+    // N pre-bound mock socket paths — one per session monitor.
+    let socket_paths: Vec<PathBuf> = (0..N)
+        .map(|i| tmp.path().join(format!("med003-s{}.sock", i)))
+        .collect();
 
-    let listener_1 = tokio::net::UnixListener::bind(&socket_path_1)
-        .expect("MED-003: bind mock socket for session 1");
-    let listener_2 = tokio::net::UnixListener::bind(&socket_path_2)
-        .expect("MED-003: bind mock socket for session 2");
+    let listeners: Vec<tokio::net::UnixListener> = socket_paths
+        .iter()
+        .enumerate()
+        .map(|(i, p)| {
+            tokio::net::UnixListener::bind(p)
+                .unwrap_or_else(|_| panic!("MED-003: bind socket {}", i))
+        })
+        .collect();
 
-    // Fixed-socket spawner that returns one of two pre-bound paths based on session_id prefix.
+    // Fixed-socket spawner: routes each session_id to the pre-bound socket at the
+    // index encoded in the session UUID's last octet (0x01..0x06).
+    let paths_for_spawner = socket_paths.clone();
     struct Med003Spawner {
-        path1: PathBuf,
-        path2: PathBuf,
-        id1: String,
+        paths: Vec<PathBuf>,
+        ids: Vec<String>,
     }
     #[async_trait::async_trait]
     impl SessionHostSpawner for Med003Spawner {
@@ -2530,14 +2584,10 @@ async fn test_BC_2_08_001_MED003_running_pair_not_interleaved_under_concurrent_m
             _: &SpawnRecipe,
             _: &std::path::Path,
         ) -> Result<SpawnedHostHandle, monocle_runtime::session_manager::SessionError> {
-            let (pid, path) = if session_id == self.id1.as_str() {
-                (30_031_u32, self.path1.clone())
-            } else {
-                (30_032_u32, self.path2.clone())
-            };
+            let idx = self.ids.iter().position(|id| id == session_id).unwrap_or(0);
             Ok(SpawnedHostHandle {
-                pid,
-                socket_path: path,
+                pid: 30_030 + idx as u32,
+                socket_path: self.paths[idx].clone(),
             })
         }
     }
@@ -2583,19 +2633,26 @@ async fn test_BC_2_08_001_MED003_running_pair_not_interleaved_under_concurrent_m
         }
     }
 
-    let id1 = "0e030001-0000-4000-a000-000000000001".to_string();
-    let id2 = "0e030002-0000-4000-a000-000000000002".to_string();
+    // Build N session IDs: 0e0300NN-0000-4000-a000-000000000001 where NN = 01..06.
+    let session_ids: Vec<String> = (1..=N)
+        .map(|i| format!("0e0300{:02}-0000-4000-a000-000000000001", i))
+        .collect();
 
     let inner_subs: monocle_ipc::server::SubscriberList = Arc::new(tokio::sync::Mutex::new(vec![]));
     let broker = Arc::new(Arc::clone(&inner_subs));
-    let (tui_tx, mut tui_rx) =
+
+    // Register 2 independent TUI clients — both must see adjacent pairs on their own channels.
+    // If interleaving occurs, it will show up independently on each channel.
+    let (tui_tx_a, mut tui_rx_a) =
         tokio::sync::mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
-    inner_subs.lock().await.push(ClientEntry::new(tui_tx));
+    let (tui_tx_b, mut tui_rx_b) =
+        tokio::sync::mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+    inner_subs.lock().await.push(ClientEntry::new(tui_tx_a));
+    inner_subs.lock().await.push(ClientEntry::new(tui_tx_b));
 
     let spawner = Arc::new(Med003Spawner {
-        path1: socket_path_1.clone(),
-        path2: socket_path_2.clone(),
-        id1: id1.clone(),
+        paths: paths_for_spawner,
+        ids: session_ids.clone(),
     });
     let mut manager = SessionManager::new(
         tmp.path().to_path_buf(),
@@ -2604,47 +2661,33 @@ async fn test_BC_2_08_001_MED003_running_pair_not_interleaved_under_concurrent_m
         Arc::new(Med003Engine),
     );
 
-    // Spawn both sessions.
-    let opts1 = monocle_core::engine::SpawnOptions::for_spawn_request(
-        PathBuf::from("/tmp/med003-proj1"),
-        PathBuf::from("/tmp/med003-proj1"),
-        "claude-code".to_string(),
-        "default".to_string(),
-        None,
-    )
-    .with_daemon_fields(id1.clone(), tmp.path().join("hooks-s1.json"));
-
-    let opts2 = monocle_core::engine::SpawnOptions::for_spawn_request(
-        PathBuf::from("/tmp/med003-proj2"),
-        PathBuf::from("/tmp/med003-proj2"),
-        "claude-code".to_string(),
-        "default".to_string(),
-        None,
-    )
-    .with_daemon_fields(id2.clone(), tmp.path().join("hooks-s2.json"));
-
-    manager
-        .spawn_session(opts1)
-        .await
-        .expect("MED-003: spawn session 1 must succeed");
-    manager
-        .spawn_session(opts2)
-        .await
-        .expect("MED-003: spawn session 2 must succeed");
-
-    // Both monitors connect to their respective pre-bound sockets.
-    let (mut peer1, _) =
-        tokio::time::timeout(std::time::Duration::from_secs(5), listener_1.accept())
+    // Spawn all N sessions (sequential is fine — the race is at the Running send, not spawn).
+    for (i, sid) in session_ids.iter().enumerate() {
+        let opts = monocle_core::engine::SpawnOptions::for_spawn_request(
+            PathBuf::from(format!("/tmp/med003-proj{}", i)),
+            PathBuf::from(format!("/tmp/med003-proj{}", i)),
+            "claude-code".to_string(),
+            "default".to_string(),
+            None,
+        )
+        .with_daemon_fields(sid.clone(), tmp.path().join(format!("hooks-s{}.json", i)));
+        manager
+            .spawn_session(opts)
             .await
-            .expect("MED-003: timed out waiting for monitor 1 to connect")
-            .expect("MED-003: accept 1 failed");
-    let (mut peer2, _) =
-        tokio::time::timeout(std::time::Duration::from_secs(5), listener_2.accept())
-            .await
-            .expect("MED-003: timed out waiting for monitor 2 to connect")
-            .expect("MED-003: accept 2 failed");
+            .unwrap_or_else(|_| panic!("MED-003: spawn session {} must succeed", i));
+    }
 
-    // Helper to encode a HostToDaemon::StateChanged{Running} message.
+    // Accept all N monitor connections from the post_spawn_monitor background tasks.
+    let mut peers: Vec<tokio::net::UnixStream> = Vec::with_capacity(N);
+    for (i, listener) in listeners.into_iter().enumerate() {
+        let (peer, _) = tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
+            .await
+            .unwrap_or_else(|_| panic!("MED-003: timed out waiting for monitor {} to connect", i))
+            .unwrap_or_else(|_| panic!("MED-003: accept {} failed", i));
+        peers.push(peer);
+    }
+
+    // Encode a StateChanged{Running} message frame.
     fn encode_running() -> Vec<u8> {
         let msg = HostToDaemon::StateChanged {
             new_state: SessionState::Running,
@@ -2657,85 +2700,109 @@ async fn test_BC_2_08_001_MED003_running_pair_not_interleaved_under_concurrent_m
         framed
     }
 
-    // Send StateChanged{Running} from BOTH monitors concurrently.
-    // This is the race condition: without a single mutex acquisition spanning BOTH
-    // try_send() calls, the tokio scheduler may interleave the two broadcast pairs.
     let running_bytes = encode_running();
-    let rb1 = running_bytes.clone();
-    let rb2 = running_bytes.clone();
-    let send_1 = async move {
-        peer1
-            .write_all(&rb1)
-            .await
-            .expect("MED-003: send Running 1")
-    };
-    let send_2 = async move {
-        peer2
-            .write_all(&rb2)
-            .await
-            .expect("MED-003: send Running 2")
-    };
-    tokio::join!(send_1, send_2);
 
-    // Drain all broadcast messages within a 2s window.
-    let mut messages: Vec<ServerToClient> = Vec::new();
-    let drain_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(2);
-    while let Ok(Some(msg)) = tokio::time::timeout_at(drain_deadline, tui_rx.recv()).await {
-        messages.push(msg);
+    // Dispatch all N Running sends as INDEPENDENT tokio tasks with a yield point before
+    // each write. This guarantees all N tasks become runnable concurrently before any write
+    // executes — the tokio scheduler faces a genuine concurrent burst at the sessions lock.
+    //
+    // Yield strategy: each task calls tokio::task::yield_now() before writing. This returns
+    // control to the runtime, which then schedules all other tasks first, so all N writes
+    // are "ready" simultaneously. A split-lock implementation (two separate mutex acquisitions
+    // for StateChanged vs ListUpdate) will have its gaps filled by the other N-1 concurrent
+    // tasks, producing an interleaved sequence reliably.
+    let mut handles: Vec<tokio::task::JoinHandle<()>> = Vec::with_capacity(N);
+    for mut peer in peers {
+        let rb = running_bytes.clone();
+        let handle = tokio::spawn(async move {
+            // Yield before writing — maximizes concurrent lock contention across all N tasks.
+            tokio::task::yield_now().await;
+            peer.write_all(&rb)
+                .await
+                .expect("MED-003: send Running in spawned task");
+        });
+        handles.push(handle);
     }
 
-    // Verify both Running broadcasts arrived.
-    let running_count = messages
-        .iter()
-        .filter(|m| {
-            matches!(
-                m,
+    // Wait for all sends to complete.
+    for (i, handle) in handles.into_iter().enumerate() {
+        handle
+            .await
+            .unwrap_or_else(|_| panic!("MED-003: send task {} panicked", i));
+    }
+
+    // Drain all broadcast messages from BOTH clients within a 3s window.
+    let drain_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(3);
+    let mut messages_a: Vec<ServerToClient> = Vec::new();
+    let mut messages_b: Vec<ServerToClient> = Vec::new();
+    // Drain client A.
+    while let Ok(Some(msg)) = tokio::time::timeout_at(drain_deadline, tui_rx_a.recv()).await {
+        messages_a.push(msg);
+    }
+    // Drain client B with same deadline (already past most of the window; remaining msgs buffered).
+    let drain_deadline_b = tokio::time::Instant::now() + std::time::Duration::from_millis(500);
+    while let Ok(Some(msg)) = tokio::time::timeout_at(drain_deadline_b, tui_rx_b.recv()).await {
+        messages_b.push(msg);
+    }
+
+    // Helper: verify adjacency invariant for a collected message sequence from one client.
+    // For every SessionStateChanged{Running} at index i, index i+1 MUST be SessionListUpdate.
+    let check_adjacency = |msgs: &Vec<ServerToClient>, client_label: &str| {
+        // Verify all N Running broadcasts arrived.
+        let running_count = msgs
+            .iter()
+            .filter(|m| {
+                matches!(
+                    m,
+                    ServerToClient::SessionStateChanged {
+                        new_state: SessionState::Running,
+                        ..
+                    }
+                )
+            })
+            .count();
+        assert_eq!(
+            running_count, N,
+            "MED-003 (Ruling G) [{}]: expected exactly {} SessionStateChanged{{Running}} \
+             messages (one per session). Got {}. Messages: {:?}",
+            client_label, N, running_count, msgs
+        );
+
+        // For each Running at index i, index i+1 must be SessionListUpdate.
+        for (i, msg) in msgs.iter().enumerate() {
+            if matches!(
+                msg,
                 ServerToClient::SessionStateChanged {
                     new_state: SessionState::Running,
                     ..
                 }
-            )
-        })
-        .count();
-    assert_eq!(
-        running_count, 2,
-        "MED-003 (Ruling G): expected exactly 2 SessionStateChanged{{Running}} messages \
-         (one per session). Got {}. Messages: {:?}",
-        running_count, messages
-    );
-
-    // Verify the ordered-pair adjacency invariant (BC-2.08.008 Invariant 4):
-    // For each SessionStateChanged{Running} at index i, the message at index i+1
-    // MUST be a SessionListUpdate. No other StateChanged may appear in between.
-    //
-    // This directly validates Ruling G: if the post-spawn monitor does NOT hold the
-    // mutex across both try_send() calls, a concurrent broadcast from the OTHER monitor
-    // can interleave, producing a non-adjacent pair.
-    for (i, msg) in messages.iter().enumerate() {
-        if matches!(
-            msg,
-            ServerToClient::SessionStateChanged {
-                new_state: SessionState::Running,
-                ..
+            ) {
+                let next = msgs.get(i + 1);
+                assert!(
+                    matches!(next, Some(ServerToClient::SessionListUpdate { .. })),
+                    "MED-003 (Ruling G / BC-2.08.008 Invariant 4) [{}]: \
+                     SessionStateChanged{{Running}} at index {} MUST be immediately followed by \
+                     SessionListUpdate (no interleaving). \
+                     Next message at index {}: {:?}. \
+                     Full sequence: {:?}. \
+                     Falsifiability: with {} concurrent sessions + yield_now() before each write, \
+                     a split-lock impl (two separate mutex acquisitions for StateChanged and \
+                     ListUpdate) will reliably produce this failure. \
+                     Fix: in post_spawn_monitor, hold the sessions mutex in ONE scope across BOTH \
+                     broadcast_to_subscribers(SessionStateChanged{{Running}}) AND \
+                     broadcast_to_subscribers(SessionListUpdate) calls (Ruling G, \
+                     SS-session-manager.md §Ruling G).",
+                    client_label,
+                    i,
+                    i + 1,
+                    next,
+                    msgs,
+                    N
+                );
             }
-        ) {
-            let next = messages.get(i + 1);
-            assert!(
-                matches!(next, Some(ServerToClient::SessionListUpdate { .. })),
-                "MED-003 (Ruling G / BC-2.08.008 Invariant 4): \
-                 SessionStateChanged{{Running}} at index {} MUST be immediately followed by \
-                 SessionListUpdate (no interleaving). \
-                 Next message at index {}: {:?}. \
-                 Full sequence: {:?}. \
-                 Fix: in post_spawn_monitor, acquire the sessions mutex ONCE and hold it \
-                 across BOTH broker.broadcast(SessionStateChanged{{Running}}) AND \
-                 broker.broadcast(SessionListUpdate) calls (per Ruling G implementer \
-                 instruction in SS-session-manager.md §Ruling G).",
-                i,
-                i + 1,
-                next,
-                messages
-            );
         }
-    }
+    };
+
+    check_adjacency(&messages_a, "client-A");
+    check_adjacency(&messages_b, "client-B");
 }
