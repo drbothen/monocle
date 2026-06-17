@@ -2240,52 +2240,203 @@ mod tests {
     /// spawn_session() sidecar is written via tempfile::persist (atomic rename).
     ///
     /// BC-2.08.001 invariant 2 / AC-007: no naked std::fs::write.
-    /// Verifies that no partial file can be observed: we read the sidecar under
-    /// concurrent load and it always deserializes cleanly.
+    ///
+    /// **Strengthened (MED-003 fix):** the previous version was weakly falsifiable —
+    /// it broke on the first non-empty read and passed vacuously if the file never
+    /// appeared.  This version is sound in three ways:
+    ///
+    /// 1. **Non-vacuous:** asserts the sidecar file was observed at least once
+    ///    (a no-write regression now fails this test).
+    /// 2. **Exhaustive polling:** polls the path in a tight loop for the full
+    ///    observation window and records EVERY successful read; every read must
+    ///    parse as a complete `SessionSidecarV3` — not just the first.
+    /// 3. **Multi-spawn pressure:** repeats the spawn-and-observe cycle across
+    ///    `SPAWN_ROUNDS` iterations with distinct session IDs, giving a non-atomic
+    ///    writer many opportunities to expose a mid-write state.
+    ///
+    /// Falsifiability: see `test_BC_2_08_001_invariant_partial_write_detector_catches_truncation`
+    /// immediately below, which demonstrates the detection logic fires on a deliberately
+    /// truncated JSON write.
     #[tokio::test]
     async fn test_BC_2_08_001_invariant_sidecar_write_is_atomic() {
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let (mut manager, _subs, _rx) = make_manager_with_channel(tmp.path(), None);
-        let session_id = "00000000-0001-4000-a000-000000000004".to_string();
-        let sidecar_path = tmp.path().join(format!("session-{}.json", &session_id));
-        let opts = make_spawn_opts(&session_id);
+        // Number of spawn-and-observe rounds.  Each round uses a distinct session ID
+        // so the manager doesn't reject a duplicate.  More rounds = more opportunities
+        // for a non-atomic writer to expose a partial state.
+        const SPAWN_ROUNDS: usize = 20;
+        // How long to poll each sidecar after it first appears (µs).
+        const OBSERVE_WINDOW_US: u64 = 5_000; // 5 ms of tight reads per sidecar
 
-        // Spawn a background reader that polls the sidecar path until it appears.
-        // If a partial write occurs, JSON parse will fail.
-        let path_clone = sidecar_path.clone();
-        let reader_handle = tokio::spawn(async move {
-            let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(3);
-            let mut partial_write_detected: Option<String> = None;
-            loop {
-                if tokio::time::Instant::now() > deadline {
-                    break;
-                }
-                if path_clone.exists() {
-                    let bytes = std::fs::read(&path_clone).unwrap_or_default();
-                    if !bytes.is_empty() {
-                        // Any non-empty file must be valid JSON — partial writes are forbidden.
-                        if let Err(e) = serde_json::from_slice::<serde_json::Value>(&bytes) {
-                            partial_write_detected =
-                                Some(format!("partial sidecar write detected: {}", e));
-                        }
+        for round in 0..SPAWN_ROUNDS {
+            let tmp = tempfile::tempdir().expect("tempdir");
+            let (mut manager, _subs, _rx) = make_manager_with_channel(tmp.path(), None);
+
+            // Unique session ID per round — avoids SessionIdCollision.
+            let session_id = format!("00000000-0001-4000-a000-{:012}", 4000 + round as u64);
+            let sidecar_path = tmp.path().join(format!("session-{}.json", &session_id));
+            let opts = make_spawn_opts(&session_id);
+
+            // Spawn a tight-polling reader that continues reading for the full
+            // observation window even after the file first appears.  It records
+            // every partial-parse failure instead of stopping at the first valid read.
+            let path_clone = sidecar_path.clone();
+            let reader_handle = tokio::spawn(async move {
+                // Wait up to 3 s for the file to appear.
+                let appear_deadline =
+                    tokio::time::Instant::now() + std::time::Duration::from_secs(3);
+                let mut file_appeared = false;
+
+                // Phase 1: wait for the file to appear.
+                while tokio::time::Instant::now() < appear_deadline {
+                    if path_clone.exists() {
+                        file_appeared = true;
                         break;
                     }
+                    tokio::time::sleep(std::time::Duration::from_micros(50)).await;
                 }
-                tokio::time::sleep(std::time::Duration::from_micros(100)).await;
+
+                if !file_appeared {
+                    // Non-vacuousness: file must appear.
+                    return Err("sidecar file never appeared within 3s — non-atomic write or no write at all".to_string());
+                }
+
+                // Phase 2: poll the file continuously for the observation window.
+                // Every non-empty read must deserialize as a complete SessionSidecarV3.
+                let observe_end = tokio::time::Instant::now()
+                    + std::time::Duration::from_micros(OBSERVE_WINDOW_US);
+                let mut total_reads: u64 = 0;
+                let mut valid_v3_reads: u64 = 0;
+
+                while tokio::time::Instant::now() < observe_end {
+                    let bytes = std::fs::read(&path_clone).unwrap_or_default();
+                    if !bytes.is_empty() {
+                        total_reads += 1;
+                        // Every non-empty read must be a complete, valid V3 sidecar.
+                        match serde_json::from_slice::<monocle_ipc::types::SessionSidecarV3>(&bytes)
+                        {
+                            Ok(s) if s.schema_version == 3 => {
+                                valid_v3_reads += 1;
+                            }
+                            Ok(s) => {
+                                return Err(format!(
+                                    "round {}: sidecar has schema_version {} != 3 — wrong version",
+                                    round, s.schema_version
+                                ));
+                            }
+                            Err(e) => {
+                                return Err(format!(
+                                    "round {}: partial/invalid sidecar detected on read {}: {} — bytes: {:?}",
+                                    round, total_reads, e, &bytes[..bytes.len().min(64)]
+                                ));
+                            }
+                        }
+                    }
+                    // Tight spin — no sleep — to maximise chance of catching a mid-write state.
+                    tokio::task::yield_now().await;
+                }
+
+                // Non-vacuousness: at least one valid V3 read must have occurred.
+                if valid_v3_reads == 0 {
+                    return Err(format!(
+                        "round {}: file appeared but no valid V3 reads during {}µs observation window",
+                        round, OBSERVE_WINDOW_US
+                    ));
+                }
+
+                Ok(valid_v3_reads)
+            });
+
+            manager
+                .spawn_session(opts)
+                .await
+                .expect("spawn_session must succeed");
+
+            let result = reader_handle.await.expect("reader task panicked");
+            match result {
+                Ok(v3_reads) => {
+                    assert!(
+                        v3_reads > 0,
+                        "round {}: expected at least 1 valid V3 read, got 0",
+                        round
+                    );
+                }
+                Err(msg) => {
+                    panic!(
+                        "BC-2.08.001 sidecar atomicity invariant violated on round {}: {}",
+                        round, msg
+                    );
+                }
             }
-            partial_write_detected
-        });
+        }
+    }
 
-        manager
-            .spawn_session(opts)
-            .await
-            .expect("spawn_session must succeed");
+    /// Falsifiability proof for the partial-write detector above.
+    ///
+    /// This sibling test writes a deliberately TRUNCATED JSON payload to the sidecar
+    /// path using a naked `std::io::Write` (not tempfile::persist) and verifies that
+    /// the same parse-and-schema-version check used in the main test fires correctly.
+    ///
+    /// If this test passes (i.e., truncation IS detected), the detector in
+    /// `test_BC_2_08_001_invariant_sidecar_write_is_atomic` is genuinely falsifiable —
+    /// it is not vacuously green.
+    ///
+    /// Note: we cannot inject a live non-atomic path into the production
+    /// `spawn_session()` code because the atomic-write seam is an invariant
+    /// (AC-007 forbids any alternate code path), so we test the *detection logic*
+    /// directly here rather than via a production seam.
+    #[test]
+    fn test_BC_2_08_001_invariant_partial_write_detector_catches_truncation() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("session-fake.json");
 
-        let partial = reader_handle.await.expect("reader task panicked");
+        // Write a valid SessionSidecarV3 as raw bytes, then truncate it at the midpoint
+        // to simulate a non-atomic mid-write read.
+        let full_payload = serde_json::to_vec_pretty(&monocle_ipc::types::SessionSidecarV3 {
+            schema_version: 3,
+            session_id: "fake-id".to_string(),
+            pid: 0,
+            socket_path: "/tmp/fake.sock".to_string(),
+            child_pid: None,
+            state: monocle_ipc::types::SessionState::Launching,
+            project_root: "/tmp/proj".to_string(),
+            cwd: "/tmp/proj".to_string(),
+            harness_id: "claude-code".to_string(),
+            profile_id: "default".to_string(),
+            started_at: "2026-01-01T00:00:00Z".to_string(),
+            display_name: "claude-code — proj".to_string(),
+            pty_rows: 24,
+            pty_cols: 80,
+            kill_deadline_unix_ms: None,
+        })
+        .expect("serialise reference sidecar");
+
+        // Truncate at the midpoint: this simulates what a concurrent reader would see
+        // if it read during a multi-syscall write (write() call 1 of 2 completed).
+        let truncated = &full_payload[..full_payload.len() / 2];
+        assert!(!truncated.is_empty(), "truncated payload must be non-empty");
+
+        // Write truncated bytes directly — no tempfile::persist, no rename.
+        use std::io::Write as _;
+        let mut f = std::fs::File::create(&path).expect("create file");
+        f.write_all(truncated).expect("write truncated bytes");
+        f.flush().expect("flush");
+        drop(f);
+
+        // Now apply the SAME detection logic used in the main atomicity test.
+        let bytes = std::fs::read(&path).expect("read truncated file");
         assert!(
-            partial.is_none(),
-            "atomic sidecar write invariant violated: {}",
-            partial.unwrap_or_default()
+            !bytes.is_empty(),
+            "truncated file must be non-empty for the detector to fire"
+        );
+
+        let parse_result = serde_json::from_slice::<monocle_ipc::types::SessionSidecarV3>(&bytes);
+
+        // The detector MUST fire: truncated JSON must not parse as a valid V3.
+        assert!(
+            parse_result.is_err(),
+            "partial-write detector must fire on truncated payload — \
+            if this assertion fails, the payload happens to be valid JSON at the \
+            midpoint, which would make the main atomicity test less sound; \
+            choose a different truncation point"
         );
     }
 
