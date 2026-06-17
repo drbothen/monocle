@@ -620,6 +620,10 @@ fn test_bc_2_06_004_inv1_ac010_no_client_disconnect_message() {
         ClientToServer::SpawnSession { .. } => {
             panic!("unexpected SpawnSession in PermissionDecision round-trip test");
         }
+        // S-034 stub: KillSession is not expected in this PermissionDecision round-trip test.
+        ClientToServer::KillSession { .. } => {
+            panic!("unexpected KillSession in PermissionDecision round-trip test");
+        }
     }
 }
 

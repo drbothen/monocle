@@ -1030,10 +1030,51 @@ impl SessionManager {
         }
     }
 
-    /// Kill a running session (SIGTERM to session-host; session-host kills harness child).
+    /// Kill a running session by delivering `DaemonToHost::Kill` to the session-host
+    /// within 500ms and transitioning to `SessionState::Terminating` immediately.
+    ///
+    /// Kill path selection (BC-2.08.003 postcondition 1):
+    /// - Running / Launching (host_conn established): send Kill over existing control connection.
+    /// - Launching (host_conn not yet established — rare race): PID-based SIGTERM fallback.
+    /// - Detached: fresh UDS connect → SO_PEERCRED → send Kill.
+    /// - Terminating / Terminated: return `Ok(())` idempotent (BC-2.08.003 invariant 2).
+    ///
+    /// `SessionStateChanged{Terminating}` MUST be published BEFORE `SessionListUpdate`
+    /// (BC-2.08.008 invariant 4).
+    ///
+    /// Spawns a 12-second watchdog task (BC-2.08.003 postcondition 5) to force
+    /// `Terminated` + SIGKILL to session-host PID if no `HostToDaemon::StateChanged`
+    /// confirmation arrives.
+    ///
+    /// Returns `Err(SessionError::SessionNotFound)` if `session_id` is unknown (AC-011).
     #[allow(clippy::todo)]
     pub async fn kill_session(&mut self, _session_id: &str) -> Result<(), SessionError> {
-        todo!("S-033 (S-034 scope): implement kill_session()")
+        todo!("S-034: implement kill_session() — BC-2.08.003 kill path selection, Terminating transition, 12s watchdog")
+    }
+
+    /// Spawn the 12-second watchdog task for a kill operation (BC-2.08.003 postcondition 5).
+    ///
+    /// After 12 seconds (10s SIGTERM window + 2s buffer) without a
+    /// `HostToDaemon::StateChanged { new_state: Terminated }` confirmation:
+    /// - Forces `SessionEntry.state → Terminated`.
+    /// - Sends SIGKILL to the session-host PID (`SpawnedHostHandle.pid`).
+    /// - Updates `session-state.json` atomically via `tempfile::persist`.
+    /// - Publishes `SessionStateChanged{Terminated}` BEFORE `SessionListUpdate` (BC-2.08.008 I4).
+    /// - Starts GC timer (BC-2.08.005 — S-037 scope).
+    ///
+    /// If `HostToDaemon::StateChanged { Terminated }` arrives before the watchdog fires,
+    /// the GC timer starts and the watchdog is cancelled (S-037 scope).
+    ///
+    /// Uses `tokio::time::pause()` for deterministic testing (AC-005).
+    #[allow(dead_code, clippy::todo)]
+    fn spawn_kill_watchdog(
+        _session_id: String,
+        _session_host_pid: u32,
+        _sessions: Arc<tokio::sync::Mutex<std::collections::HashMap<String, SessionEntry>>>,
+        _broker: Arc<monocle_ipc::server::SubscriberList>,
+        _sidecar_path: std::path::PathBuf,
+    ) -> tokio::task::JoinHandle<()> {
+        todo!("S-034: implement spawn_kill_watchdog() — BC-2.08.003 postcondition 5: 12s watchdog, SIGKILL, sidecar update, broker publish")
     }
 
     /// Detach the daemon from a running session-host.

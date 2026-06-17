@@ -467,27 +467,78 @@ async fn step_event_loop(
 
     tracing::info!(session_id = %session_id, "session-host: sent StateChanged{{Running}} to daemon");
 
-    // Minimal shutdown wait: drain one message or wait for daemon to close.
-    // S-034/S-035/S-047 implement full Kill/Attach/Resize/Detach handling.
+    // Main DaemonToHost message dispatch loop.
+    // S-034 adds the Kill arm; S-035 adds Attach/Detach; S-047 adds KeyInput/Resize.
     use tokio::io::AsyncReadExt;
-    let mut len_buf = [0u8; 4];
-    match stream.read_exact(&mut len_buf).await {
-        Ok(_) => {
-            let msg_len = u32::from_le_bytes(len_buf) as usize;
-            if msg_len <= 1024 * 1024 {
-                let mut body = vec![0u8; msg_len];
-                if stream.read_exact(&mut body).await.is_ok() {
-                    tracing::debug!(session_id = %session_id, "session-host: received DaemonToHost message, exiting");
+    loop {
+        let mut len_buf = [0u8; 4];
+        match stream.read_exact(&mut len_buf).await {
+            Ok(_) => {
+                let msg_len = u32::from_le_bytes(len_buf) as usize;
+                // Guard against oversized frames (1 MiB limit matches daemon-side framing).
+                if msg_len > 1024 * 1024 {
+                    tracing::warn!(
+                        session_id = %session_id,
+                        msg_len = msg_len,
+                        "session-host: oversized DaemonToHost frame; closing control connection"
+                    );
+                    break;
                 }
-            } else {
-                tracing::warn!(session_id = %session_id, "session-host: oversized message, closing");
+                let mut body = vec![0u8; msg_len];
+                if let Err(e) = stream.read_exact(&mut body).await {
+                    tracing::warn!(
+                        session_id = %session_id,
+                        error = %e,
+                        "session-host: failed to read DaemonToHost frame body"
+                    );
+                    break;
+                }
+                // Deserialize and dispatch (BC-2.08.003 AC-003 — Kill handler).
+                match serde_json::from_slice::<monocle_ipc::types::DaemonToHost>(&body) {
+                    Ok(monocle_ipc::types::DaemonToHost::Kill) => {
+                        // S-034 scope: DaemonToHost::Kill handler.
+                        //
+                        // Required implementation (AC-003 / BC-2.08.003 postcondition 3):
+                        // a. Send SIGTERM to harness child process.
+                        // b. Monitor child exit; if not exited within 10 seconds, send SIGKILL.
+                        // c. On child exit: send HostToDaemon::StateChanged { new_state: Terminated }.
+                        // d. Send HostToDaemon::Goodbye and close UDS connection.
+                        // e. Remove UDS socket file.
+                        todo!("S-034: implement DaemonToHost::Kill handler — SIGTERM harness child, 10s SIGKILL escalation, StateChanged{{Terminated}}, Goodbye, socket cleanup")
+                    }
+                    Ok(_other) => {
+                        // Other DaemonToHost variants (Attach, KeyInput, Resize, Detach) —
+                        // implemented in S-035/S-047 scope. Log and continue for now.
+                        tracing::debug!(
+                            session_id = %session_id,
+                            "session-host: received non-Kill DaemonToHost message (S-035/S-047 scope), ignoring"
+                        );
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            session_id = %session_id,
+                            error = %e,
+                            "session-host: failed to deserialize DaemonToHost message; closing"
+                        );
+                        break;
+                    }
+                }
             }
-        }
-        Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
-            tracing::debug!(session_id = %session_id, "session-host: daemon closed control connection");
-        }
-        Err(e) => {
-            tracing::warn!(session_id = %session_id, error = %e, "session-host: control connection error");
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                tracing::debug!(
+                    session_id = %session_id,
+                    "session-host: daemon closed control connection (EOF)"
+                );
+                break;
+            }
+            Err(e) => {
+                tracing::warn!(
+                    session_id = %session_id,
+                    error = %e,
+                    "session-host: control connection read error"
+                );
+                break;
+            }
         }
     }
 

@@ -174,6 +174,10 @@ async fn spawn_client_task(
                     Ok(ClientToServer::SpawnSession { opts }) => {
                         handle_spawn_session(opts, &tx, &state).await;
                     }
+                    // S-034: KillSession handler (BC-2.08.003 §IPC handler arm)
+                    Ok(ClientToServer::KillSession { session_id }) => {
+                        handle_kill_session(session_id, &tx, &state).await;
+                    }
                     Err(IpcError::Disconnected) => {
                         tracing::debug!("TUI client disconnected (EOF)");
                         break;
@@ -409,6 +413,27 @@ pub async fn handle_spawn_session_pub(
     state: &DaemonState,
 ) {
     handle_spawn_session(opts, client_tx, state).await
+}
+
+// ---------------------------------------------------------------------------
+// S-034: KillSession IPC handler
+// ---------------------------------------------------------------------------
+
+/// Handle a `ClientToServer::KillSession` message from a TUI client.
+///
+/// IPC handler steps (BC-2.08.003 §IPC handler arm — S-034):
+/// 1. Retrieve session_manager from daemon state.
+/// 2. Call `session_manager.kill_session(session_id)`.
+/// 3. On error: send `ServerToClient::Error { code, message }` to requesting client.
+/// 4. On success: `kill_session()` has already emitted `SessionStateChanged{Terminating}` +
+///    `SessionListUpdate` to all clients under the sessions mutex (BC-2.08.008 invariant 4).
+#[allow(clippy::todo)]
+async fn handle_kill_session(
+    _session_id: String,
+    _client_tx: &tokio::sync::mpsc::Sender<ServerToClient>,
+    _state: &DaemonState,
+) {
+    todo!("S-034: implement handle_kill_session() — retrieve session_manager, call kill_session(), send Error on failure")
 }
 
 /// Route a `PermissionDecision` from a TUI client to the pending-decision registry.
