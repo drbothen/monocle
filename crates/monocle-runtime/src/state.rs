@@ -413,9 +413,9 @@ impl DaemonState {
             // DaemonState::new() is the unit-test constructor AND the daemon-start baseline.
             // session_manager must be Some(_) so handle_spawn_session() can call it.
             session_manager: {
-                use std::sync::Arc;
-                use crate::session_manager::{SessionManager, RealSessionHostSpawner};
                 use crate::engine::claude_code::ClaudeCodeModule;
+                use crate::session_manager::{RealSessionHostSpawner, SessionManager};
+                use std::sync::Arc;
                 let spawner = Arc::new(RealSessionHostSpawner {
                     session_host_bin: std::env::current_exe()
                         .ok()
