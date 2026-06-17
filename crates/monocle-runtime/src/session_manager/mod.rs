@@ -3970,11 +3970,30 @@ mod tests {
     #[tokio::test]
     async fn test_ruling_a_real_session_host_spawner_reaches_running_state() {
         // HARD-FAIL if binary absent — NO silent skip (anti-false-green contract).
-        let session_host_bin = std::env::current_exe()
+        //
+        // The binary lives at `target/<profile>/monocle-session-host`.
+        // Test binaries run from `target/<profile>/deps/`, so we check:
+        //   1. `deps/monocle-session-host`      — created by build.rs symlink (when available)
+        //   2. `deps/../monocle-session-host`    — direct profile-dir lookup (CI fallback)
+        // Both paths are valid: build.rs creates a symlink in deps/ pointing to the profile-dir
+        // binary, but the symlink is only present if the binary was built before build.rs ran.
+        // The profile-dir fallback closes that race on first-build CI runs.
+        let exe_dir = std::env::current_exe()
             .expect("current_exe")
             .parent()
-            .expect("parent dir")
-            .join("monocle-session-host");
+            .expect("parent dir (deps/)")
+            .to_path_buf();
+        let session_host_bin = {
+            let via_symlink = exe_dir.join("monocle-session-host");
+            if via_symlink.exists() {
+                via_symlink
+            } else {
+                exe_dir
+                    .parent()
+                    .expect("profile dir (target/<profile>/)")
+                    .join("monocle-session-host")
+            }
+        };
 
         assert!(
             session_host_bin.exists(),
