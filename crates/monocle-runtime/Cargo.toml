@@ -46,7 +46,8 @@ tempfile = { workspace = true }
 serde_json = { workspace = true }
 serde = { workspace = true }
 directories = { workspace = true }
-nix = { workspace = true, features = ["signal", "process"] }
+nix = { workspace = true, features = ["signal", "process", "user"] }
+which = { workspace = true }
 axum = { workspace = true }
 chrono = { workspace = true }
 thiserror = { workspace = true }

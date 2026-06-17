@@ -1703,6 +1703,7 @@ dependencies = [
  "tracing-test",
  "ureq",
  "uuid",
+ "which",
 ]
 
 [[package]]
