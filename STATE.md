@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "7.88"
+version: "7.89"
 status: active
 producer: state-manager
 timestamp: 2026-06-16T00:00:00Z
 phase: phase-3-v1A-wave-8
-current_step: "D-325 (2026-06-16): Phase-2 v1A control-center story-decomposition gate APPROVED by Joshua Magady. Consistency re-check PASS (0 blockers); 2 stale-pin blockers found+fixed (D-324); input-drift 0 genuine. Phase-3 v1A Waves 8-9 now ACTIVE. Wave 8 starting; root story S-033 (creates monocle-session-host crate)."
+current_step: "D-326 (2026-06-16): S-033 Pass-1 adversarial ruling — session-host scope boundary + SessionSidecarV3 in monocle-ipc. SS-session-manager v2.7.0 (Rulings A+B). S-033 v1.7. Implementation mid-rework: IPC arm panic + RealSessionHostSpawner/session-host/post-spawn-monitor todo!(). Remediation: test-writer (Red Gate) → implementer (full impl) → adversarial restart at Pass 1."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-001..D-241 at cycles/cycle-001/decisions-archive.md. D-242..D-325 appended at cycles/cycle-001/decisions-archive.md §Phase-1d+Phase-2+Phase-3. Full durable_task_register YAML (122 entries) at cycles/cycle-001/task-register-full.yaml."
-awaiting: "Phase-3 v1A Wave 8 kickoff. Tier-1 root = S-033 (creates monocle-session-host crate). One pre-Phase-3 blocker outstanding: develop branch protection not configured (PROC-BRANCH-PROTECTION-CONTEXTS, human/repo-admin action) — must be in place before first Wave 8 PR merge."
+traces_to: "D-001..D-241 at cycles/cycle-001/decisions-archive.md. D-242..D-326 appended at cycles/cycle-001/decisions-archive.md §Phase-1d+Phase-2+Phase-3. Full durable_task_register YAML (122 entries) at cycles/cycle-001/task-register-full.yaml."
+awaiting: "S-033 Wave 8 remediation: test-writer dispatch (Red Gate for in-scope behavior per SS-session-manager v2.7.0 Rulings A+B) → implementer (full impl) → adversarial convergence restart at Pass 1. Branch protection (PROC-BRANCH-PROTECTION-CONTEXTS) still pending human/repo-admin action before first Wave 8 PR merge."
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: 2026-06-03
@@ -20,7 +20,7 @@ dtu_services: [hook-endpoints-x5]
 current_cycle: cycle-001
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v7.88 — 2026-06-16
+  ZERO-CONTEXT RESUME CHECKPOINT v7.89 — 2026-06-16
   PHASE-3 v1A ACTIVE — WAVE 8 STARTING
   ============================================================================
   POSITION: Phase-3 TDD implementation, v1A control-center scope, Wave 8.
@@ -41,7 +41,7 @@ next_session_resume_protocol: |
   KEY VERSION PINS (canonical source: .factory/specs/version-pin-registry.yaml):
   STORY-INDEX v5.45 | sprint-state v1.46 | wave-schedule v2.1
   dependency-graph-expansion v2.5 | BC-INDEX v1.43.8 | EVAL-INDEX v1.19
-  ARCH-INDEX v1.0.30 | SS-ipc v1.24.0 | SS-session-manager v2.6.1
+  ARCH-INDEX v1.0.30 | SS-ipc v1.24.0 | SS-session-manager v2.7.0
   SS-embedded-pty v1.7.0 | SS-engine-module-v2-delta v1.6.0
   SS-daemon-wiring-v2-delta v1.11.4 | SS-deps-pin-manifest-v2-delta v1.0.2
   prd v1.28.3 | product-brief v2.0.4 | domain-monocle-vision-synthesis v2.2.3
@@ -226,3 +226,4 @@ Key decisions last session:
 - D-323 (2026-06-16): Phase-2 pre-gate cleanup burst (Option A) COMPLETE — BC-2.08.006 v1.4.0, sprint-state v1.46, EVAL-INDEX v1.19, STORY-INDEX v5.45, wave-schedule v2.0, dep-graph v2.4, BC-INDEX v1.43.8, 6 epic files created. All F-GATE-* and F-P* deferred cosmetics CLOSED.
 - D-324 (2026-06-16): inputs-pin BLOCKER fix — confirming consistency audit found 2 stale-inputs[] blockers (POL-11/ADR-0007 §Registry Update Obligation). Fixed: dep-graph-expansion v2.4→v2.5 (BC-INDEX 1.27→1.43.8, SS-ipc 1.6.0→1.24.0, STORY-INDEX 4.7→5.45); wave-schedule v2.0→v2.1 (BC-INDEX 1.13→1.43.8, VP-INDEX 1.16→1.17, prd 1.26.15→1.28.3, ARCH-INDEX 1.0.11→1.0.30, nfr-catalog 1.7→1.8, error-taxonomy 1.5→1.6). version-pin-registry.yaml updated atomically in same commit.
 - D-325 (2026-06-16): Phase-2 v1A control-center story-decomposition gate APPROVED by Joshua Magady. Phase transition phase-2 → PASSED. Phase-3 v1A (Waves 8-9) now ACTIVE. Consistency re-check PASS (0 blockers); 2 stale-pin blockers found+fixed (D-324); input-drift 0 genuine. develop @ 50c195e (1192 tests). Pre-Phase-3 prerequisite: branch protection contexts BLOCKED on human action.
+- D-326 (2026-06-16): S-033 adversarial Pass-1 — headline behavior stubbed (IPC arm panic, RealSessionHostSpawner/session-host/post-spawn-monitor todo!()). Architect ruled: (A) monocle-session-host minimum-viable scope for S-033 ACs (parse args, setsid, PTY open, CommandBuilder, spawn child, vt100::Parser stub, bind UDS, write sidecar with child_pid, send StateChanged{Running}, minimal Kill loop; PTY streaming/scrollback/keyboard/resize deferred S-039/S-035/S-047/S-042); (B) SessionSidecarV3 canonical in monocle-ipc (dual-writer ownership protocol; both monocle-runtime and monocle-session-host import it). SS-session-manager v2.6.1→v2.7.0; S-033 v1.6→v1.7. Remediation chain: test-writer (Red Gate for in-scope behavior) → implementer (full impl) → adversarial convergence restart at Pass 1.

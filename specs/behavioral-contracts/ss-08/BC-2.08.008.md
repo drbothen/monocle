@@ -7,7 +7,7 @@ producer: vsdd-factory:product-owner
 timestamp: 2026-06-14T18:00:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/SS-embedded-pty.md, architecture/SS-ipc.md, architecture/SS-daemon-wiring-v2-delta.md]
-input-hash: "01c5183"
+input-hash: "c0fd920"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-08

@@ -124,9 +124,9 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "2.6.1"
-  last_bump_commit: "[Pass-52 F-P52-001 D-295 — §Terminated-in-grace defensive action×state matrix added: rename→rename_failed (backs BC-2.08.005 Inv 4 revive-not-allowed), detach→idempotent Ok, kill→idempotent Ok per BC-2.08.003 Inv 2, resize→WARN-drop; closes ALL action×state cells]"
-  last_bump_date: "2026-06-14"
+  current_version: "2.7.0"
+  last_bump_commit: "[Rulings A+B — S-033 session-host scope boundary (step table: S-033 vs S-039/S-035/S-047/S-042/S-044) + SessionSidecarV3 in monocle-ipc (dual-writer ownership protocol, atomic-write, path-canon, schema-agreement guarantee)]"
+  last_bump_date: "2026-06-16"
 
 SS-embedded-pty:
   path: specs/architecture/SS-embedded-pty.md
@@ -961,8 +961,8 @@ dependency-graph-expansion:
 
 S-033-session-manager-spawn:
   path: stories/S-033-session-manager-spawn.md
-  current_version: "1.6"
-  last_bump_commit: "[F-P21-SUG-002 — AC-012 SpawnAck step-label aligned to BC-2.08.008 PC-5: 'step 1' → 'step 2' (UUID-gen=step1, SpawnAck=step2)]"
+  current_version: "1.7"
+  last_bump_commit: "[SS-session-manager v2.7.0 Rulings A+B propagation — session-host MVP task, SessionSidecarV3 task, sidecar-write type fix, tempfile dep, monocle-ipc modify row]"
   last_bump_date: "2026-06-16"
 
 S-038-session-manager-hook-injection:

@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.6.1"
+version: "2.7.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
-timestamp: 2026-06-03T23:00:00Z
+timestamp: 2026-06-16T00:00:00Z
 inputs:
   - research/domain-monocle-vision-synthesis.md
   - specs/product-brief.md
@@ -2336,7 +2336,228 @@ SE-16d monotonicity: v2.6.0 timestamp 2026-06-14 ≥ v2.5.1 timestamp 2026-06-14
 - **I7 (Scroll offset per-session):** pty_scroll_offset field moved to per-session storage.
   See SS-embedded-pty.md update for the implementation.
 
-## §Trace v1.0.1
+---
+
+## §S-033 Architectural Rulings — Session-Host Scope Boundary and Sidecar Schema Ownership
+
+### Ruling A — monocle-session-host scope boundary: S-033 vs S-039/S-040/S-042/S-043/S-044
+
+**Status:** AUTHORITATIVE. Supersedes any ambiguity in S-033 §File Structure lines 255–273 and §Tasks lines 194–217.
+
+#### What S-033 MUST implement
+
+The table below is the minimum viable session-host for S-033's ACs to pass. Every item here
+is required to satisfy S-033 BC-2.08.001 and BC-2.08.008 (specifically AC-004 and AC-010:
+the post-spawn monitor must observe SessionState::Running from the session-host over the
+control connection).
+
+| Step | What | Why required in S-033 |
+|------|------|----------------------|
+| Parse CLI args | `--session-id`, `--runtime-dir`, `--binary`, `--args`, `--env`, `--cwd` | `RealSessionHostSpawner` passes these; session-host must parse them to proceed |
+| `nix::unistd::setsid()` | Process group leader | `RealSessionHostSpawner::spawn()` calls `pre_exec(|| setsid())` — this is an OS requirement, not optional |
+| Open PTY pair | `portable_pty::openpty(PtySize { rows:24, cols:80 })` | Required to obtain a valid PTY master/slave before spawning the harness child |
+| Build `CommandBuilder` from recipe | Binary, args, env, cwd; env inheritance (I2-006) | Session-host startup step 4; needed to launch the harness child |
+| Spawn harness child on PTY slave | `CommandBuilder` on the PTY slave fd | Needed to produce a `child_pid` for the sidecar and reach Running state |
+| Initialize `vt100::Parser` | `vt100::Parser::new(24, 80, 1000)` stub | Present in session-host main event loop; needed to compile; parser.process() stubs may be no-ops at S-033 |
+| Bind per-session UDS socket | `<runtime_dir>/session-<session_id>.sock` at `0o600` | Post-spawn monitor in S-033 polls for this socket to become connectable; S-033 AC-010 requires the Running transition, which requires the control connection, which requires the socket |
+| Write sidecar | `session-state.json` at startup step 8 with `child_pid` populated | S-033 AC-003 requires sidecar to exist with `child_pid`; this is the session-host's write (with real child_pid) that completes the schema |
+| Enter minimal event loop | Handle at least `DaemonToHost::Kill` and `StateChanged` | `StateChanged { new_state: Running, degraded_env: None }` MUST be sent after the harness child is spawned; post-spawn monitor requires this to transition SessionEntry to Running (AC-010) |
+| Send `StateChanged { Running }` | Over the control connection (per-session UDS) | THIS IS THE AC-010 SIGNAL — required for S-033's post-spawn monitor to transition to Running |
+
+#### What is deferred to later stories
+
+| Feature | Deferred to | Story anchor |
+|---------|------------|--------------|
+| PTY output streaming to daemon (`HostToDaemon::PtyBytes`) | S-039 / S-040 | PTY output pipeline; IPC dispatch wiring for `PtyOutput` |
+| `vt100::Parser.process()` live byte processing | S-039 | vt100::Parser integration |
+| `DaemonToHost::Attach` scrollback dump (`ScrollbackChunk*` + `ScrollbackDumpComplete`) | S-035 | attach_session; this is the daemon-side `attach_session()` implementation |
+| Keyboard forwarding (`DaemonToHost::KeyInput`) | S-047 | S-047 owns KeyInput / ResizePane / RenameSession IPC arms |
+| PTY resize (`DaemonToHost::Resize`) | S-042 | resize_session and ResizePane handler |
+| Session re-discovery (`DaemonToHost::Attach` on Detached session) | S-035 | attach_session() daemon side |
+| `ScrollbackChunk*` / `ScrollbackDumpComplete` framing | S-035 | screen-state transfer on Attach |
+| vt100 screen-state transfer (styled cells) | S-035 | attach scrollback serialization |
+| TUI `PseudoTerminal` widget render | S-039 | monocle-tui side |
+| AppMode::EmbeddedTerminal transitions + SessionCreation wizard | S-044 | SS-09 TUI side |
+
+#### MockSessionHostSpawner + RealSessionHostSpawner: both required in S-033
+
+`MockSessionHostSpawner` is required because all S-033 unit tests (AC-001..AC-012, AC-009,
+AC-009b) use it. `RealSessionHostSpawner` is required because S-033 creates the
+`monocle-session-host` crate and the spawner invokes it. Without `RealSessionHostSpawner`
+the post-spawn monitor has no real binary to connect to, and AC-010 (Running transition)
+cannot be exercised in integration.
+
+**The `monocle-session-host` binary itself must be non-trivial for S-033 ACs to pass.**
+A `main.rs` that is all `todo!()` stubs will NOT satisfy S-033: the post-spawn monitor
+(AC-004 / AC-010) will never see the UDS socket become connectable, will timeout after 30s,
+and will never receive `StateChanged { Running }`. S-033 AC-010 therefore requires the session-host
+to implement AT MINIMUM the steps listed in the "What S-033 MUST implement" table above.
+
+#### Can S-033 ACs be fully satisfied with MockSessionHostSpawner alone?
+
+AC-001 through AC-009d can be satisfied with `MockSessionHostSpawner` only (no real binary
+needed for those ACs). AC-010 and AC-004 require the post-spawn monitor to observe
+`StateChanged { Running }` — with `MockSessionHostSpawner`, this means the mock must simulate
+the post-spawn monitor handshake by emitting `StateChanged { Running }` through the in-process
+test mechanism. If the mock returns a `SpawnedHostHandle` with a real UDS socket that the
+test harness controls (injecting the `StateChanged` message into the socket), then AC-010 can
+be tested without a real `monocle-session-host` binary.
+
+**Ruling:** S-033 test-writer SHOULD use `MockSessionHostSpawner` for all unit tests of
+AC-001..AC-009d (fast, isolated). AC-010 / the "Running transition" unit test
+(`test_BC_2_08_001_spawn_session_entry_created_within_2s`) SHOULD use a mock that simulates
+`StateChanged { Running }` over an in-process UDS. The `monocle-session-host` binary MUST be
+implemented (not all `todo!()`) so that integration tests and the real binary path compile
+and pass. The binary's PTY output streaming and scrollback dump are stubs (returning empty /
+not-yet-implemented), but MUST NOT panic — they should return or no-op gracefully so the
+binary can reach `StateChanged { Running }` in the test environment.
+
+---
+
+### Ruling B — SessionSidecar struct: crate residence, ownership protocol, schema agreement
+
+**Status:** AUTHORITATIVE. Resolves HIGH-009 (dual-writer schema drift risk).
+
+#### Ruling
+
+The canonical `SessionSidecarV3` struct MUST live in `monocle-ipc`.
+
+**Rationale:**
+1. `monocle-runtime` (daemon) and `monocle-session-host` (binary) are two separate processes.
+   They share NO in-process types. The only safe way to guarantee byte-level schema agreement
+   between them is a shared crate that both processes depend on.
+2. `monocle-ipc` is already the shared wire-type crate. `SessionState` (per S-033 ruling
+   v1.4 — F-P16-IMP-001) already lives in `monocle-ipc`. `SessionSidecarV3` is a wire type
+   in the same sense: it is a file-based handoff contract between daemon and session-host.
+3. `monocle-runtime` MUST NOT depend on `monocle-session-host` (no binary→library dep
+   in a workspace). `monocle-ipc` has no such constraint — both runtime and session-host
+   already depend on it for `SessionState` and other IPC types.
+
+#### Struct definition (canonical; placed in `monocle-ipc/src/lib.rs`)
+
+```rust
+/// session-state.json schema v3 — shared between monocle-runtime (writer at spawn) and
+/// monocle-session-host (writer at startup step 8). Both crates import this from monocle-ipc.
+/// Serde serialization is the byte-level schema agreement mechanism.
+/// All reads (rediscover_sessions) also use this struct.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionSidecarV3 {
+    pub schema_version: u32,      // always 3 for this struct
+    pub session_id: String,
+    pub pid: u32,                  // session-host process PID
+    pub socket_path: String,       // <runtime_dir>/session-<uuid>.sock
+    pub child_pid: Option<u32>,    // harness child PID; None in daemon's initial write; populated by session-host
+    pub state: SessionState,       // SessionState from monocle-ipc (already imported)
+    pub project_root: String,
+    pub cwd: String,
+    pub harness_id: String,
+    pub profile_id: String,
+    pub started_at: String,        // ISO-8601 UTC; session-host uses chrono::Utc::now().to_rfc3339()
+    pub display_name: String,
+    pub pty_rows: u16,
+    pub pty_cols: u16,
+    #[serde(default)]
+    pub kill_deadline_unix_ms: Option<u64>, // null unless state == Terminating
+}
+```
+
+**Forward-compat note:** `#[serde(default)]` on `kill_deadline_unix_ms` ensures schema v1 and v2
+sidecars can be deserialized into this struct (field absent → `None`). Schema version checking
+(v1/v2/v3 branching logic) continues to live in `rediscover_sessions()` in `monocle-runtime` —
+the struct is for v3 reads/writes; the daemon's re-discovery code handles schema migration to v3.
+
+#### Ownership protocol: who writes which fields when
+
+| Field | Writer | When |
+|-------|--------|------|
+| `schema_version: 3` | daemon (S-033 `spawn_session`) | Step 8 of daemon spawn path — initial atomic write |
+| `session_id` | daemon | same |
+| `pid` | daemon | same — `SpawnedHostHandle.pid` |
+| `socket_path` | daemon | same — `<runtime_dir>/session-<session_id>.sock` |
+| `child_pid: None` | daemon | same — `None` at initial write; session-host doesn't exist yet |
+| `state: "Launching"` | daemon | same |
+| `project_root`, `cwd`, `harness_id`, `profile_id`, `started_at`, `display_name`, `pty_rows`, `pty_cols` | daemon | same |
+| `kill_deadline_unix_ms: null` | daemon | same |
+| `child_pid: Some(pid)` | session-host | startup step 8 — session-host overwrites the sidecar AFTER opening the PTY and spawning the harness child, at which point `child_pid` is known |
+| `state: "Running"` | session-host | NOT written by session-host to sidecar — the session-host signals Running via `HostToDaemon::StateChanged { new_state: Running }` over the per-session UDS; the daemon updates the in-memory `SessionEntry.state` and re-writes the sidecar with `state: "Running"` |
+
+**Important clarification (no write race):** The daemon writes the sidecar FIRST (step 8 of
+spawn, before the session-host exists). The session-host writes the sidecar SECOND (startup
+step 8, after it has spawned the harness child and knows `child_pid`). The two writes are
+SEQUENTIAL, not concurrent — the daemon spawns the session-host process, the session-host
+starts up and overwrites the sidecar. Both use `tempfile::persist` (atomic rename).
+
+There is no write race. The session-host's write cannot occur before the daemon's write
+because the session-host process does not exist until after the daemon's write completes
+and `spawn_session()` returns. The only failure mode to defend against is the session-host
+writing a stale or partial `child_pid` — this cannot happen because `portable-pty` returns
+the child PID synchronously before the session-host binds its UDS socket.
+
+#### Atomic-write requirement (both writers)
+
+Both the daemon and the session-host MUST write `session-state.json` via `tempfile::persist`
+(NamedTempFile written in `runtime_dir`, then persisted to the target path). This is the
+CLAUDE.md atomic-write convention and BC-2.08.006 Invariant 5 requirement. `std::fs::write`
+is FORBIDDEN in both crates for this file.
+
+`monocle-session-host` MUST add `tempfile = "3"` to its `Cargo.toml` (it is already used by
+`monocle-runtime`). Both write to the same path; the atomic rename prevents concurrent readers
+from seeing a partial file.
+
+#### Path canonicalization (both writers)
+
+The `runtime_dir` used to construct the sidecar path MUST be the canonicalized `runtime_dir`
+passed as the `--runtime-dir` CLI argument to the session-host. The daemon passes the
+canonicalized path (BC-2.08.006 Invariant 6 — runtime_dir is canonicalized at daemon startup
+before any path is constructed from it). The session-host uses this value verbatim; it MUST NOT
+re-canonicalize it (doing so would be redundant and could fail if the path contains symlinks
+that resolve differently inside the session-host's mount namespace). `socket_path` in the sidecar
+is `format!("{}/session-{}.sock", runtime_dir_arg, session_id)`.
+
+#### Schema agreement guarantee
+
+Because `SessionSidecarV3` is defined in `monocle-ipc` and both `monocle-runtime` and
+`monocle-session-host` depend on `monocle-ipc`, any change to the struct definition will
+produce a compile-time error in both crates simultaneously. This is the byte-level schema
+agreement mechanism required by HIGH-009. No runtime version negotiation is needed for
+same-release binaries; the `schema_version: 3` field provides the forward-compat
+differentiation for cross-version (old daemon / new session-host) scenarios handled by
+the re-discovery version-check logic.
+
+#### S-036 re-discovery parseability
+
+`rediscover_sessions()` (S-036) reads `session-state.json` files via `serde_json::from_str::<SessionSidecarV3>(&content)`.
+Because both the daemon's initial write and the session-host's overwrite use `SessionSidecarV3`,
+the re-discovery parser will always successfully deserialize any sidecar written by this
+version of the binary, regardless of which writer last touched the file.
+
+---
+
+## §Trace v2.7.0
+
+**Rulings A + B: S-033 session-host scope boundary and SessionSidecarV3 crate residence** (2026-06-16):
+
+- **Ruling A** added: §S-033 session-host scope boundary. Precise step-by-step table of what
+  must be implemented in S-033 (parse args, setsid, open PTY, build CommandBuilder, spawn
+  harness child, init vt100::Parser stub, bind UDS, write sidecar with child_pid, send
+  StateChanged{Running}, enter minimal event loop) versus what is deferred (PTY output streaming
+  → S-039, scrollback dump → S-035, keyboard forwarding → S-047, resize → S-042, TUI side →
+  S-044). MockSessionHostSpawner vs RealSessionHostSpawner disposition clarified: both required;
+  AC-010 requires non-trivial session-host (no all-todo!() stubs).
+
+- **Ruling B** added: `SessionSidecarV3` struct lives in `monocle-ipc`, imported by both
+  `monocle-runtime` and `monocle-session-host`. Ownership protocol table (who writes which
+  fields when). No write race (sequential: daemon writes first, session-host overwrites with
+  child_pid). Both writers MUST use `tempfile::persist`. Path canonicalization requirement
+  (session-host uses `--runtime-dir` arg verbatim; no re-canonicalize). Schema agreement
+  guarantee: compile-time breakage if struct changes. S-036 parseability confirmed.
+
+- Motivation: adversarial review of S-033 surfaced two cross-component questions (HIGH-009 +
+  scope boundary ambiguity). These rulings close both gaps before implementation proceeds.
+
+- SE-16d monotonicity: v2.7.0 > v2.6.1. PASS.
+
+## §Trace v2.6.1
 
 **IMP-2 session_id type ruling** (2026-06-03):
 - Added §session_id type — canonical ruling: `session_id` is `String` (UUID as String)

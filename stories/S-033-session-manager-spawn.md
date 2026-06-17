@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-033
 epic_id: EPIC-08
-version: "1.6"
+version: "1.7"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -24,7 +24,7 @@ inputs:
   - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.001.md, version: "1.5.3"}
   - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.008.md, version: "1.3.4"}
   - {path: .factory/specs/architecture/SS-engine-module-v2-delta.md, version: "1.6.0"}
-  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
+  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.7.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
@@ -199,7 +199,9 @@ guaranteed by TWO properties:
 - [ ] Implement `RealSessionHostSpawner`: invokes `monocle-session-host` binary via `std::process::Command` with `pre_exec(|| setsid())` and passes `--session-id`, `--runtime-dir`, `--binary`, `--args`, `--env`, `--cwd` CLI args.
 - [ ] Implement `MockSessionHostSpawner`: in-memory fake that returns a configurable `Ok(SpawnedHostHandle)` or error; used in all unit tests.
 - [ ] Implement `session_error_to_code(op: IpcOp, e: &SessionError) -> &'static str` with full exhaustive outer match on `SessionError` and, for the `SessionError::EngineError(inner)` arm, an inner match on `EngineError` that MUST include both arms in order: `EngineError::UnsupportedOperation(_) => "spawn_unsupported"` FIRST, then `_ => "invalid_request"` as the mandatory non-exhaustive fallback (per SS-session-manager.md §session_error_to_code and BC-2.03.008 PC-3). The `UnsupportedOperation` arm MUST NOT be absent or collapsed into the catch-all — that would be the F-P44-IMP-001 regression.
-- [ ] Implement `spawn_session(opts: SpawnOptions)`: call `spawn_recipe()` first, then `spawner.spawn()`, then write sidecar via `tempfile::persist`, then insert `SessionEntry{state: Launching, host_conn: None}`, then spawn post-spawn monitor `tokio::spawn`, then publish `SessionStateChanged{Launching}` + `SessionListUpdate` under mutex.
+- [ ] Implement `monocle-session-host/src/main.rs` minimum-viable binary: parse CLI args; call `setsid()`; open PTY pair; build CommandBuilder with env inheritance (I2-006); spawn harness child; init `vt100::Parser` stub; bind UDS at `<runtime_dir>/session-<session_id>.sock`; write sidecar via `tempfile::persist` with `child_pid: Some(child.process_id())`; send `HostToDaemon::StateChanged { new_state: Running, degraded_env: None }` over the per-session UDS; enter minimal event loop handling `DaemonToHost::Kill`. PTY output streaming, scrollback dump, keyboard forwarding, and resize are deferred (see SS-session-manager.md §Architecture Ruling A → S-039/S-035/S-047/S-042/S-044).
+- [ ] Define `SessionSidecarV3` struct in `crates/monocle-ipc/src/lib.rs` (per SS-session-manager.md §Ruling B) with the schema-v3 shape. Both `monocle-runtime` and `monocle-session-host` import it via `monocle_ipc::SessionSidecarV3`. Daemon writes it with `child_pid: None` at spawn; session-host overwrites with `child_pid: Some(pid)` at startup step 8.
+- [ ] Implement `spawn_session(opts: SpawnOptions)`: call `spawn_recipe()` first, then `spawner.spawn()`, then write sidecar via `tempfile::persist` using `monocle_ipc::SessionSidecarV3` as the serialization type (NOT an ad-hoc struct; `child_pid: None` at daemon's initial write), then insert `SessionEntry{state: Launching, host_conn: None}`, then spawn post-spawn monitor `tokio::spawn`, then publish `SessionStateChanged{Launching}` + `SessionListUpdate` under mutex.
 - [ ] Implement post-spawn monitor as a `tokio::spawn` background task: polls UDS socket connectable (20ms backoff, 30s total timeout), verifies SO_PEERCRED, stores `host_conn: Some(SessionHostConnection { writer, proxy_task: None })`, receives `StateChanged` messages, on `StateChanged{Running}` starts PTY proxy task and transitions to Running state (emits `SessionStateChanged{Running}` + `SessionListUpdate`).
 - [ ] Implement IPC handler skeleton: generate UUID → send `SpawnAck` → call `opts.with_daemon_fields()` → call `spawn_session()` → on error send `ServerToClient::Error`.
 - [ ] Add `spawn_recipe(&self, opts: &SpawnOptions) -> Result<SpawnRecipe, EngineError>` to the `EngineModule` trait in `monocle-core/src/engine.rs` with a default impl returning `Err(EngineError::UnsupportedOperation("spawn_recipe"))`. (BC-2.03.008)
@@ -259,7 +261,7 @@ Files to CREATE:
 | File | Purpose |
 |------|---------|
 | `crates/monocle-runtime/src/session_manager/mod.rs` | `SessionManager`, `SessionEntry`, `SessionHostConnection`, `SessionHostSpawner` trait, `RealSessionHostSpawner`, `MockSessionHostSpawner`, `session_error_to_code()`, `SpawnedHostHandle`, `IpcOp` — `SessionState` is imported from `monocle_ipc::SessionState` (NOT defined here) |
-| `crates/monocle-session-host/Cargo.toml` | New binary crate; deps: `portable-pty = "0.9"`, `vt100 = "0.16"`, `tokio = "=1.52"`, `serde = { version = "1", features = ["derive"] }`, `serde_json = "=1.0.149"`, `nix = "0.30"`, `monocle-ipc = { path = "../monocle-ipc" }` |
+| `crates/monocle-session-host/Cargo.toml` | New binary crate; deps: `portable-pty = "0.9"`, `vt100 = "0.16"`, `tokio = "=1.52"`, `serde = { version = "1", features = ["derive"] }`, `serde_json = "=1.0.149"`, `nix = "0.30"`, `tempfile = "3"`, `monocle-ipc = { path = "../monocle-ipc" }` |
 | `crates/monocle-session-host/src/main.rs` | Session-host binary: parse CLI args, `setsid()`, open PTY, build `CommandBuilder`, spawn harness child, bind UDS, write sidecar, enter main event loop |
 
 Files to MODIFY:
@@ -269,7 +271,7 @@ Files to MODIFY:
 | `crates/monocle-runtime/src/lib.rs` | Add `pub mod session_manager;`; add `session_manager: Arc<Mutex<SessionManager>>` to `DaemonState` |
 | `crates/monocle-runtime/src/ipc_handler.rs` (or equivalent IPC handler file) | Add `ClientToServer::SpawnSession` arm: UUID gen → `SpawnAck` → `with_daemon_fields` → `spawn_session()` → on error `ServerToClient::Error` |
 | `Cargo.toml` (workspace root) | Add `crates/monocle-session-host` to `[workspace.members]` |
-| `crates/monocle-ipc/src/lib.rs` | (1) Define `SessionState` enum with the canonical 5 variants: `Launching`, `Running`, `Detached`, `Terminating`, `Terminated` — add if absent from S-021, do not duplicate. This is the authoritative location for `SessionState` (wire type used by `SessionStateChanged` and `SessionSnapshot`). (2) Ensure `ServerToClient::SpawnAck { session_id: String }` variant exists; add if absent. |
+| `crates/monocle-ipc/src/lib.rs` | (1) Define `SessionState` enum with the canonical 5 variants: `Launching`, `Running`, `Detached`, `Terminating`, `Terminated` — add if absent from S-021, do not duplicate. This is the authoritative location for `SessionState` (wire type used by `SessionStateChanged` and `SessionSnapshot`). (2) Ensure `ServerToClient::SpawnAck { session_id: String }` variant exists; add if absent. (3) Define `SessionSidecarV3` struct (per SS-session-manager.md §Ruling B): shared schema-v3 type imported by both `monocle-runtime` and `monocle-session-host`; fields per the canonical struct definition in §Ruling B. |
 
 ## Token Budget Estimate
 
@@ -353,6 +355,7 @@ those belong to S-034, S-035, and S-047 respectively.
 
 | Pass | Date | Change |
 |------|------|--------|
+| v1.7 | 2026-06-16 | SS-session-manager v2.7.0 Rulings A+B propagation: (1) inputs[] SS-session-manager pin bumped 2.6.1→2.7.0. (2) Tasks: added minimum-viable session-host task (Ruling A step table: parse args, setsid, PTY open, CommandBuilder, spawn child, vt100::Parser stub, bind UDS, write sidecar with child_pid, send StateChanged{Running}, minimal Kill event loop; deferred: PTY streaming→S-039, scrollback→S-035, keyboard→S-047, resize→S-042, TUI→S-044). (3) Tasks: added SessionSidecarV3 definition task in monocle-ipc (Ruling B dual-writer ownership protocol). (4) Existing spawn_session sidecar-write task updated to reference `monocle_ipc::SessionSidecarV3` as the serialization type (not ad-hoc struct). (5) File Structure: monocle-session-host/Cargo.toml row adds `tempfile = "3"` dep (Ruling B atomic-write requirement). (6) monocle-ipc/src/lib.rs modify row adds SessionSidecarV3 definition (Ruling B). |
 | v1.6 | 2026-06-16 | F-P21-SUG-002: AC-012 SpawnAck step-label aligned to BC-2.08.008 PC-5 canonical numbering — "IPC-handler step 1" → "IPC-handler step 2" (UUID generation is step 1; SpawnAck send is step 2). Relative ordering identical and correct in both versions; only the absolute step-index label changed. |
 | v1.5 | 2026-06-16 | Corpus-wide AC-trace-citation audit (F-P20-CRIT-001 class): AC-012 "postcondition 4b"→"postcondition 5" (SpawnAck ordering guarantee is in BC-2.08.008 PC-5 §SessionCreation wizard auto-advance, not PC-4b §InitialState push). AC body unchanged. |
 | v1.4 | 2026-06-16 | F-P16-IMP-001: Moved `SessionState` definition from `monocle-runtime/src/session_manager/mod.rs` to `crates/monocle-ipc/src/lib.rs` (canonical wire-type location). Added 5-variant canonical list (Launching/Running/Detached/Terminating/Terminated; Created/Killed RETIRED). Updated Tasks, File Structure, and Architecture Compliance Rules accordingly. monocle-ipc MUST NOT depend on monocle-runtime — placing SessionState in monocle-ipc resolves the crate-residency issue and aligns with S-048. |
