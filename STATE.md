@@ -2,17 +2,18 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "7.93"
+version: "7.94"
 status: active
 producer: state-manager
 timestamp: 2026-06-17T00:00:00Z
 phase: phase-3-v1A-wave-8
-current_step: "D-330 (2026-06-17): S-033 adversarial pass 4 — no CRITICAL; all named fixes (HIGH-001/MED-001/LOW-001/LOW-004/MED-003 + Rulings A–H) confirmed holding. IMP-001 (monitor-spawn-before-Launching-broadcast ordering) + OBS-001 (orphan sidecar on collision) routed to implementer. Three cross-story integration findings F-W8INT-001/002/003 deferred to Wave-8 integration gate. Convergence counter 0/3 (pass 5 next after IMP-001/OBS-001 fix)."
+current_step: "D-331 (2026-06-17): S-033 adversarial convergence COMPLETE — 3/3 consecutive clean passes (passes 5/6/7 clean; 7 total incl. pre-rework Pass-1). All blockers B-001..005, highs, meds, lows, SEC-001/003/005, and Rulings A-H resolved + verified with falsifiable tests. Worktree @ ed4b045; 1,249 tests, 0 failures; clippy --all-targets clean; cargo tree -d clean. NEXT: per-story delivery (demo evidence -> push -> pr-manager 9-step PR -> merge -> worktree cleanup)."
+prior_step: "D-330 (2026-06-17): S-033 adversarial pass 4 — no CRITICAL; all named fixes (HIGH-001/MED-001/LOW-001/LOW-004/MED-003 + Rulings A–H) confirmed holding. IMP-001 (monitor-spawn-before-Launching-broadcast ordering) + OBS-001 (orphan sidecar on collision) routed to implementer. Three cross-story integration findings F-W8INT-001/002/003 deferred to Wave-8 integration gate. Convergence counter 0/3 (pass 5 next after IMP-001/OBS-001 fix)."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-001..D-241 at cycles/cycle-001/decisions-archive.md. D-242..D-330 appended at cycles/cycle-001/decisions-archive.md §Phase-1d+Phase-2+Phase-3. Full durable_task_register YAML (127 entries) at cycles/cycle-001/task-register-full.yaml."
-awaiting: "S-033 Wave 8: pass 4 REMEDIATED — IMP-001 (monitor-spawn ordering) + OBS-001 (orphan sidecar) to implementer; pass 5 next (convergence counter 0/3). Three integration findings F-W8INT-001/002/003 deferred to Wave-8 gate. Branch protection (PROC-BRANCH-PROTECTION-CONTEXTS) pending human/repo-admin before first Wave 8 PR merge."
+traces_to: "D-001..D-241 at cycles/cycle-001/decisions-archive.md. D-242..D-331 appended at cycles/cycle-001/decisions-archive.md §Phase-1d+Phase-2+Phase-3. Full durable_task_register YAML (127 entries) at cycles/cycle-001/task-register-full.yaml."
+awaiting: "S-033 per-story delivery: demo evidence -> push -> pr-manager 9-step PR to develop -> merge -> worktree cleanup (D-331 adversarial convergence DONE 3/3 clean). On merge: S-033 unblocks S-034/035/037/038/045. F-W8INT-001/002/003 parked for Wave-8 integration gate. Branch protection (PROC-BRANCH-PROTECTION-CONTEXTS) pending human/repo-admin before first Wave 8 PR merge."
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: 2026-06-03
@@ -20,17 +21,17 @@ dtu_services: [hook-endpoints-x5]
 current_cycle: cycle-001
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v7.93 — 2026-06-17
-  PHASE-3 v1A ACTIVE — WAVE 8 / S-033 ADVERSARIAL PASS 5 NEXT (after IMP-001/OBS-001 fix)
+  ZERO-CONTEXT RESUME CHECKPOINT v7.94 — 2026-06-17
+  PHASE-3 v1A ACTIVE — WAVE 8 / S-033 PER-STORY DELIVERY NEXT
   ============================================================================
   POSITION: Phase-3 TDD implementation, v1A control-center scope, Wave 8.
-  STATUS: S-033 adversarial pass 4 REMEDIATED (D-330). No CRITICAL. All prior
-  named fixes (HIGH-001/MED-001/LOW-001/LOW-004/MED-003 + Rulings A–H) confirmed
-  holding. Two in-scope findings routed to implementer: IMP-001 (monitor-spawn-
-  before-Launching-broadcast ordering inversion) + OBS-001 (orphan sidecar on
-  collision). Three cross-story integration findings F-W8INT-001/002/003 deferred
-  to Wave-8 integration gate. SS-session-manager v2.7.3, S-033 v1.9.
-  Convergence counter: 0/3. Next: implementer fixes IMP-001/OBS-001, then pass 5.
+  STATUS: S-033 adversarial convergence COMPLETE (D-331). 3/3 consecutive clean
+  passes (passes 5/6/7 clean; 7 total adversarial passes incl. pre-rework Pass-1
+  that caught stubbed headline behavior). All blockers B-001..005, highs, meds,
+  lows, SEC-001/003/005, and Rulings A-H resolved + verified with falsifiable
+  tests. Worktree story/S-033-session-manager-spawn @ ed4b045; 1,249 tests,
+  0 failures; clippy --all-targets clean; cargo tree -d clean.
+  Step 4.5 per-story adversarial convergence satisfied.
 
   READ FIRST (in order):
   1. /Users/jmagady/Dev/monocle/NEXT-SESSION-RESUME.md  <- concise entry point
@@ -51,13 +52,15 @@ next_session_resume_protocol: |
   SS-daemon-wiring-v2-delta v1.11.4 | SS-deps-pin-manifest-v2-delta v1.0.2
   prd v1.28.3 | product-brief v2.0.4 | domain-monocle-vision-synthesis v2.2.3
 
-  NEXT-ACTION (S-033 convergence — pass 4 REMEDIATED, pass 5 next):
-  1. implementer: fix IMP-001 (monitor-spawn-before-Launching-broadcast ordering
-     inversion) + OBS-001 (orphan sidecar cleanup on UUID collision path).
-     Worktree dfc6765 (or current HEAD) has current implementation.
-  2. adversary: fresh-context pass 5 (convergence counter 0/3).
-     F-W8INT-001/002/003 are cross-story/deferred — do NOT flag as new in-scope findings.
-  3. If CLEAN → counter 1/3. If BLOCKED → architect rulings + remediation burst.
+  NEXT-ACTION (S-033 per-story delivery — convergence DONE):
+  1. demo-recorder: capture demo evidence for S-033 (VHS or Playwright).
+  2. Push worktree branch story/S-033-session-manager-spawn to remote.
+  3. pr-manager: complete all 9 steps — PR to develop, ai-review, security-review,
+     finding triage, fixes (if any), final approval, merge.
+  4. Worktree cleanup after merge.
+  5. On merge: S-033 unblocks S-034/035/037/038/045 for Wave-8 sequencing.
+  Cross-story integration findings F-W8INT-001/002/003 parked for Wave-8 gate;
+  do NOT re-raise as in-scope findings during delivery.
   CI pre-requisites status:
     DTU clone: PASS (D-234, fidelity 1.0)
     ci.yml: PASS
@@ -73,13 +76,14 @@ next_session_resume_protocol: |
   - D-326: S-033 Rulings A+B (scope + SessionSidecarV3 in monocle-ipc)
   - D-327: S-033 Rulings C+D (setsid host-side; host_conn storage S-033 scope)
   - D-328: S-033 Rulings E+F+G (DaemonToHost/HostToDaemon in monocle-ipc; EC-152 retry IPC-handler-only + second SpawnAck; single-lock atomicity for Running/EC-163/Terminated pairs)
-  - D-329: S-033 Ruling H — MED-002 monitor↔entry generation guard DEFERRED to S-036; safe in v1 (3-layer argument); SS-session-manager v2.7.3
+  - D-329: S-033 Ruling H — MED-002 monitor+entry generation guard DEFERRED to S-036; safe in v1 (3-layer argument); SS-session-manager v2.7.3
   - D-330: pass 4 REMEDIATED; IMP-001+OBS-001 to implementer; F-W8INT-001/002/003 to Wave-8 gate
+  - D-331: S-033 adversarial convergence COMPLETE (3/3 clean, passes 5/6/7). Per-story delivery next.
   - Spawn-path Model A: SpawnOptions on wire; SpawnRecipe daemon-internal
   - IPC: 12-code wire taxonomy; 9-variant SessionError; schema_version 3
   - PTY (ADR-0011): portable-pty 0.9.0 + vt100 0.16.2 + tui-term =0.3.4; MSRV 1.88
   - SessionState: 5 variants (Launching/Running/Detached/Terminating/Terminated) in monocle-ipc
-  - Full history: cycles/cycle-001/decisions-archive.md (D-001..D-330)
+  - Full history: cycles/cycle-001/decisions-archive.md (D-001..D-331)
 
   KNOWN-FLAKY TESTS (do NOT flag as new findings):
   cli_daemon_stop, factory_self_referential, test_BC_2_07_006,
@@ -100,7 +104,7 @@ next_session_resume_protocol: |
 | 0.5-0.9 Brief + market intel | DONE 2026-05-14 | brief v2.0.4; validate-brief VALID |
 | 1 Spec Crystallization | DONE D-170 APPROVED | 57-pass Phase-1d adversarial. 113 Phase-1 BCs (138 total incl Phase-2 v1A). <!-- version-pin-historical: BC-INDEX v1.43.7 at Phase-1d close --> |
 | 2 Story Decomp v1A | PASSED/APPROVED D-325 | 26 passes (3/3 clean). 51 stories/311 pts. Gate APPROVED Joshua Magady 2026-06-16. |
-| 3 TDD v1A Waves 8-9 | IN PROGRESS — Wave 8 | Wave 8 starting. Tier-1 root S-033 (monocle-session-host). Branch protection pending human. |
+| 3 TDD v1A Waves 8-9 | IN PROGRESS — Wave 8 | S-033 adversarial convergence DONE (D-331, 3/3 clean, 7 total passes). Per-story delivery (demo+PR) next. Branch protection pending human. |
 | 3 TDD Waves 1-7 (pre-pivot) | COMPLETE D-232 | 32/33 done (192/195 pts). 1514 tests. develop @ 6811103 |
 | 4-7 | PENDING after Phase-3 v1A | Old observe-only scope superseded by v1A control-center |
 
@@ -235,11 +239,12 @@ F-P25-SUG-001, S-047-AC009-PTYRESET-QUALIFIER (all closed D-323 2026-06-16).
 ## Decision History
 
 Full decisions archive: `cycles/cycle-001/decisions-archive.md`
-D-001..D-241: early phases; D-242..D-325: Phase-1d + Phase-2 + Phase-3 gate (appended 2026-06-16)
+D-001..D-241: early phases; D-242..D-331: Phase-1d + Phase-2 + Phase-3 (appended 2026-06-16/17)
 
 Key decisions last session:
 - D-323 (2026-06-16): Phase-2 pre-gate cleanup burst COMPLETE. D-324: inputs-pin BLOCKER fix. D-325: Phase-2 gate APPROVED. D-326: S-033 adversarial Pass-1 rulings A+B (scope + SessionSidecarV3). SS-session-manager v2.7.0; S-033 v1.7.
 - D-327 (2026-06-17): S-033 adversarial pass (post-rework) NOT CLEAN. Rulings C+D (setsid host-side; host_conn storage S-033 scope). SS-session-manager v2.7.0→v2.7.1; S-033 v1.7→v1.8. Counter 0/3.
 - D-328 (2026-06-17): S-033 adversarial pass 2 NOT CLEAN. Rulings E+F+G (DaemonToHost/HostToDaemon in monocle-ipc; EC-152 retry IPC-handler-only + second SpawnAck; single-lock atomicity). SS-session-manager v2.7.1→v2.7.2; S-033 v1.8→v1.9. Counter 0/3.
 - D-329 (2026-06-17): S-033 adversarial pass 3 (post-batch) — no CRITICAL; all prior fixes confirmed holding (worktree dfc6765). Ruling H: MED-002 DEFERRED to S-036 (3-layer safety). SS-session-manager v2.7.2→v2.7.3. Counter 0/3.
-- D-330 (2026-06-17): S-033 adversarial pass 4 — no CRITICAL; all named fixes (HIGH-001/MED-001/LOW-001/LOW-004/MED-003 + Rulings A–H) confirmed holding. IMP-001 (monitor-spawn-before-Launching-broadcast ordering inversion) + LOW OBS-001 (orphan sidecar on collision) routed to implementer. Three cross-story integration findings F-W8INT-001/002/003 deferred to Wave-8 integration gate. Counter 0/3 (pass 5 next after IMP-001/OBS-001 fix). STATE v7.92→v7.93.
+- D-330 (2026-06-17): S-033 adversarial pass 4 — no CRITICAL; all named fixes (HIGH-001/MED-001/LOW-001/LOW-004/MED-003 + Rulings A-H) confirmed holding. IMP-001 (monitor-spawn-before-Launching-broadcast ordering inversion) + LOW OBS-001 (orphan sidecar on collision) routed to implementer. Three cross-story integration findings F-W8INT-001/002/003 deferred to Wave-8 integration gate. Counter 0/3 (pass 5 next after IMP-001/OBS-001 fix). STATE v7.92->v7.93.
+- D-331 (2026-06-17): S-033 adversarial convergence COMPLETE — 3/3 consecutive clean passes (passes 5/6/7 clean; 7 total adversarial passes incl. pre-rework Pass-1 that caught stubbed headline behavior). All blockers B-001..005, highs, meds, lows, SEC-001/003/005, and Rulings A-H resolved + verified with falsifiable tests. Worktree @ ed4b045; 1,249 tests, 0 failures; clippy --all-targets clean; cargo tree -d clean. Step 4.5 per-story adversarial convergence satisfied. Next: per-story delivery (demo -> PR -> merge). On merge: S-033 unblocks S-034/035/037/038/045. F-W8INT-001/002/003 parked for Wave-8 gate. STATE v7.93->v7.94.
