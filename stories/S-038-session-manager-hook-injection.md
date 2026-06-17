@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-038
 epic_id: EPIC-08
-version: "1.2"
+version: "1.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -20,7 +20,7 @@ behavioral_contracts: [BC-2.08.006]
 verification_properties: []
 estimated_days: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.006.md, version: "1.3.2"}
+  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.006.md, version: "1.4.0"}
   - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
@@ -102,7 +102,7 @@ session spawn. All sessions spawned by the daemon share the same `hooks-settings
 at `<runtime_dir>/hooks-settings.json`. The file is NOT re-written on each `spawn_session()`
 call unless the daemon's hook endpoint URL changes.
 
-### AC-006 (traces to BC-2.08.006 invariant 4 / CLAUDE.md atomic-write convention — atomic write via tempfile::persist; no dedicated BC clause for atomicity)
+### AC-006 (traces to BC-2.08.006 Invariant 5 — atomic write via tempfile::persist)
 
 The initial write of `hooks-settings.json` (and any update) MUST use `tempfile::persist`
 for atomic rename-based write. No partial write is visible to spawned session-hosts.
@@ -132,7 +132,7 @@ via `SpawnOptions`; S-045 consumes it.
 - S-038 owns: `write_hooks_settings_json()`, `hooks_settings_path: PathBuf` on `SessionManager`, setting `opts.hooks_settings_path` before calling `spawn_recipe()`.
 - S-045 owns: reading `opts.hooks_settings_path` and appending `--settings <path>` to `SpawnRecipe.argv`.
 
-### AC-009 (traces to BC-2.08.006 postcondition 1 / SS-conventions path handling — file path is canonicalized; no symlinks; no dedicated BC clause for canonicalization)
+### AC-009 (traces to BC-2.08.006 Invariant 6 — file path is canonicalized; no symlinks)
 
 The path passed in `--settings` MUST be an absolute, canonicalized path (via
 `std::fs::canonicalize` or equivalent). Relative paths and symlinks are NOT permitted.
@@ -261,7 +261,7 @@ Estimate is comfortably within the 30% context window bound. No split required.
 
 | BC | Title | Version |
 |----|-------|---------|
-| BC-2.08.006 | Hook Auto-Injection in Session-Host Spawn Path | (see inputs: frontmatter) |
+| BC-2.08.006 | Hook Auto-Injection — `--settings` Arg Present in Session-Host Child Args Within 2s of Spawn | (see inputs: frontmatter) |
 
 ## Architecture Mapping
 
@@ -315,6 +315,7 @@ insertion into `SpawnRecipe.argv` is owned by S-045 (ClaudeCodeModule::spawn_rec
 
 | Version | Change | Pass |
 |---------|--------|------|
+| v1.3 | BC-2.08.006 input pin bumped 1.3.2→1.4.0 (PO added Invariants 5+6 + EC-183/184). AC-006 trace citation updated "invariant 4 / CLAUDE.md atomic-write convention — no dedicated BC clause"→"Invariant 5" (new dedicated clause). AC-009 trace citation updated "postcondition 1 / SS-conventions path handling — no dedicated BC clause"→"Invariant 6" (new dedicated clause). Body BC-table title corrected to canonical BC H1 form (F-P24-SUG-001). | post-convergence |
 | v1.2 | Corpus-wide AC-trace-citation audit (F-P20-CRIT-001 class): AC-005 "postcondition 5"→"invariant 3" (shared file); AC-006 "postcondition 6"→"invariant 4 / CLAUDE.md" (atomic write; no dedicated BC clause); AC-007 "postcondition 7"→"invariant 4" (write at startup); AC-008 "postcondition 8"→"postcondition 2 / architecture boundary"; AC-009 "invariant 1"→"postcondition 1 / SS-conventions" (canonicalization; no dedicated BC clause); AC-010 "invariant 2"→"postcondition 3" (BC-2.04.010 authority). AC bodies unchanged. Genuine BC gaps: AC-006 atomic write and AC-009 path canonicalization have no dedicated clause in BC-2.08.006 — both trace to project conventions. | Phase-2 |
 | v1.0 | Initial decomposition | Phase-2 |
 | v1.1 | F-P11-SUG-002 cross-ref correction: Tasks test name corrected to `test_BC_2_03_005_spawn_recipe_happy_path_binary_args_env_cwd` (dangling reference fixed) | Pass-11 |

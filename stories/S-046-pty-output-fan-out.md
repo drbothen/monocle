@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-046
 epic_id: EPIC-05
-version: "1.3"
+version: "1.4"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -205,7 +205,7 @@ No new dependencies. All three are in the workspace `Cargo.toml` already.
 | BC | Title | Version | Ownership |
 |----|-------|---------|-----------|
 | BC-2.05.009 | PtyOutput Fan-out Broker — Bounded Channel, Backpressure, Per-Client Isolation, 3-Strike Disconnect | (see inputs: frontmatter) | OWNED by S-046 |
-| BC-2.05.011 | ScrollbackChunk/ScrollbackDumpComplete/PtyReset Protocol | (see inputs: frontmatter) | PtyReset variant OWNED by S-046; ScrollbackChunk/ScrollbackDumpComplete variants owned by S-047 |
+| BC-2.05.011 | New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset | (see inputs: frontmatter) | PtyReset variant OWNED by S-046; ScrollbackChunk/ScrollbackDumpComplete variants owned by S-047 |
 
 **Ownership clarification (S-046 vs S-047):** `ServerToClient::PtyReset { session_id: String }` is
 added to `monocle-ipc/src/lib.rs` in this story (S-046) because the broker needs to emit it when a
@@ -260,6 +260,7 @@ managed by SS-05 per ARCH-INDEX Subsystem Registry SS-05 (monocle-ipc, daemon IP
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 1.4 | 2026-06-16 | vsdd-factory:story-writer | F-P24-SUG-002: BC-2.05.011 body BC-table title corrected — "ScrollbackChunk/ScrollbackDumpComplete/PtyReset Protocol" → "New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset" to match BC canonical title. |
 | 1.3 | 2026-06-16 | vsdd-factory:story-writer | Corpus-wide AC-trace-citation audit (F-P20-CRIT-001 class): AC-005 "postcondition 5"→"invariant 4" (PtyReset on drop); AC-006 "invariant 1"→"invariant 6" (hook priority); AC-007 "invariant 2"→"invariant 3" (backpressure/.send().await); AC-008 "invariant 3"→"invariant 4" (PtyReset protocol). AC bodies unchanged. |
 | 1.0 | 2026-06-15 | vsdd-factory:story-writer | Initial decomposition |
 | 1.2 | 2026-06-16 | vsdd-factory:story-writer | F-P19-SUG-001: Bump BC-2.05.011 input pin "1.2.4" → "1.2.5" (metadata-only Story-Anchor delta; no behavioral change). |

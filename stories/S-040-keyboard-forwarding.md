@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-040
 epic_id: EPIC-09
-version: "1.0"
+version: "1.1"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -53,9 +53,10 @@ For each crossterm `KeyEvent` with `kind == KeyEventKind::Press` or `KeyEventKin
 while `AppMode::EmbeddedTerminal` is active:
 - `key_event_to_pty_bytes(event)` returns `Some(bytes)`.
 - `ClientToServer::KeyInput { session_id, bytes }` is sent over the IPC channel.
-- The bytes match the authoritative BC-2.09.002 key translation table (printable chars, Ctrl+[A-Z],
+- The bytes match the authoritative key translation table (printable chars, Ctrl+[A-Z],
   Enter=`\r`, Backspace=`\x7f`, Tab=`\t`, arrows as `\x1b[A`–`\x1b[D`, F1–F12, Home/End/PgUp/PgDn/Ins/Del,
-  Alt+char as ESC-prefix, Shift+Tab=`\x1b[Z`, Ctrl+Arrow VT fallbacks per BC-2.09.002 PC-2 table).
+  Alt+char as ESC-prefix, Shift+Tab=`\x1b[Z`, Ctrl+Arrow VT fallbacks — exact sequences defined in
+  SS-embedded-pty.md §Translation function; BC-2.09.002 PC-2 specifies the behavioral fidelity postcondition).
 
 ### AC-002 (traces to BC-2.09.002 postcondition 3 — Release events discarded)
 
@@ -263,3 +264,10 @@ Within the 30% context window bound. No split required.
 - S-040 depends on S-039 because S-039 defines `AppMode::EmbeddedTerminal` (required by the dispatch arm gating) and establishes the IPC send infrastructure in the event loop.
 - S-040 blocks S-041 because S-041 (mouse forwarding + scoped mouse capture) extends the same EmbeddedTerminal event dispatch arm added in this story; the arm must exist before it can be extended.
 - S-040 blocks S-044 because S-044 (AppMode transitions + permission badge) depends on `AppMode::EmbeddedTerminal` keyboard dispatch context being fully functional.
+
+## Trace
+
+| Version | Change | Pass |
+|---------|--------|------|
+| v1.1 | F-P21-SUG-001: AC-001 citation-scope correction — "BC-2.09.002 PC-2 table" was imprecise as the literal VT sequence table lives in SS-embedded-pty.md §Translation function; AC-001 now co-cites both (BC-2.09.002 PC-2 for behavioral fidelity; SS-embedded-pty.md §Translation function for the exact sequence mapping). No AC behavior change. | post-convergence |
+| v1.0 | Initial decomposition. | Phase-2 |

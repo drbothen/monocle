@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.43.7"
+version: "1.43.8"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-16T00:00:00Z
@@ -1223,6 +1223,18 @@ SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. 
 - BC-INDEX version: 1.40.4 → 1.40.5. No BC ID additions or retirements. No H1 title changes.
 
 SE-16d monotonicity: v1.40.5 timestamp 2026-06-14T20:00:00Z > v1.40.4 timestamp 2026-06-14T19:00:00Z. PASS.
+
+## §Trace v1.43.8
+
+**F-P20-BCGAP-001 — BC-2.08.006 v1.4.0: atomic-write + path-canonicalization clauses** (2026-06-16):
+
+BC version bump in this dispatch:
+- BC-2.08.006 v1.3.2 → v1.4.0 (F-P20-BCGAP-001: Invariants 5+6 added — explicit atomic-write obligation via `tempfile::persist` with code-72 failure exit; path-canonicalization obligation for `runtime_dir` with three-case error taxonomy (code 69 / code 71 / symlink-race elimination). EC-183 and EC-184 added. 3 new test vectors. 3 new VP-TBD rows. Minor version bump per new normative content policy.).
+
+No BC H1 title changes. No BC ID additions or retirements. BC count unchanged: 138 active.
+BC-INDEX version: 1.43.7 → 1.43.8.
+
+SE-16d monotonicity: v1.43.8 timestamp 2026-06-16 = v1.43.7 timestamp 2026-06-16. PASS (same-day sequential patch).
 
 ## §Trace v1.43.7
 

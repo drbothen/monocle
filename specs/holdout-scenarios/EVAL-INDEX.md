@@ -1,10 +1,10 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.18"
+version: "1.19"
 status: active
 producer: vsdd-factory:state-manager
-timestamp: 2026-06-16T12:00:00Z
+timestamp: 2026-06-16T00:00:00Z
 phase: 2
 visibility: holdout-evaluator-only
 inputs:
@@ -19,7 +19,23 @@ inputs:
   - {path: .factory/stories/S-027-overlay-rendering-status-bar.md, version: "1.10"}
   - {path: .factory/stories/S-029-killer-scenario-test.md, version: "1.3"}
   - {path: .factory/stories/S-030-config-crate-foundation.md, version: "1.1"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.43.7"}
+  - {path: .factory/stories/S-033-session-manager-spawn.md, version: "1.6"}
+  - {path: .factory/stories/S-034-session-manager-kill.md, version: "1.1"}
+  - {path: .factory/stories/S-035-session-manager-attach-detach.md, version: "1.2"}
+  - {path: .factory/stories/S-036-session-manager-rediscovery.md, version: "1.0"}
+  - {path: .factory/stories/S-037-session-manager-gc.md, version: "1.0"}
+  - {path: .factory/stories/S-038-session-manager-hook-injection.md, version: "1.3"}
+  - {path: .factory/stories/S-039-pty-output-pipeline.md, version: "1.3"}
+  - {path: .factory/stories/S-040-keyboard-forwarding.md, version: "1.1"}
+  - {path: .factory/stories/S-041-mouse-forwarding-sgr.md, version: "1.0"}
+  - {path: .factory/stories/S-042-resize-debounce-resizepane.md, version: "1.2"}
+  - {path: .factory/stories/S-043-scrollback-navigation.md, version: "1.1"}
+  - {path: .factory/stories/S-044-appmode-transitions-permission-badge.md, version: "1.1"}
+  - {path: .factory/stories/S-045-claude-code-spawn-recipe.md, version: "1.3"}
+  - {path: .factory/stories/S-046-pty-output-fan-out.md, version: "1.4"}
+  - {path: .factory/stories/S-047-ipc-lifecycle-variants.md, version: "1.5"}
+  - {path: .factory/stories/S-048-sessions-panel-multi-project.md, version: "1.3"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.43.8"}
 traces_to: .factory/stories/STORY-INDEX.md
 input-hash: "[pending]"
 ---
@@ -161,6 +177,17 @@ Phase 4 holdout evaluation MUST evaluate ALL holdout scenarios:
 **Bump:** 1.5 → 1.6.
 **Scope:** `traces_to:` field: `STORY-INDEX.md v4.7` → `STORY-INDEX.md v5.20` (Option 1 per ADR-0007 §Decision; EVAL-INDEX is an active INDEX document; its traces_to must reflect canonical current STORY-INDEX version).
 **SE-16d PASS:** 2026-05-30 >= 2026-05-30 (patch; no normative behavioral change).
+
+## §Trace v1.19 — F-GATE-ADV-003: S-033..S-048 added to inputs[]; BC-INDEX pin cascade to 1.43.8 (2026-06-16)
+
+**Bump:** 1.18 → 1.19.
+**Scope:** `inputs[]` array extended with 16 new v1A story entries covering Waves 8-9 (S-033..S-048).
+BC-INDEX input pin updated: `"1.43.7"` → `"1.43.8"` (BC-INDEX bumped in this burst for F-P20-BCGAP-001).
+Rationale: EVAL-INDEX is the Phase 4 holdout-evaluator's input manifest. HS-EXP-011..015 test properties of
+the Wave 8-9 stories (S-033..S-048). The evaluator needs these story ACs as inputs to evaluate the holdout
+scenarios. Their absence from inputs[] (F-GATE-ADV-003) left the evaluator blind to the ACs for all 5
+new holdout scenarios. No holdout scenario IDs, titles, BCs, or behavioral semantics changed.
+**SE-16d PASS:** 2026-06-16 >= 2026-06-16 (same day as v1.18). PASS (same-day sequential patch).
 
 ## §Trace v1.18 — F-P20-SUG-001: HS-EXP-013 and HS-EXP-015 wave corrected from 8 → 9 (2026-06-16)
 

@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-033
 epic_id: EPIC-08
-version: "1.5"
+version: "1.6"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -188,7 +188,7 @@ connected, the broker discards the message with no error.
 `ServerToClient::SpawnAck { session_id }` is delivered to the requesting TUI client BEFORE
 any broker-published `SessionStateChanged { Launching }` for the same session. This is
 guaranteed by TWO properties:
-1. **Causal step ordering**: `SpawnAck` is sent in IPC-handler step 1 (before `spawn_session()` is called at step 3, which is before the broker emits `SessionStateChanged { Launching }` at step 5).
+1. **Causal step ordering**: `SpawnAck` is sent in IPC-handler step 2 (UUID generation is step 1; `spawn_session()` is called at step 3; the broker emits `SessionStateChanged { Launching }` at step 5).
 2. **Per-client FIFO**: the requesting client's per-client `mpsc` channel delivers messages in send order.
 
 ## Tasks
@@ -353,5 +353,6 @@ those belong to S-034, S-035, and S-047 respectively.
 
 | Pass | Date | Change |
 |------|------|--------|
+| v1.6 | 2026-06-16 | F-P21-SUG-002: AC-012 SpawnAck step-label aligned to BC-2.08.008 PC-5 canonical numbering — "IPC-handler step 1" → "IPC-handler step 2" (UUID generation is step 1; SpawnAck send is step 2). Relative ordering identical and correct in both versions; only the absolute step-index label changed. |
 | v1.5 | 2026-06-16 | Corpus-wide AC-trace-citation audit (F-P20-CRIT-001 class): AC-012 "postcondition 4b"→"postcondition 5" (SpawnAck ordering guarantee is in BC-2.08.008 PC-5 §SessionCreation wizard auto-advance, not PC-4b §InitialState push). AC body unchanged. |
 | v1.4 | 2026-06-16 | F-P16-IMP-001: Moved `SessionState` definition from `monocle-runtime/src/session_manager/mod.rs` to `crates/monocle-ipc/src/lib.rs` (canonical wire-type location). Added 5-variant canonical list (Launching/Running/Detached/Terminating/Terminated; Created/Killed RETIRED). Updated Tasks, File Structure, and Architecture Compliance Rules accordingly. monocle-ipc MUST NOT depend on monocle-runtime — placing SessionState in monocle-ipc resolves the crate-residency issue and aligns with S-048. |

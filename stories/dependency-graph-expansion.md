@@ -1,7 +1,7 @@
 ---
 document_type: dependency-graph
 level: L4
-version: "2.3"
+version: "2.4"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -18,15 +18,17 @@ input-hash: "[live-state]"
 traces_to: .factory/stories/STORY-INDEX.md
 ---
 
-# Dependency Graph: monocle Phase 2 Expansion (Waves 4-7)
+# Dependency Graph: monocle Phase 2 Expansion (Waves 4-9)
 
-> This file covers the dependency graph for the 16 new stories (S-016 through S-031)
-> added in the Phase 2 Expansion burst. For Waves 1-3 dependency graph, see
-> `.factory/stories/dependency-graph.md`.
+> This file covers the dependency graph for the 34 new stories (S-016 through S-048,
+> excluding done stories) added in the Phase 2 Expansion and v1A control-center bursts.
+> Waves 4-7 (16 stories: S-016..S-031) are covered in the first section.
+> Waves 8-9 (18 stories: S-032..S-048) are covered in the Wave 8-9 section below.
+> For Waves 1-3 dependency graph, see `.factory/stories/dependency-graph.md`.
 
 ## Full Mermaid Graph
 
-The graph includes all 16 new stories plus the Wave 1-3 anchor stories they depend on.
+The graph below (Waves 4-7) includes all 16 expansion stories plus the Wave 1-3 anchor stories they depend on.
 Existing Wave 1-3 stories are shown in grey; new Wave 4-7 stories are shown normally.
 
 ```mermaid
@@ -242,7 +244,7 @@ Critical path length: 8 stories, 63 total points (5+8+8+8+8+13+8+5 = 63 pts on p
 | BC-2.06.021 | Status Bar: Keybinding Hint Line | S-027 | YES |
 | BC-2.06.022 | Killer Scenario: ≤6 Keystrokes for Dual Permission Resolve | S-029 | YES |
 | BC-2.06.023 | TUI Removes Resolved Prompt from Overlay Stack on PermissionPromptResolved | S-026 | YES |
-| BC-2.06.024 | Permission Overlay: Tool Payload Rendering by Type | S-027 | YES |
+| BC-2.06.024 | Permission Overlay: ToolPayload Body Rendering by Variant | S-027 | YES |
 | BC-2.07.001 | Config File Atomic Write via `tempfile::persist` | S-030 | YES |
 | BC-2.07.002 | Config Schema Version 1: Harness Profile Fields | S-030 | YES |
 | BC-2.07.003 | Config Missing or Corrupted: Default Applied | S-030 | YES |
@@ -532,6 +534,16 @@ Critical path through Waves 8-9: S-033 (8pts) → S-035 (8pts) → S-039 (8pts) 
 | S-042 | 9 | 5 | S-039 | S-043 |
 | S-043 | 9 | 3 | S-039, S-042 | — |
 | S-044 | 9 | 13 | S-033, S-035, S-040, S-041 | — |
+
+## §Trace v2.4 — F-GATE-ADV-004: title/intro updated Waves 4-7 → Waves 4-9 (2026-06-16)
+
+**Bump:** 2.3 → 2.4.
+**Scope (F-GATE-ADV-004):**
+- Document title corrected: "Dependency Graph: monocle Phase 2 Expansion (Waves 4-7)" → "Dependency Graph: monocle Phase 2 Expansion (Waves 4-9)".
+- Introductory paragraph expanded to reference both the Waves 4-7 section (16 stories: S-016..S-031) and the Wave 8-9 section (18 stories: S-032..S-048) that was added in v2.0. The original title "Waves 4-7" was never updated when the Wave 8-9 section was appended.
+- Full Mermaid graph section paragraph updated to clarify it covers the Waves 4-7 portion.
+- No normative dependency data changed; no adjacency table changes.
+**SE-16d PASS:** 2026-06-16 >= 2026-06-16.
 
 ## §Trace v2.3 — SE-25 global bidirectional dependency-symmetry reconciliation — done-story back-propagation (2026-06-16)
 

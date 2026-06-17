@@ -1,7 +1,7 @@
 ---
 document_type: plan-doc
 level: L4
-version: "1.9"
+version: "2.0"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-05-19T04:30:00Z
@@ -162,7 +162,7 @@ Note: S-009 moved to Wave 3 (Decision 1 — S-008→S-009 dependency added; S-00
 ### Wave 8 Internal Ordering
 
 **Tier 1 (no Wave-8 predecessors — start immediately at Wave 8):**
-- S-032: depends on S-021(W5), S-018(W5) — parallel with S-033
+- S-032: depends on S-021(W5), S-022(W6), S-028(W7) — parallel with S-033
 - S-DAEMON-WIRE-FIX-001: depends on S-017(W5), S-016(W4) — parallel with S-033
 - S-033: depends on S-014(W2), S-015(W3), S-017(W5), S-021(W5) — Wave-8 EPIC-08 root
 
@@ -265,6 +265,13 @@ Before dispatching Phase 3 (TDD Implementation):
 - [ ] Human approval: "Phase 2 story corpus approved; proceed to Phase 3 TDD"
 
 ---
+
+## §Trace v2.0
+
+**F-GATE-IMP-002 — S-032 Wave 8 dependency text corrected** (2026-06-16):
+- Wave 8 Tier 1 entry for S-032 corrected: "depends on S-021(W5), S-018(W5)" → "depends on S-021(W5), S-022(W6), S-028(W7)".
+- Rationale: S-032 (`depends_on: [S-021, S-022, S-028]`) depends on S-028 (Wave 7, event ribbon scope) and S-022 (Wave 6, TUI connect protocol) in addition to S-021 (Wave 5). S-018 was never in S-032.depends_on; it was stale from an earlier draft. Authoritative source: S-032 frontmatter and dependency-graph-expansion.md adjacency table (S-032 Depends On: S-021, S-022, S-028).
+- Wave assignment and topological sort unchanged. S-032 remains Wave 8 (max(W5, W6, W7)+1 = W8; VALID).
 
 ## §Trace v1.9
 

@@ -1,13 +1,13 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.2"
+version: "1.4.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/SS-engine-module-v2-delta.md]
-input-hash: "a0e6893"
+input-hash: "26feef7"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-08
@@ -103,6 +103,39 @@ has `--settings` in its argv.
    called. The file exists at the path when monocle-session-host reads it. If the file is
    missing, `claude --settings` will fail to start — this is a daemon bug, not a
    session-host responsibility.
+5. **Atomic-write obligation (production-grade — per SS-conventions-anti-patterns.md §anti-patterns
+   table).** The daemon's write of `hooks-settings.json` to `<runtime_dir>/hooks-settings.json`
+   MUST use `tempfile::persist` (i.e., `NamedTempFile::new_in(&runtime_dir)` → write JSON →
+   `persist(&hooks_settings_path)`). Naked `std::fs::write` or `tokio::fs::write` is FORBIDDEN.
+   **Failure behavior:** if `tempfile::persist` fails (e.g., `NamedTempFile::new_in` returns
+   `Err` because `runtime_dir` is not writable, or `persist` returns `Err` due to a cross-device
+   rename or permission error), the daemon MUST exit with code 72 and log
+   `ERROR: failed to write hooks-settings.json: <reason>`. No partially-written file is left at
+   the target path — `tempfile::persist` guarantees atomicity by using `rename(2)` only on
+   success. The daemon MUST NOT proceed to step 10 (UDS bind) if step 9 (hooks-settings.json
+   write) fails; no sessions can be spawned without a valid hooks-settings.json. Authority:
+   BC-2.04.010 PC-1 and SS-conventions-anti-patterns.md §"Naked config file writes".
+6. **Path-canonicalization obligation.** The `hooks_settings_path` embedded in `SpawnOptions`
+   (carried from daemon to session-host as the `--settings` CLI arg value) MUST be derived from
+   a canonicalized `runtime_dir`. Specifically: before the daemon constructs the
+   `hooks_settings_path = runtime_dir.join("hooks-settings.json")` value (stored in
+   `DaemonState.hooks_settings_path`), the `runtime_dir` MUST be resolved via
+   `std::fs::canonicalize(&runtime_dir)` at daemon startup (step 1 of daemon_start_sequence).
+   **Error taxonomy for non-canonicalizable runtime_dir:**
+   - `runtime_dir` does not exist: daemon logs
+     `ERROR: runtime_dir does not exist: <path>` and exits with code 69 (EX_UNAVAILABLE).
+     The TUI receives no IPC connection (daemon never binds the UDS); the TUI MUST display
+     a startup error banner: `"monocle daemon failed to start — runtime directory not found: <path>"`.
+   - `runtime_dir` path component traverses a non-existent intermediate directory: same as
+     above (canonicalize returns `Err(NotFound)`).
+   - `runtime_dir` exists but `canonicalize` fails for any other reason (e.g., permission denied
+     on an intermediate symlink): daemon logs `ERROR: failed to canonicalize runtime_dir: <reason>`
+     and exits with code 71 (EX_OSERR).
+   - `hooks_settings_path` derived from a non-canonicalized (symlink-containing) `runtime_dir`
+     is FORBIDDEN: the path passed as `--settings` must be stable across symlink re-targets and
+     must match what `spawn_recipe()` embeds in `recipe.args`; a symlink race could cause the
+     session-host to pass a path to `claude` that resolves to a different location than the one
+     the daemon wrote. The canonicalize-at-startup model eliminates this race entirely.
 
 ## Edge Cases
 
@@ -111,6 +144,8 @@ has `--settings` in its argv.
 | EC-180 | `hooks_settings_path` refers to a file that was deleted after daemon startup (e.g., runtime_dir cleaned externally) | `claude --settings <deleted_path>` fails to find the file; Claude Code exits with an error; session-host sends `StateChanged::Terminated`; TUI shows "session failed to start"; daemon GC's the entry |
 | EC-181 | hooks-settings.json missing `lock.app` filter (regression) | All external `claude` processes on the system would route hooks to monocle; this is a data-integrity defect; the daemon MUST include `lock.app = 'monocle'` when writing the hooks file at daemon startup (invariant enforced by the daemon's hook-file writer, not by the session-host) |
 | EC-182 | Two sessions spawned concurrently | Both reference the SAME `<runtime_dir>/hooks-settings.json`; no file-level conflict; each `claude` process has `--settings <runtime_dir>/hooks-settings.json` in its argv; the shared file is read-only after daemon startup (no concurrent writes during spawn) |
+| EC-183 | `tempfile::persist` fails during step 9 (e.g., `runtime_dir` exists but a cross-device rename is attempted, or filesystem is mounted read-only after daemon start) | Daemon logs `ERROR: failed to write hooks-settings.json: <reason>` and exits with code 72. No partial file is left at the target path (tempfile guarantees this via `rename(2)` semantics — the temp file is only unlinked, never partially moved). No UDS bind happens; the TUI never receives an IPC connection; TUI displays a startup error banner (same path as binary-not-found startup failure). Invariant 5 enforces this hard-exit; a daemon that proceeds without a hooks-settings.json would spawn sessions whose hook injection silently fails. |
+| EC-184 | `runtime_dir` is a symlink and the symlink target changes between canonicalize (step 1) and hooks-settings.json write (step 9) | The `hooks_settings_path` embedded in `DaemonState` and all subsequent `SpawnOptions` continues to point to the canonicalized (real) path resolved at step 1, not the symlink. The re-targeted symlink is irrelevant: `hooks-settings.json` was written to the canonical path; the `--settings` arg carries the canonical path; the file is accessible by `claude`. No error; no divergence. Invariant 6 (canonicalize-at-startup) is the mechanism that eliminates this race. |
 
 ## Canonical Test Vectors
 
@@ -119,6 +154,9 @@ has `--settings` in its argv.
 | Single session spawn via `MockSessionHostSpawner` | `CommandBuilder.args` contains `["--settings", "<runtime_dir>/hooks-settings.json"]` | happy-path |
 | Session spawned via SessionManager; inspect spawned process `argv` | `argv` contains `--settings <runtime_dir>/hooks-settings.json` | integration |
 | Two concurrent spawns | Both spawns reference the SAME `<runtime_dir>/hooks-settings.json`; no distinct hooks files; file is valid JSON after both spawns complete | happy-path |
+| Daemon startup with `runtime_dir` pointing to a symlink (Invariant 6) | `DaemonState.hooks_settings_path` equals `std::fs::canonicalize(runtime_dir).unwrap().join("hooks-settings.json")`; symlink does NOT appear in the stored path | unit |
+| `tempfile::persist` injected to return `Err(...)` in step 9 (Invariant 5 — EC-183) | Daemon exits with code 72; no UDS socket created; `hooks-settings.json` is absent or unchanged at the target path | unit (daemon startup) |
+| `runtime_dir` does not exist at daemon startup (Invariant 6 — EC-184 precursor) | Daemon exits with code 69; logs `ERROR: runtime_dir does not exist: <path>`; no UDS bind | unit (daemon startup) |
 
 ## Verification Properties
 
@@ -127,6 +165,9 @@ has `--settings` in its argv.
 | VP-TBD | `CommandBuilder` produced by session-host has `--settings <runtime_dir>/hooks-settings.json` in args | unit (session-host startup sequence) |
 | VP-TBD | hooks-settings.json content includes `lock.app = 'monocle'` | unit (daemon hook-file writer) |
 | VP-TBD | Concurrent spawns all reference the shared `<runtime_dir>/hooks-settings.json`; no per-session file created | unit |
+| VP-TBD | hooks-settings.json write uses `tempfile::persist`; injected persist failure → daemon exits code 72 with no partial file at target path (Invariant 5) | unit (daemon startup; fault injection) |
+| VP-TBD | `DaemonState.hooks_settings_path` is derived from canonicalized `runtime_dir`; symlink runtime_dir → real path stored (Invariant 6) | unit (daemon startup) |
+| VP-TBD | Non-existent `runtime_dir` at startup → daemon exits code 69; no UDS bind (Invariant 6 error path) | unit (daemon startup) |
 
 ## Traceability
 
@@ -230,3 +271,28 @@ VP-TBD — Hook injection end-to-end tests (filled after VP creation)
 **Phase-2 Pass-1 fix burst — SS-session-manager v2.6.1 / SS-daemon-wiring-v2-delta v1.11.4 Architecture Source pin cascade** (2026-06-16T00:00:00Z):
 - Architecture Source pin(s) updated for SS-session-manager.md v2.6.0 → v2.6.1 and/or SS-daemon-wiring-v2-delta.md v1.11.3 → v1.11.4. Plain version-pin refresh — both SS spec bumps were SS-ipc Architecture Source cascade patches only; no normative API or invariant changes.
 - SE-16d monotonicity: v1.3.2 timestamp >= v1.3.1. PASS.
+
+## §Trace v1.4.0
+
+**F-P20-BCGAP-001 — Atomic-write + path-canonicalization clauses added** (2026-06-16):
+- **Finding:** BC-2.08.006 lacked dedicated atomic-write and path-canonicalization clauses despite
+  SS-conventions-anti-patterns.md §"Naked config file writes" requiring `tempfile::persist` for all
+  config/state writes and the `hooks_settings_path` being derived from externally-supplied path
+  inputs.
+- **Invariant 5 added:** Atomic-write obligation — the daemon's write of `hooks-settings.json`
+  MUST use `tempfile::persist`; failure exits the daemon with code 72; no partial file is left
+  at target. Authority: BC-2.04.010 PC-1 + SS-conventions-anti-patterns.md.
+- **Invariant 6 added:** Path-canonicalization obligation — `runtime_dir` MUST be canonicalized
+  via `std::fs::canonicalize` at daemon startup step 1 before `hooks_settings_path` is
+  constructed; three-case error taxonomy defined (does not exist → exit 69; other canonicalize
+  failure → exit 71; symlink race eliminated by design).
+- **EC-183 added:** `tempfile::persist` failure path (step 9) → code 72, no partial file, no UDS
+  bind.
+- **EC-184 added:** Symlink runtime_dir retarget after canonicalize → path in `DaemonState` is
+  stable; no divergence.
+- **Test vectors added:** 3 new rows covering symlink canonicalization, persist fault injection,
+  and missing runtime_dir.
+- **Verification properties added:** 3 new VP-TBD rows for Invariants 5 and 6.
+- Minor bump: v1.3.2 → v1.4.0 (new normative content in Invariants, Edge Cases, Test Vectors,
+  Verification Properties).
+- SE-16d monotonicity: v1.4.0 timestamp 2026-06-16 >= v1.3.2 timestamp 2026-06-16. PASS (same-day sequential minor bump).

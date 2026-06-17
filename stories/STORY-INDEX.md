@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.44"
+version: "5.45"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -214,14 +214,14 @@ traces_to: .factory/specs/prd.md
 | BC-2.08.007 | Attach/Detach — Chunked Scrollback (ScrollbackChunk*+ScrollbackDumpComplete) on Attach; session-host Stays Alive on Detach | S-035 | AC-001..AC-014 | YES |
 | BC-2.08.008 | SessionStateChanged — Daemon Emits on Every SessionState Transition; Delivered to All TUI Clients; Ordering Relative to SessionListUpdate | S-033, S-034, S-035 | S-033: AC-010..AC-012 (Launching); S-034: AC-012 (Terminating/Terminated); S-035: AC-015 (Running/Detached) | YES |
 | BC-2.09.001 | PTY Output Renders Within 100ms of Byte Receipt at TUI | S-039 | AC-001..AC-007 | YES |
-| BC-2.09.002 | Full-Fidelity Keyboard Forwarding — All v1A Input Classes Reach PTY stdin | S-040 | AC-001..AC-005 | YES |
+| BC-2.09.002 | Full-Fidelity Keyboard Forwarding — All v1A Input Classes Reach PTY stdin | S-040 | AC-001..AC-005, AC-011..AC-013 | YES |
 | BC-2.09.003 | Mouse Events Forwarded to PTY in SGR Encoding When in EmbeddedTerminal | S-041 | AC-001..AC-006 | YES |
-| BC-2.09.004 | Kitty Keyboard Protocol — Enhanced Key Events Forwarded as CSI u Sequences | S-040 | AC-006..AC-009 | YES |
-| BC-2.09.005 | Bracketed Paste — Paste Events Wrapped in Bracket Sequences Before Forwarding | S-040 | AC-010..AC-013 | YES |
+| BC-2.09.004 | Kitty Keyboard Protocol — Enhanced Key Events Forwarded as CSI u Sequences | S-040 | AC-006..AC-008, AC-014 | YES |
+| BC-2.09.005 | Bracketed Paste — Paste Events Wrapped in Bracket Sequences Before Forwarding | S-040 | AC-009..AC-010 | YES |
 | BC-2.09.006 | Resize — PTY and Parser Resized Within 2 Render Ticks of Pane Area Change; 50ms Debounce | S-042 | AC-001..AC-012 | YES |
 | BC-2.09.007 | Scrollback — 1000 Rows Default; Configurable; PtyScrollUp/Down Navigate | S-043 | AC-001..AC-014 | YES |
-| BC-2.09.008 | EmbeddedTerminal AppMode Enter/Exit Transitions; SessionCreation Wizard Auto-Transitions to EmbeddedTerminal | S-044 | AC-001..AC-007 | YES |
-| BC-2.09.009 | Permission Badge+Bell — Status Bar Badge + Audible Bell Within One Render Tick While in EmbeddedTerminal or SessionCreation | S-044 | AC-008..AC-011 | YES |
+| BC-2.09.008 | EmbeddedTerminal AppMode Enter/Exit Transitions; SessionCreation Wizard Auto-Transitions to EmbeddedTerminal | S-044 | AC-001..AC-015 | YES |
+| BC-2.09.009 | Permission Badge+Bell — Status Bar Badge + Audible Bell Within One Render Tick While in EmbeddedTerminal or SessionCreation | S-044 | AC-016..AC-021 | YES |
 
 | BC-HOOK-001 | PreToolUse Hook Fail-Open Semantics (No Server Found) | S-DTU-001 | AC-001 | YES |
 | BC-HOOK-002 | Non-PreToolUse Hooks Fail-Closed (No Server Found) | S-DTU-001 | AC-001 | YES |
@@ -498,6 +498,17 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.45
+
+**F-P25-SUG-001: BC Coverage Table AC-range corrections for S-040 and S-044** (2026-06-16):
+
+- **BC-2.09.002 (S-040):** `AC-001..AC-005` → `AC-001..AC-005, AC-011..AC-013` (edge-case ACs AC-011/EC-210, AC-012/EC-214, AC-013/EC-215 all trace to BC-2.09.002 but were omitted from the range).
+- **BC-2.09.004 (S-040):** `AC-006..AC-009` → `AC-006..AC-008, AC-014` (AC-014/EC-228 traces to BC-2.09.004; AC-009 traces to BC-2.09.005 not BC-2.09.004).
+- **BC-2.09.005 (S-040):** `AC-010..AC-013` → `AC-009..AC-010` (AC-009 and AC-010 trace to BC-2.09.005; AC-011..AC-013 trace to BC-2.09.002 edge cases).
+- **BC-2.09.008 (S-044):** `AC-001..AC-007` → `AC-001..AC-015` (S-044 has 15 ACs for BC-2.09.008: PC-1..PC-7, invariant 1, and edge cases EC-250..EC-253/Esc).
+- **BC-2.09.009 (S-044):** `AC-008..AC-011` → `AC-016..AC-021` (S-044 permission badge ACs are AC-016..AC-021).
+- SE-16d monotonicity: v5.45 timestamp 2026-06-16 >= v5.44 timestamp 2026-06-16. PASS.
 
 ## §Trace v5.44
 

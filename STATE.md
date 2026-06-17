@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "7.85"
+version: "7.86"
 status: active
 producer: state-manager
 timestamp: 2026-06-16T00:00:00Z
 phase: phase-2-CONVERGED-pre-gate
-current_step: "Phase-2 adversarial convergence COMPLETE (3/3, Passes 24/25/26 clean, 26 total). Pre-gate validations DONE: consistency GATE-AUDIT PASS (0 blockers), input-drift CLEAN (21 stale = circular-hash-cascade class-b, 0 genuine drift). POL-11 PASS. POL-12 PASS. PAUSED for laptop relocation."
+current_step: "D-323 (2026-06-16): Phase-2 pre-gate cleanup burst (Option A) COMPLETE — F-GATE-IMP-001/F-GATE-ADV-001/F-GATE-ADV-003 resolved + BC-2.08.006 hardened + story-writer cosmetics swept. sprint-state v1.46, EVAL-INDEX v1.19, STORY-INDEX v5.45, wave-schedule v2.0, dep-graph v2.4, BC-INDEX v1.43.8, BC-2.08.006 v1.4.0. Pending: fresh confirming consistency + input-drift re-check, then Phase-2 human approval gate."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "D-001..D-241 at cycles/cycle-001/decisions-archive.md. D-242..D-322 appended at cycles/cycle-001/decisions-archive.md §Phase-1d+Phase-2. Full durable_task_register YAML (122 entries) at cycles/cycle-001/task-register-full.yaml."
-awaiting: "PAUSED. Phase-2 CONVERGENCE COMPLETE (3/3). RESUME: Option A = optional cleanup burst then Phase-2 human approval gate. Option B = proceed directly to gate (all findings non-blocking)."
+awaiting: "Cleanup burst DONE (D-323). RESUME: run single confirming consistency check + input-drift re-check, then present Phase-2 human approval gate."
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: 2026-06-03
@@ -40,27 +40,19 @@ next_session_resume_protocol: |
   Waves: 8-9; 25 v1A BCs; 5 holdouts HS-EXP-011..015 anchored
 
   KEY VERSION PINS (canonical source: .factory/specs/version-pin-registry.yaml):
-  STORY-INDEX v5.44 | sprint-state v1.45 | wave-schedule v1.9
-  dependency-graph-expansion v2.3 | BC-INDEX v1.43.7 | EVAL-INDEX v1.18
+  STORY-INDEX v5.45 | sprint-state v1.46 | wave-schedule v2.0
+  dependency-graph-expansion v2.4 | BC-INDEX v1.43.8 | EVAL-INDEX v1.19
   ARCH-INDEX v1.0.30 | SS-ipc v1.24.0 | SS-session-manager v2.6.1
   SS-embedded-pty v1.7.0 | SS-engine-module-v2-delta v1.6.0
   SS-daemon-wiring-v2-delta v1.11.4 | SS-deps-pin-manifest-v2-delta v1.0.2
   prd v1.28.3 | product-brief v2.0.4 | domain-monocle-vision-synthesis v2.2.3
 
-  NEXT-ACTION OPTIONS:
-  Option A (preferred): Run cleanup burst FIRST, then present Phase-2 gate.
-    state-manager: F-GATE-IMP-001 (sprint-state inputs pin cascade)
-                   F-GATE-ADV-001 (sprint-state not_started->draft for S-033..S-048)
-                   F-GATE-ADV-003 (EVAL-INDEX inputs S-033..S-048)
-    story-writer:  F-GATE-IMP-002 (wave-schedule S-032 dep text)
-                   F-GATE-ADV-002 (epic detail stubs E-04..E-09)
-                   F-GATE-ADV-004 (dep-graph-expansion title Waves 4-7->4-9)
-                   Deferred cosmetic: F-P13-SUG-001, F-P21-SUG-001/002,
-                   F-P24-SUG-001/002, F-P25-SUG-001, S-047-AC009-PTYRESET-QUALIFIER
-    product-owner: F-P20-BCGAP-001 (BC-2.08.006 atomic-write + path-canon clauses)
-    Then: re-run single confirming consistency check, then gate.
-  Option B (fastest): Proceed directly to Phase-2 human approval gate.
-    All findings are NON-BLOCKING.
+  NEXT-ACTION (D-323 cleanup burst COMPLETE):
+  All Option A findings resolved. Next: single confirming consistency check
+  + input-drift re-check, then Phase-2 human approval gate.
+  D-323 resolved: F-GATE-IMP-001, F-GATE-IMP-002, F-GATE-ADV-001,
+                  F-GATE-ADV-002, F-GATE-ADV-003, F-GATE-ADV-004,
+                  F-P20-BCGAP-001 + deferred cosmetics swept.
 
   PHASE-2 HUMAN APPROVAL GATE CRITERIA:
   - Phase-2 adversarial story convergence COMPLETE (26 passes; 3 consecutive clean)
@@ -104,7 +96,7 @@ next_session_resume_protocol: |
 |-------|--------|-------|
 | -1 Reference Ingest | DONE 2026-05-11 | 8 repos; semport/ |
 | 0.5-0.9 Brief + market intel | DONE 2026-05-14 | brief v2.0.4; validate-brief VALID |
-| 1 Spec Crystallization | DONE D-170 APPROVED | 57-pass Phase-1d adversarial. 113 BCs. BC-INDEX v1.43.7 |
+| 1 Spec Crystallization | DONE D-170 APPROVED | 57-pass Phase-1d adversarial. 113 Phase-1 BCs (138 total incl Phase-2 v1A). <!-- version-pin-historical: BC-INDEX v1.43.7 at Phase-1d close --> |
 | 2 Story Decomp v1A | CONVERGED — pre-gate | 26 passes (3/3 clean). 51 stories/311 pts. Pre-gate validations DONE. |
 | 3 TDD v1A Waves 8-9 | NOT STARTED | Blocked on Phase-2 gate. S-033..S-048 |
 | 3 TDD Waves 1-7 (pre-pivot) | COMPLETE D-232 | 32/33 done (192/195 pts). 1514 tests. develop @ 6811103 |
@@ -120,20 +112,20 @@ None. All durable task register items are non-blocking.
 
 | ID | Status | Route | Block? | Subject (truncated) |
 |----|--------|-------|--------|---------------------|
-| F-GATE-IMP-001 | pending | state-mgr | n | sprint-state inputs pin cascade stale |
-| F-GATE-IMP-002 | pending | story-writer | n | wave-schedule S-032 dep text stale |
-| F-GATE-ADV-001 | pending | state-mgr | n | sprint-state not_started vs draft for S-033..S-048 |
-| F-GATE-ADV-002 | pending | story-writer | n | missing epic detail files E-04..E-09 |
-| F-GATE-ADV-003 | pending | state-mgr | n | EVAL-INDEX inputs missing S-033..S-048 |
-| F-GATE-ADV-004 | pending | story-writer | n | dep-graph-expansion title still Waves 4-7 |
-| F-P13-SUG-001 | deferred-post-conv | story-writer | n | BC-2.06.024 title in dep-graph |
-| F-P20-BCGAP-001 | deferred-post-conv | prod-owner | n | BC-2.08.006 atomic-write + path-canon clauses |
-| F-P21-SUG-001 | deferred-post-conv | story-writer | n | S-040 BC-2.09.002 citation scope |
-| F-P21-SUG-002 | deferred-post-conv | story-writer | n | S-033 SpawnAck step-label |
-| F-P24-SUG-001 | deferred-post-conv | story-writer | n | S-038 body BC-table title |
-| F-P24-SUG-002 | deferred-post-conv | story-writer | n | S-046 body BC-table title |
-| F-P25-SUG-001 | deferred-post-conv | story-writer | n | STORY-INDEX AC-ranges for S-044/S-040 multi-BC rows |
-| S-047-AC009-PTYRESET-QUALIFIER | deferred-post-conv | story-writer | n | S-047 AC-009 PtyReset subsection qualifier |
+| F-GATE-IMP-001 | CLOSED D-323 | state-mgr | n | sprint-state inputs pin cascade stale — RESOLVED v1.46 |
+| F-GATE-IMP-002 | CLOSED D-323 | story-writer | n | wave-schedule S-032 dep text — RESOLVED v2.0 |
+| F-GATE-ADV-001 | CLOSED D-323 | state-mgr | n | sprint-state S-033..S-048 not_started→draft — RESOLVED v1.46 |
+| F-GATE-ADV-002 | CLOSED D-323 | story-writer | n | missing epic detail files E-04..E-09 — RESOLVED v1.0 |
+| F-GATE-ADV-003 | CLOSED D-323 | state-mgr | n | EVAL-INDEX inputs S-033..S-048 — RESOLVED v1.19 |
+| F-GATE-ADV-004 | CLOSED D-323 | story-writer | n | dep-graph-expansion title Waves 4-7→4-9 — RESOLVED v2.4 |
+| F-P13-SUG-001 | CLOSED D-323 | story-writer | n | BC-2.06.024 title in dep-graph — SWEPT |
+| F-P20-BCGAP-001 | CLOSED D-323 | prod-owner | n | BC-2.08.006 atomic-write + path-canon — RESOLVED v1.4.0 |
+| F-P21-SUG-001 | CLOSED D-323 | story-writer | n | S-040 BC-2.09.002 citation scope — SWEPT |
+| F-P21-SUG-002 | CLOSED D-323 | story-writer | n | S-033 SpawnAck step-label — SWEPT |
+| F-P24-SUG-001 | CLOSED D-323 | story-writer | n | S-038 body BC-table title — SWEPT |
+| F-P24-SUG-002 | CLOSED D-323 | story-writer | n | S-046 body BC-table title — SWEPT |
+| F-P25-SUG-001 | CLOSED D-323 | story-writer | n | STORY-INDEX AC-ranges S-044/S-040 — SWEPT |
+| S-047-AC009-PTYRESET-QUALIFIER | CLOSED D-323 | story-writer | n | S-047 AC-009 PtyReset qualifier — SWEPT |
 | INPUT-HASH-CHILD-RECOMPUTE | codification-pending | devops | n | input-hash drift re-accumulates when parent specs bump |
 | DEP-PIN-SWEEP-RULE | pending | devops | n | extend POL-11 to grep crate-name+version prose literals |
 | POL-11-PINFORMAT-BLIND-SPOT | codification-pending | devops | n | POL-11 misses path.md vX.Y.Z section format |
@@ -221,14 +213,17 @@ None. All durable task register items are non-blocking.
 
 ## Resolved/Closed Tasks (archived)
 
-26 entries. Full detail at `cycles/cycle-001/task-register-full.yaml`:
+40 entries. Full detail at `cycles/cycle-001/task-register-full.yaml`:
 POL-14-PARENTHETICAL-ANCHOR-PIN, POL-11-MIRROR-TABLE-BLIND-SPOT, TD-MULTI-CLIENT-ATTACH-STORM-001,
 DTU-CLONE-STORY, ADV-W5GATE-HIGH-001, F-DW-HIGH-001, BC-HOOK-034-typo, S-005-main-wiring,
 ADV-W3GATE-MED-002, ADV-W3GATE-MED-004, ADV-W4GATE-MED-002, S-029-PROCESS-GAP-PC-LABEL-DRIFT,
 F-S025-ADV28-MED-001, F-S025-ADV28-MED-002, F-S025-ADV37-DEFER-001, F-S026-ADV6-DEFER-001,
 POINTS-TALLY-RECONCILE, F-S026-ADV1-LOW-002, F-S027-DOC-001, F-S028-NIT-001, F-S028-NIT-002,
 FLAKY-TIMING-5MS, F-S028-NIT-002-DEFERRED, PIVOT-CONTROL-CENTER, CC-TUITERM-WIP-SIGNOFF,
-CC-GLOBAL-MOUSE-CAPTURE.
+CC-GLOBAL-MOUSE-CAPTURE,
+F-GATE-IMP-001, F-GATE-IMP-002, F-GATE-ADV-001, F-GATE-ADV-002, F-GATE-ADV-003, F-GATE-ADV-004,
+F-P13-SUG-001, F-P20-BCGAP-001, F-P21-SUG-001, F-P21-SUG-002, F-P24-SUG-001, F-P24-SUG-002,
+F-P25-SUG-001, S-047-AC009-PTYRESET-QUALIFIER (all closed D-323 2026-06-16).
 
 ## Decision History
 
@@ -236,8 +231,7 @@ Full decisions archive: `cycles/cycle-001/decisions-archive.md`
 D-001..D-241: early phases; D-242..D-322: Phase-1d + Phase-2 (appended 2026-06-16)
 
 Key decisions last session:
-- D-304 (2026-06-15): Autonomous Phase-2 dispatch authorized
-- D-315 (2026-06-16): Pre-pivot disposition RATIFIED; 32 done-historical; 3 active kept
 - D-320 (2026-06-16): Phase-2 Pass-25 CLEAN (counter 2/3)
 - D-321 (2026-06-16): Phase-2 Pass-26 CLEAN — CONVERGENCE COMPLETE (3/3)
 - D-322 (2026-06-16): Pre-gate validations DONE — consistency PASS, drift CLEAN
+- D-323 (2026-06-16): Phase-2 pre-gate cleanup burst (Option A) COMPLETE — BC-2.08.006 v1.4.0, sprint-state v1.46, EVAL-INDEX v1.19, STORY-INDEX v5.45, wave-schedule v2.0, dep-graph v2.4, BC-INDEX v1.43.8, 6 epic files created. All F-GATE-* and F-P* deferred cosmetics CLOSED.

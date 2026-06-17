@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-047
 epic_id: EPIC-05
-version: "1.4"
+version: "1.5"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -130,7 +130,7 @@ When `ScrollbackDumpComplete` arrives:
 - If match: reconstruct the full screen from concatenated chunk rows (`Vec<Vec<SerializedCell>>`), apply
   `cursor_row/cursor_col` and `pty_rows/pty_cols`, then replay buffered live PTY bytes.
 
-### AC-009 (traces to BC-2.05.011 postcondition 3 — PtyReset clears buffer and re-triggers attach)
+### AC-009 (traces to BC-2.05.011 §PtyReset postcondition 3 — PtyReset clears buffer and re-triggers attach)
 
 When `ServerToClient::PtyReset { session_id }` is received by the TUI:
 - Clear all in-flight scrollback chunks for `session_id`.
@@ -424,6 +424,7 @@ extensions — the client/server lifecycle message set — which is the core cap
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 1.5 | 2026-06-16 | vsdd-factory:story-writer | S-047-AC009-PTYRESET-QUALIFIER: AC-009 trace header updated from "postcondition 3" to "§PtyReset postcondition 3" — adding the §PtyReset subsection qualifier to match BC-2.05.011's section structure (symmetric with AC-007 §ScrollbackChunk and AC-008 §ScrollbackDumpComplete corrections in v1.4). AC body unchanged. |
 | 1.4 | 2026-06-16 | vsdd-factory:story-writer | F-P23-IMP-001: AC-007 header corrected from "postcondition 1" to "§ScrollbackChunk postcondition 3" (contiguity/gap→re-attach is §ScrollbackChunk PC-3, not PC-1); AC-008 header corrected from "postcondition 2" to "§ScrollbackDumpComplete postcondition 3" (total_chunks validation is §ScrollbackDumpComplete PC-3, not PC-2). Closes F-P20-CRIT-001 class for S-047: all AC-001..AC-012 headers now cite subsection-scoped real clauses. AC bodies unchanged. |
 | 1.3 | 2026-06-16 | vsdd-factory:story-writer | Corpus-wide AC-trace-citation audit (F-P20-CRIT-001 class): re-anchored AC-002..AC-006 from flat global PC numbers (PC-5..PC-10) to subsection-scoped clauses (KillSession/KeyInput/ResizePane/DetachSession/RenameSession/AttachSession PC-1); AC-010 BC-2.05.011 invariant 1→6 (pending_pty_bytes); AC-011 invariant 4→6 (No-silent-failure); AC-012 invariant 5→invariant 6 / Architecture Source §ServerToClient::Error. AC bodies unchanged. |
 | 1.2 | 2026-06-16 | vsdd-factory:story-writer | F-P19-SUG-001: Bump BC-2.05.011 input pin "1.2.4" → "1.2.5" (metadata-only Story-Anchor delta; no behavioral change). |

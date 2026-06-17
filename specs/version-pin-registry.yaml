@@ -204,14 +204,14 @@ ARCH-INDEX:
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.43.7"
-  last_bump_commit: "[Phase-2 Pass-7 fix burst — §Trace v1.43.7: BC-2.03.008 v1.0.8 Story Anchor re-anchor S-045→S-033; STORY-INDEX BC Coverage row updated]"
+  current_version: "1.43.8"
+  last_bump_commit: "[F-P20-BCGAP-001 — BC-2.08.006 v1.4.0: atomic-write + path-canonicalization clauses added (Invariants 5+6, EC-183/184, 3 test vectors, 3 VPs). BC count unchanged: 138 active.]"
   last_bump_date: "2026-06-16"
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.44"
-  last_bump_commit: "[Phase-2 Pass-16 fix cycle — BC-2.06.025 AC range AC-001..AC-012→AC-001..AC-014 (AC-013 PC-1 all-5-state; AC-014 PC-2 Enter-on-Detached; F-P16-IMP-001/002)]"
+  current_version: "5.45"
+  last_bump_commit: "[F-P25-SUG-001 — BC Coverage Table AC-range corrections: BC-2.09.002/004/005 S-040 ranges corrected; BC-2.09.008/009 S-044 ranges corrected to AC-001..AC-015 and AC-016..AC-021]"
   last_bump_date: "2026-06-16"
 
 VP-INDEX:
@@ -228,8 +228,14 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.18"
-  last_bump_commit: "[F-P20-SUG-001 — HS-EXP-013 wave 8→9, HS-EXP-015 wave 8→9; Wave Coverage Summary split Wave 8/9; HS-EXP-013 v1.1→v1.2, HS-EXP-015 v1.2→v1.3]"
+  current_version: "1.19"
+  last_bump_commit: "[F-GATE-ADV-003 — S-033..S-048 (16 v1A stories) added to inputs[]; BC-INDEX pin cascade 1.43.7→1.43.8]"
+  last_bump_date: "2026-06-16"
+
+sprint-state:
+  path: stories/sprint-state.yaml
+  current_version: "1.46"
+  last_bump_commit: "[F-GATE-IMP-001+F-GATE-ADV-001 — inputs[] cascade refresh to canonical versions; S-033..S-048 not_started→draft to match STORY-INDEX]"
   last_bump_date: "2026-06-16"
 
 nfr-catalog:
@@ -779,9 +785,9 @@ BC-2.08.005:
 
 BC-2.08.006:
   path: specs/behavioral-contracts/ss-08/BC-2.08.006.md
-  current_version: "1.3.2"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-038]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.4.0"
+  last_bump_commit: "[F-P20-BCGAP-001 — atomic-write + path-canonicalization clauses added (Invariants 5+6, EC-183/184, 3 test vectors, 3 VPs)]"
+  last_bump_date: "2026-06-16"
 
 BC-2.08.007:
   path: specs/behavioral-contracts/ss-08/BC-2.08.007.md
@@ -938,3 +944,83 @@ S-DAEMON-WIRE-FIX-001-second-signal-exit-codes:
   current_version: "1.0"
   last_bump_commit: "[D-235 daemon-wiring convergence 2026-06-03 — HIGH-2 second-signal exit-codes deferral anchor; Wave 8 draft]"
   last_bump_date: "2026-06-03"
+
+# --- Phase-2 post-convergence fix burst additions (2026-06-16) ---
+
+wave-schedule:
+  path: stories/wave-schedule.md
+  current_version: "2.0"
+  last_bump_commit: "[F-GATE-IMP-002 — S-032 Wave 8 dependency text corrected: S-021/S-018 → S-021/S-022/S-028]"
+  last_bump_date: "2026-06-16"
+
+dependency-graph-expansion:
+  path: stories/dependency-graph-expansion.md
+  current_version: "2.4"
+  last_bump_commit: "[F-GATE-ADV-004 — Title/intro updated from 'Waves 4-7' to 'Waves 4-9'; F-P13-SUG-001 BC-2.06.024 title corrected]"
+  last_bump_date: "2026-06-16"
+
+S-033-session-manager-spawn:
+  path: stories/S-033-session-manager-spawn.md
+  current_version: "1.6"
+  last_bump_commit: "[F-P21-SUG-002 — AC-012 SpawnAck step-label aligned to BC-2.08.008 PC-5: 'step 1' → 'step 2' (UUID-gen=step1, SpawnAck=step2)]"
+  last_bump_date: "2026-06-16"
+
+S-038-session-manager-hook-injection:
+  path: stories/S-038-session-manager-hook-injection.md
+  current_version: "1.3"
+  last_bump_commit: "[PROPAGATION — BC-2.08.006 v1.4.0 pin + AC-006 Invariant 5 + AC-009 Invariant 6 + F-P24-SUG-001 body BC-table title]"
+  last_bump_date: "2026-06-16"
+
+S-040-keyboard-forwarding:
+  path: stories/S-040-keyboard-forwarding.md
+  current_version: "1.1"
+  last_bump_commit: "[F-P21-SUG-001 — AC-001 citation-scope correction: co-cite BC-2.09.002 PC-2 and SS-embedded-pty.md §Translation function]"
+  last_bump_date: "2026-06-16"
+
+S-046-pty-output-fan-out:
+  path: stories/S-046-pty-output-fan-out.md
+  current_version: "1.4"
+  last_bump_commit: "[F-P24-SUG-002 — BC-2.05.011 body BC-table title corrected to canonical 'New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset']"
+  last_bump_date: "2026-06-16"
+
+S-047-ipc-lifecycle-variants:
+  path: stories/S-047-ipc-lifecycle-variants.md
+  current_version: "1.5"
+  last_bump_commit: "[S-047-AC009-PTYRESET-QUALIFIER — AC-009 trace header adds §PtyReset subsection qualifier to match BC-2.05.011 section structure]"
+  last_bump_date: "2026-06-16"
+
+E-04-daemon-wiring:
+  path: stories/epics/E-04-daemon-wiring.md
+  current_version: "1.0"
+  last_bump_commit: "[F-GATE-ADV-002 — new epic detail file: EPIC-04 Daemon Wiring, SS-04, CAP-004, 36 pts, Waves 4-5+8]"
+  last_bump_date: "2026-06-16"
+
+E-05-ipc:
+  path: stories/epics/E-05-ipc.md
+  current_version: "1.0"
+  last_bump_commit: "[F-GATE-ADV-002 — new epic detail file: EPIC-05 IPC, SS-05, CAP-005, 39 pts, Waves 5-6+8]"
+  last_bump_date: "2026-06-16"
+
+E-06-tui:
+  path: stories/epics/E-06-tui.md
+  current_version: "1.0"
+  last_bump_commit: "[F-GATE-ADV-002 — new epic detail file: EPIC-06 TUI, SS-06, CAP-006, 55 pts, Waves 4+6-8]"
+  last_bump_date: "2026-06-16"
+
+E-07-config:
+  path: stories/epics/E-07-config.md
+  current_version: "1.0"
+  last_bump_commit: "[F-GATE-ADV-002 — new epic detail file: EPIC-07 Config, SS-07, CAP-007, 10 pts, Waves 4+7]"
+  last_bump_date: "2026-06-16"
+
+E-08-session-manager:
+  path: stories/epics/E-08-session-manager.md
+  current_version: "1.0"
+  last_bump_commit: "[F-GATE-ADV-002 — new epic detail file: EPIC-08 Session Manager, SS-08, CAP-008, 38 pts, Wave 8]"
+  last_bump_date: "2026-06-16"
+
+E-09-embedded-pty:
+  path: stories/epics/E-09-embedded-pty.md
+  current_version: "1.0"
+  last_bump_commit: "[F-GATE-ADV-002 — new epic detail file: EPIC-09 Embedded PTY, SS-09, CAP-009, 42 pts, Wave 9]"
+  last_bump_date: "2026-06-16"
