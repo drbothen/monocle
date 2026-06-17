@@ -1143,7 +1143,9 @@ async fn test_BC_2_08_001_B005_daemon_owned_fields_preserved_after_host_overwrit
     });
     {
         let data = serde_json::to_vec_pretty(&host_sidecar).expect("serialize host sidecar");
-        let dir = sidecar_path.parent().expect("B-005: sidecar path has parent");
+        let dir = sidecar_path
+            .parent()
+            .expect("B-005: sidecar path has parent");
         let mut tmp = tempfile::NamedTempFile::new_in(dir)
             .expect("B-005: create temp file for host sidecar simulation");
         std::io::Write::write_all(&mut tmp, &data).expect("B-005: write host sidecar temp");
