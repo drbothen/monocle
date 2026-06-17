@@ -2,17 +2,17 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "7.87"
+version: "7.88"
 status: active
 producer: state-manager
 timestamp: 2026-06-16T00:00:00Z
-phase: phase-2-CONVERGED-pre-gate
-current_step: "D-324 (2026-06-16): inputs-pin BLOCKER fix — dep-graph-expansion v2.4→v2.5 (BC-INDEX 1.27→1.43.8, SS-ipc 1.6.0→1.24.0, STORY-INDEX 4.7→5.45) + wave-schedule v2.0→v2.1 (BC-INDEX 1.13→1.43.8, VP-INDEX 1.16→1.17, prd 1.26.15→1.28.3, ARCH-INDEX 1.0.11→1.0.30, nfr-catalog 1.7→1.8, error-taxonomy 1.5→1.6). Registry updated atomically. Pending: confirming consistency re-check on the 2 fixed files, then Phase-2 human approval gate."
+phase: phase-3-v1A-wave-8
+current_step: "D-325 (2026-06-16): Phase-2 v1A control-center story-decomposition gate APPROVED by Joshua Magady. Consistency re-check PASS (0 blockers); 2 stale-pin blockers found+fixed (D-324); input-drift 0 genuine. Phase-3 v1A Waves 8-9 now ACTIVE. Wave 8 starting; root story S-033 (creates monocle-session-host crate)."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-001..D-241 at cycles/cycle-001/decisions-archive.md. D-242..D-322 appended at cycles/cycle-001/decisions-archive.md §Phase-1d+Phase-2. Full durable_task_register YAML (122 entries) at cycles/cycle-001/task-register-full.yaml."
-awaiting: "D-324 inputs-pin blockers fixed. RESUME: confirming consistency re-check on dep-graph-expansion v2.5 + wave-schedule v2.1, then Phase-2 human approval gate."
+traces_to: "D-001..D-241 at cycles/cycle-001/decisions-archive.md. D-242..D-325 appended at cycles/cycle-001/decisions-archive.md §Phase-1d+Phase-2+Phase-3. Full durable_task_register YAML (122 entries) at cycles/cycle-001/task-register-full.yaml."
+awaiting: "Phase-3 v1A Wave 8 kickoff. Tier-1 root = S-033 (creates monocle-session-host crate). One pre-Phase-3 blocker outstanding: develop branch protection not configured (PROC-BRANCH-PROTECTION-CONTEXTS, human/repo-admin action) — must be in place before first Wave 8 PR merge."
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: 2026-06-03
@@ -20,20 +20,19 @@ dtu_services: [hook-endpoints-x5]
 current_cycle: cycle-001
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v7.85 — 2026-06-16
-  PAUSED FOR LAPTOP RELOCATION
+  ZERO-CONTEXT RESUME CHECKPOINT v7.88 — 2026-06-16
+  PHASE-3 v1A ACTIVE — WAVE 8 STARTING
   ============================================================================
-  POSITION: Phase-2 story decomposition for v1A control-center scope.
-  STATUS: ADVERSARIAL CONVERGENCE COMPLETE (3/3 consecutive clean passes).
-  Passes 24/25/26 clean. 26 total passes. PRE-GATE VALIDATIONS DONE.
-  NEXT: Option A = cleanup burst then gate. Option B = gate directly (faster).
+  POSITION: Phase-3 TDD implementation, v1A control-center scope, Wave 8.
+  STATUS: Phase-2 gate APPROVED by Joshua Magady (D-325, 2026-06-16).
+  Phase-3 Waves 8-9 are now ACTIVE. Tier-1 root story = S-033.
 
   READ FIRST (in order):
   1. /Users/jmagady/Dev/monocle/NEXT-SESSION-RESUME.md  <- concise entry point
   2. /Users/jmagady/Dev/monocle/CLAUDE.md               <- production-grade + routing
   3. This STATE.md (task register table below)          <- task register + history pointers
 
-  CORPUS FACTS at Phase-2 convergence:
+  CORPUS FACTS at Phase-3 start:
   Stories: 51 total / 311 pts (32 done Phase 1-3; 16 not_started v1A Waves 8-9;
            1 blocked S-PHASE-3-PREP; 2 draft S-032/S-DAEMON-WIRE-FIX-001)
   New v1A: S-033..S-048 (16 stories); EPIC-08 Session Manager; EPIC-09 Embedded PTY
@@ -47,46 +46,34 @@ next_session_resume_protocol: |
   SS-daemon-wiring-v2-delta v1.11.4 | SS-deps-pin-manifest-v2-delta v1.0.2
   prd v1.28.3 | product-brief v2.0.4 | domain-monocle-vision-synthesis v2.2.3
 
-  NEXT-ACTION (D-324 inputs-pin BLOCKERS fixed):
-  D-324 fixed 2 inputs-pin blockers found by confirming consistency audit:
-    dep-graph-expansion v2.4→v2.5 (3 stale pins refreshed)
-    wave-schedule v2.0→v2.1 (6 stale pins refreshed)
-  Next: confirming consistency re-check on the 2 fixed files, then Phase-2 human approval gate.
-  D-323 resolved: F-GATE-IMP-001, F-GATE-IMP-002, F-GATE-ADV-001,
-                  F-GATE-ADV-002, F-GATE-ADV-003, F-GATE-ADV-004,
-                  F-P20-BCGAP-001 + deferred cosmetics swept.
-
-  PHASE-2 HUMAN APPROVAL GATE CRITERIA:
-  - Phase-2 adversarial story convergence COMPLETE (26 passes; 3 consecutive clean)
-  - Story corpus: 51 stories / 311 pts; 16 new v1A stories S-033..S-048
-  - 2 new epics EPIC-08/EPIC-09; Waves 8-9
-  - All 25 v1A BCs anchored; 5 holdouts (HS-EXP-011..015) with story anchors
-  - Consistency gate: PASS (0 blockers); Input-hash: CLEAN; POL-11/POL-12: PASS
-  On approval: Phase-3 TDD implementation for v1A Waves 8-9 (S-033..S-048) begins.
-
-  MANDATORY PRE-PHASE-3 PREREQUISITES (surface at/after gate):
-  1. DTU clone validated D-234 (S-DTU-001 fidelity 1.0) -- DONE
-  2. CI/CD: ci.yml + branch protection contexts (PROC-BRANCH-PROTECTION-CONTEXTS)
-  3. monocle-session-host new binary crate per SS-deps-pin-manifest-v2-delta
-  4. Per-story-delivery: unique /tmp paths; architect=spec-only; pr-manager 9 steps
+  NEXT-ACTION (Phase-3 Wave 8 kickoff):
+  Tier-1 root: S-033 creates monocle-session-host crate. Use per-story-delivery skill.
+  CI pre-requisites status:
+    DTU clone: PASS (D-234, fidelity 1.0)
+    ci.yml: PASS
+    develop build/clippy/tests: PASS (1192 tests @ 50c195e)
+    monocle-session-host crate: to be created by S-033 under TDD
+    Branch protection contexts: BLOCKED (PROC-BRANCH-PROTECTION-CONTEXTS) — HUMAN ACTION NEEDED
+      Must configure required-check contexts before first Wave 8 PR merge.
 
   RATIFIED DECISIONS (do NOT re-litigate):
   - D-238: session-host-owns-PTY; daemon restart SURVIVES (CASE 2); NO tmux default
   - D-304: Autonomous Phase-2 dispatch authorized; no per-burst plan-review gate
   - D-315: Pre-pivot disposition RATIFIED; 32 done-historical; 3 active kept
     (S-032/S-DAEMON-WIRE-FIX-001/S-PHASE-3-PREP); actual pre-pivot count 35; 0 archive/retire
+  - D-325: Phase-2 gate APPROVED; Phase-3 v1A active
   - Spawn-path Model A: SpawnOptions on wire; SpawnRecipe daemon-internal
   - IPC: 12-code wire taxonomy; 9-variant SessionError; schema_version 3
   - PTY (ADR-0011): portable-pty 0.9.0 + vt100 0.16.2 + tui-term =0.3.4; MSRV 1.88
   - SessionState: 5 variants (Launching/Running/Detached/Terminating/Terminated) in monocle-ipc
-  - Full history: cycles/cycle-001/decisions-archive.md (D-001..D-322)
+  - Full history: cycles/cycle-001/decisions-archive.md (D-001..D-325)
 
   KNOWN-FLAKY TESTS (do NOT flag as new findings):
   cli_daemon_stop, factory_self_referential, test_BC_2_07_006,
   wit-bindgen unmatched-skip, PATH isolation flake.
 
   factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'`
-  develop HEAD: 2141adc (no v1A production code written)
+  develop HEAD: 50c195e (1192 tests passing; no v1A production code yet)
   ============================================================================
 ---
 
@@ -99,8 +86,8 @@ next_session_resume_protocol: |
 | -1 Reference Ingest | DONE 2026-05-11 | 8 repos; semport/ |
 | 0.5-0.9 Brief + market intel | DONE 2026-05-14 | brief v2.0.4; validate-brief VALID |
 | 1 Spec Crystallization | DONE D-170 APPROVED | 57-pass Phase-1d adversarial. 113 Phase-1 BCs (138 total incl Phase-2 v1A). <!-- version-pin-historical: BC-INDEX v1.43.7 at Phase-1d close --> |
-| 2 Story Decomp v1A | CONVERGED — pre-gate | 26 passes (3/3 clean). 51 stories/311 pts. Pre-gate validations DONE. |
-| 3 TDD v1A Waves 8-9 | NOT STARTED | Blocked on Phase-2 gate. S-033..S-048 |
+| 2 Story Decomp v1A | PASSED/APPROVED D-325 | 26 passes (3/3 clean). 51 stories/311 pts. Gate APPROVED Joshua Magady 2026-06-16. |
+| 3 TDD v1A Waves 8-9 | IN PROGRESS — Wave 8 | Wave 8 starting. Tier-1 root S-033 (monocle-session-host). Branch protection pending human. |
 | 3 TDD Waves 1-7 (pre-pivot) | COMPLETE D-232 | 32/33 done (192/195 pts). 1514 tests. develop @ 6811103 |
 | 4-7 | PENDING after Phase-3 v1A | Old observe-only scope superseded by v1A control-center |
 
@@ -230,7 +217,7 @@ F-P25-SUG-001, S-047-AC009-PTYRESET-QUALIFIER (all closed D-323 2026-06-16).
 ## Decision History
 
 Full decisions archive: `cycles/cycle-001/decisions-archive.md`
-D-001..D-241: early phases; D-242..D-322: Phase-1d + Phase-2 (appended 2026-06-16)
+D-001..D-241: early phases; D-242..D-325: Phase-1d + Phase-2 + Phase-3 gate (appended 2026-06-16)
 
 Key decisions last session:
 - D-320 (2026-06-16): Phase-2 Pass-25 CLEAN (counter 2/3)
@@ -238,3 +225,4 @@ Key decisions last session:
 - D-322 (2026-06-16): Pre-gate validations DONE — consistency PASS, drift CLEAN
 - D-323 (2026-06-16): Phase-2 pre-gate cleanup burst (Option A) COMPLETE — BC-2.08.006 v1.4.0, sprint-state v1.46, EVAL-INDEX v1.19, STORY-INDEX v5.45, wave-schedule v2.0, dep-graph v2.4, BC-INDEX v1.43.8, 6 epic files created. All F-GATE-* and F-P* deferred cosmetics CLOSED.
 - D-324 (2026-06-16): inputs-pin BLOCKER fix — confirming consistency audit found 2 stale-inputs[] blockers (POL-11/ADR-0007 §Registry Update Obligation). Fixed: dep-graph-expansion v2.4→v2.5 (BC-INDEX 1.27→1.43.8, SS-ipc 1.6.0→1.24.0, STORY-INDEX 4.7→5.45); wave-schedule v2.0→v2.1 (BC-INDEX 1.13→1.43.8, VP-INDEX 1.16→1.17, prd 1.26.15→1.28.3, ARCH-INDEX 1.0.11→1.0.30, nfr-catalog 1.7→1.8, error-taxonomy 1.5→1.6). version-pin-registry.yaml updated atomically in same commit.
+- D-325 (2026-06-16): Phase-2 v1A control-center story-decomposition gate APPROVED by Joshua Magady. Phase transition phase-2 → PASSED. Phase-3 v1A (Waves 8-9) now ACTIVE. Consistency re-check PASS (0 blockers); 2 stale-pin blockers found+fixed (D-324); input-drift 0 genuine. develop @ 50c195e (1192 tests). Pre-Phase-3 prerequisite: branch protection contexts BLOCKED on human action.
