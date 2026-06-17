@@ -1687,6 +1687,7 @@ dependencies = [
  "libc",
  "monocle-core",
  "monocle-ipc",
+ "monocle-runtime",
  "nix 0.30.1",
  "rand 0.8.6",
  "regex-lite",

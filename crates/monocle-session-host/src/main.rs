@@ -286,13 +286,11 @@ async fn step_bind_uds(
 
     let sock_path = runtime_dir.join(format!("session-{session_id}.sock"));
 
-    // Remove stale socket if it exists (e.g., from a previous crashed session).
-    if sock_path.exists() {
-        std::fs::remove_file(&sock_path).map_err(|e| SessionHostError::UdsBindFailed {
-            path: sock_path.to_string_lossy().into_owned(),
-            reason: format!("failed to remove stale socket: {e}"),
-        })?;
-    }
+    // SEC-005 (CWE-59): unconditional best-effort remove before bind — eliminates the
+    // TOCTOU race between exists() check and remove_file() that the prior if-exists pattern
+    // had. If the socket does not exist, remove_file returns NotFound which we ignore.
+    // If removal fails for a real reason (e.g., permission denied), bind() will surface it.
+    let _ = std::fs::remove_file(&sock_path);
 
     let listener = tokio::net::UnixListener::bind(&sock_path).map_err(|e| {
         SessionHostError::UdsBindFailed {

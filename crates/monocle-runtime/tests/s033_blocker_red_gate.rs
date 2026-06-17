@@ -72,7 +72,12 @@ impl SessionHostSpawner for AlwaysSucceedSpawner {
 // ---------------------------------------------------------------------------
 
 fn isolated_runtime_dir() -> tempfile::TempDir {
-    tempfile::tempdir().expect("create isolated runtime dir for S-033 red gate test")
+    // Use /tmp explicitly to keep UDS socket paths short (macOS SUN_LEN = 104 chars;
+    // the default TMPDIR on macOS is a long path that causes socket bind failures
+    // when combined with the `session-<uuid>.sock` filename format).
+    tempfile::Builder::new()
+        .tempdir_in("/tmp")
+        .expect("create isolated runtime dir for S-033 red gate test in /tmp")
 }
 
 /// Locate the monocle-session-host binary in the same directory as the current
@@ -164,7 +169,7 @@ async fn test_BC_2_08_001_B002_production_broker_receives_state_changed() {
     ipc_subs.lock().await.push(ClientEntry::new(tui_tx));
 
     // Call spawn_session via the production-wired session_manager.
-    let session_id = "b002-test-session-id".to_string();
+    let session_id = "b0020000-0000-4000-a000-000000000002".to_string();
     let opts = SpawnOptions::for_spawn_request(
         PathBuf::from("/tmp/b002-project"),
         PathBuf::from("/tmp/b002-project"),
@@ -204,7 +209,7 @@ async fn test_BC_2_08_001_B002_production_broker_receives_state_changed() {
                     ServerToClient::SessionStateChanged {
                         ref session_id,
                         new_state: SessionState::Launching,
-                    } if session_id == "b002-test-session-id"
+                    } if session_id == "b0020000-0000-4000-a000-000000000002"
                 ),
                 "B-002: expected SessionStateChanged{{Launching}} broadcast on ipc_subscribers, got: {:?}",
                 next
@@ -213,7 +218,7 @@ async fn test_BC_2_08_001_B002_production_broker_receives_state_changed() {
         ServerToClient::SessionStateChanged {
             session_id: ref sid,
             new_state: SessionState::Launching,
-        } if sid == "b002-test-session-id" => {
+        } if sid == "b0020000-0000-4000-a000-000000000002" => {
             // Correct: SessionStateChanged{Launching} reached the subscriber.
         }
         other => {
@@ -249,7 +254,7 @@ async fn test_BC_2_08_001_B002_production_sidecar_path_under_daemon_runtime_dir(
         .await
         .expect("daemon_start_sequence must succeed for B-002b test");
 
-    let session_id = "b002b-sidecar-path-test".to_string();
+    let session_id = "b002b000-0000-4000-a000-000000000001".to_string();
     let opts = SpawnOptions::for_spawn_request(
         PathBuf::from("/tmp/b002b-project"),
         PathBuf::from("/tmp/b002b-project"),
@@ -417,7 +422,7 @@ async fn test_BC_2_08_001_B003_peercred_mismatch_terminates_session() {
     // Inject the rejecting verifier: simulates UID mismatch (EC-163).
     manager.with_peer_cred_verifier(Arc::new(RejectAllVerifier));
 
-    let session_id = "b003-session".to_string();
+    let session_id = "b0030000-0000-4000-a000-000000000001".to_string();
     let opts = monocle_core::engine::SpawnOptions::for_spawn_request(
         PathBuf::from("/tmp/b003-project"),
         PathBuf::from("/tmp/b003-project"),
@@ -459,7 +464,7 @@ async fn test_BC_2_08_001_B003_peercred_mismatch_terminates_session() {
             Ok(Some(ServerToClient::SessionStateChanged {
                 session_id: ref sid,
                 new_state: SessionState::Terminated,
-            })) if sid == "b003-session" => {
+            })) if sid == "b0030000-0000-4000-a000-000000000001" => {
                 found_terminated = true;
                 break;
             }
@@ -488,7 +493,9 @@ async fn test_BC_2_08_001_B003_peercred_mismatch_terminates_session() {
 
     // EC-163 ASSERTION 3: session in registry must be Terminated.
     let sessions = manager.session_list().await;
-    let snap = sessions.iter().find(|s| s.session_id == "b003-session");
+    let snap = sessions
+        .iter()
+        .find(|s| s.session_id == "b0030000-0000-4000-a000-000000000001");
     // The session MAY have been removed from the registry OR left as Terminated.
     // Both are acceptable; what is NOT acceptable is Running state.
     if let Some(s) = snap {
@@ -602,7 +609,7 @@ async fn test_BC_2_08_001_B003_peercred_match_proceeds_to_running() {
         Arc::new(SucceedingEngine2),
     );
 
-    let session_id = "b003b-session".to_string();
+    let session_id = "b003b000-0000-4000-a000-000000000001".to_string();
     let opts = monocle_core::engine::SpawnOptions::for_spawn_request(
         PathBuf::from("/tmp/b003b-project"),
         PathBuf::from("/tmp/b003b-project"),
@@ -646,7 +653,7 @@ async fn test_BC_2_08_001_B003_peercred_match_proceeds_to_running() {
             Ok(Some(ServerToClient::SessionStateChanged {
                 session_id: ref sid,
                 new_state: monocle_ipc::types::SessionState::Running,
-            })) if sid == "b003b-session" => {
+            })) if sid == "b003b000-0000-4000-a000-000000000001" => {
                 found_running = true;
                 break;
             }
@@ -759,7 +766,7 @@ async fn test_BC_2_08_001_B004_sidecar_on_disk_deserializes_as_v3() {
         Arc::new(SucceedingEngine3),
     );
 
-    let session_id = "b004-sidecar-type-test".to_string();
+    let session_id = "b0040000-0000-4000-a000-000000000001".to_string();
     let opts = monocle_core::engine::SpawnOptions::for_spawn_request(
         PathBuf::from("/tmp/b004-project"),
         PathBuf::from("/tmp/b004-project"),
@@ -1040,7 +1047,7 @@ async fn test_BC_2_08_001_B005_daemon_owned_fields_preserved_after_host_overwrit
     // Allow the connection: same-UID / matching scenario.
     manager.with_peer_cred_verifier(Arc::new(AllowAllVerifier));
 
-    let session_id = "b005-field-ownership".to_string();
+    let session_id = "b0050000-0000-4000-a000-000000000001".to_string();
     // These are the DAEMON's authoritative field values.
     let daemon_project_root = "/tmp/b005-daemon-project";
     let daemon_harness_id = "claude-code";
@@ -1128,7 +1135,7 @@ async fn test_BC_2_08_001_B005_daemon_owned_fields_preserved_after_host_overwrit
             Ok(Some(ServerToClient::SessionStateChanged {
                 session_id: ref sid,
                 new_state: SessionState::Running,
-            })) if sid == "b005-field-ownership" => {
+            })) if sid == "b0050000-0000-4000-a000-000000000001" => {
                 reached_running = true;
                 break;
             }
@@ -1310,7 +1317,7 @@ async fn test_BC_2_08_001_HIGH001_host_conn_is_some_after_running() {
         Arc::new(SucceedingEngineH1),
     );
 
-    let session_id = "high001-session".to_string();
+    let session_id = "0a010000-0000-4000-a000-000000000001".to_string();
     let opts = monocle_core::engine::SpawnOptions::for_spawn_request(
         PathBuf::from("/tmp/h001-project"),
         PathBuf::from("/tmp/h001-project"),
@@ -1602,7 +1609,7 @@ async fn test_BC_2_08_001_HIGH003_sidecar_repersisted_with_running_state() {
         Arc::new(SucceedingEngineH3),
     );
 
-    let session_id = "high003-session".to_string();
+    let session_id = "0a030000-0000-4000-a000-000000000001".to_string();
     let opts = monocle_core::engine::SpawnOptions::for_spawn_request(
         PathBuf::from("/tmp/h003-project"),
         PathBuf::from("/tmp/h003-project"),
@@ -1769,7 +1776,7 @@ async fn test_BC_2_08_001_MED002_collision_retry_deterministic() {
     );
 
     // Spawn the first session with id "collision-id".
-    let collision_id = "med002-collision-id".to_string();
+    let collision_id = "0e020000-0000-4000-a000-000000000001".to_string();
     let opts1 = monocle_core::engine::SpawnOptions::for_spawn_request(
         PathBuf::from("/tmp/m002-project"),
         PathBuf::from("/tmp/m002-project"),
@@ -1957,7 +1964,7 @@ async fn test_BC_2_08_001_MED004_degraded_env_sets_session_degraded() {
         Arc::new(SucceedingEngineM4),
     );
 
-    let session_id = "med004-session".to_string();
+    let session_id = "0e040000-0000-4000-a000-000000000001".to_string();
     let opts = monocle_core::engine::SpawnOptions::for_spawn_request(
         PathBuf::from("/tmp/m004-project"),
         PathBuf::from("/tmp/m004-project"),
@@ -2022,7 +2029,7 @@ async fn test_BC_2_08_001_MED004_degraded_env_sets_session_degraded() {
     let sessions = manager.session_list().await;
     let snap = sessions
         .iter()
-        .find(|s| s.session_id == "med004-session")
+        .find(|s| s.session_id == "0e040000-0000-4000-a000-000000000001")
         .expect("MED-004: session must be in registry");
 
     assert!(
@@ -2152,7 +2159,7 @@ async fn test_BC_2_08_001_MED001_real_session_host_reaches_running() {
         Arc::new(SucceedingEngineM1),
     );
 
-    let session_id = "med001-real-session".to_string();
+    let session_id = "0e010000-0000-4000-a000-000000000001".to_string();
     let opts = monocle_core::engine::SpawnOptions::for_spawn_request(
         PathBuf::from("/tmp/m001-project"),
         PathBuf::from("/tmp/m001-project"),
@@ -2218,7 +2225,7 @@ async fn test_BC_2_08_001_MED001_real_session_host_reaches_running() {
             Ok(Some(ServerToClient::SessionStateChanged {
                 session_id: ref sid,
                 new_state: SessionState::Running,
-            })) if sid == "med001-real-session" => {
+            })) if sid == "0e010000-0000-4000-a000-000000000001" => {
                 reached_running = true;
                 break;
             }
@@ -2238,7 +2245,7 @@ async fn test_BC_2_08_001_MED001_real_session_host_reaches_running() {
     let sessions = manager.session_list().await;
     let snap = sessions
         .iter()
-        .find(|s| s.session_id == "med001-real-session")
+        .find(|s| s.session_id == "0e010000-0000-4000-a000-000000000001")
         .expect("MED-001: session must be in registry");
 
     assert_eq!(

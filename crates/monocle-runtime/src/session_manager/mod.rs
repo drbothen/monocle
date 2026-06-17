@@ -519,6 +519,12 @@ impl SessionManager {
     /// Must be called before any `spawn_session()` invocations so that monitors
     /// spawned by those calls pick up the injected verifier.
     ///
+    /// # Security gate (CWE-602)
+    ///
+    /// This builder is only available under `cfg(any(test, feature = "test-utils"))`.
+    /// In production builds (no `test-utils` feature) the only reachable verifier is
+    /// `RealPeerCredVerifier`, which is constructed unconditionally in `SessionManager::new`.
+    ///
     /// # Test usage
     ///
     /// ```rust,ignore
@@ -528,6 +534,7 @@ impl SessionManager {
     /// // Reject all connections (simulate UID mismatch — EC-163):
     /// manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifier { allow: false }));
     /// ```
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn with_peer_cred_verifier(&mut self, verifier: Arc<dyn PeerCredVerifier>) -> &mut Self {
         self.peer_cred_verifier = verifier;
         self
@@ -545,6 +552,19 @@ impl SessionManager {
     /// 7. Return `Ok(session_id)`.
     pub async fn spawn_session(&mut self, opts: SpawnOptions) -> Result<String, SessionError> {
         let proposed_id = opts.session_id.clone();
+
+        // SEC-003 (CWE-22): Defense-in-depth — reject any session_id that is not a
+        // valid UUID before using it to construct file/socket paths. The production
+        // IPC path generates UUIDs server-side, but spawn_session must not blindly
+        // trust an arbitrary opts.session_id (e.g., "../evil" path-traversal attempt).
+        if uuid::Uuid::parse_str(&proposed_id).is_err() {
+            return Err(SessionError::SpawnFailed {
+                reason: format!(
+                    "session_id is not a valid UUID: {:?}; path-traversal injection rejected",
+                    proposed_id
+                ),
+            });
+        }
 
         // AC-006 / EC-152: check for UUID collision before doing any work.
         // MED-002: on first collision, regenerate UUID and retry once; on second collision, error.
@@ -1844,7 +1864,7 @@ mod tests {
     async fn test_BC_2_08_001_spawn_session_entry_created_within_2s() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let (mut manager, _subs, _rx) = make_manager_with_channel(tmp.path(), None);
-        let session_id = "test-uuid-001-happy-path".to_string();
+        let session_id = "00000000-0001-4000-a000-000000000001".to_string();
         let opts = make_spawn_opts(&session_id);
 
         let start = std::time::Instant::now();
@@ -1887,7 +1907,7 @@ mod tests {
     async fn test_BC_2_08_001_spawn_session_entry_fields_correct_on_launch() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let (mut manager, _subs, _rx) = make_manager_with_channel(tmp.path(), None);
-        let session_id = "test-uuid-001-fields".to_string();
+        let session_id = "00000000-0001-4000-a000-000000000002".to_string();
         let opts = make_spawn_opts(&session_id);
 
         manager
@@ -1922,7 +1942,7 @@ mod tests {
     async fn test_BC_2_08_001_sidecar_written_with_schema_v3() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let (mut manager, _subs, _rx) = make_manager_with_channel(tmp.path(), None);
-        let session_id = "test-uuid-001-sidecar".to_string();
+        let session_id = "00000000-0001-4000-a000-000000000003".to_string();
         let opts = make_spawn_opts(&session_id);
 
         manager
@@ -1980,7 +2000,7 @@ mod tests {
     async fn test_BC_2_08_001_invariant_sidecar_write_is_atomic() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let (mut manager, _subs, _rx) = make_manager_with_channel(tmp.path(), None);
-        let session_id = "test-uuid-001-atomic".to_string();
+        let session_id = "00000000-0001-4000-a000-000000000004".to_string();
         let sidecar_path = tmp.path().join(format!("session-{}.json", &session_id));
         let opts = make_spawn_opts(&session_id);
 
@@ -2031,7 +2051,7 @@ mod tests {
     async fn test_BC_2_08_001_spawn_session_returns_ok_without_waiting_for_running() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let (mut manager, _subs, _rx) = make_manager_with_channel(tmp.path(), None);
-        let session_id = "test-uuid-001-nowait".to_string();
+        let session_id = "00000000-0001-4000-a000-000000000005".to_string();
         let opts = make_spawn_opts(&session_id);
 
         let result = manager.spawn_session(opts).await;
@@ -2063,8 +2083,8 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         let (mut manager, _subs, _rx) = make_manager_with_channel(tmp.path(), None);
 
-        let id1 = "test-uuid-rapid-1".to_string();
-        let id2 = "test-uuid-rapid-2".to_string();
+        let id1 = "00000000-0001-4000-a000-000000000011".to_string();
+        let id2 = "00000000-0001-4000-a000-000000000012".to_string();
 
         manager
             .spawn_session(make_spawn_opts(&id1))
@@ -2121,7 +2141,7 @@ mod tests {
             engine,
         );
 
-        let session_id = "test-uuid-ec150".to_string();
+        let session_id = "00000000-0001-4000-a000-000000000150".to_string();
         let opts = make_spawn_opts(&session_id);
         let result = manager.spawn_session(opts).await;
 
@@ -2206,7 +2226,7 @@ mod tests {
         // Manager uses the read-only dir so sidecar write fails.
         let mut manager = SessionManager::new(ro_dir.clone(), spawner, make_broker(&subs), engine);
 
-        let session_id = "test-uuid-ec151".to_string();
+        let session_id = "00000000-0001-4000-a000-000000000151".to_string();
         let opts = make_spawn_opts(&session_id);
         let result = manager.spawn_session(opts).await;
 
@@ -2245,7 +2265,7 @@ mod tests {
         let (mut manager, _subs, _rx) =
             make_manager_with_channel(tmp.path(), Some("OS fork failure: ENOMEM".to_string()));
 
-        let session_id = "test-uuid-ac009b".to_string();
+        let session_id = "00000000-0001-4000-a000-000000009002".to_string();
         let opts = make_spawn_opts(&session_id);
         let result = manager.spawn_session(opts).await;
 
@@ -2311,7 +2331,7 @@ mod tests {
             engine,
         );
 
-        let session_id = "test-uuid-ac009c".to_string();
+        let session_id = "00000000-0001-4000-a000-000000009003".to_string();
         let opts = make_spawn_opts(&session_id);
         let result = manager.spawn_session(opts).await;
 
@@ -2351,7 +2371,7 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         let (mut manager, _subs, _rx) = make_manager_with_channel(tmp.path(), None);
 
-        let session_id = "test-uuid-collision".to_string();
+        let session_id = "00000000-0001-4000-a000-000000000020".to_string();
 
         // First spawn succeeds.
         manager
@@ -2390,7 +2410,7 @@ mod tests {
     async fn test_BC_2_08_008_session_state_changed_before_session_list_update_on_spawn() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let (mut manager, _subs, mut rx) = make_manager_with_channel(tmp.path(), None);
-        let session_id = "test-uuid-ordering".to_string();
+        let session_id = "00000000-0001-4000-a000-000000000030".to_string();
         let opts = make_spawn_opts(&session_id);
 
         manager
@@ -2411,7 +2431,7 @@ mod tests {
 
         // Find the indices of SessionStateChanged and SessionListUpdate for this session.
         let state_changed_idx = messages.iter().position(|m| {
-            matches!(m, ServerToClient::SessionStateChanged { session_id: sid, new_state: SessionState::Launching } if sid == "test-uuid-ordering")
+            matches!(m, ServerToClient::SessionStateChanged { session_id: sid, new_state: SessionState::Launching } if sid == "00000000-0001-4000-a000-000000000030")
         });
         let list_update_idx = messages
             .iter()
@@ -2442,7 +2462,7 @@ mod tests {
     async fn test_BC_2_08_008_session_state_changed_new_state_is_launching_on_spawn() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let (mut manager, _subs, mut rx) = make_manager_with_channel(tmp.path(), None);
-        let session_id = "test-uuid-state-check".to_string();
+        let session_id = "00000000-0001-4000-a000-000000000040".to_string();
         let opts = make_spawn_opts(&session_id);
 
         manager
@@ -2457,7 +2477,7 @@ mod tests {
                 Ok(Some(ServerToClient::SessionStateChanged {
                     session_id: sid,
                     new_state,
-                })) if sid == "test-uuid-state-check" => {
+                })) if sid == "00000000-0001-4000-a000-000000000040" => {
                     assert_eq!(
                         new_state,
                         SessionState::Launching,
@@ -2498,7 +2518,7 @@ mod tests {
             engine,
         );
 
-        let session_id = "test-uuid-no-clients".to_string();
+        let session_id = "00000000-0001-4000-a000-000000000050".to_string();
         let opts = make_spawn_opts(&session_id);
 
         // Must NOT return an error when no clients are connected.
@@ -2537,7 +2557,7 @@ mod tests {
             engine,
         );
 
-        let session_id = "test-uuid-broadcast".to_string();
+        let session_id = "00000000-0001-4000-a000-000000000060".to_string();
         manager
             .spawn_session(make_spawn_opts(&session_id))
             .await
@@ -2601,7 +2621,7 @@ mod tests {
             engine,
         );
 
-        let session_id = "test-uuid-ack-order".to_string();
+        let session_id = "00000000-0001-4000-a000-000000000070".to_string();
 
         // IPC handler step 2: send SpawnAck BEFORE calling spawn_session().
         // (In production this is done by the IPC handler; we replicate the ordering here.)
@@ -2629,10 +2649,10 @@ mod tests {
         }
 
         let ack_idx = messages.iter().position(|m| {
-            matches!(m, ServerToClient::SpawnAck { session_id: sid } if sid == "test-uuid-ack-order")
+            matches!(m, ServerToClient::SpawnAck { session_id: sid } if sid == "00000000-0001-4000-a000-000000000070")
         });
         let state_changed_idx = messages.iter().position(|m| {
-            matches!(m, ServerToClient::SessionStateChanged { session_id: sid, .. } if sid == "test-uuid-ack-order")
+            matches!(m, ServerToClient::SessionStateChanged { session_id: sid, .. } if sid == "00000000-0001-4000-a000-000000000070")
         });
 
         assert!(
@@ -2685,7 +2705,7 @@ mod tests {
             engine,
         );
 
-        let session_id = "test-uuid-split-rule".to_string();
+        let session_id = "00000000-0001-4000-a000-000000000080".to_string();
         let opts = make_spawn_opts(&session_id);
 
         // spawn_session() must handle the split: first try_send (SessionStateChanged)
@@ -2726,7 +2746,7 @@ mod tests {
     async fn test_BC_2_08_008_rename_session_does_not_emit_session_state_changed() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let (mut manager, _subs, mut rx) = make_manager_with_channel(tmp.path(), None);
-        let session_id = "test-uuid-rename-nosc".to_string();
+        let session_id = "00000000-0001-4000-a000-000000000090".to_string();
 
         // Spawn a session first.
         manager
@@ -2780,7 +2800,11 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
         let (mut manager, _subs, _rx) = make_manager_with_channel(tmp.path(), None);
 
-        let ids = ["uuid-uniq-1", "uuid-uniq-2", "uuid-uniq-3"];
+        let ids = [
+            "00000000-0001-4000-a000-000000000901",
+            "00000000-0001-4000-a000-000000000902",
+            "00000000-0001-4000-a000-000000000903",
+        ];
         for id in &ids {
             manager
                 .spawn_session(make_spawn_opts(id))
@@ -2982,10 +3006,13 @@ mod tests {
         use tokio::io::AsyncWriteExt;
         use tokio::net::UnixListener;
 
-        let tmp = tempfile::tempdir().expect("tempdir");
+        // Use /tmp to keep socket paths short (macOS SUN_LEN = 104 chars).
+        let tmp = tempfile::Builder::new()
+            .tempdir_in("/tmp")
+            .expect("tempdir in /tmp");
 
         // Build a UDS socket path the test will control.
-        let session_id = "test-uuid-post-spawn-monitor".to_string();
+        let session_id = "00000000-0001-4000-a000-000000000100".to_string();
         let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
 
         // Start a listener at the socket path BEFORE spawn_session() is called,
@@ -3254,8 +3281,12 @@ mod tests {
             return;
         }
 
-        let tmp = tempfile::tempdir().expect("tempdir");
-        let session_id = "test-ruling-a-real-spawn".to_string();
+        // Use /tmp to keep socket paths short (macOS SUN_LEN = 104 chars; macOS
+        // default TMPDIR paths are long enough to exceed the limit with UUID socket names).
+        let tmp = tempfile::Builder::new()
+            .tempdir_in("/tmp")
+            .expect("tempdir in /tmp");
+        let session_id = "00000000-0001-4000-a000-000000000110".to_string();
 
         let spawner = RealSessionHostSpawner {
             session_host_bin: session_host_bin.clone(),
@@ -3412,8 +3443,8 @@ mod tests {
         )));
 
         // Spawn two sessions concurrently via the same manager (under the mutex).
-        let id1 = "test-high-006-session-1".to_string();
-        let id2 = "test-high-006-session-2".to_string();
+        let id1 = "00000000-0006-4000-a000-000000000001".to_string();
+        let id2 = "00000000-0006-4000-a000-000000000002".to_string();
 
         let m1 = Arc::clone(&manager);
         let opts1 = make_spawn_opts(&id1);
@@ -3611,7 +3642,7 @@ mod tests {
         let tmp = tempfile::tempdir().expect("tempdir");
 
         // Pre-seed the registry with a known session_id so the first UUID gen collides.
-        let colliding_id = "test-ec152-colliding-uuid".to_string();
+        let colliding_id = "ec152000-0000-4000-a000-000000000001".to_string();
         let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
             spawn_result: None,
             fake_pid: 66_001,
@@ -3637,7 +3668,7 @@ mod tests {
         state.session_manager = Some(tokio::sync::Mutex::new(session_manager));
 
         // The IPC handler generates a UUID. Since it generates a random UUID, it
-        // won't collide with our pre-seeded "test-ec152-colliding-uuid" session
+        // won't collide with our pre-seeded "ec152000-0000-4000-a000-000000000001" session
         // in normal operation. To test the collision retry path, we need the handler
         // to use a controllable UUID generator — but the current API is random.
         //
@@ -3780,5 +3811,50 @@ mod tests {
                 "EC-152/IPC: second-collision error must use code 'session_id_collision'"
             );
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // SEC-003 (CWE-22): spawn_session rejects non-UUID session_ids
+    // -----------------------------------------------------------------------
+
+    /// SEC-003: `spawn_session()` MUST reject any `session_id` that is not a valid UUID
+    /// before constructing any file or socket path. This is a defense-in-depth guard
+    /// against path-traversal injection (CWE-22).
+    ///
+    /// Postcondition: `Err(SessionError::SpawnFailed { .. })` is returned immediately;
+    /// no OS process is spawned, no sidecar is written, no registry entry is created.
+    #[tokio::test]
+    async fn test_sec003_spawn_session_rejects_path_traversal_session_id() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let (mut manager, _subs, _rx) = make_manager_with_channel(tmp.path(), None);
+
+        let traversal_ids = [
+            "../evil",
+            "../../etc/passwd",
+            "/absolute/path",
+            "session/../escape",
+            "null\x00byte",
+            "",
+        ];
+
+        for bad_id in &traversal_ids {
+            let opts = make_spawn_opts(bad_id);
+            let result = manager.spawn_session(opts).await;
+            assert!(
+                matches!(result, Err(SessionError::SpawnFailed { .. })),
+                "SEC-003: spawn_session must reject invalid/non-UUID session_id {:?} \
+                 with SpawnFailed; got: {:?}",
+                bad_id,
+                result
+            );
+        }
+
+        // Belt-and-suspenders: no session entry must exist in the registry after rejection.
+        let sessions = manager.session_list().await;
+        assert!(
+            sessions.is_empty(),
+            "SEC-003: no session entries must exist after all rejections; got {:?}",
+            sessions.iter().map(|s| &s.session_id).collect::<Vec<_>>()
+        );
     }
 }
