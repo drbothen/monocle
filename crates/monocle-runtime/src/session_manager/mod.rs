@@ -2776,7 +2776,7 @@ mod tests {
     // -----------------------------------------------------------------------
     // BC-2.08.001 AC-006 / EC-152 — UUID collision handling
     //
-    // Ruling F (SS-session-manager.md v2.7.2): spawn_session() MUST NOT retry
+    // Ruling F (SS-session-manager.md §Ruling F): spawn_session() MUST NOT retry
     // internally on UUID collision. It MUST return Err(SessionIdCollision)
     // immediately. The IPC handler is the SINGLE retry locus.
     // -----------------------------------------------------------------------
@@ -2784,7 +2784,7 @@ mod tests {
     /// Part (a): spawn_session() MUST return Err(SessionIdCollision) immediately when
     /// session_id already exists in the registry — no internal retry.
     ///
-    /// Ruling F (SS-session-manager.md v2.7.2): the IPC handler is the sole retry
+    /// Ruling F (SS-session-manager.md §Ruling F): the IPC handler is the sole retry
     /// locus; spawn_session() does not retry.
     ///
     /// BC-2.08.001 invariant 1 / EC-152 / AC-006.
@@ -2812,7 +2812,7 @@ mod tests {
             ),
             "EC-152 / Ruling F: spawn_session() MUST return Err(SessionIdCollision) \
              immediately on ID collision — no internal retry. \
-             Retry is the IPC handler's responsibility (Ruling F, SS-session-manager.md v2.7.2). \
+             Retry is the IPC handler's responsibility (Ruling F, SS-session-manager.md §Ruling F). \
              Got: {:?}",
             result
         );
@@ -3956,7 +3956,7 @@ mod tests {
     ///   3. Bind UDS socket at <runtime_dir>/session-<id>.sock.
     ///   4. Send StateChanged{Running} (or StateChanged{Launching, degraded_env} then Running).
     ///
-    /// This test verifies Ruling A (SS-session-manager.md v2.7.0):
+    /// This test verifies Ruling A (SS-session-manager.md §Ruling A):
     /// - The session-host binary is non-trivial; all todo!() stubs will fail this test.
     /// - Hard-fails if binary absent (NO silent skip — see anti-false-green contract).
     ///
