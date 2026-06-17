@@ -1,10 +1,10 @@
 ---
 document_type: story-index
 level: L4
-version: "5.45"
+version: "5.46"
 status: active
-producer: vsdd-factory:story-writer
-timestamp: 2026-06-16T00:00:00Z
+producer: vsdd-factory:state-manager
+timestamp: 2026-06-17T00:00:00Z
 phase: 2
 inputs:
   - .factory/specs/prd.md
@@ -83,7 +83,7 @@ traces_to: .factory/specs/prd.md
 | S-031 | Profile Picker: Sticky-Per-Project Selection + Ctrl-P Override | EPIC-07 | 5 | 7 | done | — |
 | S-032 | Daemon Event-Bus Fan-Out: Broadcast HookEventReceived with daemon timestamp_micros | EPIC-05 | 5 | 8 | draft | S-046 |
 | S-DAEMON-WIRE-FIX-001 | Second-Signal Exit Codes (SigtermDuringDrain=143, SigintDuringDrain=130) | EPIC-04 | 5 | 8 | draft | — |
-| S-033 | SessionManager::spawn_session — SessionHostSpawner, SessionEntry, Sidecar, SpawnAck, and SessionStateChanged{Launching} | EPIC-08 | 8 | 8 | draft | S-034, S-035, S-036, S-037, S-038, S-044, S-045, S-047, S-048 |
+| S-033 | SessionManager::spawn_session — SessionHostSpawner, SessionEntry, Sidecar, SpawnAck, and SessionStateChanged{Launching} | EPIC-08 | 8 | 8 | done | S-034, S-035, S-036, S-037, S-038, S-044, S-045, S-047, S-048 |
 | S-034 | SessionManager::kill_session — DaemonToHost::Kill Within 500ms; Terminating/Terminated Transitions; 12s Watchdog | EPIC-08 | 8 | 8 | draft | S-036, S-037, S-047 |
 | S-035 | SessionManager::attach_session and detach_session — Chunked Scrollback, SO_PEERCRED, Session-Host Stays Alive | EPIC-08 | 8 | 8 | draft | S-036, S-039, S-044, S-047 |
 | S-036 | SessionManager::rediscover_sessions — setsid Persistence; All States Handled Within 5s; UDS Bind Blocked | EPIC-08 | 8 | 8 | draft | — |
@@ -498,6 +498,17 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.46
+
+**S-033 MERGED — Wave-8 first delivery (D-332, 2026-06-17):**
+
+- S-033 Story Registry row: `draft` → `done`. PR #40 @ c7e10f2 (squash-merge 2026-06-17).
+- 7-pass adversarial convergence (3 consecutive clean, D-331). Security PASS. 10 CI checks green.
+- 10th workspace crate monocle-session-host. Wire types: SessionSidecarV3/DaemonToHost/HostToDaemon.
+- Wave 8: 1/12 stories done (8/74 pts). Tier 2 unblocked: S-034/S-035/S-037/S-038/S-045.
+- SE-16d monotonicity: v5.46 timestamp 2026-06-17 >= v5.45 timestamp 2026-06-16. PASS.
+- SE-22 v2 sibling-sweep: sprint-state.yaml v1.46→v1.47 (done 32→33, draft 18→17, points_complete 192→200); STATE.md v7.94→v7.95.
 
 ## §Trace v5.45
 
