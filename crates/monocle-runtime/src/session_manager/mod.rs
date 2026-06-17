@@ -798,6 +798,12 @@ impl SessionManager {
                 // and here. Orphan-kill the process we just started, then return the error.
                 drop(guard); // release lock before async I/O in orphan_kill
                 Self::orphan_kill(pid).await;
+                // OBS-001: the sidecar was written above (step 3) before this collision
+                // was detected. Remove it now so no orphan sidecar leaks on disk.
+                // best-effort: ignore errors (the file may have already been removed by a
+                // concurrent call or filesystem GC; we only guarantee cleanliness on the
+                // happy path where we wrote it). Mirrors the EC-151 cleanliness contract.
+                let _ = std::fs::remove_file(&sidecar_path);
                 return Err(SessionError::SessionIdCollision {
                     session_id: session_id.clone(),
                 });
@@ -860,11 +866,63 @@ impl SessionManager {
             // guard (sessions lock) released here
         };
 
+        // Step 6 (BC-2.08.008 Invariant 4): emit BOTH broadcasts under a SINGLE lock (HIGH-001).
+        //
+        // HIGH-001 fix: the Launching broadcast pair must be emitted atomically.
+        // Acquire the sessions lock and hold it across BOTH try_send calls so no
+        // concurrent post-spawn monitor (or second spawn_session caller) can interleave
+        // a broadcast between SessionStateChanged{Launching} and SessionListUpdate.
+        //
+        // IMP-001 fix (BC-2.08.008 PC-1 monotonic ordering): Step 6 (Launching broadcasts)
+        // MUST execute BEFORE Step 5 (post-spawn monitor spawn). If the monitor were spawned
+        // first, it could connect, receive StateChanged{Running} from the session-host, and
+        // broadcast SessionStateChanged{Running} + SessionListUpdate to subscribers BEFORE
+        // the Launching pair is emitted here — violating the monotonic Launching→Running
+        // transition-sequence guarantee (a connected client would see Running before Launching).
+        //
+        // Correct order: Step 4 (insert) → Step 6 (Launching pair under lock) → Step 5 (spawn monitor).
+        // The monitor will always find the SessionEntry in the registry (inserted in Step 4)
+        // after this reorder; no invariant is broken.
+        //
+        // Lock ordering: sessions → subscribers (broadcast_to_subscribers acquires the
+        // subscribers list lock). This ordering is consistent throughout the codebase;
+        // broadcast_to_subscribers never re-acquires the sessions lock — no deadlock risk.
+        //
+        // The sessions lock is NOT held across any unrelated .await I/O (no file I/O,
+        // no socket I/O inside this scope — only try_send calls to in-memory channels).
+        // The lock is NOT held across the tokio::spawn call in Step 5 (below).
+        //
+        // BC-2.08.008 PC-3 split rule is preserved: if SessionStateChanged succeeds but
+        // SessionListUpdate fails (slow client), broadcast_to_subscribers fires disconnect
+        // and removes that client. The two separate broadcast calls are inside the same
+        // lock scope so the split rule can still engage on a per-client basis.
+        let broker = Arc::clone(&self.broker);
+        {
+            let _guard = self.sessions.lock().await;
+            let state_changed_msg = monocle_ipc::types::ServerToClient::SessionStateChanged {
+                session_id: session_id.clone(),
+                new_state: SessionState::Launching,
+            };
+            // SessionStateChanged{Launching} BEFORE SessionListUpdate (BC-2.08.008 Invariant 4).
+            crate::ipc_server::broadcast_to_subscribers(&broker, state_changed_msg).await;
+
+            let list_update_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
+                sessions: list_snapshot,
+            };
+            crate::ipc_server::broadcast_to_subscribers(&broker, list_update_msg).await;
+            // sessions lock released here — both try_send calls completed atomically.
+        }
+
         // Step 5 (BC-2.08.001 PC-4, AC-004/AC-010): spawn post-spawn monitor background task.
-        // Runs outside the sessions lock — no lock held here.
+        // Runs outside the sessions lock — no lock held here, and the Launching broadcasts
+        // (Step 6) have already been emitted atomically above (IMP-001 fix).
+        //
         // Polls UDS socket until connectable (20ms backoff, 30s timeout), then reads
         // HostToDaemon messages. On StateChanged{Running}: transitions session to Running
         // and publishes SessionStateChanged{Running} + SessionListUpdate to broker.
+        //
+        // The monitor finds the SessionEntry in the registry (inserted in Step 4, before
+        // this point) — the reorder does not affect monitor correctness.
         //
         // The task holds a clone of the Arc<Mutex<HashMap>> sessions map so it can update
         // session state without requiring a &mut SessionManager reference.
@@ -887,41 +945,6 @@ impl SessionManager {
                 )
                 .await;
             });
-        }
-
-        // Step 6 (BC-2.08.008 Invariant 4): emit BOTH broadcasts under a SINGLE lock (HIGH-001).
-        //
-        // HIGH-001 fix: the Launching broadcast pair must be emitted atomically.
-        // Acquire the sessions lock and hold it across BOTH try_send calls so no
-        // concurrent post-spawn monitor (or second spawn_session caller) can interleave
-        // a broadcast between SessionStateChanged{Launching} and SessionListUpdate.
-        //
-        // Lock ordering: sessions → subscribers (broadcast_to_subscribers acquires the
-        // subscribers list lock). This ordering is consistent throughout the codebase;
-        // broadcast_to_subscribers never re-acquires the sessions lock — no deadlock risk.
-        //
-        // The sessions lock is NOT held across any unrelated .await I/O (no file I/O,
-        // no socket I/O inside this scope — only try_send calls to in-memory channels).
-        //
-        // BC-2.08.008 PC-3 split rule is preserved: if SessionStateChanged succeeds but
-        // SessionListUpdate fails (slow client), broadcast_to_subscribers fires disconnect
-        // and removes that client. The two separate broadcast calls are inside the same
-        // lock scope so the split rule can still engage on a per-client basis.
-        let broker = Arc::clone(&self.broker);
-        {
-            let _guard = self.sessions.lock().await;
-            let state_changed_msg = monocle_ipc::types::ServerToClient::SessionStateChanged {
-                session_id: session_id.clone(),
-                new_state: SessionState::Launching,
-            };
-            // SessionStateChanged{Launching} BEFORE SessionListUpdate (BC-2.08.008 Invariant 4).
-            crate::ipc_server::broadcast_to_subscribers(&broker, state_changed_msg).await;
-
-            let list_update_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
-                sessions: list_snapshot,
-            };
-            crate::ipc_server::broadcast_to_subscribers(&broker, list_update_msg).await;
-            // sessions lock released here — both try_send calls completed atomically.
         }
 
         tracing::info!(
