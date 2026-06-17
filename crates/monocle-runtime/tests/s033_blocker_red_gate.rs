@@ -33,6 +33,7 @@
 //! | test_BC_2_08_001_HIGH002_missing_session_host_binary_maps_to_spawn_failed | HIGH-002 | RealSessionHostSpawner maps NotFound to EngineError::BinaryNotFound, not SpawnFailed |
 //! | test_BC_2_08_001_HIGH003_sidecar_repersisted_with_running_state | HIGH-003 | post_spawn_monitor does not re-write sidecar on Running transition |
 //! | test_BC_2_08_001_MED002_collision_retry_deterministic | MED-002 | no injectable UUID seam exists |
+//! | test_BC_2_08_001_MED003_running_pair_not_interleaved_under_concurrent_monitors | MED-003 | post_spawn_monitor acquires mutex twice; Ruling G requires single acquisition across both try_send calls |
 //! | test_BC_2_08_001_MED004_degraded_env_sets_session_degraded | MED-004 | post_spawn_monitor ignores degraded_env in StateChanged match arm |
 //! | test_BC_2_08_001_MED001_real_session_host_reaches_running | MED-001 | replaces the skip-on-absence version; exercises real binary end-to-end |
 
@@ -482,14 +483,22 @@ async fn test_BC_2_08_001_B003_peercred_mismatch_terminates_session() {
     );
 
     // EC-163 ASSERTION 2: sidecar must be GC'd (deleted) after mismatch.
-    // Give the monitor a short moment to complete the delete after the broadcast.
-    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-    assert!(
-        !sidecar_path.exists(),
-        "B-003 (EC-163): post_spawn_monitor MUST delete the sidecar file on UID mismatch \
-         (GC step). Sidecar still exists at {:?}.",
-        sidecar_path
-    );
+    // Poll until the sidecar is deleted (deterministic — no fixed sleep).
+    let gc_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        if !sidecar_path.exists() {
+            break;
+        }
+        if tokio::time::Instant::now() >= gc_deadline {
+            panic!(
+                "B-003 (EC-163): post_spawn_monitor MUST delete the sidecar file on UID \
+                 mismatch (GC step). Sidecar still exists at {:?} after 5s.",
+                sidecar_path
+            );
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    // Sidecar confirmed deleted — no separate assert needed (loop panics on timeout).
 
     // EC-163 ASSERTION 3: session in registry must be Terminated.
     let sessions = manager.session_list().await;
@@ -1148,14 +1157,33 @@ async fn test_BC_2_08_001_B005_daemon_owned_fields_preserved_after_host_overwrit
         "B-005: must receive SessionStateChanged{{Running}} to verify the re-persist ran"
     );
 
-    // Give the monitor a short moment to flush the sidecar write.
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    // Poll until the sidecar has been re-persisted with daemon-owned project_root
+    // (deterministic — no fixed sleep). The daemon re-persists atomically after Running.
+    let sidecar_flush_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+    let final_json: serde_json::Value = loop {
+        if sidecar_path.exists() {
+            if let Ok(contents) = std::fs::read_to_string(&sidecar_path) {
+                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&contents) {
+                    // Wait until the re-persist has restored daemon_project_root
+                    // (not the host-clobbered value). This is the observable signal.
+                    if parsed["project_root"].as_str() == Some(daemon_project_root) {
+                        break parsed;
+                    }
+                }
+            }
+        }
+        if tokio::time::Instant::now() >= sidecar_flush_deadline {
+            let current = std::fs::read_to_string(&sidecar_path).unwrap_or_default();
+            panic!(
+                "B-005: sidecar did not have daemon's project_root restored within 5s after \
+                 Running transition. Current sidecar: {}",
+                current
+            );
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    };
 
     // B-005 PRIMARY ASSERTIONS: daemon-owned fields must survive the host clobber.
-    let final_contents = std::fs::read_to_string(&sidecar_path)
-        .expect("B-005: sidecar must still exist after Running transition");
-    let final_json: serde_json::Value =
-        serde_json::from_str(&final_contents).expect("B-005: final sidecar must parse");
 
     assert_eq!(
         final_json["project_root"].as_str().unwrap_or(""),
@@ -1389,8 +1417,9 @@ async fn test_BC_2_08_001_HIGH001_host_conn_is_some_after_running() {
     use tokio::io::AsyncReadExt;
     let mut buf = [0u8; 1];
 
-    // Give the monitor a short time to finish processing.
-    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    // No fixed sleep: the subsequent read() call with a 300ms timeout is itself the
+    // synchronization point. If host_conn is None (writer dropped), EOF arrives immediately.
+    // If host_conn is Some (writer alive), the timeout fires. No pre-sleep is needed.
 
     // Try to read from peer side with a short timeout.
     // If host_conn is None (writer dropped), we'll get EOF immediately.
@@ -1674,15 +1703,31 @@ async fn test_BC_2_08_001_HIGH003_sidecar_repersisted_with_running_state() {
     }
     assert!(reached_running, "HIGH-003: must reach Running state first");
 
-    // Give the monitor a moment to write the sidecar.
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    // Poll until the sidecar has been written with state:"Running" (deterministic — no fixed sleep).
+    let sidecar_running_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+    let v: serde_json::Value = loop {
+        if sidecar_path.exists() {
+            if let Ok(contents) = std::fs::read_to_string(&sidecar_path) {
+                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&contents) {
+                    if parsed["state"].as_str() == Some("Running") {
+                        break parsed;
+                    }
+                }
+            }
+        }
+        if tokio::time::Instant::now() >= sidecar_running_deadline {
+            let current = std::fs::read_to_string(&sidecar_path).unwrap_or_default();
+            panic!(
+                "HIGH-003: sidecar did not show state:\"Running\" within 5s after Running \
+                 transition broadcast. Current sidecar: {}",
+                current
+            );
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    };
 
-    // HIGH-003 ASSERTION: sidecar must now have state:"Running".
-    let contents = std::fs::read_to_string(&sidecar_path)
-        .expect("HIGH-003: sidecar must still exist after Running transition");
-    let v: serde_json::Value =
-        serde_json::from_str(&contents).expect("HIGH-003: sidecar must parse as JSON");
-
+    // HIGH-003 ASSERTION: sidecar state confirmed "Running" via poll above.
+    // The loop already verified v["state"] == "Running" before breaking.
     assert_eq!(
         v["state"], "Running",
         "HIGH-003: after Launching→Running transition, post_spawn_monitor MUST re-write \
@@ -1986,32 +2031,79 @@ async fn test_BC_2_08_001_MED004_degraded_env_sets_session_degraded() {
             .expect("MED-004: timed out waiting for monitor to connect")
             .expect("MED-004: accept failed");
 
-    // MECHANICAL COMPILE FIX (BLOCKER-001): degraded_env changed from Option<bool> to
-    // Option<Vec<String>>. Minimal type fix applied here.
-    //
-    // BEHAVIORAL REWRITE REQUIRED FOR TEST-WRITER (tracked below):
-    // This test sends degraded_env on new_state:Running, but per HIGH-001 (Ruling 2),
-    // the degraded handshake is sent with new_state:Launching (BEFORE the Running message).
-    // This test must be rewritten to send TWO messages:
-    //   1. StateChanged { new_state: Launching, degraded_env: Some(vec!["HOME"]) }
-    //   2. StateChanged { new_state: Running, degraded_env: None }
-    // The current test will FAIL its snap.degraded assertion because the daemon
-    // only checks degraded_env on Launching messages.
+    // I3-009 TWO-MESSAGE HANDSHAKE:
+    // Message 1: StateChanged { new_state: Launching, degraded_env: Some(vec!["HOME"]) }
+    //   → daemon sets entry.degraded=true and entry.degraded_reason="Missing env: HOME"
+    //   → state remains Launching (no Running broadcast yet)
+    // Message 2: StateChanged { new_state: Running, degraded_env: None }
+    //   → daemon triggers Launching→Running transition
+    //   → emits SessionStateChanged{Running} broadcast
+    //   → degraded flag persists (Running does NOT clear it)
     use tokio::io::AsyncWriteExt;
-    let msg = monocle_ipc::types::HostToDaemon::StateChanged {
-        new_state: SessionState::Running,
+
+    // --- Message 1: Launching with degraded_env ---
+    let msg1 = monocle_ipc::types::HostToDaemon::StateChanged {
+        new_state: SessionState::Launching,
         degraded_env: Some(vec!["HOME".to_string()]),
     };
-    let body = serde_json::to_vec(&msg).unwrap();
-    let len = (body.len() as u32).to_le_bytes();
-    peer.write_all(&len).await.unwrap();
-    peer.write_all(&body).await.unwrap();
+    let body1 = serde_json::to_vec(&msg1).unwrap();
+    let len1 = (body1.len() as u32).to_le_bytes();
+    peer.write_all(&len1).await.unwrap();
+    peer.write_all(&body1).await.unwrap();
 
-    // Wait for SessionStateChanged{Running}.
-    let mut reached_running = false;
-    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+    // Poll (no sleep) until session entry shows degraded=true with state still Launching.
+    // This validates I3-009: degraded flag is set on the FIRST message before Running.
+    let deadline_degraded = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+    let mut degraded_set = false;
     loop {
-        if tokio::time::Instant::now() >= deadline {
+        if tokio::time::Instant::now() >= deadline_degraded {
+            break;
+        }
+        let sessions = manager.session_list().await;
+        if let Some(snap) = sessions
+            .iter()
+            .find(|s| s.session_id == "0e040000-0000-4000-a000-000000000001")
+        {
+            if snap.degraded {
+                // Intermediate assertion: state must still be Launching (not Running yet).
+                assert_ne!(
+                    snap.state,
+                    SessionState::Running,
+                    "MED-004 (I3-009): daemon MUST NOT advance to Running on the first \
+                     Launching+degraded_env message. Got Running prematurely. \
+                     Fix: post_spawn_monitor must only trigger Running transition on the second \
+                     StateChanged{{new_state:Running}} message."
+                );
+                degraded_set = true;
+                break;
+            }
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    assert!(
+        degraded_set,
+        "MED-004 (I3-009): post_spawn_monitor MUST set SessionEntry.degraded=true when \
+         StateChanged{{new_state:Launching, degraded_env:Some([\"HOME\"])}} is received BEFORE \
+         the Running message. Got degraded=false after 5s. \
+         Fix: in post_spawn_monitor StateChanged{{Launching}} match arm, extract degraded_env \
+         and set entry.degraded=true, entry.degraded_reason=Some(\"Missing env: HOME\")."
+    );
+
+    // --- Message 2: Running (degraded_env: None) ---
+    let msg2 = monocle_ipc::types::HostToDaemon::StateChanged {
+        new_state: SessionState::Running,
+        degraded_env: None,
+    };
+    let body2 = serde_json::to_vec(&msg2).unwrap();
+    let len2 = (body2.len() as u32).to_le_bytes();
+    peer.write_all(&len2).await.unwrap();
+    peer.write_all(&body2).await.unwrap();
+
+    // Wait for SessionStateChanged{Running} broadcast (deterministic — no sleep).
+    let mut reached_running = false;
+    let deadline_running = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        if tokio::time::Instant::now() >= deadline_running {
             break;
         }
         match tokio::time::timeout(std::time::Duration::from_millis(300), tui_rx.recv()).await {
@@ -2026,38 +2118,49 @@ async fn test_BC_2_08_001_MED004_degraded_env_sets_session_degraded() {
             Ok(None) | Err(_) => break,
         }
     }
-    assert!(reached_running, "MED-004: must reach Running state first");
+    assert!(
+        reached_running,
+        "MED-004 (I3-009): must receive SessionStateChanged{{Running}} broadcast after \
+         second StateChanged{{new_state:Running, degraded_env:None}} message."
+    );
 
-    // Give monitor a moment to update the session entry.
-    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-
-    // MED-004 ASSERTION: session_list() must return degraded=true.
+    // MED-004 FINAL ASSERTIONS: session_list() must show degraded=true AND state=Running.
+    // degraded flag MUST persist through the Running transition (Running does NOT clear it).
     let sessions = manager.session_list().await;
     let snap = sessions
         .iter()
         .find(|s| s.session_id == "0e040000-0000-4000-a000-000000000001")
         .expect("MED-004: session must be in registry");
 
-    assert!(
-        snap.degraded,
-        "MED-004 (I3-009): post_spawn_monitor MUST set SessionEntry.degraded=true when \
-         StateChanged includes degraded_env: Some(true). \
-         Got degraded=false. \
-         Fix: in post_spawn_monitor StateChanged match arm, change \
-         `HostToDaemon::StateChanged {{ new_state, .. }}` to \
-         `HostToDaemon::StateChanged {{ new_state, degraded_env }}` and handle it: \
-         if let Some(true) = degraded_env {{ \
-             entry.degraded = true; \
-             entry.degraded_reason = Some(\"degraded environment detected\".to_string()); \
-         }}"
+    assert_eq!(
+        snap.state,
+        SessionState::Running,
+        "MED-004 (I3-009): session state must be Running after second StateChanged message."
     );
 
-    // degraded_reason SHOULD be Some when degraded=true (full spec: include missing var names).
-    // With the current Option<bool> implementation, a reason string is still expected.
+    assert!(
+        snap.degraded,
+        "MED-004 (I3-009): post_spawn_monitor MUST preserve SessionEntry.degraded=true \
+         through the Running transition. Got degraded=false after Running. \
+         Fix: post_spawn_monitor StateChanged{{Running}} arm must NOT clear the degraded flag \
+         that was set by the prior Launching+degraded_env message."
+    );
+
     assert!(
         snap.degraded_reason.is_some(),
-        "MED-004: degraded_reason must be Some when degraded=true, got None. \
-         Fix: set entry.degraded_reason = Some(\"degraded environment\") when degraded_env is Some(true)."
+        "MED-004 (I3-009): degraded_reason must remain Some after Running transition. \
+         Got None. Fix: do not clear entry.degraded_reason in the Running match arm."
+    );
+
+    // Verify degraded_reason mentions the missing variable name (I3-009 full spec).
+    let reason = snap.degraded_reason.as_deref().unwrap_or("");
+    assert!(
+        reason.contains("HOME"),
+        "MED-004 (I3-009): degraded_reason MUST name the missing env var(s). \
+         Expected reason containing 'HOME', got: {:?}. \
+         Fix: set entry.degraded_reason = Some(format!(\"Missing env: {{}}\", vars.join(\", \"))) \
+         where vars comes from degraded_env vec.",
+        reason
     );
 }
 
@@ -2268,6 +2371,275 @@ async fn test_BC_2_08_001_MED001_real_session_host_reaches_running() {
                 let nix_pid = nix::unistd::Pid::from_raw(pid as i32);
                 let _ = nix::sys::signal::kill(nix_pid, nix::sys::signal::Signal::SIGTERM);
             }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// MED-003: Ruling G — Running-transition broadcast pair is non-interleaved
+// ---------------------------------------------------------------------------
+
+/// MED-003 (Ruling G, BC-2.08.008 Invariant 4): The post-spawn monitor MUST hold the
+/// `SessionManager` mutex across BOTH `try_send()` calls for the Running-transition
+/// broadcast pair (`SessionStateChanged{Running}` + `SessionListUpdate`).
+///
+/// Test approach: Spawn two sessions concurrently (two pre-bound mock sockets). Both
+/// monitors connect and race to send `StateChanged{Running}` simultaneously via
+/// `tokio::join!`. A single client channel observes all broadcasts. After draining,
+/// the invariant is: for each `SessionStateChanged{Running}`, the IMMEDIATELY NEXT
+/// broadcast message from any category must be a `SessionListUpdate` — no
+/// `SessionStateChanged` from the other session may appear in between.
+///
+/// This is falsifiable: if the post-spawn monitor acquires the mutex separately for
+/// the two `try_send()` calls, the tokio scheduler CAN interleave them, producing:
+///   [StateChanged{Running, s1}, StateChanged{Running, s2}, ListUpdate{s1}, ListUpdate{s2}]
+/// instead of the required adjacent pairs:
+///   [StateChanged{Running, s1}, ListUpdate{s1}, StateChanged{Running, s2}, ListUpdate{s2}]
+/// (or the reversed-order variant, which is equally acceptable).
+///
+/// FAILS NOW: post_spawn_monitor acquires the mutex twice (once for Running state
+/// update, once for SessionListUpdate), allowing interleaving.
+///
+/// Fix: hold the `sessions` mutex lock continuously from the `entry.state = Running`
+/// line through both `broker.broadcast()` calls (per Ruling G implementer instruction).
+#[tokio::test]
+async fn test_BC_2_08_001_MED003_running_pair_not_interleaved_under_concurrent_monitors() {
+    use monocle_ipc::server::{ClientEntry, CLIENT_CHANNEL_CAPACITY};
+    use monocle_ipc::types::{HostToDaemon, ServerToClient, SessionState};
+    use monocle_runtime::session_manager::{SessionHostSpawner, SessionManager, SpawnedHostHandle};
+    use tokio::io::AsyncWriteExt;
+
+    let tmp = isolated_runtime_dir();
+
+    // Two pre-bound mock socket paths (one per session monitor).
+    let socket_path_1 = tmp.path().join("med003-s1.sock");
+    let socket_path_2 = tmp.path().join("med003-s2.sock");
+
+    let listener_1 = tokio::net::UnixListener::bind(&socket_path_1)
+        .expect("MED-003: bind mock socket for session 1");
+    let listener_2 = tokio::net::UnixListener::bind(&socket_path_2)
+        .expect("MED-003: bind mock socket for session 2");
+
+    // Fixed-socket spawner that returns one of two pre-bound paths based on session_id prefix.
+    struct Med003Spawner {
+        path1: PathBuf,
+        path2: PathBuf,
+        id1: String,
+    }
+    #[async_trait::async_trait]
+    impl SessionHostSpawner for Med003Spawner {
+        async fn spawn(
+            &self,
+            session_id: &str,
+            _: &SpawnRecipe,
+            _: &std::path::Path,
+        ) -> Result<SpawnedHostHandle, monocle_runtime::session_manager::SessionError> {
+            let (pid, path) = if session_id == self.id1.as_str() {
+                (30_031_u32, self.path1.clone())
+            } else {
+                (30_032_u32, self.path2.clone())
+            };
+            Ok(SpawnedHostHandle {
+                pid,
+                socket_path: path,
+            })
+        }
+    }
+
+    struct Med003Engine;
+    #[async_trait::async_trait]
+    impl monocle_core::engine::EngineModule for Med003Engine {
+        fn id(&self) -> &'static str {
+            "med003-engine"
+        }
+        fn metadata(
+            &self,
+        ) -> Result<monocle_core::engine::EngineMetadata, monocle_core::engine::EngineMetadataError>
+        {
+            unimplemented!()
+        }
+        fn detect(&self, _: &monocle_core::engine::ProcessSnapshot) -> bool {
+            false
+        }
+        async fn enrich(
+            &self,
+            _: &monocle_core::engine::ProcessSnapshot,
+        ) -> Result<monocle_core::engine::EnrichedSession, monocle_core::engine::EngineMetadataError>
+        {
+            unimplemented!()
+        }
+        async fn on_hook(
+            &self,
+            _: monocle_core::hook_events::HookEvent,
+        ) -> monocle_core::engine::HookResponse {
+            unimplemented!()
+        }
+        fn spawn_recipe(
+            &self,
+            opts: &monocle_core::engine::SpawnOptions,
+        ) -> Result<SpawnRecipe, monocle_core::engine::EngineError> {
+            Ok(SpawnRecipe::new(
+                PathBuf::from("claude"),
+                vec![],
+                std::collections::HashMap::new(),
+                opts.worktree_root.clone(),
+            ))
+        }
+    }
+
+    let id1 = "0e030001-0000-4000-a000-000000000001".to_string();
+    let id2 = "0e030002-0000-4000-a000-000000000002".to_string();
+
+    let inner_subs: monocle_ipc::server::SubscriberList = Arc::new(tokio::sync::Mutex::new(vec![]));
+    let broker = Arc::new(Arc::clone(&inner_subs));
+    let (tui_tx, mut tui_rx) =
+        tokio::sync::mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+    inner_subs.lock().await.push(ClientEntry::new(tui_tx));
+
+    let spawner = Arc::new(Med003Spawner {
+        path1: socket_path_1.clone(),
+        path2: socket_path_2.clone(),
+        id1: id1.clone(),
+    });
+    let mut manager = SessionManager::new(
+        tmp.path().to_path_buf(),
+        spawner,
+        broker,
+        Arc::new(Med003Engine),
+    );
+
+    // Spawn both sessions.
+    let opts1 = monocle_core::engine::SpawnOptions::for_spawn_request(
+        PathBuf::from("/tmp/med003-proj1"),
+        PathBuf::from("/tmp/med003-proj1"),
+        "claude-code".to_string(),
+        "default".to_string(),
+        None,
+    )
+    .with_daemon_fields(id1.clone(), tmp.path().join("hooks-s1.json"));
+
+    let opts2 = monocle_core::engine::SpawnOptions::for_spawn_request(
+        PathBuf::from("/tmp/med003-proj2"),
+        PathBuf::from("/tmp/med003-proj2"),
+        "claude-code".to_string(),
+        "default".to_string(),
+        None,
+    )
+    .with_daemon_fields(id2.clone(), tmp.path().join("hooks-s2.json"));
+
+    manager
+        .spawn_session(opts1)
+        .await
+        .expect("MED-003: spawn session 1 must succeed");
+    manager
+        .spawn_session(opts2)
+        .await
+        .expect("MED-003: spawn session 2 must succeed");
+
+    // Both monitors connect to their respective pre-bound sockets.
+    let (mut peer1, _) =
+        tokio::time::timeout(std::time::Duration::from_secs(5), listener_1.accept())
+            .await
+            .expect("MED-003: timed out waiting for monitor 1 to connect")
+            .expect("MED-003: accept 1 failed");
+    let (mut peer2, _) =
+        tokio::time::timeout(std::time::Duration::from_secs(5), listener_2.accept())
+            .await
+            .expect("MED-003: timed out waiting for monitor 2 to connect")
+            .expect("MED-003: accept 2 failed");
+
+    // Helper to encode a HostToDaemon::StateChanged{Running} message.
+    fn encode_running() -> Vec<u8> {
+        let msg = HostToDaemon::StateChanged {
+            new_state: SessionState::Running,
+            degraded_env: None,
+        };
+        let body = serde_json::to_vec(&msg).expect("serialize");
+        let mut framed = Vec::with_capacity(4 + body.len());
+        framed.extend_from_slice(&(body.len() as u32).to_le_bytes());
+        framed.extend_from_slice(&body);
+        framed
+    }
+
+    // Send StateChanged{Running} from BOTH monitors concurrently.
+    // This is the race condition: without a single mutex acquisition spanning BOTH
+    // try_send() calls, the tokio scheduler may interleave the two broadcast pairs.
+    let running_bytes = encode_running();
+    let rb1 = running_bytes.clone();
+    let rb2 = running_bytes.clone();
+    let send_1 = async move {
+        peer1
+            .write_all(&rb1)
+            .await
+            .expect("MED-003: send Running 1")
+    };
+    let send_2 = async move {
+        peer2
+            .write_all(&rb2)
+            .await
+            .expect("MED-003: send Running 2")
+    };
+    tokio::join!(send_1, send_2);
+
+    // Drain all broadcast messages within a 2s window.
+    let mut messages: Vec<ServerToClient> = Vec::new();
+    let drain_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(2);
+    while let Ok(Some(msg)) = tokio::time::timeout_at(drain_deadline, tui_rx.recv()).await {
+        messages.push(msg);
+    }
+
+    // Verify both Running broadcasts arrived.
+    let running_count = messages
+        .iter()
+        .filter(|m| {
+            matches!(
+                m,
+                ServerToClient::SessionStateChanged {
+                    new_state: SessionState::Running,
+                    ..
+                }
+            )
+        })
+        .count();
+    assert_eq!(
+        running_count, 2,
+        "MED-003 (Ruling G): expected exactly 2 SessionStateChanged{{Running}} messages \
+         (one per session). Got {}. Messages: {:?}",
+        running_count, messages
+    );
+
+    // Verify the ordered-pair adjacency invariant (BC-2.08.008 Invariant 4):
+    // For each SessionStateChanged{Running} at index i, the message at index i+1
+    // MUST be a SessionListUpdate. No other StateChanged may appear in between.
+    //
+    // This directly validates Ruling G: if the post-spawn monitor does NOT hold the
+    // mutex across both try_send() calls, a concurrent broadcast from the OTHER monitor
+    // can interleave, producing a non-adjacent pair.
+    for (i, msg) in messages.iter().enumerate() {
+        if matches!(
+            msg,
+            ServerToClient::SessionStateChanged {
+                new_state: SessionState::Running,
+                ..
+            }
+        ) {
+            let next = messages.get(i + 1);
+            assert!(
+                matches!(next, Some(ServerToClient::SessionListUpdate { .. })),
+                "MED-003 (Ruling G / BC-2.08.008 Invariant 4): \
+                 SessionStateChanged{{Running}} at index {} MUST be immediately followed by \
+                 SessionListUpdate (no interleaving). \
+                 Next message at index {}: {:?}. \
+                 Full sequence: {:?}. \
+                 Fix: in post_spawn_monitor, acquire the sessions mutex ONCE and hold it \
+                 across BOTH broker.broadcast(SessionStateChanged{{Running}}) AND \
+                 broker.broadcast(SessionListUpdate) calls (per Ruling G implementer \
+                 instruction in SS-session-manager.md §Ruling G).",
+                i,
+                i + 1,
+                next,
+                messages
+            );
         }
     }
 }

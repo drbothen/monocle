@@ -2392,47 +2392,93 @@ mod tests {
 
     // -----------------------------------------------------------------------
     // BC-2.08.001 AC-006 / EC-152 — UUID collision handling
+    //
+    // Ruling F (SS-session-manager.md v2.7.2): spawn_session() MUST NOT retry
+    // internally on UUID collision. It MUST return Err(SessionIdCollision)
+    // immediately. The IPC handler is the SINGLE retry locus.
     // -----------------------------------------------------------------------
 
-    /// When the same session_id is submitted twice, spawn_session() must auto-retry
-    /// with a freshly generated UUID (MED-002) and return Ok(new_id) where
-    /// new_id != original collision_id.
+    /// Part (a): spawn_session() MUST return Err(SessionIdCollision) immediately when
+    /// session_id already exists in the registry — no internal retry.
     ///
-    /// Only when BOTH the proposed UUID and the retry UUID are already in the registry
-    /// does spawn_session() return Err(SessionIdCollision). That double-collision path
-    /// is structurally verified by the session_error_to_code mapping test below.
+    /// Ruling F (SS-session-manager.md v2.7.2): the IPC handler is the sole retry
+    /// locus; spawn_session() does not retry.
     ///
-    /// BC-2.08.001 invariant 1 / EC-152 / AC-006 (MED-002 retry path).
+    /// BC-2.08.001 invariant 1 / EC-152 / AC-006.
     #[tokio::test]
-    async fn test_BC_2_08_001_invariant_session_id_collision_returns_error() {
+    async fn test_BC_2_08_001_spawn_returns_err_collision_when_id_already_exists() {
         let tmp = tempfile::tempdir().expect("tempdir");
         let (mut manager, _subs, _rx) = make_manager_with_channel(tmp.path(), None);
 
         let session_id = "00000000-0001-4000-a000-000000000020".to_string();
 
-        // First spawn succeeds.
+        // First spawn must succeed.
         manager
             .spawn_session(make_spawn_opts(&session_id))
             .await
             .expect("first spawn must succeed");
 
-        // Second spawn with the SAME session_id must auto-retry with a new UUID
-        // and return Ok(new_id) where new_id != session_id (MED-002 retry).
+        // Second spawn with the SAME session_id: spawn_session() MUST return
+        // Err(SessionIdCollision) immediately — NO internal retry (Ruling F).
         let result = manager.spawn_session(make_spawn_opts(&session_id)).await;
-        match &result {
-            Ok(new_id) => {
-                assert_ne!(
-                    new_id, &session_id,
-                    "EC-152: retry must produce a different session_id, got same id back"
-                );
-            }
-            Err(e) => {
-                panic!(
-                    "EC-152: first collision must auto-retry and succeed, got error: {:?}",
-                    e
-                );
-            }
-        }
+        assert!(
+            matches!(
+                result,
+                Err(SessionError::SessionIdCollision { ref session_id })
+                    if session_id == "00000000-0001-4000-a000-000000000020"
+            ),
+            "EC-152 / Ruling F: spawn_session() MUST return Err(SessionIdCollision) \
+             immediately on ID collision — no internal retry. \
+             Retry is the IPC handler's responsibility (Ruling F, SS-session-manager.md v2.7.2). \
+             Got: {:?}",
+            result
+        );
+    }
+
+    /// Part (b): the IPC handler two-attempt retry path.
+    ///
+    /// When the first UUID collides, the IPC handler MUST:
+    ///   1. Detect Err(SessionIdCollision) from spawn_session().
+    ///   2. Regenerate a new UUID.
+    ///   3. Send a second SpawnAck{retry_id} to the requesting client BEFORE the retry spawn.
+    ///   4. Retry spawn_session() once with the new UUID — must succeed.
+    ///   5. On a second consecutive collision, send ServerToClient::Error{code:"session_id_collision"}.
+    ///
+    /// This test exercises the IPC handler path via handle_spawn_session_pub.
+    ///
+    /// NOTE: Deterministic collision forcing requires an injectable UUID generator seam
+    /// in the IPC handler (Ruling F). If no such seam exists, the collision path cannot
+    /// be forced deterministically; the test is marked #[ignore] until the seam is added.
+    ///
+    /// Implementer follow-up required:
+    ///   Add a `uuid_gen: Option<Box<dyn Fn() -> String + Send>>` seam parameter to
+    ///   `handle_spawn_session()` (or an equivalent field on DaemonState/SessionManager)
+    ///   so tests can inject a collision-producing UUID generator. Until then this test
+    ///   documents the required contract but cannot exercise it deterministically.
+    #[tokio::test]
+    #[ignore = "Requires injectable UUID generator seam in IPC handler (Ruling F). \
+                Add uuid_gen seam to handle_spawn_session_pub() before un-ignoring. \
+                Contract: first collision → regenerate UUID → send second SpawnAck{retry_id} → retry spawn → Ok. \
+                Second consecutive collision → ServerToClient::Error{code:'session_id_collision'}."]
+    async fn test_BC_2_08_001_ipc_handler_two_attempt_retry_on_collision() {
+        // This test is intentionally left as documentation of the required contract.
+        // It cannot be exercised without an injectable UUID generator seam.
+        //
+        // Required IPC handler behavior (Ruling F):
+        //   1. Generate UUID (attempt 1).
+        //   2. Send SpawnAck{session_id: uuid_1} to requesting client.
+        //   3. Call spawn_session(opts.with_daemon_fields(uuid_1, ...)).
+        //   4. On Err(SessionIdCollision):
+        //      a. Generate retry UUID (attempt 2).
+        //      b. Send SpawnAck{session_id: retry_uuid} to requesting client (BEFORE retry spawn).
+        //      c. Call spawn_session(opts.with_daemon_fields(retry_uuid, ...)).
+        //      d. On Ok(_) → success.
+        //      e. On Err(SessionIdCollision) again → send Error{code:"session_id_collision"}.
+        //
+        // Seam needed: `handle_spawn_session_pub(opts, client_tx, state, uuid_gen: &dyn Fn() -> String)`
+        // so tests can inject `|| "known-collision-id".to_string()` for the first call
+        // and a fresh UUID for the retry.
+        panic!("This test must not run until the uuid_gen seam is implemented in the IPC handler");
     }
 
     // -----------------------------------------------------------------------
@@ -3133,24 +3179,47 @@ mod tests {
     // Test 3: DaemonState.session_manager wiring (MED-011)
     //
     // After daemon_start_sequence(), session_manager must be Some(_), not None.
-    // Currently daemon_start_sequence() leaves session_manager: None (line 657 lifecycle.rs).
-    // This test will fail until the wiring is implemented.
+    // Uses the PRODUCTION constructor (daemon_start_sequence()), NOT DaemonState::new()
+    // (the test-only constructor which never wires session_manager).
+    //
+    // Anti-false-green rule (s033_blocker_red_gate.rs contract): NEVER use
+    // DaemonState::new() to assert wiring — it is a test-only constructor that
+    // always returns session_manager: None regardless of what daemon_start_sequence
+    // would produce.
     // -----------------------------------------------------------------------
 
     /// After daemon_start_sequence(), DaemonState.session_manager must be Some(_).
     ///
-    /// MED-011: daemon_start_sequence() currently leaves session_manager: None.
-    /// After implementation, it must wire session_manager as part of step 9b.
+    /// MED-011: verifies real production wiring via daemon_start_sequence().
+    /// This test FAILS until daemon_start_sequence() implements step 9b.
+    ///
+    /// This test uses daemon_start_sequence(), NOT DaemonState::new(), because
+    /// DaemonState::new() is a test-only constructor that always returns
+    /// session_manager: None — asserting against it would be a tautology.
     #[tokio::test]
     async fn test_MED_011_daemon_state_session_manager_wired_after_start_sequence() {
-        // Build minimal daemon state with session_manager: None (as currently constructed).
-        let state = crate::state::DaemonState::new();
-        // MED-011: session_manager must NOT be None after daemon initialization.
-        // Currently this test fails because DaemonState::new() returns session_manager: None.
+        use crate::lifecycle::daemon_start_sequence;
+
+        // Use /tmp explicitly to keep UDS socket paths short (macOS SUN_LEN = 104 chars).
+        let tmp = tempfile::Builder::new()
+            .tempdir_in("/tmp")
+            .expect("create tempdir in /tmp for MED-011 test");
+
+        let (state, _listener) = daemon_start_sequence(tmp.path())
+            .await
+            .expect("MED-011: daemon_start_sequence must succeed");
+
+        // MED-011 ASSERTION: session_manager must be Some(_) after the PRODUCTION start sequence.
+        // FAILS NOW: lifecycle.rs sets session_manager: None at step 657.
+        // Fix: implement daemon_start_sequence() step 9b — construct SessionManager with
+        // RealSessionHostSpawner, the daemon's real ipc_subscribers arc, and the daemon's
+        // runtime_dir, then set session_manager = Some(Mutex::new(manager)).
         assert!(
             state.session_manager.is_some(),
-            "MED-011: DaemonState.session_manager must be Some(_) after daemon start, not None. \
-             daemon_start_sequence() must wire the SessionManager at step 9b per S-033 architecture."
+            "MED-011: daemon_start_sequence() MUST wire DaemonState.session_manager = Some(...). \
+             Got None. This test uses daemon_start_sequence() (the PRODUCTION path), \
+             not DaemonState::new() (which is a test-only constructor that always returns None \
+             and cannot be used to assert real wiring)."
         );
     }
 
@@ -3292,38 +3361,98 @@ mod tests {
     // AND the monocle-session-host binary implements its full startup sequence.
     // -----------------------------------------------------------------------
 
-    /// Integration test: RealSessionHostSpawner spawns the real monocle-session-host binary,
-    /// which must: open PTY, spawn harness child (/bin/cat), bind UDS, write sidecar with
-    /// child_pid, send StateChanged{Running}.
+    /// Integration test: RealSessionHostSpawner spawns the real monocle-session-host binary.
     ///
-    /// Ruling A: session-host binary must NOT be all todo!() stubs.
-    /// This test requires the binary to reach StateChanged{Running}.
+    /// The session-host must:
+    ///   1. Open PTY, spawn harness child (/bin/cat).
+    ///   2. Write sidecar with child_pid populated (startup step 8).
+    ///   3. Bind UDS socket at <runtime_dir>/session-<id>.sock.
+    ///   4. Send StateChanged{Running} (or StateChanged{Launching, degraded_env} then Running).
+    ///
+    /// This test verifies Ruling A (SS-session-manager.md v2.7.0):
+    /// - The session-host binary is non-trivial; all todo!() stubs will fail this test.
+    /// - Hard-fails if binary absent (NO silent skip — see anti-false-green contract).
+    ///
+    /// This test verifies Ruling B sidecar preservation:
+    /// - The daemon pre-writes a full SessionSidecarV3 with daemon-owned fields
+    ///   (project_root, harness_id, profile_id, started_at) at Launching time.
+    /// - After the session-host writes its child_pid overwrite, these daemon-owned
+    ///   fields must be PRESERVED in the final sidecar.
+    /// - State must NOT be overwritten to "Running" by the session-host (BLOCKER-002):
+    ///   only the daemon transitions state via the Launching→Running protocol.
     #[tokio::test]
     async fn test_ruling_a_real_session_host_spawner_reaches_running_state() {
-        // Find the monocle-session-host binary relative to the current test binary.
-        // In a workspace build it lives at target/debug/monocle-session-host.
+        // HARD-FAIL if binary absent — NO silent skip (anti-false-green contract).
         let session_host_bin = std::env::current_exe()
             .expect("current_exe")
             .parent()
             .expect("parent dir")
             .join("monocle-session-host");
 
-        if !session_host_bin.exists() {
-            // Binary not built yet — skip gracefully.
-            // The implementer must build the workspace; CI will catch this.
-            eprintln!(
-                "SKIP test_ruling_a: monocle-session-host binary not found at {:?}",
-                session_host_bin
-            );
-            return;
-        }
+        assert!(
+            session_host_bin.exists(),
+            "Ruling A anti-skip: monocle-session-host binary MUST exist at {:?}. \
+             Build with `cargo build --workspace` before running tests. \
+             CI always does this. A missing binary means the workspace was not built — \
+             that is a REAL failure, not a skip condition.",
+            session_host_bin
+        );
 
-        // Use /tmp to keep socket paths short (macOS SUN_LEN = 104 chars; macOS
-        // default TMPDIR paths are long enough to exceed the limit with UUID socket names).
+        // Use /tmp to keep socket paths short (macOS SUN_LEN = 104 chars).
         let tmp = tempfile::Builder::new()
             .tempdir_in("/tmp")
             .expect("tempdir in /tmp");
         let session_id = "00000000-0001-4000-a000-000000000110".to_string();
+
+        // -----------------------------------------------------------------------
+        // Ruling B: Pre-write a full daemon-authored SessionSidecarV3 BEFORE
+        // spawning the session-host. This is the initial sidecar with daemon-owned
+        // fields, child_pid: None, state: Launching.
+        // -----------------------------------------------------------------------
+        let daemon_project_root = "/tmp/ruling-a-daemon-project";
+        let daemon_harness_id = "claude-code";
+        let daemon_profile_id = "default";
+        let daemon_started_at = chrono::Utc::now().to_rfc3339();
+        let daemon_display_name = "claude-code — ruling-a-test";
+
+        let initial_sidecar = monocle_ipc::types::SessionSidecarV3 {
+            schema_version: 3,
+            session_id: session_id.clone(),
+            pid: 0, // will be overwritten after spawn
+            socket_path: tmp
+                .path()
+                .join(format!("session-{}.sock", session_id))
+                .to_string_lossy()
+                .into_owned(),
+            child_pid: None,
+            state: monocle_ipc::types::SessionState::Launching,
+            project_root: daemon_project_root.to_string(),
+            cwd: daemon_project_root.to_string(),
+            harness_id: daemon_harness_id.to_string(),
+            profile_id: daemon_profile_id.to_string(),
+            started_at: daemon_started_at.clone(),
+            display_name: daemon_display_name.to_string(),
+            pty_rows: 24,
+            pty_cols: 80,
+            kill_deadline_unix_ms: None,
+        };
+
+        let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+        {
+            // Write via tempfile::persist (atomic-write convention per CLAUDE.md).
+            let mut tmp_file = tempfile::NamedTempFile::new_in(tmp.path())
+                .expect("Ruling A: create temp file for pre-write sidecar");
+            serde_json::to_writer_pretty(&mut tmp_file, &initial_sidecar)
+                .expect("Ruling A: serialize initial sidecar");
+            tmp_file
+                .persist(&sidecar_path)
+                .expect("Ruling A: persist initial sidecar");
+        }
+        assert!(
+            sidecar_path.exists(),
+            "Ruling A: pre-written daemon sidecar must exist at {:?}",
+            sidecar_path
+        );
 
         let spawner = RealSessionHostSpawner {
             session_host_bin: session_host_bin.clone(),
@@ -3338,59 +3467,122 @@ mod tests {
         );
 
         // Spawn via the real spawner.
-        let handle = spawner.spawn(&session_id, &recipe, tmp.path()).await;
-        assert!(
-            handle.is_ok(),
-            "Ruling A: RealSessionHostSpawner::spawn() must succeed, got {:?}",
-            handle
-        );
+        let handle = spawner
+            .spawn(&session_id, &recipe, tmp.path())
+            .await
+            .expect(
+                "Ruling A: RealSessionHostSpawner::spawn() must succeed — \
+                 if this fails, the session-host binary failed to start",
+            );
 
-        let handle = handle.unwrap();
         let socket_path = handle.socket_path.clone();
         let pid = handle.pid;
 
-        // Wait for the session-host to bind its UDS socket (up to 5s).
-        let socket_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
-        while tokio::time::Instant::now() < socket_deadline {
-            if socket_path.exists() {
-                break;
+        // Wait for the session-host to bind its UDS socket (up to 5s, poll every 20ms).
+        // Use polling rather than a fixed sleep to avoid flakiness.
+        let socket_bound = {
+            let socket_path = socket_path.clone();
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+            let mut bound = false;
+            while tokio::time::Instant::now() < deadline {
+                if socket_path.exists() {
+                    bound = true;
+                    break;
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(20)).await;
             }
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-        }
+            bound
+        };
         assert!(
-            socket_path.exists(),
+            socket_bound,
             "Ruling A: session-host must bind UDS socket at {:?} within 5s",
             socket_path
         );
 
-        // Sidecar must exist with child_pid populated.
-        let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
-        let sidecar_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
-        while tokio::time::Instant::now() < sidecar_deadline {
-            if sidecar_path.exists() {
-                break;
+        // Wait for the session-host to overwrite the sidecar with child_pid set (startup step 8).
+        // Poll until child_pid is populated (not fixed sleep).
+        let sidecar_has_child_pid = {
+            let sidecar_path = sidecar_path.clone();
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+            let mut found = false;
+            while tokio::time::Instant::now() < deadline {
+                if let Ok(contents) = std::fs::read_to_string(&sidecar_path) {
+                    if let Ok(v) = serde_json::from_str::<serde_json::Value>(&contents) {
+                        if v["child_pid"].is_number() {
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(20)).await;
             }
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-        }
+            found
+        };
         assert!(
-            sidecar_path.exists(),
-            "Ruling A: session-host must write sidecar at {:?} within 5s",
-            sidecar_path
-        );
-        let sidecar_json =
-            std::fs::read_to_string(&sidecar_path).expect("sidecar must be readable");
-        let sidecar: monocle_ipc::types::SessionSidecarV3 =
-            serde_json::from_str(&sidecar_json).expect("sidecar must parse as SessionSidecarV3");
-        assert!(
-            sidecar.child_pid.is_some(),
-            "Ruling A: session-host must overwrite sidecar with child_pid: Some(pid)"
-        );
-        assert_eq!(
-            sidecar.pid, pid,
-            "Ruling A: sidecar.pid must match SpawnedHostHandle.pid"
+            sidecar_has_child_pid,
+            "Ruling A: session-host must overwrite sidecar with child_pid: Some(pid) \
+             at startup step 8 within 5s"
         );
 
-        // Connect to the UDS and receive StateChanged{Running}.
+        // -----------------------------------------------------------------------
+        // Ruling B PRESERVATION ASSERTIONS: daemon-owned fields must survive the
+        // session-host's child_pid overwrite.
+        // -----------------------------------------------------------------------
+        let after_host_write =
+            std::fs::read_to_string(&sidecar_path).expect("sidecar must be readable");
+        let after_host_json: serde_json::Value =
+            serde_json::from_str(&after_host_write).expect("sidecar must parse as JSON");
+        let after_host_sidecar: monocle_ipc::types::SessionSidecarV3 =
+            serde_json::from_str(&after_host_write)
+                .expect("sidecar must parse as SessionSidecarV3");
+
+        // Ruling B: child_pid must be Some after session-host step 8.
+        assert!(
+            after_host_sidecar.child_pid.is_some(),
+            "Ruling A: session-host must overwrite sidecar with child_pid: Some(pid)"
+        );
+
+        // Ruling B / BLOCKER-002: session-host must NOT overwrite state to "Running".
+        // State transitions are the daemon's responsibility (via the Launching→Running protocol).
+        // The session-host signals readiness via HostToDaemon::StateChanged{Running} over the UDS —
+        // it does NOT write "Running" into the sidecar. Only the daemon re-writes the sidecar
+        // with state:"Running" on the Running transition.
+        assert_ne!(
+            after_host_json["state"].as_str().unwrap_or(""),
+            "Running",
+            "BLOCKER-002 / Ruling B: session-host MUST NOT overwrite sidecar state to 'Running'. \
+             The daemon owns state transitions. The session-host writes child_pid only and leaves \
+             state as 'Launching'. The daemon re-writes state:'Running' on the Launching→Running \
+             transition. Got state='Running' after session-host write — this is a BLOCKER-002 violation."
+        );
+
+        // Ruling B: daemon-owned fields must be preserved after session-host overwrite.
+        assert_eq!(
+            after_host_json["project_root"].as_str().unwrap_or(""),
+            daemon_project_root,
+            "Ruling B: project_root MUST be preserved after session-host child_pid overwrite"
+        );
+        assert_eq!(
+            after_host_json["harness_id"].as_str().unwrap_or(""),
+            daemon_harness_id,
+            "Ruling B: harness_id MUST be preserved after session-host child_pid overwrite"
+        );
+        assert_eq!(
+            after_host_json["profile_id"].as_str().unwrap_or(""),
+            daemon_profile_id,
+            "Ruling B: profile_id MUST be preserved after session-host child_pid overwrite"
+        );
+        assert_eq!(
+            after_host_json["started_at"].as_str().unwrap_or(""),
+            daemon_started_at,
+            "Ruling B: started_at MUST be preserved after session-host child_pid overwrite"
+        );
+
+        // -----------------------------------------------------------------------
+        // Connect to the UDS and receive StateChanged (I3-009 handshake).
+        // First message may be StateChanged{Launching, degraded_env:Some([...])} if env
+        // is degraded, OR StateChanged{Running} if env is healthy.
+        // -----------------------------------------------------------------------
         use tokio::io::AsyncReadExt;
         let mut conn = tokio::net::UnixStream::connect(&socket_path)
             .await
@@ -3411,26 +3603,40 @@ mod tests {
                 let msg: serde_json::Value =
                     serde_json::from_slice(&body).expect("must parse as JSON");
                 let msg_type = msg.get("type").and_then(|t| t.as_str()).unwrap_or("");
-                // First message from session-host is StateChanged{Running} (or StateChanged{Launching}
-                // with degraded_env if env is degraded).
-                assert!(
-                    msg_type == "state_changed",
-                    "Ruling A: first message from session-host over UDS must be StateChanged, got type={:?}",
+                // First message must be state_changed (I3-009 handshake or direct Running).
+                assert_eq!(
+                    msg_type, "state_changed",
+                    "Ruling A: first message from session-host over UDS must be 'state_changed', \
+                     got type={:?}. I3-009: first message is StateChanged{{Launching, degraded_env}} \
+                     or StateChanged{{Running}} (if env is healthy).",
                     msg_type
                 );
                 let new_state = msg.get("new_state").and_then(|s| s.as_str()).unwrap_or("");
-                // Either "Running" directly, or "Launching" with degraded_env (valid handshake first step).
+                // Either "Running" directly (healthy env), or "Launching" (I3-009 degraded-env
+                // handshake first step — Running follows as the second message).
                 assert!(
                     new_state == "Running" || new_state == "Launching",
-                    "Ruling A: new_state in first StateChanged must be Running or Launching, got {:?}",
+                    "Ruling A: new_state in first StateChanged must be 'Running' or 'Launching' \
+                     (I3-009 handshake). Got {:?}.",
                     new_state
                 );
+                // Note: sidecar.pid is the session-host's own PID, pre-filled by the daemon
+                // when writing the initial sidecar. In this test we bypass the daemon's
+                // spawn_session() path (calling RealSessionHostSpawner directly), so we
+                // pre-wrote pid:0 as a placeholder. The session-host only updates child_pid
+                // (the harness child PID), not pid (its own PID). There is no assertion here
+                // because pid was never set to the actual session-host PID in the pre-write.
+                let _ = pid; // Used for SIGTERM cleanup below.
             }
             Ok(Err(e)) => panic!(
                 "Ruling A: failed to read message from session-host UDS: {}",
                 e
             ),
-            Err(_) => panic!("Ruling A: timeout waiting for StateChanged from session-host (5s)"),
+            Err(_) => panic!(
+                "Ruling A: timeout waiting for StateChanged from session-host (5s). \
+                 The session-host must send StateChanged{{Running}} or \
+                 StateChanged{{Launching, degraded_env}} after binding its UDS socket."
+            ),
         }
 
         // Cleanup: send SIGTERM to the session-host.
