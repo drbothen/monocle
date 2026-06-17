@@ -1141,11 +1141,15 @@ async fn test_BC_2_08_001_B005_daemon_owned_fields_preserved_after_host_overwrit
         "pty_cols": 80,
         "kill_deadline_unix_ms": null
     });
-    std::fs::write(
-        &sidecar_path,
-        serde_json::to_vec_pretty(&host_sidecar).expect("serialize host sidecar"),
-    )
-    .expect("B-005: simulate session-host step-8 sidecar write");
+    {
+        let data = serde_json::to_vec_pretty(&host_sidecar).expect("serialize host sidecar");
+        let dir = sidecar_path.parent().expect("B-005: sidecar path has parent");
+        let mut tmp = tempfile::NamedTempFile::new_in(dir)
+            .expect("B-005: create temp file for host sidecar simulation");
+        std::io::Write::write_all(&mut tmp, &data).expect("B-005: write host sidecar temp");
+        tmp.persist(&sidecar_path)
+            .expect("B-005: simulate session-host step-8 sidecar write");
+    }
 
     // Send StateChanged{Running} over UDS to trigger the daemon's Running transition
     // and the authoritative re-persist of the sidecar.
