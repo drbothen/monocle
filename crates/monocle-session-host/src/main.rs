@@ -224,7 +224,10 @@ async fn run(args: CliArgs) -> Result<(), SessionHostError> {
     step_write_sidecar(&args, child_pid).await?;
 
     // Step 9: enter main event loop.
-    step_event_loop(&args.session_id, listener).await?;
+    let socket_path = args
+        .runtime_dir
+        .join(format!("session-{}.sock", args.session_id));
+    step_event_loop(&args.session_id, listener, child_pid, socket_path).await?;
 
     // Reap child process to avoid zombie.
     let _ = child.wait();
@@ -417,11 +420,14 @@ async fn send_host_msg(
 ///    as the FIRST message (before `Running`). The daemon sets `entry.degraded = true`.
 /// 3. Send `StateChanged { new_state: Running, degraded_env: None }` to signal readiness.
 ///
-/// Deferred handlers (Attach/Resize/KeyInput/Detach) return gracefully for S-033;
-/// they will be implemented in S-034/S-035/S-047.
+/// Handles `DaemonToHost::Kill` (BC-2.08.003 AC-003): SIGTERM → 10s wait → SIGKILL →
+/// `StateChanged{Terminated}` → `Goodbye` → remove socket file → return.
+/// Deferred handlers (Attach/Resize/KeyInput/Detach) will be implemented in S-035/S-047.
 async fn step_event_loop(
     session_id: &str,
     listener: tokio::net::UnixListener,
+    child_pid: u32,
+    socket_path: std::path::PathBuf,
 ) -> Result<(), SessionHostError> {
     // Accept the daemon control connection (single accept — post-spawn monitor).
     let (mut stream, _addr) =
@@ -496,15 +502,102 @@ async fn step_event_loop(
                 // Deserialize and dispatch (BC-2.08.003 AC-003 — Kill handler).
                 match serde_json::from_slice::<monocle_ipc::types::DaemonToHost>(&body) {
                     Ok(monocle_ipc::types::DaemonToHost::Kill) => {
-                        // S-034 scope: DaemonToHost::Kill handler.
+                        // BC-2.08.003 AC-003: DaemonToHost::Kill handler.
                         //
-                        // Required implementation (AC-003 / BC-2.08.003 postcondition 3):
                         // a. Send SIGTERM to harness child process.
-                        // b. Monitor child exit; if not exited within 10 seconds, send SIGKILL.
-                        // c. On child exit: send HostToDaemon::StateChanged { new_state: Terminated }.
-                        // d. Send HostToDaemon::Goodbye and close UDS connection.
+                        // b. Wait up to 10s for child exit; on timeout, send SIGKILL.
+                        // c. Send HostToDaemon::StateChanged { new_state: Terminated }.
+                        // d. Send HostToDaemon::Goodbye.
                         // e. Remove UDS socket file.
-                        todo!("S-034: implement DaemonToHost::Kill handler — SIGTERM harness child, 10s SIGKILL escalation, StateChanged{{Terminated}}, Goodbye, socket cleanup")
+                        // f. Break event loop — session-host exits.
+                        use nix::sys::signal::{kill as nix_kill, Signal};
+                        use nix::unistd::Pid;
+                        let nix_pid = Pid::from_raw(child_pid as i32);
+
+                        // a. SIGTERM
+                        if let Err(e) = nix_kill(nix_pid, Signal::SIGTERM) {
+                            tracing::warn!(
+                                session_id = %session_id,
+                                pid = child_pid,
+                                error = %e,
+                                "session-host: SIGTERM to harness child failed"
+                            );
+                        } else {
+                            tracing::debug!(
+                                session_id = %session_id,
+                                pid = child_pid,
+                                "session-host: sent SIGTERM to harness child"
+                            );
+                        }
+
+                        // b. Wait up to 10s for child exit via WNOHANG polling in a blocking task.
+                        let child_exited = tokio::time::timeout(
+                            std::time::Duration::from_secs(10),
+                            tokio::task::spawn_blocking(move || {
+                                use nix::sys::wait::{waitpid, WaitPidFlag, WaitStatus};
+                                loop {
+                                    match waitpid(nix_pid, Some(WaitPidFlag::WNOHANG)) {
+                                        Ok(WaitStatus::StillAlive) => {
+                                            std::thread::sleep(std::time::Duration::from_millis(
+                                                100,
+                                            ));
+                                        }
+                                        _ => return,
+                                    }
+                                }
+                            }),
+                        )
+                        .await;
+
+                        if child_exited.is_err() {
+                            // 10s elapsed without exit — escalate to SIGKILL.
+                            tracing::warn!(
+                                session_id = %session_id,
+                                pid = child_pid,
+                                "session-host: harness child did not exit within 10s — sending SIGKILL"
+                            );
+                            nix_kill(nix_pid, Signal::SIGKILL).ok();
+                        }
+
+                        // c. Notify daemon: session transitioned to Terminated.
+                        let terminated_msg = monocle_ipc::types::HostToDaemon::StateChanged {
+                            new_state: monocle_ipc::types::SessionState::Terminated,
+                            degraded_env: None,
+                        };
+                        if let Err(e) = send_host_msg(&mut stream, &terminated_msg).await {
+                            tracing::warn!(
+                                session_id = %session_id,
+                                error = %e,
+                                "session-host: failed to send StateChanged{{Terminated}}"
+                            );
+                        }
+
+                        // d. Send Goodbye to signal clean close of control connection.
+                        let goodbye_msg = monocle_ipc::types::HostToDaemon::Goodbye;
+                        if let Err(e) = send_host_msg(&mut stream, &goodbye_msg).await {
+                            tracing::warn!(
+                                session_id = %session_id,
+                                error = %e,
+                                "session-host: failed to send Goodbye"
+                            );
+                        }
+
+                        // e. Remove UDS socket file (clean up per-session socket).
+                        if let Err(e) = std::fs::remove_file(&socket_path) {
+                            tracing::warn!(
+                                session_id = %session_id,
+                                path = %socket_path.display(),
+                                error = %e,
+                                "session-host: failed to remove UDS socket file after Kill"
+                            );
+                        }
+
+                        // f. Exit event loop — session-host will exit after run() returns.
+                        tracing::info!(
+                            session_id = %session_id,
+                            "session-host: Kill sequence complete — exiting event loop"
+                        );
+                        break;
                     }
                     Ok(_other) => {
                         // Other DaemonToHost variants (Attach, KeyInput, Resize, Detach) —

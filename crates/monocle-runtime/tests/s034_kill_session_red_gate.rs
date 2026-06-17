@@ -189,8 +189,7 @@ fn make_manager(
         Arc::new(Mutex::new(vec![ClientEntry::new(tx)]));
     let broker = Arc::new(Arc::clone(&subscriber_list));
     let spawner: Arc<dyn SessionHostSpawner> = Arc::new(FakePidSpawner { pid });
-    let manager =
-        SessionManager::new(tmp.to_path_buf(), spawner, broker, Arc::new(KillTestEngine));
+    let manager = SessionManager::new(tmp.to_path_buf(), spawner, broker, Arc::new(KillTestEngine));
     (manager, subscriber_list, rx)
 }
 
@@ -212,10 +211,8 @@ fn make_manager_with_socket(
     let subscriber_list: monocle_ipc::server::SubscriberList =
         Arc::new(Mutex::new(vec![ClientEntry::new(tx)]));
     let broker = Arc::new(Arc::clone(&subscriber_list));
-    let spawner: Arc<dyn SessionHostSpawner> =
-        Arc::new(FixedSocketSpawner { pid, socket_path });
-    let manager =
-        SessionManager::new(tmp.to_path_buf(), spawner, broker, Arc::new(KillTestEngine));
+    let spawner: Arc<dyn SessionHostSpawner> = Arc::new(FixedSocketSpawner { pid, socket_path });
+    let manager = SessionManager::new(tmp.to_path_buf(), spawner, broker, Arc::new(KillTestEngine));
     (manager, subscriber_list, rx)
 }
 
@@ -236,12 +233,9 @@ async fn drain_messages(
     rx: &mut tokio::sync::mpsc::Receiver<monocle_ipc::types::ServerToClient>,
     timeout_ms: u64,
 ) -> Vec<monocle_ipc::types::ServerToClient> {
-    let deadline =
-        tokio::time::Instant::now() + std::time::Duration::from_millis(timeout_ms);
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(timeout_ms);
     let mut msgs = Vec::new();
-    while let Ok(Some(m)) =
-        tokio::time::timeout_at(deadline, rx.recv()).await
-    {
+    while let Ok(Some(m)) = tokio::time::timeout_at(deadline, rx.recv()).await {
         msgs.push(m);
     }
     msgs
@@ -293,13 +287,11 @@ async fn test_BC_2_08_003_kill_session_sigterm_within_500ms() {
         .expect("spawn_session must succeed");
 
     // Accept the post-spawn monitor connection and advance session to Running.
-    let (mut peer, _addr) = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        listener.accept(),
-    )
-    .await
-    .expect("timed out waiting for post-spawn monitor connect")
-    .expect("accept failed");
+    let (mut peer, _addr) =
+        tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
+            .await
+            .expect("timed out waiting for post-spawn monitor connect")
+            .expect("accept failed");
 
     // Send StateChanged{Running} — transitions session to Running.
     send_host_to_daemon(
@@ -313,8 +305,7 @@ async fn test_BC_2_08_003_kill_session_sigterm_within_500ms() {
 
     // Wait for SessionStateChanged{Running} broadcast to confirm Running state.
     let mut reached_running = false;
-    let running_deadline =
-        tokio::time::Instant::now() + std::time::Duration::from_secs(3);
+    let running_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(3);
     loop {
         if tokio::time::Instant::now() >= running_deadline {
             break;
@@ -404,8 +395,7 @@ async fn test_BC_2_08_003_kill_session_sigterm_within_500ms() {
     .await;
 
     // Wait for state → Terminated (BC-2.08.003 PC-4).
-    let terminated_deadline =
-        tokio::time::Instant::now() + std::time::Duration::from_secs(3);
+    let terminated_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(3);
     let mut reached_terminated = false;
     loop {
         if tokio::time::Instant::now() >= terminated_deadline {
@@ -429,8 +419,8 @@ async fn test_BC_2_08_003_kill_session_sigterm_within_500ms() {
 
     // Verify sidecar updated to Terminated (BC-2.08.003 PC-4b).
     let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
-    let contents = std::fs::read_to_string(&sidecar_path)
-        .expect("sidecar must exist after kill completion");
+    let contents =
+        std::fs::read_to_string(&sidecar_path).expect("sidecar must exist after kill completion");
     let sidecar: monocle_ipc::types::SessionSidecarV3 =
         serde_json::from_str(&contents).expect("sidecar must parse as SessionSidecarV3");
     assert_eq!(
@@ -466,8 +456,7 @@ async fn test_BC_2_08_003_kill_session_idempotent_on_terminated() {
     let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
 
     // Bind mock UDS socket — the post-spawn monitor will connect.
-    let listener =
-        tokio::net::UnixListener::bind(&socket_path).expect("bind mock socket");
+    let listener = tokio::net::UnixListener::bind(&socket_path).expect("bind mock socket");
 
     let (mut manager, _subs, mut rx) =
         make_manager_with_socket(tmp.path(), 55_002, socket_path.clone());
@@ -481,13 +470,10 @@ async fn test_BC_2_08_003_kill_session_idempotent_on_terminated() {
 
     // Accept monitor connect, send StateChanged{Terminated} directly — skipping
     // Running to put session immediately into Terminated state.
-    let (mut peer, _) = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        listener.accept(),
-    )
-    .await
-    .expect("timed out waiting for monitor")
-    .expect("accept failed");
+    let (mut peer, _) = tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
+        .await
+        .expect("timed out waiting for monitor")
+        .expect("accept failed");
 
     send_host_to_daemon(
         &mut peer,
@@ -557,8 +543,7 @@ async fn test_BC_2_08_003_kill_session_idempotent_on_terminating() {
     let tmp = isolated_runtime_dir();
     let session_id = "034c0000-0001-4000-a000-000000000001".to_string();
     let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
-    let listener =
-        tokio::net::UnixListener::bind(&socket_path).expect("bind mock socket");
+    let listener = tokio::net::UnixListener::bind(&socket_path).expect("bind mock socket");
 
     let (mut manager, _subs, mut rx) =
         make_manager_with_socket(tmp.path(), 55_003, socket_path.clone());
@@ -571,13 +556,10 @@ async fn test_BC_2_08_003_kill_session_idempotent_on_terminating() {
         .expect("spawn_session must succeed");
 
     // Advance session to Running via mock UDS.
-    let (mut peer, _) = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        listener.accept(),
-    )
-    .await
-    .expect("timed out waiting for monitor")
-    .expect("accept failed");
+    let (mut peer, _) = tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
+        .await
+        .expect("timed out waiting for monitor")
+        .expect("accept failed");
 
     send_host_to_daemon(
         &mut peer,
@@ -669,8 +651,7 @@ async fn test_BC_2_08_003_12s_watchdog() {
     let tmp = isolated_runtime_dir();
     let session_id = "034d0000-0001-4000-a000-000000000001".to_string();
     let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
-    let listener =
-        tokio::net::UnixListener::bind(&socket_path).expect("bind mock socket");
+    let listener = tokio::net::UnixListener::bind(&socket_path).expect("bind mock socket");
 
     let (mut manager, _subs, mut rx) =
         make_manager_with_socket(tmp.path(), 55_004, socket_path.clone());
@@ -683,13 +664,10 @@ async fn test_BC_2_08_003_12s_watchdog() {
         .expect("spawn_session must succeed");
 
     // Advance session to Running.
-    let (mut peer, _) = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        listener.accept(),
-    )
-    .await
-    .expect("timed out waiting for monitor")
-    .expect("accept failed");
+    let (mut peer, _) = tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
+        .await
+        .expect("timed out waiting for monitor")
+        .expect("accept failed");
 
     send_host_to_daemon(
         &mut peer,
@@ -706,13 +684,10 @@ async fn test_BC_2_08_003_12s_watchdog() {
 
     // Kill the session — spawns watchdog (todo!() → panics here).
     // FAILS: kill_session() calls spawn_kill_watchdog() which is todo!().
-    manager
-        .kill_session(&session_id)
-        .await
-        .expect(
-            "test_BC_2_08_003_12s_watchdog: kill_session() must return Ok(()) \
+    manager.kill_session(&session_id).await.expect(
+        "test_BC_2_08_003_12s_watchdog: kill_session() must return Ok(()) \
              to proceed to watchdog test (BC-2.08.003 PC-1)",
-        );
+    );
 
     // Advance virtual time by 12 seconds — watchdog must fire.
     // The watchdog is spawned by kill_session() using tokio::time::sleep(Duration::from_secs(12)).
@@ -812,8 +787,7 @@ async fn test_BC_2_08_003_kill_detached_so_peercred() {
     // The monitor connects and receives EOF (we drop the accepted stream), leaving
     // host_conn=None. Then kill_session() (Detached path) connects to the same listener.
     let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
-    let listener =
-        tokio::net::UnixListener::bind(&socket_path).expect("bind socket");
+    let listener = tokio::net::UnixListener::bind(&socket_path).expect("bind socket");
 
     let (mut manager, _subs, _rx) =
         make_manager_with_socket(tmp.path(), 55_005, socket_path.clone());
@@ -828,13 +802,11 @@ async fn test_BC_2_08_003_kill_detached_so_peercred() {
 
     // Accept the post-spawn monitor's connection then send EOF (drop immediately).
     // This keeps host_conn=None: monitor exits without sending StateChanged{Running}.
-    let (stream_to_drop, _) = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        listener.accept(),
-    )
-    .await
-    .expect("timed out waiting for monitor connect")
-    .expect("accept failed");
+    let (stream_to_drop, _) =
+        tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
+            .await
+            .expect("timed out waiting for monitor connect")
+            .expect("accept failed");
     // Drop the stream immediately — EOF causes the monitor read loop to exit.
     drop(stream_to_drop);
 
@@ -850,13 +822,11 @@ async fn test_BC_2_08_003_kill_detached_so_peercred() {
         let sid = session_id.clone();
         async move {
             // Accept kill_session()'s fresh connect (Detached path).
-            let (mut conn, _) = tokio::time::timeout(
-                std::time::Duration::from_secs(5),
-                new_listener.accept(),
-            )
-            .await
-            .expect("timed out waiting for kill_session fresh connect")
-            .expect("accept failed");
+            let (mut conn, _) =
+                tokio::time::timeout(std::time::Duration::from_secs(5), new_listener.accept())
+                    .await
+                    .expect("timed out waiting for kill_session fresh connect")
+                    .expect("accept failed");
 
             // Read the first message — must be DaemonToHost::Kill (not any other message).
             use tokio::io::AsyncReadExt;
@@ -902,13 +872,11 @@ async fn test_BC_2_08_003_kill_detached_so_peercred() {
     );
 
     // Wait for the kill-connect task to complete and assert the Kill was received.
-    let kill_session_id = tokio::time::timeout(
-        std::time::Duration::from_secs(3),
-        kill_connect_task,
-    )
-    .await
-    .expect("timed out waiting for kill_connect_task")
-    .expect("kill_connect_task panicked");
+    let kill_session_id =
+        tokio::time::timeout(std::time::Duration::from_secs(3), kill_connect_task)
+            .await
+            .expect("timed out waiting for kill_connect_task")
+            .expect("kill_connect_task panicked");
 
     assert_eq!(kill_session_id, session_id);
 
@@ -991,8 +959,7 @@ async fn test_BC_2_08_008_state_changed_ordering_on_kill() {
     let tmp = isolated_runtime_dir();
     let session_id = "034f0000-0001-4000-a000-000000000001".to_string();
     let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
-    let listener =
-        tokio::net::UnixListener::bind(&socket_path).expect("bind mock socket");
+    let listener = tokio::net::UnixListener::bind(&socket_path).expect("bind mock socket");
 
     let (mut manager, _subs, mut rx) =
         make_manager_with_socket(tmp.path(), 55_007, socket_path.clone());
@@ -1005,13 +972,10 @@ async fn test_BC_2_08_008_state_changed_ordering_on_kill() {
         .expect("spawn_session must succeed");
 
     // Advance to Running.
-    let (mut peer, _) = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        listener.accept(),
-    )
-    .await
-    .expect("timed out waiting for monitor")
-    .expect("accept failed");
+    let (mut peer, _) = tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
+        .await
+        .expect("timed out waiting for monitor")
+        .expect("accept failed");
 
     send_host_to_daemon(
         &mut peer,
@@ -1047,13 +1011,10 @@ async fn test_BC_2_08_008_state_changed_ordering_on_kill() {
     let _ = drain_messages(&mut rx, 100).await;
 
     // Call kill_session() — FAILS: todo!() → panics here.
-    manager
-        .kill_session(&session_id)
-        .await
-        .expect(
-            "test_BC_2_08_008_state_changed_ordering_on_kill: \
+    manager.kill_session(&session_id).await.expect(
+        "test_BC_2_08_008_state_changed_ordering_on_kill: \
              kill_session() must return Ok(()) (BC-2.08.003 PC-1)",
-        );
+    );
 
     // Collect all messages in a tight window (both messages should be enqueued atomically).
     let msgs = drain_messages(&mut rx, 500).await;
@@ -1222,8 +1183,7 @@ async fn test_kill_during_launching_after_socket_bind() {
     let tmp = isolated_runtime_dir();
     let session_id = "03400000-0001-4000-a000-000000000009".to_string();
     let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
-    let listener =
-        tokio::net::UnixListener::bind(&socket_path).expect("bind mock socket");
+    let listener = tokio::net::UnixListener::bind(&socket_path).expect("bind mock socket");
 
     let (mut manager, _subs, _rx) =
         make_manager_with_socket(tmp.path(), 55_009, socket_path.clone());
@@ -1236,13 +1196,10 @@ async fn test_kill_during_launching_after_socket_bind() {
         .expect("spawn_session must succeed");
 
     // Accept the post-spawn monitor's connect. This sets host_conn=Some in the entry.
-    let (mut peer, _) = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        listener.accept(),
-    )
-    .await
-    .expect("timed out waiting for monitor connect")
-    .expect("accept failed");
+    let (mut peer, _) = tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
+        .await
+        .expect("timed out waiting for monitor connect")
+        .expect("accept failed");
 
     // Do NOT send StateChanged{Running} — session stays in Launching with host_conn=Some.
     // Give the monitor task a moment to store the writer in host_conn.
@@ -1292,9 +1249,7 @@ async fn test_kill_during_launching_after_socket_bind() {
 
     let msg_len = u32::from_le_bytes(len_buf) as usize;
     let mut body = vec![0u8; msg_len];
-    peer.read_exact(&mut body)
-        .await
-        .expect("read Kill body");
+    peer.read_exact(&mut body).await.expect("read Kill body");
     let kill_msg: monocle_ipc::types::DaemonToHost =
         serde_json::from_slice(&body).expect("deserialize DaemonToHost");
     assert!(
@@ -1332,8 +1287,7 @@ async fn test_BC_2_08_003_kill_detached_so_peercred_uid_mismatch_terminates() {
     // RejectAllVerifier rejects the monitor's connection too — the monitor exits
     // with EC-163 Terminated path. Then kill_session() on the resulting Terminated
     // (or Launching) state hits the todo!() stub. Either way: Red Gate fails on todo!().
-    let listener =
-        tokio::net::UnixListener::bind(&socket_path).expect("bind mock socket");
+    let listener = tokio::net::UnixListener::bind(&socket_path).expect("bind mock socket");
 
     let (mut manager, _subs, _rx) =
         make_manager_with_socket(tmp.path(), 55_010, socket_path.clone());
@@ -1347,13 +1301,11 @@ async fn test_BC_2_08_003_kill_detached_so_peercred_uid_mismatch_terminates() {
         .expect("spawn_session must succeed");
 
     // Accept the post-spawn monitor's connection (the RejectAllVerifier will reject it).
-    let (stream_to_hold, _) = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        listener.accept(),
-    )
-    .await
-    .expect("timed out waiting for monitor")
-    .expect("accept failed");
+    let (stream_to_hold, _) =
+        tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
+            .await
+            .expect("timed out waiting for monitor")
+            .expect("accept failed");
     // Hold the stream alive briefly so the monitor can call verify() and receive Err.
     tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     drop(stream_to_hold);
@@ -1428,8 +1380,7 @@ async fn test_BC_2_08_003_kill_session_not_found_wire_code() {
     // Verify the wire code maps to "session_not_found" (AC-011, session_error_to_code).
     let code = session_error_to_code(IpcOp::Kill, &err);
     assert_eq!(
-        code,
-        "session_not_found",
+        code, "session_not_found",
         "test_BC_2_08_003_kill_session_not_found_wire_code: \
          SessionNotFound on Kill path MUST map to wire code 'session_not_found' \
          via session_error_to_code(IpcOp::Kill, e) (BC-2.08.003 EC-166, AC-011). \

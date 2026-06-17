@@ -427,13 +427,42 @@ pub async fn handle_spawn_session_pub(
 /// 3. On error: send `ServerToClient::Error { code, message }` to requesting client.
 /// 4. On success: `kill_session()` has already emitted `SessionStateChanged{Terminating}` +
 ///    `SessionListUpdate` to all clients under the sessions mutex (BC-2.08.008 invariant 4).
-#[allow(clippy::todo)]
 async fn handle_kill_session(
-    _session_id: String,
-    _client_tx: &tokio::sync::mpsc::Sender<ServerToClient>,
-    _state: &DaemonState,
+    session_id: String,
+    client_tx: &tokio::sync::mpsc::Sender<ServerToClient>,
+    state: &DaemonState,
 ) {
-    todo!("S-034: implement handle_kill_session() — retrieve session_manager, call kill_session(), send Error on failure")
+    use crate::session_manager::{session_error_to_code, IpcOp};
+
+    let sm = match state.session_manager.as_ref() {
+        Some(sm) => sm,
+        None => {
+            tracing::error!("handle_kill_session: session_manager is None (daemon wiring bug)");
+            let _ = client_tx
+                .send(ServerToClient::Error {
+                    code: "invalid_request".to_string(),
+                    message: "session_manager not initialized".to_string(),
+                })
+                .await;
+            return;
+        }
+    };
+
+    let kill_result = sm.lock().await.kill_session(&session_id).await;
+    match kill_result {
+        Ok(()) => {
+            // kill_session() emitted SessionStateChanged{Terminating} + SessionListUpdate to all
+            // clients (BC-2.08.008 Invariant 4). No additional response to requesting client.
+        }
+        Err(e) => {
+            let _ = client_tx
+                .send(ServerToClient::Error {
+                    code: session_error_to_code(IpcOp::Kill, &e).to_string(),
+                    message: e.to_string(),
+                })
+                .await;
+        }
+    }
 }
 
 /// Route a `PermissionDecision` from a TUI client to the pending-decision registry.
