@@ -4,13 +4,13 @@ Read this file first, then CLAUDE.md, then `.factory/STATE.md` for the full task
 
 ---
 
-## Status at Pause — Phase-2 CONVERGED; Pre-Gate Validations DONE; Paused for Laptop Relocation
+## Status at Pause — Phase-2 CONVERGED; Pre-Gate Cleanup Burst (Option A) COMPLETE
 
 Phase-2 adversarial story convergence COMPLETE (3/3, Passes 24/25/26 clean, 26 total).
-Pre-gate validations DONE. PAUSED for laptop relocation.
+Pre-gate cleanup burst (Option A, D-323) COMPLETE.
 
 factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'`
-STATE.md = v7.85 (compacted from 2155 lines to 242 lines).
+STATE.md = v7.86 (237 lines).
 develop @ 2141adc — no v1A production code written.
 
 **Story corpus:** 51 stories / 311 pts total:
@@ -23,7 +23,7 @@ develop @ 2141adc — no v1A production code written.
 
 ---
 
-## Canonical Version Pins (Phase-2 convergence; verify against version-pin-registry.yaml)
+## Canonical Version Pins (Phase-2 cleanup burst D-323; verify against version-pin-registry.yaml)
 
 | Document | Version |
 |---|---|
@@ -31,12 +31,12 @@ develop @ 2141adc — no v1A production code written.
 | product-brief.md | v2.0.4 |
 | prd.md | v1.28.3 |
 | ARCH-INDEX | v1.0.30 |
-| BC-INDEX | v1.43.7 (138 BCs; 25 v1A BCs) |
-| EVAL-INDEX | v1.18 |
-| STORY-INDEX | v5.44 |
-| sprint-state.yaml | v1.45 |
-| wave-schedule.md | v1.9 |
-| dependency-graph-expansion.md | v2.3 |
+| BC-INDEX | v1.43.8 (138 BCs; 25 v1A BCs) |
+| EVAL-INDEX | v1.19 |
+| STORY-INDEX | v5.45 |
+| sprint-state.yaml | v1.46 |
+| wave-schedule.md | v2.0 |
+| dependency-graph-expansion.md | v2.4 |
 | SS-ipc | v1.24.0 |
 | SS-session-manager | v2.6.1 |
 | SS-embedded-pty | v1.7.0 |
@@ -46,18 +46,11 @@ develop @ 2141adc — no v1A production code written.
 
 ---
 
-## Next Action Options
+## Next Action (D-323 Cleanup Burst COMPLETE)
 
-**Option A (preferred):** Run optional post-convergence cleanup burst, then Phase-2 gate.
+Option A cleanup burst COMPLETE (D-323 2026-06-16). All F-GATE-* and deferred cosmetic findings CLOSED.
 
-Cleanup scope:
-- **state-manager:** F-GATE-IMP-001 (sprint-state inputs pin cascade) + F-GATE-ADV-001 (sprint-state not_started→draft for S-033..S-048) + F-GATE-ADV-003 (EVAL-INDEX inputs S-033..S-048)
-- **story-writer:** F-GATE-IMP-002 (wave-schedule S-032 dep text S-021/S-018→S-021/S-022/S-028) + F-GATE-ADV-002 (epic detail stubs E-04..E-09) + F-GATE-ADV-004 (dep-graph-expansion title/intro Waves 4-9) + deferred cosmetic F-P13-SUG-001, F-P21-SUG-001/002, F-P24-SUG-001/002, F-P25-SUG-001, S-047-AC009-PTYRESET-QUALIFIER
-- **product-owner:** F-P20-BCGAP-001 (BC-2.08.006 dedicated atomic-write + path-canonicalization clauses)
-
-After cleanup: re-run single confirming consistency check, then present Phase-2 gate.
-
-**Option B (fastest):** Proceed directly to Phase-2 human approval gate. All findings are NON-BLOCKING.
+**Next step:** Run single confirming consistency check + input-drift re-check, then present Phase-2 human approval gate to Joshua Magady.
 
 ---
 
