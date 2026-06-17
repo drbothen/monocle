@@ -326,6 +326,82 @@ impl SessionHostSpawner for MockSessionHostSpawner {
 }
 
 // ---------------------------------------------------------------------------
+// PeerCredVerifier — injectable seam for SO_PEERCRED UID verification (EC-163)
+// ---------------------------------------------------------------------------
+
+/// Verifier for the SO_PEERCRED peer UID check performed by `post_spawn_monitor`.
+///
+/// The production implementation (`RealPeerCredVerifier`) calls
+/// `UnixStream::peer_cred()` and compares the peer UID against the daemon UID
+/// returned by `nix::unistd::getuid()`.
+///
+/// Tests inject a `FakePeerCredVerifier` to simulate both the match path
+/// (allow → proceed to Running) and the mismatch path (reject → Terminated).
+///
+/// `Send + Sync + 'static` required for use in `Arc<dyn PeerCredVerifier>`.
+pub trait PeerCredVerifier: Send + Sync + 'static {
+    /// Verify the peer UID on the given `UnixStream`.
+    ///
+    /// Returns `Ok(())` if the peer is allowed to proceed.
+    /// Returns `Err(SessionError)` (typically a wrapped I/O error or a custom
+    /// variant) when the peer is rejected — the caller treats any `Err` as a
+    /// UID mismatch and terminates the session (EC-163).
+    fn verify(&self, stream: &tokio::net::UnixStream) -> Result<(), SessionError>;
+}
+
+/// Production implementation: compares the UDS peer UID against the daemon UID
+/// (obtained via `nix::unistd::getuid()`).
+///
+/// Returns `Ok(())` iff `stream.peer_cred()` succeeds AND the peer UID equals
+/// the daemon UID.  Any failure or mismatch returns `Err`.
+pub struct RealPeerCredVerifier;
+
+impl PeerCredVerifier for RealPeerCredVerifier {
+    fn verify(&self, stream: &tokio::net::UnixStream) -> Result<(), SessionError> {
+        let daemon_uid = nix::unistd::getuid().as_raw();
+        let peer_uid = stream
+            .peer_cred()
+            .map(|c| c.uid())
+            .map_err(SessionError::Io)?;
+        if peer_uid == daemon_uid {
+            Ok(())
+        } else {
+            Err(SessionError::Io(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                format!("SO_PEERCRED UID mismatch: peer_uid={peer_uid} daemon_uid={daemon_uid}"),
+            )))
+        }
+    }
+}
+
+/// Test-only verifier that returns a pre-configured result.
+///
+/// `outcome` controls the result:
+/// - `Ok(())` — simulate a matching UID (allow connection to proceed).
+/// - `Err(...)` — simulate a mismatched UID (reject connection, terminate session).
+///
+/// Available under `cfg(any(test, feature = "test-utils"))`.
+#[cfg(any(test, feature = "test-utils"))]
+pub struct FakePeerCredVerifier {
+    /// If `true`, `verify()` returns `Ok(())`; if `false`, returns `Err(PermissionDenied)`.
+    pub allow: bool,
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl PeerCredVerifier for FakePeerCredVerifier {
+    fn verify(&self, _stream: &tokio::net::UnixStream) -> Result<(), SessionError> {
+        if self.allow {
+            Ok(())
+        } else {
+            Err(SessionError::Io(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                "FakePeerCredVerifier: simulated UID mismatch (EC-163)",
+            )))
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // SessionHostConnection
 // ---------------------------------------------------------------------------
 
@@ -400,6 +476,11 @@ pub struct SessionManager {
     broker: Arc<monocle_ipc::server::SubscriberList>,
     /// Reference to the engine module registry for spawn_recipe() dispatch.
     engine_module: Arc<dyn monocle_core::engine::EngineModule>,
+    /// Peer credential verifier for SO_PEERCRED UID check in post_spawn_monitor (EC-163).
+    ///
+    /// Production default: `RealPeerCredVerifier` (performs real SO_PEERCRED check).
+    /// Tests inject `FakePeerCredVerifier` to simulate UID mismatch without forking.
+    peer_cred_verifier: Arc<dyn PeerCredVerifier>,
 }
 
 impl std::fmt::Debug for SessionManager {
@@ -412,6 +493,10 @@ impl std::fmt::Debug for SessionManager {
 
 impl SessionManager {
     /// Construct a new `SessionManager`.
+    ///
+    /// Uses `RealPeerCredVerifier` for SO_PEERCRED checks — the production default.
+    /// To inject a custom verifier for tests, call `with_peer_cred_verifier()` on
+    /// the returned instance before first use.
     pub fn new(
         runtime_dir: PathBuf,
         spawner: Arc<dyn SessionHostSpawner>,
@@ -424,7 +509,28 @@ impl SessionManager {
             spawner,
             broker,
             engine_module,
+            peer_cred_verifier: Arc::new(RealPeerCredVerifier),
         }
+    }
+
+    /// Replace the `PeerCredVerifier` used by post-spawn monitors spawned from this
+    /// `SessionManager`.
+    ///
+    /// Must be called before any `spawn_session()` invocations so that monitors
+    /// spawned by those calls pick up the injected verifier.
+    ///
+    /// # Test usage
+    ///
+    /// ```rust,ignore
+    /// // Allow all connections (simulate UID match):
+    /// manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifier { allow: true }));
+    ///
+    /// // Reject all connections (simulate UID mismatch — EC-163):
+    /// manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifier { allow: false }));
+    /// ```
+    pub fn with_peer_cred_verifier(&mut self, verifier: Arc<dyn PeerCredVerifier>) -> &mut Self {
+        self.peer_cred_verifier = verifier;
+        self
     }
 
     /// Spawn a new session from the given `SpawnOptions`.
@@ -573,6 +679,7 @@ impl SessionManager {
             let monitor_session_id = session_id.clone();
             let monitor_socket_path = socket_path.clone();
             let monitor_sidecar_path = sidecar_path.clone();
+            let monitor_verifier = Arc::clone(&self.peer_cred_verifier);
 
             tokio::spawn(async move {
                 post_spawn_monitor(
@@ -581,6 +688,7 @@ impl SessionManager {
                     monitor_sidecar_path,
                     sessions_arc,
                     broker_arc,
+                    monitor_verifier,
                 )
                 .await;
             });
@@ -827,6 +935,14 @@ impl SessionManager {
 /// The session remains in `Launching` state; eventual cleanup is handled by
 /// the kill/rediscover path (S-034/S-036).
 ///
+/// ## Peer credential check (EC-163)
+///
+/// After connecting, `verifier.verify(&stream)` is called before reading any
+/// messages.  On `Err`, the session is marked Terminated, the sidecar is GC'd,
+/// and `SessionStateChanged{Terminated}` is broadcast.  `verifier` defaults to
+/// `RealPeerCredVerifier` (real SO_PEERCRED check); tests inject
+/// `FakePeerCredVerifier` to exercise both paths without a privileged subprocess.
+///
 /// This function is `pub(crate)` so tests can construct scenarios without
 /// going through spawn_session (integration tests).
 async fn post_spawn_monitor(
@@ -835,6 +951,7 @@ async fn post_spawn_monitor(
     sidecar_path: PathBuf,
     sessions: Arc<tokio::sync::Mutex<HashMap<String, SessionEntry>>>,
     broker: Arc<monocle_ipc::server::SubscriberList>,
+    verifier: Arc<dyn PeerCredVerifier>,
 ) {
     use tokio::io::AsyncReadExt;
     use tokio::net::UnixStream;
@@ -864,17 +981,17 @@ async fn post_spawn_monitor(
 
     tracing::debug!(session_id = %session_id, "post-spawn monitor: connected to session-host UDS");
 
-    // B-003 (EC-163): SO_PEERCRED UID verification.
+    // B-003 (EC-163): SO_PEERCRED UID verification via injectable verifier.
     // Before reading any messages, verify the connecting peer's UID matches the daemon's UID.
     // A mismatch indicates a non-daemon process tried to impersonate a session-host — EC-163.
     // On mismatch: mark session Terminated, GC the sidecar, broadcast Terminated, and return.
-    let daemon_uid = nix::unistd::getuid().as_raw();
-    let peer_uid = stream.peer_cred().map(|cred| cred.uid()).ok();
-    if peer_uid != Some(daemon_uid) {
+    //
+    // The `verifier` is `RealPeerCredVerifier` in production (performs the real SO_PEERCRED
+    // check) and `FakePeerCredVerifier` in tests (controls the outcome without forking).
+    if let Err(verify_err) = verifier.verify(&stream) {
         tracing::warn!(
             session_id = %session_id,
-            ?peer_uid,
-            daemon_uid = daemon_uid,
+            error = %verify_err,
             "post-spawn monitor: SO_PEERCRED UID mismatch — terminating session (EC-163)"
         );
         // Mark session as Terminated.
