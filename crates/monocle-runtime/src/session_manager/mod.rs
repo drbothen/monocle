@@ -22,12 +22,6 @@ use monocle_core::engine::{EngineError, SpawnOptions, SpawnRecipe};
 use monocle_ipc::types::SessionState;
 
 // ---------------------------------------------------------------------------
-// Public re-export so tests outside this module can import SessionState via
-// monocle_runtime::session_manager::SessionState.
-// ---------------------------------------------------------------------------
-pub use monocle_ipc::types::SessionState as SessionStatePub;
-
-// ---------------------------------------------------------------------------
 // IpcOp
 // ---------------------------------------------------------------------------
 
@@ -780,25 +774,94 @@ impl SessionManager {
             return Err(sidecar_err);
         }
 
-        // Step 4 (BC-2.08.001 PC-2): insert SessionEntry with state=Launching.
-        let entry = SessionEntry {
-            session_id: session_id.clone(),
-            session_host_pid: pid,
-            session_host_socket: socket_path.clone(),
-            state: SessionState::Launching,
-            cwd: opts.worktree_root.clone(),
-            project_root: opts.project_root.clone(),
-            harness_id: opts.harness_id.clone(),
-            profile_id: opts.profile_id.clone(),
-            started_at,
-            kill_deadline: None,
-            degraded: false,
-            degraded_reason: None,
-            host_conn: None,
+        // Steps 4 + MED-001 fix: insert SessionEntry atomically under a SINGLE lock.
+        //
+        // MED-001 (TOCTOU): the early collision check (~line 688) and this insert are
+        // separated by OS spawn + sidecar write — two async .awaits where another
+        // concurrent spawn_session() call could register the same session_id.
+        //
+        // Fix: re-check occupancy inside the same lock scope as the insert.
+        // If the key is already present, we have a genuine collision: orphan-kill the
+        // process we just spawned and return Err(SessionIdCollision).
+        // The reserved entry is never left behind on this path — the lock is the
+        // only gate and we either insert or orphan-kill+return.
+        //
+        // Also build the EnrichedSession snapshot here while the lock is held, so
+        // step 6 can emit both broadcasts under a single lock (HIGH-001).
+        let list_snapshot: Vec<monocle_core::engine::EnrichedSession> = {
+            use monocle_core::engine::{EnrichedSession, SessionStatus};
+            let mut guard = self.sessions.lock().await;
+
+            // MED-001: atomic re-check before insert.
+            if guard.contains_key(&session_id) {
+                // Race: another spawn registered this session_id between our early check
+                // and here. Orphan-kill the process we just started, then return the error.
+                drop(guard); // release lock before async I/O in orphan_kill
+                Self::orphan_kill(pid).await;
+                return Err(SessionError::SessionIdCollision {
+                    session_id: session_id.clone(),
+                });
+            }
+
+            let entry = SessionEntry {
+                session_id: session_id.clone(),
+                session_host_pid: pid,
+                session_host_socket: socket_path.clone(),
+                state: SessionState::Launching,
+                cwd: opts.worktree_root.clone(),
+                project_root: opts.project_root.clone(),
+                harness_id: opts.harness_id.clone(),
+                profile_id: opts.profile_id.clone(),
+                started_at,
+                kill_deadline: None,
+                degraded: false,
+                degraded_reason: None,
+                host_conn: None,
+            };
+            guard.insert(session_id.clone(), entry);
+
+            // Build snapshot inline while the lock is held — HIGH-001 requires that
+            // the snapshot passed to SessionListUpdate be consistent with the insert.
+            guard
+                .values()
+                .map(|e| {
+                    let status = match e.state {
+                        SessionState::Launching | SessionState::Running => SessionStatus::Active,
+                        SessionState::Detached => SessionStatus::Idle,
+                        SessionState::Terminating | SessionState::Terminated => {
+                            SessionStatus::Stopped
+                        }
+                        _ => {
+                            tracing::warn!(
+                                session_id = %e.session_id,
+                                state = ?e.state,
+                                "spawn_session list builder: unrecognized session state; mapping to Stopped"
+                            );
+                            SessionStatus::Stopped
+                        }
+                    };
+                    EnrichedSession::new(
+                        e.session_id.clone(),
+                        e.harness_id.clone(),
+                        None,
+                        None,
+                        status,
+                        None,
+                        e.project_root
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .map(|s| s.to_string()),
+                        Some(e.started_at),
+                        0,
+                        None,
+                    )
+                })
+                .collect()
+            // guard (sessions lock) released here
         };
-        self.sessions.lock().await.insert(session_id.clone(), entry);
 
         // Step 5 (BC-2.08.001 PC-4, AC-004/AC-010): spawn post-spawn monitor background task.
+        // Runs outside the sessions lock — no lock held here.
         // Polls UDS socket until connectable (20ms backoff, 30s timeout), then reads
         // HostToDaemon messages. On StateChanged{Running}: transitions session to Running
         // and publishes SessionStateChanged{Running} + SessionListUpdate to broker.
@@ -826,25 +889,40 @@ impl SessionManager {
             });
         }
 
-        // Step 6 (BC-2.08.008 Invariant 4): publish SessionStateChanged{Launching} BEFORE
-        // SessionListUpdate. Both calls happen with the session already in the registry.
+        // Step 6 (BC-2.08.008 Invariant 4): emit BOTH broadcasts under a SINGLE lock (HIGH-001).
         //
-        // BC-2.08.008 PC-3 split rule: if SessionStateChanged succeeds but SessionListUpdate
-        // fails (client buffer full), the broadcast helper fires disconnect and removes the
-        // client. We make two separate broadcast calls so the split rule can engage.
+        // HIGH-001 fix: the Launching broadcast pair must be emitted atomically.
+        // Acquire the sessions lock and hold it across BOTH try_send calls so no
+        // concurrent post-spawn monitor (or second spawn_session caller) can interleave
+        // a broadcast between SessionStateChanged{Launching} and SessionListUpdate.
+        //
+        // Lock ordering: sessions → subscribers (broadcast_to_subscribers acquires the
+        // subscribers list lock). This ordering is consistent throughout the codebase;
+        // broadcast_to_subscribers never re-acquires the sessions lock — no deadlock risk.
+        //
+        // The sessions lock is NOT held across any unrelated .await I/O (no file I/O,
+        // no socket I/O inside this scope — only try_send calls to in-memory channels).
+        //
+        // BC-2.08.008 PC-3 split rule is preserved: if SessionStateChanged succeeds but
+        // SessionListUpdate fails (slow client), broadcast_to_subscribers fires disconnect
+        // and removes that client. The two separate broadcast calls are inside the same
+        // lock scope so the split rule can still engage on a per-client basis.
         let broker = Arc::clone(&self.broker);
-        let state_changed_msg = monocle_ipc::types::ServerToClient::SessionStateChanged {
-            session_id: session_id.clone(),
-            new_state: SessionState::Launching,
-        };
-        crate::ipc_server::broadcast_to_subscribers(&broker, state_changed_msg).await;
+        {
+            let _guard = self.sessions.lock().await;
+            let state_changed_msg = monocle_ipc::types::ServerToClient::SessionStateChanged {
+                session_id: session_id.clone(),
+                new_state: SessionState::Launching,
+            };
+            // SessionStateChanged{Launching} BEFORE SessionListUpdate (BC-2.08.008 Invariant 4).
+            crate::ipc_server::broadcast_to_subscribers(&broker, state_changed_msg).await;
 
-        // Build minimal EnrichedSession list for SessionListUpdate.
-        let sessions_snapshot = self.build_enriched_sessions().await;
-        let list_update_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
-            sessions: sessions_snapshot,
-        };
-        crate::ipc_server::broadcast_to_subscribers(&broker, list_update_msg).await;
+            let list_update_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
+                sessions: list_snapshot,
+            };
+            crate::ipc_server::broadcast_to_subscribers(&broker, list_update_msg).await;
+            // sessions lock released here — both try_send calls completed atomically.
+        }
 
         tracing::info!(
             session_id = %session_id,
@@ -859,19 +937,42 @@ impl SessionManager {
     /// Send SIGTERM to a process, then SIGKILL after 2 seconds if it hasn't exited.
     ///
     /// Used for orphan-kill on sidecar write failure (EC-151 / AC-009).
-    /// Errors (e.g., ESRCH for non-existent PID) are logged at WARN and swallowed —
-    /// the orphan-kill protocol is best-effort (process may have already exited).
+    ///
+    /// Errno discrimination for SIGTERM (LOW-004):
+    /// - ESRCH: process already exited — benign, log DEBUG, return.
+    /// - Any other error (e.g., EPERM — permission denied): log WARN and proceed to
+    ///   SIGKILL escalation. Conflating EPERM with "already exited" would silently
+    ///   leave a live orphan process behind.
     async fn orphan_kill(pid: u32) {
         use nix::sys::signal::{kill, Signal};
         use nix::unistd::Pid;
 
         let nix_pid = Pid::from_raw(pid as i32);
 
-        // SIGTERM first.
-        if let Err(e) = kill(nix_pid, Signal::SIGTERM) {
-            tracing::warn!(pid = pid, error = %e, "orphan-kill SIGTERM failed (process may have already exited)");
-            return;
-        }
+        // SIGTERM first — discriminate errno (LOW-004).
+        let sigterm_ok = match kill(nix_pid, Signal::SIGTERM) {
+            Ok(()) => true,
+            Err(nix::errno::Errno::ESRCH) => {
+                // ESRCH: process already exited — benign, nothing more to do.
+                tracing::debug!(
+                    pid = pid,
+                    "orphan-kill: process already exited before SIGTERM"
+                );
+                return;
+            }
+            Err(e) => {
+                // EPERM or other unexpected error: do NOT conflate with "already exited".
+                // Log at warn and fall through to the liveness probe + SIGKILL path —
+                // the process may still be alive even if SIGTERM was rejected.
+                tracing::warn!(
+                    pid = pid,
+                    error = %e,
+                    "orphan-kill SIGTERM failed (unexpected errno); proceeding to SIGKILL escalation path"
+                );
+                false
+            }
+        };
+        let _ = sigterm_ok; // fall through to liveness probe regardless
 
         // Wait up to 2 seconds for the process to exit, then SIGKILL.
         // Uses tokio::time::sleep to avoid blocking the async runtime thread.
@@ -904,52 +1005,6 @@ impl SessionManager {
                 "orphan-kill: SIGKILL sent (process did not exit after SIGTERM in 2s)"
             );
         }
-    }
-
-    /// Build a `Vec<EnrichedSession>` snapshot from the current session registry.
-    ///
-    /// Used by `spawn_session()` to populate `SessionListUpdate.sessions`.
-    /// Phase 1: builds minimal `EnrichedSession` values from `SessionEntry` data.
-    async fn build_enriched_sessions(&self) -> Vec<monocle_core::engine::EnrichedSession> {
-        use monocle_core::engine::{EnrichedSession, SessionStatus};
-
-        self.sessions
-            .lock()
-            .await
-            .values()
-            .map(|entry| {
-                let status = match entry.state {
-                    SessionState::Launching | SessionState::Running => SessionStatus::Active,
-                    SessionState::Detached => SessionStatus::Idle,
-                    SessionState::Terminating | SessionState::Terminated => SessionStatus::Stopped,
-                    // _ => required: SessionState is #[non_exhaustive].
-                    _ => {
-                        tracing::warn!(
-                            session_id = %entry.session_id,
-                            state = ?entry.state,
-                            "build_enriched_sessions: unrecognized session state; mapping to Stopped"
-                        );
-                        SessionStatus::Stopped
-                    }
-                };
-                EnrichedSession::new(
-                    entry.session_id.clone(),
-                    entry.harness_id.clone(),
-                    None,
-                    None,
-                    status,
-                    None,
-                    entry
-                        .project_root
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .map(|s| s.to_string()),
-                    Some(entry.started_at),
-                    0,
-                    None,
-                )
-            })
-            .collect()
     }
 
     /// Kill a running session (SIGTERM to session-host; session-host kills harness child).
