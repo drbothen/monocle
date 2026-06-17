@@ -476,13 +476,13 @@ impl SessionManager {
             .to_string();
         let display_name = format!("{} — {}", opts.harness_id, project_root_basename);
 
-        let sidecar = SessionSidecar {
+        let sidecar = monocle_ipc::types::SessionSidecarV3 {
             schema_version: 3,
             session_id: session_id.clone(),
             pid,
             socket_path: socket_path.to_string_lossy().into_owned(),
             child_pid: None,
-            state: "Launching".to_string(),
+            state: monocle_ipc::types::SessionState::Launching,
             project_root: opts.project_root.to_string_lossy().into_owned(),
             cwd: opts.worktree_root.to_string_lossy().into_owned(),
             harness_id: opts.harness_id.clone(),
