@@ -124,8 +124,8 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "2.7.0"
-  last_bump_commit: "[Rulings A+B — S-033 session-host scope boundary (step table: S-033 vs S-039/S-035/S-047/S-042/S-044) + SessionSidecarV3 in monocle-ipc (dual-writer ownership protocol, atomic-write, path-canon, schema-agreement guarantee)]"
+  current_version: "2.7.1"
+  last_bump_commit: "[Rulings C+D — setsid placement (session-host startup step 2, not pre_exec; pre_exec is unsafe fn, monocle-runtime forbids unsafe) + host_conn writer storage in S-033 post-spawn monitor (not deferred to S-034)]"
   last_bump_date: "2026-06-16"
 
 SS-embedded-pty:
@@ -961,8 +961,8 @@ dependency-graph-expansion:
 
 S-033-session-manager-spawn:
   path: stories/S-033-session-manager-spawn.md
-  current_version: "1.7"
-  last_bump_commit: "[SS-session-manager v2.7.0 Rulings A+B propagation — session-host MVP task, SessionSidecarV3 task, sidecar-write type fix, tempfile dep, monocle-ipc modify row]"
+  current_version: "1.8"
+  last_bump_commit: "[SS-session-manager v2.7.1 Rulings C+D propagation — pre_exec removed from RealSessionHostSpawner task (unsafe fn, monocle-runtime forbids unsafe; session-host handles setsid at startup step 2); host_conn writer storage confirmed S-033 scope (not S-034)]"
   last_bump_date: "2026-06-16"
 
 S-038-session-manager-hook-injection:

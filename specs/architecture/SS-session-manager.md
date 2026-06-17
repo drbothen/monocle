@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.7.0"
+version: "2.7.1"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -878,9 +878,17 @@ pub struct SpawnedHostHandle {
     pub socket_path: PathBuf,
 }
 
-/// Production implementation: spawns monocle-session-host via std::process::Command
-/// with pre_exec setsid() so the child becomes a process group leader immune to
+/// Production implementation: spawns monocle-session-host via std::process::Command.
+/// The session-host binary calls `nix::unistd::setsid()` as its first startup step
+/// (step 2 of §startup sequence), making itself a process group leader immune to
 /// SIGHUP when the daemon exits.
+///
+/// **`pre_exec` is NOT used.** `std::process::Command::pre_exec()` is `unsafe fn`
+/// (post-fork, pre-exec closure; async-signal-safety rules apply). `monocle-runtime`
+/// carries `#![forbid(unsafe_code)]`, so `pre_exec` is categorically prohibited here.
+/// The session-host binary is responsible for its own process-group detachment —
+/// `nix::unistd::setsid()` is a safe Rust wrapper that it calls at startup before
+/// any other initialization. See §Ruling C — setsid placement below.
 pub struct RealSessionHostSpawner {
     /// Absolute path to the monocle-session-host binary.
     /// Resolved via std::env::current_exe().parent() at daemon startup.
@@ -2354,7 +2362,7 @@ control connection).
 | Step | What | Why required in S-033 |
 |------|------|----------------------|
 | Parse CLI args | `--session-id`, `--runtime-dir`, `--binary`, `--args`, `--env`, `--cwd` | `RealSessionHostSpawner` passes these; session-host must parse them to proceed |
-| `nix::unistd::setsid()` | Process group leader | `RealSessionHostSpawner::spawn()` calls `pre_exec(|| setsid())` — this is an OS requirement, not optional |
+| `nix::unistd::setsid()` | Process group leader | Session-host calls `nix::unistd::setsid()` at startup step 2 — this is an OS requirement, not optional. `pre_exec` is NOT used: `std::process::Command::pre_exec()` is `unsafe fn`; `monocle-runtime` forbids unsafe code. See §Ruling C. |
 | Open PTY pair | `portable_pty::openpty(PtySize { rows:24, cols:80 })` | Required to obtain a valid PTY master/slave before spawning the harness child |
 | Build `CommandBuilder` from recipe | Binary, args, env, cwd; env inheritance (I2-006) | Session-host startup step 4; needed to launch the harness child |
 | Spawn harness child on PTY slave | `CommandBuilder` on the PTY slave fd | Needed to produce a `child_pid` for the sidecar and reach Running state |
@@ -2530,6 +2538,136 @@ the re-discovery version-check logic.
 Because both the daemon's initial write and the session-host's overwrite use `SessionSidecarV3`,
 the re-discovery parser will always successfully deserialize any sidecar written by this
 version of the binary, regardless of which writer last touched the file.
+
+---
+
+### Ruling C — setsid placement: session-host binary, not pre_exec in daemon
+
+**Status:** AUTHORITATIVE. Amends Ruling A (setsid row) and `RealSessionHostSpawner` docstring. Resolves MED-003.
+
+#### Decision
+
+**Option (a) — session-host calls setsid() at startup** is the canonical approach.
+
+`nix::unistd::setsid()` MUST be called by the `monocle-session-host` binary at startup step 2
+(already specified in §startup sequence). `RealSessionHostSpawner::spawn()` in `monocle-runtime`
+MUST NOT use `std::process::Command::pre_exec()`.
+
+#### Rationale
+
+1. **`#![forbid(unsafe_code)]` is non-negotiable.** `monocle-runtime` carries this attribute
+   (confirmed in `crates/monocle-runtime/src/lib.rs` line 10). `std::process::Command::pre_exec()`
+   is `unsafe fn` — it runs a closure in the forked child before exec, under POSIX
+   async-signal-safety rules. `forbid(unsafe_code)` prohibits any `unsafe` block in the crate,
+   including the single-line closure `unsafe { || { setsid(); Ok(()) } }`. Adding a crate-level
+   `#[allow(unsafe_code)]` override for this one callsite would silently disable the safety
+   invariant for the entire crate. A module-scoped `#[allow]` on a single function is
+   technically possible but violates the spirit of the `forbid` gate and introduces a precedent
+   for unsafe carve-outs. Neither option is production-grade.
+
+2. **The session-host binary is NOT subject to `forbid(unsafe_code)` from `monocle-runtime`.**
+   `monocle-session-host` is a separate binary crate. It can (and does) call
+   `nix::unistd::setsid()` directly. `nix::unistd::setsid()` is itself a safe Rust wrapper —
+   no `unsafe` block is required at all. The session-host calls it as step 2 of its startup
+   sequence, which is before it opens any resources or spawns any threads.
+
+3. **The pre-setsid race window is architecturally acceptable.** Between the moment the daemon
+   forks the session-host process (via `Command::spawn()`) and the moment the session-host
+   binary calls `setsid()` at its startup step 2, the child process shares the daemon's process
+   group. This window is bounded by the OS loader time (typically <5ms on Linux/macOS).
+   The risk the adversary raised is: could a signal sent to the daemon's process group during
+   this window reach the session-host child?
+   - **The daemon does not signal its own process group.** The daemon has no code path that
+     sends a signal to its own pgid. SIGHUP (the relevant threat for terminal detachment) is
+     sent by the kernel to a process group's controlling terminal — but the daemon already
+     calls `setsid()` itself at startup (see `monocle-runtime/src/main.rs` line 53), so the
+     daemon has no controlling terminal by the time any session-host is spawned. There is no
+     SIGHUP source for the window.
+   - **The window is not zero but the threat model is absent.** Accepting the brief pre-setsid
+     window is consistent with ADR-0009's native-process-model decision. The claude-squad
+     `pre_exec` pattern was adopted in the earlier spec text before the
+     `#![forbid(unsafe_code)]` constraint was formalized; that pattern is now superseded.
+
+4. **nix::unistd::setsid() is safe Rust — confirmed in the existing codebase.** The daemon
+   already calls it at `crates/monocle-runtime/src/main.rs` line 53 without any `unsafe` block,
+   with the comment "nix::unistd::setsid() is a safe Rust wrapper (BC-2.04.004 INV-2)".
+
+#### Implementer instruction (Ruling C)
+
+`RealSessionHostSpawner::spawn()` MUST NOT call `pre_exec` of any kind. It uses
+`std::process::Command::spawn()` without `CommandExt::pre_exec`. The `monocle-session-host`
+binary handles `setsid()` itself at startup step 2 via `nix::unistd::setsid()` (safe, no
+`unsafe` block required). The implementation is already fully specified in §startup sequence
+step 2 and in the Tasks checklist of S-033.
+
+### Ruling D — host_conn writer storage: S-033 scope (not S-034)
+
+**Status:** AUTHORITATIVE. Resolves HIGH-001. Confirms existing spec text; no spec content changes.
+
+#### Decision
+
+Establishing and storing the live control-connection writer (`host_conn = Some(SessionHostConnection { writer, proxy_task: None })`) is **part of S-033**, not S-034.
+
+#### Rationale
+
+The post-spawn monitor is spawned by `spawn_session()` in S-033. Its job — specified in
+§Post-spawn monitor steps 1–3 — is to poll until the session-host's UDS socket becomes
+connectable, apply SO_PEERCRED, and store `host_conn: Some(SessionHostConnection { writer, proxy_task: None })` into the `SessionEntry` under the `SessionManager` mutex. This is
+unambiguously step 3 of the post-spawn monitor, which is S-033's `tokio::spawn` background
+task.
+
+S-034 (`kill_session`) USES the established `host_conn`. The kill-path F-P50-001 rules state:
+for `Running` state, `kill_session()` uses the existing `host_conn.writer` — it does NOT
+open a new connection. For `Launching` state with `host_conn: Some(_)` (monitor already
+connected), same: uses the existing writer. S-034 is a consumer of the connection S-033
+establishes.
+
+The implementer's decision to drop the writer with "stored in S-034" is a spec compliance
+defect. It would leave `host_conn: None` throughout the session's Launching phase, which
+breaks:
+- BC-2.08.001 postcondition 2 / S-033 AC-002 assertion: `host_conn` is `None` at
+  `spawn_session()` return, then transitions to `Some(_)` when the monitor connects — this
+  transition MUST happen in S-033's monitor task.
+- The kill-during-Launching path (§Post-spawn monitor step 7): if `kill_session()` arrives
+  when `host_conn` is `Some(_)` (monitor already connected), it MUST use the writer — which
+  only exists if S-033's monitor stored it.
+- AC-010: the Running transition requires the monitor to receive `StateChanged{Running}` over
+  the control connection, which requires the monitor to have already established `host_conn`.
+
+#### Implementer instruction (Ruling D)
+
+S-033's post-spawn monitor task MUST complete all of steps 1–5 from §Post-spawn monitor:
+1. Poll for UDS socket connectable.
+2. Apply SO_PEERCRED.
+3. Store `host_conn: Some(SessionHostConnection { writer, proxy_task: None })` under mutex.
+4. Receive `StateChanged` messages (including degraded_env handshake).
+5. On `StateChanged{Running}`: start PTY proxy task, set `host_conn.proxy_task`, transition
+   to Running, emit `SessionStateChanged{Running}` + `SessionListUpdate`.
+
+The implementer MUST NOT defer step 3 (writer storage) to S-034. S-034's `kill_session()`
+uses the writer established in step 3 — it has nothing to establish.
+
+---
+
+## §Trace v2.7.1
+
+**Rulings C + D: setsid placement and host_conn scope clarification** (2026-06-16):
+
+- **Ruling C** added: setsid MUST be called by the session-host binary at startup step 2
+  (already in §startup sequence). `pre_exec` is prohibited: `std::process::Command::pre_exec()`
+  is `unsafe fn`; `monocle-runtime` carries `#![forbid(unsafe_code)]`. Pre-setsid race window
+  accepted: daemon has no controlling terminal (daemon called setsid at its own startup);
+  no SIGHUP source exists for the window. `RealSessionHostSpawner` docstring and Ruling A
+  setsid row updated to remove the erroneous pre_exec reference. Resolves MED-003.
+
+- **Ruling D** added: `host_conn = Some(SessionHostConnection { writer, proxy_task: None })`
+  is stored in S-033's post-spawn monitor (§Post-spawn monitor step 3), not S-034.
+  S-034 (`kill_session`) USES the writer; it does not establish it. Implementer defect
+  ("stored in S-034") identified and overturned. No spec content change needed beyond this
+  ruling — existing spec text (§Post-spawn monitor, F-P50-001, state transition table) already
+  correctly specifies this. Resolves HIGH-001.
+
+- SE-16d monotonicity: v2.7.1 > v2.7.0. PASS.
 
 ---
 
