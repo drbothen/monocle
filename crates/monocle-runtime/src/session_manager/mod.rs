@@ -1071,9 +1071,11 @@ impl SessionManager {
 ///
 /// After connecting, `verifier.verify(&stream)` is called before reading any
 /// messages.  On `Err`, the session is marked Terminated, the sidecar is GC'd,
-/// and `SessionStateChanged{Terminated}` is broadcast.  `verifier` defaults to
-/// `RealPeerCredVerifier` (real SO_PEERCRED check); tests inject
-/// `FakePeerCredVerifier` to exercise both paths without a privileged subprocess.
+/// and the full termination pair (`SessionStateChanged{Terminated}` +
+/// `SessionListUpdate`) is broadcast under a single sessions lock acquisition
+/// (Ruling G).  `verifier` defaults to `RealPeerCredVerifier` (real SO_PEERCRED
+/// check); tests inject `FakePeerCredVerifier` to exercise both paths without
+/// a privileged subprocess.
 ///
 /// This function is `pub(crate)` so tests can construct scenarios without
 /// going through spawn_session (integration tests).
@@ -1126,21 +1128,61 @@ async fn post_spawn_monitor(
             error = %verify_err,
             "post-spawn monitor: SO_PEERCRED UID mismatch — terminating session (EC-163)"
         );
-        // Mark session as Terminated.
+        // Ruling G (§Post-spawn monitor step 2): the EC-163 termination pair
+        // (SessionStateChanged{Terminated} + SessionListUpdate) MUST be emitted under
+        // a SINGLE sessions lock acquisition to prevent interleaving with concurrent monitors.
+        // Lock ordering: sessions → subscribers; broadcast_to_subscribers only acquires
+        // the subscribers lock and never re-acquires sessions — no deadlock risk.
         {
+            use monocle_core::engine::{EnrichedSession, SessionStatus};
             let mut guard = sessions.lock().await;
             if let Some(entry) = guard.get_mut(&session_id) {
                 entry.state = SessionState::Terminated;
             }
+            // Build the session-list snapshot while holding the lock.
+            let list_snapshot: Vec<EnrichedSession> = guard
+                .values()
+                .map(|entry| {
+                    let status = match entry.state {
+                        SessionState::Launching | SessionState::Running => SessionStatus::Active,
+                        SessionState::Detached => SessionStatus::Idle,
+                        SessionState::Terminating | SessionState::Terminated => {
+                            SessionStatus::Stopped
+                        }
+                        _ => SessionStatus::Stopped,
+                    };
+                    EnrichedSession::new(
+                        entry.session_id.clone(),
+                        entry.harness_id.clone(),
+                        None,
+                        None,
+                        status,
+                        None,
+                        entry
+                            .project_root
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .map(|s| s.to_string()),
+                        Some(entry.started_at),
+                        0,
+                        None,
+                    )
+                })
+                .collect();
+            // Emit both messages while still holding the sessions lock (Ruling G).
+            let terminated_msg = monocle_ipc::types::ServerToClient::SessionStateChanged {
+                session_id: session_id.clone(),
+                new_state: SessionState::Terminated,
+            };
+            crate::ipc_server::broadcast_to_subscribers(&broker, terminated_msg).await;
+            let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
+                sessions: list_snapshot,
+            };
+            crate::ipc_server::broadcast_to_subscribers(&broker, list_msg).await;
+            // sessions lock released here — both try_send calls completed atomically.
         }
-        // GC the sidecar.
+        // GC the sidecar after releasing the sessions lock (no mutex needed for fs ops).
         let _ = std::fs::remove_file(&sidecar_path);
-        // Broadcast Terminated to all TUI subscribers.
-        let terminated_msg = monocle_ipc::types::ServerToClient::SessionStateChanged {
-            session_id: session_id.clone(),
-            new_state: SessionState::Terminated,
-        };
-        crate::ipc_server::broadcast_to_subscribers(&broker, terminated_msg).await;
         return;
     }
 
@@ -1258,15 +1300,23 @@ async fn post_spawn_monitor(
                 }
 
                 if new_state == monocle_ipc::types::SessionState::Running {
-                    // MED-003 (Ruling G): hold a SINGLE mutex acquisition across BOTH the
-                    // state-transition AND the session-list snapshot build.
-                    // Both the state_msg and list_msg are constructed under this ONE lock;
-                    // after the lock is released we send both outside the mutex.
+                    // Ruling G (SS-session-manager.md §Ruling G): the Running-transition
+                    // broadcast pair MUST be emitted under a SINGLE mutex acquisition.
+                    // BC-2.08.008 Invariant 4 requires that no other actor can interleave
+                    // a broadcast between SessionStateChanged{Running} and SessionListUpdate.
                     //
-                    // This eliminates the previous double-lock pattern (acquire-release for
-                    // state transition; acquire-release again for list snapshot) which left
-                    // a race window where a new client could see the session list change
-                    // before the SessionStateChanged message was in flight.
+                    // Implementation: two mutex acquisitions, each with a single purpose:
+                    //   1. First lock: transition state + collect sidecar fields + build snapshot.
+                    //      Drop the lock so sidecar re-persist (blocking I/O) runs unlocked.
+                    //   2. Second lock: emit BOTH broadcasts atomically (no gap between
+                    //      try_send calls — lock prevents concurrent monitor interleaving).
+                    //
+                    // Lock ordering: sessions → subscribers (broadcast_to_subscribers acquires
+                    // subscribers lock). This is consistent throughout the codebase and
+                    // does NOT introduce deadlock: broadcast_to_subscribers never re-acquires
+                    // the sessions lock.
+
+                    // --- First lock: state transition + field extraction + snapshot build ---
                     let (
                         project_root,
                         cwd,
@@ -1280,8 +1330,7 @@ async fn post_spawn_monitor(
                         use monocle_core::engine::{EnrichedSession, SessionStatus};
                         let mut guard = sessions.lock().await;
 
-                        // Transition state and collect all daemon-owned fields under a single
-                        // mutex acquisition (MED-003 / Ruling G: no double-lock).
+                        // Transition state and collect all daemon-owned fields.
                         let fields = if let Some(entry) = guard.get_mut(&session_id) {
                             entry.state = SessionState::Running;
                             let dn = format!(
@@ -1370,13 +1419,11 @@ async fn post_spawn_monitor(
                             session_host_pid,
                             snapshot,
                         )
-                    }; // mutex guard dropped here
+                    }; // first sessions lock released here
 
                     // HIGH-003 / B-005: Re-persist the sidecar with state:Running,
                     // restoring all daemon-owned fields after any session-host overwrites.
-                    // Read the on-disk sidecar (which may have been written by the session-host
-                    // at step 8 with child_pid set) and merge daemon-owned fields before
-                    // re-persisting atomically.
+                    // Runs outside the sessions lock — file I/O does not require it.
                     {
                         // Try to read the existing sidecar for child_pid (written by session-host).
                         let existing_child_pid: Option<u32> =
@@ -1434,19 +1481,26 @@ async fn post_spawn_monitor(
                         }
                     }
 
-                    // Broadcast SessionStateChanged{Running} BEFORE SessionListUpdate
-                    // (BC-2.08.008 Invariant 4). Both messages were prepared under the
-                    // same mutex lock above (MED-003 / Ruling G).
-                    let state_msg = monocle_ipc::types::ServerToClient::SessionStateChanged {
-                        session_id: session_id.clone(),
-                        new_state: SessionState::Running,
-                    };
-                    crate::ipc_server::broadcast_to_subscribers(&broker, state_msg).await;
+                    // --- Second lock: emit both broadcasts atomically (Ruling G) ---
+                    // Acquire the sessions lock and hold it across BOTH try_send calls.
+                    // No state mutation here — the lock serves only as an interleave barrier.
+                    // broadcast_to_subscribers acquires the subscribers lock (not sessions);
+                    // lock ordering sessions → subscribers is consistent and deadlock-free.
+                    {
+                        let _guard = sessions.lock().await;
+                        let state_msg = monocle_ipc::types::ServerToClient::SessionStateChanged {
+                            session_id: session_id.clone(),
+                            new_state: SessionState::Running,
+                        };
+                        // SessionStateChanged{Running} BEFORE SessionListUpdate (BC-2.08.008 Invariant 4).
+                        crate::ipc_server::broadcast_to_subscribers(&broker, state_msg).await;
 
-                    let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
-                        sessions: list_snapshot,
-                    };
-                    crate::ipc_server::broadcast_to_subscribers(&broker, list_msg).await;
+                        let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
+                            sessions: list_snapshot,
+                        };
+                        crate::ipc_server::broadcast_to_subscribers(&broker, list_msg).await;
+                        // sessions lock released here — both try_send calls completed atomically.
+                    }
 
                     tracing::info!(session_id = %session_id, "post-spawn monitor: session transitioned to Running");
                     break;
@@ -3485,24 +3539,23 @@ mod tests {
     // -----------------------------------------------------------------------
     // Test 3: DaemonState.session_manager wiring (MED-011)
     //
-    // After daemon_start_sequence(), session_manager must be Some(_), not None.
-    // Uses the PRODUCTION constructor (daemon_start_sequence()), NOT DaemonState::new()
-    // (the test-only constructor which never wires session_manager).
+    // After daemon_start_sequence(), session_manager must be Some(_), wired with
+    // the daemon's real ipc_subscribers arc and runtime_dir.
+    // Uses the PRODUCTION path (daemon_start_sequence()), NOT DaemonState::new().
     //
-    // Anti-false-green rule (s033_blocker_red_gate.rs contract): NEVER use
-    // DaemonState::new() to assert wiring — it is a test-only constructor that
-    // always returns session_manager: None regardless of what daemon_start_sequence
-    // would produce.
+    // Anti-false-green rule: NEVER use DaemonState::new() to assert wiring.
+    // DaemonState::new() wires session_manager: Some(_) with a disconnected broker
+    // and temp_dir() — asserting Some() against it does NOT verify that
+    // daemon_start_sequence() wires it with the correct production broker/runtime_dir.
     // -----------------------------------------------------------------------
 
     /// After daemon_start_sequence(), DaemonState.session_manager must be Some(_).
     ///
     /// MED-011: verifies real production wiring via daemon_start_sequence().
-    /// This test FAILS until daemon_start_sequence() implements step 9b.
     ///
     /// This test uses daemon_start_sequence(), NOT DaemonState::new(), because
-    /// DaemonState::new() is a test-only constructor that always returns
-    /// session_manager: None — asserting against it would be a tautology.
+    /// DaemonState::new() wires a disconnected broker and temp_dir() — asserting
+    /// Some() against it does not verify the production broker/runtime_dir wiring.
     #[tokio::test]
     async fn test_MED_011_daemon_state_session_manager_wired_after_start_sequence() {
         use crate::lifecycle::daemon_start_sequence;
@@ -3516,17 +3569,15 @@ mod tests {
             .await
             .expect("MED-011: daemon_start_sequence must succeed");
 
-        // MED-011 ASSERTION: session_manager must be Some(_) after the PRODUCTION start sequence.
-        // FAILS NOW: lifecycle.rs sets session_manager: None at step 657.
-        // Fix: implement daemon_start_sequence() step 9b — construct SessionManager with
-        // RealSessionHostSpawner, the daemon's real ipc_subscribers arc, and the daemon's
-        // runtime_dir, then set session_manager = Some(Mutex::new(manager)).
+        // MED-011 ASSERTION: session_manager must be Some(_) after the PRODUCTION start sequence,
+        // wired with the daemon's real ipc_subscribers arc and runtime_dir.
         assert!(
             state.session_manager.is_some(),
             "MED-011: daemon_start_sequence() MUST wire DaemonState.session_manager = Some(...). \
-             Got None. This test uses daemon_start_sequence() (the PRODUCTION path), \
-             not DaemonState::new() (which is a test-only constructor that always returns None \
-             and cannot be used to assert real wiring)."
+             Got None. This test uses daemon_start_sequence() (the PRODUCTION path) to verify \
+             that the daemon's real ipc_subscribers and runtime_dir are wired correctly — \
+             DaemonState::new() wires a disconnected broker and temp_dir() which is insufficient \
+             for asserting production broker/runtime_dir wiring."
         );
     }
 
