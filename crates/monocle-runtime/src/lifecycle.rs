@@ -676,6 +676,7 @@ pub async fn daemon_start_sequence(
                 engine,
             )))
         },
+        session_id_gen: std::sync::Arc::new(crate::session_manager::UuidV4Generator),
         hook_decision_override: None,
         hook_delay_ms: None, // Unit-test override only; not set via env var.
         // HIGH-1 fix: MONOCLE_HOOK_DELAY_MS env var is gated behind the `e2e-test-affordances`

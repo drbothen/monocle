@@ -415,6 +415,106 @@ impl PeerCredVerifier for FakePeerCredVerifier {
 }
 
 // ---------------------------------------------------------------------------
+// SessionIdGenerator — injectable seam for UUID generation in IPC handler (EC-152)
+// ---------------------------------------------------------------------------
+
+/// Generator for session IDs used by the IPC SpawnSession handler.
+///
+/// The production implementation (`UuidV4Generator`) calls `uuid::Uuid::new_v4()`
+/// on every call, producing cryptographically random UUIDs.
+///
+/// Tests inject a `SequencedIdGenerator` to return a scripted sequence of IDs,
+/// making the EC-152 two-attempt collision-retry path deterministically testable.
+///
+/// `Send + Sync + 'static + std::fmt::Debug` required for use in `Arc<dyn SessionIdGenerator>`.
+/// `Debug` is required because `DaemonState` derives `Debug`.
+pub trait SessionIdGenerator: Send + Sync + 'static + std::fmt::Debug {
+    /// Return the next session ID string (UUID v4 format in production).
+    fn next_id(&self) -> String;
+}
+
+/// Production implementation: generates a fresh UUID v4 on every call.
+///
+/// This is the unconditional default wired in `DaemonState::new()` and
+/// `daemon_start_sequence()`. Production code never substitutes a different
+/// generator — the field is only re-wired under `cfg(any(test, feature = "test-utils"))`.
+#[derive(Debug)]
+pub struct UuidV4Generator;
+
+impl SessionIdGenerator for UuidV4Generator {
+    fn next_id(&self) -> String {
+        uuid::Uuid::new_v4().to_string()
+    }
+}
+
+/// Test-only generator that yields IDs from a scripted sequence.
+///
+/// Returns `ids[call_count % ids.len()]` on each call — the modulo wrap ensures
+/// the generator never panics on over-consumption. Specifically:
+/// - First call: `ids[0]`.
+/// - Second call: `ids[1]` (if present), else `ids[0]` again.
+/// - Nth call: `ids[N-1 % ids.len()]`.
+///
+/// Typical collision-retry injection pattern:
+/// ```ignore
+/// // ids[0] = collision id (already in registry → first spawn fails).
+/// // ids[1] = fresh id (not in registry → retry succeeds).
+/// let gen = SequencedIdGenerator::new(vec!["collision-id".into(), "fresh-id".into()]);
+/// ```
+///
+/// Available under `cfg(any(test, feature = "test-utils"))` — not reachable from
+/// production binaries (SEC-001 discipline, mirroring `FakePeerCredVerifier`).
+#[cfg(any(test, feature = "test-utils"))]
+pub struct SequencedIdGenerator {
+    ids: Vec<String>,
+    call_count: std::sync::atomic::AtomicUsize,
+}
+
+// Manual Debug impl: AtomicUsize doesn't derive Debug transitively in all contexts,
+// and we want to show the call_count value for test diagnostics.
+#[cfg(any(test, feature = "test-utils"))]
+impl std::fmt::Debug for SequencedIdGenerator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SequencedIdGenerator")
+            .field("ids", &self.ids)
+            .field(
+                "call_count",
+                &self.call_count.load(std::sync::atomic::Ordering::Relaxed),
+            )
+            .finish()
+    }
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl SequencedIdGenerator {
+    /// Construct a new `SequencedIdGenerator` from the given scripted sequence.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `ids` is empty — an empty sequence cannot produce any IDs.
+    pub fn new(ids: Vec<String>) -> Self {
+        assert!(
+            !ids.is_empty(),
+            "SequencedIdGenerator: ids must not be empty"
+        );
+        Self {
+            ids,
+            call_count: std::sync::atomic::AtomicUsize::new(0),
+        }
+    }
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl SessionIdGenerator for SequencedIdGenerator {
+    fn next_id(&self) -> String {
+        let n = self
+            .call_count
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.ids[n % self.ids.len()].clone()
+    }
+}
+
+// ---------------------------------------------------------------------------
 // SessionHostConnection
 // ---------------------------------------------------------------------------
 
@@ -2435,50 +2535,257 @@ mod tests {
         );
     }
 
-    /// Part (b): the IPC handler two-attempt retry path.
+    /// Part (b): the IPC handler two-attempt retry path (EC-152 / Ruling F).
     ///
     /// When the first UUID collides, the IPC handler MUST:
     ///   1. Detect Err(SessionIdCollision) from spawn_session().
-    ///   2. Regenerate a new UUID.
+    ///   2. Regenerate a new UUID via the seam.
     ///   3. Send a second SpawnAck{retry_id} to the requesting client BEFORE the retry spawn.
     ///   4. Retry spawn_session() once with the new UUID — must succeed.
     ///   5. On a second consecutive collision, send ServerToClient::Error{code:"session_id_collision"}.
     ///
-    /// This test exercises the IPC handler path via handle_spawn_session_pub.
+    /// Two sub-scenarios exercised within a single shared session manager:
+    ///   (a) First collision → successful retry: seed [seed_id, collision_id, fresh_id].
+    ///       Step 1: call handler with seam=[seed_id] → registers seed_id cleanly (no collision).
+    ///       Step 2: call handler with seam=[collision_id, fresh_id] →
+    ///               collision_id != seed_id so first attempt registers collision_id, not collision
+    ///               Wait — collision_id was ALREADY registered in step 1 is wrong; we need it in the registry.
     ///
-    /// NOTE: Deterministic collision forcing requires an injectable UUID generator seam
-    /// in the IPC handler (Ruling F). If no such seam exists, the collision path cannot
-    /// be forced deterministically; the test is marked #[ignore] until the seam is added.
+    /// Approach: Use one session manager. Pre-register collision_id via the first IPC call
+    /// (seam returns [collision_id_a]). Then exercise retry by calling again with seam=[collision_id_a, fresh_id_a].
+    /// For scenario (b): call with seam=[collision_id_b, collision_id_b] where collision_id_b
+    /// is already in the registry from its own first-registration call.
     ///
-    /// Implementer follow-up required:
-    ///   Add a `uuid_gen: Option<Box<dyn Fn() -> String + Send>>` seam parameter to
-    ///   `handle_spawn_session()` (or an equivalent field on DaemonState/SessionManager)
-    ///   so tests can inject a collision-producing UUID generator. Until then this test
-    ///   documents the required contract but cannot exercise it deterministically.
+    /// The `SequencedIdGenerator` seam (DaemonState.session_id_gen) is used to inject
+    /// a scripted ID sequence, making the collision path deterministic.
+    ///
+    /// BC-2.08.001 EC-152 / AC-006b / Ruling F (SS-session-manager.md).
     #[tokio::test]
-    #[ignore = "Requires injectable UUID generator seam in IPC handler (Ruling F). \
-                Add uuid_gen seam to handle_spawn_session_pub() before un-ignoring. \
-                Contract: first collision → regenerate UUID → send second SpawnAck{retry_id} → retry spawn → Ok. \
-                Second consecutive collision → ServerToClient::Error{code:'session_id_collision'}."]
     async fn test_BC_2_08_001_ipc_handler_two_attempt_retry_on_collision() {
-        // This test is intentionally left as documentation of the required contract.
-        // It cannot be exercised without an injectable UUID generator seam.
+        // --------------------------------------------------------------------------
+        // Shared infrastructure: one session manager, one client channel.
+        // All scenarios use handle_spawn_session_pub (never direct spawn_session).
+        // This avoids spawning background post_spawn_monitor tasks during "pre-populate"
+        // and keeps the drain loops deterministic.
+        // --------------------------------------------------------------------------
+        let tmp = tempfile::tempdir().expect("tempdir");
+
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 15_200,
+        });
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+        let (tx, mut rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry = monocle_ipc::server::ClientEntry::new(tx.clone());
+        let subs: monocle_ipc::server::SubscriberList = Arc::new(Mutex::new(vec![entry]));
+        let broker = Arc::new(Arc::clone(&subs));
+        let session_manager = crate::session_manager::SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker,
+            engine,
+        );
+
+        // Build DaemonState with the shared session manager.
+        let mut state = crate::state::DaemonState::new();
+        state.session_manager = Some(tokio::sync::Mutex::new(session_manager));
+
+        // Helper closure to drain messages with a short timeout.
+        // Returns all messages collected within the deadline.
+        // NOTE: declared as a macro-like manual inline below (closures can't easily
+        // capture &mut rx in an async context without Box::pin).
+
+        // --------------------------------------------------------------------------
+        // Step 0: Register collision_id_a into the session registry via IPC handler.
         //
-        // Required IPC handler behavior (Ruling F):
-        //   1. Generate UUID (attempt 1).
-        //   2. Send SpawnAck{session_id: uuid_1} to requesting client.
-        //   3. Call spawn_session(opts.with_daemon_fields(uuid_1, ...)).
-        //   4. On Err(SessionIdCollision):
-        //      a. Generate retry UUID (attempt 2).
-        //      b. Send SpawnAck{session_id: retry_uuid} to requesting client (BEFORE retry spawn).
-        //      c. Call spawn_session(opts.with_daemon_fields(retry_uuid, ...)).
-        //      d. On Ok(_) → success.
-        //      e. On Err(SessionIdCollision) again → send Error{code:"session_id_collision"}.
+        // Inject seam = [collision_id_a] so the first IPC call registers it successfully.
+        // Drain to clear the channel.
+        // --------------------------------------------------------------------------
+        let collision_id_a = "ec152000-a000-4000-8000-000000000001".to_string();
+        let fresh_id_a = "ec152000-a000-4000-8000-000000000002".to_string();
+
+        state.session_id_gen = Arc::new(SequencedIdGenerator::new(vec![collision_id_a.clone()]));
+
+        let opts_reg = monocle_core::engine::SpawnOptions::for_spawn_request(
+            PathBuf::from("/tmp/ec152-reg"),
+            PathBuf::from("/tmp/ec152-reg"),
+            "claude-code".to_string(),
+            "default".to_string(),
+            None,
+        );
+        crate::ipc_server::handle_spawn_session_pub(opts_reg, &tx, &state).await;
+
+        // Drain registration messages (SpawnAck + SessionStateChanged + SessionListUpdate).
+        {
+            let d = tokio::time::Instant::now() + std::time::Duration::from_millis(150);
+            while let Ok(Some(_)) = tokio::time::timeout_at(d, rx.recv()).await {}
+        }
+
+        // --------------------------------------------------------------------------
+        // Scenario (a): first collision → successful retry.
         //
-        // Seam needed: `handle_spawn_session_pub(opts, client_tx, state, uuid_gen: &dyn Fn() -> String)`
-        // so tests can inject `|| "known-collision-id".to_string()` for the first call
-        // and a fresh UUID for the retry.
-        panic!("This test must not run until the uuid_gen seam is implemented in the IPC handler");
+        // ID sequence: [collision_id_a, fresh_id_a]
+        //   Attempt 1: collision_id_a — already in registry → SessionIdCollision.
+        //   Attempt 2: fresh_id_a    — not in registry → spawn succeeds.
+        //
+        // Expected messages:
+        //   SpawnAck{collision_id_a}   (attempt 1, before first spawn)
+        //   SpawnAck{fresh_id_a}       (attempt 2, before retry spawn)
+        //   SessionStateChanged{Launching, fresh_id_a}  (from successful retry spawn)
+        //   SessionListUpdate          (from successful retry spawn)
+        // --------------------------------------------------------------------------
+        state.session_id_gen = Arc::new(SequencedIdGenerator::new(vec![
+            collision_id_a.clone(),
+            fresh_id_a.clone(),
+        ]));
+
+        let opts_a = monocle_core::engine::SpawnOptions::for_spawn_request(
+            PathBuf::from("/tmp/ec152-retry-a"),
+            PathBuf::from("/tmp/ec152-retry-a"),
+            "claude-code".to_string(),
+            "default".to_string(),
+            None,
+        );
+        crate::ipc_server::handle_spawn_session_pub(opts_a, &tx, &state).await;
+
+        // Drain and collect messages.
+        let mut msgs_a = Vec::new();
+        {
+            let d = tokio::time::Instant::now() + std::time::Duration::from_millis(150);
+            while let Ok(Some(msg)) = tokio::time::timeout_at(d, rx.recv()).await {
+                msgs_a.push(msg);
+            }
+        }
+
+        // ASSERTION (a1): SpawnAck{collision_id_a} must appear.
+        let ack1_idx = msgs_a.iter().position(|m| {
+            matches!(m, ServerToClient::SpawnAck { session_id } if session_id == &collision_id_a)
+        });
+        assert!(
+            ack1_idx.is_some(),
+            "EC-152 (a): first SpawnAck{{collision_id_a}} must appear; msgs: {:?}",
+            msgs_a
+        );
+
+        // ASSERTION (a2): SpawnAck{fresh_id_a} must appear.
+        let ack2_idx = msgs_a.iter().position(
+            |m| matches!(m, ServerToClient::SpawnAck { session_id } if session_id == &fresh_id_a),
+        );
+        assert!(
+            ack2_idx.is_some(),
+            "EC-152 (a): second SpawnAck{{fresh_id_a}} must appear after retry; msgs: {:?}",
+            msgs_a
+        );
+
+        // ASSERTION (a3): SpawnAck{collision_id_a} must precede SpawnAck{fresh_id_a}.
+        assert!(
+            ack1_idx.unwrap() < ack2_idx.unwrap(),
+            "EC-152 (a): SpawnAck{{collision_id_a}} (idx={}) must precede SpawnAck{{fresh_id_a}} (idx={}); msgs: {:?}",
+            ack1_idx.unwrap(),
+            ack2_idx.unwrap(),
+            msgs_a
+        );
+
+        // ASSERTION (a4): No Error message — the retry must succeed.
+        let has_error_a = msgs_a
+            .iter()
+            .any(|m| matches!(m, ServerToClient::Error { .. }));
+        assert!(
+            !has_error_a,
+            "EC-152 (a): retry must succeed — no Error message expected; msgs: {:?}",
+            msgs_a
+        );
+
+        // --------------------------------------------------------------------------
+        // Step 1: Register collision_id_b for scenario (b).
+        // --------------------------------------------------------------------------
+        let collision_id_b = "ec152000-b000-4000-8000-000000000001".to_string();
+
+        state.session_id_gen = Arc::new(SequencedIdGenerator::new(vec![collision_id_b.clone()]));
+
+        let opts_reg_b = monocle_core::engine::SpawnOptions::for_spawn_request(
+            PathBuf::from("/tmp/ec152-reg-b"),
+            PathBuf::from("/tmp/ec152-reg-b"),
+            "claude-code".to_string(),
+            "default".to_string(),
+            None,
+        );
+        crate::ipc_server::handle_spawn_session_pub(opts_reg_b, &tx, &state).await;
+
+        // Drain registration messages.
+        {
+            let d = tokio::time::Instant::now() + std::time::Duration::from_millis(150);
+            while let Ok(Some(_)) = tokio::time::timeout_at(d, rx.recv()).await {}
+        }
+
+        // --------------------------------------------------------------------------
+        // Scenario (b): second consecutive collision → Error{code:"session_id_collision"}.
+        //
+        // ID sequence: [collision_id_b, collision_id_b]
+        //   Attempt 1: collision_id_b — in registry → SessionIdCollision.
+        //   Attempt 2: collision_id_b — still in registry → SessionIdCollision.
+        //
+        // Expected messages:
+        //   SpawnAck{collision_id_b}   (attempt 1)
+        //   SpawnAck{collision_id_b}   (attempt 2, before retry)
+        //   Error{code:"session_id_collision"}  (second collision → give up)
+        // --------------------------------------------------------------------------
+        state.session_id_gen = Arc::new(SequencedIdGenerator::new(vec![
+            collision_id_b.clone(),
+            collision_id_b.clone(),
+        ]));
+
+        let opts_b = monocle_core::engine::SpawnOptions::for_spawn_request(
+            PathBuf::from("/tmp/ec152-retry-b"),
+            PathBuf::from("/tmp/ec152-retry-b"),
+            "claude-code".to_string(),
+            "default".to_string(),
+            None,
+        );
+        crate::ipc_server::handle_spawn_session_pub(opts_b, &tx, &state).await;
+
+        // Drain and collect messages.
+        let mut msgs_b = Vec::new();
+        {
+            let d = tokio::time::Instant::now() + std::time::Duration::from_millis(150);
+            while let Ok(Some(msg)) = tokio::time::timeout_at(d, rx.recv()).await {
+                msgs_b.push(msg);
+            }
+        }
+
+        // ASSERTION (b1): Two SpawnAck messages (both with collision_id_b).
+        let ack_count_b = msgs_b
+            .iter()
+            .filter(|m| {
+                matches!(m, ServerToClient::SpawnAck { session_id } if session_id == &collision_id_b)
+            })
+            .count();
+        assert_eq!(
+            ack_count_b, 2,
+            "EC-152 (b): two SpawnAck{{collision_id_b}} messages expected (attempt 1 and retry); msgs: {:?}",
+            msgs_b
+        );
+
+        // ASSERTION (b2): Error{code:"session_id_collision"} must appear after both SpawnAcks.
+        let error_idx_b = msgs_b.iter().position(
+            |m| matches!(m, ServerToClient::Error { code, .. } if code == "session_id_collision"),
+        );
+        assert!(
+            error_idx_b.is_some(),
+            "EC-152 (b): Error{{code:'session_id_collision'}} must be sent after second collision; msgs: {:?}",
+            msgs_b
+        );
+        let last_ack_b = msgs_b
+            .iter()
+            .rposition(|m| matches!(m, ServerToClient::SpawnAck { .. }))
+            .expect("last SpawnAck must exist");
+        assert!(
+            last_ack_b < error_idx_b.unwrap(),
+            "EC-152 (b): Error (idx={}) must follow last SpawnAck (idx={}); msgs: {:?}",
+            error_idx_b.unwrap(),
+            last_ack_b,
+            msgs_b
+        );
     }
 
     // -----------------------------------------------------------------------

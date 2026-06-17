@@ -310,8 +310,10 @@ async fn handle_spawn_session(
             .join("hooks-settings.json")
     };
 
-    // Step 1: generate UUID v4 for session_id.
-    let session_id = uuid::Uuid::new_v4().to_string();
+    // Step 1: generate session_id via the injectable seam (EC-152 / Ruling F).
+    // Production: state.session_id_gen is UuidV4Generator → uuid::Uuid::new_v4().to_string().
+    // Tests: may inject SequencedIdGenerator to force deterministic collision sequences.
+    let session_id = state.session_id_gen.next_id();
 
     // Step 2 (AC-012): send SpawnAck BEFORE spawn_session() — must be the first message.
     let _ = client_tx
@@ -339,13 +341,19 @@ async fn handle_spawn_session(
     };
 
     // Step 4: call spawn_session().
-    match sm.lock().await.spawn_session(opts.clone()).await {
+    //
+    // IMPORTANT: The lock guard from `sm.lock().await` lives for the duration of the
+    // entire `match` scrutinee expression. To avoid a self-deadlock when the collision
+    // arm tries to re-acquire the same mutex, we must store the result in a let binding
+    // first (which drops the guard), then match on the stored result.
+    let spawn_result = sm.lock().await.spawn_session(opts.clone()).await;
+    match spawn_result {
         Ok(_) => {
             // Success: spawn_session publishes SessionStateChanged{Launching} + SessionListUpdate.
         }
         Err(SessionError::SessionIdCollision { .. }) => {
-            // EC-152: first collision — regenerate UUID once and retry.
-            let new_id = uuid::Uuid::new_v4().to_string();
+            // EC-152: first collision — regenerate via the seam and retry once.
+            let new_id = state.session_id_gen.next_id();
 
             // Send a second SpawnAck with the regenerated ID before retry.
             let _ = client_tx
@@ -355,7 +363,9 @@ async fn handle_spawn_session(
                 .await;
 
             let opts2 = opts.with_daemon_fields(new_id, hooks_settings_path);
-            match sm.lock().await.spawn_session(opts2).await {
+            // Lock is already released (guard dropped after spawn_result was bound above).
+            let retry_result = sm.lock().await.spawn_session(opts2).await;
+            match retry_result {
                 Ok(_) => {}
                 Err(e) => {
                     // EC-152: second collision → send error.
@@ -382,13 +392,17 @@ async fn handle_spawn_session(
 
 /// Test-only public wrapper for `handle_spawn_session`.
 ///
-/// Exposes the private IPC handler to tests in `session_manager/mod.rs` that exercise:
+/// Exposes the private IPC handler to tests in `session_manager/mod.rs` and
+/// integration tests (tests/ directory) that exercise:
 /// - BLOCKER-001 regression guard (no panic from todo!())
 /// - AC-001/AC-012: SpawnAck ordering before SessionStateChanged{Launching}
 /// - EC-152: UUID collision retry in the IPC handler
 ///
-/// NEVER call this from production code. The `#[cfg(test)]` guard enforces that.
-#[cfg(test)]
+/// Available under both `cfg(test)` (unit tests) and `feature = "test-utils"`
+/// (integration tests linked via dev-dependency with test-utils feature).
+///
+/// NEVER call this from production code. The cfg guard enforces that.
+#[cfg(any(test, feature = "test-utils"))]
 pub async fn handle_spawn_session_pub(
     opts: monocle_core::engine::SpawnOptions,
     client_tx: &tokio::sync::mpsc::Sender<ServerToClient>,

@@ -330,6 +330,20 @@ pub struct DaemonState {
     /// async lifecycle methods called from the per-client IPC task.
     pub session_manager: Option<tokio::sync::Mutex<crate::session_manager::SessionManager>>,
 
+    /// Session ID generator used by the IPC SpawnSession handler (EC-152 seam).
+    ///
+    /// Production default: `UuidV4Generator` — generates a fresh UUID v4 on every call.
+    /// Production code NEVER replaces this with a non-UUID-v4 generator.
+    ///
+    /// Tests (under `cfg(any(test, feature = "test-utils"))`) may replace this with a
+    /// `SequencedIdGenerator` to inject a scripted collision sequence and exercise the
+    /// EC-152 two-attempt retry path in `handle_spawn_session` deterministically.
+    ///
+    /// SEC-001: `SequencedIdGenerator` is defined under
+    /// `cfg(any(test, feature = "test-utils"))` and cannot be constructed in production
+    /// binaries. The only reachable generator in production is `UuidV4Generator`.
+    pub session_id_gen: std::sync::Arc<dyn crate::session_manager::SessionIdGenerator>,
+
     // -------------------------------------------------------------------------
     // Test-only fields: engine decision injection
     //
@@ -434,6 +448,7 @@ impl DaemonState {
                     engine,
                 )))
             },
+            session_id_gen: std::sync::Arc::new(crate::session_manager::UuidV4Generator),
             hook_decision_override: None,
             hook_delay_ms: None,
             hook_outer_delay_ms: None,
