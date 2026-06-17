@@ -2,18 +2,18 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "7.95"
+version: "7.96"
 status: active
 producer: state-manager
 timestamp: 2026-06-17T00:00:00Z
 phase: phase-3-v1A-wave-8
-current_step: "D-332 (2026-06-17): S-033 MERGED to develop via PR #40 @ c7e10f2 (squash-merge). First Wave-8 story delivered. 10th workspace crate monocle-session-host added. New wire types SessionSidecarV3/DaemonToHost/HostToDaemon. Unblocks S-034/S-035/S-037/S-038/S-045 (Tier 2 Wave-8). 3 follow-ups recorded: SEC-006-CCR-URL-VALIDATION, DEMO-BINARY-ARTIFACTS-DEVELOP, F-S033-CIPARITY-POL11-DOCCOMMENT."
-prior_step: "D-331 (2026-06-17): S-033 adversarial convergence COMPLETE — 3/3 consecutive clean passes (passes 5/6/7 clean; 7 total incl. pre-rework Pass-1). All blockers B-001..005, highs, meds, lows, SEC-001/003/005, and Rulings A-H resolved + verified with falsifiable tests. Worktree @ ed4b045; 1,249 tests, 0 failures; clippy --all-targets clean; cargo tree -d clean."
+current_step: "D-333 (2026-06-17): Zero-context resume checkpoint for Wave-8 Tier-2. develop @ 314326e. S-034 worktree ready (.worktrees/S-034, branch story/S-034-kill-session, base 314326e). Human directive: Wave-8 Tier-2 autonomous delivery. Demo default: WEBM+.tape-NO-GIF. Branch protection 11 contexts enforced. Next: S-034 stub-architect."
+prior_step: "D-332 (2026-06-17): S-033 MERGED to develop via PR #40 @ c7e10f2. First Wave-8 story. 10th crate monocle-session-host. sprint-state v1.47; STORY-INDEX v5.46. Unblocks S-034/035/037/038/045."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "D-001..D-241 at cycles/cycle-001/decisions-archive.md. D-242..D-332 appended at cycles/cycle-001/decisions-archive.md §Phase-1d+Phase-2+Phase-3. Full durable_task_register YAML (127+ entries) at cycles/cycle-001/task-register-full.yaml."
-awaiting: "Wave-8 Tier 2 dispatch: S-034/S-035/S-037/S-038/S-045 now unblocked by S-033 MERGED (D-332). S-046 waits on S-032; S-036 waits on S-033+S-034+S-035; S-047 waits on S-046; S-048 waits on S-022+S-033+S-047. F-W8INT-001/002/003 parked for Wave-8 integration gate. Branch protection (PROC-BRANCH-PROTECTION-CONTEXTS) pending human/repo-admin."
+awaiting: "S-034 stub-architect dispatch. S-034 worktree READY at .worktrees/S-034 (branch story/S-034-kill-session, base 314326e). Tier-2 parallel-eligible: S-034/S-035/S-037/S-038/S-045. S-046 waits on S-032; S-036 waits on S-033+S-034+S-035; S-047 waits on S-046; S-048 waits on S-022+S-033+S-047. SEC-006-CCR-URL-VALIDATION MUST be fixed before S-045. F-W8INT-001/002/003 parked for Wave-8 integration gate."
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: 2026-06-03
@@ -21,24 +21,25 @@ dtu_services: [hook-endpoints-x5]
 current_cycle: cycle-001
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v7.95 — 2026-06-17
-  PHASE-3 v1A ACTIVE — WAVE 8 / S-033 MERGED — TIER 2 DISPATCH NEXT
+  ZERO-CONTEXT RESUME CHECKPOINT v7.96 — 2026-06-17
+  PHASE-3 v1A ACTIVE — WAVE 8 TIER 2 — S-034 WORKTREE READY
   ============================================================================
-  POSITION: Phase-3 TDD implementation, v1A control-center scope, Wave 8.
-  STATUS: S-033 MERGED to develop via PR #40 @ c7e10f2 (D-332, 2026-06-17).
-  First Wave-8 story delivered. 10th workspace crate monocle-session-host added.
-  Wire types: SessionSidecarV3, DaemonToHost, HostToDaemon. 7-pass adversarial
-  convergence (3 clean), security PASS, all 10 CI checks green.
-  33/51 stories done (200 pts). 17 draft remaining (Wave 8: 11 draft, Wave 9: 6).
+  POSITION: Phase-3 TDD implementation, v1A control-center scope, Wave 8 Tier 2.
+  STATUS: S-033 MERGED (PR #40 @ c7e10f2, D-332). develop @ 314326e (resume doc
+  on top of c7e10f2). S-034 worktree READY at .worktrees/S-034 (branch
+  story/S-034-kill-session, base 314326e, build GREEN). 10 workspace crates
+  (incl. monocle-session-host). 33/51 stories done (200/311 pts).
+  Human directive: CONTINUE WAVE-8 TIER-2 AUTONOMOUSLY.
+  Demo default GOING FORWARD: WEBM + .tape ONLY (NO GIF).
+  Branch protection: 11 required CI contexts enforced (10 ci.yml + DTU fidelity).
 
   READ FIRST (in order):
   1. /Users/jmagady/Dev/monocle/NEXT-SESSION-RESUME.md  <- concise entry point
   2. /Users/jmagady/Dev/monocle/CLAUDE.md               <- production-grade + routing
   3. This STATE.md (task register table below)          <- task register + history pointers
 
-  CORPUS FACTS (post-S-033-merge):
-  Stories: 51 total / 311 pts (33 done; 17 draft v1A Waves 8-9;
-           1 blocked S-PHASE-3-PREP)
+  CORPUS FACTS (post-S-033-merge, checkpoint D-333):
+  Stories: 51 total / 311 pts (33 done; 17 draft v1A Waves 8-9; 1 blocked)
   New v1A: S-033..S-048 (16 stories); EPIC-08 Session Manager; EPIC-09 Embedded PTY
   Waves: 8-9; 25 v1A BCs; 5 holdouts HS-EXP-011..015 anchored
 
@@ -50,44 +51,49 @@ next_session_resume_protocol: |
   SS-daemon-wiring-v2-delta v1.11.4 | SS-deps-pin-manifest-v2-delta v1.0.2
   prd v1.28.3 | product-brief v2.0.4 | domain-monocle-vision-synthesis v2.2.3
 
-  NEXT-ACTION (Wave-8 Tier 2 — S-033 MERGED, deps unblocked):
-  Tier 2 unblocked by S-033: S-034 / S-035 / S-037 / S-038 / S-045 (parallel-eligible).
-  S-046 waits on S-032 (S-032 draft, no blocker except scheduling). S-036 needs
-  S-033+S-034+S-035. S-047 needs S-046. S-048 needs S-022+S-033+S-047.
-  SEC-006-CCR-URL-VALIDATION MUST be addressed before S-045 activates CCR injection
-  end-to-end (CWE-20/93, MEDIUM).
-  Cross-story integration findings F-W8INT-001/002/003 parked for Wave-8 gate;
+  NEXT-ACTION (Wave-8 Tier 2 — start with S-034):
+  Dispatch stub-architect for S-034 (S-034 worktree already created and build green).
+  Tier 2 parallel-eligible after S-034: S-035, S-037 (needs S-034), S-038, S-045.
+  PREREQUISITE: SEC-006-CCR-URL-VALIDATION MUST be fixed before S-045 (CWE-20/93).
+  S-046 waits on S-032; S-036 needs S-033+S-034+S-035; S-047 needs S-046;
+  S-048 needs S-022+S-033+S-047. F-W8INT-001/002/003 parked for Wave-8 gate;
   do NOT re-raise as in-scope findings during per-story delivery.
-  CI pre-requisites status:
-    DTU clone: PASS (D-234, fidelity 1.0)
-    ci.yml: PASS
-    develop build/clippy/tests: PASS (c7e10f2, 10 CI checks green)
-    Branch protection contexts: BLOCKED (PROC-BRANCH-PROTECTION-CONTEXTS) — HUMAN ACTION NEEDED
+
+  PER-STORY FLOW: stub-architect → test-writer → implementer → adversarial
+  convergence (3 consecutive CLEAN, Step 4.5) → demo evidence (WEBM+.tape) →
+  push → pr-manager all 9 steps → merge → worktree cleanup.
+
+  CI-PARITY RULES (all 7 apply):
+  1. clippy --workspace --all-targets -- -D warnings (IN worktree)
+  2. python3 scripts/check_version_pins.py (POL-11) from REPO ROOT
+     python3 scripts/check_structural_claims.py (POL-12) from REPO ROOT
+  3. No version literals in doc-comments (POL-11 will flag)
+  4. Registry atomicity: BC/SS spec bump + version-pin-registry.yaml = one atomic
+     factory-artifacts commit (L-S027-004)
+  5. Unique /tmp paths per story dispatch
+  6. Architect = spec only; all code to implementer-in-worktree
+  7. pr-manager must complete all 9 steps
 
   RATIFIED DECISIONS (do NOT re-litigate):
   - D-238: session-host-owns-PTY; daemon restart SURVIVES (CASE 2); NO tmux default
-  - D-304: Autonomous Phase-2 dispatch authorized; no per-burst plan-review gate
-  - D-315: Pre-pivot disposition RATIFIED; 32 done-historical; 3 active kept
-    (S-032/S-DAEMON-WIRE-FIX-001/S-PHASE-3-PREP); actual pre-pivot count 35; 0 archive/retire
+  - D-304: Autonomous Phase-2 dispatch; no per-burst plan-review gate
+  - D-315: Pre-pivot disposition RATIFIED (32 done; 3 active kept; 0 archive)
   - D-325: Phase-2 gate APPROVED; Phase-3 v1A active
-  - D-326: S-033 Rulings A+B (scope + SessionSidecarV3 in monocle-ipc)
-  - D-327: S-033 Rulings C+D (setsid host-side; host_conn storage S-033 scope)
-  - D-328: S-033 Rulings E+F+G (DaemonToHost/HostToDaemon in monocle-ipc; EC-152 retry IPC-handler-only + second SpawnAck; single-lock atomicity for Running/EC-163/Terminated pairs)
-  - D-329: S-033 Ruling H — MED-002 monitor+entry generation guard DEFERRED to S-036; safe in v1 (3-layer argument); SS-session-manager v2.7.3
-  - D-330: pass 4 REMEDIATED; IMP-001+OBS-001 to implementer; F-W8INT-001/002/003 to Wave-8 gate
-  - D-331: S-033 adversarial convergence COMPLETE (3/3 clean, passes 5/6/7). Per-story delivery next.
+  - D-326..D-331: S-033 Rulings A–H; adversarial convergence COMPLETE (7 passes, 3 clean)
+  - D-332: S-033 MERGED PR #40 @ c7e10f2
+  - D-333: Wave-8 Tier-2 autonomous delivery authorized; demo WEBM+.tape-no-GIF
   - Spawn-path Model A: SpawnOptions on wire; SpawnRecipe daemon-internal
   - IPC: 12-code wire taxonomy; 9-variant SessionError; schema_version 3
   - PTY (ADR-0011): portable-pty 0.9.0 + vt100 0.16.2 + tui-term =0.3.4; MSRV 1.88
-  - SessionState: 5 variants (Launching/Running/Detached/Terminating/Terminated) in monocle-ipc
-  - Full history: cycles/cycle-001/decisions-archive.md (D-001..D-331)
+  - SessionState: 5 variants (Launching/Running/Detached/Terminating/Terminated)
+  - Full history: cycles/cycle-001/decisions-archive.md (D-001..D-333)
 
   KNOWN-FLAKY TESTS (do NOT flag as new findings):
   cli_daemon_stop, factory_self_referential, test_BC_2_07_006,
   wit-bindgen unmatched-skip, PATH isolation flake.
 
   factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'`
-  develop HEAD: c7e10f2 (S-033 merged; monocle-session-host crate; 10 CI checks green)
+  develop HEAD: 314326e (resume-doc commit; S-033 merged c7e10f2; 10 CI checks green)
   ============================================================================
 ---
 
@@ -101,7 +107,7 @@ next_session_resume_protocol: |
 | 0.5-0.9 Brief + market intel | DONE 2026-05-14 | brief v2.0.4; validate-brief VALID |
 | 1 Spec Crystallization | DONE D-170 APPROVED | 57-pass Phase-1d adversarial. 113 Phase-1 BCs (138 total incl Phase-2 v1A). <!-- version-pin-historical: BC-INDEX v1.43.7 at Phase-1d close --> |
 | 2 Story Decomp v1A | PASSED/APPROVED D-325 | 26 passes (3/3 clean). 51 stories/311 pts. Gate APPROVED Joshua Magady 2026-06-16. |
-| 3 TDD v1A Waves 8-9 | IN PROGRESS — Wave 8 | S-033 MERGED PR #40 @ c7e10f2 (D-332). Wave 8: 1/12 done (8/74 pts). Tier 2 unblocked: S-034/035/037/038/045. |
+| 3 TDD v1A Waves 8-9 | IN PROGRESS — Wave 8 Tier 2 | S-033 MERGED PR #40 @ c7e10f2 (D-332). Wave 8: 1/12 done (8/74 pts). S-034 worktree READY. Tier 2: S-034/035/037/038/045. |
 | 3 TDD Waves 1-7 (pre-pivot) | COMPLETE D-232 | 32/33 done (192/195 pts). 1514 tests. develop @ 6811103 |
 | 4-7 | PENDING after Phase-3 v1A | Old observe-only scope superseded by v1A control-center |
 
@@ -242,8 +248,6 @@ Full decisions archive: `cycles/cycle-001/decisions-archive.md`
 D-001..D-241: early phases; D-242..D-331: Phase-1d + Phase-2 + Phase-3 (appended 2026-06-16/17)
 
 Key decisions last session:
+- D-333 (2026-06-17): Zero-context resume checkpoint. develop @ 314326e. S-034 worktree ready. Wave-8 Tier-2 autonomous delivery authorized. Demo: WEBM+.tape-NO-GIF. 11 CI branch-protection contexts enforced. STATE v7.95→v7.96.
 - D-332 (2026-06-17): S-033 MERGED to develop via PR #40 @ c7e10f2. First Wave-8 story. 10th crate monocle-session-host. Unblocks S-034/035/037/038/045. sprint-state v1.46→v1.47; STORY-INDEX v5.45→v5.46.
-- D-323 (2026-06-16): Phase-2 pre-gate cleanup burst COMPLETE. D-324: inputs-pin BLOCKER fix. D-325: Phase-2 gate APPROVED. D-326: S-033 adversarial Pass-1 rulings A+B (scope + SessionSidecarV3). SS-session-manager v2.7.0; S-033 v1.7.
-- D-327 (2026-06-17): S-033 adversarial pass (post-rework) NOT CLEAN. Rulings C+D (setsid host-side; host_conn storage S-033 scope). SS-session-manager v2.7.0→v2.7.1; S-033 v1.7→v1.8. Counter 0/3.
-- D-328 (2026-06-17): S-033 adversarial pass 2 NOT CLEAN. Rulings E+F+G (DaemonToHost/HostToDaemon in monocle-ipc; EC-152 retry IPC-handler-only + second SpawnAck; single-lock atomicity). SS-session-manager v2.7.1→v2.7.2; S-033 v1.8→v1.9. Counter 0/3.
-- D-329..D-331 (2026-06-17): S-033 adversarial passes 3→7 convergence — Ruling H (MED-002 deferred S-036); pass 4 IMP-001+OBS-001 routed to implementer, F-W8INT-001/002/003 to Wave-8 gate; passes 5/6/7 clean (D-331 COMPLETE). Full detail in decisions-archive.md.
+- D-323..D-331 (2026-06-16/17): Phase-2 pre-gate cleanup (D-323), inputs-pin fix (D-324), Phase-2 gate APPROVED (D-325), S-033 Rulings A–H (D-326..D-329), pass 4 remediation (D-330), S-033 convergence COMPLETE 3/3 clean (D-331). Full detail in decisions-archive.md.
