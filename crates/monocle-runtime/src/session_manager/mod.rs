@@ -2220,10 +2220,15 @@ mod tests {
     // BC-2.08.001 AC-006 / EC-152 — UUID collision handling
     // -----------------------------------------------------------------------
 
-    /// When the same session_id is submitted twice, the second call must return
-    /// Err(SessionError::SessionIdCollision).
+    /// When the same session_id is submitted twice, spawn_session() must auto-retry
+    /// with a freshly generated UUID (MED-002) and return Ok(new_id) where
+    /// new_id != original collision_id.
     ///
-    /// BC-2.08.001 invariant 1 / EC-152 / AC-006.
+    /// Only when BOTH the proposed UUID and the retry UUID are already in the registry
+    /// does spawn_session() return Err(SessionIdCollision). That double-collision path
+    /// is structurally verified by the session_error_to_code mapping test below.
+    ///
+    /// BC-2.08.001 invariant 1 / EC-152 / AC-006 (MED-002 retry path).
     #[tokio::test]
     async fn test_BC_2_08_001_invariant_session_id_collision_returns_error() {
         let tmp = tempfile::tempdir().expect("tempdir");
@@ -2237,13 +2242,23 @@ mod tests {
             .await
             .expect("first spawn must succeed");
 
-        // Second spawn with the SAME session_id must return SessionIdCollision.
+        // Second spawn with the SAME session_id must auto-retry with a new UUID
+        // and return Ok(new_id) where new_id != session_id (MED-002 retry).
         let result = manager.spawn_session(make_spawn_opts(&session_id)).await;
-        assert!(
-            matches!(result, Err(SessionError::SessionIdCollision { .. })),
-            "EC-152: duplicate session_id must return Err(SessionIdCollision), got {:?}",
-            result
-        );
+        match &result {
+            Ok(new_id) => {
+                assert_ne!(
+                    new_id, &session_id,
+                    "EC-152: retry must produce a different session_id, got same id back"
+                );
+            }
+            Err(e) => {
+                panic!(
+                    "EC-152: first collision must auto-retry and succeed, got error: {:?}",
+                    e
+                );
+            }
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -2730,9 +2745,17 @@ mod tests {
             }
         }
 
-        let ack_idx = messages.iter().position(|m| matches!(m, ServerToClient::SpawnAck { .. }));
+        let ack_idx = messages
+            .iter()
+            .position(|m| matches!(m, ServerToClient::SpawnAck { .. }));
         let sc_idx = messages.iter().position(|m| {
-            matches!(m, ServerToClient::SessionStateChanged { new_state: monocle_ipc::types::SessionState::Launching, .. })
+            matches!(
+                m,
+                ServerToClient::SessionStateChanged {
+                    new_state: monocle_ipc::types::SessionState::Launching,
+                    ..
+                }
+            )
         });
 
         assert!(
@@ -2806,9 +2829,9 @@ mod tests {
         );
 
         // Error with code "binary_not_found" must be sent.
-        let has_binary_not_found_error = messages.iter().any(|m| {
-            matches!(m, ServerToClient::Error { code, .. } if code == "binary_not_found")
-        });
+        let has_binary_not_found_error = messages
+            .iter()
+            .any(|m| matches!(m, ServerToClient::Error { code, .. } if code == "binary_not_found"));
         assert!(
             has_binary_not_found_error,
             "AC-001/BLOCKER-001: ServerToClient::Error{{code:\"binary_not_found\"}} must be sent on BinaryNotFound error path"
@@ -2839,8 +2862,8 @@ mod tests {
     /// AC-010: post-spawn monitor drives the Launching→Running transition.
     #[tokio::test]
     async fn test_BC_2_08_001_post_spawn_monitor_transitions_launching_to_running() {
-        use tokio::net::UnixListener;
         use tokio::io::AsyncWriteExt;
+        use tokio::net::UnixListener;
 
         let tmp = tempfile::tempdir().expect("tempdir");
 
@@ -2984,7 +3007,10 @@ mod tests {
         };
 
         // schema_version must be 3.
-        assert_eq!(daemon_write.schema_version, 3, "Ruling B: schema_version must be 3");
+        assert_eq!(
+            daemon_write.schema_version, 3,
+            "Ruling B: schema_version must be 3"
+        );
         // child_pid must be None in daemon's initial write.
         assert!(
             daemon_write.child_pid.is_none(),
@@ -3058,7 +3084,10 @@ mod tests {
         let sidecar: monocle_ipc::types::SessionSidecarV3 =
             serde_json::from_str(v2_json).expect("v2 sidecar must parse as SessionSidecarV3");
 
-        assert_eq!(sidecar.schema_version, 2, "schema_version must be 2 from v2 JSON");
+        assert_eq!(
+            sidecar.schema_version, 2,
+            "schema_version must be 2 from v2 JSON"
+        );
         assert_eq!(
             sidecar.child_pid,
             Some(10000),
@@ -3166,8 +3195,7 @@ mod tests {
         let sidecar_json =
             std::fs::read_to_string(&sidecar_path).expect("sidecar must be readable");
         let sidecar: monocle_ipc::types::SessionSidecarV3 =
-            serde_json::from_str(&sidecar_json)
-                .expect("sidecar must parse as SessionSidecarV3");
+            serde_json::from_str(&sidecar_json).expect("sidecar must parse as SessionSidecarV3");
         assert!(
             sidecar.child_pid.is_some(),
             "Ruling A: session-host must overwrite sidecar with child_pid: Some(pid)"
@@ -3184,16 +3212,14 @@ mod tests {
             .expect("must connect to session-host UDS");
 
         let mut len_buf = [0u8; 4];
-        let msg_received = tokio::time::timeout(
-            std::time::Duration::from_secs(5),
-            async {
-                conn.read_exact(&mut len_buf).await?;
-                let len = u32::from_le_bytes(len_buf) as usize;
-                let mut body = vec![0u8; len];
-                conn.read_exact(&mut body).await?;
-                Ok::<Vec<u8>, std::io::Error>(body)
-            }
-        ).await;
+        let msg_received = tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            conn.read_exact(&mut len_buf).await?;
+            let len = u32::from_le_bytes(len_buf) as usize;
+            let mut body = vec![0u8; len];
+            conn.read_exact(&mut body).await?;
+            Ok::<Vec<u8>, std::io::Error>(body)
+        })
+        .await;
 
         match msg_received {
             Ok(Ok(body)) => {
@@ -3215,7 +3241,10 @@ mod tests {
                     new_state
                 );
             }
-            Ok(Err(e)) => panic!("Ruling A: failed to read message from session-host UDS: {}", e),
+            Ok(Err(e)) => panic!(
+                "Ruling A: failed to read message from session-host UDS: {}",
+                e
+            ),
             Err(_) => panic!("Ruling A: timeout waiting for StateChanged from session-host (5s)"),
         }
 
@@ -3579,12 +3608,8 @@ mod tests {
         let entry = monocle_ipc::server::ClientEntry::new(tx.clone());
         let subs: monocle_ipc::server::SubscriberList = Arc::new(Mutex::new(vec![entry]));
         let broker = Arc::new(Arc::clone(&subs));
-        let session_manager = SessionManager::new(
-            tmp.path().to_path_buf(),
-            spawner,
-            broker.clone(),
-            engine,
-        );
+        let session_manager =
+            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
         let mut state = crate::state::DaemonState::new();
         state.session_manager = Some(tokio::sync::Mutex::new(session_manager));
 
@@ -3623,12 +3648,15 @@ mod tests {
 
         // SpawnAck must have been sent (even before the error).
         assert!(
-            messages.iter().any(|m| matches!(m, ServerToClient::SpawnAck { .. })),
+            messages
+                .iter()
+                .any(|m| matches!(m, ServerToClient::SpawnAck { .. })),
             "EC-152/IPC: SpawnAck must be sent before any collision error"
         );
         // If a collision error occurs, it must use the correct code.
-        if let Some(ServerToClient::Error { code, .. }) =
-            messages.iter().find(|m| matches!(m, ServerToClient::Error { .. }))
+        if let Some(ServerToClient::Error { code, .. }) = messages
+            .iter()
+            .find(|m| matches!(m, ServerToClient::Error { .. }))
         {
             assert_eq!(
                 code, "session_id_collision",

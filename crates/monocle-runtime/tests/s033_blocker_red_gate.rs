@@ -36,9 +36,9 @@
 //! | test_BC_2_08_001_MED004_degraded_env_sets_session_degraded | MED-004 | post_spawn_monitor ignores degraded_env in StateChanged match arm |
 //! | test_BC_2_08_001_MED001_real_session_host_reaches_running | MED-001 | replaces the skip-on-absence version; exercises real binary end-to-end |
 
-use monocle_runtime::lifecycle::daemon_start_sequence;
-use monocle_runtime::session_manager::{SessionHostSpawner, SpawnedHostHandle, SessionError};
 use monocle_core::engine::SpawnRecipe;
+use monocle_runtime::lifecycle::daemon_start_sequence;
+use monocle_runtime::session_manager::{SessionError, SessionHostSpawner, SpawnedHostHandle};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -79,8 +79,7 @@ fn isolated_runtime_dir() -> tempfile::TempDir {
 /// test binary.  Built by `cargo build --workspace`; MUST exist in CI.
 /// Hard-fails (panics) if absent — no silent skip.
 fn find_session_host_bin() -> PathBuf {
-    let exe = std::env::current_exe()
-        .expect("current_exe() must succeed in test environment");
+    let exe = std::env::current_exe().expect("current_exe() must succeed in test environment");
     let bin_dir = exe
         .parent()
         .expect("test binary must have a parent directory");
@@ -144,9 +143,9 @@ async fn test_BC_2_08_001_B001_production_wiring_session_manager_some() {
 ///   SessionStateChanged broadcast → subscriber receives it on `state.ipc_subscribers`.
 #[tokio::test]
 async fn test_BC_2_08_001_B002_production_broker_receives_state_changed() {
+    use monocle_core::engine::SpawnOptions;
     use monocle_ipc::server::{ClientEntry, CLIENT_CHANNEL_CAPACITY};
     use monocle_ipc::types::{ServerToClient, SessionState};
-    use monocle_core::engine::SpawnOptions;
 
     let tmp = isolated_runtime_dir();
 
@@ -186,25 +185,19 @@ async fn test_BC_2_08_001_B002_production_broker_receives_state_changed() {
         .expect("B-002: spawn_session must succeed");
 
     // The subscriber on the daemon's REAL ipc_subscribers MUST receive SessionStateChanged{Launching}.
-    let msg = tokio::time::timeout(
-        std::time::Duration::from_secs(2),
-        tui_rx.recv(),
-    )
-    .await
-    .expect("B-002: timed out waiting for SessionStateChanged{Launching} on ipc_subscribers")
-    .expect("B-002: ipc_subscribers channel closed before message received");
+    let msg = tokio::time::timeout(std::time::Duration::from_secs(2), tui_rx.recv())
+        .await
+        .expect("B-002: timed out waiting for SessionStateChanged{Launching} on ipc_subscribers")
+        .expect("B-002: ipc_subscribers channel closed before message received");
 
     match msg {
         ServerToClient::SpawnAck { .. } => {
             // SpawnAck goes only to the requesting client, not broadcast. But we are
             // checking broadcast path here. Drain SpawnAck and check next message.
-            let next = tokio::time::timeout(
-                std::time::Duration::from_secs(2),
-                tui_rx.recv(),
-            )
-            .await
-            .expect("B-002: timed out waiting for SessionStateChanged after SpawnAck")
-            .expect("B-002: channel closed before SessionStateChanged received");
+            let next = tokio::time::timeout(std::time::Duration::from_secs(2), tui_rx.recv())
+                .await
+                .expect("B-002: timed out waiting for SessionStateChanged after SpawnAck")
+                .expect("B-002: channel closed before SessionStateChanged received");
             assert!(
                 matches!(
                     next,
@@ -337,8 +330,8 @@ async fn test_BC_2_08_001_B002_production_sidecar_path_under_daemon_runtime_dir(
 /// documents that gap and fails by asserting the seam exists.
 #[tokio::test]
 async fn test_BC_2_08_001_B003_peercred_mismatch_terminates_session() {
-    use monocle_ipc::types::ServerToClient;
     use monocle_ipc::server::{ClientEntry, CLIENT_CHANNEL_CAPACITY};
+    use monocle_ipc::types::ServerToClient;
 
     // B-003 requires a UID-injection seam in post_spawn_monitor. Currently none exists.
     // This test verifies the contract by:
@@ -357,14 +350,12 @@ async fn test_BC_2_08_001_B003_peercred_mismatch_terminates_session() {
     let socket_path = tmp.path().join("b003-test-peer.sock");
 
     // Bind a server socket on the test side.
-    let listener = tokio::net::UnixListener::bind(&socket_path)
-        .expect("B-003: bind test UDS socket");
+    let listener =
+        tokio::net::UnixListener::bind(&socket_path).expect("B-003: bind test UDS socket");
 
     // Build a SessionManager with a spawner that returns our socket path.
-    use monocle_runtime::session_manager::{
-        SessionManager,
-    };
     use monocle_core::engine::SpawnRecipe;
+    use monocle_runtime::session_manager::SessionManager;
 
     struct FixedSocketSpawner {
         pid: u32,
@@ -390,19 +381,35 @@ async fn test_BC_2_08_001_B003_peercred_mismatch_terminates_session() {
 
     #[async_trait::async_trait]
     impl monocle_core::engine::EngineModule for SucceedingEngine {
-        fn id(&self) -> &'static str { "b003-engine" }
-        fn metadata(&self) -> Result<monocle_core::engine::EngineMetadata, monocle_core::engine::EngineMetadataError> {
+        fn id(&self) -> &'static str {
+            "b003-engine"
+        }
+        fn metadata(
+            &self,
+        ) -> Result<monocle_core::engine::EngineMetadata, monocle_core::engine::EngineMetadataError>
+        {
             unimplemented!()
         }
-        fn detect(&self, _: &monocle_core::engine::ProcessSnapshot) -> bool { false }
-        async fn enrich(&self, _: &monocle_core::engine::ProcessSnapshot)
-            -> Result<monocle_core::engine::EnrichedSession, monocle_core::engine::EngineMetadataError> {
+        fn detect(&self, _: &monocle_core::engine::ProcessSnapshot) -> bool {
+            false
+        }
+        async fn enrich(
+            &self,
+            _: &monocle_core::engine::ProcessSnapshot,
+        ) -> Result<monocle_core::engine::EnrichedSession, monocle_core::engine::EngineMetadataError>
+        {
             unimplemented!()
         }
-        async fn on_hook(&self, _: monocle_core::hook_events::HookEvent)
-            -> monocle_core::engine::HookResponse { unimplemented!() }
-        fn spawn_recipe(&self, opts: &monocle_core::engine::SpawnOptions)
-            -> Result<SpawnRecipe, monocle_core::engine::EngineError> {
+        async fn on_hook(
+            &self,
+            _: monocle_core::hook_events::HookEvent,
+        ) -> monocle_core::engine::HookResponse {
+            unimplemented!()
+        }
+        fn spawn_recipe(
+            &self,
+            opts: &monocle_core::engine::SpawnOptions,
+        ) -> Result<SpawnRecipe, monocle_core::engine::EngineError> {
             Ok(SpawnRecipe::new(
                 PathBuf::from("claude"),
                 vec![],
@@ -417,8 +424,7 @@ async fn test_BC_2_08_001_B003_peercred_mismatch_terminates_session() {
         socket_path: socket_path.clone(),
     });
 
-    let inner_subs: monocle_ipc::server::SubscriberList =
-        Arc::new(tokio::sync::Mutex::new(vec![]));
+    let inner_subs: monocle_ipc::server::SubscriberList = Arc::new(tokio::sync::Mutex::new(vec![]));
     let broker = Arc::new(Arc::clone(&inner_subs));
 
     let (tui_tx, mut tui_rx) =
@@ -439,20 +445,21 @@ async fn test_BC_2_08_001_B003_peercred_mismatch_terminates_session() {
         "claude-code".to_string(),
         "default".to_string(),
         None,
-    ).with_daemon_fields(session_id.clone(), tmp.path().join("hooks-settings.json"));
+    )
+    .with_daemon_fields(session_id.clone(), tmp.path().join("hooks-settings.json"));
 
-    manager.spawn_session(opts).await
+    manager
+        .spawn_session(opts)
+        .await
         .expect("B-003: spawn_session must succeed");
 
     // Drain the Launching broadcasts.
     // Accept the connection from post_spawn_monitor.
-    let (mut peer, _addr) = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        listener.accept(),
-    )
-    .await
-    .expect("B-003: timed out waiting for post_spawn_monitor to connect")
-    .expect("B-003: accept failed");
+    let (mut peer, _addr) =
+        tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
+            .await
+            .expect("B-003: timed out waiting for post_spawn_monitor to connect")
+            .expect("B-003: accept failed");
 
     // B-003 requires the monitor to perform SO_PEERCRED check BEFORE reading any messages.
     // Since no UID check exists, we simulate a "malicious" peer by just being the connecting
@@ -525,16 +532,16 @@ async fn test_BC_2_08_001_B003_peercred_mismatch_terminates_session() {
 /// but once B-003 is fixed and a UID seam is added, this verifies the happy path.)
 #[tokio::test]
 async fn test_BC_2_08_001_B003_peercred_match_proceeds_to_running() {
-    use monocle_ipc::types::ServerToClient;
-    use monocle_ipc::server::{ClientEntry, CLIENT_CHANNEL_CAPACITY};
-    use monocle_runtime::session_manager::{SessionManager, SessionHostSpawner, SpawnedHostHandle};
     use monocle_core::engine::SpawnRecipe;
+    use monocle_ipc::server::{ClientEntry, CLIENT_CHANNEL_CAPACITY};
+    use monocle_ipc::types::ServerToClient;
+    use monocle_runtime::session_manager::{SessionHostSpawner, SessionManager, SpawnedHostHandle};
 
     let tmp = isolated_runtime_dir();
     let socket_path = tmp.path().join("b003b-test-peer.sock");
 
-    let listener = tokio::net::UnixListener::bind(&socket_path)
-        .expect("B-003b: bind test UDS socket");
+    let listener =
+        tokio::net::UnixListener::bind(&socket_path).expect("B-003b: bind test UDS socket");
 
     struct FixedSocketSpawner2 {
         pid: u32,
@@ -560,15 +567,35 @@ async fn test_BC_2_08_001_B003_peercred_match_proceeds_to_running() {
 
     #[async_trait::async_trait]
     impl monocle_core::engine::EngineModule for SucceedingEngine2 {
-        fn id(&self) -> &'static str { "b003b-engine" }
-        fn metadata(&self) -> Result<monocle_core::engine::EngineMetadata, monocle_core::engine::EngineMetadataError> { unimplemented!() }
-        fn detect(&self, _: &monocle_core::engine::ProcessSnapshot) -> bool { false }
-        async fn enrich(&self, _: &monocle_core::engine::ProcessSnapshot)
-            -> Result<monocle_core::engine::EnrichedSession, monocle_core::engine::EngineMetadataError> { unimplemented!() }
-        async fn on_hook(&self, _: monocle_core::hook_events::HookEvent)
-            -> monocle_core::engine::HookResponse { unimplemented!() }
-        fn spawn_recipe(&self, opts: &monocle_core::engine::SpawnOptions)
-            -> Result<SpawnRecipe, monocle_core::engine::EngineError> {
+        fn id(&self) -> &'static str {
+            "b003b-engine"
+        }
+        fn metadata(
+            &self,
+        ) -> Result<monocle_core::engine::EngineMetadata, monocle_core::engine::EngineMetadataError>
+        {
+            unimplemented!()
+        }
+        fn detect(&self, _: &monocle_core::engine::ProcessSnapshot) -> bool {
+            false
+        }
+        async fn enrich(
+            &self,
+            _: &monocle_core::engine::ProcessSnapshot,
+        ) -> Result<monocle_core::engine::EnrichedSession, monocle_core::engine::EngineMetadataError>
+        {
+            unimplemented!()
+        }
+        async fn on_hook(
+            &self,
+            _: monocle_core::hook_events::HookEvent,
+        ) -> monocle_core::engine::HookResponse {
+            unimplemented!()
+        }
+        fn spawn_recipe(
+            &self,
+            opts: &monocle_core::engine::SpawnOptions,
+        ) -> Result<SpawnRecipe, monocle_core::engine::EngineError> {
             Ok(SpawnRecipe::new(
                 PathBuf::from("claude"),
                 vec![],
@@ -583,8 +610,7 @@ async fn test_BC_2_08_001_B003_peercred_match_proceeds_to_running() {
         socket_path: socket_path.clone(),
     });
 
-    let inner_subs: monocle_ipc::server::SubscriberList =
-        Arc::new(tokio::sync::Mutex::new(vec![]));
+    let inner_subs: monocle_ipc::server::SubscriberList = Arc::new(tokio::sync::Mutex::new(vec![]));
     let broker = Arc::new(Arc::clone(&inner_subs));
 
     let (tui_tx, mut tui_rx) =
@@ -605,18 +631,20 @@ async fn test_BC_2_08_001_B003_peercred_match_proceeds_to_running() {
         "claude-code".to_string(),
         "default".to_string(),
         None,
-    ).with_daemon_fields(session_id.clone(), tmp.path().join("hooks-settings.json"));
+    )
+    .with_daemon_fields(session_id.clone(), tmp.path().join("hooks-settings.json"));
 
-    manager.spawn_session(opts).await.expect("B-003b: spawn_session must succeed");
+    manager
+        .spawn_session(opts)
+        .await
+        .expect("B-003b: spawn_session must succeed");
 
     // Accept connection from post_spawn_monitor (same UID — should proceed).
-    let (mut peer, _addr) = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        listener.accept(),
-    )
-    .await
-    .expect("B-003b: timed out waiting for monitor to connect")
-    .expect("B-003b: accept failed");
+    let (mut peer, _addr) =
+        tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
+            .await
+            .expect("B-003b: timed out waiting for monitor to connect")
+            .expect("B-003b: accept failed");
 
     // Send StateChanged{Running} — same UID, must proceed to Running.
     use tokio::io::AsyncWriteExt;
@@ -633,7 +661,9 @@ async fn test_BC_2_08_001_B003_peercred_match_proceeds_to_running() {
     let mut found_running = false;
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(3);
     loop {
-        if tokio::time::Instant::now() >= deadline { break; }
+        if tokio::time::Instant::now() >= deadline {
+            break;
+        }
         match tokio::time::timeout(std::time::Duration::from_millis(300), tui_rx.recv()).await {
             Ok(Some(ServerToClient::SessionStateChanged {
                 session_id: ref sid,
@@ -692,32 +722,49 @@ async fn test_BC_2_08_001_B003_peercred_match_proceeds_to_running() {
 /// expects `spawn_session` to use `monocle_ipc::types::SessionSidecarV3` exclusively.
 #[tokio::test]
 async fn test_BC_2_08_001_B004_sidecar_on_disk_deserializes_as_v3() {
-    use monocle_runtime::session_manager::SessionManager;
     use monocle_ipc::types::{SessionSidecarV3, SessionState};
+    use monocle_runtime::session_manager::SessionManager;
 
     let tmp = isolated_runtime_dir();
 
-    let inner_subs: monocle_ipc::server::SubscriberList =
-        Arc::new(tokio::sync::Mutex::new(vec![]));
+    let inner_subs: monocle_ipc::server::SubscriberList = Arc::new(tokio::sync::Mutex::new(vec![]));
     let broker = Arc::new(Arc::clone(&inner_subs));
 
-    let spawner: Arc<dyn SessionHostSpawner> = Arc::new(AlwaysSucceedSpawner {
-        fake_pid: 77_004,
-    });
+    let spawner: Arc<dyn SessionHostSpawner> = Arc::new(AlwaysSucceedSpawner { fake_pid: 77_004 });
 
     struct SucceedingEngine3;
 
     #[async_trait::async_trait]
     impl monocle_core::engine::EngineModule for SucceedingEngine3 {
-        fn id(&self) -> &'static str { "b004-engine" }
-        fn metadata(&self) -> Result<monocle_core::engine::EngineMetadata, monocle_core::engine::EngineMetadataError> { unimplemented!() }
-        fn detect(&self, _: &monocle_core::engine::ProcessSnapshot) -> bool { false }
-        async fn enrich(&self, _: &monocle_core::engine::ProcessSnapshot)
-            -> Result<monocle_core::engine::EnrichedSession, monocle_core::engine::EngineMetadataError> { unimplemented!() }
-        async fn on_hook(&self, _: monocle_core::hook_events::HookEvent)
-            -> monocle_core::engine::HookResponse { unimplemented!() }
-        fn spawn_recipe(&self, opts: &monocle_core::engine::SpawnOptions)
-            -> Result<monocle_core::engine::SpawnRecipe, monocle_core::engine::EngineError> {
+        fn id(&self) -> &'static str {
+            "b004-engine"
+        }
+        fn metadata(
+            &self,
+        ) -> Result<monocle_core::engine::EngineMetadata, monocle_core::engine::EngineMetadataError>
+        {
+            unimplemented!()
+        }
+        fn detect(&self, _: &monocle_core::engine::ProcessSnapshot) -> bool {
+            false
+        }
+        async fn enrich(
+            &self,
+            _: &monocle_core::engine::ProcessSnapshot,
+        ) -> Result<monocle_core::engine::EnrichedSession, monocle_core::engine::EngineMetadataError>
+        {
+            unimplemented!()
+        }
+        async fn on_hook(
+            &self,
+            _: monocle_core::hook_events::HookEvent,
+        ) -> monocle_core::engine::HookResponse {
+            unimplemented!()
+        }
+        fn spawn_recipe(
+            &self,
+            opts: &monocle_core::engine::SpawnOptions,
+        ) -> Result<monocle_core::engine::SpawnRecipe, monocle_core::engine::EngineError> {
             Ok(monocle_core::engine::SpawnRecipe::new(
                 PathBuf::from("claude"),
                 vec![],
@@ -741,15 +788,21 @@ async fn test_BC_2_08_001_B004_sidecar_on_disk_deserializes_as_v3() {
         "claude-code".to_string(),
         "default".to_string(),
         None,
-    ).with_daemon_fields(session_id.clone(), tmp.path().join("hooks-settings.json"));
+    )
+    .with_daemon_fields(session_id.clone(), tmp.path().join("hooks-settings.json"));
 
-    manager.spawn_session(opts).await.expect("B-004: spawn_session must succeed");
+    manager
+        .spawn_session(opts)
+        .await
+        .expect("B-004: spawn_session must succeed");
 
     let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
-    assert!(sidecar_path.exists(), "B-004: sidecar must have been written");
+    assert!(
+        sidecar_path.exists(),
+        "B-004: sidecar must have been written"
+    );
 
-    let contents = std::fs::read_to_string(&sidecar_path)
-        .expect("B-004: sidecar must be readable");
+    let contents = std::fs::read_to_string(&sidecar_path).expect("B-004: sidecar must be readable");
 
     // PRIMARY ASSERTION: the on-disk sidecar MUST deserialize as SessionSidecarV3.
     // If the daemon wrote using the ad-hoc SessionSidecar (state: String), the JSON
@@ -787,9 +840,10 @@ async fn test_BC_2_08_001_B004_sidecar_on_disk_deserializes_as_v3() {
     // Since Rust does not allow runtime "was this type used?" checks, we assert the
     // BEHAVIORAL CONTRACT that only SessionSidecarV3 satisfies: the `state` field
     // must be one of the SessionState variants (not an arbitrary String).
-    let v3: SessionSidecarV3 = serde_json::from_str(&contents)
-        .expect("B-004: on-disk sidecar MUST be deserializable as monocle_ipc::SessionSidecarV3. \
-                 If this fails, the daemon wrote an incompatible format.");
+    let v3: SessionSidecarV3 = serde_json::from_str(&contents).expect(
+        "B-004: on-disk sidecar MUST be deserializable as monocle_ipc::SessionSidecarV3. \
+                 If this fails, the daemon wrote an incompatible format.",
+    );
 
     assert_eq!(
         v3.state,
@@ -807,19 +861,27 @@ async fn test_BC_2_08_001_B004_sidecar_on_disk_deserializes_as_v3() {
     // We assert that the write path in spawn_session() does NOT accept a state value
     // that is NOT a valid SessionState variant. We do this by checking that the raw
     // JSON `state` value is exactly one of the canonical variant strings.
-    let raw: serde_json::Value = serde_json::from_str(&contents)
-        .expect("B-004: sidecar must be valid JSON");
-    let state_str = raw.get("state")
+    let raw: serde_json::Value =
+        serde_json::from_str(&contents).expect("B-004: sidecar must be valid JSON");
+    let state_str = raw
+        .get("state")
         .and_then(|v| v.as_str())
         .expect("B-004: sidecar must have a 'state' field as a string");
 
     // SessionState canonical variant strings (from monocle_ipc SessionState enum).
-    let valid_states = ["Launching", "Running", "Detached", "Terminating", "Terminated"];
+    let valid_states = [
+        "Launching",
+        "Running",
+        "Detached",
+        "Terminating",
+        "Terminated",
+    ];
     assert!(
         valid_states.contains(&state_str),
         "B-004: sidecar 'state' field '{}' is not a valid SessionState variant {:?}. \
          The daemon write path must use monocle_ipc::SessionSidecarV3 exclusively.",
-        state_str, valid_states
+        state_str,
+        valid_states
     );
 
     // B-004 STRUCTURAL FAILURE ASSERTION:
@@ -897,13 +959,12 @@ async fn test_BC_2_08_001_B004_sidecar_on_disk_deserializes_as_v3() {
 /// behavior and fails.
 #[tokio::test]
 async fn test_BC_2_08_001_B005_daemon_owned_fields_preserved_after_host_overwrite() {
-    use monocle_runtime::session_manager::SessionManager;
-    use monocle_ipc::types::ServerToClient;
     use monocle_ipc::server::{ClientEntry, CLIENT_CHANNEL_CAPACITY};
+    use monocle_ipc::types::ServerToClient;
+    use monocle_runtime::session_manager::SessionManager;
 
     let tmp = isolated_runtime_dir();
-    let (tui_tx, _tui_rx) =
-        tokio::sync::mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+    let (tui_tx, _tui_rx) = tokio::sync::mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
 
     let inner_subs: monocle_ipc::server::SubscriberList =
         Arc::new(tokio::sync::Mutex::new(vec![ClientEntry::new(tui_tx)]));
@@ -911,19 +972,45 @@ async fn test_BC_2_08_001_B005_daemon_owned_fields_preserved_after_host_overwrit
     struct SucceedingEngine4;
     #[async_trait::async_trait]
     impl monocle_core::engine::EngineModule for SucceedingEngine4 {
-        fn id(&self) -> &'static str { "b005-engine" }
-        fn metadata(&self) -> Result<monocle_core::engine::EngineMetadata, monocle_core::engine::EngineMetadataError> { unimplemented!() }
-        fn detect(&self, _: &monocle_core::engine::ProcessSnapshot) -> bool { false }
-        async fn enrich(&self, _: &monocle_core::engine::ProcessSnapshot) -> Result<monocle_core::engine::EnrichedSession, monocle_core::engine::EngineMetadataError> { unimplemented!() }
-        async fn on_hook(&self, _: monocle_core::hook_events::HookEvent) -> monocle_core::engine::HookResponse { unimplemented!() }
-        fn spawn_recipe(&self, opts: &monocle_core::engine::SpawnOptions) -> Result<monocle_core::engine::SpawnRecipe, monocle_core::engine::EngineError> {
-            Ok(monocle_core::engine::SpawnRecipe::new(PathBuf::from("claude"), vec![], std::collections::HashMap::new(), opts.worktree_root.clone()))
+        fn id(&self) -> &'static str {
+            "b005-engine"
+        }
+        fn metadata(
+            &self,
+        ) -> Result<monocle_core::engine::EngineMetadata, monocle_core::engine::EngineMetadataError>
+        {
+            unimplemented!()
+        }
+        fn detect(&self, _: &monocle_core::engine::ProcessSnapshot) -> bool {
+            false
+        }
+        async fn enrich(
+            &self,
+            _: &monocle_core::engine::ProcessSnapshot,
+        ) -> Result<monocle_core::engine::EnrichedSession, monocle_core::engine::EngineMetadataError>
+        {
+            unimplemented!()
+        }
+        async fn on_hook(
+            &self,
+            _: monocle_core::hook_events::HookEvent,
+        ) -> monocle_core::engine::HookResponse {
+            unimplemented!()
+        }
+        fn spawn_recipe(
+            &self,
+            opts: &monocle_core::engine::SpawnOptions,
+        ) -> Result<monocle_core::engine::SpawnRecipe, monocle_core::engine::EngineError> {
+            Ok(monocle_core::engine::SpawnRecipe::new(
+                PathBuf::from("claude"),
+                vec![],
+                std::collections::HashMap::new(),
+                opts.worktree_root.clone(),
+            ))
         }
     }
 
-    let spawner: Arc<dyn SessionHostSpawner> = Arc::new(AlwaysSucceedSpawner {
-        fake_pid: 77_005,
-    });
+    let spawner: Arc<dyn SessionHostSpawner> = Arc::new(AlwaysSucceedSpawner { fake_pid: 77_005 });
 
     let broker = Arc::new(Arc::clone(&inner_subs));
     let mut manager = SessionManager::new(
@@ -940,15 +1027,19 @@ async fn test_BC_2_08_001_B005_daemon_owned_fields_preserved_after_host_overwrit
         "claude-code".to_string(),
         "default".to_string(),
         None,
-    ).with_daemon_fields(session_id.clone(), tmp.path().join("hooks-settings.json"));
+    )
+    .with_daemon_fields(session_id.clone(), tmp.path().join("hooks-settings.json"));
 
-    manager.spawn_session(opts).await.expect("B-005: spawn_session must succeed");
+    manager
+        .spawn_session(opts)
+        .await
+        .expect("B-005: spawn_session must succeed");
 
     let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
     let original_contents = std::fs::read_to_string(&sidecar_path)
         .expect("B-005: sidecar must have been written by spawn_session");
-    let original: serde_json::Value = serde_json::from_str(&original_contents)
-        .expect("B-005: sidecar must parse as JSON");
+    let original: serde_json::Value =
+        serde_json::from_str(&original_contents).expect("B-005: sidecar must parse as JSON");
 
     let daemon_project_root = original["project_root"].as_str().unwrap_or("").to_string();
     let daemon_harness_id = original["harness_id"].as_str().unwrap_or("").to_string();
@@ -985,8 +1076,8 @@ async fn test_BC_2_08_001_B005_daemon_owned_fields_preserved_after_host_overwrit
     // The test fails because no merge happens — the host's clobbered values remain.
     let final_contents = std::fs::read_to_string(&sidecar_path)
         .expect("B-005: sidecar must be readable after host overwrite");
-    let final_json: serde_json::Value = serde_json::from_str(&final_contents)
-        .expect("B-005: final sidecar must parse");
+    let final_json: serde_json::Value =
+        serde_json::from_str(&final_contents).expect("B-005: final sidecar must parse");
 
     // These assertions will FAIL because the daemon does not restore daemon-owned fields.
     assert_eq!(
@@ -1041,16 +1132,16 @@ async fn test_BC_2_08_001_B005_daemon_owned_fields_preserved_after_host_overwrit
 /// it leaves the session in.
 #[tokio::test]
 async fn test_BC_2_08_001_HIGH001_host_conn_is_some_after_running() {
-    use monocle_ipc::types::ServerToClient;
-    use monocle_ipc::server::{ClientEntry, CLIENT_CHANNEL_CAPACITY};
-    use monocle_runtime::session_manager::{SessionManager, SessionHostSpawner, SpawnedHostHandle};
     use monocle_core::engine::SpawnRecipe;
+    use monocle_ipc::server::{ClientEntry, CLIENT_CHANNEL_CAPACITY};
+    use monocle_ipc::types::ServerToClient;
+    use monocle_runtime::session_manager::{SessionHostSpawner, SessionManager, SpawnedHostHandle};
 
     let tmp = isolated_runtime_dir();
     let socket_path = tmp.path().join("high001-test.sock");
 
-    let listener = tokio::net::UnixListener::bind(&socket_path)
-        .expect("HIGH-001: bind test UDS socket");
+    let listener =
+        tokio::net::UnixListener::bind(&socket_path).expect("HIGH-001: bind test UDS socket");
 
     struct FixedSocketSpawnerH1 {
         socket_path: PathBuf,
@@ -1058,27 +1149,61 @@ async fn test_BC_2_08_001_HIGH001_host_conn_is_some_after_running() {
 
     #[async_trait::async_trait]
     impl SessionHostSpawner for FixedSocketSpawnerH1 {
-        async fn spawn(&self, _session_id: &str, _recipe: &SpawnRecipe, _runtime_dir: &std::path::Path)
-            -> Result<SpawnedHostHandle, monocle_runtime::session_manager::SessionError> {
-            Ok(SpawnedHostHandle { pid: 88_001, socket_path: self.socket_path.clone() })
+        async fn spawn(
+            &self,
+            _session_id: &str,
+            _recipe: &SpawnRecipe,
+            _runtime_dir: &std::path::Path,
+        ) -> Result<SpawnedHostHandle, monocle_runtime::session_manager::SessionError> {
+            Ok(SpawnedHostHandle {
+                pid: 88_001,
+                socket_path: self.socket_path.clone(),
+            })
         }
     }
 
     struct SucceedingEngineH1;
     #[async_trait::async_trait]
     impl monocle_core::engine::EngineModule for SucceedingEngineH1 {
-        fn id(&self) -> &'static str { "h001-engine" }
-        fn metadata(&self) -> Result<monocle_core::engine::EngineMetadata, monocle_core::engine::EngineMetadataError> { unimplemented!() }
-        fn detect(&self, _: &monocle_core::engine::ProcessSnapshot) -> bool { false }
-        async fn enrich(&self, _: &monocle_core::engine::ProcessSnapshot) -> Result<monocle_core::engine::EnrichedSession, monocle_core::engine::EngineMetadataError> { unimplemented!() }
-        async fn on_hook(&self, _: monocle_core::hook_events::HookEvent) -> monocle_core::engine::HookResponse { unimplemented!() }
-        fn spawn_recipe(&self, opts: &monocle_core::engine::SpawnOptions) -> Result<SpawnRecipe, monocle_core::engine::EngineError> {
-            Ok(SpawnRecipe::new(PathBuf::from("claude"), vec![], std::collections::HashMap::new(), opts.worktree_root.clone()))
+        fn id(&self) -> &'static str {
+            "h001-engine"
+        }
+        fn metadata(
+            &self,
+        ) -> Result<monocle_core::engine::EngineMetadata, monocle_core::engine::EngineMetadataError>
+        {
+            unimplemented!()
+        }
+        fn detect(&self, _: &monocle_core::engine::ProcessSnapshot) -> bool {
+            false
+        }
+        async fn enrich(
+            &self,
+            _: &monocle_core::engine::ProcessSnapshot,
+        ) -> Result<monocle_core::engine::EnrichedSession, monocle_core::engine::EngineMetadataError>
+        {
+            unimplemented!()
+        }
+        async fn on_hook(
+            &self,
+            _: monocle_core::hook_events::HookEvent,
+        ) -> monocle_core::engine::HookResponse {
+            unimplemented!()
+        }
+        fn spawn_recipe(
+            &self,
+            opts: &monocle_core::engine::SpawnOptions,
+        ) -> Result<SpawnRecipe, monocle_core::engine::EngineError> {
+            Ok(SpawnRecipe::new(
+                PathBuf::from("claude"),
+                vec![],
+                std::collections::HashMap::new(),
+                opts.worktree_root.clone(),
+            ))
         }
     }
 
-    let inner_subs: monocle_ipc::server::SubscriberList =
-        Arc::new(tokio::sync::Mutex::new(vec![]));
+    let inner_subs: monocle_ipc::server::SubscriberList = Arc::new(tokio::sync::Mutex::new(vec![]));
     let broker = Arc::new(Arc::clone(&inner_subs));
 
     let (tui_tx, mut tui_rx) =
@@ -1087,7 +1212,9 @@ async fn test_BC_2_08_001_HIGH001_host_conn_is_some_after_running() {
 
     let mut manager = SessionManager::new(
         tmp.path().to_path_buf(),
-        Arc::new(FixedSocketSpawnerH1 { socket_path: socket_path.clone() }),
+        Arc::new(FixedSocketSpawnerH1 {
+            socket_path: socket_path.clone(),
+        }),
         broker,
         Arc::new(SucceedingEngineH1),
     );
@@ -1099,17 +1226,20 @@ async fn test_BC_2_08_001_HIGH001_host_conn_is_some_after_running() {
         "claude-code".to_string(),
         "default".to_string(),
         None,
-    ).with_daemon_fields(session_id.clone(), tmp.path().join("hooks-settings.json"));
+    )
+    .with_daemon_fields(session_id.clone(), tmp.path().join("hooks-settings.json"));
 
-    manager.spawn_session(opts).await.expect("HIGH-001: spawn must succeed");
+    manager
+        .spawn_session(opts)
+        .await
+        .expect("HIGH-001: spawn must succeed");
 
     // Accept the monitor's connection.
-    let (mut peer, _addr) = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        listener.accept(),
-    ).await
-    .expect("HIGH-001: timed out waiting for monitor to connect")
-    .expect("HIGH-001: accept failed");
+    let (mut peer, _addr) =
+        tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
+            .await
+            .expect("HIGH-001: timed out waiting for monitor to connect")
+            .expect("HIGH-001: accept failed");
 
     // Send StateChanged{Running}.
     use tokio::io::AsyncWriteExt;
@@ -1126,11 +1256,17 @@ async fn test_BC_2_08_001_HIGH001_host_conn_is_some_after_running() {
     let mut reached_running = false;
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
     loop {
-        if tokio::time::Instant::now() >= deadline { break; }
+        if tokio::time::Instant::now() >= deadline {
+            break;
+        }
         match tokio::time::timeout(std::time::Duration::from_millis(300), tui_rx.recv()).await {
             Ok(Some(ServerToClient::SessionStateChanged {
-                new_state: monocle_ipc::types::SessionState::Running, ..
-            })) => { reached_running = true; break; }
+                new_state: monocle_ipc::types::SessionState::Running,
+                ..
+            })) => {
+                reached_running = true;
+                break;
+            }
             Ok(Some(_)) => {}
             Ok(None) | Err(_) => break,
         }
@@ -1161,10 +1297,8 @@ async fn test_BC_2_08_001_HIGH001_host_conn_is_some_after_running() {
     // Try to read from peer side with a short timeout.
     // If host_conn is None (writer dropped), we'll get EOF immediately.
     // If host_conn is Some (writer alive), we'll time out (no data written).
-    let read_result = tokio::time::timeout(
-        std::time::Duration::from_millis(300),
-        peer.read(&mut buf),
-    ).await;
+    let read_result =
+        tokio::time::timeout(std::time::Duration::from_millis(300), peer.read(&mut buf)).await;
 
     match read_result {
         Ok(Ok(0)) => {
@@ -1217,7 +1351,7 @@ async fn test_BC_2_08_001_HIGH001_host_conn_is_some_after_running() {
 #[tokio::test]
 async fn test_BC_2_08_001_HIGH002_missing_session_host_binary_maps_to_spawn_failed() {
     use monocle_runtime::session_manager::{
-        IpcOp, RealSessionHostSpawner, SessionError, SessionHostSpawner, session_error_to_code,
+        session_error_to_code, IpcOp, RealSessionHostSpawner, SessionError, SessionHostSpawner,
     };
 
     // Use a path that definitely does not exist.
@@ -1262,10 +1396,7 @@ async fn test_BC_2_08_001_HIGH002_missing_session_host_binary_maps_to_spawn_fail
             );
         }
         other => {
-            panic!(
-                "HIGH-002: expected Err(SpawnFailed), got {:?}",
-                other
-            );
+            panic!("HIGH-002: expected Err(SpawnFailed), got {:?}", other);
         }
     }
 
@@ -1295,41 +1426,77 @@ async fn test_BC_2_08_001_HIGH002_missing_session_host_binary_maps_to_spawn_fail
 /// have `state: "Running"`.
 #[tokio::test]
 async fn test_BC_2_08_001_HIGH003_sidecar_repersisted_with_running_state() {
-    use monocle_ipc::types::ServerToClient;
-    use monocle_ipc::server::{ClientEntry, CLIENT_CHANNEL_CAPACITY};
-    use monocle_runtime::session_manager::{SessionManager, SessionHostSpawner, SpawnedHostHandle};
     use monocle_core::engine::SpawnRecipe;
+    use monocle_ipc::server::{ClientEntry, CLIENT_CHANNEL_CAPACITY};
+    use monocle_ipc::types::ServerToClient;
+    use monocle_runtime::session_manager::{SessionHostSpawner, SessionManager, SpawnedHostHandle};
 
     let tmp = isolated_runtime_dir();
     let socket_path = tmp.path().join("high003-test.sock");
 
-    let listener = tokio::net::UnixListener::bind(&socket_path)
-        .expect("HIGH-003: bind test UDS socket");
+    let listener =
+        tokio::net::UnixListener::bind(&socket_path).expect("HIGH-003: bind test UDS socket");
 
-    struct FixedSocketSpawnerH3 { socket_path: PathBuf }
+    struct FixedSocketSpawnerH3 {
+        socket_path: PathBuf,
+    }
     #[async_trait::async_trait]
     impl SessionHostSpawner for FixedSocketSpawnerH3 {
-        async fn spawn(&self, _: &str, _: &SpawnRecipe, _: &std::path::Path)
-            -> Result<SpawnedHostHandle, monocle_runtime::session_manager::SessionError> {
-            Ok(SpawnedHostHandle { pid: 88_003, socket_path: self.socket_path.clone() })
+        async fn spawn(
+            &self,
+            _: &str,
+            _: &SpawnRecipe,
+            _: &std::path::Path,
+        ) -> Result<SpawnedHostHandle, monocle_runtime::session_manager::SessionError> {
+            Ok(SpawnedHostHandle {
+                pid: 88_003,
+                socket_path: self.socket_path.clone(),
+            })
         }
     }
 
     struct SucceedingEngineH3;
     #[async_trait::async_trait]
     impl monocle_core::engine::EngineModule for SucceedingEngineH3 {
-        fn id(&self) -> &'static str { "h003-engine" }
-        fn metadata(&self) -> Result<monocle_core::engine::EngineMetadata, monocle_core::engine::EngineMetadataError> { unimplemented!() }
-        fn detect(&self, _: &monocle_core::engine::ProcessSnapshot) -> bool { false }
-        async fn enrich(&self, _: &monocle_core::engine::ProcessSnapshot) -> Result<monocle_core::engine::EnrichedSession, monocle_core::engine::EngineMetadataError> { unimplemented!() }
-        async fn on_hook(&self, _: monocle_core::hook_events::HookEvent) -> monocle_core::engine::HookResponse { unimplemented!() }
-        fn spawn_recipe(&self, opts: &monocle_core::engine::SpawnOptions) -> Result<SpawnRecipe, monocle_core::engine::EngineError> {
-            Ok(SpawnRecipe::new(PathBuf::from("claude"), vec![], std::collections::HashMap::new(), opts.worktree_root.clone()))
+        fn id(&self) -> &'static str {
+            "h003-engine"
+        }
+        fn metadata(
+            &self,
+        ) -> Result<monocle_core::engine::EngineMetadata, monocle_core::engine::EngineMetadataError>
+        {
+            unimplemented!()
+        }
+        fn detect(&self, _: &monocle_core::engine::ProcessSnapshot) -> bool {
+            false
+        }
+        async fn enrich(
+            &self,
+            _: &monocle_core::engine::ProcessSnapshot,
+        ) -> Result<monocle_core::engine::EnrichedSession, monocle_core::engine::EngineMetadataError>
+        {
+            unimplemented!()
+        }
+        async fn on_hook(
+            &self,
+            _: monocle_core::hook_events::HookEvent,
+        ) -> monocle_core::engine::HookResponse {
+            unimplemented!()
+        }
+        fn spawn_recipe(
+            &self,
+            opts: &monocle_core::engine::SpawnOptions,
+        ) -> Result<SpawnRecipe, monocle_core::engine::EngineError> {
+            Ok(SpawnRecipe::new(
+                PathBuf::from("claude"),
+                vec![],
+                std::collections::HashMap::new(),
+                opts.worktree_root.clone(),
+            ))
         }
     }
 
-    let inner_subs: monocle_ipc::server::SubscriberList =
-        Arc::new(tokio::sync::Mutex::new(vec![]));
+    let inner_subs: monocle_ipc::server::SubscriberList = Arc::new(tokio::sync::Mutex::new(vec![]));
     let broker = Arc::new(Arc::clone(&inner_subs));
     let (tui_tx, mut tui_rx) =
         tokio::sync::mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
@@ -1337,7 +1504,9 @@ async fn test_BC_2_08_001_HIGH003_sidecar_repersisted_with_running_state() {
 
     let mut manager = SessionManager::new(
         tmp.path().to_path_buf(),
-        Arc::new(FixedSocketSpawnerH3 { socket_path: socket_path.clone() }),
+        Arc::new(FixedSocketSpawnerH3 {
+            socket_path: socket_path.clone(),
+        }),
         broker,
         Arc::new(SucceedingEngineH3),
     );
@@ -1349,9 +1518,13 @@ async fn test_BC_2_08_001_HIGH003_sidecar_repersisted_with_running_state() {
         "claude-code".to_string(),
         "default".to_string(),
         None,
-    ).with_daemon_fields(session_id.clone(), tmp.path().join("hooks-settings.json"));
+    )
+    .with_daemon_fields(session_id.clone(), tmp.path().join("hooks-settings.json"));
 
-    manager.spawn_session(opts).await.expect("HIGH-003: spawn must succeed");
+    manager
+        .spawn_session(opts)
+        .await
+        .expect("HIGH-003: spawn must succeed");
 
     let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
 
@@ -1359,16 +1532,18 @@ async fn test_BC_2_08_001_HIGH003_sidecar_repersisted_with_running_state() {
     {
         let contents = std::fs::read_to_string(&sidecar_path).expect("sidecar must exist");
         let v: serde_json::Value = serde_json::from_str(&contents).expect("parse JSON");
-        assert_eq!(v["state"], "Launching", "sidecar must be Launching after spawn");
+        assert_eq!(
+            v["state"], "Launching",
+            "sidecar must be Launching after spawn"
+        );
     }
 
     // Accept monitor connection, send StateChanged{Running}.
-    let (mut peer, _addr) = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        listener.accept(),
-    ).await
-    .expect("HIGH-003: timed out waiting for monitor to connect")
-    .expect("HIGH-003: accept failed");
+    let (mut peer, _addr) =
+        tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
+            .await
+            .expect("HIGH-003: timed out waiting for monitor to connect")
+            .expect("HIGH-003: accept failed");
 
     use tokio::io::AsyncWriteExt;
     let msg = monocle_ipc::types::HostToDaemon::StateChanged {
@@ -1384,11 +1559,17 @@ async fn test_BC_2_08_001_HIGH003_sidecar_repersisted_with_running_state() {
     let mut reached_running = false;
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
     loop {
-        if tokio::time::Instant::now() >= deadline { break; }
+        if tokio::time::Instant::now() >= deadline {
+            break;
+        }
         match tokio::time::timeout(std::time::Duration::from_millis(300), tui_rx.recv()).await {
             Ok(Some(ServerToClient::SessionStateChanged {
-                new_state: monocle_ipc::types::SessionState::Running, ..
-            })) => { reached_running = true; break; }
+                new_state: monocle_ipc::types::SessionState::Running,
+                ..
+            })) => {
+                reached_running = true;
+                break;
+            }
             Ok(Some(_)) => {}
             Ok(None) | Err(_) => break,
         }
@@ -1401,8 +1582,8 @@ async fn test_BC_2_08_001_HIGH003_sidecar_repersisted_with_running_state() {
     // HIGH-003 ASSERTION: sidecar must now have state:"Running".
     let contents = std::fs::read_to_string(&sidecar_path)
         .expect("HIGH-003: sidecar must still exist after Running transition");
-    let v: serde_json::Value = serde_json::from_str(&contents)
-        .expect("HIGH-003: sidecar must parse as JSON");
+    let v: serde_json::Value =
+        serde_json::from_str(&contents).expect("HIGH-003: sidecar must parse as JSON");
 
     assert_eq!(
         v["state"], "Running",
@@ -1443,25 +1624,50 @@ async fn test_BC_2_08_001_MED002_collision_retry_deterministic() {
     use monocle_runtime::session_manager::SessionManager;
 
     let tmp = isolated_runtime_dir();
-    let inner_subs: monocle_ipc::server::SubscriberList =
-        Arc::new(tokio::sync::Mutex::new(vec![]));
+    let inner_subs: monocle_ipc::server::SubscriberList = Arc::new(tokio::sync::Mutex::new(vec![]));
 
     struct SucceedingEngineM2;
     #[async_trait::async_trait]
     impl monocle_core::engine::EngineModule for SucceedingEngineM2 {
-        fn id(&self) -> &'static str { "m002-engine" }
-        fn metadata(&self) -> Result<monocle_core::engine::EngineMetadata, monocle_core::engine::EngineMetadataError> { unimplemented!() }
-        fn detect(&self, _: &monocle_core::engine::ProcessSnapshot) -> bool { false }
-        async fn enrich(&self, _: &monocle_core::engine::ProcessSnapshot) -> Result<monocle_core::engine::EnrichedSession, monocle_core::engine::EngineMetadataError> { unimplemented!() }
-        async fn on_hook(&self, _: monocle_core::hook_events::HookEvent) -> monocle_core::engine::HookResponse { unimplemented!() }
-        fn spawn_recipe(&self, opts: &monocle_core::engine::SpawnOptions) -> Result<monocle_core::engine::SpawnRecipe, monocle_core::engine::EngineError> {
-            Ok(monocle_core::engine::SpawnRecipe::new(PathBuf::from("claude"), vec![], std::collections::HashMap::new(), opts.worktree_root.clone()))
+        fn id(&self) -> &'static str {
+            "m002-engine"
+        }
+        fn metadata(
+            &self,
+        ) -> Result<monocle_core::engine::EngineMetadata, monocle_core::engine::EngineMetadataError>
+        {
+            unimplemented!()
+        }
+        fn detect(&self, _: &monocle_core::engine::ProcessSnapshot) -> bool {
+            false
+        }
+        async fn enrich(
+            &self,
+            _: &monocle_core::engine::ProcessSnapshot,
+        ) -> Result<monocle_core::engine::EnrichedSession, monocle_core::engine::EngineMetadataError>
+        {
+            unimplemented!()
+        }
+        async fn on_hook(
+            &self,
+            _: monocle_core::hook_events::HookEvent,
+        ) -> monocle_core::engine::HookResponse {
+            unimplemented!()
+        }
+        fn spawn_recipe(
+            &self,
+            opts: &monocle_core::engine::SpawnOptions,
+        ) -> Result<monocle_core::engine::SpawnRecipe, monocle_core::engine::EngineError> {
+            Ok(monocle_core::engine::SpawnRecipe::new(
+                PathBuf::from("claude"),
+                vec![],
+                std::collections::HashMap::new(),
+                opts.worktree_root.clone(),
+            ))
         }
     }
 
-    let spawner: Arc<dyn SessionHostSpawner> = Arc::new(AlwaysSucceedSpawner {
-        fake_pid: 77_002,
-    });
+    let spawner: Arc<dyn SessionHostSpawner> = Arc::new(AlwaysSucceedSpawner { fake_pid: 77_002 });
 
     let broker = Arc::new(Arc::clone(&inner_subs));
     let mut manager = SessionManager::new(
@@ -1479,9 +1685,13 @@ async fn test_BC_2_08_001_MED002_collision_retry_deterministic() {
         "claude-code".to_string(),
         "default".to_string(),
         None,
-    ).with_daemon_fields(collision_id.clone(), tmp.path().join("hooks-settings.json"));
+    )
+    .with_daemon_fields(collision_id.clone(), tmp.path().join("hooks-settings.json"));
 
-    manager.spawn_session(opts1).await.expect("MED-002: first spawn must succeed");
+    manager
+        .spawn_session(opts1)
+        .await
+        .expect("MED-002: first spawn must succeed");
 
     // MED-002 CONTRACT: when the IPC handler generates a UUID that collides with
     // an existing session_id, spawn_session() must:
@@ -1513,7 +1723,8 @@ async fn test_BC_2_08_001_MED002_collision_retry_deterministic() {
         "claude-code".to_string(),
         "default".to_string(),
         None,
-    ).with_daemon_fields(collision_id.clone(), tmp.path().join("hooks-settings.json"));
+    )
+    .with_daemon_fields(collision_id.clone(), tmp.path().join("hooks-settings.json"));
 
     let result2 = manager.spawn_session(opts2).await;
 
@@ -1570,41 +1781,77 @@ async fn test_BC_2_08_001_MED002_collision_retry_deterministic() {
 /// `degraded_reason: Some("HOME")`.
 #[tokio::test]
 async fn test_BC_2_08_001_MED004_degraded_env_sets_session_degraded() {
-    use monocle_ipc::types::{ServerToClient, SessionState};
-    use monocle_ipc::server::{ClientEntry, CLIENT_CHANNEL_CAPACITY};
-    use monocle_runtime::session_manager::{SessionManager, SessionHostSpawner, SpawnedHostHandle};
     use monocle_core::engine::SpawnRecipe;
+    use monocle_ipc::server::{ClientEntry, CLIENT_CHANNEL_CAPACITY};
+    use monocle_ipc::types::{ServerToClient, SessionState};
+    use monocle_runtime::session_manager::{SessionHostSpawner, SessionManager, SpawnedHostHandle};
 
     let tmp = isolated_runtime_dir();
     let socket_path = tmp.path().join("med004-test.sock");
 
-    let listener = tokio::net::UnixListener::bind(&socket_path)
-        .expect("MED-004: bind test UDS socket");
+    let listener =
+        tokio::net::UnixListener::bind(&socket_path).expect("MED-004: bind test UDS socket");
 
-    struct FixedSocketSpawnerM4 { socket_path: PathBuf }
+    struct FixedSocketSpawnerM4 {
+        socket_path: PathBuf,
+    }
     #[async_trait::async_trait]
     impl SessionHostSpawner for FixedSocketSpawnerM4 {
-        async fn spawn(&self, _: &str, _: &SpawnRecipe, _: &std::path::Path)
-            -> Result<SpawnedHostHandle, monocle_runtime::session_manager::SessionError> {
-            Ok(SpawnedHostHandle { pid: 88_004, socket_path: self.socket_path.clone() })
+        async fn spawn(
+            &self,
+            _: &str,
+            _: &SpawnRecipe,
+            _: &std::path::Path,
+        ) -> Result<SpawnedHostHandle, monocle_runtime::session_manager::SessionError> {
+            Ok(SpawnedHostHandle {
+                pid: 88_004,
+                socket_path: self.socket_path.clone(),
+            })
         }
     }
 
     struct SucceedingEngineM4;
     #[async_trait::async_trait]
     impl monocle_core::engine::EngineModule for SucceedingEngineM4 {
-        fn id(&self) -> &'static str { "m004-engine" }
-        fn metadata(&self) -> Result<monocle_core::engine::EngineMetadata, monocle_core::engine::EngineMetadataError> { unimplemented!() }
-        fn detect(&self, _: &monocle_core::engine::ProcessSnapshot) -> bool { false }
-        async fn enrich(&self, _: &monocle_core::engine::ProcessSnapshot) -> Result<monocle_core::engine::EnrichedSession, monocle_core::engine::EngineMetadataError> { unimplemented!() }
-        async fn on_hook(&self, _: monocle_core::hook_events::HookEvent) -> monocle_core::engine::HookResponse { unimplemented!() }
-        fn spawn_recipe(&self, opts: &monocle_core::engine::SpawnOptions) -> Result<SpawnRecipe, monocle_core::engine::EngineError> {
-            Ok(SpawnRecipe::new(PathBuf::from("claude"), vec![], std::collections::HashMap::new(), opts.worktree_root.clone()))
+        fn id(&self) -> &'static str {
+            "m004-engine"
+        }
+        fn metadata(
+            &self,
+        ) -> Result<monocle_core::engine::EngineMetadata, monocle_core::engine::EngineMetadataError>
+        {
+            unimplemented!()
+        }
+        fn detect(&self, _: &monocle_core::engine::ProcessSnapshot) -> bool {
+            false
+        }
+        async fn enrich(
+            &self,
+            _: &monocle_core::engine::ProcessSnapshot,
+        ) -> Result<monocle_core::engine::EnrichedSession, monocle_core::engine::EngineMetadataError>
+        {
+            unimplemented!()
+        }
+        async fn on_hook(
+            &self,
+            _: monocle_core::hook_events::HookEvent,
+        ) -> monocle_core::engine::HookResponse {
+            unimplemented!()
+        }
+        fn spawn_recipe(
+            &self,
+            opts: &monocle_core::engine::SpawnOptions,
+        ) -> Result<SpawnRecipe, monocle_core::engine::EngineError> {
+            Ok(SpawnRecipe::new(
+                PathBuf::from("claude"),
+                vec![],
+                std::collections::HashMap::new(),
+                opts.worktree_root.clone(),
+            ))
         }
     }
 
-    let inner_subs: monocle_ipc::server::SubscriberList =
-        Arc::new(tokio::sync::Mutex::new(vec![]));
+    let inner_subs: monocle_ipc::server::SubscriberList = Arc::new(tokio::sync::Mutex::new(vec![]));
     let broker = Arc::new(Arc::clone(&inner_subs));
     let (tui_tx, mut tui_rx) =
         tokio::sync::mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
@@ -1612,7 +1859,9 @@ async fn test_BC_2_08_001_MED004_degraded_env_sets_session_degraded() {
 
     let mut manager = SessionManager::new(
         tmp.path().to_path_buf(),
-        Arc::new(FixedSocketSpawnerM4 { socket_path: socket_path.clone() }),
+        Arc::new(FixedSocketSpawnerM4 {
+            socket_path: socket_path.clone(),
+        }),
         broker,
         Arc::new(SucceedingEngineM4),
     );
@@ -1624,17 +1873,20 @@ async fn test_BC_2_08_001_MED004_degraded_env_sets_session_degraded() {
         "claude-code".to_string(),
         "default".to_string(),
         None,
-    ).with_daemon_fields(session_id.clone(), tmp.path().join("hooks-settings.json"));
+    )
+    .with_daemon_fields(session_id.clone(), tmp.path().join("hooks-settings.json"));
 
-    manager.spawn_session(opts).await.expect("MED-004: spawn must succeed");
+    manager
+        .spawn_session(opts)
+        .await
+        .expect("MED-004: spawn must succeed");
 
     // Accept monitor connection.
-    let (mut peer, _addr) = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        listener.accept(),
-    ).await
-    .expect("MED-004: timed out waiting for monitor to connect")
-    .expect("MED-004: accept failed");
+    let (mut peer, _addr) =
+        tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
+            .await
+            .expect("MED-004: timed out waiting for monitor to connect")
+            .expect("MED-004: accept failed");
 
     // Send StateChanged{Running, degraded_env: Some(true)} indicating degraded environment.
     // NOTE: The implementation currently has degraded_env: Option<bool> (not Option<Vec<String>>
@@ -1655,11 +1907,17 @@ async fn test_BC_2_08_001_MED004_degraded_env_sets_session_degraded() {
     let mut reached_running = false;
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
     loop {
-        if tokio::time::Instant::now() >= deadline { break; }
+        if tokio::time::Instant::now() >= deadline {
+            break;
+        }
         match tokio::time::timeout(std::time::Duration::from_millis(300), tui_rx.recv()).await {
             Ok(Some(ServerToClient::SessionStateChanged {
-                new_state: SessionState::Running, ..
-            })) => { reached_running = true; break; }
+                new_state: SessionState::Running,
+                ..
+            })) => {
+                reached_running = true;
+                break;
+            }
             Ok(Some(_)) => {}
             Ok(None) | Err(_) => break,
         }
@@ -1671,7 +1929,8 @@ async fn test_BC_2_08_001_MED004_degraded_env_sets_session_degraded() {
 
     // MED-004 ASSERTION: session_list() must return degraded=true.
     let sessions = manager.session_list().await;
-    let snap = sessions.iter()
+    let snap = sessions
+        .iter()
         .find(|s| s.session_id == "med004-session")
         .expect("MED-004: session must be in registry");
 
@@ -1730,11 +1989,11 @@ async fn test_BC_2_08_001_MED004_degraded_env_sets_session_degraded() {
 /// `claude` while still exercising the full session-host lifecycle.
 #[tokio::test]
 async fn test_BC_2_08_001_MED001_real_session_host_reaches_running() {
-    use monocle_runtime::session_manager::{
-        RealSessionHostSpawner, SessionManager, SessionHostSpawner,
-    };
     use monocle_ipc::server::{ClientEntry, CLIENT_CHANNEL_CAPACITY};
     use monocle_ipc::types::{ServerToClient, SessionState};
+    use monocle_runtime::session_manager::{
+        RealSessionHostSpawner, SessionHostSpawner, SessionManager,
+    };
 
     // Hard-assert the binary exists (no skip).
     let session_host_bin = find_session_host_bin();
@@ -1749,13 +2008,35 @@ async fn test_BC_2_08_001_MED001_real_session_host_reaches_running() {
     struct SucceedingEngineM1;
     #[async_trait::async_trait]
     impl monocle_core::engine::EngineModule for SucceedingEngineM1 {
-        fn id(&self) -> &'static str { "m001-engine" }
-        fn metadata(&self) -> Result<monocle_core::engine::EngineMetadata, monocle_core::engine::EngineMetadataError> { unimplemented!() }
-        fn detect(&self, _: &monocle_core::engine::ProcessSnapshot) -> bool { false }
-        async fn enrich(&self, _: &monocle_core::engine::ProcessSnapshot) -> Result<monocle_core::engine::EnrichedSession, monocle_core::engine::EngineMetadataError> { unimplemented!() }
-        async fn on_hook(&self, _: monocle_core::hook_events::HookEvent) -> monocle_core::engine::HookResponse { unimplemented!() }
-        fn spawn_recipe(&self, opts: &monocle_core::engine::SpawnOptions)
-            -> Result<monocle_core::engine::SpawnRecipe, monocle_core::engine::EngineError> {
+        fn id(&self) -> &'static str {
+            "m001-engine"
+        }
+        fn metadata(
+            &self,
+        ) -> Result<monocle_core::engine::EngineMetadata, monocle_core::engine::EngineMetadataError>
+        {
+            unimplemented!()
+        }
+        fn detect(&self, _: &monocle_core::engine::ProcessSnapshot) -> bool {
+            false
+        }
+        async fn enrich(
+            &self,
+            _: &monocle_core::engine::ProcessSnapshot,
+        ) -> Result<monocle_core::engine::EnrichedSession, monocle_core::engine::EngineMetadataError>
+        {
+            unimplemented!()
+        }
+        async fn on_hook(
+            &self,
+            _: monocle_core::hook_events::HookEvent,
+        ) -> monocle_core::engine::HookResponse {
+            unimplemented!()
+        }
+        fn spawn_recipe(
+            &self,
+            opts: &monocle_core::engine::SpawnOptions,
+        ) -> Result<monocle_core::engine::SpawnRecipe, monocle_core::engine::EngineError> {
             // Use `/bin/sleep 60` as the harness binary — available on macOS and Linux,
             // does not require `claude` to be installed.
             Ok(monocle_core::engine::SpawnRecipe::new(
@@ -1767,8 +2048,7 @@ async fn test_BC_2_08_001_MED001_real_session_host_reaches_running() {
         }
     }
 
-    let inner_subs: monocle_ipc::server::SubscriberList =
-        Arc::new(tokio::sync::Mutex::new(vec![]));
+    let inner_subs: monocle_ipc::server::SubscriberList = Arc::new(tokio::sync::Mutex::new(vec![]));
     let broker = Arc::new(Arc::clone(&inner_subs));
     let (tui_tx, mut tui_rx) =
         tokio::sync::mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
@@ -1788,18 +2068,22 @@ async fn test_BC_2_08_001_MED001_real_session_host_reaches_running() {
         "claude-code".to_string(),
         "default".to_string(),
         None,
-    ).with_daemon_fields(session_id.clone(), runtime_dir.join("hooks-settings.json"));
+    )
+    .with_daemon_fields(session_id.clone(), runtime_dir.join("hooks-settings.json"));
 
     // Step 1: spawn_session() must succeed (session-host binary is present).
-    manager.spawn_session(opts).await
-        .expect("MED-001: spawn_session must succeed with RealSessionHostSpawner — \
-                  if this fails, the session-host binary may have failed to start");
+    manager.spawn_session(opts).await.expect(
+        "MED-001: spawn_session must succeed with RealSessionHostSpawner — \
+                  if this fails, the session-host binary may have failed to start",
+    );
 
     // Step 2: UDS socket must be bound by the session-host.
     let expected_socket = runtime_dir.join(format!("session-{}.sock", session_id));
     let socket_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(10);
     loop {
-        if expected_socket.exists() { break; }
+        if expected_socket.exists() {
+            break;
+        }
         if tokio::time::Instant::now() >= socket_deadline {
             panic!(
                 "MED-001: session-host UDS socket was not bound at {:?} within 10s. \
@@ -1836,7 +2120,9 @@ async fn test_BC_2_08_001_MED001_real_session_host_reaches_running() {
     let mut reached_running = false;
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(15);
     loop {
-        if tokio::time::Instant::now() >= deadline { break; }
+        if tokio::time::Instant::now() >= deadline {
+            break;
+        }
         match tokio::time::timeout(std::time::Duration::from_millis(300), tui_rx.recv()).await {
             Ok(Some(ServerToClient::SessionStateChanged {
                 session_id: ref sid,
@@ -1859,7 +2145,8 @@ async fn test_BC_2_08_001_MED001_real_session_host_reaches_running() {
 
     // Step 5: session_list() must show Running.
     let sessions = manager.session_list().await;
-    let snap = sessions.iter()
+    let snap = sessions
+        .iter()
         .find(|s| s.session_id == "med001-real-session")
         .expect("MED-001: session must be in registry");
 
