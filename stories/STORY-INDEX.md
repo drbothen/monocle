@@ -1,10 +1,10 @@
 ---
 document_type: story-index
 level: L4
-version: "5.46"
+version: "5.47"
 status: active
 producer: vsdd-factory:state-manager
-timestamp: 2026-06-17T00:00:00Z
+timestamp: 2026-06-18T00:00:00Z
 phase: 2
 inputs:
   - .factory/specs/prd.md
@@ -84,7 +84,7 @@ traces_to: .factory/specs/prd.md
 | S-032 | Daemon Event-Bus Fan-Out: Broadcast HookEventReceived with daemon timestamp_micros | EPIC-05 | 5 | 8 | draft | S-046 |
 | S-DAEMON-WIRE-FIX-001 | Second-Signal Exit Codes (SigtermDuringDrain=143, SigintDuringDrain=130) | EPIC-04 | 5 | 8 | draft | — |
 | S-033 | SessionManager::spawn_session — SessionHostSpawner, SessionEntry, Sidecar, SpawnAck, and SessionStateChanged{Launching} | EPIC-08 | 8 | 8 | done | S-034, S-035, S-036, S-037, S-038, S-044, S-045, S-047, S-048 |
-| S-034 | SessionManager::kill_session — DaemonToHost::Kill Within 500ms; Terminating/Terminated Transitions; 12s Watchdog | EPIC-08 | 8 | 8 | draft | S-036, S-037, S-047 |
+| S-034 | SessionManager::kill_session — DaemonToHost::Kill Within 500ms; Terminating/Terminated Transitions; 12s Watchdog | EPIC-08 | 8 | 8 | done | S-036, S-037, S-047 |
 | S-035 | SessionManager::attach_session and detach_session — Chunked Scrollback, SO_PEERCRED, Session-Host Stays Alive | EPIC-08 | 8 | 8 | draft | S-036, S-039, S-044, S-047 |
 | S-036 | SessionManager::rediscover_sessions — setsid Persistence; All States Handled Within 5s; UDS Bind Blocked | EPIC-08 | 8 | 8 | draft | — |
 | S-037 | SessionManager GC Task — Terminated Sessions Removed After 10s Grace Period | EPIC-08 | 3 | 8 | draft | — |

@@ -210,9 +210,9 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.45"
-  last_bump_commit: "[F-P25-SUG-001 — BC Coverage Table AC-range corrections: BC-2.09.002/004/005 S-040 ranges corrected; BC-2.09.008/009 S-044 ranges corrected to AC-001..AC-015 and AC-016..AC-021]"
-  last_bump_date: "2026-06-16"
+  current_version: "5.47"
+  last_bump_commit: "[D-334 — S-034 status draft→done; S-034 row updated]"
+  last_bump_date: "2026-06-18"
 
 VP-INDEX:
   path: specs/verification-properties/VP-INDEX.md
@@ -228,15 +228,15 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.19"
-  last_bump_commit: "[F-GATE-ADV-003 — S-033..S-048 (16 v1A stories) added to inputs[]; BC-INDEX pin cascade 1.43.7→1.43.8]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.20"
+  last_bump_commit: "[D-334 — S-034 input pin cascade v1.2→v1.3]"
+  last_bump_date: "2026-06-18"
 
 sprint-state:
   path: stories/sprint-state.yaml
-  current_version: "1.46"
-  last_bump_commit: "[F-GATE-IMP-001+F-GATE-ADV-001 — inputs[] cascade refresh to canonical versions; S-033..S-048 not_started→draft to match STORY-INDEX]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.48"
+  last_bump_commit: "[D-334 — S-034 status draft→done; done 33→34; draft 17→16; points_complete 200→208]"
+  last_bump_date: "2026-06-18"
 
 nfr-catalog:
   path: specs/prd-supplements/nfr-catalog.md
@@ -955,9 +955,9 @@ wave-schedule:
 
 dependency-graph-expansion:
   path: stories/dependency-graph-expansion.md
-  current_version: "2.5"
-  last_bump_commit: "[D-324 inputs-pin refresh — BC-INDEX 1.27→1.43.8, SS-ipc 1.6.0→1.24.0, STORY-INDEX 4.7→5.45]"
-  last_bump_date: "2026-06-16"
+  current_version: "2.6"
+  last_bump_commit: "[D-334 — STORY-INDEX input pin cascade 5.45→5.47]"
+  last_bump_date: "2026-06-18"
 
 S-033-session-manager-spawn:
   path: stories/S-033-session-manager-spawn.md
@@ -1030,6 +1030,12 @@ S-034-session-manager-kill:
   current_version: "1.2"
   last_bump_commit: "[ADV-S034-HIGH-004: corrected ipc_handler.rs → ipc_server.rs file reference]"
   last_bump_date: "2026-06-17"
+
+S-034-session-manager-kill:
+  path: stories/S-034-session-manager-kill.md
+  current_version: "1.3"
+  last_bump_commit: "[D-334 — S-034 status draft→done; PR #41 @ 4dfe0db]"
+  last_bump_date: "2026-06-18"
 
 S-035-session-manager-attach-detach:
   path: stories/S-035-session-manager-attach-detach.md

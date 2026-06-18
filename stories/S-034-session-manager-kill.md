@@ -3,8 +3,8 @@ document_type: story
 level: L4
 story_id: S-034
 epic_id: EPIC-08
-version: "1.2"
-status: draft
+version: "1.3"
+status: done
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-17T00:00:00Z
 phase: 2

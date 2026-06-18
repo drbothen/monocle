@@ -1,10 +1,10 @@
 ---
 document_type: dependency-graph
 level: L4
-version: "2.5"
+version: "2.6"
 status: active
 producer: vsdd-factory:story-writer
-timestamp: 2026-06-16T00:00:00Z
+timestamp: 2026-06-18T00:00:00Z
 phase: 2
 inputs:
   - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.43.8"}
@@ -12,10 +12,10 @@ inputs:
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
   - {path: .factory/specs/architecture/SS-tui.md, version: "1.8.2"}
   - {path: .factory/specs/architecture/SS-config.md, version: "1.3.0"}
-  - {path: .factory/stories/STORY-INDEX.md, version: "5.45"}
+  - {path: .factory/stories/STORY-INDEX.md, version: "5.47"}
   - {path: .factory/plans/phase-2-expansion-story-plan.md, version: "1.0"}
 input-hash: "[live-state]"
-traces_to: .factory/stories/STORY-INDEX.md v5.45
+traces_to: .factory/stories/STORY-INDEX.md v5.47
 ---
 
 # Dependency Graph: monocle Phase 2 Expansion (Waves 4-9)
