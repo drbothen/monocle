@@ -514,16 +514,26 @@ impl SessionIdGenerator for SequencedIdGenerator {
 
 /// Per-session connection to the session-host process.
 ///
-/// The `writer` is the CONTROL connection write half — active from end of Launching
-/// onward (after the post-spawn monitor connects to the session-host socket).
+/// The `writer` is the CONTROL connection write half — active from the end of `Launching`
+/// onward (i.e., after the post-spawn monitor connects to the session-host socket).
+/// The `reader` is the CONTROL connection read half — held so that `kill_confirm_monitor`
+/// can read `StateChanged{Terminated}` from the EXISTING connection rather than making
+/// a fresh UDS connect (ADV-S034-BLOCKER-001 ruling, SS-session-manager.md v2.8.0).
+/// Moved into `kill_confirm_monitor` when Kill is sent; set to `None` afterwards.
 /// The `proxy_task` is the PTY-streaming task — started ONLY at Launching → Running
 /// transition. During Launching, `proxy_task` is None; both are live during Running.
 ///
-/// (SS-session-manager.md §SessionHostConnection)
+/// (SS-session-manager.md §SessionHostConnection v2.8.0)
 #[allow(dead_code)]
 struct SessionHostConnection {
     /// Write half of the per-session UDS control connection.
+    /// Present from post-spawn monitor connect through session end.
     writer: Arc<Mutex<tokio::net::unix::OwnedWriteHalf>>,
+    /// Read half of the per-session UDS control connection.
+    /// Present from post-spawn monitor connect through session end.
+    /// Moved into `kill_confirm_monitor` task when Kill is sent on Running/Launching path.
+    /// For Detached kill: `host_conn` is None; a fresh connect supplies both halves.
+    reader: Option<tokio::net::unix::OwnedReadHalf>,
     /// Background task proxying session-host PTY output to daemon broker.
     /// None during Launching; started at Launching → Running transition.
     proxy_task: Option<JoinHandle<()>>,
@@ -1109,10 +1119,19 @@ impl SessionManager {
                         socket_path: entry.session_host_socket.clone(),
                     },
                     // Any other state (future variants) — treat as fresh connect.
-                    _ => KillPath::FreshConnect {
-                        pid: entry.session_host_pid,
-                        socket_path: entry.session_host_socket.clone(),
-                    },
+                    // LOW-001: log unexpected state to surface bugs early.
+                    _ => {
+                        tracing::warn!(
+                            session_id = %session_id,
+                            state = ?entry.state,
+                            "kill_session: unexpected session state in KillPath dispatch — \
+                             defaulting to FreshConnect (LOW-001)"
+                        );
+                        KillPath::FreshConnect {
+                            pid: entry.session_host_pid,
+                            socket_path: entry.session_host_socket.clone(),
+                        }
+                    }
                 },
             }
             // guard released here
@@ -1189,21 +1208,20 @@ impl SessionManager {
                             let kill_msg2 = serde_json::to_vec(&DaemonToHost::Kill)
                                 .map_err(|e2| SessionError::Io(std::io::Error::other(e2)))?;
                             let len2 = (kill_msg2.len() as u32).to_le_bytes();
-                            let (_, mut w2) = fresh_stream.into_split();
+                            let (r2, mut w2) = fresh_stream.into_split();
                             w2.write_all(&len2).await.map_err(SessionError::Io)?;
                             w2.write_all(&kill_msg2).await.map_err(SessionError::Io)?;
 
-                            // Transition → Terminating and spawn watchdog.
-                            self.transition_to_terminating(session_id, pid, &sidecar_path)
+                            // Transition → Terminating and spawn kill-confirm + watchdog.
+                            // Pass the read half directly (ADV-S034-BLOCKER-001).
+                            self.transition_to_terminating(session_id, &sidecar_path)
                                 .await;
                             let sessions_arc = Arc::clone(&self.sessions);
                             let broker_arc = Arc::clone(&self.broker);
                             let sid = session_id.to_string();
                             let sp2 = sidecar_path.clone();
-                            let ver2 = Arc::clone(&self.peer_cred_verifier);
                             tokio::spawn(async move {
-                                kill_confirm_monitor(sid, sessions_arc, broker_arc, sp2, ver2)
-                                    .await;
+                                kill_confirm_monitor(sid, r2, sessions_arc, broker_arc, sp2).await;
                             });
                             Self::spawn_kill_watchdog(
                                 session_id.to_string(),
@@ -1223,7 +1241,7 @@ impl SessionManager {
                 // Note: the post_spawn_monitor task continues reading after StateChanged{Running}
                 // and will receive StateChanged{Terminated} from the session-host, calling
                 // transition_to_terminated_standalone. No separate kill_confirm_monitor needed.
-                self.transition_to_terminating(session_id, pid, &sidecar_path)
+                self.transition_to_terminating(session_id, &sidecar_path)
                     .await;
 
                 // Spawn 12s watchdog.
@@ -1257,7 +1275,7 @@ impl SessionManager {
                 let sidecar_path = self
                     .runtime_dir
                     .join(format!("session-{}.json", session_id));
-                self.transition_to_terminating(session_id, pid, &sidecar_path)
+                self.transition_to_terminating(session_id, &sidecar_path)
                     .await;
 
                 // Spawn 12s watchdog.
@@ -1316,26 +1334,24 @@ impl SessionManager {
                             .map_err(SessionError::Io)?;
 
                         // Transition → Terminating, emit broadcasts.
-                        self.transition_to_terminating(session_id, pid, &sidecar_path)
+                        self.transition_to_terminating(session_id, &sidecar_path)
                             .await;
 
-                        // Spawn a kill-confirm reader for this fresh connection.
+                        // Spawn kill-confirm monitor passing the read half of the fresh
+                        // connection directly (ADV-S034-BLOCKER-001 / SS-session-manager.md
+                        // v2.8.0). The session-host sends StateChanged{Terminated} on the
+                        // SAME connection where it received Kill — no fresh connect needed.
                         let sessions_arc = Arc::clone(&self.sessions);
                         let broker_arc = Arc::clone(&self.broker);
                         let sid = session_id.to_string();
                         let sidecar_path_clone = sidecar_path.clone();
-                        // Transfer ownership of the reader to the confirm task.
-                        let _ = reader; // reader will be used via the task below
-                        let sessions_arc2 = Arc::clone(&sessions_arc);
-                        let broker_arc2 = Arc::clone(&broker_arc);
-                        let verifier = Arc::clone(&self.peer_cred_verifier);
                         tokio::spawn(async move {
                             kill_confirm_monitor(
                                 sid,
-                                sessions_arc2,
-                                broker_arc2,
+                                reader,
+                                sessions_arc,
+                                broker_arc,
                                 sidecar_path_clone,
-                                verifier,
                             )
                             .await;
                         });
@@ -1358,11 +1374,15 @@ impl SessionManager {
         Ok(())
     }
 
-    /// Transition a session to `Terminating`, write `kill_deadline_unix_ms` to the sidecar,
-    /// and emit `SessionStateChanged{Terminating}` BEFORE `SessionListUpdate` under the mutex.
+    /// Transition a session to `Terminating`, write `kill_deadline_unix_ms` and `state:"Terminating"`
+    /// to the sidecar in a SINGLE atomic `tempfile::persist` call (ADV-S034-HIGH-003), and emit
+    /// `SessionStateChanged{Terminating}` BEFORE `SessionListUpdate` under the mutex.
+    ///
+    /// The sidecar write is performed OUTSIDE the sessions lock (file I/O must not block the
+    /// mutex) but is atomic with respect to concurrent readers (tempfile::persist rename).
     ///
     /// (BC-2.08.003 PC-2, BC-2.08.008 Invariant 4, story §Architecture Compliance Rules)
-    async fn transition_to_terminating(&self, session_id: &str, _pid: u32, sidecar_path: &PathBuf) {
+    async fn transition_to_terminating(&self, session_id: &str, sidecar_path: &PathBuf) {
         use std::time::{SystemTime, UNIX_EPOCH};
 
         // Compute kill_deadline_unix_ms = now + 12s in Unix epoch milliseconds.
@@ -1371,7 +1391,7 @@ impl SessionManager {
             .map(|d| d.as_millis() as u64 + 12_000)
             .unwrap_or(0);
 
-        // --- Lock scope: state mutation + sidecar fields + snapshot + broadcasts ---
+        // --- Lock scope: state mutation + snapshot + broadcasts ---
         {
             use monocle_core::engine::{EnrichedSession, SessionStatus};
             let mut guard = self.sessions.lock().await;
@@ -1426,24 +1446,51 @@ impl SessionManager {
             // sessions lock released here
         }
 
-        // Write kill_deadline_unix_ms to sidecar (outside lock — file I/O).
-        // Read existing sidecar and update fields atomically via tempfile::persist.
-        if let Ok(existing_json) = std::fs::read_to_string(sidecar_path) {
-            if let Ok(mut val) = serde_json::from_str::<serde_json::Value>(&existing_json) {
-                val["state"] = serde_json::json!("Terminating");
-                val["kill_deadline_unix_ms"] = serde_json::json!(kill_deadline_ms);
-                let updated_bytes = match serde_json::to_vec_pretty(&val) {
-                    Ok(b) => b,
+        // Write `state:"Terminating"` AND `kill_deadline_unix_ms` in a SINGLE atomic
+        // tempfile::persist call (ADV-S034-HIGH-003: both fields must be visible atomically
+        // to any reader scanning the sidecar — no window where state=Terminating but
+        // kill_deadline_unix_ms is absent, or vice-versa).
+        match std::fs::read_to_string(sidecar_path) {
+            Err(e) => {
+                // LOW-002: sidecar read failure on transition — log and continue without
+                // updating the sidecar (non-fatal; state is correct in memory).
+                tracing::warn!(
+                    session_id = %session_id,
+                    error = %e,
+                    "transition_to_terminating: could not read sidecar for update (LOW-002)"
+                );
+            }
+            Ok(existing_json) => {
+                match serde_json::from_str::<serde_json::Value>(&existing_json) {
                     Err(e) => {
                         tracing::warn!(
                             session_id = %session_id,
                             error = %e,
-                            "transition_to_terminating: failed to serialize sidecar update"
+                            "transition_to_terminating: could not parse sidecar JSON for update"
                         );
-                        return;
                     }
-                };
-                Self::atomic_sidecar_write(sidecar_path, &updated_bytes, session_id);
+                    Ok(mut val) => {
+                        // Both fields updated in the same JSON object — one atomic rename.
+                        val["state"] = serde_json::json!("Terminating");
+                        val["kill_deadline_unix_ms"] = serde_json::json!(kill_deadline_ms);
+                        match serde_json::to_vec_pretty(&val) {
+                            Err(e) => {
+                                tracing::warn!(
+                                    session_id = %session_id,
+                                    error = %e,
+                                    "transition_to_terminating: failed to serialize sidecar update"
+                                );
+                            }
+                            Ok(updated_bytes) => {
+                                Self::atomic_sidecar_write(
+                                    sidecar_path,
+                                    &updated_bytes,
+                                    session_id,
+                                );
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -1606,22 +1653,56 @@ impl SessionManager {
             );
 
             // SIGKILL to session-host PID.
+            // ADV-S034-HIGH-002: handle ESRCH (process already exited) gracefully — it is
+            // not an error condition; the process is gone and we should proceed to Terminated.
+            // Any other error is logged as a warning.
             use nix::sys::signal::{kill as nix_kill, Signal};
             use nix::unistd::Pid;
             let nix_pid = Pid::from_raw(session_host_pid as i32);
-            if let Err(e) = nix_kill(nix_pid, Signal::SIGKILL) {
-                tracing::warn!(
-                    session_id = %session_id,
-                    pid = session_host_pid,
-                    error = %e,
-                    "watchdog: SIGKILL failed"
-                );
+            match nix_kill(nix_pid, Signal::SIGKILL) {
+                Ok(()) => {
+                    tracing::debug!(
+                        session_id = %session_id,
+                        pid = session_host_pid,
+                        "watchdog: SIGKILL delivered"
+                    );
+                }
+                Err(nix::errno::Errno::ESRCH) => {
+                    // Process already exited — treat as success (HIGH-002).
+                    tracing::debug!(
+                        session_id = %session_id,
+                        pid = session_host_pid,
+                        "watchdog: SIGKILL — process already gone (ESRCH), proceeding to Terminated (HIGH-002)"
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        session_id = %session_id,
+                        pid = session_host_pid,
+                        error = %e,
+                        "watchdog: SIGKILL failed"
+                    );
+                }
             }
 
             // Force state → Terminated and emit broadcasts.
+            // HIGH-002: re-check under the lock before mutating — kill_confirm_monitor may have
+            // fired between the pre-SIGKILL read-lock check and here (the two operations are
+            // NOT atomic). If already Terminated, skip the duplicate broadcast.
             {
                 use monocle_core::engine::{EnrichedSession, SessionStatus};
                 let mut guard = sessions.lock().await;
+
+                // Re-check state under lock (HIGH-002).
+                if let Some(entry) = guard.get(&session_id) {
+                    if entry.state == SessionState::Terminated {
+                        tracing::debug!(
+                            session_id = %session_id,
+                            "watchdog: session reached Terminated between SIGKILL and lock re-check — skipping duplicate broadcast (HIGH-002)"
+                        );
+                        return;
+                    }
+                }
 
                 if let Some(entry) = guard.get_mut(&session_id) {
                     entry.state = SessionState::Terminated;
@@ -1921,14 +2002,28 @@ async fn post_spawn_monitor(
     // Split into read/write halves AFTER the UID check.
     let (mut reader, writer) = stream.into_split();
 
-    // HIGH-001: store the write half in host_conn in the session entry.
-    // Wrapped in Arc<Mutex> so the entry holds ownership while the read loop runs.
-    // S-034 will use this writer to send DaemonToHost::Kill messages.
+    // ADV-S034-BLOCKER-001: store BOTH halves in host_conn so the kill path can
+    // take the reader directly (via `SessionHostConnection.reader.take()`) rather
+    // than making a fresh UDS connect (SS-session-manager.md v2.8.0).
+    // The read half is wrapped in `Option` so `kill_session` can `take()` it and
+    // move ownership into `kill_confirm_monitor` without touching the writer.
+    //
+    // Note: `reader` below is a local `mut` binding used by this read loop (post-spawn
+    // monitor), which handles messages through StateChanged{Running} and continues
+    // after Running to handle StateChanged{Terminated} on the ExistingConn kill path.
+    // The `host_conn.reader` field is the SAME half — we will `take()` it only if the
+    // session transitions to Terminating via kill_session while this loop is NOT the
+    // correct consumer (i.e., the FreshConnect / fallback kill paths).
+    //
+    // For the normal Running → kill path the post_spawn_monitor loop itself handles
+    // StateChanged{Terminated} (see "DO NOT break" comment below), so no separate
+    // kill_confirm_monitor is spawned and the `reader` field stays None after Running.
     {
         let mut guard = sessions.lock().await;
         if let Some(entry) = guard.get_mut(&session_id) {
             entry.host_conn = Some(SessionHostConnection {
                 writer: Arc::new(Mutex::new(writer)),
+                reader: None, // will be populated only for Detached kill path
                 proxy_task: None,
             });
         }
@@ -2276,106 +2371,32 @@ async fn post_spawn_monitor(
 // ---------------------------------------------------------------------------
 
 /// Background task that waits for `HostToDaemon::StateChanged { Terminated }` on
-/// the existing control connection after `DaemonToHost::Kill` has been sent.
+/// the **existing** control connection after `DaemonToHost::Kill` has been sent.
+///
+/// ADV-S034-BLOCKER-001 ruling (SS-session-manager.md v2.8.0): the caller MUST pass
+/// the read half of the connection on which Kill was sent — this function NEVER makes a
+/// fresh UDS connect. The session-host sends `StateChanged{Terminated}` (and `Goodbye`)
+/// on the same connection where it received Kill, so reading from a fresh connection
+/// would miss the confirmation.
 ///
 /// When confirmed: transitions session to `Terminated`, updates sidecar, emits
 /// `SessionStateChanged{Terminated}` BEFORE `SessionListUpdate` (BC-2.08.008 I4).
 ///
-/// If the control connection is closed before confirmation (EOF), the watchdog task
-/// will handle the forced Terminated transition after 12 seconds.
-///
-/// This function is intentionally separate from `post_spawn_monitor` so that the
-/// kill path can share the same read-loop pattern without duplication.
+/// If the connection closes (EOF) before confirmation arrives, the 12-second watchdog
+/// task handles the forced `Terminated` transition.
 async fn kill_confirm_monitor(
     session_id: String,
+    mut reader: tokio::net::unix::OwnedReadHalf,
     sessions: Arc<tokio::sync::Mutex<HashMap<String, SessionEntry>>>,
     broker: Arc<monocle_ipc::server::SubscriberList>,
     sidecar_path: PathBuf,
-    _verifier: Arc<dyn PeerCredVerifier>,
 ) {
     use tokio::io::AsyncReadExt;
 
-    // Retrieve the reader from the host_conn — the writer is kept in host_conn for future
-    // use. We need to read from the existing connection.
-    //
-    // Strategy: re-connect to the host_conn stored in the SessionEntry. The writer is
-    // already in host_conn.writer; we cannot get the read half back from it. Instead,
-    // we read from the sessions mutex where the entry stores the host_conn.
-    //
-    // Since the read half is NOT stored in SessionEntry (only the write half is), we
-    // rely on the post_spawn_monitor's read loop to handle StateChanged{Terminated}.
-    //
-    // For the kill path on Running sessions: the post_spawn_monitor is still running its
-    // read loop after sending StateChanged{Running}. Wait — it BREAKS out of its loop after
-    // receiving Running. So we need our own read task.
-    //
-    // The correct pattern: after kill is sent on an existing connection, spawn this task
-    // to connect to the SAME socket path and wait for StateChanged{Terminated}.
-    // The session-host will send Terminated on its existing connection (not a new one).
-    //
-    // The problem: we can't access the existing stream's read half because it was consumed
-    // by post_spawn_monitor which exited after receiving Running.
-    //
-    // Solution: make a fresh connect to the same socket (session-host keeps the socket live
-    // after kill) and read until we get StateChanged{Terminated}. If the socket is closed
-    // by the time we connect (session-host already exited), just let the watchdog handle it.
-    //
-    // Revised design: don't make a fresh connect here. Instead, the session-host sends
-    // StateChanged{Terminated} on the SAME existing connection (the one where Kill was sent).
-    // We need to read from that same write/read split.
-    //
-    // The cleanest solution: store the read half in host_conn alongside the writer, or
-    // use the socket path to re-connect for reading. Since the existing code only stores
-    // the writer, we use the socket path for reading.
-
-    // Get the socket path from the session entry.
-    let socket_path = {
-        let guard = sessions.lock().await;
-        guard
-            .get(&session_id)
-            .map(|e| e.session_host_socket.clone())
-    };
-
-    let socket_path = match socket_path {
-        Some(p) => p,
-        None => return,
-    };
-
-    // Connect to the session-host socket to receive the StateChanged{Terminated} response.
-    // The session-host sends this on its end after processing Kill.
-    // We use a generous timeout; the watchdog handles the hard 12s deadline.
-    let stream = match tokio::time::timeout(
-        std::time::Duration::from_secs(13),
-        tokio::net::UnixStream::connect(&socket_path),
-    )
-    .await
-    {
-        Ok(Ok(s)) => s,
-        Ok(Err(e)) => {
-            tracing::debug!(
-                session_id = %session_id,
-                error = %e,
-                "kill_confirm_monitor: socket connect failed — watchdog will handle forced Terminated"
-            );
-            return;
-        }
-        Err(_) => {
-            tracing::debug!(
-                session_id = %session_id,
-                "kill_confirm_monitor: socket connect timed out"
-            );
-            return;
-        }
-    };
-
-    let (mut reader, _writer) = stream.into_split();
-    let read_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(13);
-
+    // Read loop — reads length-prefixed JSON messages from the existing connection.
+    // The watchdog owns the hard 12s deadline; we use a generous read timeout to avoid
+    // spinning without ever polling the read half.
     loop {
-        if tokio::time::Instant::now() >= read_deadline {
-            break;
-        }
-
         let mut len_buf = [0u8; 4];
         match tokio::time::timeout(
             std::time::Duration::from_secs(13),
@@ -2384,22 +2405,62 @@ async fn kill_confirm_monitor(
         .await
         {
             Ok(Ok(_)) => {}
-            _ => break,
+            Ok(Err(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                // Session-host closed the connection cleanly before sending Terminated.
+                // Watchdog will fire after 12s.
+                tracing::debug!(
+                    session_id = %session_id,
+                    "kill_confirm_monitor: connection closed (EOF) before Terminated confirmation — watchdog will handle"
+                );
+                return;
+            }
+            Ok(Err(e)) => {
+                tracing::debug!(
+                    session_id = %session_id,
+                    error = %e,
+                    "kill_confirm_monitor: read error — watchdog will handle"
+                );
+                return;
+            }
+            Err(_) => {
+                tracing::debug!(
+                    session_id = %session_id,
+                    "kill_confirm_monitor: read timeout — watchdog will handle"
+                );
+                return;
+            }
         }
 
         let msg_len = u32::from_le_bytes(len_buf) as usize;
         if msg_len == 0 || msg_len > 1024 * 1024 {
-            break;
+            tracing::warn!(
+                session_id = %session_id,
+                len = msg_len,
+                "kill_confirm_monitor: invalid message length — aborting"
+            );
+            return;
         }
 
         let mut body = vec![0u8; msg_len];
-        if reader.read_exact(&mut body).await.is_err() {
-            break;
+        if let Err(e) = reader.read_exact(&mut body).await {
+            tracing::debug!(
+                session_id = %session_id,
+                error = %e,
+                "kill_confirm_monitor: failed to read message body — watchdog will handle"
+            );
+            return;
         }
 
         let msg: monocle_ipc::types::HostToDaemon = match serde_json::from_slice(&body) {
             Ok(m) => m,
-            Err(_) => continue,
+            Err(e) => {
+                tracing::warn!(
+                    session_id = %session_id,
+                    error = %e,
+                    "kill_confirm_monitor: failed to deserialize HostToDaemon"
+                );
+                continue;
+            }
         };
 
         match msg {
@@ -2409,19 +2470,28 @@ async fn kill_confirm_monitor(
             } => {
                 tracing::debug!(
                     session_id = %session_id,
-                    "kill_confirm_monitor: received StateChanged{{Terminated}}"
+                    "kill_confirm_monitor: received StateChanged{{Terminated}} on existing connection"
                 );
-                // Transition → Terminated and emit broadcasts.
                 transition_to_terminated_standalone(&session_id, &sessions, &broker, &sidecar_path)
                     .await;
                 return;
             }
+            monocle_ipc::types::HostToDaemon::Goodbye => {
+                // Session-host closed cleanly without Terminated — watchdog handles it.
+                tracing::debug!(
+                    session_id = %session_id,
+                    "kill_confirm_monitor: received Goodbye without prior Terminated — watchdog will handle"
+                );
+                return;
+            }
             _ => {
-                tracing::debug!(session_id = %session_id, "kill_confirm_monitor: non-Terminated message, continuing read loop");
+                tracing::debug!(
+                    session_id = %session_id,
+                    "kill_confirm_monitor: non-Terminated message, continuing read loop"
+                );
             }
         }
     }
-    // If loop exits without receiving Terminated: the watchdog handles forced Terminated.
 }
 
 /// Standalone helper to transition a session to Terminated and emit broadcasts.

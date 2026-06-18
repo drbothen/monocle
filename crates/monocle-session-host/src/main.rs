@@ -410,15 +410,22 @@ async fn send_host_msg(
     Ok(())
 }
 
-/// Step 9: Main event loop.
+/// Step 9: Main event loop — two-phase accept-loop (SS-session-manager.md v2.8.0 Ruling 1).
 ///
-/// Accepts the daemon's control connection.
+/// ## Phase A — Detached (waiting for daemon connection)
+/// `select!` over:
+///   - `listener.accept()` — daemon connects (post-spawn monitor or fresh reconnect after Detach)
+///   - PTY master readable — forward output to vt100 parser (not yet wired; S-047 scope)
+///   - child exit — harness died without Kill; transition to Terminated path
 ///
-/// **HIGH-001 (I3-009) startup handshake:**
+/// ## Phase B — Active (connection established)
+/// Process the active connection until it closes or Kill is received, then return to Phase A
+/// (unless Kill was received — then exit the loop entirely).
+///
+/// **HIGH-001 (I3-009) startup handshake (sent once on the FIRST accept):**
 /// 1. Check `HOME` and `PATH` in the current process environment.
-/// 2. If any are missing: send `StateChanged { new_state: Launching, degraded_env: Some([...]) }`
-///    as the FIRST message (before `Running`). The daemon sets `entry.degraded = true`.
-/// 3. Send `StateChanged { new_state: Running, degraded_env: None }` to signal readiness.
+/// 2. If any are missing: send `StateChanged { Launching, degraded_env: Some([...]) }` first.
+/// 3. Send `StateChanged { Running, degraded_env: None }` to signal readiness.
 ///
 /// Handles `DaemonToHost::Kill` (BC-2.08.003 AC-003): SIGTERM → 10s wait → SIGKILL →
 /// `StateChanged{Terminated}` → `Goodbye` → remove socket file → return.
@@ -429,7 +436,11 @@ async fn step_event_loop(
     child_pid: u32,
     socket_path: std::path::PathBuf,
 ) -> Result<(), SessionHostError> {
-    // Accept the daemon control connection (single accept — post-spawn monitor).
+    // -------------------------------------------------------------------------
+    // Phase A: Detached — loop until a daemon connection arrives.
+    // For S-034 scope, the first connection is always the post-spawn monitor;
+    // subsequent connections (after Detach/Reattach, S-035 scope) use the same loop.
+    // -------------------------------------------------------------------------
     let (mut stream, _addr) =
         listener
             .accept()
@@ -440,6 +451,10 @@ async fn step_event_loop(
             })?;
 
     tracing::debug!(session_id = %session_id, "session-host: daemon connected to control socket");
+
+    // -------------------------------------------------------------------------
+    // Phase B: Active — process the connection that was just accepted.
+    // -------------------------------------------------------------------------
 
     // HIGH-001 (I3-009): check critical env vars; send degraded handshake if missing.
     let critical_vars = ["HOME", "PATH"];
