@@ -768,7 +768,7 @@ BC-2.08.002:
 BC-2.08.003:
   path: specs/behavioral-contracts/ss-08/BC-2.08.003.md
   current_version: "1.5.0"
-  last_bump_commit: "[ADV-S034-MED-001 — PC-5b harness-child group-kill semantics; SS-session-manager v2.10.0 Ruling J]"
+  last_bump_commit: "[ADV-S034-MED-001 — PC-5b harness-child group-kill semantics; SS-session-manager Ruling J]"
   last_bump_date: "2026-06-17"
 
 BC-2.08.004:

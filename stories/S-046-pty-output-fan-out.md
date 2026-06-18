@@ -171,7 +171,7 @@ From `architecture/SS-ipc.md v1.24.0` (§Daemon-Side Per-Client Fan-out Channel)
 - `PtyReset` is a first-class `ServerToClient` variant, NOT a synthetic event.
 - `biased;` select! ensures hook events are never starved by PTY volume.
 
-From `architecture/SS-session-manager.md v2.10.0`:
+From `architecture/SS-session-manager.md v2.11.0`:
 - `DaemonState` owns all session-scoped resources; `PtyBroker` is created per-session inside
   `SessionManager::spawn_session()`.
 - `pty_drop_counter` is a daemon-global atomic, not a per-session counter.
