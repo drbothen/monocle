@@ -1,4 +1,4 @@
-//! S-034 Adversarial findings: MED-004 and MED-003 regression tests.
+//! S-034 Adversarial findings: MED-004, MED-003, and HIGH-001 regression tests.
 //!
 //! # MED-004 — Real session-host Kill-handler coverage
 //!
@@ -13,26 +13,19 @@
 //! accepts the connection, processes `DaemonToHost::Kill`, sends `StateChanged{Terminated}`,
 //! sends `Goodbye`, and removes the socket file.
 //!
-//! # MED-003 — Watchdog-only kill path when host_conn.reader is None at kill time
+//! # MED-003 — Watchdog rescues kill when mock never sends StateChanged{Terminated}
 //!
 //! Under SS-session-manager.md v2.9.0 (Ruling I), `post_spawn_monitor` exits IMMEDIATELY
 //! after observing `StateChanged{Running}` and stores the reader in `host_conn.reader`.
-//! On the normal ExistingConn kill path, `kill_session()` takes `host_conn.reader` and
-//! spawns `kill_confirm_monitor` to read `StateChanged{Terminated}` on the existing
-//! connection.
+//! On the ExistingConn kill path, `kill_session()` takes `host_conn.reader` and spawns
+//! `kill_confirm_monitor` to read `StateChanged{Terminated}` on the existing connection.
 //!
-//! However, there is an edge scenario (simulated here) where `host_conn.reader` is None
-//! at kill time: the mock session-host accepts the connection, the daemon sends Running,
-//! but then the test advances 30s of virtual time before calling kill_session(). This
-//! exercises the pre-Running 30s timeout of the post_spawn_monitor — after the 30s deadline
-//! the monitor breaks out of its read loop WITHOUT having stored the reader (it timed out
-//! before Running arrived in this variant). When kill_session() then fires, it finds
-//! host_conn.writer: Some but reader: None. kill_session() falls back to the watchdog-only
-//! path: no kill_confirm_monitor, and the 12s watchdog must force Terminated.
+//! This test (test_MED_003_*) sends Running, so host_conn.reader IS Some at kill time.
+//! kill_session() spawns kill_confirm_monitor. The mock never sends StateChanged{Terminated},
+//! so kill_confirm_monitor exits on EOF. The 12s watchdog must force Terminated.
 //!
-//! Note: in the NORMAL case (Running arrives before 30s), the reader IS stored and
-//! kill_confirm_monitor IS spawned. The watchdog path validated here covers the pre-Running
-//! timeout race — a legitimate but uncommon scenario.
+//! For the genuine host_conn.reader==None watchdog-only branch (pre-Running 30s timeout),
+//! see test_MED_003b_BC_2_08_003_reader_none_watchdog_only_kill_path below.
 //!
 //! # References
 //!
@@ -451,48 +444,52 @@ async fn test_MED_004_BC_2_08_003_kill_confirmation_uses_same_connection_as_post
 }
 
 // ---------------------------------------------------------------------------
-// MED-003 — Long-idle kill regression test
+// MED-003 — Running-then-kill via watchdog when mock never confirms Terminated
 //
 // BC-2.08.003 PC-1, PC-2, PC-5 (watchdog), BC-2.08.008 Invariant 4
 //
-// After the post_spawn_monitor's 30s read-deadline expires, it exits — but the
-// `host_conn.writer` remains in the SessionEntry (state = Running). A subsequent
-// kill_session() uses KillPath::ExistingConn (writer present), sends Kill on the
-// writer, transitions to Terminating, but the post_spawn_monitor is gone. No reader
-// is monitoring the control connection, so StateChanged{Terminated} from the
-// session-host goes unread. The 12s watchdog must rescue the session.
+// The session reaches Running (StateChanged{Running} is sent and processed), so
+// post_spawn_monitor exits per Ruling I and stores the reader in host_conn.reader.
+// kill_session() takes the ExistingConn path, finds reader=Some, spawns
+// kill_confirm_monitor. The mock never sends StateChanged{Terminated}, so the
+// kill_confirm_monitor exits on EOF without confirming. The 12s watchdog must rescue
+// the session.
 //
-// This test simulates the monitor-gone condition by:
-//  1. Advancing the post_spawn_monitor's 30s read-deadline using tokio::time::pause().
-//  2. Verifying that kill_session() still sends Kill and transitions to Terminating.
-//  3. Verifying that the 12s watchdog fires (by advancing another 12s) and forces
-//     the session to Terminated, emitting SessionStateChanged{Terminated} BEFORE
-//     SessionListUpdate.
+// This test verifies:
+//  1. kill_session() returns Ok(()) and transitions to Terminating immediately.
+//  2. After advancing 12s, the watchdog forces Terminated.
+//  3. SessionStateChanged{Terminated} is broadcast BEFORE SessionListUpdate.
 //
-// Uses tokio::time::pause()/advance() — no real 30s/12s sleeps.
+// NOTE: This test does NOT cover the host_conn.reader==None watchdog-only branch.
+// That branch (pre-Running 30s timeout → reader stays None) is covered by
+// test_MED_003b_BC_2_08_003_reader_none_watchdog_only_kill_path below.
 //
-// Finding ID: MED-003
+// Uses tokio::time::advance() — no real 30s/12s sleeps.
+//
+// Finding ID: MED-003 (narrative-corrected per F-S034-MED-001)
 // BC: BC-2.08.003 PC-1, PC-2, PC-5 / BC-2.08.008 Invariant 4
 // ---------------------------------------------------------------------------
 
-/// MED-003 (BC-2.08.003 PC-5): A session whose `post_spawn_monitor` exceeded the 30s
-/// pre-Running read deadline (timed out before Running arrived) has `host_conn.writer`
-/// present but `host_conn.reader` absent. Under SS-session-manager.md v2.9.0 (Ruling I),
-/// the monitor stores the reader ONLY after observing Running. If the monitor timed out
-/// before Running, the reader stays None. A subsequent `kill_session()` (ExistingConn
-/// path) cannot spawn `kill_confirm_monitor` because there is no reader to take.
-/// The 12s watchdog MUST handle the forced Terminated transition in this case.
+/// MED-003 (BC-2.08.003 PC-5, corrected per F-S034-MED-001): A session that has reached
+/// Running state has `host_conn.reader = Some(...)` (per Ruling I, the monitor stores the
+/// reader after observing StateChanged{Running} and then breaks). A subsequent
+/// `kill_session()` (ExistingConn path) finds reader=Some, spawns kill_confirm_monitor,
+/// but the mock session-host never sends StateChanged{Terminated}. The kill_confirm_monitor
+/// exits on EOF without confirming Terminated. The 12s watchdog MUST handle the forced
+/// Terminated transition in this case.
 ///
 /// Uses `tokio::time::advance()` — no real 30s or 12s sleeps.
 ///
-/// Note: this test simulates a degenerate case (Running never arrived within 30s). In
-/// the normal case (Running arrives before 30s), the reader IS stored and
-/// kill_confirm_monitor IS spawned per Ruling I. See s034_ruling_i_validation.rs for
-/// the normal Ruling I test (kill_confirm_monitor path).
+/// Note: this is NOT the reader==None branch. The reader is Some because Running WAS sent
+/// before kill_session() was called. For the genuine reader==None path (pre-Running 30s
+/// timeout races), see test_MED_003b_BC_2_08_003_reader_none_watchdog_only_kill_path.
 #[tokio::test(start_paused = true)]
 async fn test_MED_003_BC_2_08_003_kill_succeeds_after_monitor_exits_watchdog_fires() {
-    // MED-003: post_spawn_monitor pre-Running 30s deadline exceeded (Running never arrived) —
-    // reader stays None; kill still works via the 12s watchdog.
+    // MED-003 (narrative corrected per F-S034-MED-001):
+    // Running IS sent — monitor stores reader=Some, breaks per Ruling I.
+    // kill_session() spawns kill_confirm_monitor (reader=Some path).
+    // Mock never sends Terminated → kill_confirm_monitor exits on EOF.
+    // 12s watchdog fires and forces Terminated.
 
     let tmp = isolated_runtime_dir();
     let session_id = "a3d30000-0001-4000-a000-000000000001".to_string();
@@ -512,9 +509,9 @@ async fn test_MED_003_BC_2_08_003_kill_succeeds_after_monitor_exits_watchdog_fir
         .await
         .expect("spawn_session must succeed");
 
-    // Accept the post-spawn monitor connection and send StateChanged{Running}.
-    // The accept() must complete before we advance time, so we do it in a background
-    // task while advancing in small increments to let the async runtime poll.
+    // Step 1: Accept the post-spawn monitor connection and send StateChanged{Running}.
+    // This is the NORMAL path: Running arrives before the 30s deadline, so the monitor
+    // stores reader=Some(reader) in host_conn.reader and exits (per Ruling I).
     let accept_task = tokio::spawn(async move {
         tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
             .await
@@ -528,7 +525,8 @@ async fn test_MED_003_BC_2_08_003_kill_succeeds_after_monitor_exits_watchdog_fir
 
     let (mut peer, _addr) = accept_task.await.expect("accept task panicked");
 
-    // Send StateChanged{Running} so the session reaches Running state.
+    // Send StateChanged{Running}: the monitor processes it, stores reader=Some(reader)
+    // in host_conn.reader (per Ruling I), and breaks its read loop.
     send_host_to_daemon(
         &mut peer,
         &monocle_ipc::types::HostToDaemon::StateChanged {
@@ -544,7 +542,7 @@ async fn test_MED_003_BC_2_08_003_kill_succeeds_after_monitor_exits_watchdog_fir
         tokio::task::yield_now().await;
     }
 
-    // Drain messages until we see SessionStateChanged{Running}.
+    // Confirm the session reached Running state (precondition for this test).
     let mut reached_running = false;
     {
         let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(500);
@@ -564,46 +562,46 @@ async fn test_MED_003_BC_2_08_003_kill_succeeds_after_monitor_exits_watchdog_fir
     }
     assert!(
         reached_running,
-        "MED-003 precondition: session must reach Running before simulating monitor exit"
+        "MED-003 precondition: session must reach Running (Running WAS sent — this is the \
+         normal Ruling-I path where reader is stored as Some)"
     );
 
-    // Simulate the post_spawn_monitor's 30s pre-Running read deadline expiring.
-    //
-    // Under SS-session-manager.md v2.9.0 (Ruling I), the monitor stores the reader in
-    // host_conn.reader ONLY after observing StateChanged{Running}. In this test, we
-    // do NOT send Running — we advance 30s without sending Running, so the monitor's
-    // pre-Running read timeout fires, breaks the loop, and exits WITHOUT storing the reader.
-    //
-    // After this advance, host_conn.writer is Some (set when the monitor first connected)
-    // but host_conn.reader is None (Running was never received, so the reader was never
-    // placed in host_conn.reader). kill_session() will take the ExistingConn path
-    // (writer present), find reader=None, and fall back to the watchdog-only path.
+    // Step 2: Advance 30s virtual time. The post_spawn_monitor already exited immediately
+    // after Running (per Ruling I), so this advance does NOT affect the reader — it is
+    // already stored as Some in host_conn.reader. The advance simply lets any pending
+    // tasks drain before we call kill_session().
     tokio::time::advance(std::time::Duration::from_secs(30)).await;
-    // Multiple yields to let the monitor task process the read timeout and exit.
+    // Multiple yields to let all background tasks drain.
     for _ in 0..50 {
         tokio::task::yield_now().await;
     }
 
-    // Verify the session is still Running (monitor exit does NOT kill the session).
+    // Verify the session is still Running (neither the monitor exit nor the time advance
+    // kills the session — only kill_session() does that).
     let sessions = manager.session_list().await;
     let snap = sessions
         .iter()
         .find(|s| s.session_id == session_id)
-        .expect("MED-003: session must still be in registry after monitor exit");
+        .expect("MED-003: session must still be in registry before kill");
     assert_eq!(
         snap.state,
         monocle_ipc::types::SessionState::Running,
-        "MED-003 precondition: session must still be Running after post_spawn_monitor 30s \
-         pre-Running deadline (Running was never sent; monitor exited without storing reader)"
+        "MED-003 precondition: session must still be Running before kill_session() is called \
+         (Running WAS sent; host_conn.reader is Some at this point)"
     );
 
-    // Drain residual messages from the monitor exit period.
+    // Drain residual messages before kill.
     let _ = drain_messages(&mut rx, 100).await;
 
-    // Now call kill_session() on the Running session with an exited monitor.
+    // Step 3: Call kill_session() on the Running session.
+    // ExistingConn path: host_conn.writer is Some, kill_session sends Kill, transitions to
+    // Terminating, then takes host_conn.reader (which is Some — Running WAS sent) and spawns
+    // kill_confirm_monitor. The mock never sends StateChanged{Terminated}, so
+    // kill_confirm_monitor will exit on EOF without confirming. The 12s watchdog rescues.
     // BC-2.08.003 PC-1: Kill delivered within 500ms; state → Terminating immediately.
     manager.kill_session(&session_id).await.expect(
-        "MED-003 (BC-2.08.003 PC-1): kill_session() must return Ok(()) even when monitor is gone",
+        "MED-003 (BC-2.08.003 PC-1): kill_session() must return Ok(()) (ExistingConn path, \
+         reader=Some → kill_confirm_monitor spawned, mock never confirms → watchdog fires)",
     );
 
     // BC-2.08.003 PC-2: state must be Terminating immediately (BC-2.08.008 I4).
@@ -616,7 +614,7 @@ async fn test_MED_003_BC_2_08_003_kill_succeeds_after_monitor_exits_watchdog_fir
         snap.state,
         monocle_ipc::types::SessionState::Terminating,
         "MED-003 (BC-2.08.003 PC-2): state must be Terminating immediately after kill_session() \
-         (monitor-gone path uses ExistingConn writer + transitions to Terminating)"
+         (ExistingConn path, reader=Some, kill_confirm_monitor spawned)"
     );
 
     // BC-2.08.008 Invariant 4: SessionStateChanged{Terminating} BEFORE SessionListUpdate.
@@ -659,9 +657,9 @@ async fn test_MED_003_BC_2_08_003_kill_succeeds_after_monitor_exits_watchdog_fir
     );
 
     // BC-2.08.003 PC-5: 12s watchdog fires — state → Terminated + SIGKILL to session-host PID.
-    // host_conn.reader is None (monitor timed out before Running), so kill_session() could not
-    // spawn kill_confirm_monitor. Only the watchdog handles the forced Terminated transition.
-    // Advancing 12s fires the watchdog.
+    // kill_confirm_monitor was spawned (reader=Some) but the mock never sends Terminated,
+    // so kill_confirm_monitor exits on EOF. The watchdog handles the forced Terminated
+    // transition.
     //
     // Advance virtual time by 12s to fire the watchdog.
     tokio::time::advance(std::time::Duration::from_secs(12)).await;
@@ -679,8 +677,7 @@ async fn test_MED_003_BC_2_08_003_kill_succeeds_after_monitor_exits_watchdog_fir
         snap.state,
         monocle_ipc::types::SessionState::Terminated,
         "MED-003 (BC-2.08.003 PC-5): watchdog must force state to Terminated after 12s \
-         when host_conn.reader is None (monitor timed out pre-Running) and no \
-         kill_confirm_monitor could be spawned."
+         when kill_confirm_monitor exits on EOF (mock never sent StateChanged{{Terminated}})."
     );
 
     // BC-2.08.008 Invariant 4: watchdog must broadcast SessionStateChanged{Terminated}
@@ -721,5 +718,552 @@ async fn test_MED_003_BC_2_08_003_kill_succeeds_after_monitor_exits_watchdog_fir
         terminated_idx.unwrap(),
         watchdog_list_update_idx.unwrap(),
         watchdog_msgs
+    );
+}
+
+// ---------------------------------------------------------------------------
+// MED-003b — Genuine host_conn.reader == None watchdog-only kill path
+//
+// BC-2.08.003 PC-1, PC-2, PC-5 (watchdog), BC-2.08.008 Invariant 4
+// F-S034-MED-001: the reader==None branch at mod.rs ~1300-1307 was not covered.
+//
+// How host_conn.reader ends up None at kill time:
+//
+//   1. spawn_session() launches the session (state = Launching).
+//   2. post_spawn_monitor connects to the session-host socket; the daemon stores
+//      host_conn = Some(SessionHostConnection { writer: ..., reader: None, ... }).
+//      At this point reader is always None — it is only set to Some AFTER the monitor
+//      observes StateChanged{Running} (Ruling I, SS-session-manager.md v2.9.0).
+//   3. The mock session-host accepts the connection but does NOT send StateChanged{Running}.
+//   4. Virtual time advances past the 30s pre-Running deadline. The post_spawn_monitor's
+//      inner `tokio::time::timeout(remaining, reader.read_exact(...))` fires with
+//      ErrorKind::TimedOut, and the monitor breaks out of its loop WITHOUT executing
+//      `conn.reader = Some(reader)`. host_conn.reader stays None.
+//   5. Session state is still Launching (no Running was observed).
+//   6. kill_session() sees state=Launching + host_conn.is_some() → KillPath::ExistingConn.
+//      (The Launching-without-host_conn branch → PidFallback is NOT taken because
+//       host_conn IS Some — the monitor connected before the 30s deadline fired.)
+//   7. kill_session() sends Kill on host_conn.writer (succeeds), transitions to
+//      Terminating, then reads maybe_reader = host_conn.reader.take() == None.
+//      The `else` branch at mod.rs ~1300-1307 is taken:
+//        "kill_session ExistingConn: host_conn.reader is None — watchdog-only path"
+//      No kill_confirm_monitor is spawned.
+//   8. The 12s watchdog fires and forces Terminated. SessionStateChanged{Terminated}
+//      arrives BEFORE SessionListUpdate (BC-2.08.008 Invariant 4).
+//
+// Observability anchor for "kill_confirm_monitor NOT spawned":
+//   - Terminated arrives after 12s virtual-time advance (not earlier), proving
+//     only the watchdog fired (kill_confirm_monitor would fire at ~1s on EOF).
+//
+// Uses tokio::time::start_paused = true — no real sleeps.
+//
+// Finding ID: F-S034-MED-001
+// BC: BC-2.08.003 PC-1, PC-2, PC-5 / BC-2.08.008 Invariant 4
+// Covers: mod.rs ~1300-1307 (reader==None watchdog-only branch)
+// ---------------------------------------------------------------------------
+
+/// F-S034-MED-001 / MED-003b (BC-2.08.003 PC-5): Genuine host_conn.reader==None path.
+///
+/// The mock session-host accepts the post-spawn monitor connection but does NOT send
+/// StateChanged{Running}. Virtual time is advanced past the 30s pre-Running deadline so
+/// the post_spawn_monitor breaks WITHOUT storing the reader. host_conn.reader stays None.
+///
+/// kill_session() on the Launching session takes KillPath::ExistingConn (host_conn.is_some()
+/// is true), sends Kill, transitions to Terminating, finds reader==None, and takes the
+/// watchdog-only branch at mod.rs ~1300-1307 (no kill_confirm_monitor spawned).
+///
+/// The 12s watchdog fires and forces Terminated. To confirm kill_confirm_monitor was NOT
+/// spawned (which would fire at ~1s on EOF), we assert Terminated is NOT observed until
+/// after 12s of virtual time are advanced.
+///
+/// BC-2.08.008 Invariant 4: SessionStateChanged{Terminated} BEFORE SessionListUpdate.
+#[tokio::test(start_paused = true)]
+async fn test_MED_003b_BC_2_08_003_reader_none_watchdog_only_kill_path() {
+    // F-S034-MED-001: genuine reader==None branch at mod.rs ~1300-1307.
+    // StateChanged{Running} is NEVER sent — monitor times out pre-Running.
+    // host_conn.reader stays None. kill_session() takes watchdog-only path.
+
+    let tmp = isolated_runtime_dir();
+    let session_id = "a3d3b000-0001-4000-a000-000000000001".to_string();
+    let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
+
+    // Bind mock session-host socket BEFORE spawning.
+    let listener =
+        tokio::net::UnixListener::bind(&socket_path).expect("bind mock session-host socket");
+
+    let (mut manager, _subs, mut rx) =
+        make_manager_with_socket(tmp.path(), 55_301, socket_path.clone());
+    manager.with_peer_cred_verifier(Arc::new(AllowAllVerifier));
+
+    let opts = make_spawn_opts(&session_id);
+    manager
+        .spawn_session(opts)
+        .await
+        .expect("spawn_session must succeed");
+
+    // Step 1: Accept the post-spawn monitor connection.
+    // The monitor connects and stores host_conn = Some(SessionHostConnection{reader: None, ...}).
+    // We do NOT send StateChanged{Running}. The monitor's read loop will block until its
+    // 30s pre-Running deadline fires.
+    let accept_task = tokio::spawn(async move {
+        tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
+            .await
+            .expect("accept task: timed out waiting for monitor connection")
+            .expect("accept task: accept() failed")
+    });
+
+    // Small advance to let post_spawn_monitor connect and set host_conn.
+    tokio::time::advance(std::time::Duration::from_millis(100)).await;
+    tokio::task::yield_now().await;
+
+    // Retrieve the accepted peer handle (we hold it open — do NOT send anything).
+    // Keeping `_peer` alive prevents an EOF being detected prematurely (which would
+    // break the monitor on UnexpectedEof before the 30s deadline fires).
+    let (_peer, _addr) = accept_task.await.expect("accept task panicked");
+
+    // Verify session is still Launching (no Running sent yet).
+    let sessions = manager.session_list().await;
+    let snap = sessions
+        .iter()
+        .find(|s| s.session_id == session_id)
+        .expect("MED-003b: session must be in registry after connect");
+    assert_eq!(
+        snap.state,
+        monocle_ipc::types::SessionState::Launching,
+        "MED-003b precondition: session must be Launching (Running was NOT sent)"
+    );
+
+    // Step 2: Advance virtual time past the 30s pre-Running deadline.
+    // The post_spawn_monitor's tokio::time::timeout(remaining, read_exact) fires with
+    // ErrorKind::TimedOut. The monitor logs a warning and breaks WITHOUT storing the
+    // reader. host_conn.reader stays None. Session state remains Launching.
+    tokio::time::advance(std::time::Duration::from_secs(31)).await;
+    // Multiple yields to let the monitor task process the read timeout and exit.
+    for _ in 0..100 {
+        tokio::task::yield_now().await;
+    }
+
+    // Drain any spurious broadcasts from the time advance.
+    let _ = drain_messages(&mut rx, 50).await;
+
+    // Verify session is still Launching — monitor exit does NOT kill the session.
+    let sessions = manager.session_list().await;
+    let snap = sessions
+        .iter()
+        .find(|s| s.session_id == session_id)
+        .expect("MED-003b: session must still be in registry after monitor pre-Running timeout");
+    assert_eq!(
+        snap.state,
+        monocle_ipc::types::SessionState::Launching,
+        "MED-003b precondition: session must still be Launching after post_spawn_monitor 30s \
+         pre-Running timeout (monitor exited WITHOUT storing reader; state unchanged)"
+    );
+
+    // Step 3: Call kill_session().
+    // kill_path dispatch: state=Launching + host_conn.is_some() → KillPath::ExistingConn.
+    // (PidFallback would only be taken for Launching WITHOUT host_conn.)
+    // kill_session() sends Kill on host_conn.writer, transitions to Terminating, then
+    // reads maybe_reader = host_conn.reader.take() == None → watchdog-only branch
+    // (mod.rs ~1300-1307): no kill_confirm_monitor spawned.
+    //
+    // BC-2.08.003 PC-1: Kill delivered within 500ms; state → Terminating immediately.
+    manager.kill_session(&session_id).await.expect(
+        "MED-003b (BC-2.08.003 PC-1): kill_session() must return Ok(()) on reader==None path \
+         (F-S034-MED-001: ExistingConn + reader=None → watchdog-only branch)",
+    );
+
+    // BC-2.08.003 PC-2: state must be Terminating immediately after kill_session().
+    let sessions = manager.session_list().await;
+    let snap = sessions
+        .iter()
+        .find(|s| s.session_id == session_id)
+        .expect("MED-003b: session must remain in registry after kill");
+    assert_eq!(
+        snap.state,
+        monocle_ipc::types::SessionState::Terminating,
+        "MED-003b (BC-2.08.003 PC-2): state must be Terminating immediately after kill_session() \
+         on the reader==None path (F-S034-MED-001)"
+    );
+
+    // BC-2.08.008 Invariant 4: SessionStateChanged{Terminating} BEFORE SessionListUpdate.
+    let kill_msgs = drain_messages(&mut rx, 200).await;
+    let terminating_idx = kill_msgs.iter().position(|m| {
+        matches!(
+            m,
+            monocle_ipc::types::ServerToClient::SessionStateChanged {
+                session_id: ref sid,
+                new_state: monocle_ipc::types::SessionState::Terminating,
+            } if sid == &session_id
+        )
+    });
+    let list_update_after_kill_idx = kill_msgs.iter().position(|m| {
+        matches!(
+            m,
+            monocle_ipc::types::ServerToClient::SessionListUpdate { .. }
+        )
+    });
+    assert!(
+        terminating_idx.is_some(),
+        "MED-003b (BC-2.08.008 I4): SessionStateChanged{{Terminating}} must be broadcast. \
+         Messages: {:?}",
+        kill_msgs
+    );
+    assert!(
+        list_update_after_kill_idx.is_some(),
+        "MED-003b (BC-2.08.008 I4): SessionListUpdate must be broadcast after kill. \
+         Messages: {:?}",
+        kill_msgs
+    );
+    assert!(
+        terminating_idx.unwrap() < list_update_after_kill_idx.unwrap(),
+        "MED-003b (BC-2.08.008 I4): SessionStateChanged{{Terminating}} (idx {}) must arrive \
+         BEFORE SessionListUpdate (idx {}). Messages: {:?}",
+        terminating_idx.unwrap(),
+        list_update_after_kill_idx.unwrap(),
+        kill_msgs
+    );
+
+    // Step 4: Observability anchor — Terminated must NOT arrive before the 12s watchdog fires.
+    //
+    // If kill_confirm_monitor had been spawned, it would read EOF almost immediately
+    // (the mock sent nothing) and fall through to the watchdog's forced-Terminated path.
+    // However, kill_confirm_monitor is NOT spawned on the reader==None path, so
+    // Terminated can only arrive from the watchdog (12s deadline).
+    //
+    // Advance only 6s (half of 12s) and assert Terminated has NOT yet been observed.
+    tokio::time::advance(std::time::Duration::from_secs(6)).await;
+    for _ in 0..50 {
+        tokio::task::yield_now().await;
+    }
+    let msgs_at_6s = drain_messages(&mut rx, 50).await;
+    let premature_terminated = msgs_at_6s.iter().any(|m| {
+        matches!(
+            m,
+            monocle_ipc::types::ServerToClient::SessionStateChanged {
+                session_id: ref sid,
+                new_state: monocle_ipc::types::SessionState::Terminated,
+            } if sid == &session_id
+        )
+    });
+    assert!(
+        !premature_terminated,
+        "MED-003b (F-S034-MED-001 observability): Terminated must NOT arrive before the \
+         12s watchdog fires (at 6s, no kill_confirm_monitor should have been spawned on \
+         the reader==None path). Messages at 6s: {:?}",
+        msgs_at_6s
+    );
+
+    // Step 5: Advance the remaining 6s (total 12s) — watchdog must fire now.
+    tokio::time::advance(std::time::Duration::from_secs(7)).await;
+    for _ in 0..100 {
+        tokio::task::yield_now().await;
+    }
+
+    // BC-2.08.003 PC-5: state must be Terminated after the watchdog fires.
+    let sessions = manager.session_list().await;
+    let snap = sessions
+        .iter()
+        .find(|s| s.session_id == session_id)
+        .expect("MED-003b: session must remain in registry after watchdog");
+    assert_eq!(
+        snap.state,
+        monocle_ipc::types::SessionState::Terminated,
+        "MED-003b (BC-2.08.003 PC-5): watchdog must force state to Terminated after 12s \
+         on the reader==None path (F-S034-MED-001: no kill_confirm_monitor was spawned)"
+    );
+
+    // BC-2.08.008 Invariant 4: SessionStateChanged{Terminated} BEFORE SessionListUpdate
+    // from watchdog broadcast.
+    let watchdog_msgs = drain_messages(&mut rx, 200).await;
+    let terminated_idx = watchdog_msgs.iter().position(|m| {
+        matches!(
+            m,
+            monocle_ipc::types::ServerToClient::SessionStateChanged {
+                session_id: ref sid,
+                new_state: monocle_ipc::types::SessionState::Terminated,
+            } if sid == &session_id
+        )
+    });
+    let watchdog_list_idx = watchdog_msgs.iter().position(|m| {
+        matches!(
+            m,
+            monocle_ipc::types::ServerToClient::SessionListUpdate { .. }
+        )
+    });
+    assert!(
+        terminated_idx.is_some(),
+        "MED-003b (BC-2.08.003 PC-5 / BC-2.08.008 I4): watchdog must broadcast \
+         SessionStateChanged{{Terminated}} on reader==None path (F-S034-MED-001). \
+         Messages: {:?}",
+        watchdog_msgs
+    );
+    assert!(
+        watchdog_list_idx.is_some(),
+        "MED-003b (BC-2.08.008 I4): watchdog must broadcast SessionListUpdate after \
+         SessionStateChanged{{Terminated}}. Messages: {:?}",
+        watchdog_msgs
+    );
+    assert!(
+        terminated_idx.unwrap() < watchdog_list_idx.unwrap(),
+        "MED-003b (BC-2.08.008 I4): SessionStateChanged{{Terminated}} (idx {}) must arrive \
+         BEFORE SessionListUpdate (idx {}) from watchdog. Messages: {:?}",
+        terminated_idx.unwrap(),
+        watchdog_list_idx.unwrap(),
+        watchdog_msgs
+    );
+}
+
+// ---------------------------------------------------------------------------
+// HIGH-001 — Watchdog must not issue SIGKILL on stale state read
+//            F-S034-HIGH-001 / SS-session-manager.md v2.9.0 HIGH-002 obligation
+//
+// Defect (before fix): spawn_kill_watchdog() acquires the lock, reads state==Terminating,
+// DROPS the lock (~line 1749), then calls nix_kill() (~line 1765) WITHOUT the lock held.
+// Between the lock-drop and nix_kill(), kill_confirm_monitor can transition the session to
+// Terminated; the SIGKILL then targets session_host_pid which may have exited and had its
+// PID reused — delivering SIGKILL to an unrelated process (PID-reuse hazard).
+//
+// Fix: hold the sessions lock across BOTH the `state == Terminating` re-check AND the
+// nix_kill() syscall (synchronous — no .await — so holding the async mutex across it is
+// safe). If state != Terminating under that lock, return early without SIGKILL.
+//
+// This test asserts the observable INVARIANT enforced by the fix: when kill_confirm_monitor
+// delivers Terminated before the watchdog fires, the watchdog broadcasts ZERO additional
+// SessionStateChanged{Terminated} or SessionListUpdate messages. Any duplicate broadcast
+// indicates the watchdog executed past the pre-SIGKILL guard — the structural sign that
+// the lock scope is wrong.
+//
+// References:
+// - F-S034-HIGH-001 (adversarial pass-4 finding)
+// - SS-session-manager.md v2.9.0 HIGH-002 obligation
+// - BC-2.08.003 PC-5 (watchdog postconditions)
+// - BC-2.08.008 Invariant 4 (no duplicate broadcasts)
+// ---------------------------------------------------------------------------
+
+/// F-S034-HIGH-001 (HIGH-002 obligation): The 12s watchdog must re-check `state == Terminating`
+/// UNDER the sessions lock BEFORE issuing SIGKILL. When kill_confirm_monitor already
+/// transitioned the session to Terminated before the watchdog deadline, the watchdog MUST
+/// detect Terminated at its first lock acquisition and return without issuing SIGKILL or
+/// emitting any additional broadcasts.
+///
+/// Structural invariant tested: after kill_confirm_monitor has delivered Terminated and the
+/// watchdog fires (12s advance), the post-watchdog message set must contain ZERO additional
+/// SessionStateChanged{Terminated} or SessionListUpdate messages. The watchdog's early-return
+/// path (Terminated already detected under lock) emits nothing.
+///
+/// Uses tokio::time::pause()/advance() — no real 12s sleeps.
+#[tokio::test(start_paused = true)]
+async fn test_HIGH_001_watchdog_skips_sigkill_when_already_terminated_under_lock() {
+    // F-S034-HIGH-001 / HIGH-002: kill_confirm_monitor delivers Terminated before the
+    // watchdog fires. The watchdog must detect Terminated under lock and return without
+    // SIGKILL or duplicate broadcast.
+
+    let tmp = isolated_runtime_dir();
+    let session_id = "f0340001-0001-4000-a000-000000000001".to_string();
+    let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
+
+    let listener =
+        tokio::net::UnixListener::bind(&socket_path).expect("bind mock session-host socket");
+
+    let (mut manager, _subs, mut rx) =
+        make_manager_with_socket(tmp.path(), 55_301, socket_path.clone());
+    manager.with_peer_cred_verifier(Arc::new(AllowAllVerifier));
+
+    let opts = make_spawn_opts(&session_id);
+    manager
+        .spawn_session(opts)
+        .await
+        .expect("spawn_session must succeed");
+
+    // Accept the post-spawn monitor connection.
+    let accept_task = tokio::spawn(async move {
+        tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
+            .await
+            .expect("accept task timed out")
+            .expect("accept failed")
+    });
+
+    tokio::time::advance(std::time::Duration::from_millis(100)).await;
+    tokio::task::yield_now().await;
+
+    let (mut peer, _) = accept_task.await.expect("accept task panicked");
+
+    // Advance session to Running.
+    send_host_to_daemon(
+        &mut peer,
+        &monocle_ipc::types::HostToDaemon::StateChanged {
+            new_state: monocle_ipc::types::SessionState::Running,
+            degraded_env: None,
+        },
+    )
+    .await;
+
+    tokio::time::advance(std::time::Duration::from_millis(100)).await;
+    for _ in 0..20 {
+        tokio::task::yield_now().await;
+    }
+
+    // Wait for Running broadcast.
+    let mut reached_running = false;
+    {
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(500);
+        while tokio::time::Instant::now() < deadline {
+            match tokio::time::timeout(std::time::Duration::from_millis(50), rx.recv()).await {
+                Ok(Some(monocle_ipc::types::ServerToClient::SessionStateChanged {
+                    session_id: ref sid,
+                    new_state: monocle_ipc::types::SessionState::Running,
+                })) if sid == &session_id => {
+                    reached_running = true;
+                    break;
+                }
+                Ok(Some(_)) => {}
+                Ok(None) | Err(_) => break,
+            }
+        }
+    }
+    assert!(
+        reached_running,
+        "HIGH-001 precondition: session must reach Running"
+    );
+
+    // Drain residual messages from Running transition.
+    let _ = drain_messages(&mut rx, 100).await;
+
+    // kill_session() — transitions to Terminating, spawns 12s watchdog + kill_confirm_monitor.
+    manager
+        .kill_session(&session_id)
+        .await
+        .expect("HIGH-001: kill_session() must return Ok(())");
+
+    // Drain Terminating broadcasts from kill_session().
+    let _ = drain_messages(&mut rx, 200).await;
+
+    // Simulate kill_confirm_monitor delivering StateChanged{Terminated} on the existing
+    // connection BEFORE the 12s watchdog fires. kill_confirm_monitor reads from the same
+    // control connection and transitions the session to Terminated.
+    send_host_to_daemon(
+        &mut peer,
+        &monocle_ipc::types::HostToDaemon::StateChanged {
+            new_state: monocle_ipc::types::SessionState::Terminated,
+            degraded_env: None,
+        },
+    )
+    .await;
+
+    // Give kill_confirm_monitor time to process Terminated and transition state.
+    tokio::time::advance(std::time::Duration::from_millis(200)).await;
+    for _ in 0..30 {
+        tokio::task::yield_now().await;
+    }
+
+    // Drain messages — should contain exactly ONE SessionStateChanged{Terminated} from
+    // kill_confirm_monitor (precondition: session is Terminated before watchdog fires).
+    let pre_watchdog_msgs = drain_messages(&mut rx, 200).await;
+    let terminated_count_before_watchdog = pre_watchdog_msgs
+        .iter()
+        .filter(|m| {
+            matches!(
+                m,
+                monocle_ipc::types::ServerToClient::SessionStateChanged {
+                    session_id: ref sid,
+                    new_state: monocle_ipc::types::SessionState::Terminated,
+                } if sid == &session_id
+            )
+        })
+        .count();
+
+    assert_eq!(
+        terminated_count_before_watchdog, 1,
+        "HIGH-001 precondition: kill_confirm_monitor must broadcast exactly ONE \
+         SessionStateChanged{{Terminated}} before the watchdog fires. \
+         Got {}. Messages: {:?}",
+        terminated_count_before_watchdog, pre_watchdog_msgs
+    );
+
+    // Confirm the session is Terminated before the watchdog fires.
+    let sessions = manager.session_list().await;
+    let snap = sessions
+        .iter()
+        .find(|s| s.session_id == session_id)
+        .expect("HIGH-001: session must be in registry");
+    assert_eq!(
+        snap.state,
+        monocle_ipc::types::SessionState::Terminated,
+        "HIGH-001 precondition: session must be Terminated before watchdog fires. Got {:?}",
+        snap.state
+    );
+
+    // Advance virtual time 12s — watchdog deadline fires.
+    // F-S034-HIGH-001 (HIGH-002 obligation): the watchdog MUST detect Terminated under
+    // the sessions lock at its FIRST lock acquisition and return WITHOUT issuing SIGKILL
+    // or emitting any additional SessionStateChanged{Terminated} or SessionListUpdate.
+    tokio::time::advance(std::time::Duration::from_secs(12)).await;
+    for _ in 0..50 {
+        tokio::task::yield_now().await;
+    }
+
+    // Drain any messages emitted AFTER the watchdog fires.
+    let post_watchdog_msgs = drain_messages(&mut rx, 200).await;
+
+    // PRIMARY ASSERTION (F-S034-HIGH-001 / HIGH-002): NO duplicate SessionStateChanged
+    // {Terminated} after the watchdog fires. The fix holds the lock across the re-check
+    // and SIGKILL call, so the watchdog detects Terminated at the FIRST lock acquisition
+    // (before any SIGKILL decision) and returns early without broadcasting anything.
+    let duplicate_terminated_count = post_watchdog_msgs
+        .iter()
+        .filter(|m| {
+            matches!(
+                m,
+                monocle_ipc::types::ServerToClient::SessionStateChanged {
+                    session_id: ref sid,
+                    new_state: monocle_ipc::types::SessionState::Terminated,
+                } if sid == &session_id
+            )
+        })
+        .count();
+
+    assert_eq!(
+        duplicate_terminated_count, 0,
+        "F-S034-HIGH-001 (HIGH-002 obligation): the 12s watchdog must detect Terminated \
+         under the sessions lock and return early — without issuing SIGKILL or emitting \
+         any additional SessionStateChanged{{Terminated}} broadcasts. \
+         A non-zero count indicates the watchdog executed past the pre-SIGKILL guard \
+         (stale state read after lock-drop), violating the HIGH-002 PID-reuse protection. \
+         Duplicate count: {}. Post-watchdog messages: {:?}",
+        duplicate_terminated_count, post_watchdog_msgs
+    );
+
+    // SECONDARY ASSERTION: no extra SessionListUpdate from watchdog either.
+    let extra_list_updates = post_watchdog_msgs
+        .iter()
+        .filter(|m| {
+            matches!(
+                m,
+                monocle_ipc::types::ServerToClient::SessionListUpdate { .. }
+            )
+        })
+        .count();
+
+    assert_eq!(
+        extra_list_updates, 0,
+        "F-S034-HIGH-001 (HIGH-002 obligation): the watchdog must NOT emit a SessionListUpdate \
+         when it detects Terminated under lock and returns early. \
+         Extra count: {}. Post-watchdog messages: {:?}",
+        extra_list_updates, post_watchdog_msgs
+    );
+
+    // TERTIARY ASSERTION: session state must remain Terminated (watchdog must not disturb it).
+    let sessions = manager.session_list().await;
+    let snap = sessions
+        .iter()
+        .find(|s| s.session_id == session_id)
+        .expect("HIGH-001: session must still be in registry after watchdog");
+    assert_eq!(
+        snap.state,
+        monocle_ipc::types::SessionState::Terminated,
+        "F-S034-HIGH-001: session state must remain Terminated after watchdog fires \
+         (watchdog must not overwrite or re-transition from already-Terminated state). \
+         Got: {:?}",
+        snap.state
     );
 }
