@@ -662,6 +662,53 @@ impl SessionManager {
         self
     }
 
+    /// Insert a synthetic Detached session into the registry for test use only.
+    ///
+    /// Enables tests to exercise the genuine `KillPath::FreshConnect` arm
+    /// (SessionState::Detached + host_conn:None) without relying on S-035's
+    /// `detach_session()` (which is `todo!()`).  See IMP-001 test-seam requirement.
+    ///
+    /// # Test usage
+    ///
+    /// ```rust,ignore
+    /// manager
+    ///     .insert_detached_session_for_test("uuid-here", 12345, "/tmp/foo.sock".into())
+    ///     .await;
+    /// manager.kill_session("uuid-here").await.unwrap();
+    /// ```
+    ///
+    /// This function does NOT exist in production builds.
+    // The helper is used by the test-writer's upcoming IMP-001 tests.
+    // Until those tests land this attribute prevents a dead_code warning.
+    #[cfg(test)]
+    #[allow(dead_code)]
+    pub(crate) async fn insert_detached_session_for_test(
+        &self,
+        session_id: &str,
+        pid: u32,
+        socket_path: PathBuf,
+    ) {
+        let entry = SessionEntry {
+            session_id: session_id.to_string(),
+            session_host_pid: pid,
+            session_host_socket: socket_path,
+            state: SessionState::Detached,
+            cwd: PathBuf::from("/tmp/test-cwd"),
+            project_root: PathBuf::from("/tmp/test-project"),
+            harness_id: "claude-code".to_string(),
+            profile_id: "default".to_string(),
+            started_at: chrono::Utc::now(),
+            kill_deadline: None,
+            degraded: false,
+            degraded_reason: None,
+            host_conn: None,
+        };
+        self.sessions
+            .lock()
+            .await
+            .insert(session_id.to_string(), entry);
+    }
+
     /// Spawn a new session from the given `SpawnOptions`.
     ///
     /// Steps (BC-2.08.001):

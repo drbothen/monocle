@@ -653,6 +653,24 @@ enum PhaseBExit {
     Detach,
 }
 
+/// Pure comparison kernel for SO_PEERCRED UID validation (IMP-002 test seam).
+///
+/// Separated from `verify_peer_uid` so the reject-on-mismatch branch can be
+/// unit-tested with synthetic UID pairs without requiring elevated OS privileges.
+/// Production semantics are identical: `verify_peer_uid` calls this function
+/// after obtaining the real peer and own UIDs from the OS.
+///
+/// Returns `Ok(())` when `peer_uid == own_uid`; `Err(PermissionDenied)` otherwise.
+pub(crate) fn check_peer_uid(peer_uid: u32, own_uid: u32) -> Result<(), SessionHostError> {
+    if peer_uid != own_uid {
+        return Err(SessionHostError::Io(std::io::Error::new(
+            std::io::ErrorKind::PermissionDenied,
+            format!("SO_PEERCRED uid mismatch: peer={peer_uid} own={own_uid}"),
+        )));
+    }
+    Ok(())
+}
+
 /// Verify that the peer UID of the connected socket matches the current process UID.
 ///
 /// Uses tokio's `UnixStream::peer_cred()` which calls `SO_PEERCRED` on Linux and
@@ -675,12 +693,8 @@ fn verify_peer_uid(
             own_uid = own_uid,
             "session-host: SO_PEERCRED uid mismatch"
         );
-        return Err(SessionHostError::Io(std::io::Error::new(
-            std::io::ErrorKind::PermissionDenied,
-            format!("SO_PEERCRED uid mismatch: peer={peer_uid} own={own_uid}"),
-        )));
     }
-    Ok(())
+    check_peer_uid(peer_uid, own_uid)
 }
 
 /// Kill sequence: SIGTERM → 10s waitpid → SIGKILL (+ reap) → StateChanged{Terminated}
