@@ -709,6 +709,44 @@ impl SessionManager {
             .insert(session_id.to_string(), entry);
     }
 
+    /// Test helper: insert a session in `Terminating` state with `kill_deadline` set.
+    ///
+    /// Used to test the 12-second watchdog path without driving through kill_session().
+    /// Ruling J (F-S034-ADV-MED-001): the watchdog must kill BOTH the session-host PID
+    /// and the harness child PID (via sidecar read). This helper sets up the registry
+    /// entry; the caller must write the sidecar with `child_pid` populated.
+    ///
+    /// This function does NOT exist in production builds.
+    #[cfg(test)]
+    #[allow(dead_code)]
+    pub(crate) async fn insert_terminating_session_for_test(
+        &self,
+        session_id: &str,
+        session_host_pid: u32,
+        socket_path: PathBuf,
+        kill_deadline: std::time::Instant,
+    ) {
+        let entry = SessionEntry {
+            session_id: session_id.to_string(),
+            session_host_pid,
+            session_host_socket: socket_path,
+            state: SessionState::Terminating,
+            cwd: PathBuf::from("/tmp/test-cwd"),
+            project_root: PathBuf::from("/tmp/test-project"),
+            harness_id: "claude-code".to_string(),
+            profile_id: "default".to_string(),
+            started_at: chrono::Utc::now(),
+            kill_deadline: Some(kill_deadline),
+            degraded: false,
+            degraded_reason: None,
+            host_conn: None,
+        };
+        self.sessions
+            .lock()
+            .await
+            .insert(session_id.to_string(), entry);
+    }
+
     /// Spawn a new session from the given `SpawnOptions`.
     ///
     /// Steps (BC-2.08.001):
@@ -1848,6 +1886,66 @@ impl SessionManager {
                     }
                 }
                 // guard dropped at end of this block
+            }
+
+            // Ruling J (F-S034-ADV-MED-001): also kill the harness child.
+            // portable_pty 0.9.0 (unix.rs:257) calls libc::setsid() in the harness child's
+            // pre_exec, placing the child in its OWN session and process group. A SIGKILL to
+            // the session-host's PID (above) does NOT reach the harness child — they are in
+            // completely separate process groups and sessions. We must kill the child explicitly.
+            //
+            // This sidecar read is OUTSIDE any mutex (best-effort I/O per Ruling J).
+            // By the time the 12s watchdog fires, the session-host is unresponsive and is NOT
+            // writing the sidecar concurrently — the read is race-free in practice.
+            {
+                use nix::sys::signal::{kill as nix_kill, Signal};
+                use nix::unistd::Pid;
+
+                let child_pid: Option<u32> = std::fs::read_to_string(&sidecar_path)
+                    .ok()
+                    .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+                    .and_then(|v| v["child_pid"].as_u64())
+                    .map(|n| n as u32);
+
+                match child_pid {
+                    Some(cpid) => {
+                        let nix_child_pid = Pid::from_raw(cpid as i32);
+                        match nix_kill(nix_child_pid, Signal::SIGKILL) {
+                            Ok(()) => {
+                                tracing::warn!(
+                                    session_id = %session_id,
+                                    child_pid = cpid,
+                                    "watchdog: SIGKILL sent to harness child (BC-2.08.003 PC-5b, Ruling J)"
+                                );
+                            }
+                            Err(nix::errno::Errno::ESRCH) => {
+                                // Harness child already exited — benign (e.g., it exited naturally
+                                // before the watchdog fired). Not an error condition.
+                                tracing::debug!(
+                                    session_id = %session_id,
+                                    child_pid = cpid,
+                                    "watchdog: harness child already exited (ESRCH) — benign (Ruling J)"
+                                );
+                            }
+                            Err(e) => {
+                                tracing::warn!(
+                                    session_id = %session_id,
+                                    child_pid = cpid,
+                                    error = %e,
+                                    "watchdog: harness child SIGKILL failed (Ruling J)"
+                                );
+                            }
+                        }
+                    }
+                    None => {
+                        // child_pid absent from sidecar: session-host crashed before startup
+                        // step 8 (harness child was never spawned). Nothing to kill.
+                        tracing::warn!(
+                            session_id = %session_id,
+                            "watchdog: child_pid not in sidecar — harness child may be orphaned (Ruling J)"
+                        );
+                    }
+                }
             }
 
             // Force state → Terminated and emit broadcasts.
@@ -6185,5 +6283,153 @@ mod tests {
         );
 
         let _ = std::fs::remove_file(&socket_path);
+    }
+
+    // -----------------------------------------------------------------------
+    // Ruling J (F-S034-ADV-MED-001): watchdog must kill BOTH session-host PID
+    // and harness child PID.
+    //
+    // portable_pty 0.9.0 calls libc::setsid() in the harness child's pre_exec
+    // (unix.rs:257), placing the harness child in its OWN session and process
+    // group. A single-PID SIGKILL to the session-host does NOT reach the harness
+    // child. The 12-second watchdog MUST also kill the harness child via the PID
+    // stored in the session-state.json sidecar.
+    //
+    // Test: spawn a REAL child process (sleep 100), record its PID in the sidecar,
+    // then fire the watchdog and assert the child is dead.
+    //
+    // Anchors: BC-2.08.003 PC-5b, Ruling J, ADV-S034-MED-001.
+    // -----------------------------------------------------------------------
+
+    /// Ruling J: watchdog fires → SIGKILL sent to harness child PID from sidecar.
+    ///
+    /// Verification: a real child process (`sleep 100`) is spawned and its PID written
+    /// to the sidecar as `child_pid`. The fake session-host PID (9999998) will return
+    /// ESRCH (process not found) — this is the benign path. After the watchdog fires,
+    /// the real child process must be dead.
+    ///
+    /// BC-2.08.003 PC-5b / Ruling J / ADV-S034-MED-001.
+    #[tokio::test(start_paused = true)]
+    #[cfg_attr(not(unix), ignore)]
+    async fn test_ruling_j_watchdog_kills_harness_child_pid_from_sidecar() {
+        // Use /tmp for short socket paths (macOS SUN_LEN = 104 chars).
+        let tmp = tempfile::Builder::new()
+            .tempdir_in("/tmp")
+            .expect("tempdir in /tmp");
+
+        // Spawn a real long-lived child process that will NOT exit on its own.
+        // This represents the orphaned harness child that the watchdog must kill.
+        let mut real_child = std::process::Command::new("sleep")
+            .arg("100")
+            .spawn()
+            .expect("Ruling J: could not spawn real child process (sleep 100)");
+        let real_child_pid = real_child.id();
+
+        // Build the session-state.json sidecar with child_pid populated.
+        // This simulates the state after the session-host has started the harness child.
+        let session_id = "00000000-rj01-4000-a000-000000000001".to_string();
+        let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+        let sidecar_json = serde_json::json!({
+            "schema_version": 3,
+            "session_id": session_id,
+            "state": "Terminating",
+            "session_host_pid": 9_999_998u32,
+            "harness_id": "claude-code",
+            "profile_id": "default",
+            "project_root": "/tmp/test",
+            "cwd": "/tmp/test",
+            "started_at": "2026-06-17T00:00:00Z",
+            "pty_rows": 24,
+            "pty_cols": 80,
+            "kill_deadline_unix_ms": null,
+            "display_name": null,
+            "child_pid": real_child_pid,
+        });
+        {
+            use std::io::Write;
+            let mut f = std::fs::File::create(&sidecar_path)
+                .expect("Ruling J: could not create sidecar file");
+            f.write_all(&serde_json::to_vec_pretty(&sidecar_json).unwrap())
+                .expect("Ruling J: could not write sidecar");
+        }
+
+        // Build a minimal manager to get a broker and sessions arc.
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 9_999_998,
+        });
+        let (tx, _rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry = ClientEntry::new(tx);
+        let subs: SubscriberList = Arc::new(Mutex::new(vec![entry]));
+        let broker = make_broker(&subs);
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+        let manager =
+            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+
+        // Insert a Terminating session entry with the fake session-host PID.
+        // The fake PID (9_999_998) will return ESRCH — that is the expected benign path.
+        let std_deadline = std::time::Instant::now() + std::time::Duration::from_secs(12);
+        manager
+            .insert_terminating_session_for_test(
+                &session_id,
+                9_999_998u32,
+                tmp.path().join(format!("session-{}.sock", session_id)),
+                std_deadline,
+            )
+            .await;
+
+        // Compute the watchdog deadline as a tokio::time::Instant.
+        // Under start_paused = true, Instant::now() is frozen; advance(12s) will fire it.
+        let watchdog_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(12);
+
+        // Spawn the watchdog.
+        let watchdog_handle = SessionManager::spawn_kill_watchdog(
+            session_id.clone(),
+            9_999_998u32, // fake session-host PID — ESRCH (benign)
+            Arc::clone(&manager.sessions),
+            Arc::clone(&manager.broker),
+            sidecar_path.clone(),
+            tmp.path().join(format!("session-{}.sock", session_id)),
+            watchdog_deadline,
+        );
+
+        // Verify the child is alive before the watchdog fires.
+        assert!(
+            nix::sys::signal::kill(nix::unistd::Pid::from_raw(real_child_pid as i32), None).is_ok(),
+            "Ruling J: real child process must be alive before watchdog fires"
+        );
+
+        // Advance virtual time to fire the watchdog (>= 12s).
+        tokio::time::advance(std::time::Duration::from_secs(13)).await;
+
+        // Wait for the watchdog task to complete (it should finish very quickly
+        // since nix_kill is synchronous and there is no real I/O).
+        let _ = tokio::time::timeout(std::time::Duration::from_secs(5), watchdog_handle)
+            .await
+            .expect("Ruling J: watchdog task must complete within 5s of time advance");
+
+        // Assert: the real child process is now dead (ESRCH = already gone).
+        // SIGKILL was sent by the watchdog; the process should be dead or zombied.
+        // wait() to reap any zombie so the PID is fully released.
+        // On some systems the child may be a zombie until we wait(); use nix kill(None)
+        // probe — a zombie responds to kill(NONE) with Ok (still visible) until reaped.
+        // So we reap first, then assert no longer alive.
+        let reaped = real_child.try_wait();
+        let child_dead = match reaped {
+            Ok(Some(_)) => true, // already exited and reaped
+            Ok(None) => {
+                // Still zombie or truly running. Give it 500ms then reap.
+                std::thread::sleep(std::time::Duration::from_millis(500));
+                matches!(real_child.try_wait(), Ok(Some(_)))
+            }
+            Err(_) => true, // already waited or gone
+        };
+
+        assert!(
+            child_dead,
+            "Ruling J (ADV-S034-MED-001): watchdog must have sent SIGKILL to harness child \
+             pid={} — child must be dead after watchdog fires (BC-2.08.003 PC-5b)",
+            real_child_pid
+        );
     }
 }
