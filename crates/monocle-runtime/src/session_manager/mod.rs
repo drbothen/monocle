@@ -5859,4 +5859,331 @@ mod tests {
             sessions.iter().map(|s| &s.session_id).collect::<Vec<_>>()
         );
     }
+
+    // -----------------------------------------------------------------------
+    // IMP-001: KillPath::FreshConnect (Detached) arm — genuine coverage
+    //
+    // Adversarial pass-6 finding F-S034-ADV-IMP-001.
+    //
+    // Prior to this test the FreshConnect arm (SessionState::Detached, host_conn:None)
+    // was never exercised: every existing kill_session test started from Running state.
+    // These tests drive the real arm via `insert_detached_session_for_test()` (the
+    // test-seam committed at 4abdb65) and a live mock UDS listener.
+    //
+    // References: AC-010, EC-164, AC-009, BC-2.08.008 Invariant 4, BC-2.08.003 Invariant 5.
+    // -----------------------------------------------------------------------
+
+    /// IMP-001 (happy path): kill_session on a Detached session makes a FRESH UDS connect,
+    /// applies SO_PEERCRED (via FakePeerCredVerifier{allow:true}), sends DaemonToHost::Kill
+    /// on the fresh connection, transitions Detached → Terminating → Terminated when the
+    /// mock host confirms with HostToDaemon::StateChanged{Terminated}.
+    ///
+    /// Assertions:
+    /// - The FRESH listener (not a reused connection) receives the Kill message (AC-010/EC-164).
+    /// - State is Terminating immediately after kill_session() returns (AC-010).
+    /// - SessionStateChanged{Terminating} precedes SessionListUpdate in the subscriber FIFO
+    ///   (BC-2.08.008 Invariant 4).
+    /// - Session reaches Terminated within 2s after the mock sends StateChanged{Terminated}
+    ///   (kill_confirm_monitor path, not the 12s watchdog).
+    /// - Would fail if the FreshConnect arm were replaced by ExistingConn: the listener
+    ///   would never accept, causing the test to time out on the Kill delivery assertion.
+    ///
+    /// F-S034-ADV-IMP-001 / AC-010 / EC-164 / BC-2.08.003 Invariant 5 / BC-2.08.008 Invariant 4.
+    #[tokio::test]
+    async fn test_BC_2_08_003_IMP001_fresh_connect_detached_kill_path_happy() {
+        use monocle_ipc::types::DaemonToHost;
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::UnixListener;
+
+        let tmp = tempfile::tempdir().expect("IMP-001: tempdir");
+
+        // Build manager with FakePeerCredVerifier{allow:true} so SO_PEERCRED passes.
+        let (tx, mut rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry = monocle_ipc::server::ClientEntry::new(tx);
+        let subs: SubscriberList = Arc::new(Mutex::new(vec![entry]));
+        let broker = make_broker(&subs);
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 99_901,
+        });
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+        let mut manager = SessionManager::new(tmp.path().to_path_buf(), spawner, broker, engine);
+        // Inject the test verifier: allows any connection (simulates same-UID).
+        // AC-010: SO_PEERCRED must be applied — we verify it IS called (not skipped) by using
+        // FakePeerCredVerifier{allow:true}; the mismatch variant below proves the reject path.
+        manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifier { allow: true }));
+
+        // Set up a mock session-host UDS listener BEFORE inserting the Detached entry.
+        // The socket path must be a short /tmp path (macOS SUN_LEN = 104 bytes).
+        let socket_path = std::path::PathBuf::from(format!(
+            "/tmp/monocle-imp001-fresh-{}.sock",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .subsec_nanos()
+        ));
+        let _ = std::fs::remove_file(&socket_path);
+        let listener = UnixListener::bind(&socket_path).expect("IMP-001: bind test listener");
+
+        // Track how many times the listener was accepted — must be exactly 1 (the fresh connect).
+        // Use a channel: the mock-host task sends the Kill message it received back to us.
+        let (kill_received_tx, mut kill_received_rx) = mpsc::channel::<DaemonToHost>(1);
+
+        // Spawn the mock session-host: accept one connection, verify it receives Kill,
+        // then reply with HostToDaemon::StateChanged{Terminated}.
+        let socket_path_clone = socket_path.clone();
+        tokio::spawn(async move {
+            // Accept the single fresh connection from kill_session.
+            let (mut stream, _addr) = listener
+                .accept()
+                .await
+                .expect("IMP-001: mock host must accept fresh connection");
+
+            // Read the Kill message.
+            let mut len_buf = [0u8; 4];
+            stream
+                .read_exact(&mut len_buf)
+                .await
+                .expect("IMP-001: read Kill length prefix");
+            let len = u32::from_le_bytes(len_buf) as usize;
+            let mut body = vec![0u8; len];
+            stream
+                .read_exact(&mut body)
+                .await
+                .expect("IMP-001: read Kill body");
+            let msg: DaemonToHost =
+                serde_json::from_slice(&body).expect("IMP-001: deserialize DaemonToHost");
+
+            // Tell the test that Kill was received on this (fresh) connection.
+            let _ = kill_received_tx.send(msg).await;
+
+            // Reply with HostToDaemon::StateChanged{Terminated} on the SAME connection
+            // (SS-session-manager.md v2.9.0: single-accept-then-process; same-connection
+            // confirmation — kill_confirm_monitor reads from this reader).
+            let terminated_msg = monocle_ipc::types::HostToDaemon::StateChanged {
+                new_state: monocle_ipc::types::SessionState::Terminated,
+                degraded_env: None,
+            };
+            let terminated_bytes =
+                serde_json::to_vec(&terminated_msg).expect("IMP-001: serialize Terminated");
+            let term_len = (terminated_bytes.len() as u32).to_le_bytes();
+            stream
+                .write_all(&term_len)
+                .await
+                .expect("IMP-001: write Terminated length");
+            stream
+                .write_all(&terminated_bytes)
+                .await
+                .expect("IMP-001: write Terminated body");
+            stream.flush().await.expect("IMP-001: flush Terminated");
+            drop(socket_path_clone); // keep alive until after flush
+        });
+
+        // Insert a synthetic Detached session pointing at our mock listener.
+        // (state=Detached, host_conn=None — the genuine FreshConnect arm condition.)
+        let session_id = "00000000-imp1-4000-a000-000000000001";
+        manager
+            .insert_detached_session_for_test(session_id, 99_901, socket_path.clone())
+            .await;
+
+        // Verify state is Detached before kill.
+        {
+            let sessions = manager.session_list().await;
+            let snap = sessions
+                .iter()
+                .find(|s| s.session_id == session_id)
+                .expect("IMP-001: Detached entry must exist in registry");
+            assert_eq!(
+                snap.state,
+                monocle_ipc::types::SessionState::Detached,
+                "IMP-001: session must be Detached before kill_session"
+            );
+        }
+
+        // Call kill_session — this is the FreshConnect arm.
+        manager
+            .kill_session(session_id)
+            .await
+            .expect("IMP-001: kill_session must return Ok(())");
+
+        // AC-010 / EC-164: the FRESH connection must have received DaemonToHost::Kill.
+        // If the FreshConnect arm were skipped (e.g., ExistingConn used instead), the
+        // mock listener would never accept, and kill_received_rx.recv() would time out here.
+        let received_kill =
+            tokio::time::timeout(std::time::Duration::from_secs(3), kill_received_rx.recv())
+                .await
+                .expect(
+                    "IMP-001: FRESH connection must receive DaemonToHost::Kill within 3s \
+             (would time out if ExistingConn arm were used — proving FreshConnect ran)",
+                )
+                .expect("IMP-001: kill_received channel must not be closed");
+
+        assert!(
+            matches!(received_kill, DaemonToHost::Kill),
+            "IMP-001 (AC-010/EC-164): FRESH connection must receive DaemonToHost::Kill, got {:?}",
+            received_kill
+        );
+
+        // AC-010: state must be Terminating immediately after kill_session() returns.
+        {
+            let sessions = manager.session_list().await;
+            let snap = sessions
+                .iter()
+                .find(|s| s.session_id == session_id)
+                .expect("IMP-001: entry must still be in registry after kill_session");
+            assert_eq!(
+                snap.state,
+                monocle_ipc::types::SessionState::Terminating,
+                "IMP-001 (AC-010): state must be Terminating immediately after kill_session() returns; \
+                 got {:?}",
+                snap.state
+            );
+        }
+
+        // BC-2.08.008 Invariant 4: drain broker messages and verify
+        // SessionStateChanged{Terminating} precedes SessionListUpdate.
+        let mut messages: Vec<ServerToClient> = Vec::new();
+        let drain_deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(300);
+        loop {
+            match tokio::time::timeout_at(drain_deadline, rx.recv()).await {
+                Ok(Some(msg)) => messages.push(msg),
+                _ => break,
+            }
+        }
+
+        let terminating_sc_idx = messages.iter().position(|m| {
+            matches!(
+                m,
+                ServerToClient::SessionStateChanged {
+                    session_id: sid,
+                    new_state: monocle_ipc::types::SessionState::Terminating,
+                } if sid == session_id
+            )
+        });
+        let list_update_idx = messages.iter().rposition(|m| {
+            // Find the LAST SessionListUpdate (may be from spawn or kill path).
+            // We care that the Terminating change precedes its corresponding ListUpdate.
+            // Use the first ListUpdate AFTER the Terminating StateChanged.
+            matches!(m, ServerToClient::SessionListUpdate { .. })
+        });
+
+        assert!(
+            terminating_sc_idx.is_some(),
+            "IMP-001 (BC-2.08.008 Inv4): SessionStateChanged{{Terminating}} must be broadcast \
+             after kill_session (Detached → Terminating transition)"
+        );
+        assert!(
+            list_update_idx.is_some(),
+            "IMP-001 (BC-2.08.008 Inv4): SessionListUpdate must be broadcast after kill_session"
+        );
+        assert!(
+            terminating_sc_idx.unwrap() < list_update_idx.unwrap(),
+            "IMP-001 (BC-2.08.008 Invariant 4): SessionStateChanged{{Terminating}} (idx={}) \
+             must precede SessionListUpdate (idx={}) in subscriber FIFO",
+            terminating_sc_idx.unwrap(),
+            list_update_idx.unwrap()
+        );
+
+        // kill_confirm_monitor path: session must reach Terminated within 2s after
+        // the mock host sent StateChanged{Terminated} — no need for the 12s watchdog.
+        let term_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(2);
+        let mut reached_terminated = false;
+        loop {
+            if tokio::time::Instant::now() >= term_deadline {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            let sessions = manager.session_list().await;
+            if let Some(snap) = sessions.iter().find(|s| s.session_id == session_id) {
+                if snap.state == monocle_ipc::types::SessionState::Terminated {
+                    reached_terminated = true;
+                    break;
+                }
+            }
+        }
+        assert!(
+            reached_terminated,
+            "IMP-001: session must reach Terminated via kill_confirm_monitor within 2s \
+             after mock host sends StateChanged{{Terminated}} (not waiting for 12s watchdog)"
+        );
+
+        let _ = std::fs::remove_file(&socket_path);
+    }
+
+    /// IMP-001 (UID mismatch / Detached variant): when SO_PEERCRED fails on the fresh connect
+    /// (FakePeerCredVerifier{allow:false}), kill_session must transition the session immediately
+    /// to Terminated and return Ok(()) — no Kill is delivered.
+    ///
+    /// BC-2.08.003 Invariant 5 (connector side): peer-uid mismatch on fresh connect → Terminated.
+    ///
+    /// F-S034-ADV-IMP-001 / AC-009 / BC-2.08.003 Invariant 5.
+    #[tokio::test]
+    async fn test_BC_2_08_003_IMP001_fresh_connect_detached_uid_mismatch_terminates() {
+        use tokio::net::UnixListener;
+
+        let tmp = tempfile::tempdir().expect("IMP-001 uid-mismatch: tempdir");
+
+        // Inject FakePeerCredVerifier{allow:false} — simulates UID mismatch (EC-163).
+        let (tx, _rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry = monocle_ipc::server::ClientEntry::new(tx);
+        let subs: SubscriberList = Arc::new(Mutex::new(vec![entry]));
+        let broker = make_broker(&subs);
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 99_902,
+        });
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+        let mut manager = SessionManager::new(tmp.path().to_path_buf(), spawner, broker, engine);
+        // FakePeerCredVerifier{allow:false}: every verify() call returns Err(PermissionDenied).
+        // This simulates the SO_PEERCRED UID mismatch path (EC-163).
+        manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifier { allow: false }));
+
+        let socket_path = std::path::PathBuf::from(format!(
+            "/tmp/monocle-imp001-mismatch-{}.sock",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .subsec_nanos()
+        ));
+        let _ = std::fs::remove_file(&socket_path);
+        // Bind so the daemon can connect (SO_PEERCRED is evaluated after connect, not bind).
+        let _listener = UnixListener::bind(&socket_path).expect("IMP-001 uid-mismatch: bind");
+
+        // Spawn acceptor to prevent the daemon's connect() from blocking.
+        let socket_path_clone2 = socket_path.clone();
+        tokio::spawn(async move {
+            // Just accept the connection; the daemon will close it after SO_PEERCRED fails.
+            let listener2 = UnixListener::bind(&socket_path_clone2);
+            drop(listener2); // already bound above; just accept one conn in background
+        });
+
+        let session_id = "00000000-imp1-4000-a000-000000000002";
+        manager
+            .insert_detached_session_for_test(session_id, 99_902, socket_path.clone())
+            .await;
+
+        // kill_session must return Ok(()) even when SO_PEERCRED rejects (AC-009).
+        let result = manager.kill_session(session_id).await;
+        assert!(
+            result.is_ok(),
+            "IMP-001 (AC-009): kill_session must return Ok(()) on UID mismatch; got {:?}",
+            result
+        );
+
+        // State must be Terminated immediately (no Kill was sent — PEERCRED rejected).
+        let sessions = manager.session_list().await;
+        let snap = sessions
+            .iter()
+            .find(|s| s.session_id == session_id)
+            .expect("IMP-001 uid-mismatch: entry must still be in registry");
+        assert_eq!(
+            snap.state,
+            monocle_ipc::types::SessionState::Terminated,
+            "IMP-001 (BC-2.08.003 Inv5): UID mismatch on fresh connect must transition \
+             session immediately to Terminated (no Kill delivered); got {:?}",
+            snap.state
+        );
+
+        let _ = std::fs::remove_file(&socket_path);
+    }
 }

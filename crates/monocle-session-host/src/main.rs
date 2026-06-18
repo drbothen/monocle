@@ -1438,19 +1438,19 @@ mod tests {
         let _ = std::fs::remove_file(&sock_path);
     }
 
-    /// AC-009 (acceptor side): verify_peer_uid rejects connections where peer uid != own uid.
+    /// AC-009 (acceptor side): verify_peer_uid wires peer_cred() correctly — same-UID
+    /// connections are accepted and peer_cred() returns the current process UID.
     ///
-    /// We cannot spoof a different OS UID in a test without root privileges, so this
-    /// test exercises the rejection logic structurally by verifying:
-    /// 1. The current process UID is what peer_cred() returns for a self-connection.
-    /// 2. A hypothetical peer_uid != own_uid would produce PermissionDenied — tested
-    ///    by verifying the error message format matches the expected pattern.
+    /// This test validates the POSITIVE path only: that peer_cred() yields own_uid for
+    /// a self-connect, and that verify_peer_uid accepts it.  The NEGATIVE path
+    /// (peer_uid != own_uid → PermissionDenied) is covered by the pure unit tests for
+    /// `check_peer_uid` below (test_BC_2_08_003_IMP002_*).
     ///
-    /// The full integration path (loop continues after UID mismatch rejection) is
-    /// demonstrated by the BLOCKER-001-guard test: conn #2 succeeds after conn #1,
-    /// proving the loop re-accepts after any Phase A exit condition.
+    /// Renamed from `test_BC_2_08_003_AC009_so_peercred_uid_mismatch_returns_permission_denied`
+    /// (misleading: the old name implied a mismatch was tested here; it was not).
+    /// All original assertions are preserved, no weakening — F-S034-ADV-IMP-002.
     #[tokio::test]
-    async fn test_BC_2_08_003_AC009_so_peercred_uid_mismatch_returns_permission_denied() {
+    async fn test_BC_2_08_003_AC009_so_peercred_peer_cred_wiring_same_uid_accepted() {
         // We verify the structural guard: own_uid is correctly obtained via nix::unistd::getuid().
         let own_uid = nix::unistd::getuid().as_raw();
 
@@ -1492,6 +1492,145 @@ mod tests {
         );
 
         let _ = std::fs::remove_file(&sock_path);
+    }
+
+    // -----------------------------------------------------------------------
+    // IMP-002: acceptor-side SO_PEERCRED reject branch — pure unit tests for
+    // `check_peer_uid`.
+    //
+    // Adversarial pass-6 finding F-S034-ADV-IMP-002.
+    //
+    // `check_peer_uid(peer_uid, own_uid)` is pub(crate) and accessible via
+    // `super::check_peer_uid` from this test module. These tests exercise BOTH
+    // branches of the comparison without requiring root or a different OS user.
+    //
+    // References: AC-009, BC-2.08.003 Invariant 5 (acceptor side).
+    // -----------------------------------------------------------------------
+
+    /// IMP-002 (mismatch → PermissionDenied): check_peer_uid(1000, 0) must return
+    /// Err with ErrorKind::PermissionDenied and the expected message format.
+    ///
+    /// This is the genuine negative test that the misleading
+    /// `test_BC_2_08_003_AC009_so_peercred_uid_mismatch_returns_permission_denied`
+    /// claimed to cover but did not.  The function is called directly so that
+    /// no root privileges or forked process are needed.
+    ///
+    /// F-S034-ADV-IMP-002 / AC-009 / BC-2.08.003 Invariant 5.
+    #[test]
+    fn test_BC_2_08_003_IMP002_check_peer_uid_mismatch_returns_permission_denied() {
+        let result = super::check_peer_uid(1000, 0);
+
+        // Must be Err — a mismatch must never succeed.
+        assert!(
+            result.is_err(),
+            "IMP-002 (AC-009 / BC-2.08.003 Inv5): check_peer_uid(1000, 0) must return Err; \
+             got Ok(())"
+        );
+
+        let err = result.unwrap_err();
+
+        // Must be SessionHostError::Io wrapping PermissionDenied.
+        match &err {
+            SessionHostError::Io(io_err) => {
+                assert_eq!(
+                    io_err.kind(),
+                    std::io::ErrorKind::PermissionDenied,
+                    "IMP-002: error kind must be PermissionDenied (CWE-284); got {:?}",
+                    io_err.kind()
+                );
+                // Message format: "SO_PEERCRED uid mismatch: peer=<peer> own=<own>"
+                let msg = io_err.to_string();
+                assert!(
+                    msg.contains("SO_PEERCRED uid mismatch"),
+                    "IMP-002: error message must contain 'SO_PEERCRED uid mismatch'; got: {:?}",
+                    msg
+                );
+                assert!(
+                    msg.contains("peer=1000"),
+                    "IMP-002: error message must include peer uid; got: {:?}",
+                    msg
+                );
+                assert!(
+                    msg.contains("own=0"),
+                    "IMP-002: error message must include own uid; got: {:?}",
+                    msg
+                );
+                // Full format check: "SO_PEERCRED uid mismatch: peer=1000 own=0"
+                assert_eq!(
+                    msg, "SO_PEERCRED uid mismatch: peer=1000 own=0",
+                    "IMP-002: full error message format must match expected pattern"
+                );
+            }
+            other => panic!(
+                "IMP-002: expected SessionHostError::Io(PermissionDenied), got {:?}",
+                other
+            ),
+        }
+    }
+
+    /// IMP-002 (same uid zero → Ok): check_peer_uid(0, 0) must return Ok(()).
+    ///
+    /// Root-to-root is a valid same-uid scenario (e.g., root-owned daemon + root-owned host).
+    ///
+    /// F-S034-ADV-IMP-002 / AC-009 / BC-2.08.003 Invariant 5.
+    #[test]
+    fn test_BC_2_08_003_IMP002_check_peer_uid_same_zero_returns_ok() {
+        let result = super::check_peer_uid(0, 0);
+        assert!(
+            result.is_ok(),
+            "IMP-002 (AC-009): check_peer_uid(0, 0) must return Ok(()); got {:?}",
+            result.err()
+        );
+    }
+
+    /// IMP-002 (equal nonzero → Ok): check_peer_uid(1000, 1000) must return Ok(()).
+    ///
+    /// Normal user case: both sides run as the same unprivileged UID.
+    ///
+    /// F-S034-ADV-IMP-002 / AC-009 / BC-2.08.003 Invariant 5.
+    #[test]
+    fn test_BC_2_08_003_IMP002_check_peer_uid_equal_nonzero_returns_ok() {
+        let result = super::check_peer_uid(1000, 1000);
+        assert!(
+            result.is_ok(),
+            "IMP-002 (AC-009): check_peer_uid(1000, 1000) must return Ok(()); got {:?}",
+            result.err()
+        );
+    }
+
+    /// IMP-002 (symmetric mismatch): check_peer_uid(0, 1000) must also return
+    /// Err(PermissionDenied) — the comparison is not directional.
+    ///
+    /// F-S034-ADV-IMP-002 / AC-009 / BC-2.08.003 Invariant 5.
+    #[test]
+    fn test_BC_2_08_003_IMP002_check_peer_uid_reverse_mismatch_returns_permission_denied() {
+        let result = super::check_peer_uid(0, 1000);
+        assert!(
+            result.is_err(),
+            "IMP-002 (AC-009): check_peer_uid(0, 1000) must return Err; got Ok(())"
+        );
+        let err = result.unwrap_err();
+        match err {
+            SessionHostError::Io(io_err) => {
+                assert_eq!(
+                    io_err.kind(),
+                    std::io::ErrorKind::PermissionDenied,
+                    "IMP-002: reverse mismatch error kind must be PermissionDenied; got {:?}",
+                    io_err.kind()
+                );
+                let msg = io_err.to_string();
+                assert_eq!(
+                    msg,
+                    "SO_PEERCRED uid mismatch: peer=0 own=1000",
+                    "IMP-002: reverse mismatch message format must be 'SO_PEERCRED uid mismatch: peer=0 own=1000'; got {:?}",
+                    msg
+                );
+            }
+            other => panic!(
+                "IMP-002: expected SessionHostError::Io(PermissionDenied), got {:?}",
+                other
+            ),
+        }
     }
 
     // -----------------------------------------------------------------------
