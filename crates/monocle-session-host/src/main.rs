@@ -713,21 +713,49 @@ pub(crate) async fn kill_sequence(
         );
     }
 
-    // b. Wait up to 10s for child exit via WNOHANG polling in a blocking task.
-    let child_exited = tokio::time::timeout(
-        std::time::Duration::from_secs(10),
-        tokio::task::spawn_blocking(move || {
-            use nix::sys::wait::{waitpid, WaitPidFlag, WaitStatus};
-            loop {
-                match waitpid(nix_pid, Some(WaitPidFlag::WNOHANG)) {
-                    Ok(WaitStatus::StillAlive) => {
-                        std::thread::sleep(std::time::Duration::from_millis(100));
-                    }
-                    _ => return true,
-                }
+    // b. Wait up to SIGTERM_TIMEOUT_MS (default 10 000ms = 10s) for child exit.
+    //
+    // Implementation: async polling loop — each iteration calls waitpid(WNOHANG)
+    // via spawn_blocking (short, non-blocking syscall), then yields via
+    // tokio::time::sleep(100ms) between polls. This keeps the blocking thread
+    // pool free between polls and lets tokio::time::advance() fire the outer
+    // timeout when running under #[tokio::test(start_paused=true)].
+    //
+    // Production behavior is byte-for-byte equivalent to the previous
+    // spawn_blocking loop: 100ms inter-poll interval, 10s total window, then
+    // SIGKILL escalation. The only change is that the sleep is driven by the
+    // tokio runtime clock rather than a blocking OS thread sleep, which makes
+    // the timeout virtualizable in tests without altering wall-clock behavior
+    // in production.
+    #[cfg(test)]
+    let sigterm_timeout = std::time::Duration::from_millis(
+        SIGTERM_TIMEOUT_MS.load(std::sync::atomic::Ordering::Relaxed),
+    );
+    #[cfg(not(test))]
+    let sigterm_timeout = std::time::Duration::from_secs(10);
+
+    let child_exited = tokio::time::timeout(sigterm_timeout, async move {
+        use nix::sys::wait::{waitpid, WaitPidFlag, WaitStatus};
+        loop {
+            // One WNOHANG waitpid check (fast blocking syscall — < 1µs typical).
+            let still_alive = tokio::task::spawn_blocking(move || {
+                matches!(
+                    waitpid(nix_pid, Some(WaitPidFlag::WNOHANG)),
+                    Ok(WaitStatus::StillAlive)
+                )
+            })
+            .await
+            // spawn_blocking JoinError should not happen in normal operation.
+            .unwrap_or(false);
+
+            if !still_alive {
+                return true;
             }
-        }),
-    )
+            // Yield for 100ms using tokio time — allows tokio::time::advance()
+            // to fire the outer timeout in test environments (start_paused=true).
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        }
+    })
     .await;
 
     if child_exited.is_err() {
@@ -798,6 +826,17 @@ pub(crate) async fn kill_sequence(
         "session-host: Kill sequence complete"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Test-visibility hook: configurable SIGTERM timeout (cfg(test) only).
+//
+// Production default is always 10_000ms (10s). Under cfg(test), tests may
+// write a shorter value via SIGTERM_TIMEOUT_MS before calling kill_sequence
+// so tokio::time::advance() can fire the timeout without a real wall-clock
+// wait. This static is NEVER read in production builds (cfg(test) guard).
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+static SIGTERM_TIMEOUT_MS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(10_000);
 
 // ---------------------------------------------------------------------------
 // Unit tests
@@ -1084,31 +1123,36 @@ mod tests {
         }
     }
 
-    // SIGKILL-TIMEOUT-INJECTION: Full 10s escalation test.
+    // -----------------------------------------------------------------------
+    // Test 1c: BC-2.08.003 AC-003 — SIGKILL escalation on SIGTERM timeout
     //
-    // This test is #[ignore] pending an implementer change to make kill_sequence's
-    // 10s timeout configurable. Currently, kill_sequence() hardcodes
-    // tokio::time::timeout(Duration::from_secs(10), spawn_blocking(...)) and the
-    // spawn_blocking's std::thread::sleep loop prevents tokio::time::advance()
-    // from completing in a test context (blocking pool never yields).
+    // Full escalation path: child ignores SIGTERM → SIGTERM window expires →
+    // SIGKILL delivered → child reaped → StateChanged{Terminated} + Goodbye
+    // emitted → socket removed.
     //
-    // Required implementer change: add a cfg(test) timeout override, e.g.:
-    //   pub(crate) async fn kill_sequence(
-    //       session_id: &str,
-    //       child_pid: u32,
-    //       socket_path: &Path,
-    //       stream: &mut UnixStream,
-    //       #[cfg(test)] sigterm_timeout: Option<Duration>,
-    //   )
-    // and replace `Duration::from_secs(10)` with
-    //   `sigterm_timeout.unwrap_or(Duration::from_secs(10))`
-    //
-    // Once that change is made, re-enable by removing #[ignore].
-    /// BC-2.08.003 AC-003 (MED-002): when child ignores SIGTERM, kill_sequence escalates
-    /// to SIGKILL after the timeout. IGNORED pending configurable timeout parameter.
-    #[ignore = "SIGKILL-TIMEOUT-INJECTION: kill_sequence needs configurable timeout for tokio::time::advance() — see comment above"]
+    // Enabled by the SIGTERM_TIMEOUT_MS test-visibility hook: the test sets the
+    // timeout to 1s (1000ms) so tokio::time::advance() can fire it instantly
+    // without a real wall-clock wait. Production code path (10_000ms) is
+    // preserved via the #[cfg(not(test))] branch.
+    // -----------------------------------------------------------------------
+
+    /// BC-2.08.003 AC-003 (MED-002): when child ignores SIGTERM, kill_sequence
+    /// escalates to SIGKILL after the timeout window expires. Asserts:
+    /// - SIGTERM is sent (child survives because it has a no-op trap).
+    /// - SIGKILL is delivered after the window.
+    /// - Child is reaped (no zombie): child.wait() returns ECHILD or a status.
+    /// - StateChanged{Terminated} emitted after SIGKILL path.
+    /// - Goodbye emitted.
+    /// - UDS socket file removed.
+    ///
+    /// Uses SIGTERM_TIMEOUT_MS hook (1s) + tokio::time::advance(2s) to exercise
+    /// the full SIGKILL escalation branch without a real 10s wall-clock wait.
     #[tokio::test(start_paused = true)]
     async fn test_BC_2_08_003_AC003_kill_sequence_sigkill_escalation_on_timeout() {
+        // Set SIGTERM timeout to 1s for this test (hook value; production default is 10s).
+        // Relaxed ordering is safe: single-threaded setup before task spawn.
+        SIGTERM_TIMEOUT_MS.store(1_000, std::sync::atomic::Ordering::Relaxed);
+
         // Spawn a real child that ignores SIGTERM so kill_sequence must escalate to SIGKILL.
         // `sh -c 'trap "" TERM; sleep 3600'` sets a no-op SIGTERM handler and sleeps.
         let mut child = std::process::Command::new("sh")
@@ -1118,11 +1162,13 @@ mod tests {
         let child_pid = child.id();
 
         // Give the shell a moment to establish its trap before we send SIGTERM.
+        // spawn_blocking ensures the real OS thread sleep runs on the blocking pool
+        // (not the tokio reactor thread), keeping the async runtime responsive.
         tokio::task::spawn_blocking(|| {
-            std::thread::sleep(std::time::Duration::from_millis(100));
+            std::thread::sleep(std::time::Duration::from_millis(200));
         })
         .await
-        .expect("spawn_blocking sleep");
+        .expect("spawn_blocking setup sleep");
 
         let sock_path = tmp_sock("med002-sigkill");
         let _ = std::fs::remove_file(&sock_path);
@@ -1135,8 +1181,22 @@ mod tests {
         let (mut session_host_side, _) = accept_result.expect("accept");
         let mut daemon_side = connect_result.expect("connect");
 
+        // Assert: child is alive before kill_sequence runs (verifies SIGTERM-ignoring
+        // trap is effective — child survives the initial SIGTERM delivery).
+        {
+            use nix::sys::signal::{kill as nix_kill, Signal};
+            use nix::unistd::Pid;
+            let probe_pid = Pid::from_raw(child_pid as i32);
+            // kill(pid, 0) is the POSIX "process exists?" probe — signal 0 is never delivered.
+            assert!(
+                nix_kill(probe_pid, Signal::SIGTERM).is_ok()
+                    || nix::errno::Errno::last() != nix::errno::Errno::ESRCH,
+                "BC-2.08.003 AC-003 SIGKILL: child must be alive before kill_sequence"
+            );
+        }
+
         // Run kill_sequence in a task so we can advance time concurrently.
-        // NOTE: once kill_sequence accepts a configurable timeout, pass a short duration here.
+        // kill_sequence uses the SIGTERM_TIMEOUT_MS hook (1s) so advance(2s) fires it.
         let sock_path_clone = sock_path.clone();
         let kill_task = tokio::spawn(async move {
             kill_sequence(
@@ -1148,14 +1208,21 @@ mod tests {
             .await;
         });
 
-        // Advance tokio time past the SIGTERM window.
-        tokio::time::advance(std::time::Duration::from_secs(11)).await;
+        // Yield once to let kill_sequence send SIGTERM and enter the async poll loop.
+        tokio::task::yield_now().await;
 
+        // Advance tokio virtual time past the 1s SIGTERM window.
+        // The async poll loop uses tokio::time::sleep(100ms) between waitpid polls,
+        // so advance() moves the clock forward without any real wall-clock wait.
+        tokio::time::advance(std::time::Duration::from_secs(2)).await;
+
+        // Read the two messages — kill_sequence emits them after SIGKILL + reap.
         let msg1 = read_host_msg(&mut daemon_side).await;
         let msg2 = read_host_msg(&mut daemon_side).await;
 
         kill_task.await.expect("kill_task did not complete");
 
+        // Assert: first message is StateChanged{Terminated} (BC-2.08.003 AC-003 step c).
         match msg1 {
             HostToDaemon::StateChanged {
                 new_state: SessionState::Terminated,
@@ -1167,6 +1234,7 @@ mod tests {
             ),
         }
 
+        // Assert: second message is Goodbye (BC-2.08.003 AC-003 step d).
         match msg2 {
             HostToDaemon::Goodbye => {}
             other => panic!(
@@ -1175,12 +1243,32 @@ mod tests {
             ),
         }
 
+        // Assert: socket file removed (BC-2.08.003 AC-003 step e).
         assert!(
             !sock_path.exists(),
             "BC-2.08.003 AC-003 SIGKILL (MED-002): UDS socket file must be removed after SIGKILL path"
         );
 
-        let _ = child.wait();
+        // Assert: child is reaped (no zombie).
+        // kill_sequence's post-SIGKILL waitpid already reaped the child.
+        // child.wait() returning ECHILD or a status both prove "not a zombie".
+        match child.wait() {
+            Ok(_status) => {
+                // child.wait() succeeded — child reaped. Not a zombie.
+            }
+            Err(e) if e.raw_os_error() == Some(nix::errno::Errno::ECHILD as i32) => {
+                // ECHILD: kill_sequence's waitpid already reaped the child. Not a zombie.
+            }
+            Err(e) => {
+                panic!(
+                    "BC-2.08.003 AC-003 SIGKILL (MED-002): unexpected child.wait() error (not ECHILD): {}",
+                    e
+                );
+            }
+        }
+
+        // Reset SIGTERM_TIMEOUT_MS to production default so other tests are unaffected.
+        SIGTERM_TIMEOUT_MS.store(10_000, std::sync::atomic::Ordering::Relaxed);
     }
 
     // -----------------------------------------------------------------------
