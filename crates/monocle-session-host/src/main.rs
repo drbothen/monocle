@@ -408,6 +408,17 @@ async fn send_host_msg(
 ) -> Result<(), SessionHostError> {
     let body = serde_json::to_vec(msg)
         .map_err(|e| SessionHostError::Io(std::io::Error::other(e.to_string())))?;
+    // SEC-006: pre-send frame size guard — outbound messages must not exceed
+    // MAX_FRAME_LEN (256 KiB, matching the daemon-side constant in session_manager/mod.rs).
+    if body.len() > MAX_FRAME_LEN {
+        return Err(SessionHostError::Io(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            format!(
+                "outbound message exceeds MAX_FRAME_LEN: {} bytes",
+                body.len()
+            ),
+        )));
+    }
     let len = body.len() as u32;
     stream.write_all(&len.to_le_bytes()).await?;
     stream.write_all(&body).await?;
@@ -948,6 +959,9 @@ mod tests {
     /// Goodbye, and the UDS socket file is removed.
     ///
     /// Drives REAL `kill_sequence()` — not a daemon-side simulation.
+    // CR-003: #[serial_test::serial] — this test calls kill_sequence which reads
+    // SIGTERM_TIMEOUT_MS; must not run concurrently with tests that mutate it.
+    #[serial_test::serial]
     #[tokio::test]
     async fn test_BC_2_08_003_AC003_kill_sequence_sigterm_child_exits_normally() {
         // Spawn a real child process that will exit cleanly on SIGTERM.
@@ -1059,6 +1073,9 @@ mod tests {
     /// immediate waitpid return (child exited), StateChanged{Terminated} + Goodbye messages,
     /// and socket removal. The 10s SIGKILL escalation path is tested separately (see
     /// the #[ignore] test below).
+    // CR-003: #[serial_test::serial] — this test calls kill_sequence which reads
+    // SIGTERM_TIMEOUT_MS; must not run concurrently with tests that mutate it.
+    #[serial_test::serial]
     #[tokio::test]
     async fn test_BC_2_08_003_AC003_kill_sequence_messages_and_socket_removal_after_child_exit() {
         // Spawn a real child and immediately kill it externally (simulating a child that
@@ -1169,6 +1186,10 @@ mod tests {
     ///
     /// Uses SIGTERM_TIMEOUT_MS hook (1s) + tokio::time::advance(2s) to exercise
     /// the full SIGKILL escalation branch without a real 10s wall-clock wait.
+    // CR-003: #[serial_test::serial] required because this test mutates the package-level
+    // SIGTERM_TIMEOUT_MS AtomicU64 global. Running concurrently with other tests that read
+    // SIGTERM_TIMEOUT_MS at its default (10_000ms) would cause flaky failures.
+    #[serial_test::serial]
     #[tokio::test(start_paused = true)]
     async fn test_BC_2_08_003_AC003_kill_sequence_sigkill_escalation_on_timeout() {
         // Set SIGTERM timeout to 1s for this test (hook value; production default is 10s).
@@ -1307,6 +1328,10 @@ mod tests {
     ///
     /// Drives REAL `step_event_loop()` — drives the two-phase loop with real sockets
     /// and a real child process.
+    // CR-003: #[serial_test::serial] — this test drives step_event_loop which calls
+    // kill_sequence (reads SIGTERM_TIMEOUT_MS); must not run concurrently with tests
+    // that mutate it.
+    #[serial_test::serial]
     #[tokio::test]
     async fn test_BC_2_08_003_accept_loop_re_accept_after_detach_BLOCKER001_guard() {
         // Spawn a real child process that survives across the Detach/re-accept cycle.

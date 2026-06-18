@@ -45,3 +45,9 @@ tempfile      = { workspace = true }
 # test-util is NOT in the workspace "full" feature set — must be explicitly added
 # for dev-builds. Pattern from monocle-runtime/Cargo.toml (established precedent).
 tokio = { workspace = true, features = ["test-util"] }
+# CR-003: serial_test required to prevent parallel interference on tests that
+# mutate the SIGTERM_TIMEOUT_MS global (AtomicU64 package-level mutable state
+# per SS-conventions-anti-patterns.md). The SIGKILL escalation test and any test
+# that relies on SIGTERM_TIMEOUT_MS being at its production default (10_000ms)
+# must be annotated with #[serial_test::serial] to run serially.
+serial_test = "3"

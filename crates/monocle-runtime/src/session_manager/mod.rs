@@ -347,6 +347,13 @@ impl SessionHostSpawner for MockSessionHostSpawner {
 /// `UnixStream::peer_cred()` and compares the peer UID against the daemon UID
 /// returned by `nix::unistd::getuid()`.
 ///
+/// # Platform TOCTOU assumption (SEC-003)
+///
+/// SO_PEERCRED captures peer credentials at connect time on Linux and macOS.
+/// The check is not vulnerable to TOCTOU between credential verification and
+/// message send on these platforms. This assumption must be re-evaluated if
+/// ported to platforms with different SO_PEERCRED semantics.
+///
 /// Tests inject a `FakePeerCredVerifier` to simulate both the match path
 /// (allow → proceed to Running) and the mismatch path (reject → Terminated).
 ///
@@ -815,6 +822,15 @@ impl SessionManager {
             degraded_reason: None,
             host_conn: Some(SessionHostConnection {
                 writer: Arc::new(Mutex::new(write_half)),
+                // CR-006: reader intentionally dropped (not stored in host_conn): forces the
+                // watchdog-only branch in kill_session when the ExistingConn write fails and no
+                // reader is available to spawn kill_confirm_monitor. Tests the SIGKILL escalation
+                // code path via the watchdog alone.
+                //
+                // CR-005: reader is None here because this is the broken-connection helper;
+                // the reader field is populated at the Running transition (ExistingConn path only).
+                // The Detached path does not store a reader into host_conn — it passes the
+                // fresh-connect read half directly to kill_confirm_monitor.
                 reader: None,
                 proxy_task: None,
             }),
@@ -1312,6 +1328,16 @@ impl SessionManager {
         use monocle_ipc::types::DaemonToHost;
         use tokio::io::AsyncWriteExt;
 
+        // SEC-001 (CWE-22): Defense-in-depth — reject any session_id that is not a
+        // valid UUID before using it to construct file/socket paths. Mirrors the guard
+        // in spawn_session(). The production IPC path generates UUIDs server-side, but
+        // kill_session must not blindly trust an arbitrary caller-provided session_id.
+        if uuid::Uuid::parse_str(session_id).is_err() {
+            return Err(SessionError::SessionNotFound {
+                session_id: session_id.to_string(),
+            });
+        }
+
         // MED-005: compute the kill deadline ONCE and use it for BOTH the watchdog timer and
         // `SessionEntry.kill_deadline` (single authoritative source per SS-session-manager.md
         // v2.8.0 §kill_deadline_unix_ms ownership boundary).
@@ -1416,6 +1442,16 @@ impl SessionManager {
                 // Send DaemonToHost::Kill over the existing control connection.
                 let kill_msg = serde_json::to_vec(&DaemonToHost::Kill)
                     .map_err(|e| SessionError::Io(std::io::Error::other(e)))?;
+                // SEC-006: pre-send frame size guard (matches MAX_FRAME_LEN = 256 KiB).
+                if kill_msg.len() > MAX_FRAME_LEN {
+                    return Err(SessionError::Io(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!(
+                            "outbound Kill message exceeds MAX_FRAME_LEN: {} bytes",
+                            kill_msg.len()
+                        ),
+                    )));
+                }
                 let len = (kill_msg.len() as u32).to_le_bytes();
                 let write_result = {
                     let mut w = writer.lock().await;
@@ -1425,7 +1461,10 @@ impl SessionManager {
                     } else {
                         r1
                     };
-                    r2
+                    // CR-001: flush under the same lock hold so the Kill frame is fully
+                    // delivered to the kernel socket buffer before we release the writer.
+                    let r3 = if r2.is_ok() { w.flush().await } else { r2 };
+                    r3
                 };
 
                 let sidecar_path = self
@@ -1485,6 +1524,8 @@ impl SessionManager {
                             let (r2, mut w2) = fresh_stream.into_split();
                             w2.write_all(&len2).await.map_err(SessionError::Io)?;
                             w2.write_all(&kill_msg2).await.map_err(SessionError::Io)?;
+                            // CR-001: flush so the Kill frame is delivered before we proceed.
+                            w2.flush().await.map_err(SessionError::Io)?;
 
                             // Transition → Terminating and spawn kill-confirm + watchdog.
                             // Pass the read half directly (ADV-S034-BLOCKER-001).
@@ -1686,6 +1727,9 @@ impl SessionManager {
                             .write_all(&kill_msg)
                             .await
                             .map_err(SessionError::Io)?;
+                        // CR-001: flush so the Kill frame is fully delivered to the kernel
+                        // socket buffer before transitioning state.
+                        writer.flush().await.map_err(SessionError::Io)?;
 
                         // Transition → Terminating, emit broadcasts.
                         self.transition_to_terminating(
@@ -1759,7 +1803,13 @@ impl SessionManager {
             let remaining = kill_deadline.saturating_duration_since(std::time::Instant::now());
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .map(|since_epoch| since_epoch.as_millis() as u64 + remaining.as_millis() as u64)
+                // SEC-005: use saturating/min casts — as_millis() returns u128 which could
+                // theoretically exceed u64::MAX on platforms with extreme clock values.
+                .map(|since_epoch| {
+                    let now_ms = since_epoch.as_millis().min(u64::MAX as u128) as u64;
+                    let remaining_ms = remaining.as_millis().min(u64::MAX as u128) as u64;
+                    now_ms.saturating_add(remaining_ms)
+                })
                 .unwrap_or(0)
         };
 
@@ -1870,6 +1920,12 @@ impl SessionManager {
     /// Transition a session to `Terminated`, update the sidecar atomically, and emit
     /// `SessionStateChanged{Terminated}` BEFORE `SessionListUpdate` under the mutex.
     ///
+    /// CR-002: idempotency guard — if the session is already `Terminated`, return
+    /// immediately without emitting duplicate `SessionStateChanged{Terminated}` or
+    /// `SessionListUpdate` broadcasts (BC-2.08.008 Invariant 4).
+    ///
+    /// // TODO: unify with transition_to_terminated_standalone (CR-004)
+    ///
     /// (BC-2.08.003 PC-4, BC-2.08.008 Invariant 4)
     async fn transition_to_terminated(&self, session_id: &str, sidecar_path: &PathBuf) {
         {
@@ -1877,6 +1933,10 @@ impl SessionManager {
             let mut guard = self.sessions.lock().await;
 
             if let Some(entry) = guard.get_mut(session_id) {
+                // CR-002: idempotency guard — do not double-broadcast (BC-2.08.008 I4).
+                if entry.state == SessionState::Terminated {
+                    return;
+                }
                 entry.state = SessionState::Terminated;
                 entry.kill_deadline = None;
             }
@@ -1991,6 +2051,18 @@ impl SessionManager {
     /// requires a tokio Instant, and the pre-computed Instant from `kill_session()` is required for
     /// paused-clock tests (`start_paused = true`): `tokio::time::advance(12s)` fires the watchdog
     /// even when the watchdog task hasn't been polled yet at `advance()` time.
+    /// Spawn a 12-second kill-watchdog task for the given session.
+    ///
+    /// # Duplicate-spawn guard (SEC-004)
+    ///
+    /// Only one watchdog per session is expected: the `KillPath::Idempotent` guard in
+    /// `kill_session()` prevents `spawn_kill_watchdog` from being called twice for the
+    /// same session on the normal path. Additionally, the F-S034-HIGH-001 lock-hold
+    /// (re-check state == Terminating under the sessions mutex before issuing SIGKILL)
+    /// eliminates the risk of duplicate SIGKILL delivery even if two watchdogs somehow
+    /// raced — only the first one to acquire the lock while the session is still
+    /// Terminating will fire SIGKILL; the second finds Terminated and returns without
+    /// action.
     fn spawn_kill_watchdog(
         session_id: String,
         session_host_pid: u32,
@@ -2095,14 +2167,26 @@ impl SessionManager {
                 use nix::sys::signal::{kill as nix_kill, Signal};
                 use nix::unistd::Pid;
 
+                // SEC-002 (CWE-190): bounds-checked cast — sidecar JSON is externally
+                // sourced so the u64 value could be out of range for u32 or i32.
+                // Reject any value that does not fit in i32 > 0 (valid PID range).
                 let child_pid: Option<u32> = std::fs::read_to_string(&sidecar_path)
                     .ok()
                     .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
                     .and_then(|v| v["child_pid"].as_u64())
-                    .map(|n| n as u32);
+                    .and_then(|n| u32::try_from(n).ok())
+                    .and_then(|n| {
+                        let n_i32 = i32::try_from(n).ok()?;
+                        if n_i32 <= 0 {
+                            None
+                        } else {
+                            Some(n)
+                        }
+                    });
 
                 match child_pid {
                     Some(cpid) => {
+                        // Safety: cpid was validated above to fit in i32 and > 0.
                         let nix_child_pid = Pid::from_raw(cpid as i32);
                         match nix_kill(nix_child_pid, Signal::SIGKILL) {
                             Ok(()) => {
@@ -2958,6 +3042,11 @@ async fn kill_confirm_monitor(
 /// Standalone helper to transition a session to Terminated and emit broadcasts.
 ///
 /// Used by `kill_confirm_monitor` and (in future) by S-037 GC paths.
+///
+/// CR-002: idempotency guard present — already-Terminated sessions return without
+/// double-broadcasting (BC-2.08.008 Invariant 4).
+///
+/// // TODO: unify with SessionManager::transition_to_terminated (CR-004)
 async fn transition_to_terminated_standalone(
     session_id: &str,
     sessions: &Arc<tokio::sync::Mutex<HashMap<String, SessionEntry>>>,
