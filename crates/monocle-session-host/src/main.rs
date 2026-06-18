@@ -559,11 +559,11 @@ pub(crate) async fn step_event_loop(
             match stream.read_exact(&mut len_buf).await {
                 Ok(_) => {
                     let msg_len = u32::from_le_bytes(len_buf) as usize;
-                    if msg_len > MAX_FRAME_LEN {
+                    if msg_len == 0 || msg_len > MAX_FRAME_LEN {
                         tracing::warn!(
                             session_id = %session_id,
                             msg_len = msg_len,
-                            "session-host: oversized DaemonToHost frame — closing connection"
+                            "session-host: invalid DaemonToHost frame length — closing connection"
                         );
                         break PhaseBExit::Detach;
                     }

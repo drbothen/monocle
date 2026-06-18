@@ -1407,6 +1407,17 @@ impl SessionManager {
                             tokio::spawn(async move {
                                 kill_confirm_monitor(sid, r2, sessions_arc, broker_arc, sp2).await;
                             });
+                            // Drop the stale host_conn.reader from the SessionEntry — it belongs to
+                            // the broken original connection, not the fresh one (r2 is the monitor's
+                            // reader). The ExistingConn SUCCESS path does the same via .take().
+                            {
+                                let mut guard = self.sessions.lock().await;
+                                if let Some(entry) = guard.get_mut(session_id) {
+                                    if let Some(conn) = entry.host_conn.as_mut() {
+                                        let _ = conn.reader.take();
+                                    }
+                                }
+                            }
                             Self::spawn_kill_watchdog(
                                 session_id.to_string(),
                                 pid,
