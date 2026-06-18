@@ -688,10 +688,14 @@ fn verify_peer_uid(
 ///
 /// Called from Phase B when `DaemonToHost::Kill` is received.
 ///
-/// **MED-003:** After SIGKILL escalation the child PID is reaped with a blocking
-/// `waitpid` call to prevent a zombie. The normal SIGTERM exit path is reaped by
-/// `run()` via `child.wait()` ONLY if this function does NOT SIGKILL. When we
-/// SIGKILL we must reap before returning so `run()`'s later `child.wait()` gets ECHILD.
+/// **MED-003:** After SIGKILL escalation the child PID is reaped via a best-effort
+/// `waitpid(WNOHANG)` call (non-blocking immediate check). If the child has not yet
+/// exited by that point a 200 ms sleep + second WNOHANG attempt is made. The
+/// guaranteed backstop against zombie accumulation is `run()`'s blocking `child.wait()`
+/// after the event loop returns. The SIGTERM exit path is also reaped by that same
+/// `child.wait()` — `kill_sequence` only needs to attempt an early reap on the SIGKILL
+/// path so that `run()`'s subsequent `child.wait()` reliably gets `ECHILD` rather than
+/// blocking on an already-dead process.
 pub(crate) async fn kill_sequence(
     session_id: &str,
     child_pid: u32,
