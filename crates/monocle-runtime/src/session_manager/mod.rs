@@ -6432,4 +6432,183 @@ mod tests {
             real_child_pid
         );
     }
+
+    // -----------------------------------------------------------------------
+    // Ruling J child_pid==None path (ADV-S034-MED-001 / BC-2.08.003 PC-5b):
+    // when the sidecar has no child_pid field (session-host crashed before
+    // startup step 8), the watchdog must:
+    //   (a) not panic,
+    //   (b) still force the session to Terminated,
+    //   (c) still publish SessionStateChanged{Terminated} BEFORE SessionListUpdate
+    //       (BC-2.08.008 Invariant 4),
+    //   (d) NOT attempt to SIGKILL any child PID.
+    //
+    // Anchors: BC-2.08.003 PC-5b, Ruling J, ADV-S034-MED-001.
+    // -----------------------------------------------------------------------
+
+    /// Ruling J / child_pid absent from sidecar: watchdog fires → no panic;
+    /// session reaches Terminated; SessionStateChanged{Terminated} emitted BEFORE
+    /// SessionListUpdate (BC-2.08.008 Inv4); no child SIGKILL attempted.
+    ///
+    /// Regression trigger: if the watchdog panicked or hung when `child_pid` was null,
+    /// the test would fail (watchdog_handle.await would never return or would propagate
+    /// a panic).  If the broadcast order was wrong, the positional assertion would fail.
+    ///
+    /// BC-2.08.003 PC-5b / Ruling J / ADV-S034-MED-001.
+    #[tokio::test(start_paused = true)]
+    #[cfg_attr(not(unix), ignore)]
+    async fn test_BC_2_08_003_ruling_j_watchdog_child_pid_none_warn_path() {
+        // Use /tmp for short socket paths (macOS SUN_LEN = 104 chars).
+        let tmp = tempfile::Builder::new()
+            .tempdir_in("/tmp")
+            .expect("child_pid_none: tempdir in /tmp");
+
+        // Build a sidecar with child_pid: null — simulates session-host crash before
+        // startup step 8 (harness child was never spawned).
+        let session_id = "00000000-rj02-4000-a000-000000000001".to_string();
+        let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+        let sidecar_json = serde_json::json!({
+            "schema_version": 3,
+            "session_id": session_id,
+            "state": "Terminating",
+            "session_host_pid": 9_999_997u32,
+            "harness_id": "claude-code",
+            "profile_id": "default",
+            "project_root": "/tmp/test",
+            "cwd": "/tmp/test",
+            "started_at": "2026-06-17T00:00:00Z",
+            "pty_rows": 24,
+            "pty_cols": 80,
+            "kill_deadline_unix_ms": null,
+            "display_name": null,
+            // child_pid is explicitly null — the "crashed before step 8" case.
+            "child_pid": null,
+        });
+        {
+            use std::io::Write;
+            let mut f = std::fs::File::create(&sidecar_path)
+                .expect("child_pid_none: could not create sidecar file");
+            f.write_all(&serde_json::to_vec_pretty(&sidecar_json).unwrap())
+                .expect("child_pid_none: could not write sidecar");
+        }
+
+        // Build a manager with a subscriber so we can capture broadcast messages.
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 9_999_997,
+        });
+        let (tx, mut rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry = ClientEntry::new(tx);
+        let subs: SubscriberList = Arc::new(Mutex::new(vec![entry]));
+        let broker = make_broker(&subs);
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+        let manager =
+            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+
+        // Insert a Terminating session entry with the fake session-host PID.
+        // The fake PID (9_999_997) will return ESRCH — benign.
+        let std_deadline = std::time::Instant::now() + std::time::Duration::from_secs(12);
+        manager
+            .insert_terminating_session_for_test(
+                &session_id,
+                9_999_997u32,
+                tmp.path().join(format!("session-{}.sock", session_id)),
+                std_deadline,
+            )
+            .await;
+
+        // Compute the watchdog deadline as a tokio::time::Instant.
+        // Under start_paused = true, Instant::now() is frozen; advance(12s) will fire it.
+        let watchdog_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(12);
+
+        // Spawn the watchdog (drives real production code — no mocking of the code under test).
+        let watchdog_handle = SessionManager::spawn_kill_watchdog(
+            session_id.clone(),
+            9_999_997u32, // fake session-host PID — ESRCH (benign)
+            Arc::clone(&manager.sessions),
+            Arc::clone(&manager.broker),
+            sidecar_path.clone(),
+            tmp.path().join(format!("session-{}.sock", session_id)),
+            watchdog_deadline,
+        );
+
+        // Advance virtual time to fire the watchdog (>= 12s).
+        tokio::time::advance(std::time::Duration::from_secs(13)).await;
+
+        // Assert: watchdog task completes without panic — no hang.
+        let watchdog_result =
+            tokio::time::timeout(std::time::Duration::from_secs(5), watchdog_handle).await;
+        assert!(
+            watchdog_result.is_ok(),
+            "Ruling J child_pid==None (ADV-S034-MED-001): watchdog task must complete \
+             within 5s — no panic, no hang when child_pid absent from sidecar \
+             (BC-2.08.003 PC-5b)"
+        );
+        // JoinError would indicate a panic in the watchdog task.
+        assert!(
+            watchdog_result.unwrap().is_ok(),
+            "Ruling J child_pid==None: watchdog task must not panic when child_pid is null \
+             (BC-2.08.003 PC-5b WARN-only path)"
+        );
+
+        // Assert: session reached Terminated.
+        let sessions = manager.sessions.lock().await;
+        let entry_state = sessions
+            .get(&session_id)
+            .map(|e| e.state.clone())
+            .expect("child_pid_none: session entry must still be in registry after watchdog");
+        assert_eq!(
+            entry_state,
+            SessionState::Terminated,
+            "Ruling J child_pid==None (BC-2.08.003 PC-5b): session must reach Terminated \
+             even when child_pid is absent from sidecar; got {:?}",
+            entry_state
+        );
+        drop(sessions);
+
+        // Assert: broadcast ordering — SessionStateChanged{Terminated} BEFORE SessionListUpdate.
+        // Drain the channel with a short timeout; collect all messages.
+        let mut broadcasts: Vec<ServerToClient> = Vec::new();
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(200);
+            while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                broadcasts.push(msg);
+            }
+        }
+
+        let state_changed_idx = broadcasts.iter().position(|m| {
+            matches!(
+                m,
+                ServerToClient::SessionStateChanged {
+                    session_id: sid,
+                    new_state: monocle_ipc::types::SessionState::Terminated,
+                } if sid == &session_id
+            )
+        });
+        let list_update_idx = broadcasts
+            .iter()
+            .position(|m| matches!(m, ServerToClient::SessionListUpdate { .. }));
+
+        assert!(
+            state_changed_idx.is_some(),
+            "Ruling J child_pid==None (BC-2.08.008 Inv4): SessionStateChanged{{Terminated}} \
+             must be broadcast; got: {:?}",
+            broadcasts
+        );
+        assert!(
+            list_update_idx.is_some(),
+            "Ruling J child_pid==None (BC-2.08.008 Inv4): SessionListUpdate must be broadcast; \
+             got: {:?}",
+            broadcasts
+        );
+        assert!(
+            state_changed_idx.unwrap() < list_update_idx.unwrap(),
+            "Ruling J child_pid==None (BC-2.08.008 Inv4): SessionStateChanged{{Terminated}} \
+             (idx={}) must precede SessionListUpdate (idx={}) — broadcast order violated; \
+             msgs: {:?}",
+            state_changed_idx.unwrap(),
+            list_update_idx.unwrap(),
+            broadcasts
+        );
+    }
 }
