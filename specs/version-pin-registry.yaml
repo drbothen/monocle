@@ -124,8 +124,8 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "2.8.0"
-  last_bump_commit: "[ADV-S034 BLOCKER-001/002 + HIGH-001/002/003 — session-host accept-loop model; kill_confirm_monitor reader-based design; SO_PEERCRED on accept (two-sided); watchdog ESRCH PID-reuse guard; kill_deadline_unix_ms write obligation in S-034; SessionHostConnection reader field added]"
+  current_version: "2.9.0"
+  last_bump_commit: "[Rulings H+I — MED-001 outer-mutex locking discipline accepted tradeoff documented; OBS-001 kill_confirm_monitor mandatory on ExistingConn SUCCESS path; post_spawn_monitor must exit after Running; reader:Some at connect time]"
   last_bump_date: "2026-06-17"
 
 SS-embedded-pty:

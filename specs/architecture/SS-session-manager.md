@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.8.0"
+version: "2.9.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -2027,6 +2027,35 @@ BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
 
+## §Trace v2.9.0
+
+**Rulings H + I: outer-mutex locking discipline (MED-001) and kill_confirm_monitor mandatory on ExistingConn path (OBS-001)** (2026-06-17):
+
+- **Ruling H** added: outer `Mutex<SessionManager>` held across bounded (2s) UDS connect on
+  FreshConnect (Detached kill) and ExistingConn fallback paths is an ACCEPTED TRADEOFF. Three
+  independent reasons: state consistency (releasing mid-kill opens a GC/collision window),
+  bound is tight and scoped to rare paths (common Running/Launching path does no network I/O
+  under the outer lock), and symmetry with S-033 spawn pattern (spawn also holds outer lock
+  across OS spawn). PTY byte forwarding is unaffected (uses broker, no outer lock). Worst case:
+  2s serialization of all session IPC ops per stale-socket Detached kill. No deadlock.
+  Explicit documentation closes MED-001 for all future adversary passes.
+
+- **Ruling I** added: `kill_confirm_monitor` is MANDATORY on the ExistingConn SUCCESS path
+  (Running/Launching kill where Kill write succeeds). Relying on `post_spawn_monitor` to read
+  `StateChanged{Terminated}` is forbidden. Root cause of the OBS-001 gap: `post_spawn_monitor`
+  exits on EOF/read-error, `host_conn.writer` may still be live, Kill is sent, no reader is
+  present — clean Terminated confirmation silently discarded — 12s watchdog SIGKILLs a session
+  that had already confirmed. Fix: (1) post_spawn_monitor stores `reader: Some(reader)` at
+  connect time; (2) post_spawn_monitor exits immediately after StateChanged{Running} — does NOT
+  continue reading post-Running; (3) kill_session() ExistingConn SUCCESS path takes
+  `host_conn.reader` and spawns `kill_confirm_monitor`. Erroneous "Note: the post_spawn_monitor
+  task continues reading..." comment must be removed from kill_session(). Detached/FreshConnect
+  path unchanged. Production-grade default: always-monitored.
+
+- SE-16d monotonicity: v2.9.0 > v2.8.0. PASS.
+
+---
+
 ## §Trace v2.8.0
 
 **ADV-S034-BLOCKER-001/002, HIGH-001/002/003 — session-host accept-loop model, SO_PEERCRED on accept, watchdog PID-reuse, kill_confirm_monitor, kill_deadline ownership** (2026-06-17):
@@ -3299,6 +3328,134 @@ lock acquisition.
 This does NOT extend to the degraded-env metadata update (step 4, `StateChanged{Launching}` handshake):
 that update sets `entry.degraded` and `entry.degraded_reason` only, with no state transition
 and no `SessionStateChanged` emission. It may acquire and release the mutex independently.
+
+---
+
+### Ruling H — Outer SessionManager mutex held across bounded UDS connect: accepted tradeoff (MED-001)
+
+**Status:** AUTHORITATIVE. Documents the accepted locking discipline for the kill path. Closes MED-001 so future adversary passes do not re-raise it as an unresolved defect.
+
+#### Decision
+
+Holding the outer `Mutex<SessionManager>` across a bounded (2s) `UnixStream::connect` on the
+`FreshConnect` path (Detached kill) and the ExistingConn broken-connection fallback path is an
+**accepted tradeoff**. No code change is required for this specific behavior. Future adversary
+passes MUST NOT re-raise this as a defect without citing a new failure mode not addressed here.
+
+#### What is held and what is not
+
+- The **outer `Mutex<SessionManager>`** (the `sm.lock()` in `handle_kill_session` in
+  `ipc_server.rs`) IS held for the duration of `kill_session()`.
+- The **inner `self.sessions: Mutex<HashMap<...>>`** (per-session registry) is NOT held during
+  the UDS connect. `kill_session()` releases the inner lock before calling
+  `tokio::time::timeout(2s, UnixStream::connect(...))`. The connect itself holds only the outer
+  struct lock, not the per-session registry lock.
+
+#### Rationale
+
+Three independent reasons make the accepted tradeoff correct:
+
+1. **State consistency across the kill sequence.** Releasing the outer lock before the
+   fresh connect and re-acquiring afterward would require a second lookup and a stale-state
+   check. The session entry (state, pid, socket path) could be mutated by a concurrent
+   `kill_session` for the same session, a GC timer removing the entry, or a spawn that recycles
+   a GC'd session_id. The current design holds the outer lock continuously, making all three
+   concurrent mutations structurally impossible during the kill operation. The correctness gain
+   of holding the lock outweighs the 2s serialization cost.
+
+2. **Bound is tight, explicit, and scoped to rare paths.** The 2s `tokio::time::timeout` is
+   applied uniformly to all fresh-connect operations (`MED-004` in the code). The FreshConnect
+   path is taken ONLY for `Detached` sessions. The ExistingConn fallback is taken only when the
+   existing control connection's write fails — a rare broken-connection scenario. The common
+   path (Running/Launching ExistingConn SUCCESS) performs no network I/O at all under the outer
+   lock: it writes to an already-established UDS connection, which is a local memory operation.
+   Under normal operation, the outer lock is held for microseconds. The 2s worst-case applies
+   only to Detached kill against a stale socket.
+
+3. **Symmetry with the spawn pattern (S-033).** `spawn_session()` also acquires the outer
+   lock and performs OS-level process spawn inside it. Changing only the kill path to
+   release-before-connect would create an asymmetric locking model. A principled
+   release-before-I/O refactor would need to cover both spawn and kill simultaneously and
+   introduce a state-capture-before-release idiom. That is a cross-story redesign beyond
+   S-034 scope.
+
+#### Operational impact
+
+- **Worst case:** one Detached kill against a stale socket serializes all other session IPC
+  operations for up to 2s. This is a control-plane responsiveness cost, not a correctness
+  violation or deadlock risk.
+- **PTY byte forwarding is NOT affected.** PTY forwarding uses the broker (`Arc<Broker<Event>>`)
+  and per-client subscription channels — these paths never acquire the outer `Mutex<SessionManager>`.
+  TUI rendering continues uninterrupted during a stale-socket kill.
+- **Bounded, no deadlock.** The UDS connect timeout is hard (2s). Even in the worst case, the
+  outer lock is released when `kill_session()` returns `Ok(())`.
+
+---
+
+### Ruling I — ExistingConn kill path: kill_confirm_monitor is MANDATORY (OBS-001)
+
+**Status:** AUTHORITATIVE. Amends §kill_confirm_monitor implementation requirement.
+Closes OBS-001 definitively.
+
+#### Decision
+
+On the ExistingConn SUCCESS path (Running/Launching kill where `host_conn.writer` is present
+and the Kill write succeeds), `kill_confirm_monitor` MUST be spawned and MUST take ownership
+of `host_conn.reader`. Relying on the still-running `post_spawn_monitor` to read the
+`StateChanged{Terminated}` confirmation is **forbidden**.
+
+#### Why post_spawn_monitor reuse is unacceptable
+
+`post_spawn_monitor` is a background task that exits when its read loop breaks. The read loop
+can break due to EOF or any I/O error on the control connection's read half. This is a normal
+occurrence — the session-host loops through `listener.accept()` cycles (Phase A / Phase B per
+§Main event loop), and a transient EOF on the control connection causes the session-host to
+transition from Phase B back to Phase A. The daemon's post_spawn_monitor observes EOF on its
+reader and exits cleanly (per `match read_result { Err(UnexpectedEof) => break }`).
+
+After `post_spawn_monitor` exits, `host_conn.writer` MAY still be `Some` (the TCP write half
+can appear live while the read half is dead, particularly if the write is buffered). When
+`kill_session()` then fires:
+
+1. It finds `host_conn.writer: Some(...)` — ExistingConn path taken.
+2. Kill is sent successfully over the writer.
+3. Session transitions to Terminating; watchdog spawned.
+4. The session-host receives Kill, sends `StateChanged{Terminated}` on the same connection.
+5. Nobody reads the reply — `post_spawn_monitor` has already exited; `host_conn.reader` is
+   `None` (the implementation set it to `None` at store time).
+6. Result: a session-host that confirmed cleanly within 1s is still SIGKILL'd by the 12s
+   watchdog. The clean confirmation is silently discarded.
+
+Under the production-grade default this corner is a defect, not an accepted tradeoff: the
+always-monitored design is straightforwardly implementable (move the reader into
+`kill_confirm_monitor`), closes the gap unconditionally, and is what the spec mandated.
+
+#### Amended implementation requirement
+
+The correct implementation for the ExistingConn SUCCESS path:
+
+1. **`post_spawn_monitor` stores `host_conn.reader: Some(reader)`** (NOT `None`) when it
+   first establishes the connection. The `reader` local variable from `stream.into_split()` is
+   placed in `host_conn.reader`.
+
+2. **`post_spawn_monitor` exits immediately after observing `StateChanged{Running}`** — it
+   sets `session_is_running = true` and then breaks from the read loop (or returns). It does
+   NOT continue reading post-Running. Post-Running, the reader belongs to `host_conn.reader`
+   and must not be consumed by the monitor.
+
+3. **`kill_session()` on ExistingConn SUCCESS path**: after writing Kill and calling
+   `transition_to_terminating`, the implementation MUST:
+   - `take()` `host_conn.reader` (via `entry.host_conn.as_mut().and_then(|c| c.reader.take())`).
+   - Spawn `kill_confirm_monitor(session_id, reader, sessions_arc, broker_arc, sidecar_path)`.
+   - This is identical to what the Detached/FreshConnect path already does, just with the
+     existing reader instead of a fresh-connect reader.
+
+4. **Remove the erroneous "Note: the post_spawn_monitor task continues reading after
+   StateChanged{Running}..." comment** from `kill_session()`. That comment described the
+   forbidden reuse design.
+
+The Detached/FreshConnect path is unchanged: fresh connect supplies a new reader, which is
+immediately handed to `kill_confirm_monitor`.
 
 ---
 
