@@ -962,7 +962,7 @@ dependency-graph-expansion:
 S-033-session-manager-spawn:
   path: stories/S-033-session-manager-spawn.md
   current_version: "1.9"
-  last_bump_commit: "[SS-session-manager v2.7.3 propagation — refresh all BC/story/HS citations from v2.6.1/v2.7.x to canonical v2.7.3; POL-11 fix burst]"
+  last_bump_commit: "[SS-session-manager citation propagation burst — refresh all BC/story/HS citations to canonical version; POL-11 fix burst]"
   last_bump_date: "2026-06-17"
 
 S-038-session-manager-hook-injection:

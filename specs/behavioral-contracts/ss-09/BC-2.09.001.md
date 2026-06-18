@@ -132,7 +132,7 @@ TUI's IPC socket. This timing budget covers: IPC framing decode → `vt100::Pars
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — this BC defines the PTY byte pipeline performance contract: IPC → vt100 → tui-term within 100ms, which is the core of CAP-009's embedded PTY widget capability |
 | Architecture Module | monocle-tui (App::on_pty_output, pty_parsers, PseudoTerminal widget) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.7.0 §PTY Widget Pipeline; §Parser ownership in TUI; §O4 memory bound; §I7 per-session scroll offset; §EmbeddedTerminal ENTRY (auto-attach mandate, I11-001 PRONG A); SS-session-manager.md v2.7.3 §Screen-state transfer (C5); ADR-0011 v1.2.1 §Decision |
+| Architecture Source | SS-embedded-pty.md v1.7.0 §PTY Widget Pipeline; §Parser ownership in TUI; §O4 memory bound; §I7 per-session scroll offset; §EmbeddedTerminal ENTRY (auto-attach mandate, I11-001 PRONG A); SS-session-manager.md v2.8.0 §Screen-state transfer (C5); ADR-0011 v1.2.1 §Decision |
 | Test Name | test_BC_2_09_001_pty_output_renders_within_100ms |
 
 ## Related BCs

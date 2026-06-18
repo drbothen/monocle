@@ -20,7 +20,7 @@ inputs:
   - {path: .factory/stories/S-029-killer-scenario-test.md, version: "1.3"}
   - {path: .factory/stories/S-030-config-crate-foundation.md, version: "1.1"}
   - {path: .factory/stories/S-033-session-manager-spawn.md, version: "1.9"}
-  - {path: .factory/stories/S-034-session-manager-kill.md, version: "1.1"}
+  - {path: .factory/stories/S-034-session-manager-kill.md, version: "1.2"}
   - {path: .factory/stories/S-035-session-manager-attach-detach.md, version: "1.2"}
   - {path: .factory/stories/S-036-session-manager-rediscovery.md, version: "1.0"}
   - {path: .factory/stories/S-037-session-manager-gc.md, version: "1.0"}
