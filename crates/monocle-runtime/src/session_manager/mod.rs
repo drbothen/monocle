@@ -814,6 +814,51 @@ impl SessionManager {
             .insert(session_id.to_string(), entry);
     }
 
+    /// Test helper: insert a session in `Terminated` state.
+    ///
+    /// Enables tests to exercise the genuine `KillPath::Idempotent` arm for
+    /// `SessionState::Terminated` (BC-2.08.003 Invariant 2 — kill on Terminated
+    /// returns Ok(()) without sending another Kill, watchdog, or state transition).
+    ///
+    /// # Why this seam is needed (F-S034-ADV-LOW-001)
+    ///
+    /// The existing `test_BC_2_08_003_kill_session_idempotent_on_terminated` test drove
+    /// through spawn + `StateChanged{Terminated}` to the post-spawn monitor.  Because the
+    /// post-spawn monitor has no arm for `Terminated` while in `Launching`, the session
+    /// remained in `Launching` with `host_conn = Some(_)`, causing `kill_session()` to take
+    /// `KillPath::ExistingConn` rather than `KillPath::Idempotent`.  This seam bypasses that
+    /// path and inserts the registry entry directly in `Terminated` state.
+    ///
+    /// This function does NOT exist in production builds.
+    #[cfg(any(test, feature = "test-utils"))]
+    #[allow(dead_code)]
+    pub async fn insert_terminated_session_for_test(
+        &self,
+        session_id: &str,
+        session_host_pid: u32,
+        socket_path: PathBuf,
+    ) {
+        let entry = SessionEntry {
+            session_id: session_id.to_string(),
+            session_host_pid,
+            session_host_socket: socket_path,
+            state: SessionState::Terminated,
+            cwd: PathBuf::from("/tmp/test-cwd"),
+            project_root: PathBuf::from("/tmp/test-project"),
+            harness_id: "claude-code".to_string(),
+            profile_id: "default".to_string(),
+            started_at: chrono::Utc::now(),
+            kill_deadline: None,
+            degraded: false,
+            degraded_reason: None,
+            host_conn: None,
+        };
+        self.sessions
+            .lock()
+            .await
+            .insert(session_id.to_string(), entry);
+    }
+
     /// Spawn a new session from the given `SpawnOptions`.
     ///
     /// Steps (BC-2.08.001):
@@ -1486,14 +1531,24 @@ impl SessionManager {
                 use nix::unistd::Pid;
                 let nix_pid = Pid::from_raw(pid as i32);
                 match nix_kill(nix_pid, Signal::SIGTERM) {
-                    Ok(()) | Err(nix::errno::Errno::ESRCH) => {}
+                    Ok(()) | Err(nix::errno::Errno::ESRCH) => {
+                        // Ok  → SIGTERM delivered; process will be monitored by watchdog.
+                        // ESRCH → process already gone; effectively a successful kill (benign).
+                    }
                     Err(e) => {
+                        // Non-ESRCH failure (e.g. EPERM): SIGTERM could NOT be delivered —
+                        // the kill genuinely failed.  Spec: BC-2.08.003 PC-1 (Launching race
+                        // window) — "Failure code: kill_failed".
+                        // Do NOT transition to Terminating: the kill was not delivered.
                         tracing::warn!(
                             session_id = %session_id,
                             pid = pid,
                             error = %e,
-                            "kill_session PID fallback: SIGTERM failed"
+                            "kill_session PID fallback: SIGTERM failed (non-ESRCH) — returning kill_failed (ADV-S034-MED-001)"
                         );
+                        return Err(SessionError::SessionHostDead {
+                            session_id: session_id.to_string(),
+                        });
                     }
                 }
 
