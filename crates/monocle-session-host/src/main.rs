@@ -608,7 +608,7 @@ pub(crate) async fn step_event_loop(
                             break PhaseBExit::Kill;
                         }
                         Ok(monocle_ipc::types::DaemonToHost::Detach) => {
-                            // SS-session-manager.md v2.8.0 §Phase B:
+                            // SS-session-manager.md §Phase B:
                             // Detach → drop connection, loop back to Phase A.
                             tracing::debug!(
                                 session_id = %session_id,
@@ -635,7 +635,7 @@ pub(crate) async fn step_event_loop(
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
                     // EOF: daemon side closed without sending Detach (crash/restart).
-                    // SS-session-manager.md v2.8.0 Invariant 5: loop back to Phase A.
+                    // SS-session-manager.md §Invariant 5: loop back to Phase A.
                     tracing::debug!(
                         session_id = %session_id,
                         "session-host: daemon closed control connection (EOF) — returning to Phase A"
@@ -1378,7 +1378,7 @@ mod tests {
             ),
         }
 
-        // Send Detach to trigger Phase A re-accept (SS-session-manager.md v2.8.0 §Phase B).
+        // Send Detach to trigger Phase A re-accept (SS-session-manager.md §Phase B).
         write_daemon_msg(&mut conn1, &DaemonToHost::Detach).await;
         drop(conn1);
 

@@ -15,7 +15,7 @@
 //!
 //! # MED-003 — Watchdog rescues kill when mock never sends StateChanged{Terminated}
 //!
-//! Under SS-session-manager.md v2.9.0 (Ruling I), `post_spawn_monitor` exits IMMEDIATELY
+//! Under SS-session-manager.md §Ruling I, `post_spawn_monitor` exits IMMEDIATELY
 //! after observing `StateChanged{Running}` and stores the reader in `host_conn.reader`.
 //! On the ExistingConn kill path, `kill_session()` takes `host_conn.reader` and spawns
 //! `kill_confirm_monitor` to read `StateChanged{Terminated}` on the existing connection.
@@ -33,7 +33,7 @@
 //! - BC-2.08.003 PC-1, PC-2, PC-4, PC-5 (kill lifecycle + watchdog)
 //! - BC-2.08.003 EC-164 (Detached kill via fresh connect)
 //! - BC-2.08.008 Invariant 4 (SessionStateChanged{Terminating} before SessionListUpdate)
-//! - SS-session-manager.md v2.9.0 (Ruling I: kill_confirm_monitor MANDATORY on ExistingConn;
+//! - SS-session-manager.md §Ruling I (kill_confirm_monitor MANDATORY on ExistingConn;
 //!   post_spawn_monitor exits immediately after Running and stores reader in host_conn.reader)
 
 #![allow(non_snake_case, clippy::expect_used, clippy::unwrap_used)]
@@ -213,7 +213,7 @@ async fn drain_messages(
 // send and the Terminated confirmation happen on the SAME connection (not a fresh one).
 //
 // Finding ID: MED-004
-// BC: BC-2.08.003 AC-003 / SS-session-manager.md v2.8.0 §ADV-S034-BLOCKER-001
+// BC: BC-2.08.003 AC-003 / SS-session-manager.md §ADV-S034-BLOCKER-001
 // ---------------------------------------------------------------------------
 
 /// MED-004 (BC-2.08.003 AC-003): The Kill send and StateChanged{Terminated} confirmation
@@ -733,7 +733,7 @@ async fn test_MED_003_BC_2_08_003_kill_succeeds_after_monitor_exits_watchdog_fir
 //   2. post_spawn_monitor connects to the session-host socket; the daemon stores
 //      host_conn = Some(SessionHostConnection { writer: ..., reader: None, ... }).
 //      At this point reader is always None — it is only set to Some AFTER the monitor
-//      observes StateChanged{Running} (Ruling I, SS-session-manager.md v2.9.0).
+//      observes StateChanged{Running} (Ruling I, SS-session-manager.md §Ruling I).
 //   3. The mock session-host accepts the connection but does NOT send StateChanged{Running}.
 //   4. Virtual time advances past the 30s pre-Running deadline. The post_spawn_monitor's
 //      inner `tokio::time::timeout(remaining, reader.read_exact(...))` fires with
@@ -1015,7 +1015,7 @@ async fn test_MED_003b_BC_2_08_003_reader_none_watchdog_only_kill_path() {
 
 // ---------------------------------------------------------------------------
 // HIGH-001 — Watchdog must not issue SIGKILL on stale state read
-//            F-S034-HIGH-001 / SS-session-manager.md v2.9.0 HIGH-002 obligation
+//            F-S034-HIGH-001 / SS-session-manager.md §HIGH-002 obligation
 //
 // Defect (before fix): spawn_kill_watchdog() acquires the lock, reads state==Terminating,
 // DROPS the lock (~line 1749), then calls nix_kill() (~line 1765) WITHOUT the lock held.
@@ -1035,7 +1035,7 @@ async fn test_MED_003b_BC_2_08_003_reader_none_watchdog_only_kill_path() {
 //
 // References:
 // - F-S034-HIGH-001 (adversarial pass-4 finding)
-// - SS-session-manager.md v2.9.0 HIGH-002 obligation
+// - SS-session-manager.md §HIGH-002 obligation
 // - BC-2.08.003 PC-5 (watchdog postconditions)
 // - BC-2.08.008 Invariant 4 (no duplicate broadcasts)
 // ---------------------------------------------------------------------------

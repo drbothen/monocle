@@ -2,7 +2,7 @@
 //! kill path (Running/Launching), and a promptly-confirmed kill must NOT require the
 //! 12s watchdog.
 //!
-//! # Ruling I (SS-session-manager.md v2.9.0)
+//! # Ruling I (SS-session-manager.md §Ruling I)
 //!
 //! On the ExistingConn SUCCESS path:
 //! 1. `post_spawn_monitor` stores `host_conn.reader: Some(reader)` after connecting,
@@ -22,7 +22,7 @@
 //! # References
 //! - BC-2.08.003 AC-002 (kill path selection), AC-004 (Terminated via confirmation),
 //!   AC-005 (watchdog deadline), AC-006 (fire-and-confirm)
-//! - SS-session-manager.md v2.9.0 §Ruling I
+//! - SS-session-manager.md §Ruling I
 //! - ADV-S034-BLOCKER-001
 
 #![allow(non_snake_case, clippy::expect_used, clippy::unwrap_used)]
@@ -182,7 +182,7 @@ async fn drain_messages(
 //
 // BC-2.08.003 AC-004 (Terminated via StateChanged confirmation), AC-005 (watchdog
 // fires ONLY when confirmation never arrives), AC-006 (fire-and-confirm)
-// SS-session-manager.md v2.9.0 §Ruling I
+// SS-session-manager.md §Ruling I
 //
 // On the ExistingConn (Running) kill path:
 // - kill_session() takes host_conn.reader and spawns kill_confirm_monitor.
@@ -386,7 +386,7 @@ async fn test_BC_2_08_003_ruling_I_prompt_kill_reaches_terminated_via_kill_confi
          kill_confirm_monitor after ~1s virtual time. If the session is still Terminating, \
          kill_confirm_monitor was NOT spawned on the ExistingConn path (Ruling I violation). \
          The 12s watchdog fires at 12s, not 1s — this path distinguishes kill_confirm_monitor \
-         from watchdog-only. SS-session-manager.md v2.9.0 §Ruling I."
+         from watchdog-only. SS-session-manager.md §Ruling I."
     );
 
     // Drain messages; verify SessionStateChanged{Terminated} was broadcast via kill_confirm_monitor.
@@ -448,7 +448,7 @@ async fn test_BC_2_08_003_ruling_I_prompt_kill_reaches_terminated_via_kill_confi
 // ---------------------------------------------------------------------------
 // Test 2: Ruling I — watchdog-only path when host_conn.reader is None at kill time
 //
-// BC-2.08.003 AC-005 (watchdog fallback), SS-session-manager.md v2.9.0 §Ruling I
+// BC-2.08.003 AC-005 (watchdog fallback), SS-session-manager.md §Ruling I
 //
 // Edge case: if host_conn.reader is None at kill time (the pre-Running race or
 // reader-already-taken case), kill_session() falls back to the watchdog-only path.

@@ -530,12 +530,12 @@ impl SessionIdGenerator for SequencedIdGenerator {
 /// onward (i.e., after the post-spawn monitor connects to the session-host socket).
 /// The `reader` is the CONTROL connection read half — held so that `kill_confirm_monitor`
 /// can read `StateChanged{Terminated}` from the EXISTING connection rather than making
-/// a fresh UDS connect (ADV-S034-BLOCKER-001 ruling, SS-session-manager.md v2.8.0).
+/// a fresh UDS connect (ADV-S034-BLOCKER-001 ruling, SS-session-manager.md §ADV-S034-BLOCKER-001).
 /// Moved into `kill_confirm_monitor` when Kill is sent; set to `None` afterwards.
 /// The `proxy_task` is the PTY-streaming task — started ONLY at Launching → Running
 /// transition. During Launching, `proxy_task` is None; both are live during Running.
 ///
-/// (SS-session-manager.md §SessionHostConnection v2.8.0)
+/// (SS-session-manager.md §SessionHostConnection)
 #[allow(dead_code)]
 struct SessionHostConnection {
     /// Write half of the per-session UDS control connection.
@@ -1340,7 +1340,7 @@ impl SessionManager {
 
         // MED-005: compute the kill deadline ONCE and use it for BOTH the watchdog timer and
         // `SessionEntry.kill_deadline` (single authoritative source per SS-session-manager.md
-        // v2.8.0 §kill_deadline_unix_ms ownership boundary).
+        // §kill_deadline_unix_ms ownership boundary).
         //
         // Two Instants are derived from the SAME Duration offset:
         //   - `std_kill_deadline`: stored in SessionEntry and used to compute kill_deadline_unix_ms
@@ -1568,7 +1568,7 @@ impl SessionManager {
                 }
 
                 // Kill written successfully on existing connection.
-                // Ruling I (SS-session-manager.md v2.9.0): kill_confirm_monitor is MANDATORY on
+                // Ruling I (SS-session-manager.md §Ruling I): kill_confirm_monitor is MANDATORY on
                 // the ExistingConn SUCCESS path. Take host_conn.reader and spawn the monitor so
                 // StateChanged{Terminated} is always received cleanly. The post_spawn_monitor
                 // has already exited (it breaks after Running per Ruling I) and must NOT be
@@ -1741,7 +1741,7 @@ impl SessionManager {
 
                         // Spawn kill-confirm monitor passing the read half of the fresh
                         // connection directly (ADV-S034-BLOCKER-001 / SS-session-manager.md
-                        // v2.8.0). The session-host sends StateChanged{Terminated} on the
+                        // §ADV-S034-BLOCKER-001). The session-host sends StateChanged{Terminated} on the
                         // SAME connection where it received Kill — no fresh connect needed.
                         let sessions_arc = Arc::clone(&self.sessions);
                         let broker_arc = Arc::clone(&self.broker);
@@ -1785,7 +1785,7 @@ impl SessionManager {
     ///
     /// **MED-005:** `kill_deadline` is passed in from `kill_session()` where it is computed once
     /// from the same originating instant as `watchdog_deadline`, ensuring a single authoritative
-    /// source (SS-session-manager.md v2.8.0 §kill_deadline_unix_ms ownership boundary).
+    /// source (SS-session-manager.md §kill_deadline_unix_ms ownership boundary).
     ///
     /// (BC-2.08.003 PC-2, BC-2.08.008 Invariant 4, story §Architecture Compliance Rules)
     async fn transition_to_terminating(
@@ -2041,7 +2041,7 @@ impl SessionManager {
     ///
     /// Uses `tokio::time::sleep_until` which is paused/advanced in tests via `tokio::time::pause()`.
     ///
-    /// **MED-005 (SS-session-manager.md v2.8.0 §kill_deadline_unix_ms ownership boundary):**
+    /// **MED-005 (SS-session-manager.md §kill_deadline_unix_ms ownership boundary):**
     /// The `deadline` parameter is synchronized with `SessionEntry.kill_deadline`: both are derived
     /// from the SAME `kill_duration` offset computed once in `kill_session()` before any `.await`.
     /// This ensures the watchdog does NOT independently call `Instant::now() + 12s` — its deadline
@@ -2545,7 +2545,7 @@ async fn post_spawn_monitor(
 
     // ADV-S034-BLOCKER-001: store BOTH halves in host_conn so the kill path can
     // take the reader directly (via `SessionHostConnection.reader.take()`) rather
-    // than making a fresh UDS connect (SS-session-manager.md v2.8.0).
+    // than making a fresh UDS connect (SS-session-manager.md §ADV-S034-BLOCKER-001).
     // The read half is wrapped in `Option` so `kill_session` can `take()` it and
     // move ownership into `kill_confirm_monitor` without touching the writer.
     //
@@ -2570,7 +2570,7 @@ async fn post_spawn_monitor(
 
     // Read messages from the session-host until StateChanged{Running} is received.
     //
-    // Ruling I (SS-session-manager.md v2.9.0 §Ruling I): the post_spawn_monitor exits
+    // Ruling I (SS-session-manager.md §Ruling I): the post_spawn_monitor exits
     // IMMEDIATELY after observing StateChanged{Running}, handing the reader to
     // host_conn.reader so kill_session() can take it for kill_confirm_monitor.
     // The monitor no longer reads post-Running; the kill watchdog handles the 12s
@@ -2882,7 +2882,7 @@ async fn post_spawn_monitor(
                     }
 
                     tracing::info!(session_id = %session_id, "post-spawn monitor: session transitioned to Running");
-                    // Ruling I (SS-session-manager.md v2.9.0 §Ruling I): the post_spawn_monitor
+                    // Ruling I (SS-session-manager.md §Ruling I): the post_spawn_monitor
                     // MUST exit immediately after Running and hand the reader to host_conn.reader
                     // so kill_session() can take it for kill_confirm_monitor. Continuing to read
                     // post-Running is FORBIDDEN — post_spawn_monitor reuse for kill confirmation
@@ -2918,7 +2918,7 @@ async fn post_spawn_monitor(
 /// Background task that waits for `HostToDaemon::StateChanged { Terminated }` on
 /// the **existing** control connection after `DaemonToHost::Kill` has been sent.
 ///
-/// ADV-S034-BLOCKER-001 ruling (SS-session-manager.md v2.8.0): the caller MUST pass
+/// ADV-S034-BLOCKER-001 ruling (SS-session-manager.md §ADV-S034-BLOCKER-001): the caller MUST pass
 /// the read half of the connection on which Kill was sent — this function NEVER makes a
 /// fresh UDS connect. The session-host sends `StateChanged{Terminated}` (and `Goodbye`)
 /// on the same connection where it received Kill, so reading from a fresh connection
@@ -6337,7 +6337,7 @@ mod tests {
             let _ = kill_received_tx.send(msg).await;
 
             // Reply with HostToDaemon::StateChanged{Terminated} on the SAME connection
-            // (SS-session-manager.md v2.9.0: single-accept-then-process; same-connection
+            // (SS-session-manager.md §single-accept-then-process: same-connection
             // confirmation — kill_confirm_monitor reads from this reader).
             let terminated_msg = monocle_ipc::types::HostToDaemon::StateChanged {
                 new_state: monocle_ipc::types::SessionState::Terminated,
