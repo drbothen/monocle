@@ -13,15 +13,26 @@
 //! accepts the connection, processes `DaemonToHost::Kill`, sends `StateChanged{Terminated}`,
 //! sends `Goodbye`, and removes the socket file.
 //!
-//! # MED-003 — Long-idle kill regression
+//! # MED-003 — Watchdog-only kill path when host_conn.reader is None at kill time
 //!
-//! The `post_spawn_monitor` holds the control connection for up to 30s waiting for
-//! messages, then exits (read deadline). After the monitor exits, `host_conn.writer`
-//! remains in the `SessionEntry` (state = Running), but the read half of the connection
-//! is gone. A subsequent `kill_session()` uses `KillPath::ExistingConn` (writer present),
-//! transitions to Terminating, and expects the `post_spawn_monitor` loop to receive
-//! `StateChanged{Terminated}` — but the monitor has exited. Only the 12s watchdog
-//! can rescue the session. This test verifies that path works correctly.
+//! Under SS-session-manager.md v2.9.0 (Ruling I), `post_spawn_monitor` exits IMMEDIATELY
+//! after observing `StateChanged{Running}` and stores the reader in `host_conn.reader`.
+//! On the normal ExistingConn kill path, `kill_session()` takes `host_conn.reader` and
+//! spawns `kill_confirm_monitor` to read `StateChanged{Terminated}` on the existing
+//! connection.
+//!
+//! However, there is an edge scenario (simulated here) where `host_conn.reader` is None
+//! at kill time: the mock session-host accepts the connection, the daemon sends Running,
+//! but then the test advances 30s of virtual time before calling kill_session(). This
+//! exercises the pre-Running 30s timeout of the post_spawn_monitor — after the 30s deadline
+//! the monitor breaks out of its read loop WITHOUT having stored the reader (it timed out
+//! before Running arrived in this variant). When kill_session() then fires, it finds
+//! host_conn.writer: Some but reader: None. kill_session() falls back to the watchdog-only
+//! path: no kill_confirm_monitor, and the 12s watchdog must force Terminated.
+//!
+//! Note: in the NORMAL case (Running arrives before 30s), the reader IS stored and
+//! kill_confirm_monitor IS spawned. The watchdog path validated here covers the pre-Running
+//! timeout race — a legitimate but uncommon scenario.
 //!
 //! # References
 //!
@@ -29,7 +40,8 @@
 //! - BC-2.08.003 PC-1, PC-2, PC-4, PC-5 (kill lifecycle + watchdog)
 //! - BC-2.08.003 EC-164 (Detached kill via fresh connect)
 //! - BC-2.08.008 Invariant 4 (SessionStateChanged{Terminating} before SessionListUpdate)
-//! - SS-session-manager.md v2.8.0 (ADV-S034-BLOCKER-001 reader-based kill confirmation)
+//! - SS-session-manager.md v2.9.0 (Ruling I: kill_confirm_monitor MANDATORY on ExistingConn;
+//!   post_spawn_monitor exits immediately after Running and stores reader in host_conn.reader)
 
 #![allow(non_snake_case, clippy::expect_used, clippy::unwrap_used)]
 
@@ -463,16 +475,24 @@ async fn test_MED_004_BC_2_08_003_kill_confirmation_uses_same_connection_as_post
 // BC: BC-2.08.003 PC-1, PC-2, PC-5 / BC-2.08.008 Invariant 4
 // ---------------------------------------------------------------------------
 
-/// MED-003 (BC-2.08.003 PC-5): A Running session whose `post_spawn_monitor` has
-/// exited (simulated 30s idle timeout) can still be killed. The 12s watchdog forces
-/// Terminated + SIGKILL when StateChanged{Terminated} never arrives (because the
-/// monitor that would have read it is gone).
+/// MED-003 (BC-2.08.003 PC-5): A session whose `post_spawn_monitor` exceeded the 30s
+/// pre-Running read deadline (timed out before Running arrived) has `host_conn.writer`
+/// present but `host_conn.reader` absent. Under SS-session-manager.md v2.9.0 (Ruling I),
+/// the monitor stores the reader ONLY after observing Running. If the monitor timed out
+/// before Running, the reader stays None. A subsequent `kill_session()` (ExistingConn
+/// path) cannot spawn `kill_confirm_monitor` because there is no reader to take.
+/// The 12s watchdog MUST handle the forced Terminated transition in this case.
 ///
-/// Uses `tokio::time::pause()` + `advance()` to simulate elapsed time.
-/// No real 30s or 12s sleeps.
+/// Uses `tokio::time::advance()` — no real 30s or 12s sleeps.
+///
+/// Note: this test simulates a degenerate case (Running never arrived within 30s). In
+/// the normal case (Running arrives before 30s), the reader IS stored and
+/// kill_confirm_monitor IS spawned per Ruling I. See s034_ruling_i_validation.rs for
+/// the normal Ruling I test (kill_confirm_monitor path).
 #[tokio::test(start_paused = true)]
 async fn test_MED_003_BC_2_08_003_kill_succeeds_after_monitor_exits_watchdog_fires() {
-    // MED-003: post_spawn_monitor has exited (30s idle) — kill still works via watchdog.
+    // MED-003: post_spawn_monitor pre-Running 30s deadline exceeded (Running never arrived) —
+    // reader stays None; kill still works via the 12s watchdog.
 
     let tmp = isolated_runtime_dir();
     let session_id = "a3d30000-0001-4000-a000-000000000001".to_string();
@@ -547,14 +567,17 @@ async fn test_MED_003_BC_2_08_003_kill_succeeds_after_monitor_exits_watchdog_fir
         "MED-003 precondition: session must reach Running before simulating monitor exit"
     );
 
-    // Simulate the post_spawn_monitor's 30s read-deadline expiring.
-    // The monitor is blocked on `reader.read_exact()` with a 30s timeout. Advancing
-    // virtual time by 30s causes the timeout to fire, breaking the loop and exiting
-    // the monitor task.
+    // Simulate the post_spawn_monitor's 30s pre-Running read deadline expiring.
     //
-    // After this advance, the monitor is gone. `host_conn.writer` remains in the
-    // SessionEntry (state stays Running), but the read half is effectively orphaned
-    // (the monitor held it and is now exiting).
+    // Under SS-session-manager.md v2.9.0 (Ruling I), the monitor stores the reader in
+    // host_conn.reader ONLY after observing StateChanged{Running}. In this test, we
+    // do NOT send Running — we advance 30s without sending Running, so the monitor's
+    // pre-Running read timeout fires, breaks the loop, and exits WITHOUT storing the reader.
+    //
+    // After this advance, host_conn.writer is Some (set when the monitor first connected)
+    // but host_conn.reader is None (Running was never received, so the reader was never
+    // placed in host_conn.reader). kill_session() will take the ExistingConn path
+    // (writer present), find reader=None, and fall back to the watchdog-only path.
     tokio::time::advance(std::time::Duration::from_secs(30)).await;
     // Multiple yields to let the monitor task process the read timeout and exit.
     for _ in 0..50 {
@@ -570,7 +593,8 @@ async fn test_MED_003_BC_2_08_003_kill_succeeds_after_monitor_exits_watchdog_fir
     assert_eq!(
         snap.state,
         monocle_ipc::types::SessionState::Running,
-        "MED-003 precondition: session must still be Running after monitor 30s idle exit"
+        "MED-003 precondition: session must still be Running after post_spawn_monitor 30s \
+         pre-Running deadline (Running was never sent; monitor exited without storing reader)"
     );
 
     // Drain residual messages from the monitor exit period.
@@ -635,8 +659,9 @@ async fn test_MED_003_BC_2_08_003_kill_succeeds_after_monitor_exits_watchdog_fir
     );
 
     // BC-2.08.003 PC-5: 12s watchdog fires — state → Terminated + SIGKILL to session-host PID.
-    // The monitor is gone, so StateChanged{Terminated} from the session-host is never read.
-    // The watchdog must force Terminated after 12s.
+    // host_conn.reader is None (monitor timed out before Running), so kill_session() could not
+    // spawn kill_confirm_monitor. Only the watchdog handles the forced Terminated transition.
+    // Advancing 12s fires the watchdog.
     //
     // Advance virtual time by 12s to fire the watchdog.
     tokio::time::advance(std::time::Duration::from_secs(12)).await;
@@ -654,7 +679,8 @@ async fn test_MED_003_BC_2_08_003_kill_succeeds_after_monitor_exits_watchdog_fir
         snap.state,
         monocle_ipc::types::SessionState::Terminated,
         "MED-003 (BC-2.08.003 PC-5): watchdog must force state to Terminated after 12s \
-         when monitor is gone and StateChanged{{Terminated}} is never received."
+         when host_conn.reader is None (monitor timed out pre-Running) and no \
+         kill_confirm_monitor could be spawned."
     );
 
     // BC-2.08.008 Invariant 4: watchdog must broadcast SessionStateChanged{Terminated}
