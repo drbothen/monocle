@@ -1730,78 +1730,93 @@ impl SessionManager {
             // from the same originating `kill_duration` in `kill_session()`, not independently.
             tokio::time::sleep_until(deadline).await;
 
-            // Check if already Terminated (kill_confirm_monitor may have fired first).
+            // F-S034-HIGH-001 fix (HIGH-002 obligation): re-check state == Terminating AND
+            // issue SIGKILL under the SAME lock hold. This eliminates the race window between
+            // the pre-SIGKILL state check and the kill syscall: kill_confirm_monitor cannot
+            // transition the session to Terminated between the check and the SIGKILL while the
+            // lock is held (nix_kill is synchronous — no .await — so holding the async mutex
+            // across it is safe and brief).
+            //
+            // If state is already Terminated at this check, return without SIGKILL. If still
+            // Terminating, issue SIGKILL under the lock, then drop the lock before the
+            // subsequent .await broadcasts (which require the lock to be released).
             {
+                use nix::sys::signal::{kill as nix_kill, Signal};
+                use nix::unistd::Pid;
+
                 let guard = sessions.lock().await;
-                if let Some(entry) = guard.get(&session_id) {
-                    if entry.state == SessionState::Terminated {
-                        // Normal path: session-host confirmed exit before watchdog fired.
+
+                match guard.get(&session_id) {
+                    None => {
+                        // Session removed from registry — nothing to do.
+                        return;
+                    }
+                    Some(entry) if entry.state == SessionState::Terminated => {
+                        // Normal path: kill_confirm_monitor confirmed exit before watchdog fired.
+                        // Return WITHOUT SIGKILL — this is the fix for F-S034-HIGH-001.
                         tracing::debug!(
                             session_id = %session_id,
-                            "watchdog: session already Terminated — no action needed"
+                            "watchdog: session already Terminated under lock — no SIGKILL, no action needed (F-S034-HIGH-001)"
                         );
                         return;
                     }
-                } else {
-                    // Session removed from registry — nothing to do.
-                    return;
-                }
-            }
+                    Some(_) => {
+                        // Still Terminating — fire SIGKILL under the lock (sync, no .await).
+                        // This is the F-S034-HIGH-001 fix: the SIGKILL and the preceding
+                        // Terminating re-check are atomic with respect to kill_confirm_monitor.
+                        tracing::warn!(
+                            session_id = %session_id,
+                            pid = session_host_pid,
+                            "watchdog fired: session did not confirm exit within 12s — sending SIGKILL under lock (BC-2.08.003 PC-5b, F-S034-HIGH-001)"
+                        );
 
-            // Session still Terminating — watchdog fires: SIGKILL + force Terminated.
-            tracing::warn!(
-                session_id = %session_id,
-                pid = session_host_pid,
-                "watchdog fired: session did not confirm exit within 12s — sending SIGKILL (BC-2.08.003 PC-5b)"
-            );
-
-            // SIGKILL to session-host PID.
-            // ADV-S034-HIGH-002: handle ESRCH (process already exited) gracefully — it is
-            // not an error condition; the process is gone and we should proceed to Terminated.
-            // Any other error is logged as a warning.
-            use nix::sys::signal::{kill as nix_kill, Signal};
-            use nix::unistd::Pid;
-            let nix_pid = Pid::from_raw(session_host_pid as i32);
-            match nix_kill(nix_pid, Signal::SIGKILL) {
-                Ok(()) => {
-                    tracing::debug!(
-                        session_id = %session_id,
-                        pid = session_host_pid,
-                        "watchdog: SIGKILL delivered"
-                    );
+                        let nix_pid = Pid::from_raw(session_host_pid as i32);
+                        match nix_kill(nix_pid, Signal::SIGKILL) {
+                            Ok(()) => {
+                                tracing::debug!(
+                                    session_id = %session_id,
+                                    pid = session_host_pid,
+                                    "watchdog: SIGKILL delivered (under lock)"
+                                );
+                            }
+                            Err(nix::errno::Errno::ESRCH) => {
+                                // Process already exited — treat as success (HIGH-002 ESRCH path).
+                                tracing::debug!(
+                                    session_id = %session_id,
+                                    pid = session_host_pid,
+                                    "watchdog: SIGKILL — process already gone (ESRCH), proceeding to Terminated (HIGH-002)"
+                                );
+                            }
+                            Err(e) => {
+                                tracing::warn!(
+                                    session_id = %session_id,
+                                    pid = session_host_pid,
+                                    error = %e,
+                                    "watchdog: SIGKILL failed (under lock)"
+                                );
+                            }
+                        }
+                        // Lock released here — drop(guard). The SIGKILL and re-check were atomic.
+                        // The subsequent block re-acquires the lock for state mutation + broadcasts.
+                    }
                 }
-                Err(nix::errno::Errno::ESRCH) => {
-                    // Process already exited — treat as success (HIGH-002).
-                    tracing::debug!(
-                        session_id = %session_id,
-                        pid = session_host_pid,
-                        "watchdog: SIGKILL — process already gone (ESRCH), proceeding to Terminated (HIGH-002)"
-                    );
-                }
-                Err(e) => {
-                    tracing::warn!(
-                        session_id = %session_id,
-                        pid = session_host_pid,
-                        error = %e,
-                        "watchdog: SIGKILL failed"
-                    );
-                }
+                // guard dropped at end of this block
             }
 
             // Force state → Terminated and emit broadcasts.
-            // HIGH-002: re-check under the lock before mutating — kill_confirm_monitor may have
-            // fired between the pre-SIGKILL read-lock check and here (the two operations are
-            // NOT atomic). If already Terminated, skip the duplicate broadcast.
+            // Re-acquire the lock for state mutation. kill_confirm_monitor may have raced in
+            // between the SIGKILL (above) and this re-acquisition — re-check Terminated here
+            // to avoid a duplicate broadcast (belt-and-suspenders defense-in-depth guard).
             {
                 use monocle_core::engine::{EnrichedSession, SessionStatus};
                 let mut guard = sessions.lock().await;
 
-                // Re-check state under lock (HIGH-002).
+                // Defense-in-depth re-check (belt-and-suspenders after SIGKILL).
                 if let Some(entry) = guard.get(&session_id) {
                     if entry.state == SessionState::Terminated {
                         tracing::debug!(
                             session_id = %session_id,
-                            "watchdog: session reached Terminated between SIGKILL and lock re-check — skipping duplicate broadcast (HIGH-002)"
+                            "watchdog: session reached Terminated between SIGKILL and broadcast lock — skipping duplicate broadcast (defense-in-depth)"
                         );
                         return;
                     }
