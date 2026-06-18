@@ -10,6 +10,11 @@
 //!
 //! `session_id` is `String` everywhere — UUID v4 value at IPC/registry boundaries.
 
+/// Maximum length-prefix frame size for per-session UDS messages (DaemonToHost / HostToDaemon).
+/// Spec: SS-session-manager.md §Per-session UDS protocol — "4-byte LE u32 + JSON payload, 256 KiB max".
+/// MED-002 fix: was 1 MiB; corrected to 256 KiB per spec bound.
+const MAX_FRAME_LEN: usize = 256 * 1024;
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -1264,12 +1269,42 @@ impl SessionManager {
                     }
                 }
 
-                // Kill written successfully on existing connection — transition → Terminating, emit broadcasts, spawn watchdog.
-                // Note: the post_spawn_monitor task continues reading after StateChanged{Running}
-                // and will receive StateChanged{Terminated} from the session-host, calling
-                // transition_to_terminated_standalone. No separate kill_confirm_monitor needed.
+                // Kill written successfully on existing connection.
+                // Ruling I (SS-session-manager.md v2.9.0): kill_confirm_monitor is MANDATORY on
+                // the ExistingConn SUCCESS path. Take host_conn.reader and spawn the monitor so
+                // StateChanged{Terminated} is always received cleanly. The post_spawn_monitor
+                // has already exited (it breaks after Running per Ruling I) and must NOT be
+                // relied upon to read the kill confirmation.
                 self.transition_to_terminating(session_id, &sidecar_path, std_kill_deadline)
                     .await;
+
+                // Take the reader from host_conn so kill_confirm_monitor can read Terminated.
+                let maybe_reader = {
+                    let mut guard = self.sessions.lock().await;
+                    guard
+                        .get_mut(session_id)
+                        .and_then(|e| e.host_conn.as_mut())
+                        .and_then(|c| c.reader.take())
+                };
+
+                if let Some(existing_reader) = maybe_reader {
+                    // Spawn kill_confirm_monitor with the existing reader — same as Detached path.
+                    let sessions_arc = Arc::clone(&self.sessions);
+                    let broker_arc = Arc::clone(&self.broker);
+                    let sid = session_id.to_string();
+                    let sp = sidecar_path.clone();
+                    tokio::spawn(async move {
+                        kill_confirm_monitor(sid, existing_reader, sessions_arc, broker_arc, sp)
+                            .await;
+                    });
+                } else {
+                    // reader was None (e.g. pre-Running race where monitor hasn't stored it yet).
+                    // Watchdog will handle the 12s timeout path.
+                    tracing::debug!(
+                        session_id = %session_id,
+                        "kill_session ExistingConn: host_conn.reader is None — watchdog-only path"
+                    );
+                }
 
                 // Spawn 12s watchdog.
                 Self::spawn_kill_watchdog(
@@ -2097,50 +2132,34 @@ async fn post_spawn_monitor(
         }
     }
 
-    // Read messages from the session-host.
+    // Read messages from the session-host until StateChanged{Running} is received.
     //
-    // HIGH-001/MED-001 fix (SS-session-manager.md v2.8.0 §kill_confirm_monitor):
-    // The post-spawn monitor has TWO phases:
-    //   Phase 1 (pre-Running): 30s deadline applies — session-host must send Running
-    //     within 30s of startup or the session is considered failed.
-    //   Phase 2 (post-Running): NO deadline. The monitor holds the connection open
-    //     indefinitely so that a later kill_session() → StateChanged{Terminated}
-    //     confirmation is received on the SAME connection (no 30s timeout causes orphan).
-    //     The kill watchdog handles the hard 12s deadline on the kill-path side.
+    // Ruling I (SS-session-manager.md v2.9.0 §Ruling I): the post_spawn_monitor exits
+    // IMMEDIATELY after observing StateChanged{Running}, handing the reader to
+    // host_conn.reader so kill_session() can take it for kill_confirm_monitor.
+    // The monitor no longer reads post-Running; the kill watchdog handles the 12s
+    // deadline, and kill_confirm_monitor handles the StateChanged{Terminated} confirmation.
     //
-    // `pre_running_deadline` applies only until Running is observed. After Running,
-    // reads are unbounded (the control connection stays open for the session lifetime).
+    // 30s deadline applies throughout (session-host must send Running within 30s).
     let pre_running_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(30);
-    // `session_is_running` tracks whether we have seen StateChanged{Running}.
-    let mut session_is_running = false;
-
     loop {
-        // Apply the 30s deadline ONLY before Running is observed.
-        if !session_is_running && tokio::time::Instant::now() >= pre_running_deadline {
+        // Apply the 30s deadline; the monitor exits once Running is observed (Ruling I).
+        if tokio::time::Instant::now() >= pre_running_deadline {
             tracing::warn!(session_id = %session_id, "post-spawn monitor: pre-Running read deadline exceeded — session-host did not send Running within 30s");
             break;
         }
 
         // Read 4-byte LE u32 length prefix.
-        // Pre-Running: bounded by remaining pre_running time.
-        // Post-Running: unbounded (connection stays alive for session lifetime).
+        // All reads are pre-Running (monitor exits at Running per Ruling I).
         let mut len_buf = [0u8; 4];
-        let read_result = if !session_is_running {
-            let remaining =
-                pre_running_deadline.saturating_duration_since(tokio::time::Instant::now());
-            tokio::time::timeout(
-                remaining.max(std::time::Duration::from_millis(100)),
-                reader.read_exact(&mut len_buf),
-            )
-            .await
-            .map_err(|_e| {
-                std::io::Error::new(std::io::ErrorKind::TimedOut, "pre-Running read timeout")
-            })
-            .and_then(|r| r)
-        } else {
-            // Post-Running: no timeout — block until data or EOF.
-            reader.read_exact(&mut len_buf).await
-        };
+        let remaining = pre_running_deadline.saturating_duration_since(tokio::time::Instant::now());
+        let read_result = tokio::time::timeout(
+            remaining.max(std::time::Duration::from_millis(100)),
+            reader.read_exact(&mut len_buf),
+        )
+        .await
+        .map_err(|_e| std::io::Error::new(std::io::ErrorKind::TimedOut, "pre-Running read timeout"))
+        .and_then(|r| r);
 
         match read_result {
             Ok(_) => {}
@@ -2160,7 +2179,7 @@ async fn post_spawn_monitor(
         }
 
         let msg_len = u32::from_le_bytes(len_buf) as usize;
-        if msg_len == 0 || msg_len > 1024 * 1024 {
+        if msg_len == 0 || msg_len > MAX_FRAME_LEN {
             tracing::warn!(session_id = %session_id, len = msg_len, "post-spawn monitor: invalid message length");
             break;
         }
@@ -2427,30 +2446,21 @@ async fn post_spawn_monitor(
                     }
 
                     tracing::info!(session_id = %session_id, "post-spawn monitor: session transitioned to Running");
-                    // HIGH-001/MED-001: mark session as Running so the read loop drops
-                    // the pre-Running 30s deadline and switches to unbounded reads.
-                    // The control connection stays open for the kill path: after
-                    // DaemonToHost::Kill is sent, the session-host sends
-                    // StateChanged{Terminated} on this SAME connection (S-034 BC-2.08.003 PC-3).
-                    session_is_running = true;
-                    continue;
-                }
-
-                if new_state == monocle_ipc::types::SessionState::Terminated {
-                    // Kill confirmation: session-host exited and sent StateChanged{Terminated}.
-                    // Transition session → Terminated and emit broadcasts (BC-2.08.003 PC-4).
-                    tracing::debug!(
-                        session_id = %session_id,
-                        "post-spawn monitor: received StateChanged{{Terminated}} — kill confirmed"
-                    );
-                    transition_to_terminated_standalone(
-                        &session_id,
-                        &sessions,
-                        &broker,
-                        &sidecar_path,
-                    )
-                    .await;
-                    // Connection will close naturally (session-host sends Goodbye next).
+                    // Ruling I (SS-session-manager.md v2.9.0 §Ruling I): the post_spawn_monitor
+                    // MUST exit immediately after Running and hand the reader to host_conn.reader
+                    // so kill_session() can take it for kill_confirm_monitor. Continuing to read
+                    // post-Running is FORBIDDEN — post_spawn_monitor reuse for kill confirmation
+                    // is unreliable (monitor may exit on EOF before Kill is received).
+                    {
+                        let mut guard = sessions.lock().await;
+                        if let Some(entry) = guard.get_mut(&session_id) {
+                            if let Some(conn) = entry.host_conn.as_mut() {
+                                conn.reader = Some(reader);
+                            }
+                        }
+                    }
+                    // Reader is now owned by host_conn.reader; kill_session() will take() it
+                    // and pass it to kill_confirm_monitor on the ExistingConn SUCCESS path.
                     break;
                 }
             }
@@ -2531,7 +2541,7 @@ async fn kill_confirm_monitor(
         }
 
         let msg_len = u32::from_le_bytes(len_buf) as usize;
-        if msg_len == 0 || msg_len > 1024 * 1024 {
+        if msg_len == 0 || msg_len > MAX_FRAME_LEN {
             tracing::warn!(
                 session_id = %session_id,
                 len = msg_len,

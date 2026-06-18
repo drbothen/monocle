@@ -23,6 +23,11 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
+/// Maximum length-prefix frame size for per-session UDS messages (DaemonToHost / HostToDaemon).
+/// Spec: SS-session-manager.md §Per-session UDS protocol — "4-byte LE u32 + JSON payload, 256 KiB max".
+/// MED-002 fix: was 1 MiB; corrected to 256 KiB per spec bound.
+const MAX_FRAME_LEN: usize = 256 * 1024;
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -554,7 +559,7 @@ pub(crate) async fn step_event_loop(
             match stream.read_exact(&mut len_buf).await {
                 Ok(_) => {
                     let msg_len = u32::from_le_bytes(len_buf) as usize;
-                    if msg_len > 1024 * 1024 {
+                    if msg_len > MAX_FRAME_LEN {
                         tracing::warn!(
                             session_id = %session_id,
                             msg_len = msg_len,
@@ -1014,19 +1019,6 @@ mod tests {
     // Tests the post-SIGKILL path of kill_sequence: StateChanged{Terminated} +
     // Goodbye + socket removal are correctly emitted even when the child has
     // already been killed externally (simulating the post-SIGKILL state).
-    //
-    // NOTE ON FULL 10s ESCALATION PATH:
-    // The complete SIGKILL escalation test (SIGTERM → 10s wait → SIGKILL) requires
-    // that kill_sequence accept a configurable timeout parameter so that
-    // tokio::time::advance() can fire the timeout without a real 10s sleep.
-    // The current implementation hardcodes Duration::from_secs(10) inside
-    // kill_sequence() and uses spawn_blocking() for the waitpid poll loop, which
-    // conflicts with tokio::time::pause()/advance() (the blocking thread pool
-    // never yields to allow advance() to complete).
-    //
-    // IMPLEMENTER VISIBILITY REQUEST: add a `#[cfg(test)] timeout_override` or
-    // extract the timeout as a parameter so the full escalation test (marked
-    // #[ignore] below) can be re-enabled. See SIGKILL-TIMEOUT-INJECTION below.
     // -----------------------------------------------------------------------
 
     /// BC-2.08.003 AC-003 (MED-002): kill_sequence correctly emits StateChanged{Terminated},
