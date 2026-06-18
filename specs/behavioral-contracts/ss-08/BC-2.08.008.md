@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.4"
+version: "1.3.5"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-14T18:00:00Z
+timestamp: 2026-06-18T00:00:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/SS-embedded-pty.md, architecture/SS-ipc.md, architecture/SS-daemon-wiring-v2-delta.md]
 input-hash: "c0fd920"
@@ -197,7 +197,7 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC defines the `SessionStateChanged` IPC message which is the primary notification mechanism for session lifecycle state transitions; it is the trigger for the wizard auto-advance and EmbeddedTerminal exit, both of which are core session lifecycle behaviors in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager state transitions → broker publish); monocle-ipc (`ServerToClient::SessionStateChanged` variant); monocle-tui (wizard auto-advance, EmbeddedTerminal exit handlers) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.10.0 §Session lifecycle state machine (state transitions, including re-discovery GC and Detached re-discovery; IPC handler generates UUID + sends SpawnAck before spawn_session()); SS-embedded-pty.md v1.7.0 §TUI AppMode Extensions (SessionCreation::Launching auto-transition to EmbeddedTerminal; `launching_session_id: Option<String>` field added — F-P41-IMP-001); SS-ipc.md v1.24.0 §ServerToClient::SpawnAck (new variant; per-client point-to-point delivery before SessionStateChanged{Launching}); SS-daemon-wiring-v2-delta.md v1.11.4 §3b (SessionStateChanged emission rule, ordered-pair-split-on-Full disconnect rule, rename-only-SessionListUpdate rule) |
+| Architecture Source | SS-session-manager.md v2.11.0 §Session lifecycle state machine (state transitions, including re-discovery GC and Detached re-discovery; IPC handler generates UUID + sends SpawnAck before spawn_session(); Ruling K: natural-exit Terminated detection is S-039/S-040 PTY master EOF scope — not S-034); SS-embedded-pty.md v1.7.0 §TUI AppMode Extensions (SessionCreation::Launching auto-transition to EmbeddedTerminal; `launching_session_id: Option<String>` field added — F-P41-IMP-001); SS-ipc.md v1.24.0 §ServerToClient::SpawnAck (new variant; per-client point-to-point delivery before SessionStateChanged{Launching}); SS-daemon-wiring-v2-delta.md v1.11.4 §3b (SessionStateChanged emission rule, ordered-pair-split-on-Full disconnect rule, rename-only-SessionListUpdate rule) |
 | Cross-Ref | BC-2.09.008 (SessionCreation wizard auto-transition to EmbeddedTerminal on Running); BC-2.08.003 (kill → Terminating transition; 12s watchdog → Terminated); BC-2.05.003 (SessionListUpdate — emitted concurrently with SessionStateChanged for same transition) |
 | Test Name | test_BC_2_08_008_session_state_changed_emitted_on_every_transition |
 
@@ -217,11 +217,23 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
 
 ## Story Anchor
 
-S-033, S-034, S-035 — Implement SessionStateChanged broadcast on every SessionEntry state transition (distributed: S-033 covers Launching transitions, S-034 covers Terminating/Terminated transitions, S-035 covers Running/Detached transitions)
+S-033, S-034, S-035, S-039/S-040 — Implement SessionStateChanged broadcast on every SessionEntry state transition (distributed: S-033 covers Launching transitions; S-034 covers KILL-PATH Terminating/Terminated transitions — the daemon-side broadcast when the daemon receives StateChanged{Terminated} via kill confirmation or 12s watchdog; S-035 covers Running/Detached transitions; S-039/S-040 covers the NATURAL-EXIT Terminated transition — session-host child-exit detection (PTY master EOF) → HostToDaemon::StateChanged{Terminated}, which the daemon then broadcasts via the same path S-034 wires)
 
 ## VP Anchors
 
 VP-TBD — SessionStateChanged emission and TUI response integration tests (filled after VP creation)
+
+## §Trace v1.3.5
+
+**ADV-S034-IMPORTANT-001 — Clarify natural-exit Terminated ownership (S-039/S-040) vs kill-path S-034 broadcast; SS-session-manager v2.11.0 Ruling K** (2026-06-18):
+
+- **Finding (ADV-S034-IMPORTANT-001, pass-11):** §Story Anchor distribution text stated "S-034 covers Terminating/Terminated transitions" without distinguishing the daemon-side kill-path broadcast from the session-host-side natural-child-exit detection. The phrase was accurate for S-034's daemon broadcast, but ambiguous — a reader could misread it as "S-034 covers ALL paths to Terminated, including natural exit on the session-host side (Ctrl-D → child exit → PTY master EOF)." That detection scope belongs to S-039/S-040 per SS-session-manager.md v2.11.0 Ruling K.
+- **§Story Anchor change (clarification only):** S-039/S-040 added to the implementing story list. Distribution text rewritten to separate the two paths:
+  - S-034 = KILL-PATH Terminating/Terminated transitions — daemon-side broadcast when daemon receives StateChanged{Terminated} via kill confirmation or 12s watchdog.
+  - S-039/S-040 = NATURAL-EXIT Terminated transition — session-host child-exit detection (PTY master EOF) → HostToDaemon::StateChanged{Terminated}, which the daemon then broadcasts via the same path S-034 wires.
+- **Architecture Source pin:** SS-session-manager.md v2.10.0 → v2.11.0 (Ruling K added). No other arch-source versions changed.
+- **Scope:** §Story Anchor distribution text and Architecture Source SS-session-manager version only. No change to: postconditions, invariants, edge cases, transition lists, canonical test vectors, verification properties, traceability capability anchor, or any other BC's behavioral_contracts array membership.
+- **SE-16d monotonicity:** v1.3.5 timestamp 2026-06-18 > v1.3.4 timestamp 2026-06-16. PASS.
 
 ## §Trace v1.3.1
 

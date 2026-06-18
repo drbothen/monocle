@@ -797,9 +797,9 @@ BC-2.08.007:
 
 BC-2.08.008:
   path: specs/behavioral-contracts/ss-08/BC-2.08.008.md
-  current_version: "1.3.4"
-  last_bump_commit: "[Phase-2 Pass-2 fix burst — SS-embedded-pty arch-source pin 1.6.0→1.7.0; §Trace v1.2.0/v1.2.1 v1.6.0 references annotated version-pin-historical]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.3.5"
+  last_bump_commit: "[ADV-S034-IMPORTANT-001 / SS-session-manager v2.11.0 Ruling K: clarified natural-exit Terminated ownership = S-039/S-040; S-034 = kill-path daemon broadcast]"
+  last_bump_date: "2026-06-18"
 
 BC-2.09.001:
   path: specs/behavioral-contracts/ss-09/BC-2.09.001.md
