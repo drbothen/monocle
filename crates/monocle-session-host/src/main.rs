@@ -1466,8 +1466,12 @@ mod tests {
             listener.accept(),
             tokio::net::UnixStream::connect(&sock_path)
         );
-        let (server_stream, _client) = accept_result.expect("accept");
-        let _ = connect_result.expect("connect");
+        let (server_stream, _) = accept_result.expect("accept");
+        // Keep `_client_stream` alive until after peer_cred() / verify_peer_uid() assertions.
+        // On macOS, getpeereid() (the peer_cred() implementation) returns ENOTCONN if the
+        // peer has already closed its end of the socket — so the client must not be dropped
+        // before the peer_cred() call completes.
+        let _client_stream = connect_result.expect("connect");
 
         // Verify peer_cred() returns the current process UID.
         let peer_uid = server_stream
