@@ -415,16 +415,15 @@ async fn send_host_msg(
     Ok(())
 }
 
-/// Step 9: Main event loop — two-phase accept-loop (SS-session-manager.md v2.8.0).
-///
-/// ## Architecture (ADV-S034-BLOCKER-001 ruling)
+/// Step 9: Main event loop — S-034 scope: two-phase accept-loop with Kill handler.
 ///
 /// The `UnixListener` is bound ONCE at startup and persists for the session lifetime.
 /// The event loop has two structural phases:
 ///
 /// **Phase A — Detached (waiting for daemon connection):**
-/// Loops on `listener.accept()` while keeping the harness child alive.
-/// PTY processing (vt100 parser) is deferred to S-047; the child exit watch is live.
+/// Loops on `listener.accept()`. SO_PEERCRED checked on every accepted connection
+/// before any I/O; UID mismatch closes the connection and re-accepts.
+/// PTY processing (vt100 parser) is deferred to S-047.
 ///
 /// **Phase B — Active (one daemon connection):**
 /// Processes the single active control connection:
@@ -432,12 +431,25 @@ async fn send_host_msg(
 /// - `DaemonToHost::Detach` → drop connection → return to Phase A.
 /// - EOF (daemon crash/restart) → drop connection → return to Phase A.
 /// - Other variants (Attach/KeyInput/Resize) → S-035/S-047 scope; logged and ignored.
-/// - Child natural exit → `StateChanged{Terminated}` + `Goodbye` → exit.
+///
+/// **S-034 additions (this story):**
+/// - Kill dispatch: SIGTERM to harness child → 10s wait → SIGKILL escalation →
+///   sends `HostToDaemon::StateChanged{Terminated}` → sends `HostToDaemon::Goodbye`
+///   → removes socket file → exits.
+/// - Detach/EOF handling: drop connection, loop back to Phase A (re-accept).
+/// - Startup handshake sent once on the FIRST accepted connection (see HIGH-001 below).
+///
+/// **NOT in S-034 scope — future stories:**
+/// - `child_exit_watch` (natural child exit → `StateChanged{Terminated}` without Kill):
+///   implemented in S-039/S-040 (PTY output pipeline; PTY master EOF signals child exit).
+/// - Full `tokio::select!` covering both the accept-loop and a PTY reader: also
+///   S-039/S-040+ scope (requires a running PTY reader to select over).
+/// - PTY bytes forwarding (`HostToDaemon::PtyBytes` fan-out): S-039/S-046.
 ///
 /// **Invariants:**
 /// 1. At most one active control connection at a time.
 /// 2. SO_PEERCRED check on EVERY accepted connection BEFORE any I/O.
-/// 3. Socket file removed ONLY on Kill or child exit (not on Detach/EOF).
+/// 3. Socket file removed ONLY on Kill (not on Detach/EOF).
 /// 4. Session-host process survives daemon disconnect/restart (Invariant 5).
 ///
 /// **HIGH-001 (I3-009) startup handshake (sent once on the FIRST accept):**
