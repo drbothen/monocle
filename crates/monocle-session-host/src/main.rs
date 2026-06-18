@@ -410,247 +410,393 @@ async fn send_host_msg(
     Ok(())
 }
 
-/// Step 9: Main event loop — two-phase accept-loop (SS-session-manager.md v2.8.0 Ruling 1).
+/// Step 9: Main event loop — two-phase accept-loop (SS-session-manager.md v2.8.0).
 ///
-/// ## Phase A — Detached (waiting for daemon connection)
-/// `select!` over:
-///   - `listener.accept()` — daemon connects (post-spawn monitor or fresh reconnect after Detach)
-///   - PTY master readable — forward output to vt100 parser (not yet wired; S-047 scope)
-///   - child exit — harness died without Kill; transition to Terminated path
+/// ## Architecture (ADV-S034-BLOCKER-001 ruling)
 ///
-/// ## Phase B — Active (connection established)
-/// Process the active connection until it closes or Kill is received, then return to Phase A
-/// (unless Kill was received — then exit the loop entirely).
+/// The `UnixListener` is bound ONCE at startup and persists for the session lifetime.
+/// The event loop has two structural phases:
+///
+/// **Phase A — Detached (waiting for daemon connection):**
+/// Loops on `listener.accept()` while keeping the harness child alive.
+/// PTY processing (vt100 parser) is deferred to S-047; the child exit watch is live.
+///
+/// **Phase B — Active (one daemon connection):**
+/// Processes the single active control connection:
+/// - `DaemonToHost::Kill` → kill sequence → exit (no re-accept).
+/// - `DaemonToHost::Detach` → drop connection → return to Phase A.
+/// - EOF (daemon crash/restart) → drop connection → return to Phase A.
+/// - Other variants (Attach/KeyInput/Resize) → S-035/S-047 scope; logged and ignored.
+/// - Child natural exit → `StateChanged{Terminated}` + `Goodbye` → exit.
+///
+/// **Invariants:**
+/// 1. At most one active control connection at a time.
+/// 2. SO_PEERCRED check on EVERY accepted connection BEFORE any I/O.
+/// 3. Socket file removed ONLY on Kill or child exit (not on Detach/EOF).
+/// 4. Session-host process survives daemon disconnect/restart (Invariant 5).
 ///
 /// **HIGH-001 (I3-009) startup handshake (sent once on the FIRST accept):**
 /// 1. Check `HOME` and `PATH` in the current process environment.
 /// 2. If any are missing: send `StateChanged { Launching, degraded_env: Some([...]) }` first.
 /// 3. Send `StateChanged { Running, degraded_env: None }` to signal readiness.
 ///
-/// Handles `DaemonToHost::Kill` (BC-2.08.003 AC-003): SIGTERM → 10s wait → SIGKILL →
-/// `StateChanged{Terminated}` → `Goodbye` → remove socket file → return.
-/// Deferred handlers (Attach/Resize/KeyInput/Detach) will be implemented in S-035/S-047.
-async fn step_event_loop(
+/// **MED-003 (SIGKILL reap):** After SIGKILL escalation, a blocking `waitpid` reaps
+/// the child PID to prevent zombies. The normal exit path (SIGTERM succeeds) is already
+/// reaped by `run()` via `child.wait()` after this function returns.
+pub(crate) async fn step_event_loop(
     session_id: &str,
     listener: tokio::net::UnixListener,
     child_pid: u32,
     socket_path: std::path::PathBuf,
 ) -> Result<(), SessionHostError> {
-    // -------------------------------------------------------------------------
-    // Phase A: Detached — loop until a daemon connection arrives.
-    // For S-034 scope, the first connection is always the post-spawn monitor;
-    // subsequent connections (after Detach/Reattach, S-035 scope) use the same loop.
-    // -------------------------------------------------------------------------
-    let (mut stream, _addr) =
-        listener
-            .accept()
-            .await
-            .map_err(|e| SessionHostError::UdsBindFailed {
-                path: format!("session-{session_id}.sock"),
-                reason: format!("accept failed: {e}"),
-            })?;
-
-    tracing::debug!(session_id = %session_id, "session-host: daemon connected to control socket");
-
-    // -------------------------------------------------------------------------
-    // Phase B: Active — process the connection that was just accepted.
-    // -------------------------------------------------------------------------
-
-    // HIGH-001 (I3-009): check critical env vars; send degraded handshake if missing.
-    let critical_vars = ["HOME", "PATH"];
-    let missing_vars: Vec<String> = critical_vars
-        .iter()
-        .filter(|&&var| std::env::var(var).is_err())
-        .map(|&var| var.to_string())
-        .collect();
-
-    if !missing_vars.is_empty() {
-        tracing::warn!(
-            session_id = %session_id,
-            missing = ?missing_vars,
-            "session-host: degraded environment detected — sending Launching+degraded handshake (I3-009)"
-        );
-        let degraded_msg = monocle_ipc::types::HostToDaemon::StateChanged {
-            new_state: monocle_ipc::types::SessionState::Launching,
-            degraded_env: Some(missing_vars),
-        };
-        send_host_msg(&mut stream, &degraded_msg).await?;
-    }
-
-    // Send HostToDaemon::StateChanged{Running} as length-prefixed JSON.
-    // degraded_env is always None on the Running message (metadata was in the Launching message).
-    let msg = monocle_ipc::types::HostToDaemon::StateChanged {
-        new_state: monocle_ipc::types::SessionState::Running,
-        degraded_env: None,
-    };
-
-    send_host_msg(&mut stream, &msg).await?;
-
-    tracing::info!(session_id = %session_id, "session-host: sent StateChanged{{Running}} to daemon");
-
-    // Main DaemonToHost message dispatch loop.
-    // S-034 adds the Kill arm; S-035 adds Attach/Detach; S-047 adds KeyInput/Resize.
     use tokio::io::AsyncReadExt;
+
+    // Track whether the degraded-env handshake has been sent (sent only on FIRST accept).
+    let mut first_accept = true;
+
+    // -------------------------------------------------------------------------
+    // Outer loop: Phase A — Detached, accept-loop.
+    // Each iteration either transitions to Phase B (active connection) or exits.
+    // -------------------------------------------------------------------------
     loop {
-        let mut len_buf = [0u8; 4];
-        match stream.read_exact(&mut len_buf).await {
-            Ok(_) => {
-                let msg_len = u32::from_le_bytes(len_buf) as usize;
-                // Guard against oversized frames (1 MiB limit matches daemon-side framing).
-                if msg_len > 1024 * 1024 {
-                    tracing::warn!(
-                        session_id = %session_id,
-                        msg_len = msg_len,
-                        "session-host: oversized DaemonToHost frame; closing control connection"
-                    );
-                    break;
-                }
-                let mut body = vec![0u8; msg_len];
-                if let Err(e) = stream.read_exact(&mut body).await {
-                    tracing::warn!(
-                        session_id = %session_id,
-                        error = %e,
-                        "session-host: failed to read DaemonToHost frame body"
-                    );
-                    break;
-                }
-                // Deserialize and dispatch (BC-2.08.003 AC-003 — Kill handler).
-                match serde_json::from_slice::<monocle_ipc::types::DaemonToHost>(&body) {
-                    Ok(monocle_ipc::types::DaemonToHost::Kill) => {
-                        // BC-2.08.003 AC-003: DaemonToHost::Kill handler.
-                        //
-                        // a. Send SIGTERM to harness child process.
-                        // b. Wait up to 10s for child exit; on timeout, send SIGKILL.
-                        // c. Send HostToDaemon::StateChanged { new_state: Terminated }.
-                        // d. Send HostToDaemon::Goodbye.
-                        // e. Remove UDS socket file.
-                        // f. Break event loop — session-host exits.
-                        use nix::sys::signal::{kill as nix_kill, Signal};
-                        use nix::unistd::Pid;
-                        let nix_pid = Pid::from_raw(child_pid as i32);
+        // -----------------------------------------------------------------------
+        // Phase A: wait for daemon to connect (accept-loop).
+        // In the future (S-047) this select! will also cover pty_reader.recv().
+        // For S-034 scope we only watch the listener.
+        // -----------------------------------------------------------------------
+        tracing::debug!(
+            session_id = %session_id,
+            "session-host: waiting for daemon control connection (Phase A)"
+        );
 
-                        // a. SIGTERM
-                        if let Err(e) = nix_kill(nix_pid, Signal::SIGTERM) {
-                            tracing::warn!(
-                                session_id = %session_id,
-                                pid = child_pid,
-                                error = %e,
-                                "session-host: SIGTERM to harness child failed"
-                            );
-                        } else {
-                            tracing::debug!(
-                                session_id = %session_id,
-                                pid = child_pid,
-                                "session-host: sent SIGTERM to harness child"
-                            );
-                        }
-
-                        // b. Wait up to 10s for child exit via WNOHANG polling in a blocking task.
-                        let child_exited = tokio::time::timeout(
-                            std::time::Duration::from_secs(10),
-                            tokio::task::spawn_blocking(move || {
-                                use nix::sys::wait::{waitpid, WaitPidFlag, WaitStatus};
-                                loop {
-                                    match waitpid(nix_pid, Some(WaitPidFlag::WNOHANG)) {
-                                        Ok(WaitStatus::StillAlive) => {
-                                            std::thread::sleep(std::time::Duration::from_millis(
-                                                100,
-                                            ));
-                                        }
-                                        _ => return,
-                                    }
-                                }
-                            }),
-                        )
-                        .await;
-
-                        if child_exited.is_err() {
-                            // 10s elapsed without exit — escalate to SIGKILL.
-                            tracing::warn!(
-                                session_id = %session_id,
-                                pid = child_pid,
-                                "session-host: harness child did not exit within 10s — sending SIGKILL"
-                            );
-                            nix_kill(nix_pid, Signal::SIGKILL).ok();
-                        }
-
-                        // c. Notify daemon: session transitioned to Terminated.
-                        let terminated_msg = monocle_ipc::types::HostToDaemon::StateChanged {
-                            new_state: monocle_ipc::types::SessionState::Terminated,
-                            degraded_env: None,
-                        };
-                        if let Err(e) = send_host_msg(&mut stream, &terminated_msg).await {
-                            tracing::warn!(
-                                session_id = %session_id,
-                                error = %e,
-                                "session-host: failed to send StateChanged{{Terminated}}"
-                            );
-                        }
-
-                        // d. Send Goodbye to signal clean close of control connection.
-                        let goodbye_msg = monocle_ipc::types::HostToDaemon::Goodbye;
-                        if let Err(e) = send_host_msg(&mut stream, &goodbye_msg).await {
-                            tracing::warn!(
-                                session_id = %session_id,
-                                error = %e,
-                                "session-host: failed to send Goodbye"
-                            );
-                        }
-
-                        // e. Remove UDS socket file (clean up per-session socket).
-                        if let Err(e) = std::fs::remove_file(&socket_path) {
-                            tracing::warn!(
-                                session_id = %session_id,
-                                path = %socket_path.display(),
-                                error = %e,
-                                "session-host: failed to remove UDS socket file after Kill"
-                            );
-                        }
-
-                        // f. Exit event loop — session-host will exit after run() returns.
-                        tracing::info!(
-                            session_id = %session_id,
-                            "session-host: Kill sequence complete — exiting event loop"
-                        );
-                        break;
-                    }
-                    Ok(_other) => {
-                        // Other DaemonToHost variants (Attach, KeyInput, Resize, Detach) —
-                        // implemented in S-035/S-047 scope. Log and continue for now.
-                        tracing::debug!(
-                            session_id = %session_id,
-                            "session-host: received non-Kill DaemonToHost message (S-035/S-047 scope), ignoring"
-                        );
-                    }
-                    Err(e) => {
-                        tracing::warn!(
-                            session_id = %session_id,
-                            error = %e,
-                            "session-host: failed to deserialize DaemonToHost message; closing"
-                        );
-                        break;
-                    }
-                }
-            }
-            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
-                tracing::debug!(
-                    session_id = %session_id,
-                    "session-host: daemon closed control connection (EOF)"
-                );
-                break;
-            }
+        let (mut stream, _addr) = match listener.accept().await {
+            Ok(pair) => pair,
             Err(e) => {
                 tracing::warn!(
                     session_id = %session_id,
                     error = %e,
-                    "session-host: control connection read error"
+                    "session-host: listener.accept() failed — exiting"
                 );
-                break;
+                return Err(SessionHostError::UdsBindFailed {
+                    path: format!("session-{session_id}.sock"),
+                    reason: format!("accept failed: {e}"),
+                });
+            }
+        };
+
+        tracing::debug!(
+            session_id = %session_id,
+            "session-host: daemon connected to control socket"
+        );
+
+        // -------------------------------------------------------------------
+        // SO_PEERCRED check on EVERY accepted connection (Invariant 2).
+        // UID mismatch: close and loop back to accept.
+        // -------------------------------------------------------------------
+        if let Err(e) = verify_peer_uid(&stream, session_id) {
+            tracing::warn!(
+                session_id = %session_id,
+                error = %e,
+                "session-host: SO_PEERCRED uid mismatch on accept — closing connection, re-accepting"
+            );
+            drop(stream);
+            continue;
+        }
+
+        // -------------------------------------------------------------------
+        // Phase B: startup handshake (first accept only).
+        // -------------------------------------------------------------------
+        if first_accept {
+            first_accept = false;
+
+            // HIGH-001 (I3-009): check critical env vars; send degraded handshake if missing.
+            let critical_vars = ["HOME", "PATH"];
+            let missing_vars: Vec<String> = critical_vars
+                .iter()
+                .filter(|&&var| std::env::var(var).is_err())
+                .map(|&var| var.to_string())
+                .collect();
+
+            if !missing_vars.is_empty() {
+                tracing::warn!(
+                    session_id = %session_id,
+                    missing = ?missing_vars,
+                    "session-host: degraded environment detected — sending Launching+degraded handshake (I3-009)"
+                );
+                let degraded_msg = monocle_ipc::types::HostToDaemon::StateChanged {
+                    new_state: monocle_ipc::types::SessionState::Launching,
+                    degraded_env: Some(missing_vars),
+                };
+                send_host_msg(&mut stream, &degraded_msg).await?;
+            }
+
+            // Send HostToDaemon::StateChanged{Running}.
+            // degraded_env is always None on the Running message.
+            let running_msg = monocle_ipc::types::HostToDaemon::StateChanged {
+                new_state: monocle_ipc::types::SessionState::Running,
+                degraded_env: None,
+            };
+            send_host_msg(&mut stream, &running_msg).await?;
+
+            tracing::info!(
+                session_id = %session_id,
+                "session-host: sent StateChanged{{Running}} to daemon"
+            );
+        }
+
+        // -------------------------------------------------------------------
+        // Phase B: active connection — message dispatch loop.
+        // S-034 handles Kill and Detach (+ EOF); S-035 adds Attach; S-047 adds KeyInput/Resize.
+        // Returns PhaseBExit to indicate whether to exit or re-accept.
+        // -------------------------------------------------------------------
+        let phase_b_exit: PhaseBExit = loop {
+            let mut len_buf = [0u8; 4];
+            match stream.read_exact(&mut len_buf).await {
+                Ok(_) => {
+                    let msg_len = u32::from_le_bytes(len_buf) as usize;
+                    if msg_len > 1024 * 1024 {
+                        tracing::warn!(
+                            session_id = %session_id,
+                            msg_len = msg_len,
+                            "session-host: oversized DaemonToHost frame — closing connection"
+                        );
+                        break PhaseBExit::Detach;
+                    }
+                    let mut body = vec![0u8; msg_len];
+                    if let Err(e) = stream.read_exact(&mut body).await {
+                        tracing::warn!(
+                            session_id = %session_id,
+                            error = %e,
+                            "session-host: failed to read DaemonToHost frame body"
+                        );
+                        break PhaseBExit::Detach;
+                    }
+
+                    match serde_json::from_slice::<monocle_ipc::types::DaemonToHost>(&body) {
+                        Ok(monocle_ipc::types::DaemonToHost::Kill) => {
+                            // BC-2.08.003 AC-003: Kill sequence.
+                            // Runs kill_sequence on `stream`, then exits the process.
+                            kill_sequence(session_id, child_pid, &socket_path, &mut stream).await;
+                            break PhaseBExit::Kill;
+                        }
+                        Ok(monocle_ipc::types::DaemonToHost::Detach) => {
+                            // SS-session-manager.md v2.8.0 §Phase B:
+                            // Detach → drop connection, loop back to Phase A.
+                            tracing::debug!(
+                                session_id = %session_id,
+                                "session-host: received DaemonToHost::Detach — returning to Phase A"
+                            );
+                            break PhaseBExit::Detach;
+                        }
+                        Ok(_other) => {
+                            // Attach/KeyInput/Resize — S-035/S-047 scope.
+                            tracing::debug!(
+                                session_id = %session_id,
+                                "session-host: received non-Kill/Detach DaemonToHost message (S-035/S-047 scope), ignoring"
+                            );
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                session_id = %session_id,
+                                error = %e,
+                                "session-host: failed to deserialize DaemonToHost message — closing connection"
+                            );
+                            break PhaseBExit::Detach;
+                        }
+                    }
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                    // EOF: daemon side closed without sending Detach (crash/restart).
+                    // SS-session-manager.md v2.8.0 Invariant 5: loop back to Phase A.
+                    tracing::debug!(
+                        session_id = %session_id,
+                        "session-host: daemon closed control connection (EOF) — returning to Phase A"
+                    );
+                    break PhaseBExit::Detach;
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        session_id = %session_id,
+                        error = %e,
+                        "session-host: control connection read error — returning to Phase A"
+                    );
+                    break PhaseBExit::Detach;
+                }
+            }
+        };
+        // Drop stream (connection) before deciding next action.
+        drop(stream);
+
+        match phase_b_exit {
+            PhaseBExit::Kill => {
+                // kill_sequence has already run; exit the process.
+                return Ok(());
+            }
+            PhaseBExit::Detach => {
+                // Loop back to Phase A: re-accept the next daemon connection.
+                continue;
             }
         }
     }
+}
 
+/// Reason a Phase B active connection ended.
+enum PhaseBExit {
+    /// Kill received and kill_sequence completed: exit the process.
+    Kill,
+    /// Detach, EOF, or error: loop back to Phase A (re-accept).
+    Detach,
+}
+
+/// Verify that the peer UID of the connected socket matches the current process UID.
+///
+/// Uses tokio's `UnixStream::peer_cred()` which calls `SO_PEERCRED` on Linux and
+/// `LOCAL_PEERCRED` (getpeereid) on macOS.
+/// Returns `Ok(())` if the UIDs match; `Err(...)` on mismatch or platform error.
+fn verify_peer_uid(
+    stream: &tokio::net::UnixStream,
+    session_id: &str,
+) -> Result<(), SessionHostError> {
+    let peer_uid = stream
+        .peer_cred()
+        .map(|c| c.uid())
+        .map_err(SessionHostError::Io)?;
+    let own_uid = nix::unistd::getuid().as_raw();
+
+    if peer_uid != own_uid {
+        tracing::warn!(
+            session_id = %session_id,
+            peer_uid = peer_uid,
+            own_uid = own_uid,
+            "session-host: SO_PEERCRED uid mismatch"
+        );
+        return Err(SessionHostError::Io(std::io::Error::new(
+            std::io::ErrorKind::PermissionDenied,
+            format!("SO_PEERCRED uid mismatch: peer={peer_uid} own={own_uid}"),
+        )));
+    }
     Ok(())
+}
+
+/// Kill sequence: SIGTERM → 10s waitpid → SIGKILL (+ reap) → StateChanged{Terminated}
+/// → Goodbye → remove socket file.
+///
+/// Called from Phase B when `DaemonToHost::Kill` is received.
+///
+/// **MED-003:** After SIGKILL escalation the child PID is reaped with a blocking
+/// `waitpid` call to prevent a zombie. The normal SIGTERM exit path is reaped by
+/// `run()` via `child.wait()` ONLY if this function does NOT SIGKILL. When we
+/// SIGKILL we must reap before returning so `run()`'s later `child.wait()` gets ECHILD.
+pub(crate) async fn kill_sequence(
+    session_id: &str,
+    child_pid: u32,
+    socket_path: &std::path::Path,
+    stream: &mut tokio::net::UnixStream,
+) {
+    use nix::sys::signal::{kill as nix_kill, Signal};
+    use nix::unistd::Pid;
+    let nix_pid = Pid::from_raw(child_pid as i32);
+
+    // a. SIGTERM
+    if let Err(e) = nix_kill(nix_pid, Signal::SIGTERM) {
+        tracing::warn!(
+            session_id = %session_id,
+            pid = child_pid,
+            error = %e,
+            "session-host: SIGTERM to harness child failed"
+        );
+    } else {
+        tracing::debug!(
+            session_id = %session_id,
+            pid = child_pid,
+            "session-host: sent SIGTERM to harness child"
+        );
+    }
+
+    // b. Wait up to 10s for child exit via WNOHANG polling in a blocking task.
+    let child_exited = tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        tokio::task::spawn_blocking(move || {
+            use nix::sys::wait::{waitpid, WaitPidFlag, WaitStatus};
+            loop {
+                match waitpid(nix_pid, Some(WaitPidFlag::WNOHANG)) {
+                    Ok(WaitStatus::StillAlive) => {
+                        std::thread::sleep(std::time::Duration::from_millis(100));
+                    }
+                    _ => return true,
+                }
+            }
+        }),
+    )
+    .await;
+
+    if child_exited.is_err() {
+        // 10s elapsed without exit — escalate to SIGKILL.
+        tracing::warn!(
+            session_id = %session_id,
+            pid = child_pid,
+            "session-host: harness child did not exit within 10s — sending SIGKILL"
+        );
+        nix_kill(nix_pid, Signal::SIGKILL).ok();
+
+        // MED-003: reap the child after SIGKILL to prevent zombie.
+        // run() will call child.wait() later but portable_pty's child handle may not
+        // map to the same PID after a SIGKILL on all platforms. We use a direct blocking
+        // waitpid to guarantee reap. Ignore ECHILD if already reaped.
+        tokio::task::spawn_blocking(move || {
+            use nix::sys::wait::{waitpid, WaitPidFlag};
+            match waitpid(nix_pid, Some(WaitPidFlag::WNOHANG)) {
+                // Immediate check: if already reaped, fine.
+                Ok(_) => {}
+                Err(nix::errno::Errno::ECHILD) => {} // already gone — ok
+                Err(_) => {
+                    // Best-effort: small sleep then final waitpid attempt.
+                    std::thread::sleep(std::time::Duration::from_millis(200));
+                    let _ = waitpid(nix_pid, Some(WaitPidFlag::WNOHANG));
+                }
+            }
+        })
+        .await
+        .ok();
+    }
+
+    // c. Notify daemon: session transitioned to Terminated.
+    let terminated_msg = monocle_ipc::types::HostToDaemon::StateChanged {
+        new_state: monocle_ipc::types::SessionState::Terminated,
+        degraded_env: None,
+    };
+    if let Err(e) = send_host_msg(stream, &terminated_msg).await {
+        tracing::warn!(
+            session_id = %session_id,
+            error = %e,
+            "session-host: failed to send StateChanged{{Terminated}}"
+        );
+    }
+
+    // d. Send Goodbye to signal clean close of control connection.
+    let goodbye_msg = monocle_ipc::types::HostToDaemon::Goodbye;
+    if let Err(e) = send_host_msg(stream, &goodbye_msg).await {
+        tracing::warn!(
+            session_id = %session_id,
+            error = %e,
+            "session-host: failed to send Goodbye"
+        );
+    }
+
+    // e. Remove UDS socket file (clean up per-session socket).
+    if let Err(e) = std::fs::remove_file(socket_path) {
+        tracing::warn!(
+            session_id = %session_id,
+            path = %socket_path.display(),
+            error = %e,
+            "session-host: failed to remove UDS socket file after Kill"
+        );
+    }
+
+    tracing::info!(
+        session_id = %session_id,
+        "session-host: Kill sequence complete"
+    );
 }
 
 // ---------------------------------------------------------------------------

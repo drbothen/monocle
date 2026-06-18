@@ -1061,11 +1061,22 @@ impl SessionManager {
         use monocle_ipc::types::DaemonToHost;
         use tokio::io::AsyncWriteExt;
 
-        // Pre-compute watchdog deadline synchronously (before any .await) so that
-        // tokio::time::advance() in paused-clock tests fires the watchdog correctly
-        // even when the watchdog task hasn't been polled yet at advance() time.
-        // (Using sleep_until with a pre-computed Instant rather than sleep(12s).)
-        let watchdog_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(12);
+        // MED-005: compute the kill deadline ONCE and use it for BOTH the watchdog timer and
+        // `SessionEntry.kill_deadline` (single authoritative source per SS-session-manager.md
+        // v2.8.0 §kill_deadline_unix_ms ownership boundary).
+        //
+        // Two Instants are derived from the SAME Duration offset:
+        //   - `std_kill_deadline`: stored in SessionEntry and used to compute kill_deadline_unix_ms
+        //     (wall-clock, needed for sidecar JSON serialization).
+        //   - `watchdog_deadline`: tokio Instant for sleep_until, pre-computed synchronously before
+        //     any .await so that tokio::time::advance() in paused-clock tests fires the watchdog
+        //     correctly even when the watchdog task hasn't been polled yet at advance() time.
+        //
+        // Both are computed from Instant::now() within the same synchronous block, not
+        // independently inside two separate function calls.
+        let kill_duration = std::time::Duration::from_secs(12);
+        let std_kill_deadline = std::time::Instant::now() + kill_duration;
+        let watchdog_deadline = tokio::time::Instant::now() + kill_duration;
 
         // --- Step 1: inspect the session entry to determine kill path ---
         // We must avoid holding the mutex across the IO send, so we extract what we need
@@ -1180,9 +1191,21 @@ impl SessionManager {
                         "kill_session ExistingConn: write failed — falling back to FreshConnect path (broken control connection)"
                     );
                     // Attempt fresh connect to the session-host socket.
-                    match tokio::net::UnixStream::connect(&socket_path).await {
+                    // MED-004: bounded timeout on fallback fresh connect (same as FreshConnect path).
+                    let fallback_connect = tokio::time::timeout(
+                        std::time::Duration::from_secs(2),
+                        tokio::net::UnixStream::connect(&socket_path),
+                    )
+                    .await
+                    .unwrap_or_else(|_| {
+                        Err(std::io::Error::new(
+                            std::io::ErrorKind::TimedOut,
+                            "kill_session ExistingConn fallback: UDS connect timed out after 2s (MED-004)",
+                        ))
+                    });
+                    match fallback_connect {
                         Err(conn_err) => {
-                            // EC-162/EC-163: socket gone → session is dead; transition → Terminated.
+                            // EC-162/EC-163: socket gone/timed-out → session is dead; transition → Terminated.
                             tracing::warn!(
                                 session_id = %session_id,
                                 error = %conn_err,
@@ -1214,8 +1237,12 @@ impl SessionManager {
 
                             // Transition → Terminating and spawn kill-confirm + watchdog.
                             // Pass the read half directly (ADV-S034-BLOCKER-001).
-                            self.transition_to_terminating(session_id, &sidecar_path)
-                                .await;
+                            self.transition_to_terminating(
+                                session_id,
+                                &sidecar_path,
+                                std_kill_deadline,
+                            )
+                            .await;
                             let sessions_arc = Arc::clone(&self.sessions);
                             let broker_arc = Arc::clone(&self.broker);
                             let sid = session_id.to_string();
@@ -1241,7 +1268,7 @@ impl SessionManager {
                 // Note: the post_spawn_monitor task continues reading after StateChanged{Running}
                 // and will receive StateChanged{Terminated} from the session-host, calling
                 // transition_to_terminated_standalone. No separate kill_confirm_monitor needed.
-                self.transition_to_terminating(session_id, &sidecar_path)
+                self.transition_to_terminating(session_id, &sidecar_path, std_kill_deadline)
                     .await;
 
                 // Spawn 12s watchdog.
@@ -1275,7 +1302,7 @@ impl SessionManager {
                 let sidecar_path = self
                     .runtime_dir
                     .join(format!("session-{}.json", session_id));
-                self.transition_to_terminating(session_id, &sidecar_path)
+                self.transition_to_terminating(session_id, &sidecar_path, std_kill_deadline)
                     .await;
 
                 // Spawn 12s watchdog.
@@ -1296,10 +1323,23 @@ impl SessionManager {
                     .runtime_dir
                     .join(format!("session-{}.json", session_id));
 
-                let connect_result = tokio::net::UnixStream::connect(&socket_path).await;
+                // MED-004: bound the fresh connect to 2s to prevent blocking all IPC
+                // operations. A stale/blocked socket must not freeze the SessionManager
+                // (which is held under the outer sm.lock() in handle_kill_session).
+                let connect_result = tokio::time::timeout(
+                    std::time::Duration::from_secs(2),
+                    tokio::net::UnixStream::connect(&socket_path),
+                )
+                .await
+                .unwrap_or_else(|_| {
+                    Err(std::io::Error::new(
+                        std::io::ErrorKind::TimedOut,
+                        "kill_session FreshConnect: UDS connect timed out after 2s (MED-004)",
+                    ))
+                });
                 match connect_result {
                     Err(e) => {
-                        // EC-163: socket gone → session is dead; transition → Terminated.
+                        // EC-163: socket gone/timed-out → session is dead; transition → Terminated.
                         tracing::warn!(
                             session_id = %session_id,
                             error = %e,
@@ -1334,8 +1374,12 @@ impl SessionManager {
                             .map_err(SessionError::Io)?;
 
                         // Transition → Terminating, emit broadcasts.
-                        self.transition_to_terminating(session_id, &sidecar_path)
-                            .await;
+                        self.transition_to_terminating(
+                            session_id,
+                            &sidecar_path,
+                            std_kill_deadline,
+                        )
+                        .await;
 
                         // Spawn kill-confirm monitor passing the read half of the fresh
                         // connection directly (ADV-S034-BLOCKER-001 / SS-session-manager.md
@@ -1381,15 +1425,29 @@ impl SessionManager {
     /// The sidecar write is performed OUTSIDE the sessions lock (file I/O must not block the
     /// mutex) but is atomic with respect to concurrent readers (tempfile::persist rename).
     ///
+    /// **MED-005:** `kill_deadline` is passed in from `kill_session()` where it is computed once
+    /// from the same originating instant as `watchdog_deadline`, ensuring a single authoritative
+    /// source (SS-session-manager.md v2.8.0 §kill_deadline_unix_ms ownership boundary).
+    ///
     /// (BC-2.08.003 PC-2, BC-2.08.008 Invariant 4, story §Architecture Compliance Rules)
-    async fn transition_to_terminating(&self, session_id: &str, sidecar_path: &PathBuf) {
+    async fn transition_to_terminating(
+        &self,
+        session_id: &str,
+        sidecar_path: &PathBuf,
+        kill_deadline: std::time::Instant,
+    ) {
         use std::time::{SystemTime, UNIX_EPOCH};
 
-        // Compute kill_deadline_unix_ms = now + 12s in Unix epoch milliseconds.
-        let kill_deadline_ms = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_millis() as u64 + 12_000)
-            .unwrap_or(0);
+        // Compute kill_deadline_unix_ms from the pre-computed kill_deadline (MED-005: single
+        // authoritative origin, not an independent SystemTime::now() + 12s call).
+        // Convert std::time::Instant offset to Unix epoch milliseconds for the sidecar.
+        let kill_deadline_ms = {
+            let remaining = kill_deadline.saturating_duration_since(std::time::Instant::now());
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|since_epoch| since_epoch.as_millis() as u64 + remaining.as_millis() as u64)
+                .unwrap_or(0)
+        };
 
         // --- Lock scope: state mutation + snapshot + broadcasts ---
         {
@@ -1398,8 +1456,8 @@ impl SessionManager {
 
             if let Some(entry) = guard.get_mut(session_id) {
                 entry.state = SessionState::Terminating;
-                entry.kill_deadline =
-                    Some(std::time::Instant::now() + std::time::Duration::from_secs(12));
+                // MED-005: use the pre-computed kill_deadline (single originating instant).
+                entry.kill_deadline = Some(kill_deadline);
             }
 
             // Build snapshot while holding the lock (HIGH-001).
@@ -1607,7 +1665,18 @@ impl SessionManager {
     /// - Updates `session-state.json` atomically via `tempfile::persist`.
     /// - Publishes `SessionStateChanged{Terminated}` BEFORE `SessionListUpdate` (BC-2.08.008 I4).
     ///
-    /// Uses `tokio::time::sleep` which is paused/advanced in tests via `tokio::time::pause()`.
+    /// Uses `tokio::time::sleep_until` which is paused/advanced in tests via `tokio::time::pause()`.
+    ///
+    /// **MED-005 (SS-session-manager.md v2.8.0 §kill_deadline_unix_ms ownership boundary):**
+    /// The `deadline` parameter is synchronized with `SessionEntry.kill_deadline`: both are derived
+    /// from the SAME `kill_duration` offset computed once in `kill_session()` before any `.await`.
+    /// This ensures the watchdog does NOT independently call `Instant::now() + 12s` — its deadline
+    /// originates from the same instant as the `kill_deadline_unix_ms` written to the sidecar.
+    ///
+    /// `deadline` is a `tokio::time::Instant` (not `std::time::Instant`) because `sleep_until`
+    /// requires a tokio Instant, and the pre-computed Instant from `kill_session()` is required for
+    /// paused-clock tests (`start_paused = true`): `tokio::time::advance(12s)` fires the watchdog
+    /// even when the watchdog task hasn't been polled yet at `advance()` time.
     fn spawn_kill_watchdog(
         session_id: String,
         session_host_pid: u32,
@@ -1615,16 +1684,15 @@ impl SessionManager {
         broker: Arc<monocle_ipc::server::SubscriberList>,
         sidecar_path: std::path::PathBuf,
         _socket_path: std::path::PathBuf,
-        // Pre-computed deadline (computed synchronously at kill time so that
-        // `tokio::time::advance()` in paused-clock tests fires correctly even
-        // when the watchdog task hasn't been polled yet when the advance occurs).
+        // Pre-computed deadline from kill_session() — synchronized with SessionEntry.kill_deadline
+        // (MED-005: single originating instant, not independent now+12s inside the watchdog task).
+        // Using sleep_until with this pre-computed Instant ensures paused-clock tests work correctly.
         deadline: tokio::time::Instant,
     ) -> tokio::task::JoinHandle<()> {
         tokio::spawn(async move {
-            // Wait until the pre-computed 12s deadline (10s SIGTERM + 2s buffer per BC-2.08.003 PC-5).
-            // Using sleep_until with a pre-computed deadline rather than sleep(12s) ensures that
-            // in paused-clock tests (tokio::time::start_paused = true), advancing the clock by 12s
-            // fires the watchdog even if this task hasn't been polled yet when advance() is called.
+            // Wait until the pre-computed 12s deadline (10s SIGTERM window + 2s buffer per BC-2.08.003 PC-5).
+            // MED-005: `deadline` is synchronized with `SessionEntry.kill_deadline` — both computed
+            // from the same originating `kill_duration` in `kill_session()`, not independently.
             tokio::time::sleep_until(deadline).await;
 
             // Check if already Terminated (kill_confirm_monitor may have fired first).
@@ -2029,35 +2097,64 @@ async fn post_spawn_monitor(
         }
     }
 
-    // Read messages from the session-host until StateChanged{Running} or timeout.
-    let read_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(30);
+    // Read messages from the session-host.
+    //
+    // HIGH-001/MED-001 fix (SS-session-manager.md v2.8.0 §kill_confirm_monitor):
+    // The post-spawn monitor has TWO phases:
+    //   Phase 1 (pre-Running): 30s deadline applies — session-host must send Running
+    //     within 30s of startup or the session is considered failed.
+    //   Phase 2 (post-Running): NO deadline. The monitor holds the connection open
+    //     indefinitely so that a later kill_session() → StateChanged{Terminated}
+    //     confirmation is received on the SAME connection (no 30s timeout causes orphan).
+    //     The kill watchdog handles the hard 12s deadline on the kill-path side.
+    //
+    // `pre_running_deadline` applies only until Running is observed. After Running,
+    // reads are unbounded (the control connection stays open for the session lifetime).
+    let pre_running_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(30);
+    // `session_is_running` tracks whether we have seen StateChanged{Running}.
+    let mut session_is_running = false;
 
     loop {
-        if tokio::time::Instant::now() >= read_deadline {
-            tracing::warn!(session_id = %session_id, "post-spawn monitor: message read loop timed out");
+        // Apply the 30s deadline ONLY before Running is observed.
+        if !session_is_running && tokio::time::Instant::now() >= pre_running_deadline {
+            tracing::warn!(session_id = %session_id, "post-spawn monitor: pre-Running read deadline exceeded — session-host did not send Running within 30s");
             break;
         }
 
         // Read 4-byte LE u32 length prefix.
+        // Pre-Running: bounded by remaining pre_running time.
+        // Post-Running: unbounded (connection stays alive for session lifetime).
         let mut len_buf = [0u8; 4];
-        match tokio::time::timeout(
-            std::time::Duration::from_secs(30),
-            reader.read_exact(&mut len_buf),
-        )
-        .await
-        {
-            Ok(Ok(_)) => {}
-            Ok(Err(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+        let read_result = if !session_is_running {
+            let remaining =
+                pre_running_deadline.saturating_duration_since(tokio::time::Instant::now());
+            tokio::time::timeout(
+                remaining.max(std::time::Duration::from_millis(100)),
+                reader.read_exact(&mut len_buf),
+            )
+            .await
+            .map_err(|_e| {
+                std::io::Error::new(std::io::ErrorKind::TimedOut, "pre-Running read timeout")
+            })
+            .and_then(|r| r)
+        } else {
+            // Post-Running: no timeout — block until data or EOF.
+            reader.read_exact(&mut len_buf).await
+        };
+
+        match read_result {
+            Ok(_) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
                 // EOF: session-host closed connection cleanly.
                 tracing::debug!(session_id = %session_id, "post-spawn monitor: session-host closed control connection (EOF)");
                 break;
             }
-            Ok(Err(e)) => {
-                tracing::debug!(session_id = %session_id, error = %e, "post-spawn monitor: read error on control connection");
+            Err(e) if e.kind() == std::io::ErrorKind::TimedOut => {
+                tracing::debug!(session_id = %session_id, "post-spawn monitor: pre-Running read timeout");
                 break;
             }
-            Err(_) => {
-                tracing::debug!(session_id = %session_id, "post-spawn monitor: read timeout");
+            Err(e) => {
+                tracing::debug!(session_id = %session_id, error = %e, "post-spawn monitor: read error on control connection");
                 break;
             }
         }
@@ -2330,10 +2427,12 @@ async fn post_spawn_monitor(
                     }
 
                     tracing::info!(session_id = %session_id, "post-spawn monitor: session transitioned to Running");
-                    // DO NOT break here. The control connection stays open for the kill path:
-                    // after DaemonToHost::Kill is sent, the session-host sends
+                    // HIGH-001/MED-001: mark session as Running so the read loop drops
+                    // the pre-Running 30s deadline and switches to unbounded reads.
+                    // The control connection stays open for the kill path: after
+                    // DaemonToHost::Kill is sent, the session-host sends
                     // StateChanged{Terminated} on this SAME connection (S-034 BC-2.08.003 PC-3).
-                    // We continue reading to handle that confirmation.
+                    session_is_running = true;
                     continue;
                 }
 
