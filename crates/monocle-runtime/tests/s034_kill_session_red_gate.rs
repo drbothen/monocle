@@ -1168,39 +1168,55 @@ async fn test_kill_during_launching_before_socket_bind() {
 // ---------------------------------------------------------------------------
 // Test 8b: test_pid_fallback_non_esrch_sigterm_failure_returns_kill_failed
 //
-// Verifies: BC-2.08.003 PC-1 (Launching race window) + ADV-S034-MED-001.
-// When the PID-based SIGTERM fails with a non-ESRCH error (e.g. EPERM on PID 1),
+// Verifies: BC-2.08.003 PC-1 (Launching race window) + ADV-S034-MED-001 +
+// ADV-S034-IMPORTANT-001 (deterministic EPERM injection — no real-PID signal).
+// When the PID-based SIGTERM fails with a non-ESRCH error (e.g. EPERM),
 // kill_session() MUST return Err mapping to "kill_failed" and MUST NOT transition
 // the session to Terminating.
 //
 // Anchors: AC-001 ("Failure code: kill_failed"), BC-2.08.003 PC-1 (Launching/no
-// host_conn), ADV-S034-MED-001.
+// host_conn), ADV-S034-MED-001, ADV-S034-IMPORTANT-001.
+//
+// FIX (ADV-S034-IMPORTANT-001): replaced the real-PID-1 approach with a
+// deterministic failure-injection seam (SessionManager::with_pid_sigterm_fn).
+// The seam intercepts the PidFallback SIGTERM call and returns a synthetic EPERM
+// without sending any signal to any live OS process.  PID 55_099 is used as the
+// synthetic PID — well above the typical system PID ceiling and guaranteed never
+// to be PID 1 (init/launchd).
 // ---------------------------------------------------------------------------
 
-/// BC-2.08.003 PC-1 / ADV-S034-MED-001: `kill_session()` on a `Launching` session with
-/// `host_conn: None` when the PID-based SIGTERM fails with a non-ESRCH error MUST return
-/// `Err(SessionError::SessionHostDead)` mapping to wire code `"kill_failed"` and MUST NOT
-/// transition the session to `Terminating`.
+/// BC-2.08.003 PC-1 / ADV-S034-MED-001 / ADV-S034-IMPORTANT-001:
+/// `kill_session()` on a `Launching` session with `host_conn: None` when the
+/// PID-based SIGTERM fails with a non-ESRCH error MUST return
+/// `Err(SessionError::SessionHostDead)` mapping to wire code `"kill_failed"` and
+/// MUST NOT transition the session to `Terminating`.
 ///
-/// Deterministic failure injection: uses PID 1 (init/launchd) as the target.  Sending
-/// SIGTERM to PID 1 always returns EPERM on macOS and Linux when running as non-root —
-/// the kill is deterministically un-deliverable without a real OS signal being sent to
-/// the init process.
+/// Deterministic failure injection (ADV-S034-IMPORTANT-001): uses
+/// `SessionManager::with_pid_sigterm_fn` to return a synthetic `EPERM` without
+/// sending any signal to any real OS process.  No PID 1 / init is involved; the
+/// session is registered with synthetic PID 55_099.
 #[tokio::test]
 async fn test_pid_fallback_non_esrch_sigterm_failure_returns_kill_failed() {
     use monocle_runtime::session_manager::{session_error_to_code, IpcOp};
 
-    // ADV-S034-MED-001: PidFallback path, non-ESRCH SIGTERM failure → kill_failed.
+    // ADV-S034-MED-001 / ADV-S034-IMPORTANT-001: PidFallback path, non-ESRCH
+    // SIGTERM failure → kill_failed.  Synthetic PID — no real signal sent.
     let tmp = isolated_runtime_dir();
     let session_id = "034f0000-0001-4000-a000-000000000001".to_string();
 
-    // Insert a Launching session with PID 1 (init/launchd). Sending SIGTERM to PID 1
-    // returns EPERM when running as non-root — deterministically un-signalable.
-    // We use make_manager (FakePidSpawner) to build the manager, then insert directly.
-    let (mut manager, _subs, mut rx) = make_manager(tmp.path(), 1 /* PID 1 */);
+    // Synthetic PID — high value, guaranteed not to be PID 1 (init/launchd) or any
+    // real process the test infrastructure would own.  The signal syscall is never
+    // issued against this PID because the injection seam intercepts it.
+    let synthetic_pid: u32 = 55_099;
+    let (mut manager, _subs, mut rx) = make_manager(tmp.path(), synthetic_pid);
 
-    // Spawn a session using FakePidSpawner(pid=1) — registers the session with
-    // session_host_pid = 1 and host_conn = None (no socket bound, monitor won't connect).
+    // Install the failure-injection seam: return synthetic EPERM (non-ESRCH) for
+    // any PID the PidFallback path tries to signal.  NO real kill(2) syscall is made.
+    manager.with_pid_sigterm_fn(Arc::new(|_pid| Err(nix::errno::Errno::EPERM)));
+
+    // Spawn a session using FakePidSpawner(pid=55_099) — registers the session with
+    // session_host_pid = 55_099 and host_conn = None (no socket bound, monitor won't
+    // connect).
     let opts = make_spawn_opts(&session_id);
     manager
         .spawn_session(opts)
@@ -1220,12 +1236,14 @@ async fn test_pid_fallback_non_esrch_sigterm_failure_returns_kill_failed() {
          precondition: session must be Launching (host_conn=None)"
     );
 
-    // Call kill_session() — PID 1 SIGTERM returns EPERM (non-root) → kill_failed.
+    // Call kill_session() — injection seam returns EPERM (non-ESRCH) → kill_failed.
+    // No real signal is sent to any OS process.
     let result = manager.kill_session(&session_id).await;
     let err = result.expect_err(
         "test_pid_fallback_non_esrch_sigterm_failure_returns_kill_failed: \
-         kill_session() on Launching (host_conn=None, PID 1) MUST return Err when \
-         SIGTERM fails with EPERM (ADV-S034-MED-001, BC-2.08.003 PC-1 'Failure code: kill_failed')",
+         kill_session() on Launching (host_conn=None, synthetic EPERM injection) MUST \
+         return Err when SIGTERM fails with non-ESRCH (ADV-S034-MED-001, \
+         BC-2.08.003 PC-1 'Failure code: kill_failed')",
     );
 
     // Verify the error maps to wire code "kill_failed" (BC-2.08.003 PC-1, AC-001).

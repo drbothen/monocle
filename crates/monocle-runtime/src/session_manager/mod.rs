@@ -603,6 +603,20 @@ pub struct SessionManager {
     /// Production default: `RealPeerCredVerifier` (performs real SO_PEERCRED check).
     /// Tests inject `FakePeerCredVerifier` to simulate UID mismatch without forking.
     peer_cred_verifier: Arc<dyn PeerCredVerifier>,
+    /// Failure-injection seam for the PidFallback SIGTERM call (ADV-S034-IMPORTANT-001).
+    ///
+    /// `None` in production (cfg gate ensures it is always `None` in non-test builds).
+    /// Tests inject `Some(f)` to return a synthetic non-ESRCH `nix::Errno` without
+    /// sending any real signal to any live OS process.
+    ///
+    /// When `None` (the production path), `kill_session` calls
+    /// `nix::sys::signal::kill(pid, SIGTERM)` directly — byte-for-byte identical to the
+    /// pre-seam behaviour.
+    ///
+    /// Security gate: gated `cfg(any(test, feature = "test-utils"))`. The field does NOT
+    /// exist in production builds so there is no runtime code path that could reach it.
+    #[cfg(any(test, feature = "test-utils"))]
+    pid_sigterm_fn: Option<Arc<dyn Fn(nix::unistd::Pid) -> nix::Result<()> + Send + Sync>>,
 }
 
 impl std::fmt::Debug for SessionManager {
@@ -632,6 +646,8 @@ impl SessionManager {
             broker,
             engine_module,
             peer_cred_verifier: Arc::new(RealPeerCredVerifier),
+            #[cfg(any(test, feature = "test-utils"))]
+            pid_sigterm_fn: None,
         }
     }
 
@@ -659,6 +675,39 @@ impl SessionManager {
     #[cfg(any(test, feature = "test-utils"))]
     pub fn with_peer_cred_verifier(&mut self, verifier: Arc<dyn PeerCredVerifier>) -> &mut Self {
         self.peer_cred_verifier = verifier;
+        self
+    }
+
+    /// Inject a synthetic SIGTERM function for the `PidFallback` kill path.
+    ///
+    /// Replaces the real `nix::sys::signal::kill(pid, SIGTERM)` call with the
+    /// supplied closure for testing purposes.  The closure receives the `Pid`
+    /// that `kill_session` would have signalled and returns a `nix::Result<()>`.
+    ///
+    /// Use this seam to provoke a deterministic non-ESRCH failure (e.g. EPERM)
+    /// WITHOUT sending any real signal to a live OS process.
+    ///
+    /// # Production safety
+    ///
+    /// This method is gated `cfg(any(test, feature = "test-utils"))` — it does NOT
+    /// exist in production builds (CWE-602 discipline, mirrors `with_peer_cred_verifier`).
+    /// When no override is installed (`pid_sigterm_fn == None`), the production code
+    /// path calls `nix::sys::signal::kill` directly — byte-for-byte unchanged behaviour.
+    ///
+    /// # Test usage
+    ///
+    /// ```rust,ignore
+    /// // Inject synthetic EPERM (non-ESRCH) — no real signal sent:
+    /// manager.with_pid_sigterm_fn(Arc::new(|_pid| {
+    ///     Err(nix::errno::Errno::EPERM)
+    /// }));
+    /// ```
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn with_pid_sigterm_fn(
+        &mut self,
+        f: Arc<dyn Fn(nix::unistd::Pid) -> nix::Result<()> + Send + Sync>,
+    ) -> &mut Self {
+        self.pid_sigterm_fn = Some(f);
         self
     }
 
@@ -1530,7 +1579,19 @@ impl SessionManager {
                 use nix::sys::signal::{kill as nix_kill, Signal};
                 use nix::unistd::Pid;
                 let nix_pid = Pid::from_raw(pid as i32);
-                match nix_kill(nix_pid, Signal::SIGTERM) {
+                // ADV-S034-IMPORTANT-001: call through the test-only injection seam when
+                // present; fall back to the real nix::sys::signal::kill in production.
+                // In production builds the `pid_sigterm_fn` field does not exist
+                // (cfg gate) so this compiles to the direct nix_kill call verbatim.
+                #[cfg(any(test, feature = "test-utils"))]
+                let sigterm_result = if let Some(ref f) = self.pid_sigterm_fn {
+                    f(nix_pid)
+                } else {
+                    nix_kill(nix_pid, Signal::SIGTERM)
+                };
+                #[cfg(not(any(test, feature = "test-utils")))]
+                let sigterm_result = nix_kill(nix_pid, Signal::SIGTERM);
+                match sigterm_result {
                     Ok(()) | Err(nix::errno::Errno::ESRCH) => {
                         // Ok  → SIGTERM delivered; process will be monitored by watchdog.
                         // ESRCH → process already gone; effectively a successful kill (benign).
