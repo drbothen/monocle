@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.9.0"
+version: "2.10.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -3434,9 +3434,15 @@ always-monitored design is straightforwardly implementable (move the reader into
 
 The correct implementation for the ExistingConn SUCCESS path:
 
-1. **`post_spawn_monitor` stores `host_conn.reader: Some(reader)`** (NOT `None`) when it
-   first establishes the connection. The `reader` local variable from `stream.into_split()` is
-   placed in `host_conn.reader`.
+1. **`post_spawn_monitor` stores `host_conn.reader: Some(reader)`** (NOT `None`) at the
+   `Running` transition — i.e., immediately upon receiving `StateChanged { new_state: Running }`
+   and before breaking from the read loop. Storing at connect time is incorrect: the reader is
+   still actively consumed by the monitor's own message loop at that point, and placing it in
+   `host_conn.reader` before the loop exits would create a double-consumer on the read half.
+   `host_conn.reader` is `None` before the `Running` transition; a kill arriving before
+   `Running` takes the watchdog-only fallback (no reader to hand to `kill_confirm_monitor`).
+   The `reader` local variable from `stream.into_split()` is placed in `host_conn.reader` as
+   the monitor's last act before returning.
 
 2. **`post_spawn_monitor` exits immediately after observing `StateChanged{Running}`** — it
    sets `session_is_running = true` and then breaks from the read loop (or returns). It does
@@ -3456,6 +3462,169 @@ The correct implementation for the ExistingConn SUCCESS path:
 
 The Detached/FreshConnect path is unchanged: fresh connect supplies a new reader, which is
 immediately handed to `kill_confirm_monitor`.
+
+---
+
+### Ruling J — Watchdog force-kill must kill BOTH session-host AND harness child (F-S034-ADV-MED-001)
+
+**Status:** AUTHORITATIVE. Amends §12-second watchdog timer and BC-2.08.003 PC-5b.
+
+#### Process topology — verified against portable_pty 0.9.0 source
+
+The harness child is spawned via `portable_pty::UnixSlave::spawn_command()`. Inspection of
+`portable-pty-0.9.0/src/unix.rs` (line 257) confirms that `spawn_command` calls `libc::setsid()`
+inside its `pre_exec` closure on the harness child. This means:
+
+- **Session-host process:** calls `nix::unistd::setsid()` at startup step 2.
+  Session-host PGID = session-host PID = session-host SID. Process Group A, Session A.
+- **Harness child process:** `portable_pty::spawn_command()` calls `libc::setsid()` in its
+  own `pre_exec`. Harness child PGID = harness child PID = harness child SID.
+  Process Group B, Session B (entirely separate from Group A / Session A).
+
+**Consequence:** The harness child is in a different process group AND a different session from
+the session-host. Neither of the following reaches the harness child:
+
+- `kill(Pid::from_raw(session_host_pid), SIGKILL)` — sends to the session-host only.
+- `kill(Pid::from_raw(-(session_host_pid as i32)), SIGKILL)` / `killpg(session_host_pgid, SIGKILL)`
+  — sends to Process Group A (the session-host's group), which does NOT contain the harness
+  child (it is in Group B).
+
+#### The gap
+
+When the 12-second watchdog fires (session-host stalled / unresponsive — the watchdog's
+purpose is to handle this exact case), the watchdog sends `SIGKILL` only to
+`entry.session_host_pid`. If the session-host dies without running its own `kill_sequence()`
+(e.g., it is stuck), the harness child is NOT killed. The harness child is reparented to
+`init` (PID 1) or the system subreaper, continues executing, and remains attached to a now-
+orphaned PTY master whose owning process is dead. This is a process leak and a PTY resource
+leak. BC-2.08.003 PC-5b states that SIGKILL is sent "to release PTY resources" — that goal is
+not achieved by the current single-PID kill.
+
+#### Correct watchdog kill mechanism
+
+The watchdog MUST kill both the session-host and the harness child. The daemon has
+`session_host_pid` in `SessionEntry`. The `child_pid` is available in the sidecar
+(`session-state.json` field `child_pid`, written by the session-host at startup step 8).
+
+**Mechanism (mandatory):** On 12-second watchdog timeout, AFTER confirming the session is
+still `Terminating` (ESRCH guard per existing spec), the daemon MUST:
+
+1. Send `SIGKILL` to `session_host_pid` (as today — kills the session-host).
+2. Read `child_pid` from the sidecar (`session-state.json`). If present (`Some(pid)`):
+   send `SIGKILL` to `child_pid`. Apply the same ESRCH guard: if `kill(child_pid, SIGKILL)`
+   returns `ESRCH`, the child already exited — benign, log DEBUG.
+3. If `child_pid` is `None` in the sidecar (the session-host crashed before writing it),
+   log WARN: `"watchdog: child_pid not in sidecar — harness child may be orphaned"`. This
+   cannot be recovered without the child PID, but the session-host is dead so no further PTY
+   output is possible; the orphaned process will be visible in system tools.
+
+The sidecar read for `child_pid` is a best-effort I/O operation performed OUTSIDE any mutex.
+It uses the same sidecar path already held by the watchdog task (`sidecar_path` parameter).
+
+**Why reading child_pid from the sidecar is correct:**
+
+- The sidecar is a stable file at a well-known path — the session-host writes `child_pid`
+  atomically via `tempfile::persist` at startup step 8, before entering the event loop.
+- By the time the 12-second watchdog fires, the sidecar MUST contain `child_pid` if the
+  session-host ever reached Running state (which it must have, since the daemon received
+  `StateChanged{Running}` and transitioned the session to `Running` or at minimum `Launching`
+  with a live connection). If the session-host crashed before step 8, the harness child was
+  never spawned, so there is nothing to kill.
+- The sidecar read is race-free for watchdog purposes: the session-host is unresponsive (that
+  is why the watchdog is firing); it is not writing the sidecar concurrently.
+
+**Why NOT adding `child_pid` to `SessionEntry`:**
+
+Adding `child_pid: Option<u32>` to `SessionEntry` would require the daemon to either (a) read
+the sidecar at the `Launching → Running` transition (already done — the post-spawn monitor
+reads `existing_child_pid` from the sidecar at the Running transition, line ~1507 of mod.rs)
+and populate the field, or (b) receive `child_pid` from the session-host via an IPC message.
+Path (a) is possible and is the preferred design for a later consolidation. For S-034 scope:
+the sidecar read in the watchdog is the minimal-change path that provably closes the gap
+without expanding scope into SessionEntry schema changes, IPC protocol additions, or re-
+discovery logic. The implementer MAY populate `SessionEntry.child_pid: Option<u32>` from the
+Running-transition sidecar read if they prefer; this is equivalent and avoids the sidecar I/O
+in the watchdog hot path. Either approach is compliant with this ruling.
+
+#### S-034 in-scope confirmation
+
+The 12-second watchdog is S-034 code (`kill_session()` spawns the watchdog task). The
+watchdog force-kill path is entirely within S-034 scope. The production-grade default applies:
+fix in scope.
+
+The session-host `kill_sequence()` (which correctly kills the harness child via SIGTERM →
+SIGKILL with its own `child_pid`) is the non-watchdog path and is unaffected by this ruling.
+The watchdog-only gap is in the daemon-side watchdog, which must not assume the session-host
+ran `kill_sequence()`.
+
+#### Updated watchdog pseudocode
+
+```rust
+// 12-second watchdog expiry:
+let should_sigkill = {
+    let guard = sessions.lock().await;
+    matches!(guard.get(&session_id).map(|e| &e.state), Some(SessionState::Terminating))
+};
+if !should_sigkill { return; }
+
+let pid = { sessions.lock().await.get(&session_id).map(|e| e.session_host_pid) };
+if let Some(pid) = pid {
+    // Kill session-host (as before).
+    match nix::sys::signal::kill(Pid::from_raw(pid as i32), Signal::SIGKILL) {
+        Ok(()) => {}
+        Err(nix::errno::Errno::ESRCH) => { tracing::info!(..., "watchdog: session-host already exited"); }
+        Err(e) => { tracing::warn!(..., "watchdog: session-host SIGKILL failed"); }
+    }
+    // NEW: also kill harness child (portable_pty gives child its own session — single-PID
+    // kill above does NOT reach it).
+    let child_pid: Option<u32> = std::fs::read_to_string(&sidecar_path)
+        .ok()
+        .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+        .and_then(|v| v["child_pid"].as_u64())
+        .map(|n| n as u32);
+    match child_pid {
+        Some(cpid) => {
+            match nix::sys::signal::kill(Pid::from_raw(cpid as i32), Signal::SIGKILL) {
+                Ok(()) => { tracing::warn!(..., "watchdog: SIGKILL sent to harness child"); }
+                Err(nix::errno::Errno::ESRCH) => { tracing::debug!(..., "watchdog: harness child already exited"); }
+                Err(e) => { tracing::warn!(..., "watchdog: harness child SIGKILL failed"); }
+            }
+        }
+        None => {
+            tracing::warn!(..., "watchdog: child_pid not in sidecar — harness child may be orphaned");
+        }
+    }
+    force_terminate_session(&session_id, &sessions, &broker, &sidecar_path).await;
+}
+```
+
+---
+
+## §Trace v2.10.0
+
+**Ruling J (F-S034-ADV-MED-001) — watchdog force-kill must target BOTH session-host AND harness child; Ruling I item 1 reword (LOW-001)** (2026-06-17):
+
+- **Ruling J** added: portable_pty 0.9.0 `spawn_command()` calls `libc::setsid()` in its
+  `pre_exec` closure (unix.rs line 257), placing the harness child in its OWN session and
+  process group, completely separate from the session-host's process group. Neither a positive-
+  PID kill to the session-host nor a process-group kill (killpg) to the session-host's group
+  reaches the harness child. The 12-second watchdog MUST kill both PIDs: `session_host_pid`
+  (as before) and `child_pid` (read from sidecar). ESRCH guard on both. If `child_pid` is
+  absent from the sidecar (pre-step-8 crash), log WARN only — the harness child was never
+  spawned. Implementer MAY alternatively cache `child_pid` in `SessionEntry` from the Running-
+  transition sidecar read; both approaches are compliant. This is S-034 in-scope: the watchdog
+  is S-034 code. BC-2.08.003 PC-5b amendment specified; product-owner applies the BC update.
+
+- **Ruling I item 1** rewording (LOW-001): The prior text said "stores `host_conn.reader:
+  Some(reader)` when it first establishes the connection." That was inaccurate: at connect time
+  the monitor's own read loop is still consuming the reader; storing it in `host_conn.reader`
+  at that point would create a double-consumer. The correct behavior: `host_conn.reader` is
+  set to `Some(reader)` immediately upon the `Running` transition (the monitor's last act
+  before returning, after breaking from its read loop). Before `Running`, `host_conn.reader`
+  is `None`; a kill arriving before `Running` takes the watchdog-only fallback. No
+  implementation change — this is a spec text correction to match the correct design.
+
+- SE-16d monotonicity: v2.10.0 timestamp 2026-06-17 >= v2.9.0 timestamp 2026-06-17. PASS.
 
 ---
 
