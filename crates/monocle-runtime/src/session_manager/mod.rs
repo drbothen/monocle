@@ -2271,22 +2271,20 @@ async fn post_spawn_monitor(
     // The read half is wrapped in `Option` so `kill_session` can `take()` it and
     // move ownership into `kill_confirm_monitor` without touching the writer.
     //
-    // Note: `reader` below is a local `mut` binding used by this read loop (post-spawn
-    // monitor), which handles messages through StateChanged{Running} and continues
-    // after Running to handle StateChanged{Terminated} on the ExistingConn kill path.
-    // The `host_conn.reader` field is the SAME half — we will `take()` it only if the
-    // session transitions to Terminating via kill_session while this loop is NOT the
-    // correct consumer (i.e., the FreshConnect / fallback kill paths).
-    //
-    // For the normal Running → kill path the post_spawn_monitor loop itself handles
-    // StateChanged{Terminated} (see "DO NOT break" comment below), so no separate
-    // kill_confirm_monitor is spawned and the `reader` field stays None after Running.
+    // Ruling I (v2.10.0 §Ruling I item 4): post_spawn_monitor reads pre-Running messages
+    // with the local `reader` binding, then upon observing StateChanged{Running} it stores
+    // Some(reader) into host_conn.reader and BREAKS — it does NOT continue reading
+    // post-Running. For a kill on a Running or Launching ExistingConn session,
+    // kill_session() takes host_conn.reader via `.take()` and spawns kill_confirm_monitor
+    // to read StateChanged{Terminated} on that connection. host_conn.reader is None only
+    // before the Running transition (kill before Running → watchdog-only fallback path).
+    // On the Detached kill path, kill_session() opens a fresh UDS connection instead.
     {
         let mut guard = sessions.lock().await;
         if let Some(entry) = guard.get_mut(&session_id) {
             entry.host_conn = Some(SessionHostConnection {
                 writer: Arc::new(Mutex::new(writer)),
-                reader: None, // will be populated only for Detached kill path
+                reader: None, // populated at the Running transition (ExistingConn) or via fresh-connect (Detached kill path)
                 proxy_task: None,
             });
         }
