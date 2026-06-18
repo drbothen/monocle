@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.10.0"
+version: "2.11.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -1446,6 +1446,12 @@ tokio::select! {
         // Transition to Phase B: active connection mode.
         current_conn = Some(stream);
     }
+    // [child_exit_watch arm — implemented in S-039/S-040 (PTY output pipeline; the
+    // session-host-side pty_reader and child_exit_watch are part of the full event loop
+    // built when PTY streaming is wired in). S-034 does NOT implement this arm. S-034
+    // session-host scope is DaemonToHost::Kill handler only (SIGTERM→SIGKILL,
+    // StateChanged{Terminated}, Goodbye, remove socket). Absence of this arm in S-034
+    // code is NOT a gap. See §Trace v2.7.0 Ruling A for the S-033 scope boundary table.]
     Some(exit) = child_exit_watch.recv() => {
         // Harness child exited while detached — notify whoever connects next (or nobody).
         // If current_conn is None: no connection to notify; just exit.
@@ -1496,6 +1502,14 @@ tokio::select! {
             break; // back to Phase A select!
         }
     }
+    // [child_exit_watch arm — implemented in S-039/S-040 (PTY output pipeline; the
+    // session-host-side pty_reader and child_exit_watch are part of the full event loop
+    // built when PTY streaming is wired in). S-034 does NOT implement this arm. S-034
+    // session-host scope is DaemonToHost::Kill handler only. Absence of this arm in S-034
+    // code is NOT a gap. BC-2.08.008 PC-6 (natural-exit StateChanged{Terminated}) is
+    // covered by the session-host child-exit path in S-039/S-040, flowing into the
+    // daemon's BC-2.08.008 broadcast path (which S-034 wires for the kill-confirmation
+    // side via AC-004). See §Trace v2.7.0 Ruling A scope table.]
     Some(exit) = child_exit_watch.recv() => {
         // Harness child exited while connected.
         send_state_changed(&mut current_conn_writer, SessionState::Terminated).await;
@@ -3597,6 +3611,90 @@ if let Some(pid) = pid {
     force_terminate_session(&session_id, &sessions, &broker, &sidecar_path).await;
 }
 ```
+
+---
+
+## §Trace v2.11.0
+
+**Ruling K (F-S034-ADV-IMPORTANT-001) — §Main event loop child_exit_watch arms annotated with owning story; S-034 doc-comment scope clarified** (2026-06-17):
+
+- **Finding (F-S034-ADV-IMPORTANT-001, adversarial pass 11):** The §Main event loop
+  pseudocode shows `child_exit_watch.recv()` arms in both Phase A and Phase B. The
+  adversary correctly observed that the S-034 code in
+  `crates/monocle-session-host/src/main.rs` (function `step_event_loop`) has NO
+  `child_exit_watch`: Phase A is a single `listener.accept()` await; Phase B is a single
+  `stream.read_exact()`. The doc comment on `step_event_loop` lines 411-421 was authored
+  during S-033 and claims "Deferred handlers (Attach/Resize/KeyInput/Detach) return
+  gracefully for S-033; they will be implemented in S-034/S-035/S-047" — implying S-034
+  brings the full event loop including child exit detection. That implication is FALSE.
+
+- **Ownership ruling:**
+  - The session-host natural-child-exit WATCH (detect harness child exit → send
+    `HostToDaemon::StateChanged{Terminated}` + `Goodbye` without a kill) is S-039/S-040
+    scope (PTY output pipeline — the full two-phase session-host event loop with
+    `pty_reader` is built when PTY streaming is wired in, per §Trace v2.7.0 Ruling A scope
+    table). The `child_exit_watch` arm requires a running `pty_reader` task to detect PTY
+    master EOF (the natural signal that the harness child exited). Neither resource exists
+    in S-034 scope.
+  - S-034 session-host scope is precisely: receive `DaemonToHost::Kill` on the control
+    connection → SIGTERM to harness child → 10s wait → SIGKILL escalation → send
+    `HostToDaemon::StateChanged{Terminated}` → send `HostToDaemon::Goodbye` → remove socket
+    → exit. This is the KILL-PATH only; it does not detect or handle natural exit.
+  - The daemon-side `Terminating → Terminated` transition on receiving
+    `HostToDaemon::StateChanged{Terminated}` (AC-004 / BC-2.08.008 kill-path transitions)
+    IS S-034 scope and is correctly implemented.
+  - BC-2.08.008 PC-6 ("Ctrl-D in EmbeddedTerminal — natural session exit →
+    `SessionStateChanged{Terminated}`") is covered by the session-host child_exit_watch arm
+    in S-039/S-040 (session-host side) flowing into BC-2.08.008's daemon broadcast path
+    (which S-034 wires for the kill-confirmation side via AC-004). It is NOT S-034 scope.
+
+- **Spec change:** `child_exit_watch` arms in both Phase A and Phase B pseudocode annotated
+  with `// [child_exit_watch arm — implemented in S-039/S-040 (PTY output pipeline);
+  S-034 does NOT implement this arm. ... Absence of this arm in S-034 code is NOT a gap.]`.
+  Phase B arm also annotates the BC-2.08.008 PC-6 coverage anchor. These comments prevent
+  future adversarial passes from reading the pseudocode as an S-034 omission.
+
+- **Doc-comment correction required (S-034 implementer action):** The `step_event_loop`
+  doc comment in `crates/monocle-session-host/src/main.rs` must be corrected before S-034
+  PR merge. See Ruling K doc-comment correction specification below.
+
+- **No BC edit:** BC-2.08.008 §Story Anchor line 220 correctly distributes: "S-034 covers
+  Terminating/Terminated transitions" — this refers to the DAEMON-side broadcast of those
+  state changes (AC-004, AC-012), which IS S-034 scope. The natural-exit path (PC-6 Ctrl-D
+  canonical test vector) is a separate behavior that generates `Terminated` via the
+  session-host's child-exit watch, not via kill_session(). The BC as written is not wrong;
+  however a product-owner clarification to the §Story Anchor is recommended to make the
+  split explicit: "S-034 covers KILL-PATH Terminating/Terminated transitions (daemon-side);
+  S-040 covers NATURAL-EXIT Terminated transition (session-host child-exit detection)."
+  This is advisory — the product-owner should apply it to prevent future confusion.
+
+- **Ruling K doc-comment correction specification (S-034 implementer):**
+  The `step_event_loop` doc comment MUST be replaced to remove the false claim that S-034
+  brings the full two-phase event loop with child_exit_watch. The corrected comment is:
+
+  ```rust
+  /// Step 9: Main event loop — S-034 scope: DaemonToHost::Kill handler.
+  ///
+  /// Accepts the daemon's control connection (single accept — post-spawn monitor path from
+  /// S-033). After the S-033 handshake (`StateChanged{Running}` sent), this function:
+  ///
+  /// **S-034 additions (this story):**
+  /// - Reads one DaemonToHost message from the accepted stream.
+  /// - Dispatches `DaemonToHost::Kill`: SIGTERM to harness child → 10s wait → SIGKILL
+  ///   escalation → sends `HostToDaemon::StateChanged{Terminated}` → sends
+  ///   `HostToDaemon::Goodbye` → removes socket file → exits.
+  /// - All other message variants (Attach, Resize, KeyInput, Detach): stub / graceful
+  ///   return for this story; implemented in S-035 / S-047.
+  ///
+  /// **NOT in S-034 scope — future stories:**
+  /// - `child_exit_watch` (natural child exit → StateChanged{Terminated} without Kill):
+  ///   implemented in S-039/S-040 (PTY output pipeline; PTY master EOF signals child exit).
+  /// - Full `tokio::select!` two-phase (A: Detached/accept-loop; B: Running/active-conn):
+  ///   also S-039/S-040+ scope (requires a running PTY reader to select over).
+  /// - PTY bytes forwarding (`HostToDaemon::PtyBytes` fan-out): S-039/S-046.
+  ```
+
+- SE-16d monotonicity: v2.11.0 timestamp 2026-06-17 >= v2.10.0 timestamp 2026-06-17. PASS.
 
 ---
 

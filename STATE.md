@@ -2,7 +2,7 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "7.96"
+version: "7.97"
 status: active
 producer: state-manager
 timestamp: 2026-06-17T00:00:00Z
@@ -46,7 +46,7 @@ next_session_resume_protocol: |
   KEY VERSION PINS (canonical source: .factory/specs/version-pin-registry.yaml):
   STORY-INDEX v5.46 | sprint-state v1.47 | wave-schedule v2.1
   dependency-graph-expansion v2.5 | BC-INDEX v1.43.8 | EVAL-INDEX v1.19
-  ARCH-INDEX v1.0.30 | SS-ipc v1.24.0 | SS-session-manager v2.7.3
+  ARCH-INDEX v1.0.30 | SS-ipc v1.24.0 | SS-session-manager v2.11.0
   SS-embedded-pty v1.7.0 | SS-engine-module-v2-delta v1.6.0
   SS-daemon-wiring-v2-delta v1.11.4 | SS-deps-pin-manifest-v2-delta v1.0.2
   prd v1.28.3 | product-brief v2.0.4 | domain-monocle-vision-synthesis v2.2.3
@@ -117,7 +117,7 @@ None. All durable task register items are non-blocking.
 
 ## Durable Task Register
 
-104 active tasks. Full YAML detail (all 130+ entries including 26 resolved/closed): `cycles/cycle-001/task-register-full.yaml`.
+106 active tasks. Full YAML detail (all 132+ entries including 26 resolved/closed): `cycles/cycle-001/task-register-full.yaml`.
 
 | ID | Status | Route | Block? | Subject (truncated) |
 |----|--------|-------|--------|---------------------|
@@ -227,6 +227,8 @@ None. All durable task register items are non-blocking.
 | F-P20-SUG-WIRE-CODE-LINT | pending | devops | n | POL: validate wire-error-code literals vs SS-ipc taxonomy |
 | HS-EXP-006-TTY-CAVEAT | pending | implementer | n | HS-EXP-006 scored 0.85 — terminal raw-mode restore unobservable in non-TTY harness |
 | SE-40 | held-D-114 | orchestrator | n | SE-40 (deliver-story from main session only; held) |
+| BC-2.08.008-PC6-NATURAL-EXIT | deferred-S-039/S-040 | implementer | n | Session-host natural-child-exit watch (PTY master EOF -> HostToDaemon::StateChanged{Terminated} + Goodbye without a Kill) — BC-2.08.008 PC-6 / Ctrl-D canonical test vector. NOT S-034 scope (S-034 session-host = Kill handler only, SS-session-manager v2.11.0 Ruling K). Owned by S-039/S-040 PTY output pipeline. Daemon-side Terminated broadcast already wired by S-034 AC-004. |
+| PROCESS-GAP-ARCHITECT-NO-COMMIT | codification-pending | devops | n | [process-gap] architect agent edits SS-session-manager.md + registry but leaves them uncommitted (relies on orchestrator/state-manager to commit) — recurred 2x in S-034 cycle (v2.8.0 slip and v2.11.0 slip). Codify: architect must commit its own spec+registry atomically, OR orchestrator must always verify git -C .factory status clean after every architect dispatch. |
 
 ## Resolved/Closed Tasks (archived)
 

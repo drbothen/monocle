@@ -124,8 +124,8 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "2.10.0"
-  last_bump_commit: "[Ruling J (F-S034-ADV-MED-001) — watchdog must SIGKILL both session-host PID and harness child PID (portable_pty setsid gives child its own session — single-PID kill is insufficient); Ruling I item 1 reword (LOW-001) — reader stored at Running transition not at connect]"
+  current_version: "2.11.0"
+  last_bump_commit: "[Ruling K (F-S034-ADV-IMPORTANT-001) — §Main event loop child_exit_watch arms annotated with S-040 ownership; S-034 scope is Kill handler only; doc-comment correction specified for step_event_loop]"
   last_bump_date: "2026-06-17"
 
 SS-embedded-pty:
