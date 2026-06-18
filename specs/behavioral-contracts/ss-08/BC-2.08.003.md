@@ -129,7 +129,7 @@ and sends SIGKILL directly to the session-host PID. The sidecar is not immediate
    alive session-host — the re-discovery Detached-preservation behavior (BC-2.08.004 I3-005)
    does NOT exempt kill from SO_PEERCRED. Failure (uid mismatch) → session treated as dead;
    transition to `Terminated` immediately; `Ok(())` returned (sidecar updated, GC timer
-   started). Per SS-session-manager.md v2.9.0 §Per-session UDS security item 1: "SO_PEERCRED
+   started). Per SS-session-manager.md v2.10.0 §Per-session UDS security item 1: "SO_PEERCRED
    applies universally — attach, re-discovery, kill/detach re-connect. No exceptions."
 
 ## Edge Cases
@@ -280,7 +280,7 @@ SE-16d monotonicity: v1.4.0 timestamp 2026-06-14 > v1.3.1 timestamp 2026-06-13. 
   unix.rs:257), placing the harness child in its own session and process group separate from the
   session-host's group — a single-PID kill to the session-host does NOT propagate. ESRCH guard
   on both kills. WARN-only when `child_pid` absent (session-host crashed before startup step 8).
-- Architecture Source updated: SS-session-manager.md v2.9.0 → v2.10.0 (adds §Ruling J).
+- Architecture Source updated: SS-session-manager.md v2.10.0 → v2.10.0 (adds §Ruling J).
 - Minor bump: v1.4.2 → v1.5.0 (normative: new kill sub-target for watchdog SIGKILL path).
 - SE-16d monotonicity: v1.5.0 timestamp 2026-06-17 > v1.4.2 timestamp 2026-06-16. PASS.
 

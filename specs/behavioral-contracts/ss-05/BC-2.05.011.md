@@ -70,7 +70,7 @@ the retired single-message `HostToDaemon::ScrollbackDump`.
    b. If count matches → resets the parser:
       `pty_parsers[session_id] = vt100::Parser::new(pty_rows, pty_cols, SCROLLBACK_ROWS)`.
    c. Reconstructs the vt100 screen from the accumulated `SerializedCell` rows (per
-      SS-session-manager.md v2.9.0 §Screen-state transfer on Attach reconstruction paths).
+      SS-session-manager.md v2.10.0 §Screen-state transfer on Attach reconstruction paths).
    d. Discards the accumulated wire-JSON after reconstruction (transient allocation released).
    e. Resumes processing subsequent `ServerToClient::PtyOutput` messages on the now-correctly
       initialized parser. No double-counting occurs because the parser was reset before
@@ -103,7 +103,7 @@ the retired single-message `HostToDaemon::ScrollbackDump`.
       reset before dump applied; buffered bytes are post-snapshot live output.
 4. `PtyReset` is a rare event — it fires only on an actual PTY byte drop (channel `SendError`,
    OOM, or other extreme condition). Under normal backpressure via `.send().await`, it never
-   fires. See SS-session-manager.md v2.9.0 §PTY reader thread §Forced parser-reset protocol.
+   fires. See SS-session-manager.md v2.10.0 §PTY reader thread §Forced parser-reset protocol.
 
 ## Invariants
 
@@ -130,7 +130,7 @@ the retired single-message `HostToDaemon::ScrollbackDump`.
    the parser immediately. On `ScrollbackDumpComplete`: reconstruct screen from dump, THEN
    drain `pending_pty_bytes` through the reconstructed parser in receipt order. This prevents
    live bytes from being applied to a stale parser state during the dump window. Per
-   SS-session-manager.md v2.9.0 §Screen-state transfer on Attach step 5e (I3-003 fix).
+   SS-session-manager.md v2.10.0 §Screen-state transfer on Attach step 5e (I3-003 fix).
 
 ## Edge Cases
 
@@ -167,7 +167,7 @@ the retired single-message `HostToDaemon::ScrollbackDump`.
 | L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — the three new ServerToClient variants (ScrollbackChunk, ScrollbackDumpComplete, PtyReset) extend the session/event/prompt push capability with the chunked scrollback dump protocol and PTY reset notification, all transported over the existing shared UDS per ADR-0010 |
 | Architecture Module | monocle-ipc (`ServerToClient::ScrollbackChunk`, `ServerToClient::ScrollbackDumpComplete`, `ServerToClient::PtyReset` variants); monocle-runtime (broker fan-out §5b/§5c); monocle-tui (chunk accumulation, parser reset, status bar indicator) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-daemon-wiring-v2-delta.md v1.11.4 §5b (ScrollbackChunk/ScrollbackDumpComplete fan-out; I3-003 resume-after-snapshot); §5c (PtyReset fan-out); SS-session-manager.md v2.9.0 §Screen-state transfer on Attach (step 5d-5e: buffer PtyOutput during dump, replay on Complete); SS-ipc.md v1.24.0 §`ClientToServer::AttachSession` (I3-004 — TUI sends AttachSession not DaemonToHost::Attach); ADR-0010 v1.6.0 §pty-bytes-over-shared-uds-ipc (shared UDS decision + chunked protocol) |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.11.4 §5b (ScrollbackChunk/ScrollbackDumpComplete fan-out; I3-003 resume-after-snapshot); §5c (PtyReset fan-out); SS-session-manager.md v2.10.0 §Screen-state transfer on Attach (step 5d-5e: buffer PtyOutput during dump, replay on Complete); SS-ipc.md v1.24.0 §`ClientToServer::AttachSession` (I3-004 — TUI sends AttachSession not DaemonToHost::Attach); ADR-0010 v1.6.0 §pty-bytes-over-shared-uds-ipc (shared UDS decision + chunked protocol) |
 | Cross-Ref | BC-2.05.009 (PtyOutput fan-out; per-client buffer; Invariant 3b — same isolation model); BC-2.08.007 (Attach → triggers ScrollbackChunk* + ScrollbackDumpComplete sequence); BC-2.09.001 (PTY output renders after parser reconstruction completes) |
 | Test Name | test_BC_2_05_011_new_server_to_client_scrollback_and_reset_variants |
 
