@@ -38,3 +38,10 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Atomic sidecar writes (no naked std::fs::write — CLAUDE.md conventions).
 tempfile      = { workspace = true }
+
+[dev-dependencies]
+# tokio with test-util feature: required for tokio::time::pause()/advance() in
+# kill_sequence SIGKILL-escalation tests (BC-2.08.003 AC-003, MED-002).
+# test-util is NOT in the workspace "full" feature set — must be explicitly added
+# for dev-builds. Pattern from monocle-runtime/Cargo.toml (established precedent).
+tokio = { workspace = true, features = ["test-util"] }
