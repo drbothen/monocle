@@ -6360,7 +6360,7 @@ mod tests {
 
         // Insert a synthetic Detached session pointing at our mock listener.
         // (state=Detached, host_conn=None — the genuine FreshConnect arm condition.)
-        let session_id = "00000000-imp1-4000-a000-000000000001";
+        let session_id = "00000000-1111-4000-a000-000000000001";
         manager
             .insert_detached_session_for_test(session_id, 99_901, socket_path.clone())
             .await;
@@ -6536,7 +6536,7 @@ mod tests {
             drop(listener2); // already bound above; just accept one conn in background
         });
 
-        let session_id = "00000000-imp1-4000-a000-000000000002";
+        let session_id = "00000000-1111-4000-a000-000000000002";
         manager
             .insert_detached_session_for_test(session_id, 99_902, socket_path.clone())
             .await;
