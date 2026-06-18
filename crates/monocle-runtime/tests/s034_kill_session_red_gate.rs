@@ -425,73 +425,52 @@ async fn test_BC_2_08_003_kill_session_sigterm_within_500ms() {
 //
 // Verifies: BC-2.08.003 Invariant 2 (kill on Terminated → Ok(()), idempotent).
 // Canonical test vector: kill_session("already-terminated-session") → Ok(()).
+// Anchors: AC-007, BC-2.08.003 Invariant 2, finding F-S034-ADV-LOW-001.
 //
-// Fails because: kill_session() is todo!() — panics at first call.
+// Converted (F-S034-ADV-LOW-001): original test drove through spawn + StateChanged{Terminated}
+// sent to the post-spawn monitor, which has no Terminated arm while in Launching state, so
+// the session remained Launching + host_conn=Some → kill_session() took KillPath::ExistingConn
+// rather than KillPath::Idempotent.  This conversion inserts a genuine Terminated session via
+// insert_terminated_session_for_test() so KillPath::Idempotent is exercised directly.
 // ---------------------------------------------------------------------------
 
 /// BC-2.08.003 Invariant 2: `kill_session()` on an already-`Terminated` session
-/// MUST return `Ok(())` without sending another `DaemonToHost::Kill`.
+/// MUST return `Ok(())` without sending another `DaemonToHost::Kill` or transitioning
+/// to `Terminating` (KillPath::Idempotent arm — no duplicate Kill, no watchdog spawned).
 ///
-/// Pre-condition: session is pre-placed into Terminated state via spawn + forced
-/// Terminated transition (simulating a prior completed kill).
-///
-/// FAILS NOW: `kill_session()` is `todo!()` → panics.
+/// Pre-condition: session is inserted directly into `Terminated` state via the
+/// `insert_terminated_session_for_test()` test seam (F-S034-ADV-LOW-001).
 #[tokio::test]
 async fn test_BC_2_08_003_kill_session_idempotent_on_terminated() {
-    // BC-2.08.003 canonical test vector: kill_session("already-terminated-session") → Ok(()).
+    // BC-2.08.003 Invariant 2 (genuine): kill on Terminated → Ok(()), idempotent.
+    // Uses insert_terminated_session_for_test seam (F-S034-ADV-LOW-001).
 
     let tmp = isolated_runtime_dir();
     let session_id = "034b0000-0001-4000-a000-000000000001".to_string();
     let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
 
-    // Bind mock UDS socket — the post-spawn monitor will connect.
-    let listener = tokio::net::UnixListener::bind(&socket_path).expect("bind mock socket");
+    // make_manager uses FakePidSpawner — no real process needed.
+    let (mut manager, _subs, mut rx) = make_manager(tmp.path(), 55_002);
 
-    let (mut manager, _subs, mut rx) =
-        make_manager_with_socket(tmp.path(), 55_002, socket_path.clone());
-    manager.with_peer_cred_verifier(Arc::new(AllowAllVerifier));
-
-    let opts = make_spawn_opts(&session_id);
+    // Insert session directly in Terminated state (F-S034-ADV-LOW-001 seam).
     manager
-        .spawn_session(opts)
-        .await
-        .expect("spawn_session must succeed");
+        .insert_terminated_session_for_test(&session_id, 55_002, socket_path.clone())
+        .await;
 
-    // Accept monitor connect, send StateChanged{Terminated} directly — skipping
-    // Running to put session immediately into Terminated state.
-    let (mut peer, _) = tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
-        .await
-        .expect("timed out waiting for monitor")
-        .expect("accept failed");
+    // Verify precondition: session is in Terminated state.
+    let sessions = manager.session_list().await;
+    let snap = sessions
+        .iter()
+        .find(|s| s.session_id == session_id)
+        .expect("session must be in registry after insert_terminated_session_for_test");
+    assert_eq!(
+        snap.state,
+        monocle_ipc::types::SessionState::Terminated,
+        "test_BC_2_08_003_kill_session_idempotent_on_terminated: \
+         precondition: session must be Terminated before calling kill_session()"
+    );
 
-    send_host_to_daemon(
-        &mut peer,
-        &monocle_ipc::types::HostToDaemon::StateChanged {
-            new_state: monocle_ipc::types::SessionState::Terminated,
-            degraded_env: None,
-        },
-    )
-    .await;
-
-    // Drain messages: wait until a SessionStateChanged{Terminated} arrives.
-    // This confirms the session is in Terminated state before we test kill idempotency.
-    let msgs = drain_messages(&mut rx, 3000).await;
-    let has_terminated = msgs.iter().any(|m| {
-        matches!(
-            m,
-            monocle_ipc::types::ServerToClient::SessionStateChanged {
-                session_id: ref sid,
-                new_state: monocle_ipc::types::SessionState::Terminated,
-            } if sid == &session_id
-        )
-    });
-    // If the post-spawn monitor doesn't produce Terminated on its own yet (S-034 not
-    // implemented), we fall through — the test still exercises kill_session() which
-    // is todo!() and will panic, producing the Red Gate failure.
-    let _ = has_terminated;
-
-    // Now call kill_session() on the (Terminated or stub) session.
-    // FAILS: kill_session() is todo!() → panics.
+    // Call kill_session() on the Terminated session.
     let result = manager.kill_session(&session_id).await;
     assert!(
         result.is_ok(),
@@ -499,6 +478,40 @@ async fn test_BC_2_08_003_kill_session_idempotent_on_terminated() {
          kill_session() on Terminated session MUST return Ok(()) (BC-2.08.003 Invariant 2). \
          Got: {:?}",
         result
+    );
+
+    // No DaemonToHost::Kill should be sent — verify no SessionStateChanged{Terminating}
+    // arrives on the broker (which would indicate the ExistingConn or FreshConnect arm fired).
+    // Allow 50ms for any spurious messages to flush.
+    let msgs = drain_messages(&mut rx, 50).await;
+    let has_terminating = msgs.iter().any(|m| {
+        matches!(
+            m,
+            monocle_ipc::types::ServerToClient::SessionStateChanged {
+                session_id: ref sid,
+                new_state: monocle_ipc::types::SessionState::Terminating,
+            } if sid == &session_id
+        )
+    });
+    assert!(
+        !has_terminating,
+        "test_BC_2_08_003_kill_session_idempotent_on_terminated: \
+         kill_session() on Terminated session MUST NOT send DaemonToHost::Kill or emit \
+         SessionStateChanged{{Terminating}} (BC-2.08.003 Invariant 2 — no duplicate Kill). \
+         Got a Terminating broadcast — KillPath::Idempotent arm was NOT taken."
+    );
+
+    // State must remain Terminated (no re-transition to Terminating).
+    let sessions = manager.session_list().await;
+    let snap = sessions
+        .iter()
+        .find(|s| s.session_id == session_id)
+        .expect("session must remain in registry after idempotent kill");
+    assert_eq!(
+        snap.state,
+        monocle_ipc::types::SessionState::Terminated,
+        "test_BC_2_08_003_kill_session_idempotent_on_terminated: \
+         state must remain Terminated after idempotent kill (BC-2.08.003 Invariant 2)"
     );
 }
 
@@ -1149,6 +1162,113 @@ async fn test_kill_during_launching_before_socket_bind() {
         "test_kill_during_launching_before_socket_bind: \
          state must be Terminating after kill on Launching (host_conn=None) \
          (BC-2.08.003 Invariant 3 — Launching → Terminating immediate)",
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Test 8b: test_pid_fallback_non_esrch_sigterm_failure_returns_kill_failed
+//
+// Verifies: BC-2.08.003 PC-1 (Launching race window) + ADV-S034-MED-001.
+// When the PID-based SIGTERM fails with a non-ESRCH error (e.g. EPERM on PID 1),
+// kill_session() MUST return Err mapping to "kill_failed" and MUST NOT transition
+// the session to Terminating.
+//
+// Anchors: AC-001 ("Failure code: kill_failed"), BC-2.08.003 PC-1 (Launching/no
+// host_conn), ADV-S034-MED-001.
+// ---------------------------------------------------------------------------
+
+/// BC-2.08.003 PC-1 / ADV-S034-MED-001: `kill_session()` on a `Launching` session with
+/// `host_conn: None` when the PID-based SIGTERM fails with a non-ESRCH error MUST return
+/// `Err(SessionError::SessionHostDead)` mapping to wire code `"kill_failed"` and MUST NOT
+/// transition the session to `Terminating`.
+///
+/// Deterministic failure injection: uses PID 1 (init/launchd) as the target.  Sending
+/// SIGTERM to PID 1 always returns EPERM on macOS and Linux when running as non-root —
+/// the kill is deterministically un-deliverable without a real OS signal being sent to
+/// the init process.
+#[tokio::test]
+async fn test_pid_fallback_non_esrch_sigterm_failure_returns_kill_failed() {
+    use monocle_runtime::session_manager::{session_error_to_code, IpcOp};
+
+    // ADV-S034-MED-001: PidFallback path, non-ESRCH SIGTERM failure → kill_failed.
+    let tmp = isolated_runtime_dir();
+    let session_id = "034f0000-0001-4000-a000-000000000001".to_string();
+
+    // Insert a Launching session with PID 1 (init/launchd). Sending SIGTERM to PID 1
+    // returns EPERM when running as non-root — deterministically un-signalable.
+    // We use make_manager (FakePidSpawner) to build the manager, then insert directly.
+    let (mut manager, _subs, mut rx) = make_manager(tmp.path(), 1 /* PID 1 */);
+
+    // Spawn a session using FakePidSpawner(pid=1) — registers the session with
+    // session_host_pid = 1 and host_conn = None (no socket bound, monitor won't connect).
+    let opts = make_spawn_opts(&session_id);
+    manager
+        .spawn_session(opts)
+        .await
+        .expect("spawn_session must succeed");
+
+    // Verify precondition: session is Launching with host_conn=None.
+    let sessions = manager.session_list().await;
+    let snap = sessions
+        .iter()
+        .find(|s| s.session_id == session_id)
+        .expect("session must be in registry");
+    assert_eq!(
+        snap.state,
+        monocle_ipc::types::SessionState::Launching,
+        "test_pid_fallback_non_esrch_sigterm_failure_returns_kill_failed: \
+         precondition: session must be Launching (host_conn=None)"
+    );
+
+    // Call kill_session() — PID 1 SIGTERM returns EPERM (non-root) → kill_failed.
+    let result = manager.kill_session(&session_id).await;
+    let err = result.expect_err(
+        "test_pid_fallback_non_esrch_sigterm_failure_returns_kill_failed: \
+         kill_session() on Launching (host_conn=None, PID 1) MUST return Err when \
+         SIGTERM fails with EPERM (ADV-S034-MED-001, BC-2.08.003 PC-1 'Failure code: kill_failed')",
+    );
+
+    // Verify the error maps to wire code "kill_failed" (BC-2.08.003 PC-1, AC-001).
+    let code = session_error_to_code(IpcOp::Kill, &err);
+    assert_eq!(
+        code, "kill_failed",
+        "test_pid_fallback_non_esrch_sigterm_failure_returns_kill_failed: \
+         non-ESRCH SIGTERM failure on PidFallback path MUST map to wire code 'kill_failed' \
+         via session_error_to_code(IpcOp::Kill, e) (ADV-S034-MED-001, BC-2.08.003 PC-1). \
+         Got: '{}'",
+        code
+    );
+
+    // Session MUST NOT have transitioned to Terminating — the kill was not delivered.
+    let sessions = manager.session_list().await;
+    let snap = sessions
+        .iter()
+        .find(|s| s.session_id == session_id)
+        .expect("session must remain in registry after failed kill");
+    assert_ne!(
+        snap.state,
+        monocle_ipc::types::SessionState::Terminating,
+        "test_pid_fallback_non_esrch_sigterm_failure_returns_kill_failed: \
+         session MUST NOT transition to Terminating when PidFallback SIGTERM fails with \
+         non-ESRCH error — kill was NOT delivered (ADV-S034-MED-001, BC-2.08.003 PC-1)"
+    );
+
+    // No SessionStateChanged{Terminating} MUST be emitted.
+    let msgs = drain_messages(&mut rx, 50).await;
+    let has_terminating = msgs.iter().any(|m| {
+        matches!(
+            m,
+            monocle_ipc::types::ServerToClient::SessionStateChanged {
+                session_id: ref sid,
+                new_state: monocle_ipc::types::SessionState::Terminating,
+            } if sid == &session_id
+        )
+    });
+    assert!(
+        !has_terminating,
+        "test_pid_fallback_non_esrch_sigterm_failure_returns_kill_failed: \
+         SessionStateChanged{{Terminating}} MUST NOT be emitted when PidFallback SIGTERM \
+         fails (ADV-S034-MED-001)"
     );
 }
 
