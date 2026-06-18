@@ -468,6 +468,10 @@ async fn test_BC_2_06_022_killer_scenario_accept() {
         ClientToServer::SpawnSession { .. } => {
             panic!("unexpected SpawnSession in PermissionDecision test (PC-2 step 5)");
         }
+        // S-034 stub: KillSession is not expected in this test context.
+        ClientToServer::KillSession { .. } => {
+            panic!("unexpected KillSession in this test context");
+        }
     }
 
     // Step 6: Modal must still be in overlay_stack — not popped on send (BC-2.06.023).
@@ -693,6 +697,10 @@ async fn test_BC_2_06_022_killer_scenario_multi_prompt() {
         ClientToServer::SpawnSession { .. } => {
             panic!("unexpected SpawnSession in PermissionDecision test (PC-3 received1)");
         }
+        // S-034 stub: KillSession is not expected in this test context.
+        ClientToServer::KillSession { .. } => {
+            panic!("unexpected KillSession in this test context");
+        }
     }
 
     // Step 5: MockDaemon sends PermissionPromptResolved for P1 over the REAL UDS socket.
@@ -764,6 +772,10 @@ async fn test_BC_2_06_022_killer_scenario_multi_prompt() {
         // S-033 stub: SpawnSession is not expected in this PermissionDecision test context.
         ClientToServer::SpawnSession { .. } => {
             panic!("unexpected SpawnSession in PermissionDecision test (PC-3 received2)");
+        }
+        // S-034 stub: KillSession is not expected in this test context.
+        ClientToServer::KillSession { .. } => {
+            panic!("unexpected KillSession in this test context");
         }
     }
 
@@ -947,6 +959,10 @@ async fn test_BC_2_06_022_killer_scenario_accept_always() {
         ClientToServer::SpawnSession { .. } => {
             panic!("unexpected SpawnSession in PermissionDecision test (KS-001 received_a)");
         }
+        // S-034 stub: KillSession is not expected in this test context.
+        ClientToServer::KillSession { .. } => {
+            panic!("unexpected KillSession in this test context");
+        }
     }
 
     // Overlay_stack is NOT modified on send — awaiting PermissionPromptResolved from daemon.
@@ -1014,6 +1030,10 @@ async fn test_BC_2_06_022_killer_scenario_accept_always() {
         // S-033 stub: SpawnSession is not expected in this PermissionDecision test context.
         ClientToServer::SpawnSession { .. } => {
             panic!("unexpected SpawnSession in PermissionDecision test (KS-001 received_y)");
+        }
+        // S-034 stub: KillSession is not expected in this test context.
+        ClientToServer::KillSession { .. } => {
+            panic!("unexpected KillSession in this test context");
         }
     }
 
@@ -1470,6 +1490,10 @@ async fn test_BC_2_06_022_killer_scenario_isolation_parallel_safe() {
         ClientToServer::SpawnSession { .. } => {
             panic!("unexpected SpawnSession in isolation test for Daemon A");
         }
+        // S-034 stub: KillSession is not expected in this test context.
+        ClientToServer::KillSession { .. } => {
+            panic!("unexpected KillSession in this test context");
+        }
     }
 
     // Verify Daemon B received Deny for pid_b (not contaminated by App A's Allow).
@@ -1495,6 +1519,10 @@ async fn test_BC_2_06_022_killer_scenario_isolation_parallel_safe() {
         // S-033 stub: SpawnSession not expected in this test path.
         ClientToServer::SpawnSession { .. } => {
             panic!("unexpected SpawnSession in isolation test for Daemon B");
+        }
+        // S-034 stub: KillSession is not expected in this test context.
+        ClientToServer::KillSession { .. } => {
+            panic!("unexpected KillSession in this test context");
         }
     }
 

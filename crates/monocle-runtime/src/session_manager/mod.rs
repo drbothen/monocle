@@ -10,6 +10,11 @@
 //!
 //! `session_id` is `String` everywhere — UUID v4 value at IPC/registry boundaries.
 
+/// Maximum length-prefix frame size for per-session UDS messages (DaemonToHost / HostToDaemon).
+/// Spec: SS-session-manager.md §Per-session UDS protocol — "4-byte LE u32 + JSON payload, 256 KiB max".
+/// MED-002 fix: was 1 MiB; corrected to 256 KiB per spec bound.
+const MAX_FRAME_LEN: usize = 256 * 1024;
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -342,6 +347,13 @@ impl SessionHostSpawner for MockSessionHostSpawner {
 /// `UnixStream::peer_cred()` and compares the peer UID against the daemon UID
 /// returned by `nix::unistd::getuid()`.
 ///
+/// # Platform TOCTOU assumption (SEC-003)
+///
+/// SO_PEERCRED captures peer credentials at connect time on Linux and macOS.
+/// The check is not vulnerable to TOCTOU between credential verification and
+/// message send on these platforms. This assumption must be re-evaluated if
+/// ported to platforms with different SO_PEERCRED semantics.
+///
 /// Tests inject a `FakePeerCredVerifier` to simulate both the match path
 /// (allow → proceed to Running) and the mismatch path (reject → Terminated).
 ///
@@ -514,8 +526,12 @@ impl SessionIdGenerator for SequencedIdGenerator {
 
 /// Per-session connection to the session-host process.
 ///
-/// The `writer` is the CONTROL connection write half — active from end of Launching
-/// onward (after the post-spawn monitor connects to the session-host socket).
+/// The `writer` is the CONTROL connection write half — active from the end of `Launching`
+/// onward (i.e., after the post-spawn monitor connects to the session-host socket).
+/// The `reader` is the CONTROL connection read half — held so that `kill_confirm_monitor`
+/// can read `StateChanged{Terminated}` from the EXISTING connection rather than making
+/// a fresh UDS connect (ADV-S034-BLOCKER-001 ruling, SS-session-manager.md §ADV-S034-BLOCKER-001).
+/// Moved into `kill_confirm_monitor` when Kill is sent; set to `None` afterwards.
 /// The `proxy_task` is the PTY-streaming task — started ONLY at Launching → Running
 /// transition. During Launching, `proxy_task` is None; both are live during Running.
 ///
@@ -523,7 +539,13 @@ impl SessionIdGenerator for SequencedIdGenerator {
 #[allow(dead_code)]
 struct SessionHostConnection {
     /// Write half of the per-session UDS control connection.
+    /// Present from post-spawn monitor connect through session end.
     writer: Arc<Mutex<tokio::net::unix::OwnedWriteHalf>>,
+    /// Read half of the per-session UDS control connection.
+    /// Present from post-spawn monitor connect through session end.
+    /// Moved into `kill_confirm_monitor` task when Kill is sent on Running/Launching path.
+    /// For Detached kill: `host_conn` is None; a fresh connect supplies both halves.
+    reader: Option<tokio::net::unix::OwnedReadHalf>,
     /// Background task proxying session-host PTY output to daemon broker.
     /// None during Launching; started at Launching → Running transition.
     proxy_task: Option<JoinHandle<()>>,
@@ -588,6 +610,20 @@ pub struct SessionManager {
     /// Production default: `RealPeerCredVerifier` (performs real SO_PEERCRED check).
     /// Tests inject `FakePeerCredVerifier` to simulate UID mismatch without forking.
     peer_cred_verifier: Arc<dyn PeerCredVerifier>,
+    /// Failure-injection seam for the PidFallback SIGTERM call (ADV-S034-IMPORTANT-001).
+    ///
+    /// `None` in production (cfg gate ensures it is always `None` in non-test builds).
+    /// Tests inject `Some(f)` to return a synthetic non-ESRCH `nix::Errno` without
+    /// sending any real signal to any live OS process.
+    ///
+    /// When `None` (the production path), `kill_session` calls
+    /// `nix::sys::signal::kill(pid, SIGTERM)` directly — byte-for-byte identical to the
+    /// pre-seam behaviour.
+    ///
+    /// Security gate: gated `cfg(any(test, feature = "test-utils"))`. The field does NOT
+    /// exist in production builds so there is no runtime code path that could reach it.
+    #[cfg(any(test, feature = "test-utils"))]
+    pid_sigterm_fn: Option<Arc<dyn Fn(nix::unistd::Pid) -> nix::Result<()> + Send + Sync>>,
 }
 
 impl std::fmt::Debug for SessionManager {
@@ -617,6 +653,8 @@ impl SessionManager {
             broker,
             engine_module,
             peer_cred_verifier: Arc::new(RealPeerCredVerifier),
+            #[cfg(any(test, feature = "test-utils"))]
+            pid_sigterm_fn: None,
         }
     }
 
@@ -645,6 +683,245 @@ impl SessionManager {
     pub fn with_peer_cred_verifier(&mut self, verifier: Arc<dyn PeerCredVerifier>) -> &mut Self {
         self.peer_cred_verifier = verifier;
         self
+    }
+
+    /// Inject a synthetic SIGTERM function for the `PidFallback` kill path.
+    ///
+    /// Replaces the real `nix::sys::signal::kill(pid, SIGTERM)` call with the
+    /// supplied closure for testing purposes.  The closure receives the `Pid`
+    /// that `kill_session` would have signalled and returns a `nix::Result<()>`.
+    ///
+    /// Use this seam to provoke a deterministic non-ESRCH failure (e.g. EPERM)
+    /// WITHOUT sending any real signal to a live OS process.
+    ///
+    /// # Production safety
+    ///
+    /// This method is gated `cfg(any(test, feature = "test-utils"))` — it does NOT
+    /// exist in production builds (CWE-602 discipline, mirrors `with_peer_cred_verifier`).
+    /// When no override is installed (`pid_sigterm_fn == None`), the production code
+    /// path calls `nix::sys::signal::kill` directly — byte-for-byte unchanged behaviour.
+    ///
+    /// # Test usage
+    ///
+    /// ```rust,ignore
+    /// // Inject synthetic EPERM (non-ESRCH) — no real signal sent:
+    /// manager.with_pid_sigterm_fn(Arc::new(|_pid| {
+    ///     Err(nix::errno::Errno::EPERM)
+    /// }));
+    /// ```
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn with_pid_sigterm_fn(
+        &mut self,
+        f: Arc<dyn Fn(nix::unistd::Pid) -> nix::Result<()> + Send + Sync>,
+    ) -> &mut Self {
+        self.pid_sigterm_fn = Some(f);
+        self
+    }
+
+    /// Insert a synthetic Detached session into the registry for test use only.
+    ///
+    /// Enables tests to exercise the genuine `KillPath::FreshConnect` arm
+    /// (SessionState::Detached + host_conn:None) without relying on S-035's
+    /// `detach_session()` (which is `todo!()`).  See IMP-001 test-seam requirement.
+    ///
+    /// # Test usage
+    ///
+    /// ```rust,ignore
+    /// manager
+    ///     .insert_detached_session_for_test("uuid-here", 12345, "/tmp/foo.sock".into())
+    ///     .await;
+    /// manager.kill_session("uuid-here").await.unwrap();
+    /// ```
+    ///
+    /// This function does NOT exist in production builds.
+    // The helper is used by the test-writer's upcoming IMP-001 tests.
+    // Until those tests land this attribute prevents a dead_code warning.
+    #[cfg(test)]
+    #[allow(dead_code)]
+    pub(crate) async fn insert_detached_session_for_test(
+        &self,
+        session_id: &str,
+        pid: u32,
+        socket_path: PathBuf,
+    ) {
+        let entry = SessionEntry {
+            session_id: session_id.to_string(),
+            session_host_pid: pid,
+            session_host_socket: socket_path,
+            state: SessionState::Detached,
+            cwd: PathBuf::from("/tmp/test-cwd"),
+            project_root: PathBuf::from("/tmp/test-project"),
+            harness_id: "claude-code".to_string(),
+            profile_id: "default".to_string(),
+            started_at: chrono::Utc::now(),
+            kill_deadline: None,
+            degraded: false,
+            degraded_reason: None,
+            host_conn: None,
+        };
+        self.sessions
+            .lock()
+            .await
+            .insert(session_id.to_string(), entry);
+    }
+
+    /// Test helper: insert a session in `Launching` state with a **pre-broken** control
+    /// connection — writer half is connected to a socket whose peer is already closed.
+    ///
+    /// Used to deterministically exercise the `KillPath::ExistingConn` broken-write →
+    /// FreshConnect fallback path (OBS-1, adversarial pass-9) without relying on OS
+    /// kernel-buffer timing or platform-specific `shutdown()` behaviour.
+    ///
+    /// # How it works
+    ///
+    /// Creates a `UnixStream::pair()` (in-memory socket pair), immediately drops the
+    /// `receiver` half, then wraps the `sender` half's `OwnedWriteHalf` in a
+    /// `SessionHostConnection`.  Because the receiver is gone, the very next write to
+    /// `writer` returns `EPIPE`/`BrokenPipe` — deterministically and without any delay.
+    ///
+    /// # Test usage
+    ///
+    /// ```rust,ignore
+    /// let socket_path = tmp.path().join("session-X.sock");
+    /// manager
+    ///     .insert_launching_session_with_broken_conn_for_test("uuid", 1234, socket_path.clone())
+    ///     .await;
+    /// // Bind a listener at socket_path BEFORE calling kill_session so the fallback can
+    /// // make a fresh connect.
+    /// manager.kill_session("uuid").await.unwrap();
+    /// ```
+    ///
+    /// This function does NOT exist in production builds.
+    #[cfg(any(test, feature = "test-utils"))]
+    #[allow(clippy::expect_used)]
+    pub async fn insert_launching_session_with_broken_conn_for_test(
+        &self,
+        session_id: &str,
+        pid: u32,
+        socket_path: PathBuf,
+    ) {
+        // UnixStream::pair() creates an in-memory, connected socket pair.
+        // Dropping `receiver` immediately means any write to `sender`'s writer half
+        // returns BrokenPipe on the very next flush — no kernel-buffer race.
+        let (sender, _receiver) = tokio::net::UnixStream::pair()
+            .expect("insert_launching_session_with_broken_conn_for_test: UnixStream::pair()");
+        // Drop `_receiver` immediately — its lifetime ends here.
+        let (_read_half, write_half) = sender.into_split();
+        let entry = SessionEntry {
+            session_id: session_id.to_string(),
+            session_host_pid: pid,
+            session_host_socket: socket_path,
+            state: SessionState::Launching,
+            cwd: PathBuf::from("/tmp/test-cwd"),
+            project_root: PathBuf::from("/tmp/test-project"),
+            harness_id: "claude-code".to_string(),
+            profile_id: "default".to_string(),
+            started_at: chrono::Utc::now(),
+            kill_deadline: None,
+            degraded: false,
+            degraded_reason: None,
+            host_conn: Some(SessionHostConnection {
+                writer: Arc::new(Mutex::new(write_half)),
+                // CR-006: reader intentionally dropped (not stored in host_conn): forces the
+                // watchdog-only branch in kill_session when the ExistingConn write fails and no
+                // reader is available to spawn kill_confirm_monitor. Tests the SIGKILL escalation
+                // code path via the watchdog alone.
+                //
+                // CR-005: reader is None here because this is the broken-connection helper;
+                // the reader field is populated at the Running transition (ExistingConn path only).
+                // The Detached path does not store a reader into host_conn — it passes the
+                // fresh-connect read half directly to kill_confirm_monitor.
+                reader: None,
+                proxy_task: None,
+            }),
+        };
+        self.sessions
+            .lock()
+            .await
+            .insert(session_id.to_string(), entry);
+    }
+
+    /// Test helper: insert a session in `Terminating` state with `kill_deadline` set.
+    ///
+    /// Used to test the 12-second watchdog path without driving through kill_session().
+    /// Ruling J (F-S034-ADV-MED-001): the watchdog must kill BOTH the session-host PID
+    /// and the harness child PID (via sidecar read). This helper sets up the registry
+    /// entry; the caller must write the sidecar with `child_pid` populated.
+    ///
+    /// This function does NOT exist in production builds.
+    #[cfg(test)]
+    #[allow(dead_code)]
+    pub(crate) async fn insert_terminating_session_for_test(
+        &self,
+        session_id: &str,
+        session_host_pid: u32,
+        socket_path: PathBuf,
+        kill_deadline: std::time::Instant,
+    ) {
+        let entry = SessionEntry {
+            session_id: session_id.to_string(),
+            session_host_pid,
+            session_host_socket: socket_path,
+            state: SessionState::Terminating,
+            cwd: PathBuf::from("/tmp/test-cwd"),
+            project_root: PathBuf::from("/tmp/test-project"),
+            harness_id: "claude-code".to_string(),
+            profile_id: "default".to_string(),
+            started_at: chrono::Utc::now(),
+            kill_deadline: Some(kill_deadline),
+            degraded: false,
+            degraded_reason: None,
+            host_conn: None,
+        };
+        self.sessions
+            .lock()
+            .await
+            .insert(session_id.to_string(), entry);
+    }
+
+    /// Test helper: insert a session in `Terminated` state.
+    ///
+    /// Enables tests to exercise the genuine `KillPath::Idempotent` arm for
+    /// `SessionState::Terminated` (BC-2.08.003 Invariant 2 — kill on Terminated
+    /// returns Ok(()) without sending another Kill, watchdog, or state transition).
+    ///
+    /// # Why this seam is needed (F-S034-ADV-LOW-001)
+    ///
+    /// The existing `test_BC_2_08_003_kill_session_idempotent_on_terminated` test drove
+    /// through spawn + `StateChanged{Terminated}` to the post-spawn monitor.  Because the
+    /// post-spawn monitor has no arm for `Terminated` while in `Launching`, the session
+    /// remained in `Launching` with `host_conn = Some(_)`, causing `kill_session()` to take
+    /// `KillPath::ExistingConn` rather than `KillPath::Idempotent`.  This seam bypasses that
+    /// path and inserts the registry entry directly in `Terminated` state.
+    ///
+    /// This function does NOT exist in production builds.
+    #[cfg(any(test, feature = "test-utils"))]
+    #[allow(dead_code)]
+    pub async fn insert_terminated_session_for_test(
+        &self,
+        session_id: &str,
+        session_host_pid: u32,
+        socket_path: PathBuf,
+    ) {
+        let entry = SessionEntry {
+            session_id: session_id.to_string(),
+            session_host_pid,
+            session_host_socket: socket_path,
+            state: SessionState::Terminated,
+            cwd: PathBuf::from("/tmp/test-cwd"),
+            project_root: PathBuf::from("/tmp/test-project"),
+            harness_id: "claude-code".to_string(),
+            profile_id: "default".to_string(),
+            started_at: chrono::Utc::now(),
+            kill_deadline: None,
+            degraded: false,
+            degraded_reason: None,
+            host_conn: None,
+        };
+        self.sessions
+            .lock()
+            .await
+            .insert(session_id.to_string(), entry);
     }
 
     /// Spawn a new session from the given `SpawnOptions`.
@@ -1030,10 +1307,1009 @@ impl SessionManager {
         }
     }
 
-    /// Kill a running session (SIGTERM to session-host; session-host kills harness child).
-    #[allow(clippy::todo)]
-    pub async fn kill_session(&mut self, _session_id: &str) -> Result<(), SessionError> {
-        todo!("S-033 (S-034 scope): implement kill_session()")
+    /// Kill a running session by delivering `DaemonToHost::Kill` to the session-host
+    /// within 500ms and transitioning to `SessionState::Terminating` immediately.
+    ///
+    /// Kill path selection (BC-2.08.003 postcondition 1):
+    /// - Running / Launching (host_conn established): send Kill over existing control connection.
+    /// - Launching (host_conn not yet established — rare race): PID-based SIGTERM fallback.
+    /// - Detached: fresh UDS connect → SO_PEERCRED → send Kill.
+    /// - Terminating / Terminated: return `Ok(())` idempotent (BC-2.08.003 invariant 2).
+    ///
+    /// `SessionStateChanged{Terminating}` MUST be published BEFORE `SessionListUpdate`
+    /// (BC-2.08.008 invariant 4).
+    ///
+    /// Spawns a 12-second watchdog task (BC-2.08.003 postcondition 5) to force
+    /// `Terminated` + SIGKILL to session-host PID if no `HostToDaemon::StateChanged`
+    /// confirmation arrives.
+    ///
+    /// Returns `Err(SessionError::SessionNotFound)` if `session_id` is unknown (AC-011).
+    pub async fn kill_session(&mut self, session_id: &str) -> Result<(), SessionError> {
+        use monocle_ipc::types::DaemonToHost;
+        use tokio::io::AsyncWriteExt;
+
+        // SEC-001 (CWE-22): Defense-in-depth — reject any session_id that is not a
+        // valid UUID before using it to construct file/socket paths. Mirrors the guard
+        // in spawn_session(). The production IPC path generates UUIDs server-side, but
+        // kill_session must not blindly trust an arbitrary caller-provided session_id.
+        if uuid::Uuid::parse_str(session_id).is_err() {
+            return Err(SessionError::SessionNotFound {
+                session_id: session_id.to_string(),
+            });
+        }
+
+        // MED-005: compute the kill deadline ONCE and use it for BOTH the watchdog timer and
+        // `SessionEntry.kill_deadline` (single authoritative source per SS-session-manager.md
+        // §kill_deadline_unix_ms ownership boundary).
+        //
+        // Two Instants are derived from the SAME Duration offset:
+        //   - `std_kill_deadline`: stored in SessionEntry and used to compute kill_deadline_unix_ms
+        //     (wall-clock, needed for sidecar JSON serialization).
+        //   - `watchdog_deadline`: tokio Instant for sleep_until, pre-computed synchronously before
+        //     any .await so that tokio::time::advance() in paused-clock tests fires the watchdog
+        //     correctly even when the watchdog task hasn't been polled yet at advance() time.
+        //
+        // Both are computed from Instant::now() within the same synchronous block, not
+        // independently inside two separate function calls.
+        let kill_duration = std::time::Duration::from_secs(12);
+        let std_kill_deadline = std::time::Instant::now() + kill_duration;
+        let watchdog_deadline = tokio::time::Instant::now() + kill_duration;
+
+        // --- Step 1: inspect the session entry to determine kill path ---
+        // We must avoid holding the mutex across the IO send, so we extract what we need
+        // and release the lock before any network I/O.
+        enum KillPath {
+            /// Use the existing control connection writer.
+            ExistingConn {
+                writer: Arc<Mutex<tokio::net::unix::OwnedWriteHalf>>,
+                pid: u32,
+                socket_path: PathBuf,
+            },
+            /// PID-based SIGTERM fallback (Launching with no host_conn yet).
+            PidFallback { pid: u32, socket_path: PathBuf },
+            /// Fresh UDS connect needed (Detached).
+            FreshConnect { pid: u32, socket_path: PathBuf },
+            /// Already terminating or terminated — idempotent Ok(()).
+            Idempotent,
+            /// Not found in registry.
+            NotFound,
+        }
+
+        let kill_path = {
+            let guard = self.sessions.lock().await;
+            match guard.get(session_id) {
+                None => KillPath::NotFound,
+                Some(entry) => match entry.state {
+                    // Idempotent: kill already in progress or complete.
+                    SessionState::Terminating | SessionState::Terminated => KillPath::Idempotent,
+                    // Running or Launching with established control connection.
+                    SessionState::Running | SessionState::Launching
+                        if entry.host_conn.is_some() =>
+                    {
+                        // Safety: guarded by `is_some()` in the match guard above.
+                        let Some(conn) = entry.host_conn.as_ref() else {
+                            unreachable!("host_conn checked is_some in guard");
+                        };
+                        KillPath::ExistingConn {
+                            writer: Arc::clone(&conn.writer),
+                            pid: entry.session_host_pid,
+                            socket_path: entry.session_host_socket.clone(),
+                        }
+                    }
+                    // Launching without host_conn — PID fallback.
+                    SessionState::Launching => KillPath::PidFallback {
+                        pid: entry.session_host_pid,
+                        socket_path: entry.session_host_socket.clone(),
+                    },
+                    // Detached — fresh UDS connect + SO_PEERCRED.
+                    SessionState::Detached => KillPath::FreshConnect {
+                        pid: entry.session_host_pid,
+                        socket_path: entry.session_host_socket.clone(),
+                    },
+                    // Any other state (future variants) — treat as fresh connect.
+                    // LOW-001: log unexpected state to surface bugs early.
+                    _ => {
+                        tracing::warn!(
+                            session_id = %session_id,
+                            state = ?entry.state,
+                            "kill_session: unexpected session state in KillPath dispatch — \
+                             defaulting to FreshConnect (LOW-001)"
+                        );
+                        KillPath::FreshConnect {
+                            pid: entry.session_host_pid,
+                            socket_path: entry.session_host_socket.clone(),
+                        }
+                    }
+                },
+            }
+            // guard released here
+        };
+
+        match kill_path {
+            KillPath::NotFound => {
+                return Err(SessionError::SessionNotFound {
+                    session_id: session_id.to_string(),
+                });
+            }
+            KillPath::Idempotent => {
+                return Ok(());
+            }
+            KillPath::ExistingConn {
+                writer,
+                pid,
+                socket_path,
+            } => {
+                // Send DaemonToHost::Kill over the existing control connection.
+                let kill_msg = serde_json::to_vec(&DaemonToHost::Kill)
+                    .map_err(|e| SessionError::Io(std::io::Error::other(e)))?;
+                // SEC-006: pre-send frame size guard (matches MAX_FRAME_LEN = 256 KiB).
+                if kill_msg.len() > MAX_FRAME_LEN {
+                    return Err(SessionError::Io(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!(
+                            "outbound Kill message exceeds MAX_FRAME_LEN: {} bytes",
+                            kill_msg.len()
+                        ),
+                    )));
+                }
+                let len = (kill_msg.len() as u32).to_le_bytes();
+                let write_result = {
+                    let mut w = writer.lock().await;
+                    let r1 = w.write_all(&len).await;
+                    let r2 = if r1.is_ok() {
+                        w.write_all(&kill_msg).await
+                    } else {
+                        r1
+                    };
+                    // CR-001: flush under the same lock hold so the Kill frame is fully
+                    // delivered to the kernel socket buffer before we release the writer.
+                    let r3 = if r2.is_ok() { w.flush().await } else { r2 };
+                    r3
+                };
+
+                let sidecar_path = self
+                    .runtime_dir
+                    .join(format!("session-{}.json", session_id));
+
+                if let Err(e) = write_result {
+                    // Write failure on existing connection — control connection is broken.
+                    // Fall back to FreshConnect path: make a fresh UDS connect + SO_PEERCRED.
+                    // If the fresh connect also fails, treat session as dead (EC-162).
+                    tracing::warn!(
+                        session_id = %session_id,
+                        error = %e,
+                        "kill_session ExistingConn: write failed — falling back to FreshConnect path (broken control connection)"
+                    );
+                    // Attempt fresh connect to the session-host socket.
+                    // MED-004: bounded timeout on fallback fresh connect (same as FreshConnect path).
+                    let fallback_connect = tokio::time::timeout(
+                        std::time::Duration::from_secs(2),
+                        tokio::net::UnixStream::connect(&socket_path),
+                    )
+                    .await
+                    .unwrap_or_else(|_| {
+                        Err(std::io::Error::new(
+                            std::io::ErrorKind::TimedOut,
+                            "kill_session ExistingConn fallback: UDS connect timed out after 2s (MED-004)",
+                        ))
+                    });
+                    match fallback_connect {
+                        Err(conn_err) => {
+                            // EC-162/EC-163: socket gone/timed-out → session is dead; transition → Terminated.
+                            tracing::warn!(
+                                session_id = %session_id,
+                                error = %conn_err,
+                                "kill_session ExistingConn fallback: FreshConnect also failed — session dead (EC-162/163)"
+                            );
+                            self.transition_to_terminated(session_id, &sidecar_path)
+                                .await;
+                            return Ok(());
+                        }
+                        Ok(fresh_stream) => {
+                            // SO_PEERCRED on fresh connect (BC-2.08.003 Invariant 5).
+                            if let Err(verify_err) = self.peer_cred_verifier.verify(&fresh_stream) {
+                                tracing::warn!(
+                                    session_id = %session_id,
+                                    error = %verify_err,
+                                    "kill_session ExistingConn fallback: SO_PEERCRED UID mismatch — Terminated"
+                                );
+                                self.transition_to_terminated(session_id, &sidecar_path)
+                                    .await;
+                                return Ok(());
+                            }
+                            // Send Kill on fresh connection.
+                            let kill_msg2 = serde_json::to_vec(&DaemonToHost::Kill)
+                                .map_err(|e2| SessionError::Io(std::io::Error::other(e2)))?;
+                            let len2 = (kill_msg2.len() as u32).to_le_bytes();
+                            let (r2, mut w2) = fresh_stream.into_split();
+                            w2.write_all(&len2).await.map_err(SessionError::Io)?;
+                            w2.write_all(&kill_msg2).await.map_err(SessionError::Io)?;
+                            // CR-001: flush so the Kill frame is delivered before we proceed.
+                            w2.flush().await.map_err(SessionError::Io)?;
+
+                            // Transition → Terminating and spawn kill-confirm + watchdog.
+                            // Pass the read half directly (ADV-S034-BLOCKER-001).
+                            self.transition_to_terminating(
+                                session_id,
+                                &sidecar_path,
+                                std_kill_deadline,
+                            )
+                            .await;
+                            let sessions_arc = Arc::clone(&self.sessions);
+                            let broker_arc = Arc::clone(&self.broker);
+                            let sid = session_id.to_string();
+                            let sp2 = sidecar_path.clone();
+                            tokio::spawn(async move {
+                                kill_confirm_monitor(sid, r2, sessions_arc, broker_arc, sp2).await;
+                            });
+                            // Drop the stale host_conn.reader from the SessionEntry — it belongs to
+                            // the broken original connection, not the fresh one (r2 is the monitor's
+                            // reader). The ExistingConn SUCCESS path does the same via .take().
+                            {
+                                let mut guard = self.sessions.lock().await;
+                                if let Some(entry) = guard.get_mut(session_id) {
+                                    if let Some(conn) = entry.host_conn.as_mut() {
+                                        let _ = conn.reader.take();
+                                    }
+                                }
+                            }
+                            Self::spawn_kill_watchdog(
+                                session_id.to_string(),
+                                pid,
+                                Arc::clone(&self.sessions),
+                                Arc::clone(&self.broker),
+                                sidecar_path,
+                                socket_path,
+                                watchdog_deadline,
+                            );
+                            return Ok(());
+                        }
+                    }
+                }
+
+                // Kill written successfully on existing connection.
+                // Ruling I (SS-session-manager.md §Ruling I): kill_confirm_monitor is MANDATORY on
+                // the ExistingConn SUCCESS path. Take host_conn.reader and spawn the monitor so
+                // StateChanged{Terminated} is always received cleanly. The post_spawn_monitor
+                // has already exited (it breaks after Running per Ruling I) and must NOT be
+                // relied upon to read the kill confirmation.
+                self.transition_to_terminating(session_id, &sidecar_path, std_kill_deadline)
+                    .await;
+
+                // Take the reader from host_conn so kill_confirm_monitor can read Terminated.
+                let maybe_reader = {
+                    let mut guard = self.sessions.lock().await;
+                    guard
+                        .get_mut(session_id)
+                        .and_then(|e| e.host_conn.as_mut())
+                        .and_then(|c| c.reader.take())
+                };
+
+                if let Some(existing_reader) = maybe_reader {
+                    // Spawn kill_confirm_monitor with the existing reader — same as Detached path.
+                    let sessions_arc = Arc::clone(&self.sessions);
+                    let broker_arc = Arc::clone(&self.broker);
+                    let sid = session_id.to_string();
+                    let sp = sidecar_path.clone();
+                    tokio::spawn(async move {
+                        kill_confirm_monitor(sid, existing_reader, sessions_arc, broker_arc, sp)
+                            .await;
+                    });
+                } else {
+                    // reader was None (e.g. pre-Running race where monitor hasn't stored it yet).
+                    // Watchdog will handle the 12s timeout path.
+                    tracing::debug!(
+                        session_id = %session_id,
+                        "kill_session ExistingConn: host_conn.reader is None — watchdog-only path"
+                    );
+                }
+
+                // Spawn 12s watchdog.
+                Self::spawn_kill_watchdog(
+                    session_id.to_string(),
+                    pid,
+                    Arc::clone(&self.sessions),
+                    Arc::clone(&self.broker),
+                    sidecar_path,
+                    socket_path,
+                    watchdog_deadline,
+                );
+            }
+            KillPath::PidFallback { pid, socket_path } => {
+                // PID-based SIGTERM fallback for Launching with no host_conn.
+                use nix::sys::signal::{kill as nix_kill, Signal};
+                use nix::unistd::Pid;
+                let nix_pid = Pid::from_raw(pid as i32);
+                // ADV-S034-IMPORTANT-001: call through the test-only injection seam when
+                // present; fall back to the real nix::sys::signal::kill in production.
+                // In production builds the `pid_sigterm_fn` field does not exist
+                // (cfg gate) so this compiles to the direct nix_kill call verbatim.
+                #[cfg(any(test, feature = "test-utils"))]
+                let sigterm_result = if let Some(ref f) = self.pid_sigterm_fn {
+                    f(nix_pid)
+                } else {
+                    nix_kill(nix_pid, Signal::SIGTERM)
+                };
+                #[cfg(not(any(test, feature = "test-utils")))]
+                let sigterm_result = nix_kill(nix_pid, Signal::SIGTERM);
+                match sigterm_result {
+                    Ok(()) | Err(nix::errno::Errno::ESRCH) => {
+                        // Ok  → SIGTERM delivered; process will be monitored by watchdog.
+                        // ESRCH → process already gone; effectively a successful kill (benign).
+                    }
+                    Err(e) => {
+                        // Non-ESRCH failure (e.g. EPERM): SIGTERM could NOT be delivered —
+                        // the kill genuinely failed.  Spec: BC-2.08.003 PC-1 (Launching race
+                        // window) — "Failure code: kill_failed".
+                        // Do NOT transition to Terminating: the kill was not delivered.
+                        tracing::warn!(
+                            session_id = %session_id,
+                            pid = pid,
+                            error = %e,
+                            "kill_session PID fallback: SIGTERM failed (non-ESRCH) — returning kill_failed (ADV-S034-MED-001)"
+                        );
+                        return Err(SessionError::SessionHostDead {
+                            session_id: session_id.to_string(),
+                        });
+                    }
+                }
+
+                let sidecar_path = self
+                    .runtime_dir
+                    .join(format!("session-{}.json", session_id));
+                self.transition_to_terminating(session_id, &sidecar_path, std_kill_deadline)
+                    .await;
+
+                // Spawn 12s watchdog.
+                Self::spawn_kill_watchdog(
+                    session_id.to_string(),
+                    pid,
+                    Arc::clone(&self.sessions),
+                    Arc::clone(&self.broker),
+                    sidecar_path,
+                    socket_path,
+                    watchdog_deadline,
+                );
+            }
+            KillPath::FreshConnect { pid, socket_path } => {
+                // Detached: fresh UDS connect + SO_PEERCRED + Kill.
+                // If the connect fails or SO_PEERCRED rejects, treat session as dead → Terminated.
+                let sidecar_path = self
+                    .runtime_dir
+                    .join(format!("session-{}.json", session_id));
+
+                // MED-004: bound the fresh connect to 2s to prevent blocking all IPC
+                // operations. A stale/blocked socket must not freeze the SessionManager
+                // (which is held under the outer sm.lock() in handle_kill_session).
+                let connect_result = tokio::time::timeout(
+                    std::time::Duration::from_secs(2),
+                    tokio::net::UnixStream::connect(&socket_path),
+                )
+                .await
+                .unwrap_or_else(|_| {
+                    Err(std::io::Error::new(
+                        std::io::ErrorKind::TimedOut,
+                        "kill_session FreshConnect: UDS connect timed out after 2s (MED-004)",
+                    ))
+                });
+                match connect_result {
+                    Err(e) => {
+                        // EC-163: socket gone/timed-out → session is dead; transition → Terminated.
+                        tracing::warn!(
+                            session_id = %session_id,
+                            error = %e,
+                            "kill_session FreshConnect: UDS connect failed (EC-163) — transitioning to Terminated"
+                        );
+                        self.transition_to_terminated(session_id, &sidecar_path)
+                            .await;
+                        return Ok(());
+                    }
+                    Ok(stream) => {
+                        // SO_PEERCRED check BEFORE sending any message (BC-2.08.003 Invariant 5).
+                        if let Err(verify_err) = self.peer_cred_verifier.verify(&stream) {
+                            tracing::warn!(
+                                session_id = %session_id,
+                                error = %verify_err,
+                                "kill_session FreshConnect: SO_PEERCRED UID mismatch — transitioning to Terminated (BC-2.08.003 Invariant 5)"
+                            );
+                            self.transition_to_terminated(session_id, &sidecar_path)
+                                .await;
+                            return Ok(());
+                        }
+
+                        // UID matched — send Kill.
+                        let kill_msg = serde_json::to_vec(&DaemonToHost::Kill)
+                            .map_err(|e| SessionError::Io(std::io::Error::other(e)))?;
+                        let len = (kill_msg.len() as u32).to_le_bytes();
+                        let (reader, mut writer) = stream.into_split();
+                        writer.write_all(&len).await.map_err(SessionError::Io)?;
+                        writer
+                            .write_all(&kill_msg)
+                            .await
+                            .map_err(SessionError::Io)?;
+                        // CR-001: flush so the Kill frame is fully delivered to the kernel
+                        // socket buffer before transitioning state.
+                        writer.flush().await.map_err(SessionError::Io)?;
+
+                        // Transition → Terminating, emit broadcasts.
+                        self.transition_to_terminating(
+                            session_id,
+                            &sidecar_path,
+                            std_kill_deadline,
+                        )
+                        .await;
+
+                        // Spawn kill-confirm monitor passing the read half of the fresh
+                        // connection directly (ADV-S034-BLOCKER-001 / SS-session-manager.md
+                        // §ADV-S034-BLOCKER-001). The session-host sends StateChanged{Terminated} on the
+                        // SAME connection where it received Kill — no fresh connect needed.
+                        let sessions_arc = Arc::clone(&self.sessions);
+                        let broker_arc = Arc::clone(&self.broker);
+                        let sid = session_id.to_string();
+                        let sidecar_path_clone = sidecar_path.clone();
+                        tokio::spawn(async move {
+                            kill_confirm_monitor(
+                                sid,
+                                reader,
+                                sessions_arc,
+                                broker_arc,
+                                sidecar_path_clone,
+                            )
+                            .await;
+                        });
+
+                        // Spawn 12s watchdog.
+                        Self::spawn_kill_watchdog(
+                            session_id.to_string(),
+                            pid,
+                            Arc::clone(&self.sessions),
+                            Arc::clone(&self.broker),
+                            sidecar_path,
+                            socket_path,
+                            watchdog_deadline,
+                        );
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Transition a session to `Terminating`, write `kill_deadline_unix_ms` and `state:"Terminating"`
+    /// to the sidecar in a SINGLE atomic `tempfile::persist` call (ADV-S034-HIGH-003), and emit
+    /// `SessionStateChanged{Terminating}` BEFORE `SessionListUpdate` under the mutex.
+    ///
+    /// The sidecar write is performed OUTSIDE the sessions lock (file I/O must not block the
+    /// mutex) but is atomic with respect to concurrent readers (tempfile::persist rename).
+    ///
+    /// **MED-005:** `kill_deadline` is passed in from `kill_session()` where it is computed once
+    /// from the same originating instant as `watchdog_deadline`, ensuring a single authoritative
+    /// source (SS-session-manager.md §kill_deadline_unix_ms ownership boundary).
+    ///
+    /// (BC-2.08.003 PC-2, BC-2.08.008 Invariant 4, story §Architecture Compliance Rules)
+    async fn transition_to_terminating(
+        &self,
+        session_id: &str,
+        sidecar_path: &PathBuf,
+        kill_deadline: std::time::Instant,
+    ) {
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        // Compute kill_deadline_unix_ms from the pre-computed kill_deadline (MED-005: single
+        // authoritative origin, not an independent SystemTime::now() + 12s call).
+        // Convert std::time::Instant offset to Unix epoch milliseconds for the sidecar.
+        let kill_deadline_ms = {
+            let remaining = kill_deadline.saturating_duration_since(std::time::Instant::now());
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                // SEC-005: use saturating/min casts — as_millis() returns u128 which could
+                // theoretically exceed u64::MAX on platforms with extreme clock values.
+                .map(|since_epoch| {
+                    let now_ms = since_epoch.as_millis().min(u64::MAX as u128) as u64;
+                    let remaining_ms = remaining.as_millis().min(u64::MAX as u128) as u64;
+                    now_ms.saturating_add(remaining_ms)
+                })
+                .unwrap_or(0)
+        };
+
+        // --- Lock scope: state mutation + snapshot + broadcasts ---
+        {
+            use monocle_core::engine::{EnrichedSession, SessionStatus};
+            let mut guard = self.sessions.lock().await;
+
+            if let Some(entry) = guard.get_mut(session_id) {
+                entry.state = SessionState::Terminating;
+                // MED-005: use the pre-computed kill_deadline (single originating instant).
+                entry.kill_deadline = Some(kill_deadline);
+            }
+
+            // Build snapshot while holding the lock (HIGH-001).
+            let list_snapshot: Vec<EnrichedSession> = guard
+                .values()
+                .map(|e| {
+                    let status = match e.state {
+                        SessionState::Launching | SessionState::Running => SessionStatus::Active,
+                        SessionState::Detached => SessionStatus::Idle,
+                        SessionState::Terminating | SessionState::Terminated => {
+                            SessionStatus::Stopped
+                        }
+                        _ => SessionStatus::Stopped,
+                    };
+                    EnrichedSession::new(
+                        e.session_id.clone(),
+                        e.harness_id.clone(),
+                        None,
+                        None,
+                        status,
+                        None,
+                        e.project_root
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .map(|s| s.to_string()),
+                        Some(e.started_at),
+                        0,
+                        None,
+                    )
+                })
+                .collect();
+
+            // Emit SessionStateChanged{Terminating} BEFORE SessionListUpdate (BC-2.08.008 I4).
+            let state_msg = monocle_ipc::types::ServerToClient::SessionStateChanged {
+                session_id: session_id.to_string(),
+                new_state: SessionState::Terminating,
+            };
+            crate::ipc_server::broadcast_to_subscribers(&self.broker, state_msg).await;
+
+            let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
+                sessions: list_snapshot,
+            };
+            crate::ipc_server::broadcast_to_subscribers(&self.broker, list_msg).await;
+            // sessions lock released here
+        }
+
+        // Write `state:"Terminating"` AND `kill_deadline_unix_ms` in a SINGLE atomic
+        // tempfile::persist call (ADV-S034-HIGH-003: both fields must be visible atomically
+        // to any reader scanning the sidecar — no window where state=Terminating but
+        // kill_deadline_unix_ms is absent, or vice-versa).
+        match std::fs::read_to_string(sidecar_path) {
+            Err(e) => {
+                // LOW-002: sidecar read failure on transition — log and continue without
+                // updating the sidecar (non-fatal; state is correct in memory).
+                tracing::warn!(
+                    session_id = %session_id,
+                    error = %e,
+                    "transition_to_terminating: could not read sidecar for update (LOW-002)"
+                );
+            }
+            Ok(existing_json) => {
+                match serde_json::from_str::<serde_json::Value>(&existing_json) {
+                    Err(e) => {
+                        tracing::warn!(
+                            session_id = %session_id,
+                            error = %e,
+                            "transition_to_terminating: could not parse sidecar JSON for update"
+                        );
+                    }
+                    Ok(mut val) => {
+                        // Both fields updated in the same JSON object — one atomic rename.
+                        val["state"] = serde_json::json!("Terminating");
+                        val["kill_deadline_unix_ms"] = serde_json::json!(kill_deadline_ms);
+                        match serde_json::to_vec_pretty(&val) {
+                            Err(e) => {
+                                tracing::warn!(
+                                    session_id = %session_id,
+                                    error = %e,
+                                    "transition_to_terminating: failed to serialize sidecar update"
+                                );
+                            }
+                            Ok(updated_bytes) => {
+                                Self::atomic_sidecar_write(
+                                    sidecar_path,
+                                    &updated_bytes,
+                                    session_id,
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Transition a session to `Terminated`, update the sidecar atomically, and emit
+    /// `SessionStateChanged{Terminated}` BEFORE `SessionListUpdate` under the mutex.
+    ///
+    /// CR-002: idempotency guard — if the session is already `Terminated`, return
+    /// immediately without emitting duplicate `SessionStateChanged{Terminated}` or
+    /// `SessionListUpdate` broadcasts (BC-2.08.008 Invariant 4).
+    ///
+    /// // TODO: unify with transition_to_terminated_standalone (CR-004)
+    ///
+    /// (BC-2.08.003 PC-4, BC-2.08.008 Invariant 4)
+    async fn transition_to_terminated(&self, session_id: &str, sidecar_path: &PathBuf) {
+        {
+            use monocle_core::engine::{EnrichedSession, SessionStatus};
+            let mut guard = self.sessions.lock().await;
+
+            if let Some(entry) = guard.get_mut(session_id) {
+                // CR-002: idempotency guard — do not double-broadcast (BC-2.08.008 I4).
+                if entry.state == SessionState::Terminated {
+                    return;
+                }
+                entry.state = SessionState::Terminated;
+                entry.kill_deadline = None;
+            }
+
+            let list_snapshot: Vec<EnrichedSession> = guard
+                .values()
+                .map(|e| {
+                    let status = match e.state {
+                        SessionState::Launching | SessionState::Running => SessionStatus::Active,
+                        SessionState::Detached => SessionStatus::Idle,
+                        SessionState::Terminating | SessionState::Terminated => {
+                            SessionStatus::Stopped
+                        }
+                        _ => SessionStatus::Stopped,
+                    };
+                    EnrichedSession::new(
+                        e.session_id.clone(),
+                        e.harness_id.clone(),
+                        None,
+                        None,
+                        status,
+                        None,
+                        e.project_root
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .map(|s| s.to_string()),
+                        Some(e.started_at),
+                        0,
+                        None,
+                    )
+                })
+                .collect();
+
+            // SessionStateChanged{Terminated} BEFORE SessionListUpdate (BC-2.08.008 I4).
+            let state_msg = monocle_ipc::types::ServerToClient::SessionStateChanged {
+                session_id: session_id.to_string(),
+                new_state: SessionState::Terminated,
+            };
+            crate::ipc_server::broadcast_to_subscribers(&self.broker, state_msg).await;
+
+            let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
+                sessions: list_snapshot,
+            };
+            crate::ipc_server::broadcast_to_subscribers(&self.broker, list_msg).await;
+            // lock released here
+        }
+
+        // Update sidecar state → Terminated outside the lock.
+        if let Ok(existing_json) = std::fs::read_to_string(sidecar_path) {
+            if let Ok(mut val) = serde_json::from_str::<serde_json::Value>(&existing_json) {
+                val["state"] = serde_json::json!("Terminated");
+                val["kill_deadline_unix_ms"] = serde_json::Value::Null;
+                if let Ok(updated_bytes) = serde_json::to_vec_pretty(&val) {
+                    Self::atomic_sidecar_write(sidecar_path, &updated_bytes, session_id);
+                }
+            }
+        }
+    }
+
+    /// Atomically write bytes to a sidecar path via `tempfile::persist`.
+    ///
+    /// Logs a warning on failure. Never panics.
+    fn atomic_sidecar_write(sidecar_path: &PathBuf, bytes: &[u8], session_id: &str) {
+        let dir = match sidecar_path.parent() {
+            Some(d) => d,
+            None => {
+                tracing::warn!(
+                    session_id = %session_id,
+                    "atomic_sidecar_write: sidecar path has no parent"
+                );
+                return;
+            }
+        };
+        let result: Result<(), std::io::Error> = (|| {
+            let mut tmp = tempfile::Builder::new()
+                .prefix(".session-sidecar-kill-")
+                .suffix(".json.tmp")
+                .tempfile_in(dir)?;
+            use std::io::Write as _;
+            tmp.write_all(bytes)?;
+            tmp.persist(sidecar_path).map_err(|e| e.error)?;
+            Ok(())
+        })();
+        if let Err(e) = result {
+            tracing::warn!(
+                session_id = %session_id,
+                error = %e,
+                "atomic_sidecar_write: failed to persist sidecar"
+            );
+        }
+    }
+
+    /// Spawn the 12-second watchdog task for a kill operation (BC-2.08.003 postcondition 5).
+    ///
+    /// After 12 seconds (10s SIGTERM window + 2s buffer) without a
+    /// `HostToDaemon::StateChanged { new_state: Terminated }` confirmation:
+    /// - Checks whether session is already Terminated (confirm_monitor may have fired first).
+    /// - If still Terminating: forces `SessionEntry.state → Terminated`.
+    /// - Sends SIGKILL to the session-host PID.
+    /// - Updates `session-state.json` atomically via `tempfile::persist`.
+    /// - Publishes `SessionStateChanged{Terminated}` BEFORE `SessionListUpdate` (BC-2.08.008 I4).
+    ///
+    /// Uses `tokio::time::sleep_until` which is paused/advanced in tests via `tokio::time::pause()`.
+    ///
+    /// **MED-005 (SS-session-manager.md §kill_deadline_unix_ms ownership boundary):**
+    /// The `deadline` parameter is synchronized with `SessionEntry.kill_deadline`: both are derived
+    /// from the SAME `kill_duration` offset computed once in `kill_session()` before any `.await`.
+    /// This ensures the watchdog does NOT independently call `Instant::now() + 12s` — its deadline
+    /// originates from the same instant as the `kill_deadline_unix_ms` written to the sidecar.
+    ///
+    /// `deadline` is a `tokio::time::Instant` (not `std::time::Instant`) because `sleep_until`
+    /// requires a tokio Instant, and the pre-computed Instant from `kill_session()` is required for
+    /// paused-clock tests (`start_paused = true`): `tokio::time::advance(12s)` fires the watchdog
+    /// even when the watchdog task hasn't been polled yet at `advance()` time.
+    /// Spawn a 12-second kill-watchdog task for the given session.
+    ///
+    /// # Duplicate-spawn guard (SEC-004)
+    ///
+    /// Only one watchdog per session is expected: the `KillPath::Idempotent` guard in
+    /// `kill_session()` prevents `spawn_kill_watchdog` from being called twice for the
+    /// same session on the normal path. Additionally, the F-S034-HIGH-001 lock-hold
+    /// (re-check state == Terminating under the sessions mutex before issuing SIGKILL)
+    /// eliminates the risk of duplicate SIGKILL delivery even if two watchdogs somehow
+    /// raced — only the first one to acquire the lock while the session is still
+    /// Terminating will fire SIGKILL; the second finds Terminated and returns without
+    /// action.
+    fn spawn_kill_watchdog(
+        session_id: String,
+        session_host_pid: u32,
+        sessions: Arc<tokio::sync::Mutex<std::collections::HashMap<String, SessionEntry>>>,
+        broker: Arc<monocle_ipc::server::SubscriberList>,
+        sidecar_path: std::path::PathBuf,
+        _socket_path: std::path::PathBuf,
+        // Pre-computed deadline from kill_session() — synchronized with SessionEntry.kill_deadline
+        // (MED-005: single originating instant, not independent now+12s inside the watchdog task).
+        // Using sleep_until with this pre-computed Instant ensures paused-clock tests work correctly.
+        deadline: tokio::time::Instant,
+    ) -> tokio::task::JoinHandle<()> {
+        tokio::spawn(async move {
+            // Wait until the pre-computed 12s deadline (10s SIGTERM window + 2s buffer per BC-2.08.003 PC-5).
+            // MED-005: `deadline` is synchronized with `SessionEntry.kill_deadline` — both computed
+            // from the same originating `kill_duration` in `kill_session()`, not independently.
+            tokio::time::sleep_until(deadline).await;
+
+            // F-S034-HIGH-001 fix (HIGH-002 obligation): re-check state == Terminating AND
+            // issue SIGKILL under the SAME lock hold. This eliminates the race window between
+            // the pre-SIGKILL state check and the kill syscall: kill_confirm_monitor cannot
+            // transition the session to Terminated between the check and the SIGKILL while the
+            // lock is held (nix_kill is synchronous — no .await — so holding the async mutex
+            // across it is safe and brief).
+            //
+            // If state is already Terminated at this check, return without SIGKILL. If still
+            // Terminating, issue SIGKILL under the lock, then drop the lock before the
+            // subsequent .await broadcasts (which require the lock to be released).
+            {
+                use nix::sys::signal::{kill as nix_kill, Signal};
+                use nix::unistd::Pid;
+
+                let guard = sessions.lock().await;
+
+                match guard.get(&session_id) {
+                    None => {
+                        // Session removed from registry — nothing to do.
+                        return;
+                    }
+                    Some(entry) if entry.state == SessionState::Terminated => {
+                        // Normal path: kill_confirm_monitor confirmed exit before watchdog fired.
+                        // Return WITHOUT SIGKILL — this is the fix for F-S034-HIGH-001.
+                        tracing::debug!(
+                            session_id = %session_id,
+                            "watchdog: session already Terminated under lock — no SIGKILL, no action needed (F-S034-HIGH-001)"
+                        );
+                        return;
+                    }
+                    Some(_) => {
+                        // Still Terminating — fire SIGKILL under the lock (sync, no .await).
+                        // This is the F-S034-HIGH-001 fix: the SIGKILL and the preceding
+                        // Terminating re-check are atomic with respect to kill_confirm_monitor.
+                        tracing::warn!(
+                            session_id = %session_id,
+                            pid = session_host_pid,
+                            "watchdog fired: session did not confirm exit within 12s — sending SIGKILL under lock (BC-2.08.003 PC-5b, F-S034-HIGH-001)"
+                        );
+
+                        let nix_pid = Pid::from_raw(session_host_pid as i32);
+                        match nix_kill(nix_pid, Signal::SIGKILL) {
+                            Ok(()) => {
+                                tracing::debug!(
+                                    session_id = %session_id,
+                                    pid = session_host_pid,
+                                    "watchdog: SIGKILL delivered (under lock)"
+                                );
+                            }
+                            Err(nix::errno::Errno::ESRCH) => {
+                                // Process already exited — treat as success (HIGH-002 ESRCH path).
+                                tracing::debug!(
+                                    session_id = %session_id,
+                                    pid = session_host_pid,
+                                    "watchdog: SIGKILL — process already gone (ESRCH), proceeding to Terminated (HIGH-002)"
+                                );
+                            }
+                            Err(e) => {
+                                tracing::warn!(
+                                    session_id = %session_id,
+                                    pid = session_host_pid,
+                                    error = %e,
+                                    "watchdog: SIGKILL failed (under lock)"
+                                );
+                            }
+                        }
+                        // Lock released here — drop(guard). The SIGKILL and re-check were atomic.
+                        // The subsequent block re-acquires the lock for state mutation + broadcasts.
+                    }
+                }
+                // guard dropped at end of this block
+            }
+
+            // Ruling J (F-S034-ADV-MED-001): also kill the harness child.
+            // portable_pty 0.9.0 (unix.rs:257) calls libc::setsid() in the harness child's
+            // pre_exec, placing the child in its OWN session and process group. A SIGKILL to
+            // the session-host's PID (above) does NOT reach the harness child — they are in
+            // completely separate process groups and sessions. We must kill the child explicitly.
+            //
+            // This sidecar read is OUTSIDE any mutex (best-effort I/O per Ruling J).
+            // By the time the 12s watchdog fires, the session-host is unresponsive and is NOT
+            // writing the sidecar concurrently — the read is race-free in practice.
+            {
+                use nix::sys::signal::{kill as nix_kill, Signal};
+                use nix::unistd::Pid;
+
+                // SEC-002 (CWE-190): bounds-checked cast — sidecar JSON is externally
+                // sourced so the u64 value could be out of range for u32 or i32.
+                // Reject any value that does not fit in i32 > 0 (valid PID range).
+                let child_pid: Option<u32> = std::fs::read_to_string(&sidecar_path)
+                    .ok()
+                    .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+                    .and_then(|v| v["child_pid"].as_u64())
+                    .and_then(|n| u32::try_from(n).ok())
+                    .and_then(|n| {
+                        let n_i32 = i32::try_from(n).ok()?;
+                        if n_i32 <= 0 {
+                            None
+                        } else {
+                            Some(n)
+                        }
+                    });
+
+                match child_pid {
+                    Some(cpid) => {
+                        // Safety: cpid was validated above to fit in i32 and > 0.
+                        let nix_child_pid = Pid::from_raw(cpid as i32);
+                        match nix_kill(nix_child_pid, Signal::SIGKILL) {
+                            Ok(()) => {
+                                tracing::warn!(
+                                    session_id = %session_id,
+                                    child_pid = cpid,
+                                    "watchdog: SIGKILL sent to harness child (BC-2.08.003 PC-5b, Ruling J)"
+                                );
+                            }
+                            Err(nix::errno::Errno::ESRCH) => {
+                                // Harness child already exited — benign (e.g., it exited naturally
+                                // before the watchdog fired). Not an error condition.
+                                tracing::debug!(
+                                    session_id = %session_id,
+                                    child_pid = cpid,
+                                    "watchdog: harness child already exited (ESRCH) — benign (Ruling J)"
+                                );
+                            }
+                            Err(e) => {
+                                tracing::warn!(
+                                    session_id = %session_id,
+                                    child_pid = cpid,
+                                    error = %e,
+                                    "watchdog: harness child SIGKILL failed (Ruling J)"
+                                );
+                            }
+                        }
+                    }
+                    None => {
+                        // child_pid absent from sidecar: session-host crashed before startup
+                        // step 8 (harness child was never spawned). Nothing to kill.
+                        tracing::warn!(
+                            session_id = %session_id,
+                            "watchdog: child_pid not in sidecar — harness child may be orphaned (Ruling J)"
+                        );
+                    }
+                }
+            }
+
+            // Force state → Terminated and emit broadcasts.
+            // Re-acquire the lock for state mutation. kill_confirm_monitor may have raced in
+            // between the SIGKILL (above) and this re-acquisition — re-check Terminated here
+            // to avoid a duplicate broadcast (belt-and-suspenders defense-in-depth guard).
+            {
+                use monocle_core::engine::{EnrichedSession, SessionStatus};
+                let mut guard = sessions.lock().await;
+
+                // Defense-in-depth re-check (belt-and-suspenders after SIGKILL).
+                if let Some(entry) = guard.get(&session_id) {
+                    if entry.state == SessionState::Terminated {
+                        tracing::debug!(
+                            session_id = %session_id,
+                            "watchdog: session reached Terminated between SIGKILL and broadcast lock — skipping duplicate broadcast (defense-in-depth)"
+                        );
+                        return;
+                    }
+                }
+
+                if let Some(entry) = guard.get_mut(&session_id) {
+                    entry.state = SessionState::Terminated;
+                    entry.kill_deadline = None;
+                }
+
+                let list_snapshot: Vec<EnrichedSession> = guard
+                    .values()
+                    .map(|e| {
+                        let status = match e.state {
+                            SessionState::Launching | SessionState::Running => {
+                                SessionStatus::Active
+                            }
+                            SessionState::Detached => SessionStatus::Idle,
+                            SessionState::Terminating | SessionState::Terminated => {
+                                SessionStatus::Stopped
+                            }
+                            _ => SessionStatus::Stopped,
+                        };
+                        EnrichedSession::new(
+                            e.session_id.clone(),
+                            e.harness_id.clone(),
+                            None,
+                            None,
+                            status,
+                            None,
+                            e.project_root
+                                .file_name()
+                                .and_then(|n| n.to_str())
+                                .map(|s| s.to_string()),
+                            Some(e.started_at),
+                            0,
+                            None,
+                        )
+                    })
+                    .collect();
+
+                // BC-2.08.008 I4: SessionStateChanged{Terminated} BEFORE SessionListUpdate.
+                let state_msg = monocle_ipc::types::ServerToClient::SessionStateChanged {
+                    session_id: session_id.clone(),
+                    new_state: SessionState::Terminated,
+                };
+                crate::ipc_server::broadcast_to_subscribers(&broker, state_msg).await;
+
+                let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
+                    sessions: list_snapshot,
+                };
+                crate::ipc_server::broadcast_to_subscribers(&broker, list_msg).await;
+                // lock released here
+            }
+
+            // Update sidecar → Terminated (outside lock).
+            if let Ok(existing_json) = std::fs::read_to_string(&sidecar_path) {
+                if let Ok(mut val) = serde_json::from_str::<serde_json::Value>(&existing_json) {
+                    val["state"] = serde_json::json!("Terminated");
+                    val["kill_deadline_unix_ms"] = serde_json::Value::Null;
+                    if let Ok(updated_bytes) = serde_json::to_vec_pretty(&val) {
+                        SessionManager::atomic_sidecar_write(
+                            &sidecar_path,
+                            &updated_bytes,
+                            &session_id,
+                        );
+                    }
+                }
+            }
+        })
     }
 
     /// Detach the daemon from a running session-host.
@@ -1267,54 +2543,79 @@ async fn post_spawn_monitor(
     // Split into read/write halves AFTER the UID check.
     let (mut reader, writer) = stream.into_split();
 
-    // HIGH-001: store the write half in host_conn in the session entry.
-    // Wrapped in Arc<Mutex> so the entry holds ownership while the read loop runs.
-    // S-034 will use this writer to send DaemonToHost::Kill messages.
+    // ADV-S034-BLOCKER-001: store BOTH halves in host_conn so the kill path can
+    // take the reader directly (via `SessionHostConnection.reader.take()`) rather
+    // than making a fresh UDS connect (SS-session-manager.md §ADV-S034-BLOCKER-001).
+    // The read half is wrapped in `Option` so `kill_session` can `take()` it and
+    // move ownership into `kill_confirm_monitor` without touching the writer.
+    //
+    // Ruling I (v2.10.0 §Ruling I item 4): post_spawn_monitor reads pre-Running messages
+    // with the local `reader` binding, then upon observing StateChanged{Running} it stores
+    // Some(reader) into host_conn.reader and BREAKS — it does NOT continue reading
+    // post-Running. For a kill on a Running or Launching ExistingConn session,
+    // kill_session() takes host_conn.reader via `.take()` and spawns kill_confirm_monitor
+    // to read StateChanged{Terminated} on that connection. host_conn.reader is None only
+    // before the Running transition (kill before Running → watchdog-only fallback path).
+    // On the Detached kill path, kill_session() opens a fresh UDS connection instead.
     {
         let mut guard = sessions.lock().await;
         if let Some(entry) = guard.get_mut(&session_id) {
             entry.host_conn = Some(SessionHostConnection {
                 writer: Arc::new(Mutex::new(writer)),
+                reader: None, // populated at the Running transition (ExistingConn) or via fresh-connect (Detached kill path)
                 proxy_task: None,
             });
         }
     }
 
-    // Read messages from the session-host until StateChanged{Running} or timeout.
-    let read_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(30);
-
+    // Read messages from the session-host until StateChanged{Running} is received.
+    //
+    // Ruling I (SS-session-manager.md §Ruling I): the post_spawn_monitor exits
+    // IMMEDIATELY after observing StateChanged{Running}, handing the reader to
+    // host_conn.reader so kill_session() can take it for kill_confirm_monitor.
+    // The monitor no longer reads post-Running; the kill watchdog handles the 12s
+    // deadline, and kill_confirm_monitor handles the StateChanged{Terminated} confirmation.
+    //
+    // 30s deadline applies throughout (session-host must send Running within 30s).
+    let pre_running_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(30);
     loop {
-        if tokio::time::Instant::now() >= read_deadline {
-            tracing::warn!(session_id = %session_id, "post-spawn monitor: message read loop timed out");
+        // Apply the 30s deadline; the monitor exits once Running is observed (Ruling I).
+        if tokio::time::Instant::now() >= pre_running_deadline {
+            tracing::warn!(session_id = %session_id, "post-spawn monitor: pre-Running read deadline exceeded — session-host did not send Running within 30s");
             break;
         }
 
         // Read 4-byte LE u32 length prefix.
+        // All reads are pre-Running (monitor exits at Running per Ruling I).
         let mut len_buf = [0u8; 4];
-        match tokio::time::timeout(
-            std::time::Duration::from_secs(30),
+        let remaining = pre_running_deadline.saturating_duration_since(tokio::time::Instant::now());
+        let read_result = tokio::time::timeout(
+            remaining.max(std::time::Duration::from_millis(100)),
             reader.read_exact(&mut len_buf),
         )
         .await
-        {
-            Ok(Ok(_)) => {}
-            Ok(Err(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+        .map_err(|_e| std::io::Error::new(std::io::ErrorKind::TimedOut, "pre-Running read timeout"))
+        .and_then(|r| r);
+
+        match read_result {
+            Ok(_) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
                 // EOF: session-host closed connection cleanly.
                 tracing::debug!(session_id = %session_id, "post-spawn monitor: session-host closed control connection (EOF)");
                 break;
             }
-            Ok(Err(e)) => {
-                tracing::debug!(session_id = %session_id, error = %e, "post-spawn monitor: read error on control connection");
+            Err(e) if e.kind() == std::io::ErrorKind::TimedOut => {
+                tracing::debug!(session_id = %session_id, "post-spawn monitor: pre-Running read timeout");
                 break;
             }
-            Err(_) => {
-                tracing::debug!(session_id = %session_id, "post-spawn monitor: read timeout");
+            Err(e) => {
+                tracing::debug!(session_id = %session_id, error = %e, "post-spawn monitor: read error on control connection");
                 break;
             }
         }
 
         let msg_len = u32::from_le_bytes(len_buf) as usize;
-        if msg_len == 0 || msg_len > 1024 * 1024 {
+        if msg_len == 0 || msg_len > MAX_FRAME_LEN {
             tracing::warn!(session_id = %session_id, len = msg_len, "post-spawn monitor: invalid message length");
             break;
         }
@@ -1581,11 +2882,242 @@ async fn post_spawn_monitor(
                     }
 
                     tracing::info!(session_id = %session_id, "post-spawn monitor: session transitioned to Running");
+                    // Ruling I (SS-session-manager.md §Ruling I): the post_spawn_monitor
+                    // MUST exit immediately after Running and hand the reader to host_conn.reader
+                    // so kill_session() can take it for kill_confirm_monitor. Continuing to read
+                    // post-Running is FORBIDDEN — post_spawn_monitor reuse for kill confirmation
+                    // is unreliable (monitor may exit on EOF before Kill is received).
+                    {
+                        let mut guard = sessions.lock().await;
+                        if let Some(entry) = guard.get_mut(&session_id) {
+                            if let Some(conn) = entry.host_conn.as_mut() {
+                                conn.reader = Some(reader);
+                            }
+                        }
+                    }
+                    // Reader is now owned by host_conn.reader; kill_session() will take() it
+                    // and pass it to kill_confirm_monitor on the ExistingConn SUCCESS path.
                     break;
                 }
             }
+            monocle_ipc::types::HostToDaemon::Goodbye => {
+                tracing::debug!(session_id = %session_id, "post-spawn monitor: session-host sent Goodbye — closing control connection");
+                break;
+            }
             _ => {
                 tracing::debug!(session_id = %session_id, "post-spawn monitor: unhandled HostToDaemon message");
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Kill confirm monitor (S-034)
+// ---------------------------------------------------------------------------
+
+/// Background task that waits for `HostToDaemon::StateChanged { Terminated }` on
+/// the **existing** control connection after `DaemonToHost::Kill` has been sent.
+///
+/// ADV-S034-BLOCKER-001 ruling (SS-session-manager.md §ADV-S034-BLOCKER-001): the caller MUST pass
+/// the read half of the connection on which Kill was sent — this function NEVER makes a
+/// fresh UDS connect. The session-host sends `StateChanged{Terminated}` (and `Goodbye`)
+/// on the same connection where it received Kill, so reading from a fresh connection
+/// would miss the confirmation.
+///
+/// When confirmed: transitions session to `Terminated`, updates sidecar, emits
+/// `SessionStateChanged{Terminated}` BEFORE `SessionListUpdate` (BC-2.08.008 I4).
+///
+/// If the connection closes (EOF) before confirmation arrives, the 12-second watchdog
+/// task handles the forced `Terminated` transition.
+async fn kill_confirm_monitor(
+    session_id: String,
+    mut reader: tokio::net::unix::OwnedReadHalf,
+    sessions: Arc<tokio::sync::Mutex<HashMap<String, SessionEntry>>>,
+    broker: Arc<monocle_ipc::server::SubscriberList>,
+    sidecar_path: PathBuf,
+) {
+    use tokio::io::AsyncReadExt;
+
+    // Read loop — reads length-prefixed JSON messages from the existing connection.
+    // The watchdog owns the hard 12s deadline; we use a generous read timeout to avoid
+    // spinning without ever polling the read half.
+    loop {
+        let mut len_buf = [0u8; 4];
+        match tokio::time::timeout(
+            std::time::Duration::from_secs(13),
+            reader.read_exact(&mut len_buf),
+        )
+        .await
+        {
+            Ok(Ok(_)) => {}
+            Ok(Err(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                // Session-host closed the connection cleanly before sending Terminated.
+                // Watchdog will fire after 12s.
+                tracing::debug!(
+                    session_id = %session_id,
+                    "kill_confirm_monitor: connection closed (EOF) before Terminated confirmation — watchdog will handle"
+                );
+                return;
+            }
+            Ok(Err(e)) => {
+                tracing::debug!(
+                    session_id = %session_id,
+                    error = %e,
+                    "kill_confirm_monitor: read error — watchdog will handle"
+                );
+                return;
+            }
+            Err(_) => {
+                tracing::debug!(
+                    session_id = %session_id,
+                    "kill_confirm_monitor: read timeout — watchdog will handle"
+                );
+                return;
+            }
+        }
+
+        let msg_len = u32::from_le_bytes(len_buf) as usize;
+        if msg_len == 0 || msg_len > MAX_FRAME_LEN {
+            tracing::warn!(
+                session_id = %session_id,
+                len = msg_len,
+                "kill_confirm_monitor: invalid message length — aborting"
+            );
+            return;
+        }
+
+        let mut body = vec![0u8; msg_len];
+        if let Err(e) = reader.read_exact(&mut body).await {
+            tracing::debug!(
+                session_id = %session_id,
+                error = %e,
+                "kill_confirm_monitor: failed to read message body — watchdog will handle"
+            );
+            return;
+        }
+
+        let msg: monocle_ipc::types::HostToDaemon = match serde_json::from_slice(&body) {
+            Ok(m) => m,
+            Err(e) => {
+                tracing::warn!(
+                    session_id = %session_id,
+                    error = %e,
+                    "kill_confirm_monitor: failed to deserialize HostToDaemon"
+                );
+                continue;
+            }
+        };
+
+        match msg {
+            monocle_ipc::types::HostToDaemon::StateChanged {
+                new_state: monocle_ipc::types::SessionState::Terminated,
+                ..
+            } => {
+                tracing::debug!(
+                    session_id = %session_id,
+                    "kill_confirm_monitor: received StateChanged{{Terminated}} on existing connection"
+                );
+                transition_to_terminated_standalone(&session_id, &sessions, &broker, &sidecar_path)
+                    .await;
+                return;
+            }
+            monocle_ipc::types::HostToDaemon::Goodbye => {
+                // Session-host closed cleanly without Terminated — watchdog handles it.
+                tracing::debug!(
+                    session_id = %session_id,
+                    "kill_confirm_monitor: received Goodbye without prior Terminated — watchdog will handle"
+                );
+                return;
+            }
+            _ => {
+                tracing::debug!(
+                    session_id = %session_id,
+                    "kill_confirm_monitor: non-Terminated message, continuing read loop"
+                );
+            }
+        }
+    }
+}
+
+/// Standalone helper to transition a session to Terminated and emit broadcasts.
+///
+/// Used by `kill_confirm_monitor` and (in future) by S-037 GC paths.
+///
+/// CR-002: idempotency guard present — already-Terminated sessions return without
+/// double-broadcasting (BC-2.08.008 Invariant 4).
+///
+/// // TODO: unify with SessionManager::transition_to_terminated (CR-004)
+async fn transition_to_terminated_standalone(
+    session_id: &str,
+    sessions: &Arc<tokio::sync::Mutex<HashMap<String, SessionEntry>>>,
+    broker: &Arc<monocle_ipc::server::SubscriberList>,
+    sidecar_path: &PathBuf,
+) {
+    {
+        use monocle_core::engine::{EnrichedSession, SessionStatus};
+        let mut guard = sessions.lock().await;
+
+        // Only transition if currently Terminating (watchdog may have already fired).
+        if let Some(entry) = guard.get_mut(session_id) {
+            if entry.state != SessionState::Terminated {
+                entry.state = SessionState::Terminated;
+                entry.kill_deadline = None;
+            } else {
+                // Already Terminated — no duplicate broadcast.
+                return;
+            }
+        } else {
+            return;
+        }
+
+        let list_snapshot: Vec<EnrichedSession> = guard
+            .values()
+            .map(|e| {
+                let status = match e.state {
+                    SessionState::Launching | SessionState::Running => SessionStatus::Active,
+                    SessionState::Detached => SessionStatus::Idle,
+                    SessionState::Terminating | SessionState::Terminated => SessionStatus::Stopped,
+                    _ => SessionStatus::Stopped,
+                };
+                EnrichedSession::new(
+                    e.session_id.clone(),
+                    e.harness_id.clone(),
+                    None,
+                    None,
+                    status,
+                    None,
+                    e.project_root
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .map(|s| s.to_string()),
+                    Some(e.started_at),
+                    0,
+                    None,
+                )
+            })
+            .collect();
+
+        // BC-2.08.008 I4: SessionStateChanged{Terminated} BEFORE SessionListUpdate.
+        let state_msg = monocle_ipc::types::ServerToClient::SessionStateChanged {
+            session_id: session_id.to_string(),
+            new_state: SessionState::Terminated,
+        };
+        crate::ipc_server::broadcast_to_subscribers(broker, state_msg).await;
+
+        let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
+            sessions: list_snapshot,
+        };
+        crate::ipc_server::broadcast_to_subscribers(broker, list_msg).await;
+        // lock released here
+    }
+
+    // Update sidecar → Terminated.
+    if let Ok(existing_json) = std::fs::read_to_string(sidecar_path) {
+        if let Ok(mut val) = serde_json::from_str::<serde_json::Value>(&existing_json) {
+            val["state"] = serde_json::json!("Terminated");
+            val["kill_deadline_unix_ms"] = serde_json::Value::Null;
+            if let Ok(updated_bytes) = serde_json::to_vec_pretty(&val) {
+                SessionManager::atomic_sidecar_write(sidecar_path, &updated_bytes, session_id);
             }
         }
     }
@@ -4704,6 +6236,660 @@ mod tests {
             sessions.is_empty(),
             "SEC-003: no session entries must exist after all rejections; got {:?}",
             sessions.iter().map(|s| &s.session_id).collect::<Vec<_>>()
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // IMP-001: KillPath::FreshConnect (Detached) arm — genuine coverage
+    //
+    // Adversarial pass-6 finding F-S034-ADV-IMP-001.
+    //
+    // Prior to this test the FreshConnect arm (SessionState::Detached, host_conn:None)
+    // was never exercised: every existing kill_session test started from Running state.
+    // These tests drive the real arm via `insert_detached_session_for_test()` (the
+    // test-seam committed at 4abdb65) and a live mock UDS listener.
+    //
+    // References: AC-010, EC-164, AC-009, BC-2.08.008 Invariant 4, BC-2.08.003 Invariant 5.
+    // -----------------------------------------------------------------------
+
+    /// IMP-001 (happy path): kill_session on a Detached session makes a FRESH UDS connect,
+    /// applies SO_PEERCRED (via FakePeerCredVerifier{allow:true}), sends DaemonToHost::Kill
+    /// on the fresh connection, transitions Detached → Terminating → Terminated when the
+    /// mock host confirms with HostToDaemon::StateChanged{Terminated}.
+    ///
+    /// Assertions:
+    /// - The FRESH listener (not a reused connection) receives the Kill message (AC-010/EC-164).
+    /// - State is Terminating immediately after kill_session() returns (AC-010).
+    /// - SessionStateChanged{Terminating} precedes SessionListUpdate in the subscriber FIFO
+    ///   (BC-2.08.008 Invariant 4).
+    /// - Session reaches Terminated within 2s after the mock sends StateChanged{Terminated}
+    ///   (kill_confirm_monitor path, not the 12s watchdog).
+    /// - Would fail if the FreshConnect arm were replaced by ExistingConn: the listener
+    ///   would never accept, causing the test to time out on the Kill delivery assertion.
+    ///
+    /// F-S034-ADV-IMP-001 / AC-010 / EC-164 / BC-2.08.003 Invariant 5 / BC-2.08.008 Invariant 4.
+    #[tokio::test]
+    async fn test_BC_2_08_003_IMP001_fresh_connect_detached_kill_path_happy() {
+        use monocle_ipc::types::DaemonToHost;
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::UnixListener;
+
+        let tmp = tempfile::tempdir().expect("IMP-001: tempdir");
+
+        // Build manager with FakePeerCredVerifier{allow:true} so SO_PEERCRED passes.
+        let (tx, mut rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry = monocle_ipc::server::ClientEntry::new(tx);
+        let subs: SubscriberList = Arc::new(Mutex::new(vec![entry]));
+        let broker = make_broker(&subs);
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 99_901,
+        });
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+        let mut manager = SessionManager::new(tmp.path().to_path_buf(), spawner, broker, engine);
+        // Inject the test verifier: allows any connection (simulates same-UID).
+        // AC-010: SO_PEERCRED must be applied — we verify it IS called (not skipped) by using
+        // FakePeerCredVerifier{allow:true}; the mismatch variant below proves the reject path.
+        manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifier { allow: true }));
+
+        // Set up a mock session-host UDS listener BEFORE inserting the Detached entry.
+        // The socket path must be a short /tmp path (macOS SUN_LEN = 104 bytes).
+        let socket_path = std::path::PathBuf::from(format!(
+            "/tmp/monocle-imp001-fresh-{}.sock",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .subsec_nanos()
+        ));
+        let _ = std::fs::remove_file(&socket_path);
+        let listener = UnixListener::bind(&socket_path).expect("IMP-001: bind test listener");
+
+        // Track how many times the listener was accepted — must be exactly 1 (the fresh connect).
+        // Use a channel: the mock-host task sends the Kill message it received back to us.
+        let (kill_received_tx, mut kill_received_rx) = mpsc::channel::<DaemonToHost>(1);
+
+        // Spawn the mock session-host: accept one connection, verify it receives Kill,
+        // then reply with HostToDaemon::StateChanged{Terminated}.
+        let socket_path_clone = socket_path.clone();
+        tokio::spawn(async move {
+            // Accept the single fresh connection from kill_session.
+            let (mut stream, _addr) = listener
+                .accept()
+                .await
+                .expect("IMP-001: mock host must accept fresh connection");
+
+            // Read the Kill message.
+            let mut len_buf = [0u8; 4];
+            stream
+                .read_exact(&mut len_buf)
+                .await
+                .expect("IMP-001: read Kill length prefix");
+            let len = u32::from_le_bytes(len_buf) as usize;
+            let mut body = vec![0u8; len];
+            stream
+                .read_exact(&mut body)
+                .await
+                .expect("IMP-001: read Kill body");
+            let msg: DaemonToHost =
+                serde_json::from_slice(&body).expect("IMP-001: deserialize DaemonToHost");
+
+            // Tell the test that Kill was received on this (fresh) connection.
+            let _ = kill_received_tx.send(msg).await;
+
+            // Reply with HostToDaemon::StateChanged{Terminated} on the SAME connection
+            // (SS-session-manager.md §single-accept-then-process: same-connection
+            // confirmation — kill_confirm_monitor reads from this reader).
+            let terminated_msg = monocle_ipc::types::HostToDaemon::StateChanged {
+                new_state: monocle_ipc::types::SessionState::Terminated,
+                degraded_env: None,
+            };
+            let terminated_bytes =
+                serde_json::to_vec(&terminated_msg).expect("IMP-001: serialize Terminated");
+            let term_len = (terminated_bytes.len() as u32).to_le_bytes();
+            stream
+                .write_all(&term_len)
+                .await
+                .expect("IMP-001: write Terminated length");
+            stream
+                .write_all(&terminated_bytes)
+                .await
+                .expect("IMP-001: write Terminated body");
+            stream.flush().await.expect("IMP-001: flush Terminated");
+            drop(socket_path_clone); // keep alive until after flush
+        });
+
+        // Insert a synthetic Detached session pointing at our mock listener.
+        // (state=Detached, host_conn=None — the genuine FreshConnect arm condition.)
+        let session_id = "00000000-1111-4000-a000-000000000001";
+        manager
+            .insert_detached_session_for_test(session_id, 99_901, socket_path.clone())
+            .await;
+
+        // Verify state is Detached before kill.
+        {
+            let sessions = manager.session_list().await;
+            let snap = sessions
+                .iter()
+                .find(|s| s.session_id == session_id)
+                .expect("IMP-001: Detached entry must exist in registry");
+            assert_eq!(
+                snap.state,
+                monocle_ipc::types::SessionState::Detached,
+                "IMP-001: session must be Detached before kill_session"
+            );
+        }
+
+        // Call kill_session — this is the FreshConnect arm.
+        manager
+            .kill_session(session_id)
+            .await
+            .expect("IMP-001: kill_session must return Ok(())");
+
+        // AC-010 / EC-164: the FRESH connection must have received DaemonToHost::Kill.
+        // If the FreshConnect arm were skipped (e.g., ExistingConn used instead), the
+        // mock listener would never accept, and kill_received_rx.recv() would time out here.
+        let received_kill =
+            tokio::time::timeout(std::time::Duration::from_secs(3), kill_received_rx.recv())
+                .await
+                .expect(
+                    "IMP-001: FRESH connection must receive DaemonToHost::Kill within 3s \
+             (would time out if ExistingConn arm were used — proving FreshConnect ran)",
+                )
+                .expect("IMP-001: kill_received channel must not be closed");
+
+        assert!(
+            matches!(received_kill, DaemonToHost::Kill),
+            "IMP-001 (AC-010/EC-164): FRESH connection must receive DaemonToHost::Kill, got {:?}",
+            received_kill
+        );
+
+        // AC-010: state must be Terminating immediately after kill_session() returns.
+        {
+            let sessions = manager.session_list().await;
+            let snap = sessions
+                .iter()
+                .find(|s| s.session_id == session_id)
+                .expect("IMP-001: entry must still be in registry after kill_session");
+            assert_eq!(
+                snap.state,
+                monocle_ipc::types::SessionState::Terminating,
+                "IMP-001 (AC-010): state must be Terminating immediately after kill_session() returns; \
+                 got {:?}",
+                snap.state
+            );
+        }
+
+        // BC-2.08.008 Invariant 4: drain broker messages and verify
+        // SessionStateChanged{Terminating} precedes SessionListUpdate.
+        let mut messages: Vec<ServerToClient> = Vec::new();
+        let drain_deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(300);
+        loop {
+            match tokio::time::timeout_at(drain_deadline, rx.recv()).await {
+                Ok(Some(msg)) => messages.push(msg),
+                _ => break,
+            }
+        }
+
+        let terminating_sc_idx = messages.iter().position(|m| {
+            matches!(
+                m,
+                ServerToClient::SessionStateChanged {
+                    session_id: sid,
+                    new_state: monocle_ipc::types::SessionState::Terminating,
+                } if sid == session_id
+            )
+        });
+        let list_update_idx = messages.iter().rposition(|m| {
+            // Find the LAST SessionListUpdate (may be from spawn or kill path).
+            // We care that the Terminating change precedes its corresponding ListUpdate.
+            // Use the first ListUpdate AFTER the Terminating StateChanged.
+            matches!(m, ServerToClient::SessionListUpdate { .. })
+        });
+
+        assert!(
+            terminating_sc_idx.is_some(),
+            "IMP-001 (BC-2.08.008 Inv4): SessionStateChanged{{Terminating}} must be broadcast \
+             after kill_session (Detached → Terminating transition)"
+        );
+        assert!(
+            list_update_idx.is_some(),
+            "IMP-001 (BC-2.08.008 Inv4): SessionListUpdate must be broadcast after kill_session"
+        );
+        assert!(
+            terminating_sc_idx.unwrap() < list_update_idx.unwrap(),
+            "IMP-001 (BC-2.08.008 Invariant 4): SessionStateChanged{{Terminating}} (idx={}) \
+             must precede SessionListUpdate (idx={}) in subscriber FIFO",
+            terminating_sc_idx.unwrap(),
+            list_update_idx.unwrap()
+        );
+
+        // kill_confirm_monitor path: session must reach Terminated within 2s after
+        // the mock host sent StateChanged{Terminated} — no need for the 12s watchdog.
+        let term_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(2);
+        let mut reached_terminated = false;
+        loop {
+            if tokio::time::Instant::now() >= term_deadline {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            let sessions = manager.session_list().await;
+            if let Some(snap) = sessions.iter().find(|s| s.session_id == session_id) {
+                if snap.state == monocle_ipc::types::SessionState::Terminated {
+                    reached_terminated = true;
+                    break;
+                }
+            }
+        }
+        assert!(
+            reached_terminated,
+            "IMP-001: session must reach Terminated via kill_confirm_monitor within 2s \
+             after mock host sends StateChanged{{Terminated}} (not waiting for 12s watchdog)"
+        );
+
+        let _ = std::fs::remove_file(&socket_path);
+    }
+
+    /// IMP-001 (UID mismatch / Detached variant): when SO_PEERCRED fails on the fresh connect
+    /// (FakePeerCredVerifier{allow:false}), kill_session must transition the session immediately
+    /// to Terminated and return Ok(()) — no Kill is delivered.
+    ///
+    /// BC-2.08.003 Invariant 5 (connector side): peer-uid mismatch on fresh connect → Terminated.
+    ///
+    /// F-S034-ADV-IMP-001 / AC-009 / BC-2.08.003 Invariant 5.
+    #[tokio::test]
+    async fn test_BC_2_08_003_IMP001_fresh_connect_detached_uid_mismatch_terminates() {
+        use tokio::net::UnixListener;
+
+        let tmp = tempfile::tempdir().expect("IMP-001 uid-mismatch: tempdir");
+
+        // Inject FakePeerCredVerifier{allow:false} — simulates UID mismatch (EC-163).
+        let (tx, _rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry = monocle_ipc::server::ClientEntry::new(tx);
+        let subs: SubscriberList = Arc::new(Mutex::new(vec![entry]));
+        let broker = make_broker(&subs);
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 99_902,
+        });
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+        let mut manager = SessionManager::new(tmp.path().to_path_buf(), spawner, broker, engine);
+        // FakePeerCredVerifier{allow:false}: every verify() call returns Err(PermissionDenied).
+        // This simulates the SO_PEERCRED UID mismatch path (EC-163).
+        manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifier { allow: false }));
+
+        let socket_path = std::path::PathBuf::from(format!(
+            "/tmp/monocle-imp001-mismatch-{}.sock",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .subsec_nanos()
+        ));
+        let _ = std::fs::remove_file(&socket_path);
+        // Bind so the daemon can connect (SO_PEERCRED is evaluated after connect, not bind).
+        let _listener = UnixListener::bind(&socket_path).expect("IMP-001 uid-mismatch: bind");
+
+        // Spawn acceptor to prevent the daemon's connect() from blocking.
+        let socket_path_clone2 = socket_path.clone();
+        tokio::spawn(async move {
+            // Just accept the connection; the daemon will close it after SO_PEERCRED fails.
+            let listener2 = UnixListener::bind(&socket_path_clone2);
+            drop(listener2); // already bound above; just accept one conn in background
+        });
+
+        let session_id = "00000000-1111-4000-a000-000000000002";
+        manager
+            .insert_detached_session_for_test(session_id, 99_902, socket_path.clone())
+            .await;
+
+        // kill_session must return Ok(()) even when SO_PEERCRED rejects (AC-009).
+        let result = manager.kill_session(session_id).await;
+        assert!(
+            result.is_ok(),
+            "IMP-001 (AC-009): kill_session must return Ok(()) on UID mismatch; got {:?}",
+            result
+        );
+
+        // State must be Terminated immediately (no Kill was sent — PEERCRED rejected).
+        let sessions = manager.session_list().await;
+        let snap = sessions
+            .iter()
+            .find(|s| s.session_id == session_id)
+            .expect("IMP-001 uid-mismatch: entry must still be in registry");
+        assert_eq!(
+            snap.state,
+            monocle_ipc::types::SessionState::Terminated,
+            "IMP-001 (BC-2.08.003 Inv5): UID mismatch on fresh connect must transition \
+             session immediately to Terminated (no Kill delivered); got {:?}",
+            snap.state
+        );
+
+        let _ = std::fs::remove_file(&socket_path);
+    }
+
+    // -----------------------------------------------------------------------
+    // Ruling J (F-S034-ADV-MED-001): watchdog must kill BOTH session-host PID
+    // and harness child PID.
+    //
+    // portable_pty 0.9.0 calls libc::setsid() in the harness child's pre_exec
+    // (unix.rs:257), placing the harness child in its OWN session and process
+    // group. A single-PID SIGKILL to the session-host does NOT reach the harness
+    // child. The 12-second watchdog MUST also kill the harness child via the PID
+    // stored in the session-state.json sidecar.
+    //
+    // Test: spawn a REAL child process (sleep 100), record its PID in the sidecar,
+    // then fire the watchdog and assert the child is dead.
+    //
+    // Anchors: BC-2.08.003 PC-5b, Ruling J, ADV-S034-MED-001.
+    // -----------------------------------------------------------------------
+
+    /// Ruling J: watchdog fires → SIGKILL sent to harness child PID from sidecar.
+    ///
+    /// Verification: a real child process (`sleep 100`) is spawned and its PID written
+    /// to the sidecar as `child_pid`. The fake session-host PID (9999998) will return
+    /// ESRCH (process not found) — this is the benign path. After the watchdog fires,
+    /// the real child process must be dead.
+    ///
+    /// BC-2.08.003 PC-5b / Ruling J / ADV-S034-MED-001.
+    #[tokio::test(start_paused = true)]
+    #[cfg_attr(not(unix), ignore)]
+    async fn test_ruling_j_watchdog_kills_harness_child_pid_from_sidecar() {
+        // Use /tmp for short socket paths (macOS SUN_LEN = 104 chars).
+        let tmp = tempfile::Builder::new()
+            .tempdir_in("/tmp")
+            .expect("tempdir in /tmp");
+
+        // Spawn a real long-lived child process that will NOT exit on its own.
+        // This represents the orphaned harness child that the watchdog must kill.
+        let mut real_child = std::process::Command::new("sleep")
+            .arg("100")
+            .spawn()
+            .expect("Ruling J: could not spawn real child process (sleep 100)");
+        let real_child_pid = real_child.id();
+
+        // Build the session-state.json sidecar with child_pid populated.
+        // This simulates the state after the session-host has started the harness child.
+        let session_id = "00000000-rj01-4000-a000-000000000001".to_string();
+        let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+        let sidecar_json = serde_json::json!({
+            "schema_version": 3,
+            "session_id": session_id,
+            "state": "Terminating",
+            "session_host_pid": 9_999_998u32,
+            "harness_id": "claude-code",
+            "profile_id": "default",
+            "project_root": "/tmp/test",
+            "cwd": "/tmp/test",
+            "started_at": "2026-06-17T00:00:00Z",
+            "pty_rows": 24,
+            "pty_cols": 80,
+            "kill_deadline_unix_ms": null,
+            "display_name": null,
+            "child_pid": real_child_pid,
+        });
+        {
+            use std::io::Write;
+            let mut f = std::fs::File::create(&sidecar_path)
+                .expect("Ruling J: could not create sidecar file");
+            f.write_all(&serde_json::to_vec_pretty(&sidecar_json).unwrap())
+                .expect("Ruling J: could not write sidecar");
+        }
+
+        // Build a minimal manager to get a broker and sessions arc.
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 9_999_998,
+        });
+        let (tx, _rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry = ClientEntry::new(tx);
+        let subs: SubscriberList = Arc::new(Mutex::new(vec![entry]));
+        let broker = make_broker(&subs);
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+        let manager =
+            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+
+        // Insert a Terminating session entry with the fake session-host PID.
+        // The fake PID (9_999_998) will return ESRCH — that is the expected benign path.
+        let std_deadline = std::time::Instant::now() + std::time::Duration::from_secs(12);
+        manager
+            .insert_terminating_session_for_test(
+                &session_id,
+                9_999_998u32,
+                tmp.path().join(format!("session-{}.sock", session_id)),
+                std_deadline,
+            )
+            .await;
+
+        // Compute the watchdog deadline as a tokio::time::Instant.
+        // Under start_paused = true, Instant::now() is frozen; advance(12s) will fire it.
+        let watchdog_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(12);
+
+        // Spawn the watchdog.
+        let watchdog_handle = SessionManager::spawn_kill_watchdog(
+            session_id.clone(),
+            9_999_998u32, // fake session-host PID — ESRCH (benign)
+            Arc::clone(&manager.sessions),
+            Arc::clone(&manager.broker),
+            sidecar_path.clone(),
+            tmp.path().join(format!("session-{}.sock", session_id)),
+            watchdog_deadline,
+        );
+
+        // Verify the child is alive before the watchdog fires.
+        assert!(
+            nix::sys::signal::kill(nix::unistd::Pid::from_raw(real_child_pid as i32), None).is_ok(),
+            "Ruling J: real child process must be alive before watchdog fires"
+        );
+
+        // Advance virtual time to fire the watchdog (>= 12s).
+        tokio::time::advance(std::time::Duration::from_secs(13)).await;
+
+        // Wait for the watchdog task to complete (it should finish very quickly
+        // since nix_kill is synchronous and there is no real I/O).
+        let _ = tokio::time::timeout(std::time::Duration::from_secs(5), watchdog_handle)
+            .await
+            .expect("Ruling J: watchdog task must complete within 5s of time advance");
+
+        // Assert: the real child process is now dead (ESRCH = already gone).
+        // SIGKILL was sent by the watchdog; the process should be dead or zombied.
+        // wait() to reap any zombie so the PID is fully released.
+        // On some systems the child may be a zombie until we wait(); use nix kill(None)
+        // probe — a zombie responds to kill(NONE) with Ok (still visible) until reaped.
+        // So we reap first, then assert no longer alive.
+        let reaped = real_child.try_wait();
+        let child_dead = match reaped {
+            Ok(Some(_)) => true, // already exited and reaped
+            Ok(None) => {
+                // Still zombie or truly running. Give it 500ms then reap.
+                std::thread::sleep(std::time::Duration::from_millis(500));
+                matches!(real_child.try_wait(), Ok(Some(_)))
+            }
+            Err(_) => true, // already waited or gone
+        };
+
+        assert!(
+            child_dead,
+            "Ruling J (ADV-S034-MED-001): watchdog must have sent SIGKILL to harness child \
+             pid={} — child must be dead after watchdog fires (BC-2.08.003 PC-5b)",
+            real_child_pid
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Ruling J child_pid==None path (ADV-S034-MED-001 / BC-2.08.003 PC-5b):
+    // when the sidecar has no child_pid field (session-host crashed before
+    // startup step 8), the watchdog must:
+    //   (a) not panic,
+    //   (b) still force the session to Terminated,
+    //   (c) still publish SessionStateChanged{Terminated} BEFORE SessionListUpdate
+    //       (BC-2.08.008 Invariant 4),
+    //   (d) NOT attempt to SIGKILL any child PID.
+    //
+    // Anchors: BC-2.08.003 PC-5b, Ruling J, ADV-S034-MED-001.
+    // -----------------------------------------------------------------------
+
+    /// Ruling J / child_pid absent from sidecar: watchdog fires → no panic;
+    /// session reaches Terminated; SessionStateChanged{Terminated} emitted BEFORE
+    /// SessionListUpdate (BC-2.08.008 Inv4); no child SIGKILL attempted.
+    ///
+    /// Regression trigger: if the watchdog panicked or hung when `child_pid` was null,
+    /// the test would fail (watchdog_handle.await would never return or would propagate
+    /// a panic).  If the broadcast order was wrong, the positional assertion would fail.
+    ///
+    /// BC-2.08.003 PC-5b / Ruling J / ADV-S034-MED-001.
+    #[tokio::test(start_paused = true)]
+    #[cfg_attr(not(unix), ignore)]
+    async fn test_BC_2_08_003_ruling_j_watchdog_child_pid_none_warn_path() {
+        // Use /tmp for short socket paths (macOS SUN_LEN = 104 chars).
+        let tmp = tempfile::Builder::new()
+            .tempdir_in("/tmp")
+            .expect("child_pid_none: tempdir in /tmp");
+
+        // Build a sidecar with child_pid: null — simulates session-host crash before
+        // startup step 8 (harness child was never spawned).
+        let session_id = "00000000-rj02-4000-a000-000000000001".to_string();
+        let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+        let sidecar_json = serde_json::json!({
+            "schema_version": 3,
+            "session_id": session_id,
+            "state": "Terminating",
+            "session_host_pid": 9_999_997u32,
+            "harness_id": "claude-code",
+            "profile_id": "default",
+            "project_root": "/tmp/test",
+            "cwd": "/tmp/test",
+            "started_at": "2026-06-17T00:00:00Z",
+            "pty_rows": 24,
+            "pty_cols": 80,
+            "kill_deadline_unix_ms": null,
+            "display_name": null,
+            // child_pid is explicitly null — the "crashed before step 8" case.
+            "child_pid": null,
+        });
+        {
+            use std::io::Write;
+            let mut f = std::fs::File::create(&sidecar_path)
+                .expect("child_pid_none: could not create sidecar file");
+            f.write_all(&serde_json::to_vec_pretty(&sidecar_json).unwrap())
+                .expect("child_pid_none: could not write sidecar");
+        }
+
+        // Build a manager with a subscriber so we can capture broadcast messages.
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 9_999_997,
+        });
+        let (tx, mut rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry = ClientEntry::new(tx);
+        let subs: SubscriberList = Arc::new(Mutex::new(vec![entry]));
+        let broker = make_broker(&subs);
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+        let manager =
+            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+
+        // Insert a Terminating session entry with the fake session-host PID.
+        // The fake PID (9_999_997) will return ESRCH — benign.
+        let std_deadline = std::time::Instant::now() + std::time::Duration::from_secs(12);
+        manager
+            .insert_terminating_session_for_test(
+                &session_id,
+                9_999_997u32,
+                tmp.path().join(format!("session-{}.sock", session_id)),
+                std_deadline,
+            )
+            .await;
+
+        // Compute the watchdog deadline as a tokio::time::Instant.
+        // Under start_paused = true, Instant::now() is frozen; advance(12s) will fire it.
+        let watchdog_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(12);
+
+        // Spawn the watchdog (drives real production code — no mocking of the code under test).
+        let watchdog_handle = SessionManager::spawn_kill_watchdog(
+            session_id.clone(),
+            9_999_997u32, // fake session-host PID — ESRCH (benign)
+            Arc::clone(&manager.sessions),
+            Arc::clone(&manager.broker),
+            sidecar_path.clone(),
+            tmp.path().join(format!("session-{}.sock", session_id)),
+            watchdog_deadline,
+        );
+
+        // Advance virtual time to fire the watchdog (>= 12s).
+        tokio::time::advance(std::time::Duration::from_secs(13)).await;
+
+        // Assert: watchdog task completes without panic — no hang.
+        let watchdog_result =
+            tokio::time::timeout(std::time::Duration::from_secs(5), watchdog_handle).await;
+        assert!(
+            watchdog_result.is_ok(),
+            "Ruling J child_pid==None (ADV-S034-MED-001): watchdog task must complete \
+             within 5s — no panic, no hang when child_pid absent from sidecar \
+             (BC-2.08.003 PC-5b)"
+        );
+        // JoinError would indicate a panic in the watchdog task.
+        assert!(
+            watchdog_result.unwrap().is_ok(),
+            "Ruling J child_pid==None: watchdog task must not panic when child_pid is null \
+             (BC-2.08.003 PC-5b WARN-only path)"
+        );
+
+        // Assert: session reached Terminated.
+        let sessions = manager.sessions.lock().await;
+        let entry_state = sessions
+            .get(&session_id)
+            .map(|e| e.state.clone())
+            .expect("child_pid_none: session entry must still be in registry after watchdog");
+        assert_eq!(
+            entry_state,
+            SessionState::Terminated,
+            "Ruling J child_pid==None (BC-2.08.003 PC-5b): session must reach Terminated \
+             even when child_pid is absent from sidecar; got {:?}",
+            entry_state
+        );
+        drop(sessions);
+
+        // Assert: broadcast ordering — SessionStateChanged{Terminated} BEFORE SessionListUpdate.
+        // Drain the channel with a short timeout; collect all messages.
+        let mut broadcasts: Vec<ServerToClient> = Vec::new();
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(200);
+            while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                broadcasts.push(msg);
+            }
+        }
+
+        let state_changed_idx = broadcasts.iter().position(|m| {
+            matches!(
+                m,
+                ServerToClient::SessionStateChanged {
+                    session_id: sid,
+                    new_state: monocle_ipc::types::SessionState::Terminated,
+                } if sid == &session_id
+            )
+        });
+        let list_update_idx = broadcasts
+            .iter()
+            .position(|m| matches!(m, ServerToClient::SessionListUpdate { .. }));
+
+        assert!(
+            state_changed_idx.is_some(),
+            "Ruling J child_pid==None (BC-2.08.008 Inv4): SessionStateChanged{{Terminated}} \
+             must be broadcast; got: {:?}",
+            broadcasts
+        );
+        assert!(
+            list_update_idx.is_some(),
+            "Ruling J child_pid==None (BC-2.08.008 Inv4): SessionListUpdate must be broadcast; \
+             got: {:?}",
+            broadcasts
+        );
+        assert!(
+            state_changed_idx.unwrap() < list_update_idx.unwrap(),
+            "Ruling J child_pid==None (BC-2.08.008 Inv4): SessionStateChanged{{Terminated}} \
+             (idx={}) must precede SessionListUpdate (idx={}) — broadcast order violated; \
+             msgs: {:?}",
+            state_changed_idx.unwrap(),
+            list_update_idx.unwrap(),
+            broadcasts
         );
     }
 }

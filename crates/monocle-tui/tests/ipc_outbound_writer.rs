@@ -132,6 +132,11 @@ async fn test_f_s026_adv5_crit001_decision_message_traverses_wire_to_daemon() {
                 "unexpected SpawnSession in ipc_outbound_writer test (F-S026-ADV5-CRIT-001 first)"
             );
         }
+
+        // S-034 stub: KillSession is not expected in this test context.
+        ClientToServer::KillSession { .. } => {
+            panic!("unexpected KillSession in this test context");
+        }
     }
 
     reader_handle.abort();
@@ -207,6 +212,10 @@ async fn test_f_s026_adv5_crit001_reconnect_rewires_ipc_tx_to_new_channel() {
         // S-033 stub: SpawnSession is not expected in this PermissionDecision test context.
         ClientToServer::SpawnSession { .. } => {
             panic!("unexpected SpawnSession in ipc_outbound_writer test (reconnect path)");
+        }
+        // S-034 stub: KillSession is not expected in this test context.
+        ClientToServer::KillSession { .. } => {
+            panic!("unexpected KillSession in this test context");
         }
     }
 

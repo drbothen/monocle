@@ -55,6 +55,10 @@ anyhow = { workspace = true }
 async-trait = { workspace = true }
 
 [dev-dependencies]
+# tokio with test-util feature: required for tokio::time::pause()/advance() in
+# watchdog timing tests (BC-2.08.003 PC-5, S-034). test-util is NOT in the
+# workspace "full" feature set — must be explicitly added for dev-builds.
+tokio = { workspace = true, features = ["test-util"] }
 # Self-dependency with test-utils feature: activates the test-utils feature for
 # integration tests in tests/ (which run as separate crates and do NOT see cfg(test)
 # from the library). This enables `with_peer_cred_verifier` (CWE-602 gate, SEC-001)

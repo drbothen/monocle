@@ -174,6 +174,10 @@ async fn spawn_client_task(
                     Ok(ClientToServer::SpawnSession { opts }) => {
                         handle_spawn_session(opts, &tx, &state).await;
                     }
+                    // S-034: KillSession handler (BC-2.08.003 §IPC handler arm)
+                    Ok(ClientToServer::KillSession { session_id }) => {
+                        handle_kill_session(session_id, &tx, &state).await;
+                    }
                     Err(IpcError::Disconnected) => {
                         tracing::debug!("TUI client disconnected (EOF)");
                         break;
@@ -409,6 +413,56 @@ pub async fn handle_spawn_session_pub(
     state: &DaemonState,
 ) {
     handle_spawn_session(opts, client_tx, state).await
+}
+
+// ---------------------------------------------------------------------------
+// S-034: KillSession IPC handler
+// ---------------------------------------------------------------------------
+
+/// Handle a `ClientToServer::KillSession` message from a TUI client.
+///
+/// IPC handler steps (BC-2.08.003 §IPC handler arm — S-034):
+/// 1. Retrieve session_manager from daemon state.
+/// 2. Call `session_manager.kill_session(session_id)`.
+/// 3. On error: send `ServerToClient::Error { code, message }` to requesting client.
+/// 4. On success: `kill_session()` has already emitted `SessionStateChanged{Terminating}` +
+///    `SessionListUpdate` to all clients under the sessions mutex (BC-2.08.008 invariant 4).
+async fn handle_kill_session(
+    session_id: String,
+    client_tx: &tokio::sync::mpsc::Sender<ServerToClient>,
+    state: &DaemonState,
+) {
+    use crate::session_manager::{session_error_to_code, IpcOp};
+
+    let sm = match state.session_manager.as_ref() {
+        Some(sm) => sm,
+        None => {
+            tracing::error!("handle_kill_session: session_manager is None (daemon wiring bug)");
+            let _ = client_tx
+                .send(ServerToClient::Error {
+                    code: "invalid_request".to_string(),
+                    message: "session_manager not initialized".to_string(),
+                })
+                .await;
+            return;
+        }
+    };
+
+    let kill_result = sm.lock().await.kill_session(&session_id).await;
+    match kill_result {
+        Ok(()) => {
+            // kill_session() emitted SessionStateChanged{Terminating} + SessionListUpdate to all
+            // clients (BC-2.08.008 Invariant 4). No additional response to requesting client.
+        }
+        Err(e) => {
+            let _ = client_tx
+                .send(ServerToClient::Error {
+                    code: session_error_to_code(IpcOp::Kill, &e).to_string(),
+                    message: e.to_string(),
+                })
+                .await;
+        }
+    }
 }
 
 /// Route a `PermissionDecision` from a TUI client to the pending-decision registry.

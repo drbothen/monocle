@@ -151,6 +151,10 @@ fn test_BC_2_06_011_accept_once_y_sends_allow_ipc_modal_stays_in_stack() {
         ClientToServer::SpawnSession { .. } => {
             panic!("unexpected SpawnSession in overlay_decision test (BC-2.06.011 PC-1 y)");
         }
+        // S-034 stub: KillSession is not expected in this test context.
+        ClientToServer::KillSession { .. } => {
+            panic!("unexpected KillSession in this test context");
+        }
     }
 }
 
@@ -196,6 +200,10 @@ fn test_BC_2_06_011_accept_once_enter_sends_allow_ipc_modal_stays() {
         // S-033 stub: SpawnSession is not expected in this PermissionDecision test context.
         ClientToServer::SpawnSession { .. } => {
             panic!("unexpected SpawnSession in overlay_decision test (BC-2.06.011 PC-1 Enter)");
+        }
+        // S-034 stub: KillSession is not expected in this test context.
+        ClientToServer::KillSession { .. } => {
+            panic!("unexpected KillSession in this test context");
         }
     }
 }
@@ -274,6 +282,11 @@ fn test_BC_2_06_012_accept_always_uppercase_a_sends_accept_always_modal_stays() 
                 "unexpected SpawnSession in overlay_decision test (BC-2.06.012 PC-1 AcceptAlways)"
             );
         }
+
+        // S-034 stub: KillSession is not expected in this test context.
+        ClientToServer::KillSession { .. } => {
+            panic!("unexpected KillSession in this test context");
+        }
     }
 }
 
@@ -346,6 +359,10 @@ fn test_BC_2_06_013_reject_n_sends_deny_modal_stays_in_stack() {
         ClientToServer::SpawnSession { .. } => {
             panic!("unexpected SpawnSession in overlay_decision test (BC-2.06.013 PC-1 n)");
         }
+        // S-034 stub: KillSession is not expected in this test context.
+        ClientToServer::KillSession { .. } => {
+            panic!("unexpected KillSession in this test context");
+        }
     }
 }
 
@@ -396,6 +413,10 @@ fn test_BC_2_06_013_reject_r_sends_deny_modal_stays_in_stack() {
         // S-033 stub: SpawnSession is not expected in this PermissionDecision test context.
         ClientToServer::SpawnSession { .. } => {
             panic!("unexpected SpawnSession in overlay_decision test (BC-2.06.013 PC-1 r)");
+        }
+        // S-034 stub: KillSession is not expected in this test context.
+        ClientToServer::KillSession { .. } => {
+            panic!("unexpected KillSession in this test context");
         }
     }
 }
@@ -453,6 +474,10 @@ fn test_BC_2_06_011_accept_once_uses_front_prompt_id_in_multi_stack() {
         // S-033 stub: SpawnSession is not expected in this PermissionDecision test context.
         ClientToServer::SpawnSession { .. } => {
             panic!("unexpected SpawnSession in overlay_decision test (BC-2.06.011 Invariant 1 multi-stack)");
+        }
+        // S-034 stub: KillSession is not expected in this test context.
+        ClientToServer::KillSession { .. } => {
+            panic!("unexpected KillSession in this test context");
         }
     }
 }

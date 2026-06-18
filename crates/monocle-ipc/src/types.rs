@@ -585,6 +585,20 @@ pub enum ClientToServer {
         /// Spawn parameters from the SessionCreation wizard.
         opts: SpawnOptions,
     },
+
+    // -----------------------------------------------------------------------
+    // S-034 variant (BC-2.08.003 — kill a session)
+    // -----------------------------------------------------------------------
+    /// Request the daemon to kill a session.
+    ///
+    /// The daemon delivers `DaemonToHost::Kill` to the session-host within 500ms,
+    /// transitions the session to `SessionState::Terminating` immediately, and
+    /// returns before waiting for the session-host to confirm exit (fire-and-confirm).
+    /// (BC-2.08.003 §kill_session)
+    KillSession {
+        /// The UUID string of the session to kill.
+        session_id: String,
+    },
 }
 
 /// The kind of permission decision the user made.

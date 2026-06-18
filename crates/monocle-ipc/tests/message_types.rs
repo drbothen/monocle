@@ -266,6 +266,11 @@ fn test_BC_2_05_008_client_to_server_permission_decision_allow_serde_roundtrip()
         ClientToServer::SpawnSession { .. } => {
             panic!("unexpected SpawnSession in message_types serde roundtrip test (Allow)");
         }
+
+        // S-034 stub: KillSession is not expected in this test context.
+        ClientToServer::KillSession { .. } => {
+            panic!("unexpected KillSession in this test context");
+        }
     }
 }
 
@@ -292,6 +297,11 @@ fn test_BC_2_05_008_client_to_server_permission_decision_deny_serde_roundtrip() 
         // S-033 stub: SpawnSession is not expected in a PermissionDecision roundtrip test.
         ClientToServer::SpawnSession { .. } => {
             panic!("unexpected SpawnSession in message_types serde roundtrip test (Deny)");
+        }
+
+        // S-034 stub: KillSession is not expected in this test context.
+        ClientToServer::KillSession { .. } => {
+            panic!("unexpected KillSession in this test context");
         }
     }
 }
