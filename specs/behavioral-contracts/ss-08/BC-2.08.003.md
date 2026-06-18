@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.2"
+version: "1.5.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -87,8 +87,16 @@ and sends SIGKILL directly to the session-host PID. The sidecar is not immediate
    12 seconds of sending `DaemonToHost::Kill` (10s SIGTERM window + 2s buffer for the session-
    host itself to clean up), the daemon:
    a. Forces `SessionEntry.state` → `SessionState::Terminated`.
-   b. Sends SIGKILL directly to the session-host PID (`SpawnedHostHandle.pid`) to release PTY
-      resources, since the session-host may have stalled (harness child not responding to SIGKILL).
+   b. Sends SIGKILL to release PTY resources: (1) sends SIGKILL to the session-host PID
+      (`SpawnedHostHandle.pid` / `SessionEntry.session_host_pid`); (2) reads `child_pid` from
+      `session-state.json` and, if present, sends SIGKILL to the harness child PID. The harness
+      child MUST be killed explicitly because `portable_pty::spawn_command()` calls
+      `libc::setsid()` in its `pre_exec` (portable-pty 0.9.0 unix.rs:257), placing the harness
+      child in its own session and process group, separate from the session-host's group — a
+      single-PID kill to the session-host does NOT propagate to the harness child. ESRCH is
+      applied as a guard on both kills (process already exited = benign). If `child_pid` is
+      absent from the sidecar (session-host crashed before startup step 8 — harness child was
+      never spawned), log WARN only.
    c. Updates `session-state.json` atomically.
    d. Publishes `ServerToClient::SessionStateChanged { session_id, new_state: Terminated }`
       BEFORE `ServerToClient::SessionListUpdate` (per BC-2.08.008 Invariant 4).
@@ -161,7 +169,7 @@ and sends SIGKILL directly to the session-host PID. The sidecar is not immediate
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC defines the kill operation, a core session lifecycle action named explicitly in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager `kill_session()`); monocle-session-host (SIGTERM delivery) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.9.0 §SessionManager §Public API (kill_session signature); §Kill-path host_conn rules (post-spawn monitor; PID fallback for Launching race window); §Per-session UDS protocol (DaemonToHost::Kill, HostToDaemon::StateChanged, Goodbye); §Per-session UDS security item 1 (SO_PEERCRED universal — no coverage holes); SS-daemon-wiring-v2-delta.md v1.11.4 §3b (SessionStateChanged emission rule: Terminating then SessionListUpdate) |
+| Architecture Source | SS-session-manager.md v2.10.0 §SessionManager §Public API (kill_session signature); §Kill-path host_conn rules (post-spawn monitor; PID fallback for Launching race window); §Per-session UDS protocol (DaemonToHost::Kill, HostToDaemon::StateChanged, Goodbye); §Per-session UDS security item 1 (SO_PEERCRED universal — no coverage holes); §Ruling J (watchdog dual-PID SIGKILL semantics — session-host PID + harness child PID); SS-daemon-wiring-v2-delta.md v1.11.4 §3b (SessionStateChanged emission rule: Terminating then SessionListUpdate) |
 | Test Name | test_BC_2_08_003_kill_session_sigterm_within_500ms |
 
 ## Related BCs
@@ -261,6 +269,20 @@ SE-16d monotonicity: v1.4.0 timestamp 2026-06-14 > v1.3.1 timestamp 2026-06-13. 
   SIGTERM → SIGKILL escalation (10s) is specified in Invariant 4 per production-grade default
   (omitting escalation would leave zombie harness children in the wild).
 - SE-16d PASS: 2026-06-03T23:30:00Z (new artifact).
+
+## §Trace v1.5.0
+
+**ADV-S034-MED-001 / SS-session-manager v2.10.0 Ruling J: PC-5b harness-child group-kill semantics** (2026-06-17):
+- PC-5b rewritten per architect Ruling J in SS-session-manager v2.10.0: watchdog must SIGKILL
+  both the session-host PID (`SpawnedHostHandle.pid` / `SessionEntry.session_host_pid`) AND the
+  harness child PID read from `session-state.json`. The two-PID requirement is necessary because
+  `portable_pty::spawn_command()` calls `libc::setsid()` in its `pre_exec` (portable-pty 0.9.0
+  unix.rs:257), placing the harness child in its own session and process group separate from the
+  session-host's group — a single-PID kill to the session-host does NOT propagate. ESRCH guard
+  on both kills. WARN-only when `child_pid` absent (session-host crashed before startup step 8).
+- Architecture Source updated: SS-session-manager.md v2.9.0 → v2.10.0 (adds §Ruling J).
+- Minor bump: v1.4.2 → v1.5.0 (normative: new kill sub-target for watchdog SIGKILL path).
+- SE-16d monotonicity: v1.5.0 timestamp 2026-06-17 > v1.4.2 timestamp 2026-06-16. PASS.
 
 ## §Trace v1.4.2
 
