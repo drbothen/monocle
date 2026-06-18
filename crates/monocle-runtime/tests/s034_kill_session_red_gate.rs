@@ -12,12 +12,12 @@
 //! | test_BC_2_08_003_kill_session_idempotent_on_terminated | BC-2.08.003 Invariant 2 | kill_session() is todo!() |
 //! | test_BC_2_08_003_kill_session_idempotent_on_terminating | BC-2.08.003 Invariant 2 | kill_session() is todo!() |
 //! | test_BC_2_08_003_12s_watchdog | BC-2.08.003 PC-5 | spawn_kill_watchdog() is todo!() |
-//! | test_BC_2_08_003_kill_detached_so_peercred | BC-2.08.003 Invariant 5, EC-164 | kill_session() is todo!() |
+//! | test_BC_2_08_003_existing_conn_broken_write_falls_back_to_fresh_connect | BC-2.08.003 ExistingConn fallback, Invariant 5 (OBS-1) | kill_session() is todo!() |
 //! | test_BC_2_08_003_kill_session_not_found | BC-2.08.003 EC-166, AC-011 | kill_session() is todo!() |
 //! | test_BC_2_08_008_state_changed_ordering_on_kill | BC-2.08.008 Invariant 4, PC-3 | kill_session() is todo!() |
 //! | test_kill_during_launching_before_socket_bind | BC-2.08.003 Invariant 3, AC-008 | kill_session() is todo!() |
 //! | test_kill_during_launching_after_socket_bind | BC-2.08.003 PC-1 (Running/Launching path) | kill_session() is todo!() |
-//! | test_BC_2_08_003_kill_detached_so_peercred_uid_mismatch_terminates | BC-2.08.003 Invariant 5 | kill_session() is todo!() |
+//! | test_BC_2_08_003_existing_conn_broken_write_fallback_connect_fails_terminated | BC-2.08.003 EC-162/163 (OBS-1) | kill_session() is todo!() |
 //! | test_BC_2_08_003_kill_session_not_found_wire_code | BC-2.08.003 EC-166, session_error_to_code | kill_session() is todo!() |
 //!
 //! # Anti-false-green contract
@@ -156,17 +156,6 @@ struct AllowAllVerifier;
 impl PeerCredVerifier for AllowAllVerifier {
     fn verify(&self, _stream: &tokio::net::UnixStream) -> Result<(), SessionError> {
         Ok(())
-    }
-}
-
-/// PeerCredVerifier that always returns Err — simulate UID mismatch.
-struct RejectAllVerifier;
-impl PeerCredVerifier for RejectAllVerifier {
-    fn verify(&self, _stream: &tokio::net::UnixStream) -> Result<(), SessionError> {
-        Err(SessionError::Io(std::io::Error::new(
-            std::io::ErrorKind::PermissionDenied,
-            "S-034 test: simulated SO_PEERCRED UID mismatch",
-        )))
     }
 }
 
@@ -747,96 +736,99 @@ async fn test_BC_2_08_003_12s_watchdog() {
 }
 
 // ---------------------------------------------------------------------------
-// Test 5: test_BC_2_08_003_kill_detached_so_peercred
+// Test 5: test_BC_2_08_003_existing_conn_broken_write_falls_back_to_fresh_connect
 //
-// Verifies: BC-2.08.003 Invariant 5, EC-164 — kill on Detached session makes a
-// fresh UDS connect and applies SO_PEERCRED before sending Kill. When uid matches,
-// Kill is sent and state transitions Detached → Terminating.
+// OBS-1 (adversarial pass-9): The original test was MISLABELED as "Detached/EC-164
+// FreshConnect" and LATENTLY FLAKY.  What it actually exercises is the
+// KillPath::ExistingConn broken-write → FreshConnect FALLBACK path:
+//
+//   1. Session is inserted in Launching state with a pre-broken host_conn writer
+//      via insert_launching_session_with_broken_conn_for_test().  host_conn.is_some()
+//      → kill_session dispatches to KillPath::ExistingConn.
+//   2. The writer is connected to a UnixStream::pair() whose receiver was immediately
+//      dropped — the very next write to the writer returns BrokenPipe (EPIPE)
+//      deterministically, without any kernel-buffer race or platform timing dependency.
+//      (UnixStream::pair() + immediate drop of receiver is the canonical in-process
+//      broken-write technique; unlike SHUT_RDWR on a real socket, the kernel cannot
+//      buffer a small write across an already-dropped in-memory peer.)
+//   3. ExistingConn write fails → fallback to FreshConnect: kill_session opens a new
+//      UDS connect to socket_path, applies SO_PEERCRED (AllowAllVerifier → uid match),
+//      and sends DaemonToHost::Kill on the fresh connection.
+//   4. State transitions Launching → Terminating immediately after Kill is sent.
+//
+// Genuine KillPath::FreshConnect (Detached, host_conn:None) is already covered
+// by test_BC_2_08_003_IMP001_fresh_connect_detached_kill_path_happy (mod.rs ~5988).
 //
 // Fails because: kill_session() is todo!() — panics at call.
 // ---------------------------------------------------------------------------
 
-/// BC-2.08.003 Invariant 5, EC-164: `kill_session()` on a `Detached` session
-/// makes a fresh UDS connect to `<runtime_dir>/session-<id>.sock`, applies
-/// SO_PEERCRED BEFORE sending any message, and if uid matches sends
-/// `DaemonToHost::Kill`. State: `Detached → Terminating`.
+/// BC-2.08.003 ExistingConn broken-write fallback: when the existing control
+/// connection write fails (broken pipe), `kill_session()` MUST fall back to a fresh
+/// UDS connect, apply SO_PEERCRED before sending any message (Invariant 5), send
+/// `DaemonToHost::Kill` on the fresh connection, and transition the session to
+/// `Terminating`.
+///
+/// Uses `insert_launching_session_with_broken_conn_for_test()` to inject a pre-broken
+/// writer (receiver half of `UnixStream::pair()` immediately dropped) — this is
+/// deterministically EPIPE on the next write, no kernel-buffering race.
+///
+/// OBS-1 (adversarial pass-9): renamed from `test_BC_2_08_003_kill_detached_so_peercred`
+/// (mislabeled) + deterministic broken-write via test-seam helper.
 ///
 /// FAILS NOW: `kill_session()` is `todo!()` → panics.
 #[tokio::test]
-async fn test_BC_2_08_003_kill_detached_so_peercred() {
-    // BC-2.08.003 EC-164 canonical path: fresh connect + SO_PEERCRED + Kill.
+async fn test_BC_2_08_003_existing_conn_broken_write_falls_back_to_fresh_connect() {
+    // OBS-1 fix: ExistingConn broken-write → FreshConnect fallback path.
+    // The session is Launching + host_conn:Some (broken writer).
+    // kill_session dispatches to KillPath::ExistingConn; the write fails immediately
+    // (EPIPE); then falls back to FreshConnect on the same socket path.
+    use tokio::io::AsyncReadExt;
 
     let tmp = isolated_runtime_dir();
     let session_id = "034e0000-0001-4000-a000-000000000001".to_string();
 
-    // For the Detached/fresh-connect SO_PEERCRED test, we need kill_session() to use
-    // the fresh-connect path. This occurs when host_conn is None at kill time.
-    //
-    // Strategy: use a spawner that points to a socket path that NEVER gets the
-    // monitor connected (no UDS socket bound for the monitor), so host_conn=None.
-    // Then bind a socket at the expected path just before calling kill_session(),
-    // so kill_session() can make a fresh connect.
-    //
-    // The post-spawn monitor will fail to connect (socket doesn't exist yet) and
-    // exit after 30s timeout (virtual, since this test does not pause time). For
-    // test speed: we bind a "dummy" socket for the monitor to accept one connection
-    // and send EOF, then drop it and rebind for kill.
-
-    // Bind the socket that both the post-spawn monitor AND kill_session() will connect to.
-    // We keep the same listener alive throughout the test — no rebind needed.
-    // The monitor connects and receives EOF (we drop the accepted stream), leaving
-    // host_conn=None. Then kill_session() (Detached path) connects to the same listener.
+    // Bind the UDS socket for kill_session()'s fallback fresh connect.
+    // (No post_spawn_monitor is involved — the session is inserted directly.)
     let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
     let listener = tokio::net::UnixListener::bind(&socket_path).expect("bind socket");
 
     let (mut manager, _subs, _rx) =
         make_manager_with_socket(tmp.path(), 55_005, socket_path.clone());
-    // Allow SO_PEERCRED: uid match → proceed.
+    // AllowAllVerifier: SO_PEERCRED passes on the fallback fresh connect.
+    // This verifies SO_PEERCRED IS applied (not skipped) even on the fallback path.
     manager.with_peer_cred_verifier(Arc::new(AllowAllVerifier));
 
-    let opts = make_spawn_opts(&session_id);
+    // Insert a Launching session with a pre-broken control connection writer.
+    // receiver of UnixStream::pair() is dropped immediately inside the helper →
+    // the next write to host_conn.writer returns EPIPE without any timing dependency.
     manager
-        .spawn_session(opts)
-        .await
-        .expect("spawn_session must succeed");
+        .insert_launching_session_with_broken_conn_for_test(
+            &session_id,
+            55_005,
+            socket_path.clone(),
+        )
+        .await;
 
-    // Accept the post-spawn monitor's connection then send EOF (drop immediately).
-    // This keeps host_conn=None: monitor exits without sending StateChanged{Running}.
-    let (stream_to_drop, _) =
-        tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
-            .await
-            .expect("timed out waiting for monitor connect")
-            .expect("accept failed");
-    // Drop the stream immediately — EOF causes the monitor read loop to exit.
-    drop(stream_to_drop);
-
-    // Give the monitor task time to process EOF and exit.
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-
-    // The listener is still bound. kill_session() (Detached/Launching-fallback path)
-    // will make a fresh UDS connect — the same listener accepts it.
-    let new_listener = listener;
-
-    // Spawn task to accept kill_session()'s fresh connect and confirm it sends Kill.
+    // Spawn a task to accept kill_session()'s fallback fresh connect and read the
+    // Kill message it sends.  The fallback runs concurrently with kill_session().
     let kill_connect_task = tokio::spawn({
         let sid = session_id.clone();
         async move {
-            // Accept kill_session()'s fresh connect (Detached path).
+            // Accept the fallback fresh connect from kill_session.
             let (mut conn, _) =
-                tokio::time::timeout(std::time::Duration::from_secs(5), new_listener.accept())
+                tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
                     .await
-                    .expect("timed out waiting for kill_session fresh connect")
+                    .expect("timed out waiting for fallback fresh connect")
                     .expect("accept failed");
 
-            // Read the first message — must be DaemonToHost::Kill (not any other message).
-            use tokio::io::AsyncReadExt;
+            // Read the Kill message sent over the fallback connection.
             let mut len_buf = [0u8; 4];
             tokio::time::timeout(
                 std::time::Duration::from_millis(500),
                 conn.read_exact(&mut len_buf),
             )
             .await
-            .expect("timed out waiting for Kill message from kill_session")
+            .expect("timed out waiting for Kill message on fallback connect")
             .expect("read Kill length failed");
 
             let msg_len = u32::from_le_bytes(len_buf) as usize;
@@ -849,49 +841,52 @@ async fn test_BC_2_08_003_kill_detached_so_peercred() {
 
             assert!(
                 matches!(msg, monocle_ipc::types::DaemonToHost::Kill),
-                "test_BC_2_08_003_kill_detached_so_peercred: \
-                 kill_session() on Detached session MUST send DaemonToHost::Kill on the fresh \
-                 connect (BC-2.08.003 EC-164, Invariant 5). Got: {:?}",
+                "test_BC_2_08_003_existing_conn_broken_write_falls_back_to_fresh_connect: \
+                 kill_session() MUST send DaemonToHost::Kill on the fallback fresh connect \
+                 (BC-2.08.003 ExistingConn→FreshConnect fallback, Invariant 5 SO_PEERCRED). \
+                 Got: {:?}",
                 msg
             );
 
-            // Confirm the session ID for the assertion.
             sid
         }
     });
 
-    // Call kill_session() — on Detached path, must make a fresh UDS connect + SO_PEERCRED.
+    // Call kill_session().
+    // Expected flow: ExistingConn write → BrokenPipe (pre-broken writer, deterministic)
+    // → fallback FreshConnect → AllowAllVerifier passes → Kill sent → Terminating.
     // FAILS: kill_session() is todo!() → panics here.
     let result = manager.kill_session(&session_id).await;
     assert!(
         result.is_ok(),
-        "test_BC_2_08_003_kill_detached_so_peercred: \
-         kill_session() on Detached session (host_conn=None) MUST return Ok(()) \
-         (BC-2.08.003 EC-164). Got: {:?}",
+        "test_BC_2_08_003_existing_conn_broken_write_falls_back_to_fresh_connect: \
+         kill_session() on Launching+broken-write session MUST return Ok(()) \
+         (BC-2.08.003 ExistingConn→FreshConnect fallback). Got: {:?}",
         result
     );
 
-    // Wait for the kill-connect task to complete and assert the Kill was received.
-    let kill_session_id =
-        tokio::time::timeout(std::time::Duration::from_secs(3), kill_connect_task)
-            .await
-            .expect("timed out waiting for kill_connect_task")
-            .expect("kill_connect_task panicked");
+    // Wait for the fallback-connect task to verify Kill was received.
+    let confirmed_sid = tokio::time::timeout(std::time::Duration::from_secs(3), kill_connect_task)
+        .await
+        .expect("timed out waiting for fallback kill_connect_task")
+        .expect("fallback kill_connect_task panicked");
 
-    assert_eq!(kill_session_id, session_id);
+    assert_eq!(confirmed_sid, session_id);
 
-    // State must be Terminating after Kill is sent (Detached → Terminating).
+    // State must be Terminating: ExistingConn broken-write → FreshConnect fallback →
+    // Kill sent → Terminating (same terminal invariant as genuine FreshConnect path).
     let sessions = manager.session_list().await;
     let snap = sessions
         .iter()
         .find(|s| s.session_id == session_id)
-        .expect("session must remain in registry");
+        .expect("session must remain in registry after fallback kill");
     assert_eq!(
         snap.state,
         monocle_ipc::types::SessionState::Terminating,
-        "test_BC_2_08_003_kill_detached_so_peercred: \
-         state must be Terminating after kill on Detached session \
-         (BC-2.08.003 EC-164 — Detached → Terminating)",
+        "test_BC_2_08_003_existing_conn_broken_write_falls_back_to_fresh_connect: \
+         state must be Terminating after ExistingConn broken-write→FreshConnect fallback Kill \
+         (BC-2.08.003 Invariant 5 / ExistingConn fallback path). Got: {:?}",
+        snap.state,
     );
 }
 
@@ -1262,81 +1257,96 @@ async fn test_kill_during_launching_after_socket_bind() {
 }
 
 // ---------------------------------------------------------------------------
-// Test 10: test_BC_2_08_003_kill_detached_so_peercred_uid_mismatch_terminates
+// Test 10: test_BC_2_08_003_existing_conn_broken_write_fallback_connect_fails_terminated
 //
-// Verifies: BC-2.08.003 Invariant 5 — SO_PEERCRED uid mismatch on Detached kill
-// fresh-connect → session immediately transitions to Terminated (not Terminating).
-// Returns Ok(()) — kill is effectively complete (session-host assumed dead/rogue).
+// OBS-1 (adversarial pass-9): The original test was MISLABELED and VACUOUSLY PASSING:
+// RejectAllVerifier caused the post_spawn_monitor's SO_PEERCRED to fail, transitioning
+// the session to Terminated BEFORE kill_session() was called.  kill_session() then hit
+// KillPath::Idempotent (already Terminated) → Ok(()) without exercising any kill logic.
+// The Terminated assertion was trivially true (state set by the monitor, not kill_session).
+//
+// OBS-1 fix: test the ExistingConn broken-write → fallback connect FAILS path instead.
+//   1. insert_launching_session_with_broken_conn_for_test(): Launching + host_conn:Some
+//      (pre-broken writer — receiver of UnixStream::pair() immediately dropped).
+//      kill_session dispatches to KillPath::ExistingConn.
+//   2. Pre-broken writer returns EPIPE on the next write — deterministic, no race.
+//   3. Socket file does NOT exist (no listener bound) → fallback fresh connect fails
+//      immediately (ENOENT).
+//   4. kill_session() returns Ok(()); session transitions to Terminated (EC-162/163 path).
+//
+// Genuine FreshConnect UID mismatch (Detached, host_conn:None) is already covered by
+// test_BC_2_08_003_IMP001_fresh_connect_detached_uid_mismatch_terminates (mod.rs ~6217).
 //
 // Fails because: kill_session() is todo!() — panics.
 // ---------------------------------------------------------------------------
 
-/// BC-2.08.003 Invariant 5: When `kill_session()` on a `Detached` session makes a
-/// fresh UDS connect and SO_PEERCRED uid DOES NOT match, the session immediately
-/// transitions to `Terminated` and `Ok(())` is returned (kill effectively complete).
+/// BC-2.08.003 EC-162/163: when the existing control connection write fails (broken
+/// pipe) AND the fallback fresh connect also fails (socket file does not exist),
+/// `kill_session()` MUST treat the session as dead, transition to `Terminated`
+/// immediately, and return `Ok(())`.
+///
+/// Uses `insert_launching_session_with_broken_conn_for_test()` for the broken writer
+/// and does NOT bind any listener — the fallback `UnixStream::connect()` fails with
+/// ENOENT immediately, with no timing dependency.
+///
+/// OBS-1 (adversarial pass-9): renamed from
+/// `test_BC_2_08_003_kill_detached_so_peercred_uid_mismatch_terminates` (mislabeled +
+/// vacuously passing via Idempotent) to correctly test the broken-write + no-socket
+/// → Terminated path.
 ///
 /// FAILS NOW: `kill_session()` is `todo!()` → panics.
 #[tokio::test]
-async fn test_BC_2_08_003_kill_detached_so_peercred_uid_mismatch_terminates() {
-    // BC-2.08.003 Invariant 5: uid mismatch on kill fresh-connect → Terminated + Ok(()).
+async fn test_BC_2_08_003_existing_conn_broken_write_fallback_connect_fails_terminated() {
+    // OBS-1 fix: ExistingConn broken-write → fallback connect fails → Terminated.
+    // No listener is bound — fallback UnixStream::connect() returns ENOENT immediately.
 
     let tmp = isolated_runtime_dir();
     let session_id = "03400000-0001-4000-a000-000000000010".to_string();
+    // Use a socket path that does NOT exist (no listener bound).
     let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
-    // Keep the same listener for both the monitor connect and the kill fresh-connect.
-    // RejectAllVerifier rejects the monitor's connection too — the monitor exits
-    // with EC-163 Terminated path. Then kill_session() on the resulting Terminated
-    // (or Launching) state hits the todo!() stub. Either way: Red Gate fails on todo!().
-    let listener = tokio::net::UnixListener::bind(&socket_path).expect("bind mock socket");
 
     let (mut manager, _subs, _rx) =
         make_manager_with_socket(tmp.path(), 55_010, socket_path.clone());
-    // REJECT SO_PEERCRED: simulate uid mismatch on any fresh-connect.
-    manager.with_peer_cred_verifier(Arc::new(RejectAllVerifier));
+    // Verifier is irrelevant here: the fallback connect will fail before verify()
+    // is called. AllowAllVerifier is used for clarity.
+    manager.with_peer_cred_verifier(Arc::new(AllowAllVerifier));
 
-    let opts = make_spawn_opts(&session_id);
+    // Insert a Launching session with a pre-broken writer (no listener involved).
+    // receiver of UnixStream::pair() is dropped immediately → EPIPE on next write.
     manager
-        .spawn_session(opts)
-        .await
-        .expect("spawn_session must succeed");
+        .insert_launching_session_with_broken_conn_for_test(
+            &session_id,
+            55_010,
+            socket_path.clone(),
+        )
+        .await;
 
-    // Accept the post-spawn monitor's connection (the RejectAllVerifier will reject it).
-    let (stream_to_hold, _) =
-        tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
-            .await
-            .expect("timed out waiting for monitor")
-            .expect("accept failed");
-    // Hold the stream alive briefly so the monitor can call verify() and receive Err.
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-    drop(stream_to_hold);
-    // Give the monitor time to process the rejection and set state → Terminated (EC-163).
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-
-    // The listener remains bound for any fresh-connect by kill_session().
-
-    // Call kill_session() — SO_PEERCRED rejects → session → Terminated; return Ok(()).
+    // Call kill_session() — expected flow:
+    //   ExistingConn write → BrokenPipe (pre-broken writer, deterministic)
+    //   → fallback connect to socket_path → ENOENT (no listener, no socket file)
+    //   → transition to Terminated; return Ok(()) (EC-162/163 dead-session path).
     // FAILS: kill_session() is todo!() → panics here.
     let result = manager.kill_session(&session_id).await;
     assert!(
         result.is_ok(),
-        "test_BC_2_08_003_kill_detached_so_peercred_uid_mismatch_terminates: \
-         kill_session() on uid-mismatch Detached session MUST return Ok(()) \
-         (session treated as dead — BC-2.08.003 Invariant 5). Got: {:?}",
+        "test_BC_2_08_003_existing_conn_broken_write_fallback_connect_fails_terminated: \
+         kill_session() on broken-write + no-socket session MUST return Ok(()) \
+         (session treated as dead — BC-2.08.003 EC-162/163). Got: {:?}",
         result
     );
 
-    // State must be Terminated (not Terminating) — uid mismatch = session is dead/rogue.
+    // State must be Terminated: broken write + no socket = session dead.
     let sessions = manager.session_list().await;
     let snap = sessions
         .iter()
         .find(|s| s.session_id == session_id)
-        .expect("session must remain in registry after uid-mismatch kill");
+        .expect("session must remain in registry after dead-session kill");
     assert_eq!(
         snap.state,
         monocle_ipc::types::SessionState::Terminated,
-        "test_BC_2_08_003_kill_detached_so_peercred_uid_mismatch_terminates: \
-         uid mismatch on kill fresh-connect MUST transition session to Terminated immediately \
-         (BC-2.08.003 Invariant 5). Got: {:?}",
+        "test_BC_2_08_003_existing_conn_broken_write_fallback_connect_fails_terminated: \
+         broken-write + no fallback-socket MUST transition session to Terminated \
+         (BC-2.08.003 EC-162/163). Got: {:?}",
         snap.state
     );
 }

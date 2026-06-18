@@ -709,6 +709,73 @@ impl SessionManager {
             .insert(session_id.to_string(), entry);
     }
 
+    /// Test helper: insert a session in `Launching` state with a **pre-broken** control
+    /// connection — writer half is connected to a socket whose peer is already closed.
+    ///
+    /// Used to deterministically exercise the `KillPath::ExistingConn` broken-write →
+    /// FreshConnect fallback path (OBS-1, adversarial pass-9) without relying on OS
+    /// kernel-buffer timing or platform-specific `shutdown()` behaviour.
+    ///
+    /// # How it works
+    ///
+    /// Creates a `UnixStream::pair()` (in-memory socket pair), immediately drops the
+    /// `receiver` half, then wraps the `sender` half's `OwnedWriteHalf` in a
+    /// `SessionHostConnection`.  Because the receiver is gone, the very next write to
+    /// `writer` returns `EPIPE`/`BrokenPipe` — deterministically and without any delay.
+    ///
+    /// # Test usage
+    ///
+    /// ```rust,ignore
+    /// let socket_path = tmp.path().join("session-X.sock");
+    /// manager
+    ///     .insert_launching_session_with_broken_conn_for_test("uuid", 1234, socket_path.clone())
+    ///     .await;
+    /// // Bind a listener at socket_path BEFORE calling kill_session so the fallback can
+    /// // make a fresh connect.
+    /// manager.kill_session("uuid").await.unwrap();
+    /// ```
+    ///
+    /// This function does NOT exist in production builds.
+    #[cfg(any(test, feature = "test-utils"))]
+    #[allow(clippy::expect_used)]
+    pub async fn insert_launching_session_with_broken_conn_for_test(
+        &self,
+        session_id: &str,
+        pid: u32,
+        socket_path: PathBuf,
+    ) {
+        // UnixStream::pair() creates an in-memory, connected socket pair.
+        // Dropping `receiver` immediately means any write to `sender`'s writer half
+        // returns BrokenPipe on the very next flush — no kernel-buffer race.
+        let (sender, _receiver) = tokio::net::UnixStream::pair()
+            .expect("insert_launching_session_with_broken_conn_for_test: UnixStream::pair()");
+        // Drop `_receiver` immediately — its lifetime ends here.
+        let (_read_half, write_half) = sender.into_split();
+        let entry = SessionEntry {
+            session_id: session_id.to_string(),
+            session_host_pid: pid,
+            session_host_socket: socket_path,
+            state: SessionState::Launching,
+            cwd: PathBuf::from("/tmp/test-cwd"),
+            project_root: PathBuf::from("/tmp/test-project"),
+            harness_id: "claude-code".to_string(),
+            profile_id: "default".to_string(),
+            started_at: chrono::Utc::now(),
+            kill_deadline: None,
+            degraded: false,
+            degraded_reason: None,
+            host_conn: Some(SessionHostConnection {
+                writer: Arc::new(Mutex::new(write_half)),
+                reader: None,
+                proxy_task: None,
+            }),
+        };
+        self.sessions
+            .lock()
+            .await
+            .insert(session_id.to_string(), entry);
+    }
+
     /// Test helper: insert a session in `Terminating` state with `kill_deadline` set.
     ///
     /// Used to test the 12-second watchdog path without driving through kill_session().
