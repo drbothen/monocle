@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.7.3"
+version: "2.8.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
-timestamp: 2026-06-16T00:00:00Z
+timestamp: 2026-06-17T00:00:00Z
 inputs:
   - research/domain-monocle-vision-synthesis.md
   - specs/product-brief.md
@@ -161,18 +161,29 @@ struct SessionEntry {
 ///
 /// The `writer` is the CONTROL connection write half — active from the end of `Launching`
 /// onward (i.e., after the post-spawn monitor connects to the session-host socket).
+/// The `reader` is the CONTROL connection read half — held for the session lifetime so that
+/// `StateChanged` and `Goodbye` messages from the session-host can be received without
+/// making a fresh UDS connect (see §Session-host accept model — ADV-S034-BLOCKER-001 ruling).
 /// The `proxy_task` is the PTY-streaming task — started ONLY at the `Launching → Running`
-/// transition when `StateChanged { new_state: Running }` is received. During `Launching`
-/// state, `writer` is `Some(...)` but `proxy_task` is not yet started; both are live during
-/// `Running` state.
+/// transition when `StateChanged { new_state: Running }` is received.
 ///
 /// This distinction resolves F-P50-001: `kill_session()` on a `Launching` session uses the
 /// existing `host_conn.writer` (control connection already present) to send `DaemonToHost::Kill`.
 /// No fresh UDS connect is needed for Launching kill — only for Detached kill.
+///
+/// ADV-S034-BLOCKER-001 ruling: `kill_confirm_monitor` MUST read `StateChanged{Terminated}`
+/// from `reader` (this field), NOT by making a new `UnixStream::connect`. The session-host
+/// sends `StateChanged{Terminated}` on the SAME connection where it received `DaemonToHost::Kill`.
 struct SessionHostConnection {
     /// Write half of the per-session UDS control connection.
     /// Present from post-spawn monitor connect (during Launching) through session end.
-    writer: Arc<Mutex<UnixStream>>,
+    writer: Arc<Mutex<tokio::net::unix::OwnedWriteHalf>>,
+    /// Read half of the per-session UDS control connection.
+    /// Present from post-spawn monitor connect through session end.
+    /// Moved into `kill_confirm_monitor` task when Kill is sent on Running/Launching path.
+    /// For Detached kill: `host_conn` is None; a fresh connect supplies both halves.
+    /// MUST NOT be dropped while the control connection is in active use.
+    reader: Option<tokio::net::unix::OwnedReadHalf>,
     /// Background task proxying session-host PTY output to daemon broker.
     /// None during Launching state; started at the Launching → Running transition.
     proxy_task: Option<JoinHandle<()>>,
@@ -1062,11 +1073,24 @@ Claude Code session via `DaemonToHost::KeyInput`.
 
 **Required security controls:**
 
-1. **SO_PEERCRED peer-credential check (mandatory on EVERY per-session UDS connect):**
+1. **SO_PEERCRED peer-credential check (mandatory on EVERY per-session UDS connect or accept):**
    The SO_PEERCRED / LOCAL_PEERPID uid check applies universally — it is NOT restricted to
    attach or re-discovery. Every per-session UDS connection attempt (attach, re-discovery,
    AND kill/detach re-connect for Detached sessions per BC-2.08.003 EC-164) MUST verify the
    connecting peer's `uid` before reading any bytes.
+
+   **Two-sided enforcement (ADV-S034-HIGH-001):**
+   - **Daemon side (connector):** Every `UnixStream::connect` to a session-host socket MUST
+     apply SO_PEERCRED on the connected stream before sending any message. This covers:
+     post-spawn monitor initial connect, `kill_session()` on Detached (fresh connect),
+     `attach_session()` (S-035 fresh connect), `rediscover_sessions()` (S-036 fresh connect).
+   - **Session-host side (acceptor):** The session-host's accept-loop MUST apply SO_PEERCRED
+     on EVERY accepted connection immediately after `listener.accept()` returns, BEFORE reading
+     any DaemonToHost message. Uid mismatch: close the accepted connection immediately and loop
+     back to `listener.accept()`. This prevents a rogue process from establishing a control
+     connection to a running session-host (e.g., to inject `DaemonToHost::Kill` or
+     `DaemonToHost::KeyInput`). The session-host accept-loop SO_PEERCRED check was previously
+     unspecified — this is a spec gap closed by ADV-S034-HIGH-001.
 
    - On Linux: `nix::sys::socket::getsockopt::<nix::sys::socket::sockopt::PeerCredentials>(fd)`.
    - On macOS: `nix::sys::socket::getsockopt::<nix::sys::socket::sockopt::LocalPeerPid>(fd)`
@@ -1294,43 +1318,321 @@ be serialized — this is a property of the vt100 library, not a spec deficiency
 - Steady-state 8 sessions: ~102 MB (in-RAM only; wire-JSON is discarded after reconstruction)
 - Live-PtyOutput buffer during dump (I3-003): ~500 KB at 1 MB/s for 500ms dump (bounded, transient)
 
-### Main event loop
+### Session-host accept model (ADV-S034-BLOCKER-001 ruling)
+
+**Decision: the session-host MUST run `listener.accept()` in a loop, not once.**
+
+**Why the single-accept model is a spec gap (not just an implementer bug):**
+
+The session state machine requires the daemon to make a FRESH `UnixStream::connect` in three
+distinct scenarios after initial startup:
+
+1. `kill_session()` on a `Detached` session — `host_conn` is `None`; daemon fresh-connects to
+   send `DaemonToHost::Kill` (see §Kill-path host_conn rules and BC-2.08.003 EC-164).
+2. `attach_session()` on a `Detached` session — S-035 scope; requires fresh connect.
+3. `rediscover_sessions()` on any sidecar with a live session-host — S-036 scope; daemon
+   connects to the session-host's socket for the first time after a daemon restart.
+
+In all three cases the session-host must still be listening and able to accept. A single
+`listener.accept()` followed by reading only from that one connection cannot serve a second
+connect. The prior pseudo-code in §Main event loop implied a single connection (`daemon_conn`)
+and the implementation matched that implication — both are wrong.
+
+**Correct accept model: accept-loop over the listener, one active control connection at a time.**
+
+The session-host maintains a `UnixListener` for the lifetime of the session. After handling
+a `DaemonToHost::Detach` message (or after the initial connection is closed for any reason),
+the session-host loops back to `listener.accept()` to wait for the next daemon connection.
+
+**Invariants of the multi-accept model:**
+
+1. **At most one active control connection at a time.** When a new connection is accepted,
+   the previous connection (if any) is dropped. The session-host does NOT fan-out messages to
+   multiple concurrent daemon connections — the daemon is the sole control-plane peer.
+
+2. **SO_PEERCRED check on EVERY accepted connection** (BC-2.08.003 Invariant 5 / AC-009).
+   Each call to `listener.accept()` is immediately followed by a SO_PEERCRED uid check before
+   reading or sending any message. Uid mismatch: close the accepted socket and loop back to
+   `accept()`. This applies to the FIRST accept (post-spawn monitor path) and ALL subsequent
+   accepts (re-connect after Detach, re-discovery, kill-on-Detached).
+
+3. **PTY continues running while waiting for the next accept.** The session-host is in
+   `Detached` state between connections — it keeps the harness child alive and the PTY reader
+   running. It does NOT freeze, sleep, or block solely on `accept()`. The `tokio::select!`
+   outer loop MUST select over both `pty_reader.recv()` AND `listener.accept()` simultaneously
+   when in Detached state, so PTY output continues to be processed (vt100 parser stays current)
+   even when no daemon is connected.
+
+4. **`DaemonToHost::Detach` transitions the session to Detached mode.** On receipt, the
+   session-host stops forwarding `HostToDaemon::PtyBytes` on the current connection, drops
+   the current connection's write half, and loops back to `listener.accept()`. The session
+   continues alive (harness child, PTY reader, vt100 parser — all running).
+
+5. **Connection EOF also triggers re-accept.** If the daemon's side of the control connection
+   is dropped without sending `DaemonToHost::Detach` (daemon crash, daemon restart mid-session),
+   the session-host MUST detect EOF on the connection and loop back to `listener.accept()`.
+   This prevents the session-host from exiting when the daemon crashes and restarts.
+
+6. **`DaemonToHost::Kill` terminates the accept loop.** On receipt of Kill, the session-host
+   performs SIGTERM → 10s wait → SIGKILL, sends `StateChanged{Terminated}` + `Goodbye` on the
+   CURRENT connection, removes the socket file, and exits. It does NOT loop back to accept.
+
+**Consequence for the kill_confirm_monitor (daemon side — S-034 implementer action required):**
+
+The current `kill_confirm_monitor` in mod.rs attempts a FRESH `UnixStream::connect` to read
+back `StateChanged{Terminated}`. Under the corrected accept-loop model, this approach IS
+structurally viable (the session-host can accept the second connection), but there is a
+simpler and more correct design: the daemon should RETAIN the read half of the EXISTING
+control connection rather than discarding it after the post-spawn monitor exits.
+
+**Canonical implementation pattern for S-034:**
+
+Extend `SessionHostConnection` to hold both halves of the control connection:
 
 ```rust
+struct SessionHostConnection {
+    /// Write half: used to send DaemonToHost commands.
+    writer: Arc<Mutex<tokio::net::unix::OwnedWriteHalf>>,
+    /// Read half: used to receive HostToDaemon responses (StateChanged, Goodbye).
+    /// Present from post-spawn monitor connect through session end.
+    /// The read half is moved into kill_confirm_monitor / watchdog task when kill is sent.
+    reader: Option<tokio::net::unix::OwnedReadHalf>,
+    /// Background task proxying PTY output to daemon broker.
+    /// None during Launching; Some after Running.
+    proxy_task: Option<JoinHandle<()>>,
+}
+```
+
+The `kill_confirm_monitor` function MUST read `StateChanged{Terminated}` from `reader` (the
+EXISTING connection's read half), NOT by making a new `UnixStream::connect`. Rationale:
+
+- The session-host sends `StateChanged{Terminated}` on the SAME connection where it received
+  `DaemonToHost::Kill`. If the daemon makes a fresh connect for the kill-confirm read, the
+  session-host accepts that fresh connection as a NEW control connection and the
+  `StateChanged{Terminated}` goes to the old (now-broken) connection that nobody is reading.
+  The fresh-connect approach structurally cannot receive the Terminated confirmation.
+
+- For DETACHED kill path (host_conn is None, fresh connect required): the daemon makes a
+  fresh connect to send Kill AND to read the Terminated confirmation on the SAME fresh connection.
+  The session-host accepts once for this operation. After accepting and completing the kill
+  sequence, the session-host exits (no further accept needed).
+
+**Consequence for attach (S-035) and re-discovery (S-036):**
+
+These stories depend on the accept-loop model. The spec now explicitly states it. S-035
+(`attach_session()`) and S-036 (`rediscover_sessions()`) MUST implement their daemon-side
+fresh-connect using the same SO_PEERCRED discipline and MUST hold the resulting stream's
+read half in `SessionHostConnection.reader` for any response processing.
+
+### Main event loop
+
+The session-host event loop has two structural phases driven by the accept-loop model:
+
+**Phase A — Waiting for daemon connection (Detached mode):**
+
+```rust
+// In Detached mode, loop on accept() while keeping the PTY running.
 tokio::select! {
-    // Backpressure: .await blocks the blocking thread if channel is full (see §PTY reader thread).
-    // recv() here drains the channel; the spawn_blocking thread's send().await provides
-    // the upstream backpressure signal.
+    Some(bytes) = pty_reader.recv() => {
+        // PTY bytes arrive; process into vt100 parser; do NOT forward (no active connection).
+        parser.process(&bytes);
+    }
+    Ok((stream, _)) = listener.accept() => {
+        // New daemon connection. Apply SO_PEERCRED before any I/O.
+        if !verify_so_peercred(&stream) {
+            // Uid mismatch — reject and loop.
+            continue; // back to select!
+        }
+        // Transition to Phase B: active connection mode.
+        current_conn = Some(stream);
+    }
+    Some(exit) = child_exit_watch.recv() => {
+        // Harness child exited while detached — notify whoever connects next (or nobody).
+        // If current_conn is None: no connection to notify; just exit.
+        send_state_changed_on_next_conn_or_exit().await;
+        break;
+    }
+}
+```
+
+**Phase B — Active control connection (Running mode):**
+
+```rust
+// In Running mode, select over PTY, active connection messages, and child exit.
+// daemon_conn is the accepted UnixStream (the current active control connection).
+tokio::select! {
     Some(bytes) = pty_reader.recv() => {
         parser.process(&bytes);
-        for client in attached_clients.iter_mut() {
-            // Also uses .await for backpressure up to daemon broker
-            client.send(HostToDaemon::PtyBytes { bytes: bytes.clone() }).await;
-        }
+        // Forward PtyBytes to daemon over current_conn.
+        send_host_msg(&mut current_conn_writer, &HostToDaemon::PtyBytes { bytes }).await?;
     }
-    Some(msg) = daemon_conn.recv() => match msg {
+    msg = recv_daemon_msg(&mut current_conn_reader) => match msg {
         DaemonToHost::Attach => {
-            // Snapshot vt100::Screen as styled cells; resume live PtyBytes IMMEDIATELY
-            // (do NOT pause); stream ScrollbackChunk* messages; send ScrollbackDumpComplete
-            // (see §Screen-state transfer on Attach, I3-003, ADR-0010 §Interleaving).
-            // The TUI buffers live PtyBytes received during the dump and replays them
-            // after ScrollbackDumpComplete.
-            stream_scrollback_dump_chunked().await;
+            // Scrollback dump: snapshot, stream ScrollbackChunk*, ScrollbackDumpComplete.
+            // Resume live PtyBytes IMMEDIATELY (I3-003 / ADR-0010 §Interleaving).
+            stream_scrollback_dump_chunked(&mut current_conn_writer).await;
         }
         DaemonToHost::KeyInput { bytes } => { pty_writer.write_all(&bytes).await?; }
         DaemonToHost::Resize { rows, cols } => {
             pty.resize(PtySize { rows, cols, .. })?;
             parser.set_size(rows, cols);
         }
-        DaemonToHost::Kill => { child.kill().await?; }
-        DaemonToHost::Detach => { /* disconnect client; stay alive; stop sending PtyBytes */ }
+        DaemonToHost::Kill => {
+            // SIGTERM → 10s → SIGKILL; StateChanged{Terminated}; Goodbye; remove socket; exit.
+            kill_sequence(&mut current_conn_writer, child_pid, &socket_path).await;
+            return Ok(());
+        }
+        DaemonToHost::Detach => {
+            // Drop current_conn; loop back to Phase A (Detached mode / listener.accept()).
+            drop(current_conn_writer);
+            drop(current_conn_reader);
+            break; // back to Phase A select!
+        }
+        Err(ConnectionClosed) => {
+            // EOF on control connection without DaemonToHost::Detach (daemon crash/restart).
+            // Treat as implicit Detach: loop back to Phase A.
+            drop(current_conn_writer);
+            drop(current_conn_reader);
+            break; // back to Phase A select!
+        }
     }
     Some(exit) = child_exit_watch.recv() => {
-        send_state_changed(SessionState::Terminated).await;
-        break;
+        // Harness child exited while connected.
+        send_state_changed(&mut current_conn_writer, SessionState::Terminated).await;
+        send_goodbye(&mut current_conn_writer).await;
+        return Ok(());
     }
 }
 ```
+
+**Implementation notes:**
+
+- The `UnixListener` is bound at startup step 7 and persists for the session's lifetime. It is
+  not rebound on each detach cycle.
+- `tokio::net::UnixStream::into_split()` splits each accepted connection into
+  `OwnedReadHalf` and `OwnedWriteHalf`. Both halves MUST be held for the duration of the
+  active connection. The write half is used for DaemonToHost → HostToDaemon responses; the
+  read half reads DaemonToHost commands.
+- The first accepted connection (via the post-spawn monitor) uses the read half to deliver
+  `StateChanged{Launching, degraded_env?}` followed by `StateChanged{Running}`. After the
+  `Running` message is sent, the session is in Running mode (Phase B). The post-spawn monitor
+  on the DAEMON side transitions `host_conn` from `None` to `Some(...)` and starts the proxy task.
+- The daemon's `kill_confirm_monitor` reads `StateChanged{Terminated}` from `host_conn.reader`
+  (the read half held in `SessionHostConnection`) — it does NOT make a fresh connection.
+  See §kill_confirm_monitor implementation requirement.
+
+### kill_confirm_monitor implementation requirement (ADV-S034-BLOCKER-001/BLOCKER-002)
+
+The `kill_confirm_monitor` function in `monocle-runtime/src/session_manager/mod.rs` MUST be
+refactored. The current implementation (fresh `UnixStream::connect` to read back
+`StateChanged{Terminated}`) is structurally broken for the Running/Launching kill path:
+
+**Why fresh-connect cannot work for Running/Launching kill:**
+
+The session-host sends `StateChanged{Terminated}` on the SAME connection that received
+`DaemonToHost::Kill`. Under the corrected accept-loop model, a second `UnixStream::connect`
+from the daemon causes the session-host to accept a second connection — but the session-host
+is already in Phase B (active connection with Kill in-flight). The Kill handler runs on the
+FIRST connection; the `StateChanged{Terminated}` is sent back on the FIRST connection's write
+half. The second connection receives nothing (the session-host exits before handling another
+command on the second connection). The daemon's fresh-connect `kill_confirm_monitor` would
+hang waiting for a message that will never arrive on the second connection, falling through
+to its own 13s timeout and returning without processing the confirmation.
+
+**Correct implementation:**
+
+1. **Running/Launching kill path (host_conn is Some):**
+   - `kill_session()` sends `DaemonToHost::Kill` using `host_conn.writer`.
+   - The `kill_confirm_monitor` task takes ownership of `host_conn.reader` (moved out of
+     `SessionHostConnection`; `host_conn.reader` set to `None` after the move).
+   - The task reads from `reader` until `StateChanged{Terminated}` or `Goodbye` is received,
+     or the connection closes (EOF = session-host exited without sending Terminated — watchdog
+     handles the state transition).
+   - No fresh UDS connect.
+
+2. **Detached kill path (host_conn is None):**
+   - `kill_session()` makes a fresh `UnixStream::connect` to the session-host socket.
+   - Applies SO_PEERCRED before any I/O.
+   - Splits the stream: writer sends `DaemonToHost::Kill`; reader is handed to
+     `kill_confirm_monitor`.
+   - The task reads from this same fresh connection's reader for `StateChanged{Terminated}`.
+   - This is the ONLY case where a fresh connect is used; the session-host accepts it as a
+     new control connection, receives Kill, responds with Terminated on the same connection.
+
+**12-second watchdog timer:**
+
+The watchdog timer fires if `StateChanged{Terminated}` is not received within 12 seconds of
+sending `DaemonToHost::Kill`. The watchdog MUST implement the following SIGKILL safety check
+to prevent PID-reuse attacks (ADV-S034-HIGH-002):
+
+```rust
+// Re-check session state under the lock before sending SIGKILL.
+// The session-host may have confirmed Terminated via StateChanged between
+// the timeout firing and the lock acquisition.
+let should_sigkill = {
+    let guard = sessions.lock().await;
+    matches!(guard.get(&session_id).map(|e| &e.state), Some(SessionState::Terminating))
+};
+if !should_sigkill {
+    // Session already transitioned (StateChanged{Terminated} was processed by another path).
+    return;
+}
+// PID-reuse discrimination: check for ESRCH before treating kill() success as meaningful.
+let pid = { sessions.lock().await.get(&session_id).map(|e| e.session_host_pid) };
+if let Some(pid) = pid {
+    match nix::sys::signal::kill(Pid::from_raw(pid as i32), Signal::SIGKILL) {
+        Ok(()) => { /* SIGKILL sent */ }
+        Err(nix::errno::Errno::ESRCH) => {
+            // ESRCH = process does not exist. PID was already reaped.
+            // Treat this as a clean exit — transition to Terminated normally.
+            tracing::info!(session_id = %session_id, pid = pid,
+                "watchdog: SIGKILL returned ESRCH — session-host already exited; GC");
+        }
+        Err(e) => {
+            tracing::warn!(session_id = %session_id, pid = pid, error = %e,
+                "watchdog: SIGKILL failed unexpectedly");
+        }
+    }
+    // Transition to Terminated regardless of SIGKILL outcome.
+    // (State may already be Terminated if StateChanged{Terminated} raced with the watchdog.)
+    force_terminate_session(&session_id, &sessions, &broker, &sidecar_path).await;
+}
+```
+
+**ESRCH discrimination is mandatory.** A blind `kill(pid, SIGKILL)` that ignores ESRCH may
+deliver SIGKILL to an unrelated process that reused the PID in the interval between the
+session-host exiting and the watchdog firing. This is a real risk on high-churn systems.
+The ESRCH branch MUST be handled explicitly, not collapsed into the general error arm.
+
+### kill_deadline_unix_ms ownership boundary (ADV-S034-HIGH-003)
+
+**Decision: S-034 owns the write; S-036 owns the read-back.**
+
+`kill_session()` (S-034) MUST write `kill_deadline_unix_ms` to `session-state.json` when
+transitioning a session to `Terminating` state. The value is `now_unix_ms + 12_000` (the
+absolute kill deadline as Unix epoch milliseconds). This write is REQUIRED in S-034; it is
+not deferred to S-036.
+
+`rediscover_sessions()` (S-036) reads `kill_deadline_unix_ms` from the sidecar on re-discovery
+of a `Terminating` sidecar and uses it to determine whether to SIGKILL immediately (deadline
+elapsed) or start a deadline-preserving watchdog (deadline not yet elapsed). The in-process
+watchdog (S-034 scope, for running daemon) derives its deadline from `SessionEntry.kill_deadline`
+which is populated from the same value at the moment `kill_session()` is called — NOT from a
+re-read of the sidecar. This means:
+
+- The in-process watchdog always has the correct absolute deadline (`SessionEntry.kill_deadline`
+  is set at `kill_session()` time, same instant as `kill_deadline_unix_ms` is written).
+- On daemon restart (S-036), the sidecar `kill_deadline_unix_ms` restores the absolute deadline
+  so the restarted daemon does not reset the SIGTERM window.
+
+This boundary is explicit and non-overlapping. S-034 implementer MUST write
+`kill_deadline_unix_ms` to the sidecar. S-034 adversarial review finding HIGH-003 is resolved
+as a SPEC GAP (the write obligation was implied but not stated) and is now explicit in this section.
+
+**Sidecar write timing:** `kill_deadline_unix_ms` is written in the SAME `tempfile::persist`
+atomic write that transitions `session-state.json` to `state: "Terminating"`. These two
+fields change atomically — there is no window where the sidecar shows `Terminating` with no
+deadline or `Running` with a deadline.
 
 ### PTY reader thread (C3 — no-silent-drop design)
 
@@ -1722,6 +2024,70 @@ Daemon removes stale socket files during GC in re-discovery (alongside sidecar d
 | BC-2.08.007 | SpawnRecipe: binary path resolved; cwd is project root; env carries CCR URL if applicable | P0 |
 
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
+
+---
+
+## §Trace v2.8.0
+
+**ADV-S034-BLOCKER-001/002, HIGH-001/002/003 — session-host accept-loop model, SO_PEERCRED on accept, watchdog PID-reuse, kill_confirm_monitor, kill_deadline ownership** (2026-06-17):
+
+Adversarial review of S-034 (SessionManager::kill_session) identified four spec gaps:
+
+- **BLOCKER-001 (session-host single-accept):** `step_event_loop()` in the implementation only
+  calls `listener.accept()` once. For `Detached` sessions, `kill_session()` makes a fresh
+  `UnixStream::connect` — but the session-host cannot accept it (only accepted once). Same
+  applies to S-035 `attach_session()` and S-036 `rediscover_sessions()`. Root cause: the spec
+  never stated the accept-loop model; the implementer inferred single-accept from the
+  pseudo-code's single `daemon_conn` variable. This is a spec gap, not solely an implementer bug.
+  **Fix:** §Session-host accept model (ADV-S034-BLOCKER-001 ruling) added. Session-host MUST run
+  `listener.accept()` in a loop. Detailed two-phase event loop model specified (Phase A: Detached/
+  waiting; Phase B: active connection). Consequence for S-035 and S-036 documented.
+
+- **BLOCKER-002 (kill_confirm_monitor fresh-connect is wrong):** The daemon's
+  `kill_confirm_monitor` attempted a fresh `UnixStream::connect` to read `StateChanged{Terminated}`.
+  Under the accept-loop model, this connect causes the session-host to accept a second connection,
+  but `StateChanged{Terminated}` is sent on the FIRST (existing) connection. The fresh connect
+  approach structurally cannot receive the confirmation.
+  **Fix:** `SessionHostConnection` gains a `reader: Option<OwnedReadHalf>` field. The
+  `kill_confirm_monitor` reads from the existing connection's read half, not a fresh connect.
+  For the Detached kill path (where `host_conn` is `None`), the fresh connect IS correct and
+  provides both writer (Kill) and reader (Terminated confirmation) on the same stream.
+  §kill_confirm_monitor implementation requirement section added.
+
+- **HIGH-001 (SO_PEERCRED on session-host accept):** BC-2.08.003 Invariant 5 and §Per-session
+  UDS security only specified SO_PEERCRED on the DAEMON's `UnixStream::connect` side. The
+  session-host accept-loop must ALSO apply SO_PEERCRED on every accepted connection before
+  reading any DaemonToHost message — otherwise a rogue same-uid process can connect to the
+  session-host socket and inject Kill or KeyInput. The accept-side check was unspecified.
+  **Fix:** §Per-session UDS security item 1 extended with explicit "two-sided enforcement"
+  requirement: both connector (daemon) and acceptor (session-host) MUST apply SO_PEERCRED.
+
+- **HIGH-002 (watchdog SIGKILL PID-reuse):** The watchdog fires 12s after Kill is sent and
+  sends SIGKILL to `session_host_pid`. If the session-host already exited between the Kill
+  send and the watchdog firing, the PID may have been reused by an unrelated process.
+  Blind SIGKILL delivers to the wrong process.
+  **Fix:** §kill_confirm_monitor implementation requirement specifies mandatory ESRCH
+  discrimination: re-check `SessionState::Terminating` under lock before SIGKILL; treat
+  ESRCH as clean exit (not an error); discriminate ESRCH from other kill() failures.
+
+- **HIGH-003 (kill_deadline_unix_ms write ownership):** The sidecar write obligation for
+  `kill_deadline_unix_ms` when transitioning to `Terminating` was implied but never explicitly
+  stated in S-034 scope. The `rediscover_sessions()` re-read on S-036 requires the field to be
+  present and correct.
+  **Fix:** §kill_deadline_unix_ms ownership boundary section added. S-034 owns the write
+  (atomically with the state=Terminating sidecar update); S-036 owns the read-back. The in-
+  process watchdog uses `SessionEntry.kill_deadline` (an `Instant` populated at kill_session()
+  time), not a sidecar re-read.
+
+**SessionHostConnection struct updated:** `writer` type changed from `Arc<Mutex<UnixStream>>`
+to `Arc<Mutex<OwnedWriteHalf>>`; `reader: Option<OwnedReadHalf>` field added.
+
+**Semver: minor (v2.7.3 → v2.8.0)** — normative additions: accept-loop model, two-phase event
+loop, kill_confirm_monitor reader-based design, SO_PEERCRED on accept, watchdog ESRCH guard,
+kill_deadline write obligation. Multiple behavioral obligations added for S-034 implementer.
+Session-host and daemon-side contract both updated. S-035 and S-036 accept-loop dependency noted.
+
+SE-16d monotonicity: v2.8.0 timestamp 2026-06-17 >= v2.7.3 timestamp 2026-06-17. PASS.
 
 ---
 
