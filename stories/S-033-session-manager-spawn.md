@@ -96,7 +96,7 @@ After the `SessionEntry` is inserted and the sidecar is written:
 - Both publications happen under the `SessionManager` mutex (per BC-2.08.008 Invariant 4).
 - If a connected TUI client's per-client buffer is full and the ordered pair splits (SessionStateChanged delivered but SessionListUpdate dropped), the client is IMMEDIATELY disconnected (per BC-2.08.008 PC-3 split rule).
 
-### AC-006 (traces to BC-2.08.001 invariant 1 — session_id uniqueness; UUID collision handling; SS-session-manager v2.8.0 Ruling F)
+### AC-006 (traces to BC-2.08.001 invariant 1 — session_id uniqueness; UUID collision handling; SS-session-manager v2.9.0 Ruling F)
 
 The `SessionEntry` insertion MUST check for collision. If a collision is detected (UUID already in registry), `spawn_session()` MUST return `Err(SessionError::SessionIdCollision { session_id })` immediately — it does NOT perform an internal retry (UUID generation is not `spawn_session()`'s responsibility; doing so would violate EC-152's "auto-retry is one attempt" constraint by doubling total attempts).
 
