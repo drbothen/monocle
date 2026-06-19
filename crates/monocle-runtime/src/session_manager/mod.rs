@@ -2723,15 +2723,11 @@ impl SessionManager {
             .await
             .values()
             .map(|entry| {
-                let display_name = format!(
-                    "{} — {}",
-                    entry.harness_id,
-                    entry
-                        .project_root
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("unknown")
-                );
+                // F-S037-P3-001/P3-003: read the authoritative stored display_name so that
+                // renames survive reconnects (BC-2.08.008 PC-4a).  The default name is set
+                // once at spawn time (spawn_session line ~1001) and updated by rename_session;
+                // session_list() must never recompute it from harness_id + basename.
+                let display_name = entry.display_name.clone();
                 monocle_ipc::types::SessionSnapshot::new(
                     entry.session_id.clone(),
                     entry.harness_id.clone(),
