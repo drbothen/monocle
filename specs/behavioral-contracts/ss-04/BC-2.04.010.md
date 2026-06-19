@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.0"
+version: "1.4.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T12:03:00Z
@@ -70,7 +70,7 @@ After `tempfile::persist`, the implementation calls:
 The resulting file is readable and writable by the daemon user only. Other OS users cannot
 read the file or discover the auth token via the hooks-settings.json path.
 
-**PC-3 — Schema: 4 hook endpoint URLs with port and token embedded.**
+**PC-3 — Schema: 4 hook endpoint URLs with port and token embedded, plus mandatory `lock` object.**
 The JSON content follows the schema:
 ```json
 {
@@ -121,6 +121,9 @@ The JSON content follows the schema:
       }
     ],
     "PreCompact": []
+  },
+  "lock": {
+    "app": "monocle"
   }
 }
 ```
@@ -130,6 +133,12 @@ Key properties:
   token in the command is `monocle-v1:<64-hex>`.
 - `PostToolUse` and `PreCompact` entries have empty `hooks` arrays. Claude Code ignores hook
   types with empty arrays; these entries provide forward-compatibility structure.
+- `"lock": {"app": "monocle"}` is the Claude Code process-filter that prevents externally-launched
+  `claude` instances from routing hooks to monocle's daemon. Only harness processes spawned by
+  monocle (which receive `--settings <hooks_settings_path>`) will match. This field is REQUIRED;
+  omitting it would cause all `claude` processes system-wide to route hooks to monocle's daemon.
+  Authority: BC-2.08.006 Invariant 2 ("The `lock.app = 'monocle'` filter in hooks-settings.json
+  is REQUIRED for every monocle-launched session").
 - `SessionStart` is NOT listed explicitly because Claude Code's hook configuration does not
   include it as a first-class hook type in the hooks-settings.json schema. The SessionStart
   endpoint (`POST /hooks/session-start`) is reachable via the axum router but is not wired
@@ -170,6 +179,11 @@ No partially-written file is left at the target path (tempfile::persist guarante
 5. `PostToolUse` and `PreCompact` MUST be present with empty arrays in the output JSON.
    Omitting them would break forward-compat for Claude Code versions that validate all
    hook type keys.
+6. `"lock": {"app": "monocle"}` MUST be present as a top-level key in the output JSON,
+   co-equal with the `"hooks"` key. Omitting this field causes ALL `claude` processes
+   on the system (including externally-launched instances not managed by monocle) to
+   route hooks to monocle's daemon — a data-integrity defect. Authority: BC-2.08.006
+   Invariant 2 (single-writer mandate enforces unconditional emission).
 
 ## Edge Cases
 
@@ -191,6 +205,7 @@ No partially-written file is left at the target path (tempfile::persist guarante
 | `runtime_dir` filesystem full | Daemon exits with code 72; error logged; no partial file at path | error |
 | `hooks-settings.json` from crashed prior run exists | File atomically replaced; new port and token embedded | edge-case |
 | Read `hooks-settings.json` and parse PostToolUse key | `PostToolUse` key present with `"hooks": []` array | happy-path |
+| Read `hooks-settings.json` and parse top-level `lock` key | `"lock": {"app": "monocle"}` present as top-level object; parsed `lock.app == "monocle"` | happy-path |
 
 ## Verification Properties
 
@@ -199,6 +214,7 @@ No partially-written file is left at the target path (tempfile::persist guarante
 | VP-TBD | `hooks-settings.json` mode is 0o600 after daemon start | integration (stat the file) |
 | VP-TBD | Port and token in command strings match DaemonState values | integration |
 | VP-TBD | `PostToolUse` and `PreCompact` keys present with empty arrays | unit (schema validation) |
+| VP-TBD | `lock.app == "monocle"` present as top-level JSON key in written file | unit (schema validation) |
 | VP-TBD | File removed on graceful shutdown | integration |
 | VP-TBD | Failure exits with code 72 and no partial file | unit (mock NamedTempFile failure) |
 | VP-TBD | SOQ-2: hooks-settings.json written after lock file in start sequence | integration (observe file creation timestamps) |
@@ -212,7 +228,7 @@ No partially-written file is left at the target path (tempfile::persist guarante
 | L2 Domain Invariants | DI-002 (the lock file MUST be present and contain a valid token before any hook endpoint accepts connections — this BC's SOQ-2 ordering invariant ensures hooks-settings.json embeds a token that is already in the lock file; Claude Code cannot reach hook endpoints with a token that hasn't been committed to the lock file); DI-003 (auth token MUST be written to lock file after port is bound — PC-4 enforces that hooks-settings.json is written after the lock file, which was written after port bind, preserving DI-003 as a transitivity guarantee) |
 | Architecture Module | monocle-runtime (`write_hooks_settings()` function) per ARCH-INDEX Subsystem Registry SS-04 |
 | Architecture Source | SS-daemon-wiring.md v1.3.0 §Hook Tmpfile Generation |
-| Cross-Ref | BC-2.01.005 (lock file lifecycle — SOQ-2 upstream step); BC-2.01.008 (auth token wire format — token embedded in command strings); BC-2.04.001 (daemon start sequence — step 9 calls this contract) |
+| Cross-Ref | BC-2.01.005 (lock file lifecycle — SOQ-2 upstream step); BC-2.01.008 (auth token wire format — token embedded in command strings); BC-2.04.001 (daemon start sequence — step 9 calls this contract); BC-2.08.006 (hook auto-injection — Invariant 2 mandates `lock.app="monocle"` in every written hooks-settings.json; single-writer mandate ensures unconditional emission of this field) |
 | Test File | `monocle-runtime/tests/hooks_settings_generation.rs` |
 | Test Name | `test_BC_2_04_010_hooks_settings_generation` |
 | Stories | S-TBD (filled by story-writer) |
@@ -225,6 +241,7 @@ No partially-written file is left at the target path (tempfile::persist guarante
 - [BC-2.04.007] — composes with: PreToolUse endpoint URL in PC-3 schema; routing defined in BC-2.04.007
 - [BC-2.04.008] — composes with: Notification endpoint URL in PC-3 schema
 - [BC-2.04.009] — composes with: Stop and PromptSubmit endpoint URLs in PC-3 schema
+- [BC-2.08.006] — composes with: Invariant 2 mandates `lock.app="monocle"` in hooks-settings.json; this BC's PC-3 schema and Invariant 6 operationalize that requirement
 
 ## Architecture Anchors
 
@@ -273,6 +290,28 @@ S-TBD — Implement hooks-settings.json generation with atomic write, mode 0o600
 **F-P1D4-003 LOW — Architecture Source pin updated from v1.1.0 to v1.2.0** (2026-05-26T00:00:00Z):
 - Architecture Source: `SS-daemon-wiring.md v1.1.0` → `SS-daemon-wiring.md v1.2.0` per F-P1D4-003 bulk update.
 - SE-16d monotonicity: v1.2.0 timestamp >= v1.1.0. PASS.
+
+## §Trace v1.4.0
+
+**F-S038-CONV-001 IMPORTANT — PC-3 schema corrected: mandatory `lock.app="monocle"` object added; Invariant 6 added; cross-reference to BC-2.08.006** (2026-06-19T00:00:00Z):
+- **Root problem (F-S038-CONV-001):** BC-2.04.010 is named by S-038 AC-010 as the "single
+  authoritative source" for the hooks-settings.json schema. However, PC-3's canonical JSON
+  schema omitted the `"lock": {"app": "monocle"}` top-level key that the implementation
+  correctly emits. BC-2.08.006 Invariant 2 requires this field unconditionally; the
+  authoritative schema was therefore stale/incomplete.
+- **PC-3 updated:** `"lock": {"app": "monocle"}` added as a top-level sibling of the
+  `"hooks"` object in the canonical JSON schema. PC-3 section header updated from
+  "4 hook endpoint URLs with port and token embedded" to "4 hook endpoint URLs with port
+  and token embedded, plus mandatory `lock` object". The lock key description cites
+  BC-2.08.006 Invariant 2 as the authority for this requirement.
+- **Invariant 6 added:** `"lock": {"app": "monocle"}` MUST be present as a top-level key;
+  omitting it causes all `claude` processes system-wide to route hooks to monocle's daemon.
+  Authority: BC-2.08.006 Invariant 2.
+- **Canonical test vector added:** `lock.app == "monocle"` present in written file (happy-path).
+- **VP row added:** `lock.app == "monocle"` schema validation.
+- **Cross-Ref updated:** BC-2.08.006 added to Traceability Cross-Ref row.
+- **Related BCs updated:** BC-2.08.006 added with composes-with relationship.
+- SE-16d monotonicity: v1.4.0 timestamp 2026-06-19T00:00:00Z >= v1.3.0 timestamp 2026-05-29T00:00:00Z. PASS.
 
 ## §Trace v1.3.0
 

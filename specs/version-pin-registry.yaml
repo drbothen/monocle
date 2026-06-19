@@ -461,9 +461,9 @@ BC-2.04.009:
 
 BC-2.04.010:
   path: specs/behavioral-contracts/ss-04/BC-2.04.010.md
-  current_version: "1.3.0"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.4.0"
+  last_bump_commit: "pending"
+  last_bump_date: "2026-06-19"
 
 BC-2.04.011:
   path: specs/behavioral-contracts/ss-04/BC-2.04.011.md

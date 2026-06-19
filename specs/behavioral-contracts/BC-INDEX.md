@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.43.8"
+version: "1.43.9"
 status: active
 producer: vsdd-factory:state-manager
-timestamp: 2026-06-16T00:00:00Z
+timestamp: 2026-06-19T00:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "cbf13d5"
@@ -1223,6 +1223,24 @@ SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. 
 - BC-INDEX version: 1.40.4 → 1.40.5. No BC ID additions or retirements. No H1 title changes.
 
 SE-16d monotonicity: v1.40.5 timestamp 2026-06-14T20:00:00Z > v1.40.4 timestamp 2026-06-14T19:00:00Z. PASS.
+
+## §Trace v1.43.9
+
+**F-S038-CONV-001 — BC-2.04.010 v1.4.0: PC-3 schema corrected — mandatory `lock.app="monocle"` object added** (2026-06-19):
+
+BC version bump in this dispatch:
+- BC-2.04.010 v1.3.0 → v1.4.0 (F-S038-CONV-001 IMPORTANT: PC-3 canonical JSON schema was missing the
+  mandatory `"lock": {"app": "monocle"}` top-level key. BC-2.08.006 Invariant 2 requires this field in
+  every written hooks-settings.json; the S-038 implementation correctly emits it. The authoritative schema
+  (PC-3) was stale. Fix: `"lock": {"app": "monocle"}` added as top-level sibling of `"hooks"` in PC-3
+  canonical JSON. Invariant 6 added (MUST emit lock.app). Cross-reference to BC-2.08.006 added in
+  Traceability, Related BCs, and PC-3 prose. One canonical test vector and one VP row added for
+  lock.app assertion. Behavioral content change — minor bump.).
+
+No BC H1 title changes. No BC ID additions or retirements. BC count unchanged: 138 active.
+BC-INDEX version: 1.43.8 → 1.43.9.
+
+SE-16d monotonicity: v1.43.9 timestamp 2026-06-19 > v1.43.8 timestamp 2026-06-16. PASS.
 
 ## §Trace v1.43.8
 
