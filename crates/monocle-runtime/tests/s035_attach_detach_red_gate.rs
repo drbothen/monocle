@@ -26,8 +26,8 @@
 //! - Tests exercise `attach_session()` or `detach_session()` which hit `todo!()` — the panic
 //!   IS the Red Gate failure.
 //! - Sessions are driven to `Detached` state via `insert_detached_session_for_test()` (existing
-//!   seam from S-034) or via `Running` sessions using a new `insert_running_session_for_test()`
-//!   seam (added in this file's setup).
+//!   seam from S-034) or via `Running` state using `drive_session_to_running()` (defined in
+//!   this file's setup — binds a UDS socket and drives spawn → Running via the post-spawn monitor).
 //! - Timing-dependent tests use `tokio::time::pause()` + `tokio::time::advance()`.
 //! - Mock session-host UDS servers use the same ControlledUdsMockSpawner + FakePeerCredVerifier
 //!   pattern established in S-033/S-034 tests.
@@ -576,7 +576,7 @@ async fn test_BC_2_08_007_attach_5s_timeout_session_host_dead() {
     let session_id = "035b0000-0001-4000-a000-000000000001".to_string();
     let socket_path = tmp.path().join(format!("session-{}.sock", &session_id));
 
-    let (mut manager, _subs, _rx) = make_manager(tmp.path(), 55_102);
+    let (mut manager, _subs, mut rx) = make_manager(tmp.path(), 55_102);
     manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifier { allow: true }));
 
     // Bind the socket — the mock host connects but NEVER sends ScrollbackDumpComplete.
@@ -639,6 +639,75 @@ async fn test_BC_2_08_007_attach_5s_timeout_session_host_dead() {
             );
         }
     }
+
+    // F-S035-PASS5-MED-001: EC-188 timeout MUST transition to Terminated
+    // (consistent with EC-187/PeerCredFailed — SIGTERM declares host dead).
+
+    // Assert entry.state == Terminated (NOT Detached — the pre-fix state).
+    {
+        let sessions = manager.session_list().await;
+        let snap = sessions
+            .iter()
+            .find(|s| s.session_id == session_id)
+            .expect("EC-188: session must remain in registry after 5s timeout");
+        assert_eq!(
+            snap.state,
+            monocle_ipc::types::SessionState::Terminated,
+            "EC-188 / F-S035-PASS5-MED-001: entry.state MUST be Terminated after 5s timeout \
+             (SIGTERM declares host dead; consistent with EC-187/PeerCredFailed). Got: {:?}",
+            snap.state
+        );
+    }
+
+    // Assert SessionStateChanged{Terminated} BEFORE SessionListUpdate in broker channel.
+    // (BC-2.08.008 Invariant 4 / F-S035-PASS5-MED-001)
+    let msgs = drain_messages(&mut rx, 500).await;
+
+    let terminated_idx = msgs.iter().position(|m| {
+        matches!(
+            m,
+            monocle_ipc::types::ServerToClient::SessionStateChanged {
+                session_id: ref sid,
+                new_state: monocle_ipc::types::SessionState::Terminated,
+            } if sid == &session_id
+        )
+    });
+    let list_update_idx = msgs.iter().position(|m| {
+        matches!(
+            m,
+            monocle_ipc::types::ServerToClient::SessionListUpdate { .. }
+        )
+    });
+
+    assert!(
+        terminated_idx.is_some(),
+        "EC-188 / F-S035-PASS5-MED-001: SessionStateChanged{{Terminated}} MUST be broadcast \
+         after 5s timeout (BC-2.08.008 Invariant 1 — no silent transitions). \
+         Pre-fix code would stay Detached and emit nothing. Got messages: {:?}",
+        msgs.iter().map(std::mem::discriminant).collect::<Vec<_>>()
+    );
+    assert!(
+        list_update_idx.is_some(),
+        "EC-188 / F-S035-PASS5-MED-001: SessionListUpdate MUST be broadcast after 5s timeout. \
+         Got messages: {:?}",
+        msgs.iter().map(std::mem::discriminant).collect::<Vec<_>>()
+    );
+    assert!(
+        terminated_idx.unwrap() < list_update_idx.unwrap(),
+        "EC-188 / F-S035-PASS5-MED-001 / BC-2.08.008 Invariant 4: \
+         SessionStateChanged{{Terminated}} (idx {}) MUST precede SessionListUpdate (idx {}). \
+         Got messages: {:?}",
+        terminated_idx.unwrap(),
+        list_update_idx.unwrap(),
+        msgs.iter().map(std::mem::discriminant).collect::<Vec<_>>()
+    );
+
+    // GC was triggered: transition_to_terminated_standalone spawns GC, which removes the
+    // session-host socket file. The sidecar is written to "Terminated" by GC.
+    // Consistent with how EC-187 asserts sidecar state after transition. Here we assert
+    // the sidecar does NOT show "Detached" (the pre-fix state): the transition wrote
+    // "Terminated" via transition_to_terminated_standalone.
+    // (GC runs asynchronously; assert state via registry, not sidecar file.)
 
     // Verify wire code mapping: SessionHostDead on Attach path → "attach_failed".
     let wire_code = monocle_runtime::session_manager::session_error_to_code(

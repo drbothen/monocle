@@ -3197,6 +3197,19 @@ impl SessionManager {
                                     "attach_session: SIGTERM to non-responsive session-host failed (best-effort)"
                                 );
                             }
+                            // BC-2.08.007 v1.5.5 (F-S035-PASS5-MED-001): SIGTERM declares the
+                            // session-host dead — consistent with EC-187/PeerCredFailed. Transition
+                            // to Terminated (StateChanged{Terminated} BEFORE SessionListUpdate + GC)
+                            // BEFORE returning Err(SessionHostDead).
+                            let sidecar_path =
+                                runtime_dir.join(format!("session-{}.json", session_id));
+                            transition_to_terminated_standalone(
+                                &session_id,
+                                &sessions,
+                                &broker,
+                                &sidecar_path,
+                            )
+                            .await;
                             return Err(SessionError::SessionHostDead {
                                 session_id: session_id.to_string(),
                             });
@@ -10540,13 +10553,28 @@ mod tests {
         let sidecar_path_for_inject = sidecar_path.clone();
         tokio::spawn(async move {
             // Inject Terminated state (simulating proxy_task / watchdog racing detach).
+            //
+            // F-S035-PASS5-LOW-001: mirror what transition_to_terminated_standalone actually
+            // does — it sets state=Terminated and kill_deadline=None, but does NOT clear
+            // host_conn. A real lost-race leaves host_conn = Some{ writer, reader:None,
+            // proxy_task:Some(handle) }. detach_session's proxy_task.take()/abort() then
+            // takes+aborts that real handle, exercising the lost-race proxy-abort branch.
             {
                 let mut guard = sessions_clone.lock().await;
                 if let Some(entry) = guard.get_mut(&session_id_clone) {
                     entry.state = SessionState::Terminated;
                     entry.kill_deadline = None;
-                    // proxy path clears host_conn before transitioning
-                    entry.host_conn = None;
+                    // transition_to_terminated_standalone does NOT clear host_conn.
+                    // Leave host_conn as Some with proxy_task: Some(a real spawned handle)
+                    // so detach_session's take()/abort() exercises the real branch.
+                    if let Some(ref mut conn) = entry.host_conn {
+                        // Replace proxy_task with a real (live) spawned handle so that
+                        // detach_session's take()/abort() path exercises a real abort.
+                        conn.reader = None;
+                        conn.proxy_task = Some(tokio::spawn(async {
+                            tokio::time::sleep(std::time::Duration::from_secs(60)).await
+                        }));
+                    }
                 }
             }
             // Write "Terminated" to the durable sidecar — exactly as
