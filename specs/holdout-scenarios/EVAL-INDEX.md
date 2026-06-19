@@ -24,7 +24,7 @@ inputs:
   - {path: .factory/stories/S-035-session-manager-attach-detach.md, version: "1.2.3"}
   - {path: .factory/stories/S-036-session-manager-rediscovery.md, version: "1.2"}
   - {path: .factory/stories/S-037-session-manager-gc.md, version: "1.0.3"}
-  - {path: .factory/stories/S-038-session-manager-hook-injection.md, version: "1.4"}
+  - {path: .factory/stories/S-038-session-manager-hook-injection.md, version: "1.5"}
   - {path: .factory/stories/S-039-pty-output-pipeline.md, version: "1.3"}
   - {path: .factory/stories/S-040-keyboard-forwarding.md, version: "1.1"}
   - {path: .factory/stories/S-041-mouse-forwarding-sgr.md, version: "1.0"}

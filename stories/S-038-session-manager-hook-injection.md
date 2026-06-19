@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-038
 epic_id: EPIC-08
-version: "1.4"
+version: "1.5"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -20,7 +20,7 @@ behavioral_contracts: [BC-2.08.006]
 verification_properties: []
 estimated_days: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.006.md, version: "1.4.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.006.md, version: "1.5.0"}
   - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
@@ -72,15 +72,57 @@ future use per BC-2.04.010 PC-3. Claude Code ignores hook types whose value is a
 ### AC-004 (traces to BC-2.08.006 postcondition 3 — lock.app set to "monocle"; SessionStart is NOT a key)
 
 The `hooks-settings.json` MUST include a `lock.app` field set to `"monocle"`. The canonical
-schema is (authority: BC-2.04.010 PC-3):
+schema uses the **array-of-hook-objects** form (authority: BC-2.04.010 PC-3 — BC-2.04.010 is
+the single authoritative source for the exact schema; if BC-2.04.010 and this story conflict,
+BC-2.04.010 wins per AC-010):
 
 ```json
 {
   "hooks": {
-    "PreToolUse": "curl -s -X POST http://127.0.0.1:<port>/hooks/pre-tool-use -H 'X-Monocle-Authorization: monocle-v1:<64-hex>'",
-    "Notification": "curl -s -X POST http://127.0.0.1:<port>/hooks/notification -H 'X-Monocle-Authorization: monocle-v1:<64-hex>'",
-    "Stop": "curl -s -X POST http://127.0.0.1:<port>/hooks/stop -H 'X-Monocle-Authorization: monocle-v1:<64-hex>'",
-    "UserPromptSubmit": "curl -s -X POST http://127.0.0.1:<port>/hooks/prompt-submit -H 'X-Monocle-Authorization: monocle-v1:<64-hex>'",
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://127.0.0.1:<port>/hooks/pre-tool-use -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: monocle-v1:<64-hex>' -d @-"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://127.0.0.1:<port>/hooks/notification -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: monocle-v1:<64-hex>' -d @-"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://127.0.0.1:<port>/hooks/stop -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: monocle-v1:<64-hex>' -d @-"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://127.0.0.1:<port>/hooks/prompt-submit -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: monocle-v1:<64-hex>' -d @-"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [],
     "PreCompact": []
   },
@@ -90,9 +132,12 @@ schema is (authority: BC-2.04.010 PC-3):
 }
 ```
 
-`"SessionStart"` is NOT a key in this file. Claude Code invokes `POST /hooks/session-start`
-via its own internal lifecycle mechanism regardless of hooks-settings.json content; monocle's
-axum router handles it, but it is NOT configured through hooks-settings.json.
+Each URL-bearing hook key is an **array** containing one matcher object with a `"hooks"` array
+containing one `{"type":"command","command":"<curl>"}` object. `PostToolUse` and `PreCompact`
+are empty arrays `[]` (NOT empty strings). `"SessionStart"` is NOT a key in this file.
+Claude Code invokes `POST /hooks/session-start` via its own internal lifecycle mechanism
+regardless of hooks-settings.json content; monocle's axum router handles it, but it is NOT
+configured through hooks-settings.json.
 The exact JSON schema (field names, nesting depth, URL format) is defined in BC-2.04.010.
 
 ### AC-005 (traces to BC-2.08.006 invariant 3 — shared file; NOT per-session)
@@ -111,17 +156,22 @@ File mode: readable by owner only (0o600 on Unix).
 ### AC-007 (traces to BC-2.08.006 invariant 4 — file written at daemon startup before any spawn_recipe() is called)
 
 `hooks-settings.json` MUST exist and be fully written before the FIRST `spawn_session()` call
-is dispatched. The daemon startup sequence MUST write the file during initialization
-(before the IPC listen socket is bound, so no client can issue `SpawnSession` before the file
-exists). If the write fails, the daemon MUST log a WARN and abort the startup sequence.
+is dispatched. Lifecycle step 9 calls `write_hooks_settings_json()` before the UDS bind
+(step 10), so no client can issue `SpawnSession` before the file exists. If the write fails,
+the daemon MUST log `ERROR: failed to write hooks-settings.json: <reason>` and exit with
+code 72 (BC-2.08.006 Invariant 5 / BC-2.04.010 PC-6).
 
 ### AC-008 (traces to BC-2.08.006 postcondition 2 / architecture ownership boundary — SpawnOptions.hooks_settings_path carried to session-host args; argv injection chain per BC-2.03.005 PC-1)
 
 S-038 owns EXACTLY TWO responsibilities for hook injection:
-1. **Write the file** (`write_hooks_settings_json()` at `SessionManager::new()` initialization, before IPC bind).
+1. **Provide `write_hooks_settings_json()`** — the single canonical writer of `hooks-settings.json`.
+   This function is called by lifecycle step 9 (before UDS bind) with a real `HookEndpointConfig`,
+   NOT inside `SessionManager::new()`. `SessionManager::new()` stores the caller-provided
+   `HookEndpointConfig` for the EC-182 re-write path only (single-writer mandate, BC-2.08.006 Description).
 2. **Populate `SpawnOptions.hooks_settings_path`**: before calling `engine_module.spawn_recipe(&opts)`,
-   `SessionManager::spawn_session()` MUST set `opts.hooks_settings_path = Some(self.hooks_settings_path.clone())`
+   `SessionManager::spawn_session()` MUST set `opts.hooks_settings_path = self.hooks_settings_path.clone()`
    so that `ClaudeCodeModule::spawn_recipe()` has the path available.
+   (`SpawnOptions.hooks_settings_path` is a bare `PathBuf`, not `Option<PathBuf>` — no `Some()` wrapper.)
 
 The argv `["--settings", <path>]` injection into `SpawnRecipe.argv` is the responsibility of
 **S-045 (`ClaudeCodeModule::spawn_recipe()`)**, which reads `opts.hooks_settings_path` and appends
@@ -192,11 +242,11 @@ The re-write guard lives in `spawn_session()`, consistent with Tasks and AC-008.
 - [ ] Implement `write_hooks_settings_json(config: &HookEndpointConfig, path: &Path) -> Result<(), SessionError>` using `tempfile::NamedTempFile`, `serde_json`, and `tempfile::persist`. Set file mode 0o600 via `std::os::unix::fs::PermissionsExt`.
   The JSON structure MUST be: `{ "hooks": { "PreToolUse": <url>, "Notification": <url>, "Stop": <url>, "UserPromptSubmit": <url>, "PostToolUse": [], "PreCompact": [] }, "lock": { "app": "monocle" } }`.
   Write `PostToolUse` and `PreCompact` as JSON arrays `[]` (not strings). `serde_json::Value::Array(vec![])` is the correct Rust representation.
-- [ ] Call `write_hooks_settings_json()` during `SessionManager::new()` initialization (before IPC bind). Propagate error to caller.
+- [ ] `write_hooks_settings_json()` is called by **lifecycle step 9** (before UDS bind), NOT inside `SessionManager::new()`. `SessionManager::new()` receives the caller-provided `HookEndpointConfig` (populated with real port + auth_token by lifecycle) and stores it in `self.hook_endpoint_config` for the EC-182 re-write path. No write in `new()` (single-writer mandate, BC-2.08.006 §Single-writer mandate).
 - [ ] Add `hooks_settings_path: PathBuf` field to `SessionManager`.
-- [ ] In `SessionManager::spawn_session()`, before calling `engine_module.spawn_recipe(&opts)`: set `opts.hooks_settings_path = Some(self.hooks_settings_path.clone())` so `ClaudeCodeModule::spawn_recipe()` (S-045) can append `--settings <path>` to argv. S-038 MUST NOT duplicate the argv append — that is S-045's responsibility. Only populate the field.
+- [ ] In `SessionManager::spawn_session()`, before calling `engine_module.spawn_recipe(&opts)`: set `opts.hooks_settings_path = self.hooks_settings_path.clone()` so `ClaudeCodeModule::spawn_recipe()` (S-045) can append `--settings <path>` to argv. (`SpawnOptions.hooks_settings_path` is a bare `PathBuf` — no `Some()` wrapper.) S-038 MUST NOT duplicate the argv append — that is S-045's responsibility. Only populate the field.
 - [ ] EC-182 re-write guard (in `spawn_session()`, before populating `opts.hooks_settings_path`): if `self.hooks_settings_path` does not exist (`!self.hooks_settings_path.exists()`), call `write_hooks_settings_json()` to re-write it, log `tracing::warn!("hooks-settings.json missing at spawn time; re-writing")`, then proceed.
-- [ ] Write unit test `test_BC_2_08_006_spawn_options_hooks_settings_path_populated`: call `spawn_session()` on a `SessionManager` with a valid `hooks_settings_path`; intercept the `SpawnOptions` passed to `spawn_recipe()` (via mock `EngineModule`); assert `opts.hooks_settings_path == Some(self.hooks_settings_path)`. Do NOT assert `argv` here — that is S-045's test (`test_BC_2_03_005_spawn_recipe_happy_path_binary_args_env_cwd`, which asserts `recipe.args == ["--settings", path]` per BC-2.03.005 PC-1).
+- [ ] Write unit test `test_BC_2_08_006_spawn_options_hooks_settings_path_populated`: call `spawn_session()` on a `SessionManager` with a valid `hooks_settings_path`; intercept the `SpawnOptions` passed to `spawn_recipe()` (via mock `EngineModule`); assert `opts.hooks_settings_path == self.hooks_settings_path` (bare `PathBuf` — no `Some()` wrapper). Do NOT assert `argv` here — that is S-045's test (`test_BC_2_03_005_spawn_recipe_happy_path_binary_args_env_cwd`, which asserts `recipe.args == ["--settings", path]` per BC-2.03.005 PC-1).
 - [ ] Write unit test `test_BC_2_08_006_hooks_settings_json_content`: write hooks-settings.json to tmp dir; read back; assert 4 URL-bearing keys present; assert 2 empty reserved keys present; assert `lock.app == "monocle"`.
 - [ ] Write unit test `test_BC_2_08_006_hooks_settings_json_atomic_write`: verify write uses `tempfile::persist` (test via file content atomicity under mock FS or by verifying the temp file never has partial content).
 - [ ] Write unit test `test_BC_2_08_006_startup_write_fail_aborts_daemon`: if `write_hooks_settings_json` returns Err, `SessionManager::new()` propagates the error; daemon start fails.
@@ -212,7 +262,7 @@ The re-write guard lives in `spawn_session()`, consistent with Tasks and AC-008.
 
 ## Architecture Compliance Rules
 
-- `hooks-settings.json` written once at `SessionManager::new()`, not per spawn. Shared across all sessions.
+- `hooks-settings.json` written once at daemon startup by lifecycle step 9 (which calls `write_hooks_settings_json()`), NOT inside `SessionManager::new()`. Shared across all sessions. `SessionManager::new()` stores the config for EC-182 re-writes only (single-writer mandate per BC-2.08.006 Description).
 - `ClaudeCodeModule::spawn_recipe()` (S-045) appends `--settings <path>` to `SpawnRecipe.args`. S-038 provides the path by setting `opts.hooks_settings_path` before calling `spawn_recipe()`; S-038 MUST NOT append `--settings` itself. The path is canonicalized at `SessionManager::new()` initialization (stored in `hooks_settings_path: PathBuf`).
 - `write_hooks_settings_json()` MUST use `tempfile::persist` (SS-conventions-anti-patterns.md §Atomic writes policy: all config files via `tempfile::persist`; no exceptions).
 - File permissions: 0o600. Session-host child processes run as the same user, so owner-read-only is sufficient.
@@ -315,6 +365,8 @@ insertion into `SpawnRecipe.argv` is owned by S-045 (ClaudeCodeModule::spawn_rec
 
 | Version | Change | Pass |
 |---------|--------|------|
+| v1.5 | AC-004 schema corrected: bare-string hook values replaced with array-of-hook-objects form per BC-2.04.010 PC-3 (F-S038-AC004-SCHEMA). AC-008 + Tasks Option→PathBuf: `opts.hooks_settings_path = Some(...)` → `opts.hooks_settings_path = ...` (bare PathBuf per monocle-core/src/engine.rs; F-S038-PASS1-007). Single-writer reconciliation: AC-008 responsibility 1, Tasks write-call bullet, AC-007 error level/code, and Architecture Compliance Rules updated to reflect BC-2.08.006 v1.5.0 single-writer mandate (lifecycle step 9 owns startup write; `SessionManager::new()` stores config only). BC-2.08.006 input pin bumped 1.4.0→1.5.0. | adversarial-pass |
+| v1.4 | BC-2.08.006 input pin bumped 1.4.0→1.4.1 (arch-source pin cascade for SS-session-manager at v1.4 authoring time; F-S035-PASS5-MED-001). | post-convergence |
 | v1.3 | BC-2.08.006 input pin bumped 1.3.2→1.4.0 (PO added Invariants 5+6 + EC-183/184). AC-006 trace citation updated "invariant 4 / CLAUDE.md atomic-write convention — no dedicated BC clause"→"Invariant 5" (new dedicated clause). AC-009 trace citation updated "postcondition 1 / SS-conventions path handling — no dedicated BC clause"→"Invariant 6" (new dedicated clause). Body BC-table title corrected to canonical BC H1 form (F-P24-SUG-001). | post-convergence |
 | v1.2 | Corpus-wide AC-trace-citation audit (F-P20-CRIT-001 class): AC-005 "postcondition 5"→"invariant 3" (shared file); AC-006 "postcondition 6"→"invariant 4 / CLAUDE.md" (atomic write; no dedicated BC clause); AC-007 "postcondition 7"→"invariant 4" (write at startup); AC-008 "postcondition 8"→"postcondition 2 / architecture boundary"; AC-009 "invariant 1"→"postcondition 1 / SS-conventions" (canonicalization; no dedicated BC clause); AC-010 "invariant 2"→"postcondition 3" (BC-2.04.010 authority). AC bodies unchanged. Genuine BC gaps: AC-006 atomic write and AC-009 path canonicalization have no dedicated clause in BC-2.08.006 — both trace to project conventions. | Phase-2 |
 | v1.0 | Initial decomposition | Phase-2 |

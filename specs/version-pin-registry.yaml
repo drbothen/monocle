@@ -967,8 +967,8 @@ S-033-session-manager-spawn:
 
 S-038-session-manager-hook-injection:
   path: stories/S-038-session-manager-hook-injection.md
-  current_version: "1.4"
-  last_bump_commit: "[F-S035-PASS5-MED-001 — BC-2.08.006 v1.4.0→v1.4.1 pin cascade (SS-session-manager arch-source pin update)]" # version-pin-historical
+  current_version: "1.5"
+  last_bump_commit: "[F-S038-AC004-SCHEMA + F-S038-PASS1-007 — AC-004 schema array-of-hook-objects fix; AC-008/Tasks Option→bare PathBuf; single-writer reconciliation (BC-2.08.006 v1.5.0); BC input pin 1.4.0→1.5.0]"
   last_bump_date: "2026-06-19"
 
 S-040-keyboard-forwarding:
