@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-035
 epic_id: EPIC-08
-version: "1.2.1"
+version: "1.2.2"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -20,9 +20,9 @@ behavioral_contracts: [BC-2.08.007, BC-2.08.008]
 verification_properties: []
 estimated_days: 4
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.007.md, version: "1.5.3"}
+  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.007.md, version: "1.5.5"}
   - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.008.md, version: "1.3.4"}
-  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
+  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.14.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
@@ -55,10 +55,13 @@ abort the attach; session treated as dead; `Err(SessionError::SessionHostDead { 
 After SO_PEERCRED verification, sends `DaemonToHost::Attach`. Then receives the full
 `HostToDaemon::ScrollbackChunk*` + `HostToDaemon::ScrollbackDumpComplete` chunked scrollback
 sequence within 5 seconds total. The retired single-message `ScrollbackDump` form MUST NOT be
-accepted. If `ScrollbackDumpComplete` is not received within 5 seconds, the session is treated as
-non-responsive: `attach_session()` returns `Err(SessionError::SessionHostDead { session_id })`
-(maps to wire code `"attach_failed"` via `session_error_to_code(IpcOp::Attach, SessionHostDead)`).
-SIGTERM is sent to the session-host PID (matching the 5s non-responsive handling in BC-2.08.004).
+accepted. If `ScrollbackDumpComplete` is not received within 5 seconds (EC-188): SIGTERM is sent
+to the session-host PID (matching the 5s non-responsive handling in BC-2.08.004); `SessionEntry.state`
+transitions to `Terminated` via `transition_to_terminated_standalone` (publishing
+`SessionStateChanged{Terminated}` before `SessionListUpdate`, spawning GC); `attach_session()`
+returns `Err(SessionError::SessionHostDead { session_id })` (maps to wire code `"attach_failed"`
+via `session_error_to_code(IpcOp::Attach, SessionHostDead)`). See BC-2.08.007 Invariant 5 for
+the canonical four-subpath enumeration of attach-failure dispositions.
 
 ### AC-003 (traces to BC-2.08.007 attach postcondition 5 — host_conn updated with proxy_task Some)
 
@@ -152,7 +155,7 @@ No silent transitions permitted.
 - [ ] Implement `SessionManager::attach_session(&mut self, session_id: &str) -> Result<(), SessionError>`:
   - Look up session; check `SessionNotFound` if absent.
   - If Running: idempotent `Ok(())` (already attached; no new proxy_task per Invariant 2).
-  - If Detached: UDS connect → SO_PEERCRED → send `DaemonToHost::Attach` → receive `ScrollbackChunk*` + `ScrollbackDumpComplete` within 5s timeout → start proxy task → set `host_conn: Some(SessionHostConnection{writer, proxy_task: Some(handle)})` → transition → Running → emit `SessionStateChanged{Running}` + `SessionListUpdate` under mutex.
+  - If Detached: UDS connect → SO_PEERCRED → send `DaemonToHost::Attach` → receive `ScrollbackChunk*` + `ScrollbackDumpComplete` within 5s timeout → start proxy task → set `host_conn: Some(SessionHostConnection{writer, proxy_task: Some(handle)})` → transition → Running → emit `SessionStateChanged{Running}` + `SessionListUpdate` under mutex. On timeout (EC-188): SIGTERM pid → `transition_to_terminated_standalone` (emit `SessionStateChanged{Terminated}` before `SessionListUpdate`, spawn GC) → return `Err(SessionHostDead)`. On ConnectFailed (EC-187): `transition_to_terminated_standalone` → `Err(SessionHostDead)`. On uid mismatch: `transition_to_terminated_standalone` → `Err(SessionHostDead)`. On protocol error after uid match: stay Detached, return `Err(SessionHostDead)`.
   - If other state: return appropriate error or idempotent Ok (see action×state matrix in SS-session-manager.md §Terminated-in-grace).
 - [ ] Implement `SessionManager::detach_session(&mut self, session_id: &str) -> Result<(), SessionError>`:
   - Look up session; check `SessionNotFound` if absent.
@@ -168,7 +171,7 @@ No silent transitions permitted.
 - [ ] Implement session-host `DaemonToHost::Detach` handler: disconnect daemon client; stay alive; stop sending `PtyBytes` to daemon.
 - [ ] Add `ClientToServer::AttachSession` and `ClientToServer::DetachSession` arms to IPC handler.
 - [ ] Write unit test `test_BC_2_08_007_attach_receives_scrollback_detach_keeps_session_alive`: mock session-host; attach → state Running; `ScrollbackChunk*` + `ScrollbackDumpComplete` forwarded; detach → state Detached; session-host alive.
-- [ ] Write unit test `test_BC_2_08_007_attach_5s_timeout_session_host_dead`: session-host does not respond; 5s timeout; `Err(SessionHostDead)`; `"attach_failed"` wire code.
+- [ ] Write unit test `test_BC_2_08_007_attach_5s_timeout_session_host_dead`: session-host does not respond; 5s timeout fires; SIGTERM sent to session-host PID (via `pid_sigterm_fn` seam); `SessionEntry.state` asserted `Terminated`; `SessionStateChanged{Terminated}` published before `SessionListUpdate`; GC invoked; `Err(SessionHostDead)`; `"attach_failed"` wire code.
 - [ ] Write unit test `test_BC_2_08_007_attach_running_idempotent`: attach on Running → `Ok(())`; no duplicate proxy_task.
 - [ ] Write unit test `test_BC_2_08_007_detach_detached_idempotent`: detach on Detached → `Ok(())`.
 - [ ] Write unit test `test_BC_2_08_007_detach_launching_session_not_ready`: detach on Launching with `host_conn: None` → `Err(SessionNotReady)`.
@@ -251,7 +254,7 @@ Files to MODIFY (all established by S-033):
 | EC-185 | `attach_session()` on a `Running` session (already attached) | `Ok(())` — idempotent; no duplicate `proxy_task` |
 | EC-186 | `detach_session()` on a `Detached` session | `Ok(())` — idempotent; no duplicate Detach sent |
 | EC-187 | Session-host process died between detach and re-attach | UDS connect fails; liveness probe confirms dead; `SessionEntry.state → Terminated`; `Err(SessionHostDead)` → `"attach_failed"` |
-| EC-188 | `ScrollbackDumpComplete` not received within 5s | Session non-responsive; `Err(SessionHostDead)` → `"attach_failed"`; SIGTERM to session-host PID |
+| EC-188 | `ScrollbackDumpComplete` not received within 5s | Session non-responsive; SIGTERM to session-host PID; `SessionEntry.state → Terminated` via `transition_to_terminated_standalone` (SessionStateChanged{Terminated} before SessionListUpdate + GC); `Err(SessionHostDead)` → `"attach_failed"` |
 
 ## IPC Handler Arm Ownership Disambiguation
 

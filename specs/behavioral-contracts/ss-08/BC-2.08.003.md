@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.0"
+version: "1.5.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -129,7 +129,7 @@ and sends SIGKILL directly to the session-host PID. The sidecar is not immediate
    alive session-host — the re-discovery Detached-preservation behavior (BC-2.08.004 I3-005)
    does NOT exempt kill from SO_PEERCRED. Failure (uid mismatch) → session treated as dead;
    transition to `Terminated` immediately; `Ok(())` returned (sidecar updated, GC timer
-   started). Per SS-session-manager.md v2.13.0 §Per-session UDS security item 1: "SO_PEERCRED
+   started). Per SS-session-manager.md v2.14.0 §Per-session UDS security item 1: "SO_PEERCRED
    applies universally — attach, re-discovery, kill/detach re-connect. No exceptions."
 
 ## Edge Cases
@@ -169,7 +169,7 @@ and sends SIGKILL directly to the session-host PID. The sidecar is not immediate
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC defines the kill operation, a core session lifecycle action named explicitly in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager `kill_session()`); monocle-session-host (SIGTERM delivery) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.13.0 §SessionManager §Public API (kill_session signature); §Kill-path host_conn rules (post-spawn monitor; PID fallback for Launching race window); §Per-session UDS protocol (DaemonToHost::Kill, HostToDaemon::StateChanged, Goodbye); §Per-session UDS security item 1 (SO_PEERCRED universal — no coverage holes); §Ruling J (watchdog dual-PID SIGKILL semantics — session-host PID + harness child PID); SS-daemon-wiring-v2-delta.md v1.11.4 §3b (SessionStateChanged emission rule: Terminating then SessionListUpdate) |
+| Architecture Source | SS-session-manager.md v2.14.0 §SessionManager §Public API (kill_session signature); §Kill-path host_conn rules (post-spawn monitor; PID fallback for Launching race window); §Per-session UDS protocol (DaemonToHost::Kill, HostToDaemon::StateChanged, Goodbye); §Per-session UDS security item 1 (SO_PEERCRED universal — no coverage holes); §Ruling J (watchdog dual-PID SIGKILL semantics — session-host PID + harness child PID); SS-daemon-wiring-v2-delta.md v1.11.4 §3b (SessionStateChanged emission rule: Terminating then SessionListUpdate) |
 | Test Name | test_BC_2_08_003_kill_session_sigterm_within_500ms |
 
 ## Related BCs
@@ -189,6 +189,15 @@ S-034 — Implement SessionManager::kill_session()
 ## VP Anchors
 
 VP-TBD — kill_session() timing and state transition tests (filled after VP creation)
+
+
+## §Trace v1.5.1
+
+**SS-session-manager v2.13.0 → v2.14.0 Architecture Source pin cascade (F-S035-PASS5-MED-001)** (2026-06-19T00:00:00Z):
+- Architecture Source pin: SS-session-manager.md v2.13.0 → v2.14.0 (v2.14.0 adds EC-188
+  timeout → Terminated subpath (d) in the attach_session Detached cell of the action×state
+  matrix — F-S035-PASS5-MED-001). No behavioral content changes to this BC.
+- SE-16d monotonicity: v1.5.1 timestamp 2026-06-19 >= v1.5.0 timestamp auto. PASS.
 
 ## §Trace v1.4.1
 

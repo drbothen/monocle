@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.13.0"
+version: "2.14.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -767,7 +767,7 @@ variants and codes (F-P52-001 hard constraint honored).
 | `kill_session()` | Ok(()) — PID fallback SIGTERM; Launching→Terminating | Ok(()) — Kill over host_conn; Launching→Terminating | Ok(()) — Kill over host_conn; Running→Terminating | Ok(()) — fresh UDS+SO_PEERCRED + Kill; Detached→Terminating | Ok(()) — idempotent (BC-2.08.003 Inv 2) | Ok(()) — idempotent (BC-2.08.003 Inv 2; kill already complete) |
 | `rename_session()` | Ok(()) — metadata op; no host_conn needed (BC-2.06.025 Inv 5) | Ok(()) — same | Ok(()) — metadata op | Ok(()) — metadata op | Ok(()) — metadata op; display_name update proceeds (TUI blocks this path per BC-2.06.025 Inv 4; daemon allows it defensively since rename is idempotent metadata) | Err(InvalidSessionName{"session terminated"}) → "rename_failed" (BC-2.08.005 Inv 4) |
 | `detach_session()` | Err(SessionNotReady) → "session_not_ready" (F-P50-001) | Err(SessionNotReady) if host_conn not yet active for detach; see §Post-spawn monitor item 8 | Ok(()) — Running→Detached | Ok(()) — idempotent (already detached) | Ok(()) — idempotent (no active connection; consistent with detach-on-Terminated) | Ok(()) — idempotent (host dead; no connection to sever) |
-| `attach_session()` | Err(SessionNotFound) or state-error — not valid target | N/A (not yet Running) | N/A (already attached) | Ok(()) — Detached→Running; fresh ScrollbackDump. Failure subpaths: (a) SO_PEERCRED uid mismatch → Detached→Terminated (transition_to_terminated_standalone, full broadcasts+GC) + Err(SessionHostDead) — uid mismatch is structural/dead-host, not retryable; (b) protocol error after uid match → stay Detached (no transition) + Err(SessionHostDead) — host is alive+verified, retry is legitimate. | Err(SessionHostDead) → "attach_failed" (session is being killed) | Err(SessionHostDead) → "attach_failed" (host process is dead) |
+| `attach_session()` | Err(SessionNotFound) or state-error — not valid target | N/A (not yet Running) | N/A (already attached) | Ok(()) — Detached→Running; fresh ScrollbackDump. Failure subpaths: (a) EC-187 ConnectFailed → Detached→Terminated (transition_to_terminated_standalone, full broadcasts+GC) + Err(SessionHostDead) — host confirmed dead; (b) SO_PEERCRED uid mismatch → Detached→Terminated (transition_to_terminated_standalone, full broadcasts+GC) + Err(SessionHostDead) — uid mismatch is structural/dead-host, not retryable; (c) protocol error after uid match → stay Detached (no transition) + Err(SessionHostDead) — host is alive+verified, retry is legitimate; (d) EC-188 5s timeout → SIGTERM to session-host PID → Detached→Terminated (transition_to_terminated_standalone, full broadcasts+GC) + Err(SessionHostDead) — SIGTERM declares host non-responsive/dead; re-attachable Detached entry for a SIGTERM'd host is incorrect. See BC-2.08.007 Invariant 5 for canonical enumeration. | Err(SessionHostDead) → "attach_failed" (session is being killed) | Err(SessionHostDead) → "attach_failed" (host process is dead) |
 | `resize_session()` | WARN-drop (ResizePane carve-out) | WARN-drop | Ok(()) | WARN-drop (no active proxy; resize forwarded but no PTY streaming; IPC handler carve-out applies to all resize errors regardless of session state) | WARN-drop | WARN-drop |
 | `send_key_input()` | Err(SessionNotFound or SessionHostDead) → "attach_failed" | SessionHostDead if host not live | Ok(()) — forwarded to stdin | Err — no active proxy/stdin path (session detached; use AttachSession first); maps to nearest existing code — SessionHostDead → "attach_failed" or SessionNotFound → "session_not_found" depending on impl; untrusted-client path | Err(SessionHostDead) → "attach_failed" | Err(SessionHostDead) → "attach_failed" |
 
@@ -3212,7 +3212,7 @@ locus for UUID v4 collisions. `spawn_session()` MUST NOT perform its own retry l
 
 #### Rationale
 
-F-P41-IMP-001 (BC-2.08.001 v1.5.3) established that UUID generation lives in the IPC handler,
+F-P41-IMP-001 (BC-2.08.001 v1.5.4) established that UUID generation lives in the IPC handler,
 not inside `spawn_session()`. `spawn_session()` receives an already-generated `session_id` via
 `opts.with_daemon_fields()`. If `spawn_session()` detects a collision (session_id already in
 registry), the correct response is `Err(SessionError::SessionIdCollision { session_id })` — it
@@ -3767,6 +3767,34 @@ Add to the S-035 test suite:
 - `test_proxy_task_handles_goodbye_without_terminated`: attach a session, send only `Goodbye`
   from the mock session-host (no prior `StateChanged{Terminated}`), assert session transitions
   to Terminated (defensive path).
+
+---
+
+## §Trace v2.14.0
+
+**F-S035-PASS5-MED-001 — EC-188 timeout → Terminated (transition_to_terminated_standalone); action×state matrix Detached cell extended with subpath (d) and EC-187 subpath (a)** (2026-06-19):
+
+- **Finding (F-S035-PASS5-MED-001):** EC-188 attach timeout (5s, SIGTERM sent to session-host
+  PID) left the entry in `Detached` state with no broadcast and no GC — a re-attachable entry
+  for a host being actively killed. The Detached cell in the action×state matrix only enumerated
+  uid-mismatch (subpath a) and protocol-error (subpath b), silently omitting the EC-188 timeout
+  path (subpath d) and the ConnectFailed path (subpath a/EC-187).
+
+- **Decision: A — EC-188 timeout → `transition_to_terminated_standalone`.**
+  SIGTERM declares host non-responsive/dead. Leaving `Detached` for a SIGTERM'd host is
+  semantically incorrect and inconsistent with EC-187 and PeerCredFailed which both transition
+  to Terminated on lesser certainty of host-death.
+
+- **Change:** Detached cell for `attach_session()` in the Terminated-in-grace action×state
+  matrix expanded to four labeled subpaths:
+  (a) EC-187 ConnectFailed → Terminated; (b) SO_PEERCRED uid mismatch → Terminated;
+  (c) protocol error after uid match → stays Detached; (d) EC-188 5s timeout → Terminated.
+  Canonical enumeration moved to BC-2.08.007 Invariant 5 (v1.5.5); matrix cell now
+  cross-references it.
+
+- **Downstream:** BC-2.08.007 v1.5.5 (EC-188 text + Invariant 5).
+
+- **SE-16d monotonicity:** v2.14.0 timestamp 2026-06-19 >= v2.13.0 timestamp 2026-06-19. PASS.
 
 ---
 

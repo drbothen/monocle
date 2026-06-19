@@ -124,8 +124,8 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "2.13.0"
-  last_bump_commit: "[F-S035-PASS2-LOW-001 — attach_session uid-mismatch → Terminated (broadcasting+GC); protocol-error → stays Detached; action×state matrix Detached cell updated]"
+  current_version: "2.14.0"
+  last_bump_commit: "[F-S035-PASS5-MED-001 — EC-188 timeout → Terminated (transition_to_terminated_standalone); action×state matrix Detached cell subpath (d) added; four-subpath canonical enumeration in Invariant 5]"
   last_bump_date: "2026-06-19"
 
 SS-embedded-pty:
@@ -205,7 +205,7 @@ ARCH-INDEX:
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
   current_version: "1.43.8"
-  last_bump_commit: "[F-P20-BCGAP-001 — BC-2.08.006 v1.4.0: atomic-write + path-canonicalization clauses added (Invariants 5+6, EC-183/184, 3 test vectors, 3 VPs). BC count unchanged: 138 active.]"
+  last_bump_commit: "[F-P20-BCGAP-001 — BC-2.08.006 v1.4.0: atomic-write + path-canonicalization clauses added (Invariants 5+6, EC-183/184, 3 test vectors, 3 VPs). BC count unchanged: 138 active.]" # version-pin-historical
   last_bump_date: "2026-06-16"
 
 STORY-INDEX:
@@ -228,8 +228,8 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.21"
-  last_bump_commit: "[F-S037-P4-LOW-001 — S-037 pin cascade 1.0→1.0.1]"
+  current_version: "1.22"
+  last_bump_commit: "[F-S035-PASS5-MED-001 — S-035 story pin cascade 1.2.1→1.2.2]"
   last_bump_date: "2026-06-19"
 
 sprint-state:
@@ -707,9 +707,9 @@ BC-2.07.006:
 
 BC-2.03.005:
   path: specs/behavioral-contracts/ss-03/BC-2.03.005.md
-  current_version: "1.1.5"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-045; Traceability Stories row filled]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.1.6"
+  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  last_bump_date: "2026-06-19"
 
 BC-2.03.006:
   path: specs/behavioral-contracts/ss-03/BC-2.03.006.md
@@ -719,93 +719,93 @@ BC-2.03.006:
 
 BC-2.03.007:
   path: specs/behavioral-contracts/ss-03/BC-2.03.007.md
-  current_version: "1.2.5"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-045 (clusters with BC-2.03.005)]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.2.6"
+  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  last_bump_date: "2026-06-19"
 
 BC-2.03.008:
   path: specs/behavioral-contracts/ss-03/BC-2.03.008.md
-  current_version: "1.0.8"
-  last_bump_commit: "[F-PASS7-CRIT-001 — Story Anchor re-anchored S-045 → S-033 (trait-level default impl; dependency graph acyclicity fix)]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.0.9"
+  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  last_bump_date: "2026-06-19"
 
 BC-2.05.009:
   path: specs/behavioral-contracts/ss-05/BC-2.05.009.md
-  current_version: "1.5.5"
-  last_bump_commit: "[Phase-2 Pass-1 fix burst cascade — SS-ipc pin updated 1.23.2 → 1.24.0 in Architecture Source cell]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.5.6"
+  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  last_bump_date: "2026-06-19"
 
 BC-2.05.010:
   path: specs/behavioral-contracts/ss-05/BC-2.05.010.md
-  current_version: "1.9.4"
-  last_bump_commit: "[Phase-2 Pass-1 fix burst cascade — SS-ipc pin updated 1.23.2 → 1.24.0 in Architecture Source cell]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.9.5"
+  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  last_bump_date: "2026-06-19"
 
 BC-2.05.011:
   path: specs/behavioral-contracts/ss-05/BC-2.05.011.md
-  current_version: "1.2.5"
-  last_bump_commit: "[F-PASS6-SUG-002 fix — Story Anchor co-ownership S-047-only → S-046+S-047; anchor metadata only]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.2.6"
+  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  last_bump_date: "2026-06-19"
 
 BC-2.06.025:
   path: specs/behavioral-contracts/ss-06/BC-2.06.025.md
-  current_version: "1.5.4"
-  last_bump_commit: "[Phase-2 Pass-2 fix burst — SS-embedded-pty arch-source pin 1.6.0→1.7.0]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.5.5"
+  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  last_bump_date: "2026-06-19"
 
 BC-2.08.001:
   path: specs/behavioral-contracts/ss-08/BC-2.08.001.md
-  current_version: "1.5.3"
-  last_bump_commit: "[Phase-2 Pass-1 fix burst — SS-ipc pin updated 1.23.2 → 1.24.0 in Architecture Source cell]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.5.4"
+  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  last_bump_date: "2026-06-19"
 
 BC-2.08.002:
   path: specs/behavioral-contracts/ss-08/BC-2.08.002.md
-  current_version: "1.2.3"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-036]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.2.4"
+  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  last_bump_date: "2026-06-19"
 
 BC-2.08.003:
   path: specs/behavioral-contracts/ss-08/BC-2.08.003.md
-  current_version: "1.5.0"
-  last_bump_commit: "[ADV-S034-MED-001 — PC-5b harness-child group-kill semantics; SS-session-manager Ruling J]"
-  last_bump_date: "2026-06-17"
+  current_version: "1.5.1"
+  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  last_bump_date: "2026-06-19"
 
 BC-2.08.004:
   path: specs/behavioral-contracts/ss-08/BC-2.08.004.md
-  current_version: "1.3.2"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-036]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.3.3"
+  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  last_bump_date: "2026-06-19"
 
 BC-2.08.005:
   path: specs/behavioral-contracts/ss-08/BC-2.08.005.md
-  current_version: "1.0.6"
-  last_bump_commit: "[Phase-2 Pass-1 fix burst — SS-ipc pin updated 1.23.2 → 1.24.0 in Architecture Source cell]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.0.7"
+  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  last_bump_date: "2026-06-19"
 
 BC-2.08.006:
   path: specs/behavioral-contracts/ss-08/BC-2.08.006.md
-  current_version: "1.4.0"
-  last_bump_commit: "[F-P20-BCGAP-001 — atomic-write + path-canonicalization clauses added (Invariants 5+6, EC-183/184, 3 test vectors, 3 VPs)]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.4.1"
+  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  last_bump_date: "2026-06-19"
 
 BC-2.08.007:
   path: specs/behavioral-contracts/ss-08/BC-2.08.007.md
-  current_version: "1.5.4"
-  last_bump_commit: "[F-S035-PASS2-LOW-001 — uid-mismatch → Terminated (broadcasting+GC); protocol-error → stays Detached; Invariant 5 + Postcondition 2 updated]"
+  current_version: "1.5.5"
+  last_bump_commit: "[F-S035-PASS5-MED-001 — EC-188 timeout → Terminated (transition_to_terminated_standalone + broadcasts + GC); Invariant 5 enumerates all four attach-failure dispositions (ConnectFailed/PeerCredFailed/ProtocolError/Timeout)]"
   last_bump_date: "2026-06-19"
 
 BC-2.08.008:
   path: specs/behavioral-contracts/ss-08/BC-2.08.008.md
-  current_version: "1.3.6"
-  last_bump_commit: "[SS-session-manager Architecture Source pin cascade — F-S035-PASS2-LOW-001 uid-mismatch/protocol-error split in attach_session action×state matrix]"
+  current_version: "1.3.7"
+  last_bump_commit: "[SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001 EC-188 timeout subpath (d)]" # version-pin-historical
   last_bump_date: "2026-06-19"
 
 BC-2.09.001:
   path: specs/behavioral-contracts/ss-09/BC-2.09.001.md
-  current_version: "1.3.5"
-  last_bump_commit: "[Phase-2 Pass-2 fix burst — SS-embedded-pty arch-source pin 1.6.0→1.7.0]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.3.6"
+  last_bump_commit: "[SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001]" # version-pin-historical
+  last_bump_date: "2026-06-19"
 
 BC-2.09.002:
   path: specs/behavioral-contracts/ss-09/BC-2.09.002.md
@@ -967,9 +967,9 @@ S-033-session-manager-spawn:
 
 S-038-session-manager-hook-injection:
   path: stories/S-038-session-manager-hook-injection.md
-  current_version: "1.3"
-  last_bump_commit: "[PROPAGATION — BC-2.08.006 v1.4.0 pin + AC-006 Invariant 5 + AC-009 Invariant 6 + F-P24-SUG-001 body BC-table title]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.4"
+  last_bump_commit: "[F-S035-PASS5-MED-001 — BC-2.08.006 v1.4.0→v1.4.1 pin cascade (SS-session-manager arch-source pin update)]" # version-pin-historical
+  last_bump_date: "2026-06-19"
 
 S-040-keyboard-forwarding:
   path: stories/S-040-keyboard-forwarding.md
@@ -979,9 +979,9 @@ S-040-keyboard-forwarding:
 
 S-046-pty-output-fan-out:
   path: stories/S-046-pty-output-fan-out.md
-  current_version: "1.4"
-  last_bump_commit: "[F-P24-SUG-002 — BC-2.05.011 body BC-table title corrected to canonical 'New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset']"
-  last_bump_date: "2026-06-16"
+  current_version: "1.5"
+  last_bump_commit: "[F-S035-PASS5-MED-001 — SS-session-manager narrative citation v2.13.0→v2.14.0]" # version-pin-historical
+  last_bump_date: "2026-06-19"
 
 S-047-ipc-lifecycle-variants:
   path: stories/S-047-ipc-lifecycle-variants.md
@@ -1039,20 +1039,20 @@ S-034-session-manager-kill:
 
 S-035-session-manager-attach-detach:
   path: stories/S-035-session-manager-attach-detach.md
-  current_version: "1.2.1"
-  last_bump_commit: "[F-S035-PASS3-LOW-002 — correct ipc_handler.rs → ipc_server.rs (file does not exist; S-033/S-034 established ipc_server.rs)]"
+  current_version: "1.2.2"
+  last_bump_commit: "[F-S035-PASS5-MED-001 — AC-002 EC-188 + state transition to Terminated; EC-188 edge case row updated; test task assertion updated; inputs BC-2.08.007 1.5.5 + SS-session-manager 2.14.0]"
   last_bump_date: "2026-06-19"
 
 S-036-session-manager-rediscovery:
   path: stories/S-036-session-manager-rediscovery.md
-  current_version: "1.0"
-  last_bump_commit: "[Wave-8 story authoring — SessionManager sidecar rediscovery on daemon restart, BC-2.08.004]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.1"
+  last_bump_commit: "[F-S035-PASS5-MED-001 — BC-2.08.002/BC-2.08.004 BC status comment pins updated (v1.2.3→v1.2.4 / v1.3.2→v1.3.3)]" # version-pin-historical
+  last_bump_date: "2026-06-19"
 
 S-037-session-manager-gc:
   path: stories/S-037-session-manager-gc.md
-  current_version: "1.0.1"
-  last_bump_commit: "[F-S037-P4-LOW-001 — stale SS-session-manager pin 2.6.1→2.11.0; input-hash computed ab7950d]"
+  current_version: "1.0.2"
+  last_bump_commit: "[F-S035-PASS5-MED-001 — BC-2.08.005 BC status comment pin updated (v1.0.6→v1.0.7)]" # version-pin-historical
   last_bump_date: "2026-06-19"
 
 S-039-pty-output-pipeline:

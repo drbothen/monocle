@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.0"
+version: "1.4.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -177,7 +177,7 @@ has `--settings` in its argv.
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — hook auto-injection on spawn is explicitly named in CAP-008; this BC defines the complete injection chain from daemon hook-file write through to child process argv |
 | L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness — hooks-settings.json is written to monocle's runtime_dir, NOT to Claude Code's config directory; the `--settings` flag mechanism ensures monocle does not touch `~/.monocle/settings.json` or any Claude Code-owned path) |
 | Architecture Module | monocle-runtime (SessionManager spawn; daemon hook-file writer); monocle-session-host (CommandBuilder construction from recipe) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.13.0 §SpawnRecipe integration with EngineModule; SS-engine-module-v2-delta.md v1.6.0 §Hook auto-injection invariant; BC-HOOK-027; BC-HOOK-028 |
+| Architecture Source | SS-session-manager.md v2.14.0 §SpawnRecipe integration with EngineModule; SS-engine-module-v2-delta.md v1.6.0 §Hook auto-injection invariant; BC-HOOK-027; BC-HOOK-028 |
 | Cross-Ref | BC-2.03.005 (spawn_recipe() produces --settings arg); BC-HOOK-027 (monocle never writes ~/.monocle/settings.json); BC-HOOK-028 (no env-var alternative for hook injection); BC-2.04.010 (hook tmpfile generation — writes shared per-runtimeDir hooks-settings.json at daemon startup); BC-HOOK-010 (authoritative: hooks-settings.json is per-runtimeDir, not per-session) |
 | Test Name | test_BC_2_08_006_hook_auto_injection_settings_arg_in_child_argv |
 
@@ -199,6 +199,15 @@ S-038 — Implement hook auto-injection in session spawn path
 ## VP Anchors
 
 VP-TBD — Hook injection end-to-end tests (filled after VP creation)
+
+
+## §Trace v1.4.1
+
+**SS-session-manager v2.13.0 → v2.14.0 Architecture Source pin cascade (F-S035-PASS5-MED-001)** (2026-06-19T00:00:00Z):
+- Architecture Source pin: SS-session-manager.md v2.13.0 → v2.14.0 (v2.14.0 adds EC-188
+  timeout → Terminated subpath (d) in the attach_session Detached cell of the action×state
+  matrix — F-S035-PASS5-MED-001). No behavioral content changes to this BC.
+- SE-16d monotonicity: v1.4.1 timestamp 2026-06-19 >= v1.4.0 timestamp auto. PASS.
 
 ## §Trace v1.3.1
 
