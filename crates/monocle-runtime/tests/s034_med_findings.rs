@@ -1196,11 +1196,31 @@ async fn test_HIGH_001_watchdog_skips_sigkill_when_already_terminated_under_lock
         snap.state
     );
 
-    // Advance virtual time 12s — watchdog deadline fires.
+    // S-037 integration: the GC task starts when kill_confirm_monitor delivers Terminated
+    // (before the watchdog fires). Advance 10s to let the GC task fire and drain its
+    // SessionListUpdate{sessions:[]} BEFORE advancing to the watchdog deadline.
+    // This prevents the GC's SessionListUpdate from polluting post_watchdog_msgs.
+    //
+    // Virtual clock accounting:
+    //   - Watchdog deadline = T+12s (set before kill_session call)
+    //   - Terminated transition happened at T+0.2s (200ms advance above)
+    //   - GC timer = T+0.2s + 10s = T+10.2s
+    //   - After advance(200ms): virtual clock is at T+0.2s
+    //   - advance(10_000ms): virtual clock reaches T+10.2s — fires GC, NOT watchdog
+    //   - advance(2_000ms): virtual clock reaches T+12.2s — fires watchdog
+    tokio::time::advance(std::time::Duration::from_millis(10_000)).await;
+    for _ in 0..50 {
+        tokio::task::yield_now().await;
+    }
+    // Drain GC-emitted messages (SessionListUpdate{sessions:[]}) — these are correct GC
+    // behavior (BC-2.08.005) and must not be counted as watchdog-emitted messages.
+    let _ = drain_messages(&mut rx, 200).await;
+
+    // Advance the remaining 2s to reach the 12s watchdog deadline.
     // F-S034-HIGH-001 (HIGH-002 obligation): the watchdog MUST detect Terminated under
     // the sessions lock at its FIRST lock acquisition and return WITHOUT issuing SIGKILL
     // or emitting any additional SessionStateChanged{Terminated} or SessionListUpdate.
-    tokio::time::advance(std::time::Duration::from_secs(12)).await;
+    tokio::time::advance(std::time::Duration::from_millis(2_000)).await;
     for _ in 0..50 {
         tokio::task::yield_now().await;
     }
@@ -1237,6 +1257,8 @@ async fn test_HIGH_001_watchdog_skips_sigkill_when_already_terminated_under_lock
     );
 
     // SECONDARY ASSERTION: no extra SessionListUpdate from watchdog either.
+    // Note: GC messages were already drained in the 10s advance above (BC-2.08.005 correct
+    // behavior). Only watchdog-window messages remain in post_watchdog_msgs.
     let extra_list_updates = post_watchdog_msgs
         .iter()
         .filter(|m| {
@@ -1255,18 +1277,16 @@ async fn test_HIGH_001_watchdog_skips_sigkill_when_already_terminated_under_lock
         extra_list_updates, post_watchdog_msgs
     );
 
-    // TERTIARY ASSERTION: session state must remain Terminated (watchdog must not disturb it).
+    // TERTIARY ASSERTION (updated for S-037 GC): after GC fires, the session is removed
+    // from the registry (BC-2.08.005 postcondition 1). The watchdog must not re-add it
+    // or disturb the GC'd state.
     let sessions = manager.session_list().await;
-    let snap = sessions
-        .iter()
-        .find(|s| s.session_id == session_id)
-        .expect("HIGH-001: session must still be in registry after watchdog");
-    assert_eq!(
-        snap.state,
-        monocle_ipc::types::SessionState::Terminated,
-        "F-S034-HIGH-001: session state must remain Terminated after watchdog fires \
-         (watchdog must not overwrite or re-transition from already-Terminated state). \
-         Got: {:?}",
-        snap.state
+    let gone = !sessions.iter().any(|s| s.session_id == session_id);
+    assert!(
+        gone,
+        "F-S034-HIGH-001 (S-037 integration): after GC fires, session must be removed \
+         from registry. GC correctly cleaned up the Terminated session entry per BC-2.08.005 PC-1. \
+         Watchdog must not re-add it. Session found: {:?}",
+        sessions.iter().find(|s| s.session_id == session_id)
     );
 }
