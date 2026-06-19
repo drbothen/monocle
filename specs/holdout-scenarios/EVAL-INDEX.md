@@ -1,7 +1,7 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.20"
+version: "1.21"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-18T00:00:00Z
@@ -23,7 +23,7 @@ inputs:
   - {path: .factory/stories/S-034-session-manager-kill.md, version: "1.3"}
   - {path: .factory/stories/S-035-session-manager-attach-detach.md, version: "1.2"}
   - {path: .factory/stories/S-036-session-manager-rediscovery.md, version: "1.0"}
-  - {path: .factory/stories/S-037-session-manager-gc.md, version: "1.0"}
+  - {path: .factory/stories/S-037-session-manager-gc.md, version: "1.0.1"}
   - {path: .factory/stories/S-038-session-manager-hook-injection.md, version: "1.3"}
   - {path: .factory/stories/S-039-pty-output-pipeline.md, version: "1.3"}
   - {path: .factory/stories/S-040-keyboard-forwarding.md, version: "1.1"}

@@ -228,9 +228,9 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.20"
-  last_bump_commit: "[D-334 — S-034 input pin cascade v1.2→v1.3]"
-  last_bump_date: "2026-06-18"
+  current_version: "1.21"
+  last_bump_commit: "[F-S037-P4-LOW-001 — S-037 pin cascade 1.0→1.0.1]"
+  last_bump_date: "2026-06-19"
 
 sprint-state:
   path: stories/sprint-state.yaml
@@ -1051,9 +1051,9 @@ S-036-session-manager-rediscovery:
 
 S-037-session-manager-gc:
   path: stories/S-037-session-manager-gc.md
-  current_version: "1.0"
-  last_bump_commit: "[Wave-8 story authoring — SessionManager GC (reap Terminated sessions), BC-2.08.005]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.0.1"
+  last_bump_commit: "[F-S037-P4-LOW-001 — stale SS-session-manager pin 2.6.1→2.11.0; input-hash computed ab7950d]"
+  last_bump_date: "2026-06-19"
 
 S-039-pty-output-pipeline:
   path: stories/S-039-pty-output-pipeline.md
