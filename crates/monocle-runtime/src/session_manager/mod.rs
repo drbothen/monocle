@@ -3391,7 +3391,7 @@ impl SessionManager {
                                     "attach_session: SIGTERM to non-responsive session-host failed (best-effort)"
                                 );
                             }
-                            // BC-2.08.007 v1.5.6 (F-S035-PASS5-MED-001): SIGTERM declares the
+                            // BC-2.08.007 v1.5.6 (F-S035-PASS5-MED-001): SIGTERM declares the # version-pin-historical
                             // session-host dead — consistent with EC-187/PeerCredFailed. Transition
                             // to Terminated (StateChanged{Terminated} BEFORE SessionListUpdate + GC)
                             // BEFORE returning Err(SessionHostDead).
@@ -4233,10 +4233,24 @@ impl SessionManager {
         todo!("S-033 (S-047 scope): implement send_key_input()")
     }
 
-    /// Re-discover session-hosts from sidecar files on daemon startup.
+    /// Re-discover session-hosts from sidecar files on daemon startup (S-036 scope).
+    ///
+    /// Called by `daemon_start_sequence` at step 8b (after lock file write, before UDS
+    /// bind). Reads all `session-*.json` sidecars in `runtime_dir`, probes each process
+    /// for liveness, and re-registers alive sessions in the registry before any TUI
+    /// client can connect.
+    ///
+    /// Returns a `RediscoveryReport` with `found_alive`, `found_dead`, and `errors`.
+    /// Never returns `Err` — partial failures are captured in `errors`; if `runtime_dir`
+    /// is unreadable the report contains a `RuntimeDirUnreadable` error and the daemon
+    /// proceeds with an empty registry (BC-2.08.004 PC-6).
     #[allow(clippy::todo)]
     pub async fn rediscover_sessions(&mut self) -> Result<RediscoveryReport, SessionError> {
-        todo!("S-033 (S-036 scope): implement rediscover_sessions()")
+        todo!(
+            "S-036: implement rediscover_sessions() — probing all session-*.json sidecars, \
+               SO_PEERCRED verify, tokio::join_all with 5s timeout, Detached/Running/Terminating \
+               state handlers, background watchdog for Terminating, GC for dead/Terminated"
+        )
     }
 
     /// Return the current session list for `InitialState` IPC push.
@@ -5023,18 +5037,69 @@ async fn transition_to_terminated_standalone(
 }
 
 // ---------------------------------------------------------------------------
-// RediscoveryReport (return type of rediscover_sessions)
+// RediscoveryReport + RediscoveryError (return type of rediscover_sessions)
+// BC-2.08.004 postcondition 4 / AC-009 / AC-010
 // ---------------------------------------------------------------------------
 
-/// Report produced by `SessionManager::rediscover_sessions()`.
+/// Non-fatal errors collected during `SessionManager::rediscover_sessions()`.
+///
+/// A `Vec<RediscoveryError>` is included in `RediscoveryReport` so the caller
+/// can log or surface individual failure details without aborting startup.
+#[derive(Debug, thiserror::Error)]
+pub enum RediscoveryError {
+    /// A sidecar file could not be read or parsed as valid JSON.
+    ///
+    /// The corrupt file was deleted before this error was recorded; re-discovery
+    /// of other sessions continues normally.
+    #[error("corrupt sidecar at {path}: {reason}")]
+    CorruptSidecar {
+        /// Filesystem path of the corrupt sidecar file.
+        path: PathBuf,
+        /// Human-readable reason (e.g., JSON parse error message).
+        reason: String,
+    },
+
+    /// A sidecar has a `schema_version` value greater than 3 (unknown future
+    /// version). The file was deleted as a forward-compat orphan.
+    #[error("unknown schema version {version} in sidecar at {path}; deleted as orphan")]
+    UnknownSchemaVersion {
+        /// Filesystem path of the sidecar file.
+        path: PathBuf,
+        /// The unrecognised `schema_version` value found in the sidecar.
+        version: u32,
+    },
+
+    /// The `runtime_dir` could not be read (e.g., permissions, missing directory).
+    ///
+    /// When this error is present, re-discovery returns immediately with an
+    /// empty registry rather than aborting daemon startup entirely.
+    #[error("runtime_dir unreadable: {reason}")]
+    RuntimeDirUnreadable {
+        /// Human-readable reason (e.g., OS error message).
+        reason: String,
+    },
+}
+
+/// Report produced by `SessionManager::rediscover_sessions()` (BC-2.08.004 PC-4).
+///
+/// All three fields are populated before the function returns; the caller
+/// (daemon_start_sequence step 8b) logs the summary at INFO level.
 #[derive(Debug)]
 pub struct RediscoveryReport {
-    /// Number of sidecars found.
-    pub found: usize,
-    /// Number of live sessions successfully re-registered.
-    pub alive: usize,
-    /// Number of dead/stale sidecars cleaned up.
-    pub cleaned: usize,
+    /// Number of sessions successfully re-registered in the registry.
+    ///
+    /// Includes Running (re-attached), Detached (registered without Attach),
+    /// and Terminating (watchdog spawned) sessions.
+    pub found_alive: usize,
+
+    /// Number of sessions GC'd during re-discovery (dead PID, non-responsive
+    /// session-host, elapsed Terminating deadline, or Terminated sidecar leftover).
+    pub found_dead: usize,
+
+    /// Non-fatal errors encountered during re-discovery (corrupt sidecars,
+    /// unknown schema versions, unreadable runtime_dir). These are logged but
+    /// do NOT prevent other sessions from being re-discovered.
+    pub errors: Vec<RediscoveryError>,
 }
 
 // ---------------------------------------------------------------------------
