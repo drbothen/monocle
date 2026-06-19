@@ -111,7 +111,7 @@ develop branch requires all 11 status checks before merge:
 - **D-326..D-331**: S-033 Rulings A–H; adversarial convergence COMPLETE (7 passes, 3 clean)
 - **D-332**: S-033 MERGED PR #40 @ c7e10f2
 - **D-333**: Wave-8 Tier-2 autonomous delivery authorized; demo WEBM+.tape-no-GIF
-- **D-334**: S-034 MERGED PR #41 @ 4dfe0db. Kill path complete. SS-session-manager v2.11.0, BC-2.08.003 v1.5.0, BC-2.08.008 v1.3.5.
+- **D-334**: S-034 MERGED PR #41 @ 4dfe0db. Kill path complete. SS-session-manager v2.11.0, BC-2.08.003 v1.5.0, BC-2.08.008 v1.3.5. <!-- version-pin-historical: D-334 checkpoint at S-034 merge time; not navigation pointers -->
 - **SS-session-manager Rulings H/I/J/K** (kill-path): H = accept-loop; I = kill_confirm_monitor reader-ownership; J = watchdog dual-PID SIGKILL (BC-2.08.003 PC-5b); K = natural-exit Terminated ownership = S-039/S-040, NOT S-034 scope (BC-2.08.008 PC-6 deferred)
 - **Spawn-path Model A**: SpawnOptions on wire; SpawnRecipe daemon-internal
 - **IPC taxonomy**: 12-code wire taxonomy; 9-variant SessionError; schema_version 3

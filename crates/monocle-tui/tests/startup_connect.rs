@@ -624,6 +624,14 @@ fn test_bc_2_06_004_inv1_ac010_no_client_disconnect_message() {
         ClientToServer::KillSession { .. } => {
             panic!("unexpected KillSession in PermissionDecision round-trip test");
         }
+        // S-035 stub: AttachSession is not expected in this PermissionDecision round-trip test.
+        ClientToServer::AttachSession { .. } => {
+            panic!("unexpected AttachSession in PermissionDecision round-trip test");
+        }
+        // S-035 stub: DetachSession is not expected in this PermissionDecision round-trip test.
+        ClientToServer::DetachSession { .. } => {
+            panic!("unexpected DetachSession in PermissionDecision round-trip test");
+        }
     }
 }
 

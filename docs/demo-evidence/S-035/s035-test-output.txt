@@ -1,0 +1,25 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.14s
+     Running tests/s035_attach_detach_red_gate.rs (target/debug/deps/s035_attach_detach_red_gate-7f11987e236611c6)
+
+running 18 tests
+test test_BC_2_08_007_detach_detached_idempotent ... ok
+test test_BC_2_08_007_retired_scrollback_dump_rejected ... ok
+test test_attach_timeout_sigterm_uses_pid_sigterm_fn_seam ... ok
+test test_BC_2_08_007_concurrent_attach_no_duplicate_proxy_task ... ok
+test test_BC_2_08_007_concurrent_attach_single_proxy_task_invariant ... ok
+test test_BC_2_08_007_detach_launching_session_not_ready ... ok
+test test_BC_2_08_007_attach_5s_timeout_session_host_dead ... ok
+test test_kill_attached_session_fast_path ... ok
+test test_BC_2_08_007_sidecar_updated_on_detach ... ok
+test test_attach_session_chunk_count_mismatch_warns_not_fails ... ok
+test test_BC_2_08_007_attach_protocol_error_stays_detached ... ok
+test test_BC_2_08_007_attach_running_idempotent ... ok
+test test_BC_2_08_007_attach_running_session_dead ... ok
+test test_BC_2_08_007_attach_peer_cred_mismatch_transitions_to_terminated ... ok
+test test_proxy_task_handles_goodbye_without_terminated ... ok
+test test_BC_2_08_007_attach_receives_scrollback_detach_keeps_session_alive ... ok
+test test_BC_2_08_008_state_changed_ordering_on_attach_detach ... ok
+test test_BC_2_08_007_attach_detach_cycle ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.47s
+

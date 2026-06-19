@@ -639,6 +639,16 @@ pub struct SessionManager {
     /// exist in production builds so there is no runtime code path that could reach it.
     #[cfg(any(test, feature = "test-utils"))]
     pid_sigterm_fn: Option<Arc<dyn Fn(nix::unistd::Pid) -> nix::Result<()> + Send + Sync>>,
+    /// Failure-injection seam for the watchdog SIGKILL call (F-S035-PASS2-IMP-001).
+    ///
+    /// Mirrors `pid_sigterm_fn` above. Enables tests to assert that the 12s watchdog
+    /// SIGKILL was NOT invoked on the fast-path kill (proxy_task delivers Terminated
+    /// before the deadline fires), without requiring a real SIGKILL to any process.
+    ///
+    /// Security gate: gated `cfg(any(test, feature = "test-utils"))`. The field does NOT
+    /// exist in production builds.
+    #[cfg(any(test, feature = "test-utils"))]
+    pid_sigkill_fn: Option<Arc<dyn Fn(nix::unistd::Pid) -> nix::Result<()> + Send + Sync>>,
 }
 
 impl std::fmt::Debug for SessionManager {
@@ -670,6 +680,8 @@ impl SessionManager {
             peer_cred_verifier: Arc::new(RealPeerCredVerifier),
             #[cfg(any(test, feature = "test-utils"))]
             pid_sigterm_fn: None,
+            #[cfg(any(test, feature = "test-utils"))]
+            pid_sigkill_fn: None,
         }
     }
 
@@ -733,6 +745,23 @@ impl SessionManager {
         self
     }
 
+    /// Inject a synthetic SIGKILL function for the 12s watchdog path (F-S035-PASS2-IMP-001).
+    ///
+    /// Mirrors `with_pid_sigterm_fn`. Enables tests to capture whether the watchdog
+    /// SIGKILL was (or was NOT) invoked — e.g., to assert the fast-path kill test
+    /// never reaches the watchdog deadline.
+    ///
+    /// Security gate: gated `cfg(any(test, feature = "test-utils"))` — does NOT exist
+    /// in production builds.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn with_pid_sigkill_fn(
+        &mut self,
+        f: Arc<dyn Fn(nix::unistd::Pid) -> nix::Result<()> + Send + Sync>,
+    ) -> &mut Self {
+        self.pid_sigkill_fn = Some(f);
+        self
+    }
+
     /// Insert a synthetic Detached session into the registry for test use only.
     ///
     /// Enables tests to exercise the genuine `KillPath::FreshConnect` arm
@@ -749,11 +778,14 @@ impl SessionManager {
     /// ```
     ///
     /// This function does NOT exist in production builds.
-    // The helper is used by the test-writer's upcoming IMP-001 tests.
-    // Until those tests land this attribute prevents a dead_code warning.
-    #[cfg(test)]
+    // The helper is used by IMP-001 tests (inline unit tests) and S-035 integration
+    // tests (tests/ dir). Integration tests run as separate crates and do NOT see
+    // `cfg(test)` from the library — they require `feature = "test-utils"`. The
+    // `test-utils` feature is activated via the self-referential dev-dep in Cargo.toml:
+    // `monocle-runtime = { path = ".", features = ["test-utils"] }`.
+    #[cfg(any(test, feature = "test-utils"))]
     #[allow(dead_code)]
-    pub(crate) async fn insert_detached_session_for_test(
+    pub async fn insert_detached_session_for_test(
         &self,
         session_id: &str,
         pid: u32,
@@ -941,6 +973,29 @@ impl SessionManager {
             .lock()
             .await
             .insert(session_id.to_string(), entry);
+    }
+
+    /// Test accessor: returns `true` if `session_id` has an active `proxy_task` in its
+    /// `SessionHostConnection`.
+    ///
+    /// Used by F-S035-002 (concurrent-attach strengthening) to assert the single-proxy-task
+    /// invariant (BC-2.08.007 Invariant 2 / AC-009) without exposing internals to production
+    /// binaries.
+    ///
+    /// Returns `false` if the session does not exist, has no `host_conn`, or `proxy_task`
+    /// is `None`.
+    ///
+    /// This function does NOT exist in production builds.
+    #[cfg(any(test, feature = "test-utils"))]
+    #[allow(dead_code)]
+    pub async fn has_proxy_task_for_session(&self, session_id: &str) -> bool {
+        let guard = self.sessions.lock().await;
+        guard
+            .get(session_id)
+            .and_then(|e| e.host_conn.as_ref())
+            .and_then(|c| c.proxy_task.as_ref())
+            .map(|t| !t.is_finished())
+            .unwrap_or(false)
     }
 
     /// Spawn a new session from the given `SpawnOptions`.
@@ -1582,6 +1637,8 @@ impl SessionManager {
                                 sidecar_path,
                                 socket_path,
                                 watchdog_deadline,
+                                #[cfg(any(test, feature = "test-utils"))]
+                                self.pid_sigkill_fn.clone(),
                             );
                             return Ok(());
                         }
@@ -1617,12 +1674,35 @@ impl SessionManager {
                             .await;
                     });
                 } else {
-                    // reader was None (e.g. pre-Running race where monitor hasn't stored it yet).
-                    // Watchdog will handle the 12s timeout path.
-                    tracing::debug!(
-                        session_id = %session_id,
-                        "kill_session ExistingConn: host_conn.reader is None — watchdog-only path"
-                    );
+                    // Ruling L (L-3): reader is None — check for proxy_task delegation.
+                    // If proxy_task is Some, it owns the connection and will deliver
+                    // StateChanged{Terminated} via the fast-path when the session-host responds
+                    // to the Kill message. Do NOT abort the proxy_task; the 12s watchdog remains
+                    // the fallback in case the session-host is unresponsive.
+                    let has_proxy = {
+                        let guard = self.sessions.lock().await;
+                        guard
+                            .get(session_id)
+                            .and_then(|e| e.host_conn.as_ref())
+                            .and_then(|c| c.proxy_task.as_ref())
+                            .is_some()
+                    };
+                    if has_proxy {
+                        tracing::debug!(
+                            session_id = %session_id,
+                            "kill_session ExistingConn: reader is None — \
+                             Terminated handling delegated to proxy_task (Ruling L); \
+                             12s watchdog remains as fallback"
+                        );
+                    } else {
+                        // Both reader and proxy_task are None — rare pre-Running race.
+                        // Watchdog-only fallback.
+                        tracing::debug!(
+                            session_id = %session_id,
+                            "kill_session ExistingConn: reader is None AND proxy_task is None — \
+                             watchdog-only (pre-Running race)"
+                        );
+                    }
                 }
 
                 // Spawn 12s watchdog.
@@ -1634,6 +1714,8 @@ impl SessionManager {
                     sidecar_path,
                     socket_path,
                     watchdog_deadline,
+                    #[cfg(any(test, feature = "test-utils"))]
+                    self.pid_sigkill_fn.clone(),
                 );
             }
             KillPath::PidFallback { pid, socket_path } => {
@@ -1690,6 +1772,8 @@ impl SessionManager {
                     sidecar_path,
                     socket_path,
                     watchdog_deadline,
+                    #[cfg(any(test, feature = "test-utils"))]
+                    self.pid_sigkill_fn.clone(),
                 );
             }
             KillPath::FreshConnect { pid, socket_path } => {
@@ -1788,6 +1872,8 @@ impl SessionManager {
                             sidecar_path,
                             socket_path,
                             watchdog_deadline,
+                            #[cfg(any(test, feature = "test-utils"))]
+                            self.pid_sigkill_fn.clone(),
                         );
                     }
                 }
@@ -2104,6 +2190,10 @@ impl SessionManager {
     /// raced — only the first one to acquire the lock while the session is still
     /// Terminating will fire SIGKILL; the second finds Terminated and returns without
     /// action.
+    // F-S035-PASS2-IMP-001: the cfg-gated pid_sigkill_fn parameter pushes argument count to 8
+    // in test/test-utils builds. The allow is justified: the extra arg is test-only and removing
+    // it would require a separate builder struct just for this internal helper.
+    #[allow(clippy::too_many_arguments)]
     fn spawn_kill_watchdog(
         session_id: String,
         session_host_pid: u32,
@@ -2115,6 +2205,11 @@ impl SessionManager {
         // (MED-005: single originating instant, not independent now+12s inside the watchdog task).
         // Using sleep_until with this pre-computed Instant ensures paused-clock tests work correctly.
         deadline: tokio::time::Instant,
+        // F-S035-PASS2-IMP-001: SIGKILL injection seam for tests. None → real nix_kill(SIGKILL).
+        // Gated cfg(any(test, feature = "test-utils")); the field does not exist in production.
+        #[cfg(any(test, feature = "test-utils"))] pid_sigkill_fn: Option<
+            Arc<dyn Fn(nix::unistd::Pid) -> nix::Result<()> + Send + Sync>,
+        >,
     ) -> tokio::task::JoinHandle<()> {
         tokio::spawn(async move {
             // Wait until the pre-computed 12s deadline (10s SIGTERM window + 2s buffer per BC-2.08.003 PC-5).
@@ -2163,7 +2258,17 @@ impl SessionManager {
                         );
 
                         let nix_pid = Pid::from_raw(session_host_pid as i32);
-                        match nix_kill(nix_pid, Signal::SIGKILL) {
+                        // F-S035-PASS2-IMP-001: route through injection seam when present
+                        // (test-only; in production the seam does not exist → real nix_kill).
+                        #[cfg(any(test, feature = "test-utils"))]
+                        let sigkill_result = if let Some(ref f) = pid_sigkill_fn {
+                            f(nix_pid)
+                        } else {
+                            nix_kill(nix_pid, Signal::SIGKILL)
+                        };
+                        #[cfg(not(any(test, feature = "test-utils")))]
+                        let sigkill_result = nix_kill(nix_pid, Signal::SIGKILL);
+                        match sigkill_result {
                             Ok(()) => {
                                 tracing::debug!(
                                     session_id = %session_id,
@@ -2365,15 +2470,1169 @@ impl SessionManager {
     }
 
     /// Detach the daemon from a running session-host.
-    #[allow(clippy::todo)]
-    pub async fn detach_session(&mut self, _session_id: &str) -> Result<(), SessionError> {
-        todo!("S-033 (S-035 scope): implement detach_session()")
+    ///
+    /// Steps (BC-2.08.007 §detach_session postconditions):
+    /// 1. Look up session; return `Err(SessionNotFound)` if absent.
+    /// 2. If Running: send `DaemonToHost::Detach` over control connection.
+    ///    → abort proxy: `proxy_task.take().map(|t| t.abort())`.
+    ///    → set `host_conn = None`.
+    ///    → transition to `Detached`.
+    ///    → update sidecar (`state: "Detached"`) atomically via `tempfile::persist`.
+    ///    → emit `SessionStateChanged{Detached}` BEFORE `SessionListUpdate` under mutex.
+    /// 3. If Detached: idempotent `Ok(())` (EC-186).
+    /// 4. If Launching with `host_conn: None`: `Err(SessionNotReady)` (AC-014, F-P51-001).
+    /// 5. If Terminating/Terminated: per action×state matrix (SS-session-manager.md §Terminated-in-grace).
+    pub async fn detach_session(&mut self, session_id: &str) -> Result<(), SessionError> {
+        use monocle_ipc::types::DaemonToHost;
+        use tokio::io::AsyncWriteExt;
+
+        // SEC-002 (CWE-22): validate session_id is a UUID before constructing file paths.
+        if uuid::Uuid::parse_str(session_id).is_err() {
+            return Err(SessionError::SessionNotFound {
+                session_id: session_id.to_string(),
+            });
+        }
+
+        // --- Extract what we need from the registry, releasing the lock before I/O ---
+        enum DetachPath {
+            /// Session is Running: send Detach over existing writer.
+            Running {
+                writer: Arc<Mutex<tokio::net::unix::OwnedWriteHalf>>,
+            },
+            /// Session is Detached: idempotent Ok(()).
+            Detached,
+            /// Session is Launching with host_conn=None: SessionNotReady (F-P51-001).
+            LaunchingNoConn,
+            /// Session is Launching with established conn (treat as Running for Detach).
+            LaunchingWithConn {
+                writer: Arc<Mutex<tokio::net::unix::OwnedWriteHalf>>,
+            },
+            /// Session is Terminating or Terminated: per action×state matrix → Ok(()) idempotent.
+            TerminatingOrTerminated,
+            /// Not found.
+            NotFound,
+        }
+
+        let detach_path = {
+            let guard = self.sessions.lock().await;
+            match guard.get(session_id) {
+                None => DetachPath::NotFound,
+                Some(entry) => match entry.state {
+                    SessionState::Detached => DetachPath::Detached,
+                    SessionState::Terminating | SessionState::Terminated => {
+                        DetachPath::TerminatingOrTerminated
+                    }
+                    SessionState::Running => {
+                        // Running must have host_conn (invariant); writer is always Some.
+                        if let Some(conn) = entry.host_conn.as_ref() {
+                            DetachPath::Running {
+                                writer: Arc::clone(&conn.writer),
+                            }
+                        } else {
+                            // Defensive: Running without host_conn — treat as not ready.
+                            DetachPath::LaunchingNoConn
+                        }
+                    }
+                    SessionState::Launching => match entry.host_conn.as_ref() {
+                        None => DetachPath::LaunchingNoConn,
+                        Some(conn) => DetachPath::LaunchingWithConn {
+                            writer: Arc::clone(&conn.writer),
+                        },
+                    },
+                    _ => DetachPath::TerminatingOrTerminated,
+                },
+            }
+            // guard released
+        };
+
+        match detach_path {
+            DetachPath::NotFound => {
+                return Err(SessionError::SessionNotFound {
+                    session_id: session_id.to_string(),
+                });
+            }
+            DetachPath::Detached => {
+                // EC-186: idempotent Ok(()).
+                return Ok(());
+            }
+            DetachPath::LaunchingNoConn => {
+                // AC-014 / F-P51-001: defensive invariant for untrusted clients.
+                return Err(SessionError::SessionNotReady {
+                    session_id: session_id.to_string(),
+                });
+            }
+            DetachPath::TerminatingOrTerminated => {
+                // Per action×state matrix: idempotent Ok(()).
+                return Ok(());
+            }
+            DetachPath::Running { writer } | DetachPath::LaunchingWithConn { writer } => {
+                // Send DaemonToHost::Detach over the control connection (BC-2.08.007 detach PC-1).
+                let detach_msg = serde_json::to_vec(&DaemonToHost::Detach)
+                    .map_err(|e| SessionError::Io(std::io::Error::other(e)))?;
+                if detach_msg.len() > MAX_FRAME_LEN {
+                    return Err(SessionError::Io(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!(
+                            "outbound Detach message exceeds MAX_FRAME_LEN: {} bytes",
+                            detach_msg.len()
+                        ),
+                    )));
+                }
+                let len = (detach_msg.len() as u32).to_le_bytes();
+                {
+                    let mut w = writer.lock().await;
+                    let r1 = w.write_all(&len).await;
+                    let r2 = if r1.is_ok() {
+                        w.write_all(&detach_msg).await
+                    } else {
+                        r1
+                    };
+                    let r3 = if r2.is_ok() { w.flush().await } else { r2 };
+                    // Best-effort: log write failure but continue (proxy abort + state transition
+                    // must proceed regardless of whether the Detach message reached the session-host).
+                    if let Err(e) = r3 {
+                        tracing::warn!(
+                            session_id = %session_id,
+                            error = %e,
+                            "detach_session: failed to send DaemonToHost::Detach (best-effort); \
+                             continuing with proxy abort and state transition"
+                        );
+                    }
+                }
+            }
+        }
+
+        // F-S035-PASS2-IMP-002: build list_snapshot + transition state + emit BOTH broadcasts
+        // under a SINGLE lock acquisition. This closes the stale-snapshot window that previously
+        // existed because the broadcasts happened in a separate second lock acquisition, allowing
+        // a concurrent op to mutate the registry between the first (transition) and second (broadcast)
+        // lock holds. The attach path already does all of this under one lock; detach now mirrors it.
+        //
+        // proxy_task.abort() is synchronous (no .await needed) and stays outside the lock.
+        let sidecar_path = self
+            .runtime_dir
+            .join(format!("session-{}.json", session_id));
+
+        // Single lock acquisition: transition + snapshot + both broadcasts (BC-2.08.008 Inv 4:
+        // SessionStateChanged{Detached} BEFORE SessionListUpdate, both under this one lock hold).
+        //
+        // F-S035-PASS3-MED-001 (TOCTOU guard): Between the writer-send .await above and this
+        // re-acquired lock, the proxy_task (which holds a clone of `self.sessions` Arc) may have
+        // called transition_to_terminated_standalone and set entry.state = Terminated.  If we
+        // unconditionally overwrite to Detached here, we would:
+        //   • Resurrect an already-Terminated entry to Detached.
+        //   • Emit a spurious SessionStateChanged{Detached} broadcast after the
+        //     SessionStateChanged{Terminated} already sent by the proxy path.
+        //   • Leave an orphaned GC task chasing a sidecar the registry now shows as Detached.
+        //
+        // Fix: re-check entry.state inside the re-acquired lock.  If already Terminating or
+        // Terminated, the proxy-driven transition stands — do NOT overwrite and do NOT emit
+        // the Detached broadcasts.  Still take (and below: abort) the proxy_task handle since
+        // abort() is idempotent and harmless if the task already exited.
+        //
+        // Mirrors the guard pattern in transition_to_terminated_standalone:
+        //   `if entry.state != SessionState::Terminated { … } else { return; }`
+        // Returns (proxy_task_handle, already_terminal) — already_terminal must remain
+        // visible after the block for the F-S035-PASS4-HIGH-001 sidecar-write gate below.
+        let (proxy_task_to_abort, already_terminal) = {
+            use monocle_core::engine::{EnrichedSession, SessionStatus};
+            let mut guard = self.sessions.lock().await;
+
+            // TOCTOU guard: classify the current state before any mutation.
+            let already_terminal = guard
+                .get(session_id)
+                .map(|e| {
+                    matches!(
+                        e.state,
+                        SessionState::Terminating | SessionState::Terminated
+                    )
+                })
+                .unwrap_or(false);
+
+            // Extract the proxy_task handle regardless of terminal state (abort is idempotent).
+            let proxy_task_handle = guard
+                .get_mut(session_id)
+                .and_then(|e| e.host_conn.as_mut())
+                .and_then(|c| c.proxy_task.take());
+
+            if already_terminal {
+                // Proxy-driven Terminated transition won the race.  The Terminated state and
+                // broadcasts already stand.  Do NOT overwrite to Detached; do NOT emit
+                // SessionStateChanged{Detached} or SessionListUpdate here.
+                tracing::debug!(
+                    session_id = %session_id,
+                    "detach_session: re-acquired lock found entry already Terminating/Terminated \
+                     (proxy_task raced); detach lost-race — Terminated transition stands, \
+                     no Detached broadcast emitted (F-S035-PASS3-MED-001)"
+                );
+                // guard released here
+                (proxy_task_handle, true)
+            } else {
+                // Normal path: entry is still Running (or Launching-with-conn).
+                // Clear host_conn and transition state (BC-2.08.007 detach PC-3/PC-4).
+                if let Some(entry) = guard.get_mut(session_id) {
+                    entry.host_conn = None;
+                    entry.state = SessionState::Detached;
+                }
+
+                // Build list snapshot while lock is held (consistent post-transition state).
+                let list_snapshot: Vec<EnrichedSession> = guard
+                    .values()
+                    .map(|e| {
+                        let status = match e.state {
+                            SessionState::Launching | SessionState::Running => {
+                                SessionStatus::Active
+                            }
+                            SessionState::Detached => SessionStatus::Idle,
+                            SessionState::Terminating | SessionState::Terminated => {
+                                SessionStatus::Stopped
+                            }
+                            _ => SessionStatus::Stopped,
+                        };
+                        EnrichedSession::new_with_display_name(
+                            e.session_id.clone(),
+                            e.harness_id.clone(),
+                            None,
+                            None,
+                            status,
+                            None,
+                            e.project_root
+                                .file_name()
+                                .and_then(|n| n.to_str())
+                                .map(|s| s.to_string()),
+                            Some(e.started_at),
+                            0,
+                            None,
+                            e.display_name.clone(),
+                        )
+                    })
+                    .collect();
+
+                // BC-2.08.008 Invariant 4: SessionStateChanged{Detached} BEFORE SessionListUpdate,
+                // both emitted under THIS single lock hold — no stale-snapshot window.
+                let state_changed = monocle_ipc::types::ServerToClient::SessionStateChanged {
+                    session_id: session_id.to_string(),
+                    new_state: SessionState::Detached,
+                };
+                crate::ipc_server::broadcast_to_subscribers(&self.broker, state_changed).await;
+
+                let list_update = monocle_ipc::types::ServerToClient::SessionListUpdate {
+                    sessions: list_snapshot,
+                };
+                crate::ipc_server::broadcast_to_subscribers(&self.broker, list_update).await;
+                // sessions lock released here — transition + both broadcasts were atomic.
+
+                (proxy_task_handle, false)
+            }
+        };
+
+        // Abort proxy task outside the lock (abort() is synchronous; no .await needed).
+        // This is idempotent regardless of which path won the TOCTOU race.
+        if let Some(t) = proxy_task_to_abort {
+            t.abort();
+        }
+
+        // F-S035-PASS4-HIGH-001: Gate the sidecar write on the NORMAL (!already_terminal) path
+        // only. On the lost race (already_terminal == true), transition_to_terminated_standalone
+        // has ALREADY written `state: "Terminated"` to the sidecar. Writing "Detached" here would
+        // clobber that durable record, causing S-036 rediscovery to see Detached for a dead session
+        // (violates AC-008 / BC-2.08.007 Inv 1). Skip the sidecar write and the "detached" info
+        // log entirely on the lost-race path — the Terminated sidecar and its orphaned-GC timer
+        // from the proxy path stand as the authoritative durable record.
+        if !already_terminal {
+            // Update sidecar atomically: state → "Detached" (BC-2.08.007 detach PC-5).
+            // Read existing sidecar, update state field, persist via tempfile.
+            // Sidecar write is blocking I/O and stays outside the lock (acceptable: the
+            // in-memory state is already Detached; sidecar reflects the durable view for restart).
+            let sidecar_update_result: Result<(), SessionError> = (|| {
+                let existing = std::fs::read_to_string(&sidecar_path).map_err(|e| {
+                    SessionError::SidecarWriteFailed {
+                        path: sidecar_path.to_string_lossy().into_owned(),
+                        reason: format!("detach_session: could not read sidecar: {e}"),
+                    }
+                })?;
+                let mut val =
+                    serde_json::from_str::<serde_json::Value>(&existing).map_err(|e| {
+                        SessionError::SidecarWriteFailed {
+                            path: sidecar_path.to_string_lossy().into_owned(),
+                            reason: format!("detach_session: could not parse sidecar JSON: {e}"),
+                        }
+                    })?;
+                val["state"] = serde_json::json!("Detached");
+                let updated = serde_json::to_vec_pretty(&val).map_err(|e| {
+                    SessionError::SidecarWriteFailed {
+                        path: sidecar_path.to_string_lossy().into_owned(),
+                        reason: format!("detach_session: failed to serialize sidecar: {e}"),
+                    }
+                })?;
+                let dir =
+                    sidecar_path
+                        .parent()
+                        .ok_or_else(|| SessionError::SidecarWriteFailed {
+                            path: sidecar_path.to_string_lossy().into_owned(),
+                            reason: "detach_session: sidecar path has no parent".to_string(),
+                        })?;
+                let mut tmp = tempfile::Builder::new()
+                    .prefix(".session-sidecar-detach-")
+                    .suffix(".json.tmp")
+                    .tempfile_in(dir)
+                    .map_err(|e| SessionError::SidecarWriteFailed {
+                        path: sidecar_path.to_string_lossy().into_owned(),
+                        reason: format!("detach_session: tempfile creation failed: {e}"),
+                    })?;
+                use std::io::Write as _;
+                tmp.write_all(&updated)
+                    .map_err(|e| SessionError::SidecarWriteFailed {
+                        path: sidecar_path.to_string_lossy().into_owned(),
+                        reason: format!("detach_session: write to tempfile failed: {e}"),
+                    })?;
+                tmp.persist(&sidecar_path)
+                    .map_err(|e| SessionError::SidecarWriteFailed {
+                        path: sidecar_path.to_string_lossy().into_owned(),
+                        reason: format!("detach_session: tempfile persist failed: {}", e.error),
+                    })?;
+                Ok(())
+            })();
+
+            if let Err(e) = sidecar_update_result {
+                // F-S035-004: elevate to ERROR — sidecar persist failure breaks restart-durability
+                // (AC-008 / BC-2.08.007 detach PC-5). S-036 rediscovery reads the sidecar; if it
+                // still shows a pre-Detached state, the session will be re-classified incorrectly
+                // on daemon restart. The live detach ALREADY succeeded (in-memory state = Detached,
+                // proxy aborted) and must stand — do NOT revert. But the persistence failure MUST
+                // be loud so operators can detect and recover the sidecar manually.
+                tracing::error!(
+                    session_id = %session_id,
+                    error = %e,
+                    sidecar_path = %sidecar_path.display(),
+                    "detach_session: sidecar persist FAILED — restart-durability compromised \
+                     (AC-008 / BC-2.08.007 detach PC-5). In-memory state is Detached; \
+                     daemon restart may re-discover session in stale pre-Detached state."
+                );
+            }
+
+            tracing::info!(
+                session_id = %session_id,
+                "session detached (Running → Detached)"
+            );
+        }
+        // On the lost-race path (already_terminal == true): the proxy-written "Terminated"
+        // sidecar stands. No sidecar write, no "detached" info log. The debug log above
+        // (inside the lock block) is sufficient to record the lost-race event.
+
+        Ok(())
     }
 
-    /// Re-attach the daemon to a running session-host.
-    #[allow(clippy::todo)]
-    pub async fn attach_session(&mut self, _session_id: &str) -> Result<(), SessionError> {
-        todo!("S-033 (S-035 scope): implement attach_session()")
+    /// Re-attach the daemon to a Detached session-host.
+    ///
+    /// Steps (BC-2.08.007 §attach_session postconditions):
+    /// 1. Look up session; return `Err(SessionNotFound)` if absent.
+    /// 2. If Running: idempotent `Ok(())` (EC-185 — no duplicate proxy_task).
+    /// 3. If Detached: UDS connect → SO_PEERCRED (verify peer uid matches daemon uid) →
+    ///    send `DaemonToHost::Attach` → receive `ScrollbackChunk*` + `ScrollbackDumpComplete`
+    ///    within 5s timeout (EC-188: `Err(SessionHostDead)` if timeout) →
+    ///    start proxy task via `spawn_pty_proxy_task()` →
+    ///    set `host_conn = Some(SessionHostConnection { writer, proxy_task: Some(handle) })` →
+    ///    transition to `Running` →
+    ///    emit `SessionStateChanged{Running}` BEFORE `SessionListUpdate` under mutex (BC-2.08.008 Invariant 4).
+    /// 4. If session-host dead (UDS connect fails / liveness probe ESRCH): transition to
+    ///    `Terminated`; `Err(SessionHostDead)` (EC-187, wire code `"attach_failed"`).
+    /// 5. If SO_PEERCRED UID mismatch: abort attach; `Err(SessionHostDead)` (BC-2.08.007 PC-2).
+    pub fn attach_session(
+        &mut self,
+        session_id: &str,
+    ) -> impl std::future::Future<Output = Result<(), SessionError>> + Send + 'static {
+        // CRITICAL (EC-188 / BC-2.08.007): The 5-second attach deadline MUST be computed
+        // synchronously at call time — NOT inside the returned async block.
+        //
+        // Background: `let attach_future = manager.attach_session(id)` in tests creates the
+        // future without polling it. When `start_paused = true` and an outer `tokio::select!`
+        // races `attach_future` against `tokio::time::advance(5001ms)`, the advance may fire
+        // BEFORE `attach_future` is first polled. If the sleep is created inside the async
+        // block (at first-poll time), its deadline would be
+        //   T+5001ms + 5s = T+10001ms (far in the future),
+        // which the test never reaches → the panic branch fires.
+        //
+        // Fix: compute `deadline` HERE, synchronously, when `attach_session()` is called at
+        // virtual T+0. The returned async block captures `deadline` by value. When the async
+        // block eventually runs `sleep_until(deadline).poll()`, tokio checks
+        //   Instant::now() >= deadline  →  T+5001ms >= T+5000ms  →  Poll::Ready
+        // regardless of whether the timer was ever registered with the time driver.
+        //
+        // In production (no paused time), this is a no-op: the sleep fires after 5 real seconds.
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+
+        // Clone Arcs synchronously so the returned async block owns its data without
+        // borrowing `&mut self`. This allows the return type to be `'static`.
+        let sessions = Arc::clone(&self.sessions);
+        let peer_cred_verifier = Arc::clone(&self.peer_cred_verifier);
+        let broker = Arc::clone(&self.broker);
+        let session_id = session_id.to_string();
+        let runtime_dir = self.runtime_dir.clone();
+        // F-S035-005: clone pid_sigterm_fn seam so attach-timeout SIGTERM routes through
+        // the same injection seam as kill_session PidFallback (testability / consistency).
+        #[cfg(any(test, feature = "test-utils"))]
+        let pid_sigterm_fn = self.pid_sigterm_fn.clone();
+
+        async move {
+            use monocle_ipc::types::DaemonToHost;
+            use tokio::io::AsyncReadExt;
+            use tokio::io::AsyncWriteExt;
+            use tokio::net::UnixStream;
+
+            // Build the 5-second sleep from the deadline computed at call time (see above).
+            let timeout_sleep = tokio::time::sleep_until(deadline);
+            tokio::pin!(timeout_sleep);
+
+            // SEC-002 (CWE-22): validate session_id is a UUID before constructing file paths.
+            if uuid::Uuid::parse_str(&session_id).is_err() {
+                return Err(SessionError::SessionNotFound {
+                    session_id: session_id.to_string(),
+                });
+            }
+
+            // --- Inspect session state WITHOUT yielding via try_lock() ---
+            //
+            // We use try_lock() (non-blocking) for the initial state inspection so that
+            // NO yield occurs before we enter the 5-second attach protocol below.
+            //
+            // If try_lock() fails (mutex contended — very rare in practice), we fall back
+            // to lock().await, which may yield once.
+            enum AttachPath {
+                Running,
+                Detached {
+                    pid: u32,
+                    socket_path: PathBuf,
+                },
+                NotFound,
+                /// Other states (Launching, Terminating, Terminated) — return appropriate error.
+                OtherState {
+                    state: SessionState,
+                },
+            }
+
+            let attach_path = match sessions.try_lock() {
+                Ok(guard) => match guard.get(&session_id) {
+                    None => AttachPath::NotFound,
+                    Some(entry) => match &entry.state {
+                        SessionState::Running => AttachPath::Running,
+                        SessionState::Detached => AttachPath::Detached {
+                            pid: entry.session_host_pid,
+                            socket_path: entry.session_host_socket.clone(),
+                        },
+                        other => AttachPath::OtherState {
+                            state: other.clone(),
+                        },
+                    },
+                },
+                Err(_) => {
+                    // Fallback: mutex contended — lock() may yield once, but we proceed.
+                    // The timeout deadline was captured at call time, so this yield doesn't
+                    // affect the 5-second window.
+                    let guard = sessions.lock().await;
+                    match guard.get(&session_id) {
+                        None => AttachPath::NotFound,
+                        Some(entry) => match &entry.state {
+                            SessionState::Running => AttachPath::Running,
+                            SessionState::Detached => AttachPath::Detached {
+                                pid: entry.session_host_pid,
+                                socket_path: entry.session_host_socket.clone(),
+                            },
+                            other => AttachPath::OtherState {
+                                state: other.clone(),
+                            },
+                        },
+                    }
+                }
+            };
+
+            match attach_path {
+                AttachPath::NotFound => Err(SessionError::SessionNotFound {
+                    session_id: session_id.to_string(),
+                }),
+                AttachPath::Running => {
+                    // EC-185: already attached — idempotent Ok(()).
+                    Ok(())
+                }
+                AttachPath::OtherState { state } => {
+                    // F-S035-PASS3-LOW-001: corrected comment — ALL OtherState variants
+                    // (Launching, Terminating, Terminated, and any future states) return
+                    // SessionHostDead.  This is the matrix-compliant behavior per
+                    // SS-session-manager §action×state matrix: attach on any
+                    // non-Running/non-Detached state → "attach_failed" (wire code).
+                    // The prior comment erroneously claimed Launching would yield SessionNotReady;
+                    // the code never did that — SessionNotReady is only raised by detach_session
+                    // (F-P51-001) for Launching-with-no-control-connection.
+                    tracing::debug!(
+                        session_id = %session_id,
+                        ?state,
+                        "attach_session: unexpected state; returning SessionHostDead"
+                    );
+                    Err(SessionError::SessionHostDead {
+                        session_id: session_id.to_string(),
+                    })
+                }
+                AttachPath::Detached { pid, socket_path } => {
+                    // --- Detached path: full attach protocol (BC-2.08.007 PC-1 through PC-9) ---
+                    //
+                    // The ENTIRE connect → verify → send → scrollback sequence runs inside a
+                    // 5-second `tokio::time::timeout`. The timeout wraps the outermost async block
+                    // so that the timer is registered on the FIRST POLL of `attach_session` — before
+                    // any I/O operation yields. This is required for `tokio::time::pause/advance` in
+                    // tests to work correctly (EC-188 test vector uses `start_paused = true`).
+                    //
+                    // On timeout: Err(SessionHostDead), SIGTERM to PID (EC-188).
+                    // On UDS connect failure: EC-187 path (liveness probe → Terminated).
+                    // On SO_PEERCRED mismatch: Err(SessionHostDead) without state transition.
+                    //
+                    // Returns: Ok((OwnedReadHalf, OwnedWriteHalf, scrollback_chunks, metadata))
+                    //        | Err((SessionError, ConnectFailed: bool))
+                    //
+                    // The bool distinguishes EC-187 (connect failed → state=Terminated) from EC-188
+                    // (timeout → caller SIGTERMs) and other errors.
+                    enum AttachOutcome {
+                        /// Successfully completed attach protocol; caller proceeds with proxy/Running.
+                        Success {
+                            reader: tokio::net::unix::OwnedReadHalf,
+                            writer: tokio::net::unix::OwnedWriteHalf,
+                            scrollback_chunks: Vec<monocle_ipc::types::HostToDaemon>,
+                            total_chunks: u32,
+                            cursor_row: u16,
+                            cursor_col: u16,
+                            pty_rows: u16,
+                            pty_cols: u16,
+                        },
+                        /// UDS connect failed (EC-187): caller must transition → Terminated.
+                        ConnectFailed,
+                        /// SO_PEERCRED UID mismatch: caller returns SessionHostDead.
+                        PeerCredFailed,
+                        /// Protocol error during scrollback receive: caller returns SessionHostDead.
+                        ProtocolError,
+                        /// 5-second timeout fired (EC-188): caller SIGTERMs session-host.
+                        Timeout,
+                    }
+
+                    // Run the attach protocol (connect → verify → send → scrollback) inside a
+                    // biased select! against the pre-registered timeout_sleep.
+                    //
+                    // biased: ensures the work branch is polled first on each select! iteration,
+                    // so we don't spuriously time out when the work is already ready.
+                    //
+                    // timeout_sleep is the Sleep future created and registered at the start of
+                    // attach_session() (before any yield point). Its timer was registered with
+                    // tokio's time driver at T+0 via the noop-waker poll. If tokio::time::advance()
+                    // fired before we reach this select!, the Sleep's internal state is "elapsed"
+                    // and Sleep::poll() returns Poll::Ready(()) immediately — triggering EC-188.
+                    let outcome: AttachOutcome = tokio::select! {
+                        biased;
+                        // Work branch: full attach protocol.
+                        protocol_result = async {
+                            // Step 1 (BC-2.08.007 PC-1): UDS connect.
+                            let stream = match UnixStream::connect(&socket_path).await {
+                                Ok(s) => s,
+                                Err(e) => {
+                                    tracing::warn!(
+                                        session_id = %session_id,
+                                        socket = %socket_path.display(),
+                                        error = %e,
+                                        "attach_session: UDS connect failed (EC-187)"
+                                    );
+                                    return AttachOutcome::ConnectFailed;
+                                }
+                            };
+
+                            // Step 2 (BC-2.08.007 PC-2 / AC-001): SO_PEERCRED UID verification.
+                            if let Err(verify_err) = peer_cred_verifier.verify(&stream) {
+                                tracing::warn!(
+                                    session_id = %session_id,
+                                    error = %verify_err,
+                                    "attach_session: SO_PEERCRED UID mismatch (BC-2.08.007 PC-2)"
+                                );
+                                return AttachOutcome::PeerCredFailed;
+                            }
+
+                            // Split into read/write halves AFTER UID check.
+                            let (mut reader, mut writer) = stream.into_split();
+
+                            // Step 3 (BC-2.08.007 PC-3 / AC-002): send DaemonToHost::Attach.
+                            let attach_msg = match serde_json::to_vec(&DaemonToHost::Attach) {
+                                Ok(b) => b,
+                                Err(e) => {
+                                    tracing::error!(
+                                        session_id = %session_id,
+                                        error = %e,
+                                        "attach_session: failed to serialize DaemonToHost::Attach"
+                                    );
+                                    return AttachOutcome::ProtocolError;
+                                }
+                            };
+                            if attach_msg.len() > MAX_FRAME_LEN {
+                                tracing::error!(
+                                    session_id = %session_id,
+                                    len = attach_msg.len(),
+                                    "attach_session: DaemonToHost::Attach exceeds MAX_FRAME_LEN"
+                                );
+                                return AttachOutcome::ProtocolError;
+                            }
+                            let len_bytes = (attach_msg.len() as u32).to_le_bytes();
+                            if writer.write_all(&len_bytes).await.is_err()
+                                || writer.write_all(&attach_msg).await.is_err()
+                                || writer.flush().await.is_err()
+                            {
+                                tracing::warn!(
+                                    session_id = %session_id,
+                                    "attach_session: failed to send DaemonToHost::Attach"
+                                );
+                                return AttachOutcome::ProtocolError;
+                            }
+
+                            // Step 4 (BC-2.08.007 PC-4 / AC-002): receive ScrollbackChunk* +
+                            // ScrollbackDumpComplete. The retired single-message ScrollbackDump
+                            // MUST NOT be accepted (Invariant 3 / AC-010).
+                            let mut chunks: Vec<monocle_ipc::types::HostToDaemon> = Vec::new();
+                            loop {
+                                let mut len_buf = [0u8; 4];
+                                if reader.read_exact(&mut len_buf).await.is_err() {
+                                    return AttachOutcome::ProtocolError;
+                                }
+                                let msg_len = u32::from_le_bytes(len_buf) as usize;
+                                if msg_len == 0 || msg_len > MAX_FRAME_LEN {
+                                    tracing::warn!(
+                                        session_id = %session_id,
+                                        len = msg_len,
+                                        "attach_session: invalid scrollback message length"
+                                    );
+                                    return AttachOutcome::ProtocolError;
+                                }
+                                let mut body = vec![0u8; msg_len];
+                                if reader.read_exact(&mut body).await.is_err() {
+                                    return AttachOutcome::ProtocolError;
+                                }
+
+                                // Deserialize — serde will reject unknown variants (e.g., retired
+                                // "scrollback_dump") with an Err (AC-010 / Invariant 3).
+                                let msg: monocle_ipc::types::HostToDaemon =
+                                    match serde_json::from_slice(&body) {
+                                        Ok(m) => m,
+                                        Err(e) => {
+                                            tracing::warn!(
+                                                session_id = %session_id,
+                                                error = %e,
+                                                "attach_session: failed to deserialize HostToDaemon \
+                                                 during scrollback — may be retired ScrollbackDump \
+                                                 (BC-2.08.007 Invariant 3 / AC-010)"
+                                            );
+                                            return AttachOutcome::ProtocolError;
+                                        }
+                                    };
+
+                                match msg {
+                                    monocle_ipc::types::HostToDaemon::ScrollbackChunk { .. } => {
+                                        chunks.push(msg);
+                                    }
+                                    monocle_ipc::types::HostToDaemon::ScrollbackDumpComplete {
+                                        total_chunks,
+                                        cursor_row,
+                                        cursor_col,
+                                        pty_rows,
+                                        pty_cols,
+                                    } => {
+                                        return AttachOutcome::Success {
+                                            reader,
+                                            writer,
+                                            scrollback_chunks: chunks,
+                                            total_chunks,
+                                            cursor_row,
+                                            cursor_col,
+                                            pty_rows,
+                                            pty_cols,
+                                        };
+                                    }
+                                    other => {
+                                        tracing::warn!(
+                                            session_id = %session_id,
+                                            msg_type = ?std::mem::discriminant(&other),
+                                            "attach_session: unexpected HostToDaemon during scrollback \
+                                             drain; continuing to wait for ScrollbackDumpComplete"
+                                        );
+                                    }
+                                }
+                            }
+                        } => protocol_result,
+
+                        // Timeout branch: 5-second deadline (EC-188).
+                        // timeout_sleep was pre-registered at T+0 at function entry.
+                        // If advance(5001ms) already fired, Sleep::poll() returns Ready immediately
+                        // (the timer's internal state is "elapsed"), triggering EC-188.
+                        _ = &mut timeout_sleep => AttachOutcome::Timeout,
+                    };
+
+                    // Handle outcome variants.
+                    let outcome = match outcome {
+                        AttachOutcome::Timeout => {
+                            // EC-188: 5-second timeout fired. SIGTERM to non-responsive session-host.
+                            // F-S035-005: route through pid_sigterm_fn seam (same as kill_session
+                            // PidFallback) for testability and consistency (ADV-S034-IMPORTANT-001).
+                            tracing::warn!(
+                                session_id = %session_id,
+                                pid = pid,
+                                "attach_session: 5-second timeout (EC-188); sending SIGTERM to session-host PID"
+                            );
+                            use nix::sys::signal::{kill as nix_kill, Signal};
+                            use nix::unistd::Pid;
+                            let nix_pid = Pid::from_raw(pid as i32);
+                            #[cfg(any(test, feature = "test-utils"))]
+                            let sigterm_result = if let Some(ref f) = pid_sigterm_fn {
+                                f(nix_pid)
+                            } else {
+                                nix_kill(nix_pid, Signal::SIGTERM)
+                            };
+                            #[cfg(not(any(test, feature = "test-utils")))]
+                            let sigterm_result = nix_kill(nix_pid, Signal::SIGTERM);
+                            if let Err(e) = sigterm_result {
+                                tracing::debug!(
+                                    session_id = %session_id,
+                                    pid = pid,
+                                    error = %e,
+                                    "attach_session: SIGTERM to non-responsive session-host failed (best-effort)"
+                                );
+                            }
+                            // BC-2.08.007 v1.5.5 (F-S035-PASS5-MED-001): SIGTERM declares the
+                            // session-host dead — consistent with EC-187/PeerCredFailed. Transition
+                            // to Terminated (StateChanged{Terminated} BEFORE SessionListUpdate + GC)
+                            // BEFORE returning Err(SessionHostDead).
+                            let sidecar_path =
+                                runtime_dir.join(format!("session-{}.json", session_id));
+                            transition_to_terminated_standalone(
+                                &session_id,
+                                &sessions,
+                                &broker,
+                                &sidecar_path,
+                            )
+                            .await;
+                            return Err(SessionError::SessionHostDead {
+                                session_id: session_id.to_string(),
+                            });
+                        }
+                        other => other,
+                    };
+
+                    // The sidecar_path for EC-187, PeerCredFailed, and proxy_task.
+                    let sidecar_path = runtime_dir.join(format!("session-{}.json", session_id));
+
+                    // Handle connect failure (EC-187): liveness probe → transition to Terminated
+                    // via transition_to_terminated_standalone so StateChanged{Terminated} is
+                    // published (BC-2.08.008 Invariant 1 / AC-015 — no silent transitions).
+                    if matches!(outcome, AttachOutcome::ConnectFailed) {
+                        use nix::sys::signal::kill as nix_kill;
+                        use nix::unistd::Pid;
+                        let nix_pid = Pid::from_raw(pid as i32);
+                        let liveness = nix_kill(nix_pid, None);
+                        let is_dead = matches!(liveness, Err(nix::errno::Errno::ESRCH));
+
+                        if is_dead {
+                            tracing::info!(
+                                session_id = %session_id,
+                                pid = pid,
+                                "attach_session: liveness probe confirms session-host dead (ESRCH); \
+                                 state → Terminated (EC-187)"
+                            );
+                        } else {
+                            tracing::warn!(
+                                session_id = %session_id,
+                                pid = pid,
+                                "attach_session: UDS connect failed but liveness probe did not return \
+                                 ESRCH; state → Terminated (EC-187)"
+                            );
+                        }
+
+                        // Publish StateChanged{Terminated} + SessionListUpdate + spawn GC
+                        // (F-S035-PASS2-CRIT-001: replaces silent entry.state = Terminated
+                        // that violated BC-2.08.008 Invariant 1 / AC-015).
+                        transition_to_terminated_standalone(
+                            &session_id,
+                            &sessions,
+                            &broker,
+                            &sidecar_path,
+                        )
+                        .await;
+
+                        return Err(SessionError::SessionHostDead {
+                            session_id: session_id.to_string(),
+                        });
+                    }
+
+                    // Handle PeerCred failure and other failures with split semantics
+                    // (F-S035-PASS2-LOW-001 / SS-session-manager §PeerCred split semantics / BC-2.08.007 Inv 5):
+                    //
+                    // - PeerCredFailed (UID mismatch — host is not our child / impersonation):
+                    //   transition → Terminated (StateChanged{Terminated} + SessionListUpdate + GC),
+                    //   consistent with kill_session EC-163. Then return Err(SessionHostDead).
+                    //
+                    // - ProtocolError (SO_PEERCRED passed — host alive and ours; transient exchange
+                    //   error): stay Detached (NO transition, NO broadcast). A later retry is
+                    //   legitimate. Return Err(SessionHostDead) (no state change).
+                    match &outcome {
+                        AttachOutcome::PeerCredFailed => {
+                            tracing::warn!(
+                                session_id = %session_id,
+                                "attach_session: SO_PEERCRED UID mismatch (PeerCredFailed) — \
+                                 transitioning to Terminated (BC-2.08.007 Inv 5 / F-S035-PASS2-LOW-001)"
+                            );
+                            transition_to_terminated_standalone(
+                                &session_id,
+                                &sessions,
+                                &broker,
+                                &sidecar_path,
+                            )
+                            .await;
+                            return Err(SessionError::SessionHostDead {
+                                session_id: session_id.to_string(),
+                            });
+                        }
+                        AttachOutcome::ProtocolError => {
+                            // SO_PEERCRED passed — host is alive and ours. Transient exchange
+                            // error; stay Detached. A later attach retry is legitimate.
+                            // NO state transition, NO broadcast (F-S035-PASS2-LOW-001).
+                            tracing::warn!(
+                                session_id = %session_id,
+                                "attach_session: protocol error after SO_PEERCRED passed — \
+                                 staying Detached, no transition (F-S035-PASS2-LOW-001)"
+                            );
+                            return Err(SessionError::SessionHostDead {
+                                session_id: session_id.to_string(),
+                            });
+                        }
+                        AttachOutcome::Success { .. } => {
+                            // Proceed below.
+                        }
+                        // ConnectFailed and Timeout handled above; this arm is unreachable.
+                        _ => {
+                            return Err(SessionError::SessionHostDead {
+                                session_id: session_id.to_string(),
+                            });
+                        }
+                    }
+
+                    // Extract success components.
+                    let (
+                        reader,
+                        writer,
+                        scrollback_chunks,
+                        total_chunks,
+                        cursor_row,
+                        cursor_col,
+                        pty_rows,
+                        pty_cols,
+                    ) = match outcome {
+                        AttachOutcome::Success {
+                            reader,
+                            writer,
+                            scrollback_chunks,
+                            total_chunks,
+                            cursor_row,
+                            cursor_col,
+                            pty_rows,
+                            pty_cols,
+                        } => (
+                            reader,
+                            writer,
+                            scrollback_chunks,
+                            total_chunks,
+                            cursor_row,
+                            cursor_col,
+                            pty_rows,
+                            pty_cols,
+                        ),
+                        _ => unreachable!("matched Success above"),
+                    };
+
+                    // Step 5 (BC-2.08.007 PC-5 / AC-003): start PTY proxy task.
+                    // Ruling L (SS-session-manager §Ruling L-1): pass sessions + sidecar_path so the
+                    // proxy_task can call transition_to_terminated_standalone on StateChanged{Terminated}
+                    // or Goodbye (fast-path kill confirmation for attached sessions).
+                    // Reuse the sidecar_path computed above (same path, avoids duplicate join).
+                    let proxy_handle = SessionManager::spawn_pty_proxy_task(
+                        session_id.to_string(),
+                        reader,
+                        Arc::clone(&broker),
+                        Arc::clone(&sessions),
+                        sidecar_path.clone(),
+                    );
+
+                    // Wrap writer in Arc<Mutex<>> for storage in SessionHostConnection.
+                    let writer_arc = Arc::new(Mutex::new(writer));
+
+                    // Step 6 (BC-2.08.007 PC-6 / AC-004): transition to Running, emit broadcasts.
+                    // Build snapshot + update host_conn + emit broadcasts — all under one lock.
+                    {
+                        use monocle_core::engine::{EnrichedSession, SessionStatus};
+                        let mut guard = sessions.lock().await;
+
+                        // Update SessionEntry: store connection + proxy_task + transition to Running.
+                        if let Some(entry) = guard.get_mut(&session_id) {
+                            entry.host_conn = Some(SessionHostConnection {
+                                writer: Arc::clone(&writer_arc),
+                                // Ruling L (L-4): reader is None because the proxy_task owns
+                                // the read half. On kill_session for an attached (Running) session,
+                                // the proxy_task delivers StateChanged{Terminated} via the fast path
+                                // (Ruling L L-2) without needing kill_confirm_monitor.
+                                // The 12s watchdog remains the fallback if the session-host is
+                                // unresponsive. See SS-session-manager §Ruling L.
+                                reader: None,
+                                proxy_task: Some(proxy_handle),
+                            });
+                            entry.state = SessionState::Running;
+                        }
+
+                        // Build list snapshot while holding the lock.
+                        let list_snapshot: Vec<EnrichedSession> = guard
+                            .values()
+                            .map(|e| {
+                                let status = match e.state {
+                                    SessionState::Launching | SessionState::Running => {
+                                        SessionStatus::Active
+                                    }
+                                    SessionState::Detached => SessionStatus::Idle,
+                                    SessionState::Terminating | SessionState::Terminated => {
+                                        SessionStatus::Stopped
+                                    }
+                                    _ => SessionStatus::Stopped,
+                                };
+                                EnrichedSession::new_with_display_name(
+                                    e.session_id.clone(),
+                                    e.harness_id.clone(),
+                                    None,
+                                    None,
+                                    status,
+                                    None,
+                                    e.project_root
+                                        .file_name()
+                                        .and_then(|n| n.to_str())
+                                        .map(|s| s.to_string()),
+                                    Some(e.started_at),
+                                    0,
+                                    None,
+                                    e.display_name.clone(),
+                                )
+                            })
+                            .collect();
+
+                        // BC-2.08.008 Invariant 4: SessionStateChanged{Running} BEFORE SessionListUpdate,
+                        // both under the same mutex hold.
+                        let state_changed =
+                            monocle_ipc::types::ServerToClient::SessionStateChanged {
+                                session_id: session_id.to_string(),
+                                new_state: SessionState::Running,
+                            };
+                        crate::ipc_server::broadcast_to_subscribers(&broker, state_changed).await;
+
+                        let list_update = monocle_ipc::types::ServerToClient::SessionListUpdate {
+                            sessions: list_snapshot,
+                        };
+                        crate::ipc_server::broadcast_to_subscribers(&broker, list_update).await;
+                        // sessions lock released here — both try_send calls completed atomically.
+                    }
+
+                    // Step 7 (AC-005): forward scrollback chunks to TUI clients via broker.
+                    // This is fire-and-forget forwarding; TUI stores them for screen reconstruction
+                    // (SS-09 scope). The chunks are forwarded AFTER the Running transition so that
+                    // TUI clients receive the state transition before the scrollback data.
+                    //
+                    // Note: ServerToClient::ScrollbackChunk/ScrollbackDumpComplete are SS-09 scope;
+                    // for S-035 we log the chunk count but do not broadcast (variants not yet defined
+                    // in ServerToClient). The proxy task has been started and will stream live PtyBytes.
+                    //
+                    // TODO(S-039/S-047): forward received ScrollbackChunk*/ScrollbackDumpComplete to
+                    // TUI clients as ServerToClient::ScrollbackChunk once the session-host PTY→vt100
+                    // screen-content source exists (currently empty dump; AC-005 daemon-forwarding
+                    // obligation). Owning stories: S-039 (PTY output pipeline) / S-047 (live parser).
+
+                    // F-S035-003: validate chunk count (BC-2.08.007 §Screen-state transfer step 5a).
+                    // Daemon stays a forwarding pipe but MUST NOT silently drop a truncated dump.
+                    let received_chunks = scrollback_chunks.len() as u32;
+                    if received_chunks != total_chunks {
+                        tracing::warn!(
+                            session_id = %session_id,
+                            received_chunks = received_chunks,
+                            total_chunks = total_chunks,
+                            "attach_session: scrollback chunk count mismatch — \
+                             received {} chunks but ScrollbackDumpComplete reported {}; \
+                             scrollback may be truncated (BC-2.08.007 §Screen-state transfer step 5a)",
+                            received_chunks,
+                            total_chunks,
+                        );
+                    }
+
+                    tracing::debug!(
+                        session_id = %session_id,
+                        chunk_count = scrollback_chunks.len(),
+                        total_chunks = total_chunks,
+                        cursor_row = cursor_row,
+                        cursor_col = cursor_col,
+                        pty_rows = pty_rows,
+                        pty_cols = pty_cols,
+                        "attach_session: scrollback dump received (forwarding to broker is SS-09 scope)"
+                    );
+
+                    tracing::info!(
+                        session_id = %session_id,
+                        "session attached (Detached → Running)"
+                    );
+
+                    Ok(())
+                }
+            }
+        } // end async move
+    }
+
+    /// Spawn the PTY proxy task for a newly-attached session.
+    ///
+    /// Reads `HostToDaemon` messages from the control connection read half and:
+    /// - `PtyBytes`: forwards bytes to the daemon broker (SS-09 scope for TUI rendering).
+    /// - `PtyReset`: logs debug (SS-09 scope for reset broadcasting).
+    /// - `StateChanged{Terminated}` (Ruling L, L-2): calls `transition_to_terminated_standalone`
+    ///   to deliver the fast-path kill confirmation without waiting for the 12s watchdog.
+    /// - `Goodbye` (Ruling L, L-2 defensive): calls `transition_to_terminated_standalone`
+    ///   for natural session exit that did not send a prior Terminated.
+    /// - `other`: logs WARN (not trace) for unexpected variants.
+    ///
+    /// Called by `attach_session()` after `ScrollbackDumpComplete` is received.
+    ///
+    /// Returns a `JoinHandle<()>` stored in `SessionHostConnection.proxy_task`.
+    ///
+    /// The task exits when the read half yields EOF, an I/O error, or after handling
+    /// a Terminated/Goodbye message. This is normal on session detach or termination.
+    fn spawn_pty_proxy_task(
+        session_id: String,
+        mut reader: tokio::net::unix::OwnedReadHalf,
+        broker: Arc<monocle_ipc::server::SubscriberList>,
+        sessions: Arc<tokio::sync::Mutex<HashMap<String, SessionEntry>>>,
+        sidecar_path: PathBuf,
+    ) -> JoinHandle<()> {
+        use tokio::io::AsyncReadExt;
+
+        tokio::spawn(async move {
+            loop {
+                // Read 4-byte LE length prefix.
+                let mut len_buf = [0u8; 4];
+                match reader.read_exact(&mut len_buf).await {
+                    Ok(_) => {}
+                    Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                        tracing::debug!(
+                            session_id = %session_id,
+                            "proxy_task: session-host closed control connection (EOF)"
+                        );
+                        break;
+                    }
+                    Err(e) => {
+                        tracing::debug!(
+                            session_id = %session_id,
+                            error = %e,
+                            "proxy_task: read error on control connection; exiting"
+                        );
+                        break;
+                    }
+                }
+
+                let msg_len = u32::from_le_bytes(len_buf) as usize;
+                if msg_len == 0 || msg_len > MAX_FRAME_LEN {
+                    tracing::warn!(
+                        session_id = %session_id,
+                        len = msg_len,
+                        "proxy_task: invalid message length; exiting"
+                    );
+                    break;
+                }
+
+                let mut body = vec![0u8; msg_len];
+                if let Err(e) = reader.read_exact(&mut body).await {
+                    tracing::debug!(
+                        session_id = %session_id,
+                        error = %e,
+                        "proxy_task: failed to read message body; exiting"
+                    );
+                    break;
+                }
+
+                // Deserialize as HostToDaemon.
+                let msg: monocle_ipc::types::HostToDaemon = match serde_json::from_slice(&body) {
+                    Ok(m) => m,
+                    Err(e) => {
+                        tracing::warn!(
+                            session_id = %session_id,
+                            error = %e,
+                            "proxy_task: failed to deserialize HostToDaemon; skipping frame"
+                        );
+                        continue;
+                    }
+                };
+
+                match msg {
+                    monocle_ipc::types::HostToDaemon::PtyBytes { bytes } => {
+                        // Forward PTY bytes to broker as PtyOutput (SS-09 scope for TUI rendering).
+                        // For S-035, broadcast is a best-effort no-op if ServerToClient::PtyOutput
+                        // is not yet defined; the broker will handle known variants.
+                        let _ = (&broker, &bytes, &session_id);
+                        // No-op broadcast for S-035: SS-09 defines ServerToClient::PtyOutput.
+                        // The proxy task must exist and consume bytes to keep the socket from
+                        // blocking; the actual fan-out to TUI clients is SS-09 scope.
+                    }
+                    monocle_ipc::types::HostToDaemon::PtyReset => {
+                        tracing::debug!(
+                            session_id = %session_id,
+                            "proxy_task: received PtyReset from session-host"
+                        );
+                        // SS-09: broadcast ServerToClient::PtyReset to TUI clients.
+                    }
+                    // Ruling L (L-2): StateChanged{Terminated} fast-path kill confirmation.
+                    // The session-host sent Terminated — publish the transition immediately
+                    // without waiting for the 12s SIGKILL watchdog.
+                    monocle_ipc::types::HostToDaemon::StateChanged {
+                        new_state: monocle_ipc::types::SessionState::Terminated,
+                        ..
+                    } => {
+                        tracing::debug!(
+                            session_id = %session_id,
+                            "proxy_task: received StateChanged{{Terminated}} — fast-path kill confirmation (Ruling L)"
+                        );
+                        transition_to_terminated_standalone(
+                            &session_id,
+                            &sessions,
+                            &broker,
+                            &sidecar_path,
+                        )
+                        .await;
+                        break;
+                    }
+                    // Ruling L (L-2 defensive): Goodbye without prior Terminated — natural exit.
+                    // Call force-terminate routine so the session is cleaned up consistently.
+                    monocle_ipc::types::HostToDaemon::Goodbye => {
+                        tracing::debug!(
+                            session_id = %session_id,
+                            "proxy_task: received Goodbye (natural exit without prior Terminated); \
+                             triggering force-terminate (Ruling L defensive path)"
+                        );
+                        transition_to_terminated_standalone(
+                            &session_id,
+                            &sessions,
+                            &broker,
+                            &sidecar_path,
+                        )
+                        .await;
+                        break;
+                    }
+                    other => {
+                        // Ruling L (L-2): warn (NOT trace) for unexpected variants.
+                        tracing::warn!(
+                            session_id = %session_id,
+                            msg_type = ?std::mem::discriminant(&other),
+                            "proxy_task: unexpected HostToDaemon variant from session-host (post-Running)"
+                        );
+                    }
+                }
+            }
+        })
     }
 
     /// Rename a session — updates `display_name` in the sidecar and publishes
@@ -7118,6 +8377,7 @@ mod tests {
             sidecar_path.clone(),
             tmp.path().join(format!("session-{}.sock", session_id)),
             watchdog_deadline,
+            None, // pid_sigkill_fn: use real nix_kill in this Ruling J test
         );
 
         // Verify the child is alive before the watchdog fires.
@@ -7257,6 +8517,7 @@ mod tests {
             sidecar_path.clone(),
             tmp.path().join(format!("session-{}.sock", session_id)),
             watchdog_deadline,
+            None, // pid_sigkill_fn: use real nix_kill in this Ruling J no-child test
         );
 
         // Advance virtual time to fire the watchdog (>= 12s).
@@ -9114,5 +10375,344 @@ mod tests {
              pre-rename default {:?}; got {:?}",
             default_display_name, snap.display_name
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // F-S035-PASS3-MED-001: TOCTOU guard in detach_session
+    //
+    // Verifies that if the session transitions to Terminated BETWEEN
+    // detach_session's initial-lock read (which sees Running) and its
+    // re-acquired-lock state mutation, detach does NOT:
+    //   (a) overwrite entry.state back to Detached, and
+    //   (b) emit a spurious SessionStateChanged{Detached} broadcast.
+    //
+    // The Terminated transition (from the proxy path) must stand.
+    //
+    // Race simulation technique (current_thread scheduler — deterministic):
+    //
+    //   1. Test spawns a "writer-hold" task that acquires the writer mutex and
+    //      waits for a release signal (notif_release).  The task also posts
+    //      "writer held" (notif_held) so the test can synchronise.
+    //   2. Test waits for "writer held", then spawns an "inject" task that will
+    //      inject Terminated into sessions and then signal the writer-hold task
+    //      to release.  The inject task is ready-to-run when spawned but runs
+    //      only when the current task yields.
+    //   3. Test calls `manager.detach_session()`:
+    //      a. Initial sessions read → sees Running → takes DetachPath::Running.
+    //      b. Tries writer.lock().await → BLOCKS (writer-hold task owns it) →
+    //         tokio runtime yields to next ready task.
+    //      c. inject task runs: sets entry.state = Terminated, emits
+    //         SessionStateChanged{Terminated}, signals notif_release.
+    //      d. writer-hold task runs: receives release signal, drops writer guard.
+    //      e. detach_session: acquires writer, writes DaemonToHost::Detach,
+    //         flushes.
+    //      f. detach re-acquires sessions lock.  TOCTOU guard fires: state ==
+    //         Terminated → skips Detached mutation, skips Detached broadcasts,
+    //         returns Ok(()).
+    //   4. Test asserts: entry.state == Terminated (NOT Detached).
+    //   5. Test asserts: NO SessionStateChanged{Detached} in broadcast stream.
+    // -----------------------------------------------------------------------
+
+    /// F-S035-PASS3-MED-001: detach_session MUST NOT resurrect a session entry
+    /// that transitioned to Terminated during the writer-send yield point.
+    ///
+    /// Scenario: detach reads Running state (initial lock), begins writer send.
+    /// While detach blocks on writer.lock().await, the proxy path sets
+    /// entry.state = Terminated.  When detach re-acquires sessions, the guard
+    /// detects Terminated and skips the Detached mutation + broadcasts.
+    ///
+    /// Assertions:
+    /// - Final entry.state == Terminated (NOT Detached).
+    /// - No SessionStateChanged{Detached} in the broadcast stream.
+    /// - detach_session returns Ok(()) (lost-race is idempotent).
+    #[tokio::test(flavor = "current_thread")]
+    async fn test_F_S035_PASS3_MED_001_detach_toctou_guard_no_resurrect_on_terminated() {
+        use tokio::net::UnixStream;
+        use tokio::sync::Notify;
+
+        let tmp = tempfile::tempdir().expect("PASS3-MED-001: tempdir");
+        let (mut manager, _subs, mut rx) = make_manager_with_channel(tmp.path(), None);
+
+        let session_id = "00000000-0535-4000-a000-000000000001".to_string();
+
+        // --- Step 1: Build a Running session with a live writer connection.
+        //
+        // Use UnixStream::pair().  We wrap the write half in Arc<Mutex<...>> so the
+        // "writer-hold" task can hold the mutex and force detach_session to yield at
+        // writer.lock().await.  The read end is held open so writes don't fail (EOF).
+        let (peer_a, peer_b) = UnixStream::pair().expect("PASS3-MED-001: UnixStream::pair");
+        let (_, write_half) = peer_a.into_split();
+        let writer_arc: Arc<Mutex<tokio::net::unix::OwnedWriteHalf>> =
+            Arc::new(Mutex::new(write_half));
+
+        // Keep read end open (so writes don't get EPIPE/broken-pipe).
+        // Drain it in a background task to prevent kernel-buffer fill.
+        let (peer_b_read, _peer_b_write) = peer_b.into_split();
+        tokio::spawn(async move {
+            use tokio::io::AsyncReadExt;
+            let mut buf = vec![0u8; 4096];
+            let mut reader = peer_b_read;
+            loop {
+                match reader.read(&mut buf).await {
+                    Ok(0) | Err(_) => break,
+                    Ok(_) => continue,
+                }
+            }
+        });
+
+        let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
+        {
+            let mut guard = manager.sessions.lock().await;
+            guard.insert(
+                session_id.clone(),
+                SessionEntry {
+                    session_id: session_id.clone(),
+                    session_host_pid: 99_535,
+                    session_host_socket: socket_path.clone(),
+                    state: SessionState::Running,
+                    cwd: PathBuf::from("/tmp/test-cwd"),
+                    project_root: PathBuf::from("/tmp/test-project"),
+                    harness_id: "claude-code".to_string(),
+                    profile_id: "default".to_string(),
+                    started_at: chrono::Utc::now(),
+                    display_name: "claude-code — test-project".to_string(),
+                    kill_deadline: None,
+                    degraded: false,
+                    degraded_reason: None,
+                    host_conn: Some(SessionHostConnection {
+                        writer: Arc::clone(&writer_arc),
+                        reader: None,
+                        proxy_task: None,
+                    }),
+                },
+            );
+        }
+
+        // Write the sidecar that detach_session will try to update (PC-5).
+        let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+        let sidecar_json = serde_json::json!({
+            "schema_version": "v3",
+            "session_id": session_id,
+            "state": "Running",
+            "harness_id": "claude-code",
+            "profile_id": "default",
+            "session_host_pid": 99535,
+            "session_host_socket": socket_path.to_str().unwrap_or("/tmp/test.sock"),
+            "cwd": "/tmp/test-cwd",
+            "project_root": "/tmp/test-project",
+            "started_at_unix_ms": 0u64,
+            "hooks_settings_path": "/tmp/hooks.json",
+            "child_pid": serde_json::Value::Null,
+            "kill_deadline_unix_ms": serde_json::Value::Null
+        });
+        {
+            use std::io::Write as _;
+            let mut f =
+                std::fs::File::create(&sidecar_path).expect("PASS3-MED-001: create sidecar file");
+            f.write_all(&serde_json::to_vec_pretty(&sidecar_json).unwrap())
+                .expect("PASS3-MED-001: write sidecar");
+        }
+
+        // Drain any initial broadcasts (none expected — we inserted directly).
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(20);
+            loop {
+                match tokio::time::timeout_at(deadline, rx.recv()).await {
+                    Ok(Some(_)) => continue,
+                    _ => break,
+                }
+            }
+        }
+
+        // --- Step 2: Set up the race simulation tasks.
+        //
+        // notif_held:    writer-hold task → test: "writer mutex now held"
+        // notif_release: inject task → writer-hold task: "you may now release"
+        let notif_held = Arc::new(Notify::new());
+        let notif_release = Arc::new(Notify::new());
+
+        // "writer-hold" task: acquires writer mutex, signals held, waits for
+        // release signal, then drops writer guard.  This forces detach_session
+        // to yield at writer.lock().await, giving the inject task a chance to run.
+        let writer_arc_for_hold = Arc::clone(&writer_arc);
+        let notif_held_clone = Arc::clone(&notif_held);
+        let notif_release_clone = Arc::clone(&notif_release);
+        tokio::spawn(async move {
+            let _guard = writer_arc_for_hold.lock().await;
+            notif_held_clone.notify_one(); // signal: writer held
+            notif_release_clone.notified().await; // wait for inject to signal release
+                                                  // _guard drops here → writer mutex released → detach unblocks
+        });
+
+        // Wait until the writer-hold task actually holds the mutex.
+        notif_held.notified().await;
+
+        // "inject" task: will run when detach_session yields (blocked on writer).
+        // Simulates transition_to_terminated_standalone (proxy path) running concurrently.
+        let sessions_clone = Arc::clone(&manager.sessions);
+        let broker_clone = Arc::clone(&manager.broker);
+        let session_id_clone = session_id.clone();
+        let notif_release_for_inject = Arc::clone(&notif_release);
+        // Pass sidecar_path into the inject task so it can write "Terminated" durably,
+        // exactly as transition_to_terminated_standalone does on the proxy path.
+        let sidecar_path_for_inject = sidecar_path.clone();
+        tokio::spawn(async move {
+            // Inject Terminated state (simulating proxy_task / watchdog racing detach).
+            //
+            // F-S035-PASS5-LOW-001: mirror what transition_to_terminated_standalone actually
+            // does — it sets state=Terminated and kill_deadline=None, but does NOT clear
+            // host_conn. A real lost-race leaves host_conn = Some{ writer, reader:None,
+            // proxy_task:Some(handle) }. detach_session's proxy_task.take()/abort() then
+            // takes+aborts that real handle, exercising the lost-race proxy-abort branch.
+            {
+                let mut guard = sessions_clone.lock().await;
+                if let Some(entry) = guard.get_mut(&session_id_clone) {
+                    entry.state = SessionState::Terminated;
+                    entry.kill_deadline = None;
+                    // transition_to_terminated_standalone does NOT clear host_conn.
+                    // Leave host_conn as Some with proxy_task: Some(a real spawned handle)
+                    // so detach_session's take()/abort() exercises the real branch.
+                    if let Some(ref mut conn) = entry.host_conn {
+                        // Replace proxy_task with a real (live) spawned handle so that
+                        // detach_session's take()/abort() path exercises a real abort.
+                        conn.reader = None;
+                        conn.proxy_task = Some(tokio::spawn(async {
+                            tokio::time::sleep(std::time::Duration::from_secs(60)).await
+                        }));
+                    }
+                }
+            }
+            // Write "Terminated" to the durable sidecar — exactly as
+            // transition_to_terminated_standalone does when the proxy_task wins the race.
+            // This is the write that detach_session must NOT clobber with "Detached"
+            // (F-S035-PASS4-HIGH-001 fix target).
+            {
+                use std::io::Write as _;
+                let existing = std::fs::read_to_string(&sidecar_path_for_inject)
+                    .expect("inject: read sidecar");
+                let mut val: serde_json::Value =
+                    serde_json::from_str(&existing).expect("inject: parse sidecar");
+                val["state"] = serde_json::json!("Terminated");
+                let updated = serde_json::to_vec_pretty(&val).expect("inject: serialize sidecar");
+                let dir = sidecar_path_for_inject
+                    .parent()
+                    .expect("inject: sidecar has no parent");
+                let mut tmp = tempfile::Builder::new()
+                    .prefix(".session-sidecar-inject-terminated-")
+                    .suffix(".json.tmp")
+                    .tempfile_in(dir)
+                    .expect("inject: create tempfile");
+                tmp.write_all(&updated).expect("inject: write tempfile");
+                tmp.persist(&sidecar_path_for_inject)
+                    .expect("inject: persist sidecar");
+            }
+            // Emit the SessionStateChanged{Terminated} broadcast (as proxy path would).
+            let terminated_broadcast = monocle_ipc::types::ServerToClient::SessionStateChanged {
+                session_id: session_id_clone.clone(),
+                new_state: SessionState::Terminated,
+            };
+            crate::ipc_server::broadcast_to_subscribers(&broker_clone, terminated_broadcast).await;
+            // Signal the writer-hold task to release the writer mutex.
+            notif_release_for_inject.notify_one();
+        });
+
+        // --- Step 3: Call detach_session.
+        //
+        // Execution sequence (current_thread runtime, deterministic):
+        //   a. Initial sessions read → Running → DetachPath::Running (extracts writer Arc).
+        //   b. writer.lock().await → BLOCKS (writer-hold owns it) → runtime yields.
+        //   c. inject task runs: sets Terminated, emits Terminated broadcast, notifies release.
+        //   d. writer-hold task runs: receives release, drops writer guard.
+        //   e. detach resumes: acquires writer, writes DaemonToHost::Detach, flushes.
+        //   f. detach re-acquires sessions lock → reads Terminated →
+        //      TOCTOU guard fires (F-S035-PASS3-MED-001) → skips mutation + broadcasts.
+        //   g. Returns Ok(()).
+        let result = manager.detach_session(&session_id).await;
+        assert!(
+            result.is_ok(),
+            "PASS3-MED-001: detach_session lost-race MUST return Ok(()); got: {:?}",
+            result
+        );
+
+        // --- Step 4: entry.state MUST be Terminated (NOT Detached).
+        {
+            let guard = manager.sessions.lock().await;
+            let entry = guard
+                .get(&session_id)
+                .expect("PASS3-MED-001: session must still exist in registry");
+            assert_eq!(
+                entry.state,
+                SessionState::Terminated,
+                "PASS3-MED-001: detach_session MUST NOT overwrite Terminated entry to \
+                 Detached (F-S035-PASS3-MED-001 regression); got state: {:?}",
+                entry.state
+            );
+        }
+
+        // --- Step 4b (F-S035-PASS4-HIGH-001): durable sidecar MUST still show "Terminated".
+        //
+        // The inject task above wrote state="Terminated" to the sidecar — simulating what
+        // transition_to_terminated_standalone does on the proxy path. detach_session on the
+        // lost-race path MUST NOT clobber that with "Detached". Read the sidecar from disk
+        // and assert the state field is "Terminated".
+        //
+        // Without the fix (before gating the sidecar write on !already_terminal), this
+        // assertion would FAIL — detach_session would overwrite the sidecar unconditionally,
+        // writing "Detached" over the proxy-written "Terminated", and this assertion would
+        // see "Detached" where it expects "Terminated".
+        {
+            let sidecar_raw = std::fs::read_to_string(&sidecar_path)
+                .expect("PASS4-HIGH-001: sidecar file must exist on disk");
+            let sidecar_val: serde_json::Value = serde_json::from_str(&sidecar_raw)
+                .expect("PASS4-HIGH-001: sidecar must be valid JSON");
+            let on_disk_state = sidecar_val
+                .get("state")
+                .and_then(|v| v.as_str())
+                .unwrap_or("<missing>");
+            assert_eq!(
+                on_disk_state, "Terminated",
+                "PASS4-HIGH-001: sidecar on disk MUST be \"Terminated\" after detach lost-race; \
+                 detach_session MUST NOT clobber the proxy-written \"Terminated\" sidecar with \
+                 \"Detached\" (F-S035-PASS4-HIGH-001 regression). Got: {:?}",
+                on_disk_state
+            );
+        }
+
+        // --- Step 5: NO SessionStateChanged{Detached} must appear in the broadcast stream.
+        //
+        // The stream contains: SessionStateChanged{Terminated} (injected above).
+        // It must NOT contain: SessionStateChanged{Detached} (which the pre-fix code
+        // would unconditionally emit).
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(100);
+            let mut broadcasts: Vec<monocle_ipc::types::ServerToClient> = Vec::new();
+            loop {
+                match tokio::time::timeout_at(deadline, rx.recv()).await {
+                    Ok(Some(msg)) => broadcasts.push(msg),
+                    _ => break,
+                }
+            }
+
+            let spurious_detached: Vec<_> = broadcasts
+                .iter()
+                .filter(|m| {
+                    matches!(
+                        m,
+                        monocle_ipc::types::ServerToClient::SessionStateChanged {
+                            new_state: SessionState::Detached,
+                            ..
+                        }
+                    )
+                })
+                .collect();
+
+            assert!(
+                spurious_detached.is_empty(),
+                "PASS3-MED-001: detach_session MUST NOT emit SessionStateChanged{{Detached}} \
+                 after losing the TOCTOU race to a Terminated transition \
+                 (F-S035-PASS3-MED-001); spurious broadcasts: {:?}",
+                spurious_detached
+            );
+        }
     }
 }

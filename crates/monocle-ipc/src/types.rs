@@ -599,6 +599,31 @@ pub enum ClientToServer {
         /// The UUID string of the session to kill.
         session_id: String,
     },
+
+    // -----------------------------------------------------------------------
+    // S-035 variants (BC-2.08.007 — attach/detach a session)
+    // -----------------------------------------------------------------------
+    /// Request the daemon to attach to an existing Detached session.
+    ///
+    /// The daemon verifies SO_PEERCRED, sends `DaemonToHost::Attach`, receives the
+    /// full `HostToDaemon::ScrollbackChunk*` + `HostToDaemon::ScrollbackDumpComplete`
+    /// sequence within 5 seconds, starts the proxy task, and transitions the session
+    /// to `SessionState::Running`.
+    /// (BC-2.08.007 §attach_session)
+    AttachSession {
+        /// The UUID string of the session to attach to.
+        session_id: String,
+    },
+
+    /// Request the daemon to detach from a Running session.
+    ///
+    /// The daemon sends `DaemonToHost::Detach`, aborts the proxy task, and transitions
+    /// the session to `SessionState::Detached`. The session-host continues running.
+    /// (BC-2.08.007 §detach_session)
+    DetachSession {
+        /// The UUID string of the session to detach from.
+        session_id: String,
+    },
 }
 
 /// The kind of permission decision the user made.

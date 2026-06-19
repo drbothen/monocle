@@ -616,11 +616,51 @@ pub(crate) async fn step_event_loop(
                             );
                             break PhaseBExit::Detach;
                         }
-                        Ok(_other) => {
-                            // Attach/KeyInput/Resize — S-035/S-047 scope.
+                        // S-035: Attach handler (BC-2.08.007 §session-host Attach handler).
+                        //
+                        // Sends the scrollback dump: zero ScrollbackChunk messages (vt100 PTY
+                        // processing is S-047 scope; no screen state exists yet), then
+                        // ScrollbackDumpComplete to complete the protocol handshake.
+                        //
+                        // I3-003 (no pause): PtyBytes forwarding is also S-047 scope, so
+                        // resuming live PtyBytes is a no-op here. The daemon's proxy task will
+                        // handle PtyBytes once S-047 lands.
+                        //
+                        // PTY dimensions: hardcoded 24×80 (initial size from Step 3).
+                        // S-047 will derive these from the live parser state.
+                        Ok(monocle_ipc::types::DaemonToHost::Attach) => {
                             tracing::debug!(
                                 session_id = %session_id,
-                                "session-host: received non-Kill/Detach DaemonToHost message (S-035/S-047 scope), ignoring"
+                                "session-host: received DaemonToHost::Attach — sending empty scrollback dump"
+                            );
+                            // Send ScrollbackDumpComplete (0 chunks — no PTY state yet, S-047 scope).
+                            let complete_msg =
+                                monocle_ipc::types::HostToDaemon::ScrollbackDumpComplete {
+                                    total_chunks: 0,
+                                    cursor_row: 0,
+                                    cursor_col: 0,
+                                    pty_rows: 24,
+                                    pty_cols: 80,
+                                };
+                            if let Err(e) = send_host_msg(&mut stream, &complete_msg).await {
+                                tracing::warn!(
+                                    session_id = %session_id,
+                                    error = %e,
+                                    "session-host: failed to send ScrollbackDumpComplete on Attach"
+                                );
+                                break PhaseBExit::Detach;
+                            }
+                            tracing::debug!(
+                                session_id = %session_id,
+                                "session-host: ScrollbackDumpComplete sent (total_chunks=0)"
+                            );
+                            // Continue Phase B — await next message (Detach/Kill/etc.).
+                        }
+                        Ok(_other) => {
+                            // KeyInput/Resize — S-047 scope.
+                            tracing::debug!(
+                                session_id = %session_id,
+                                "session-host: received unhandled DaemonToHost message (S-047 scope), ignoring"
                             );
                         }
                         Err(e) => {

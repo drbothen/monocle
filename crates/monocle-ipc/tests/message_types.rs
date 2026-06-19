@@ -271,6 +271,14 @@ fn test_BC_2_05_008_client_to_server_permission_decision_allow_serde_roundtrip()
         ClientToServer::KillSession { .. } => {
             panic!("unexpected KillSession in this test context");
         }
+        // S-035 stub: AttachSession is not expected in this test context.
+        ClientToServer::AttachSession { .. } => {
+            panic!("unexpected AttachSession in this test context");
+        }
+        // S-035 stub: DetachSession is not expected in this test context.
+        ClientToServer::DetachSession { .. } => {
+            panic!("unexpected DetachSession in this test context");
+        }
     }
 }
 
@@ -302,6 +310,14 @@ fn test_BC_2_05_008_client_to_server_permission_decision_deny_serde_roundtrip() 
         // S-034 stub: KillSession is not expected in this test context.
         ClientToServer::KillSession { .. } => {
             panic!("unexpected KillSession in this test context");
+        }
+        // S-035 stub: AttachSession is not expected in this test context.
+        ClientToServer::AttachSession { .. } => {
+            panic!("unexpected AttachSession in this test context");
+        }
+        // S-035 stub: DetachSession is not expected in this test context.
+        ClientToServer::DetachSession { .. } => {
+            panic!("unexpected DetachSession in this test context");
         }
     }
 }
