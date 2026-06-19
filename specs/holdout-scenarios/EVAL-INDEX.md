@@ -1,7 +1,7 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.25"
+version: "1.26"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-18T00:00:00Z
@@ -22,7 +22,7 @@ inputs:
   - {path: .factory/stories/S-033-session-manager-spawn.md, version: "1.9"}
   - {path: .factory/stories/S-034-session-manager-kill.md, version: "1.3"}
   - {path: .factory/stories/S-035-session-manager-attach-detach.md, version: "1.2.3"}
-  - {path: .factory/stories/S-036-session-manager-rediscovery.md, version: "1.2"}
+  - {path: .factory/stories/S-036-session-manager-rediscovery.md, version: "1.3"}
   - {path: .factory/stories/S-037-session-manager-gc.md, version: "1.0.3"}
   - {path: .factory/stories/S-038-session-manager-hook-injection.md, version: "1.5"}
   - {path: .factory/stories/S-039-pty-output-pipeline.md, version: "1.3"}
@@ -32,7 +32,7 @@ inputs:
   - {path: .factory/stories/S-043-scrollback-navigation.md, version: "1.1"}
   - {path: .factory/stories/S-044-appmode-transitions-permission-badge.md, version: "1.1"}
   - {path: .factory/stories/S-045-claude-code-spawn-recipe.md, version: "1.3"}
-  - {path: .factory/stories/S-046-pty-output-fan-out.md, version: "1.6"}
+  - {path: .factory/stories/S-046-pty-output-fan-out.md, version: "1.7"}
   - {path: .factory/stories/S-047-ipc-lifecycle-variants.md, version: "1.5"}
   - {path: .factory/stories/S-048-sessions-panel-multi-project.md, version: "1.3"}
   - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.43.8"}

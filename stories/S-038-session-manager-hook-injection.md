@@ -26,7 +26,7 @@ inputs:
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.08.006 (hook auto-injection in session-host spawn path: --settings arg, hooks-settings.json with 4 URL-bearing + 2 reserved-empty hook entries, lock.app=monocle, shared-file lifecycle)"
-# BC status: BC-2.08.006 v1.5.0 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status: BC-2.08.006 v1.5.1 — non-empty; status draft pending Phase-2 adversarial convergence gate
 ---
 
 # S-038: SessionManager Hook Auto-Injection — hooks-settings.json Writer + SpawnOptions.hooks_settings_path Population
@@ -348,7 +348,7 @@ insertion into `SpawnRecipe.argv` is owned by S-045 (ClaudeCodeModule::spawn_rec
 
 ## Conflicts and Notes
 
-- BC-2.08.006 v1.5.0 references "BC-2.04.010 (not BC-HOOK-007)" as the authority for hook
+- BC-2.08.006 v1.5.1 references "BC-2.04.010 (not BC-HOOK-007)" as the authority for hook
   key names and URL format. The implementer MUST read BC-2.04.010 before finalizing the
   exact hook JSON schema. This story provides the structural wrapper; the payload is defined
   by BC-2.04.010.
@@ -365,7 +365,7 @@ insertion into `SpawnRecipe.argv` is owned by S-045 (ClaudeCodeModule::spawn_rec
 
 | Version | Change | Pass |
 |---------|--------|------|
-| v1.5 | AC-004 schema corrected: bare-string hook values replaced with array-of-hook-objects form per BC-2.04.010 PC-3 (F-S038-AC004-SCHEMA). AC-008 + Tasks Option→PathBuf: `opts.hooks_settings_path = Some(...)` → `opts.hooks_settings_path = ...` (bare PathBuf per monocle-core/src/engine.rs; F-S038-PASS1-007). Single-writer reconciliation: AC-008 responsibility 1, Tasks write-call bullet, AC-007 error level/code, and Architecture Compliance Rules updated to reflect BC-2.08.006 v1.5.0 single-writer mandate (lifecycle step 9 owns startup write; `SessionManager::new()` stores config only). BC-2.08.006 input pin bumped 1.4.0→1.5.0. | adversarial-pass |
+| v1.5 | AC-004 schema corrected: bare-string hook values replaced with array-of-hook-objects form per BC-2.04.010 PC-3 (F-S038-AC004-SCHEMA). AC-008 + Tasks Option→PathBuf: `opts.hooks_settings_path = Some(...)` → `opts.hooks_settings_path = ...` (bare PathBuf per monocle-core/src/engine.rs; F-S038-PASS1-007). Single-writer reconciliation: AC-008 responsibility 1, Tasks write-call bullet, AC-007 error level/code, and Architecture Compliance Rules updated to reflect BC-2.08.006 v1.5.0 at S-038 authoring time single-writer mandate (lifecycle step 9 owns startup write; `SessionManager::new()` stores config only). BC-2.08.006 input pin bumped 1.4.0→1.5.0. | adversarial-pass |
 | v1.4 | BC-2.08.006 input pin bumped 1.4.0→1.4.1 (arch-source pin cascade for SS-session-manager at v1.4 authoring time; F-S035-PASS5-MED-001). | post-convergence |
 | v1.3 | BC-2.08.006 input pin bumped 1.3.2→1.4.0 (PO added Invariants 5+6 + EC-183/184). AC-006 trace citation updated "invariant 4 / CLAUDE.md atomic-write convention — no dedicated BC clause"→"Invariant 5" (new dedicated clause). AC-009 trace citation updated "postcondition 1 / SS-conventions path handling — no dedicated BC clause"→"Invariant 6" (new dedicated clause). Body BC-table title corrected to canonical BC H1 form (F-P24-SUG-001). | post-convergence |
 | v1.2 | Corpus-wide AC-trace-citation audit (F-P20-CRIT-001 class): AC-005 "postcondition 5"→"invariant 3" (shared file); AC-006 "postcondition 6"→"invariant 4 / CLAUDE.md" (atomic write; no dedicated BC clause); AC-007 "postcondition 7"→"invariant 4" (write at startup); AC-008 "postcondition 8"→"postcondition 2 / architecture boundary"; AC-009 "invariant 1"→"postcondition 1 / SS-conventions" (canonicalization; no dedicated BC clause); AC-010 "invariant 2"→"postcondition 3" (BC-2.04.010 authority). AC bodies unchanged. Genuine BC gaps: AC-006 atomic write and AC-009 path canonicalization have no dedicated clause in BC-2.08.006 — both trace to project conventions. | Phase-2 |

@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.0"
+version: "1.1.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -55,7 +55,7 @@ that must be explicitly opted into, not accidentally inherited.
    — the `"spawn_unsupported"` wire code is the 11th entry in the `ServerToClient::Error`
    code taxonomy (SS-ipc v1.24.0; 12 codes including `session_not_ready` added F-P50-001 — `spawn_unsupported` remains the 11th), mapped from `EngineError::UnsupportedOperation` via
    `session_error_to_code(IpcOp::Spawn, EngineError::UnsupportedOperation)` →
-   `"spawn_unsupported"` (SS-session-manager v2.15.0 §session_error_to_code). The session
+   `"spawn_unsupported"` (SS-session-manager v2.15.1 §session_error_to_code). The session
    creation wizard MUST present this error in the UI and return to the ProfilePicker step.
 4. The default impl is defined in the `EngineModule` trait body in `monocle-core/src/engine.rs`.
    It does NOT require any overriding `impl EngineModule for X` block — the default fires

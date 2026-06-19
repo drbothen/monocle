@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.15.0"
+version: "2.15.1"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -493,7 +493,7 @@ The post-spawn monitor is keyed only by `session_id: String` (UUID v4). An adver
 spawn time and compare it against the current `SessionEntry` before mutating state (e.g., on the
 EC-163 SO_PEERCRED mismatch path setting state=Terminated + GC).
 
-**Decision: no generation guard in v1. Deferred to S-036.**
+**Decision: no generation guard in v1. Deferred to S-036. MED-002 RESOLVED for S-036 scope — see resolution below.**
 
 **Safety argument — three independent layers make the race structurally infeasible:**
 
@@ -529,6 +529,43 @@ inside the mutex before any state mutation on the EC-163 path.
 **Implementation note for S-033:** no `generation` field is required. No generation-check is
 required in the post-spawn monitor. This ruling documents the decision and the deferred
 mechanism description for S-036.
+
+**MED-002 RESOLVED — S-036 scope adjudication (2026-06-19, §Trace v2.15.1):**
+
+The four questions raised by the MED-002 deferral anchor were adjudicated in S-036 scope. The
+three-layer safety argument extends fully to `rediscover_sessions()`. No `SessionEntry.generation`
+field is required. No new ACs or tasks are added to S-036.
+
+*Q1 — Session ID reuse/collision:* Re-discovery does not generate new UUIDs. It re-inserts the
+pre-existing session_id read from the sidecar file — the same UUID that was assigned at original
+`spawn_session()` time. No collision scenario exists: there is no new random draw. Layer 1
+(UUID v4 collision 2^(-122)) is inapplicable on the re-discovery path because no new UUID is
+ever generated.
+
+*Q2 — Monitor↔entry race existence:* `rediscover_sessions()` does not spawn a post-spawn
+monitor. Per S-036 story intelligence: "re-discovery does NOT replay the post-spawn monitor —
+it connects directly and sends Attach, treating the session-host as already running." The EC-163
+SO_PEERCRED mismatch path that MED-002 targets (monitor mutates state=Terminated on a stale
+entry) is a post-spawn monitor code path that is structurally absent during re-discovery. The
+race cannot exist where the actor (post-spawn monitor) is never instantiated.
+
+*Q3 — In-flight monitor coexistence during re-discovery:* Re-discovery runs at
+`daemon_start_sequence` step 8b — BEFORE UDS socket bind (step 10, hard invariant per
+BC-2.08.004 Invariant 1). No client request can arrive before UDS bind, therefore no
+`spawn_session()` call can occur during `rediscover_sessions()`. No new post-spawn monitors
+can be started during re-discovery. The sessions being re-discovered are from a PRIOR daemon
+incarnation; their original monitors belonged to the previous daemon process (now dead). The
+current process lifetime has zero in-flight post-spawn monitors during `rediscover_sessions()`.
+
+*Q4 — Three-layer weakening:* Layer 1 is inapplicable (no UUID generation during re-discovery).
+Layer 2 is inapplicable (no in-flight monitors; re-discovered entries start in Running/Launching/
+Detached/Terminating — none have a pending GC timer at insertion time). Layer 3 is fully
+maintained: `rediscover_sessions(&mut self)` acquires the same outer Mutex as all other
+SessionManager operations; no interleaving possible.
+
+**Conclusion:** No `SessionEntry.generation: u64` field is required. No monitor capture/compare
+guard is required. The three-layer safety argument is unaffected by the S-036 lifecycle path.
+MED-002 is closed with no implementation obligation. S-036 ACs and tasks are unchanged.
 
 **`SessionError` taxonomy addition (F-P50-001):**
 ```rust
@@ -1973,7 +2010,7 @@ further BC-2.08.006 edits are needed.
 The `--settings` arg carries this shared path. No user action required. `lock.app = 'monocle'`
 filter in the hook JSON ensures only monocle-launched sessions trigger the monocle endpoint.
 
-**Single-writer mandate (F-S038-PASS1-001 — BC-2.08.006 v1.5.0):**
+**Single-writer mandate (F-S038-PASS1-001 — BC-2.08.006 v1.5.1):**
 `session_manager::write_hooks_settings_json` is the SOLE function that serializes
 `hooks-settings.json`. It is called from exactly two sites:
 
@@ -3264,7 +3301,7 @@ locus for UUID v4 collisions. `spawn_session()` MUST NOT perform its own retry l
 
 #### Rationale
 
-F-P41-IMP-001 (BC-2.08.001 v1.5.5) established that UUID generation lives in the IPC handler,
+F-P41-IMP-001 (BC-2.08.001 v1.5.6) established that UUID generation lives in the IPC handler,
 not inside `spawn_session()`. `spawn_session()` receives an already-generated `session_id` via
 `opts.with_daemon_fields()`. If `spawn_session()` detects a collision (session_id already in
 registry), the correct response is `Err(SessionError::SessionIdCollision { session_id })` — it
@@ -3819,6 +3856,34 @@ Add to the S-035 test suite:
 - `test_proxy_task_handles_goodbye_without_terminated`: attach a session, send only `Goodbye`
   from the mock session-host (no prior `StateChanged{Terminated}`), assert session transitions
   to Terminated (defensive path).
+
+---
+
+## §Trace v2.15.1
+
+**MED-002 RESOLVED for S-036 scope — three-layer safety argument extends to `rediscover_sessions()`; no `SessionEntry.generation` guard required** (2026-06-19):
+
+- **Finding origin (MED-002, §Trace v2.7.3):** Adversarial review raised the question of whether
+  the post-spawn monitor↔entry race requires a generation/epoch guard on the EC-163 SO_PEERCRED
+  mismatch path. Deferred to S-036 as the story that introduces a new `SessionEntry` lifecycle
+  insertion path (`rediscover_sessions()`).
+- **S-036 adjudication:** All four questions in the deferral anchor were evaluated against the
+  S-036 specification. The race the guard was designed to prevent cannot arise on the re-discovery
+  path for the following reasons: (1) re-discovery does not generate new UUIDs — it restores the
+  pre-existing session_id from the sidecar, so no UUID collision scenario exists; (2) re-discovery
+  does not spawn a post-spawn monitor — the actor the guard would protect against is never
+  instantiated; (3) re-discovery runs at daemon_start_sequence step 8b, before UDS bind (hard
+  invariant BC-2.08.004 Invariant 1), so no spawn_session() call can occur concurrently and no
+  in-flight monitors can be active for the current process lifetime at that moment; (4) all three
+  safety layers remain intact — layer 1 (UUID collision 2^(-122)) is inapplicable (no new UUID
+  drawn), layer 2 (10s GC interlock) is inapplicable (no in-flight monitors, no pending GC timer
+  on newly inserted entries), layer 3 (outer Mutex serialization) is fully maintained.
+- **Decision:** MED-002 CLOSED. No `SessionEntry.generation: u64` field. No monitor
+  capture/compare guard. No new S-036 ACs or tasks. No BC obligation changes to BC-2.08.002 or
+  BC-2.08.004.
+- **Spec changes:** Ruling H updated in §Post-spawn monitor Ruling H to record resolution; this
+  §Trace v2.15.1 block added.
+- **SE-16d monotonicity:** v2.15.1 timestamp 2026-06-19 >= v2.15.0 timestamp 2026-06-19. PASS.
 
 ---
 
