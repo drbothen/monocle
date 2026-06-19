@@ -2,10 +2,10 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "8.02"
+version: "8.03"
 status: active
 producer: state-manager
-timestamp: 2026-06-19T01:00:00Z
+timestamp: 2026-06-19T08:00:00Z
 phase: phase-3-v1A-wave-8
 current_step: "D-338 (2026-06-19): S-038 MERGED to develop via PR #44 @ 8d649ea + chore PR #45 @ 7f005af. Fifth Wave-8 story. WAVE-8 TIER-2 COMPLETE (S-033+S-034+S-037+S-035+S-038). Single-writer mandate: lifecycle step 9 sole canonical write_hooks_settings_json. BC-2.08.006→v1.5.0; BC-2.04.010→v1.4.0; SS-session-manager→v2.15.0; BC-2.08.007→v1.5.6. SEC-001/002 fixed in-scope. 6-pass adversarial (3 CLEAN). Sprint-state v1.51; STORY-INDEX v5.50. Wave 8: 5/12 done (30/74 pts). develop HEAD: 7f005af."
 prior_step: "D-336 (2026-06-19): S-035 MERGED to develop via PR #43 @ 270b7d4. Fourth Wave-8 story (third Tier-2). attach_session/detach_session, BC-2.08.007+BC-2.08.008, 8 pts. 9-pass adversarial convergence (3 consecutive CLEAN: passes 7/8/9). CRIT-001 silent Detached→Terminated fixed; Ruling L (proxy_task kill-reader for attached sessions). Sprint-state v1.50; STORY-INDEX v5.49. Wave 8: 4/12 done (27/74 pts)."
@@ -21,7 +21,7 @@ dtu_services: [hook-endpoints-x5]
 current_cycle: cycle-001
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v8.01 — 2026-06-19
+  ZERO-CONTEXT RESUME CHECKPOINT v8.03 — 2026-06-19
   PHASE-3 v1A ACTIVE — WAVE 8 TIER-2 COMPLETE — NEXT: S-036
   ============================================================================
   POSITION: Phase-3 TDD implementation, v1A control-center scope, Wave 8.
@@ -29,9 +29,32 @@ next_session_resume_protocol: |
   develop @ 7f005af. S-038 worktree cleaned up. 10 workspace crates.
   37/51 stories done (222/311 pts). Wave 8: 5/12 done (30/74 pts).
   WAVE-8 TIER-2 COMPLETE: S-033+S-034+S-037+S-035+S-038 all merged.
-  Human directive: CONTINUE WAVE-8 AUTONOMOUSLY.
-  Demo default: WEBM + .tape ONLY (NO GIF).
-  Branch protection: 11 required CI contexts enforced (bare check names).
+
+  THIS SESSION DELIVERED:
+  - PROCESS-GAP-BRANCH-PROTECTION-CHECK-NAME-MISMATCH RESOLVED (D-335):
+    human-authorized; devops PATCHed 11 required-check contexts to BARE names
+    (dropped 'CI /' prefix). Wave-8 PRs now merge CLEAN without admin override.
+  - S-037 (GC + rename_session, 3 pts) MERGED PR #42 @ a7e4081 (D-335).
+    SEC-001 CWE-20 + SEC-002 CWE-706 fixed in-scope (commit b2d65db).
+  - S-035 (attach/detach + Ruling L, 8 pts) MERGED PR #43 @ 270b7d4 (D-336).
+    SS-session-manager → v2.14.0 (Ruling L + EC-188 4-disposition matrix).
+    BC-2.08.007 v1.5.5 / BC-2.08.008 v1.3.7. 9-pass adversarial (3 CLEAN).
+  - S-038 (hook auto-injection, single-writer, 3 pts) MERGED PR #44 @ 8d649ea
+    + chore PR #45 @ 7f005af (D-338). BC-2.08.006 → v1.5.0 (single canonical
+    writer; lock.app mandatory); BC-2.04.010 → v1.4.0 (lock.app in PC-3);
+    SS-session-manager → v2.15.0; BC-2.08.007 → v1.5.6.
+    SEC-001 CWE-732 + SEC-002 CWE-532 fixed in-scope (commit daeb4f2).
+  - PROCESS-GAP-FACTORY-ARTIFACTS-NOT-PUSHED codified D-337 (@ c8ceee1):
+    spec-bumping agents committed to .factory without pushing; origin stale;
+    POL-11 CI check validated against stale registry. RULE: orchestrator MUST
+    verify `git -C .factory log origin/factory-artifacts..HEAD` is EMPTY after
+    every spec-bumping agent dispatch.
+
+  HUMAN DIRECTIVE: CONTINUE AUTONOMOUSLY into Wave-8 Tier-3 (S-036) and
+  subsequent ready stories until told to stop. Per-story flow + 3-consecutive-
+  CLEAN adversarial convergence + clean merge applies to each story.
+  Demo default: WEBM + .tape ONLY. NO GIF.
+  Branch protection: 11 required CI contexts enforced (BARE check names — fixed).
 
   READ FIRST (in order):
   1. /Users/jmagady/Dev/monocle/NEXT-SESSION-RESUME.md  <- concise entry point
@@ -51,32 +74,57 @@ next_session_resume_protocol: |
   SS-daemon-wiring-v2-delta v1.12.0 | SS-deps-pin-manifest-v2-delta v1.0.2
   prd v1.28.3 | product-brief v2.0.4 | domain-monocle-vision-synthesis v2.2.3
   BC-2.08.006 v1.5.0 | BC-2.04.010 v1.4.0 | BC-2.08.007 v1.5.6 | S-038 v1.5
+  (Pull the rest from .factory/specs/version-pin-registry.yaml)
 
-  NEXT-ACTION (Wave-8 Tier-2 COMPLETE — continue Wave-8):
-  S-036 (rediscovery, 8 pts, UNBLOCKED — needs S-033+S-034+S-035, all done).
-  PREREQUISITE: SEC-006-CCR-URL-VALIDATION MUST be fixed before S-045 (CWE-20/93).
-  S-039/S-040 own PTY output pipeline (Wave 9, not yet dispatched).
-  S-046 waits on S-032; S-047 needs S-033+S-034+S-035+S-046;
-  S-048 needs S-022+S-033+S-047. F-W8INT-001/002/003 parked for Wave-8 gate;
-  do NOT re-raise as in-scope findings during per-story delivery.
+  NEXT-ACTION QUEUE:
+  1. S-036 (rediscovery, 8 pts, EPIC-08, SS-08) — UNBLOCKED (S-033+S-034+S-035
+     all done). Owns deferred items: S-037 AC-007/AC-010 (orphaned-sidecar
+     IMMEDIATE GC, no grace), S-035 AC-008 (restart restores Detached NOT
+     force-attach), MED-002-monitor-generation-guard (post-spawn monitor
+     generation/epoch guard). Read BC for S-036 and confirm exact scope.
+     NEXT STORY TO DELIVER.
+  2. S-039 + S-040 (PTY output pipeline, Wave 9) — own ScrollbackChunk content
+     source + natural-child-exit BC-2.08.008-PC6. S-038 AC-005 daemon
+     ScrollbackChunk broadcast forwarding deferred to S-039/S-047 via TODO
+     tracker in session_manager/mod.rs.
+  3. PREREQUISITE GATE: SEC-006-CCR-URL-VALIDATION (CWE-20/93) MUST be fixed
+     before S-045 (ClaudeCodeModule::spawn_recipe CCR URL injection).
+  4. S-046 waits on S-032; S-047 needs S-033+S-034+S-035+S-046;
+     S-048 needs S-022+S-033+S-047.
+  5. F-W8INT-001/002/003 parked for Wave-8 integration gate; do NOT re-raise
+     as in-scope findings during per-story delivery.
 
-  PER-STORY FLOW: stub-architect → test-writer → implementer → adversarial
-  convergence (3 consecutive CLEAN, Step 4.5) → demo evidence (WEBM+.tape) →
-  push → pr-manager all 9 steps → merge → worktree cleanup.
+  PER-STORY FLOW (verbatim — follow exactly):
+  stub-architect → test-writer (Red Gate, all fail) → implementer (TDD green) →
+  Step 4.5 adversarial convergence (3 CONSECUTIVE CLEAN, fresh-context each
+  pass; route findings to correct specialist; architect adjudicates cross-
+  component design as SPEC-ONLY) → demo-recorder (WEBM+.tape, NO GIF,
+  docs/demo-evidence/S-NNN/) → push → pr-manager full lifecycle (push→PR→
+  security-review→pr-reviewer→11 CI→clean merge→delete branch) →
+  orchestrator verifies merge via gh pr view → devops worktree cleanup +
+  reconcile main-checkout develop to origin (ff; if a human direct-commit
+  diverged develop, ASK human) → state-manager checkpoint (commit + PUSH
+  factory-artifacts; verify origin in sync).
 
-  CI-PARITY RULES (all 7 apply):
+  CI-PARITY RULES (all 8 apply — rule 8 is NEW this session):
   1. clippy --workspace --all-targets -- -D warnings (IN worktree)
   2. python3 scripts/check_version_pins.py (POL-11) from REPO ROOT
      python3 scripts/check_structural_claims.py (POL-12) from REPO ROOT
-  3. No version literals in doc-comments (POL-11 will flag)
-  4. Registry atomicity: BC/SS spec bump + version-pin-registry.yaml = one atomic
-     factory-artifacts commit (L-S027-004)
-  5. Unique /tmp paths per story dispatch
-  6. Architect = spec only; all code to implementer-in-worktree
-  7. pr-manager must complete all 9 steps
-  CRITICAL: after every factory-artifacts commit, verify `git -C .factory log
-  origin/factory-artifacts..HEAD` is empty — push immediately if not
-  (PROCESS-GAP-FACTORY-ARTIFACTS-NOT-PUSHED, codified D-337).
+  3. No version literals in doc-comments / test prose (POL-11 will flag);
+     historical snapshots use <!-- version-pin-historical: ... --> HTML comment.
+  4. Registry atomicity (L-S027-004): BC/SS spec version bump +
+     version-pin-registry.yaml update = ONE atomic factory-artifacts commit;
+     cascade STORY-INDEX/EVAL-INDEX/dependency-graph pins in same commit.
+  5. Unique /tmp paths per story dispatch (prevents commit-message mixup).
+  6. Architect = spec only; all code to implementer-in-worktree.
+  7. pr-manager must complete ALL 9 steps; orchestrator verifies merge via
+     gh pr view before declaring done.
+  8. NEW (PROCESS-GAP-FACTORY-ARTIFACTS-NOT-PUSHED, D-337): after every
+     spec-bumping agent dispatch, verify `git -C .factory log
+     origin/factory-artifacts..HEAD` is EMPTY and push immediately if not.
+  B002 BUILD ORDER: 2 B002 integration tests require `cargo build --workspace`
+  first (monocle-session-host binary needed); these PASS in CI but fail bare
+  `cargo test --workspace` locally without prior build. NOT a regression.
 
   RATIFIED DECISIONS (do NOT re-litigate):
   - D-238: session-host-owns-PTY; daemon restart SURVIVES (CASE 2); NO tmux default
@@ -87,23 +135,33 @@ next_session_resume_protocol: |
   - D-332: S-033 MERGED PR #40 @ c7e10f2
   - D-333: Wave-8 Tier-2 autonomous delivery authorized; demo WEBM+.tape-no-GIF
   - D-334: S-034 MERGED PR #41 @ 4dfe0db. Kill path complete. Rulings H/I/J/K.
-  - D-335: S-037 MERGED PR #42 @ a7e4081. GC task + rename_session. SEC-001/002 fixed in-scope.
-  - D-336: S-035 MERGED PR #43 @ 270b7d4. attach/detach. Ruling L. 9-pass convergence. S-036 UNBLOCKED.
-  - D-337: PROCESS-GAP-FACTORY-ARTIFACTS-NOT-PUSHED codified (c8ceee1). Always push factory-artifacts.
+  - D-335: S-037 MERGED PR #42 @ a7e4081. GC + rename_session. SEC-001/002 fixed.
+           PROCESS-GAP-BRANCH-PROTECTION-CHECK-NAME-MISMATCH RESOLVED.
+  - D-336: S-035 MERGED PR #43 @ 270b7d4. attach/detach. Ruling L. S-036 UNBLOCKED.
+  - D-337: PROCESS-GAP-FACTORY-ARTIFACTS-NOT-PUSHED codified (c8ceee1).
   - D-338: S-038 MERGED PR #44 @ 8d649ea + PR #45 @ 7f005af. WAVE-8 TIER-2 COMPLETE.
-           Single-writer mandate (BC-2.08.006 v1.5.0). SEC-001/002 fixed in-scope (daeb4f2).
+           Single-writer mandate (BC-2.08.006 v1.5.0). SEC-001 CWE-732 + SEC-002
+           CWE-532 fixed in-scope (daeb4f2).
   - Spawn-path Model A: SpawnOptions on wire; SpawnRecipe daemon-internal
   - IPC: 12-code wire taxonomy; 9-variant SessionError; schema_version 3
   - PTY (ADR-0011): portable-pty 0.9.0 + vt100 0.16.2 + tui-term =0.3.4; MSRV 1.88
   - SessionState: 5 variants (Launching/Running/Detached/Terminating/Terminated)
   - Full history: cycles/cycle-001/decisions-archive.md (D-001..D-338)
 
+  OPEN NON-BLOCKING DURABLE FOLLOW-UPS (pointer — full register in STATE.md
+  durable_task_register + cycles/cycle-001/task-register-full.yaml):
+  SEC-006-CCR-URL-VALIDATION (before S-045); F-S038-EXIT72-ENFORCEMENT
+  (daemon-mode/phase-5); F-S038-INV6-PROD-CANON-TEST; F-S038-TRACING-TEST-DOC-
+  DEVERSION; F-S035-AC005-DAEMON-BROADCAST (S-039/S-047); F-S035-LAUNCHING-CONN-
+  DETACH-MATRIX (architect); DEMO-BINARY-ARTIFACTS-DEVELOP (5 stories' WEBM on
+  develop — repo-hygiene decision pending); F-W8INT-001/002/003 (Wave-8 gate).
+
   KNOWN-FLAKY TESTS (do NOT flag as new findings):
   cli_daemon_stop, factory_self_referential, test_BC_2_07_006,
   wit-bindgen unmatched-skip, PATH isolation flake.
 
   factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'`
-  develop HEAD: 7f005af (S-038 chore PR #45; 11 CI checks passed; clean merge)
+  develop HEAD: 7f005af (chore PR #45; 11 CI checks passed; clean merge)
   ============================================================================
 ---
 
