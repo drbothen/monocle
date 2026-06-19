@@ -1133,7 +1133,7 @@ impl SessionManager {
                             SessionStatus::Stopped
                         }
                     };
-                    EnrichedSession::new(
+                    EnrichedSession::new_with_display_name(
                         e.session_id.clone(),
                         e.harness_id.clone(),
                         None,
@@ -1147,6 +1147,7 @@ impl SessionManager {
                         Some(e.started_at),
                         0,
                         None,
+                        e.display_name.clone(),
                     )
                 })
                 .collect()
@@ -1846,7 +1847,7 @@ impl SessionManager {
                         }
                         _ => SessionStatus::Stopped,
                     };
-                    EnrichedSession::new(
+                    EnrichedSession::new_with_display_name(
                         e.session_id.clone(),
                         e.harness_id.clone(),
                         None,
@@ -1860,6 +1861,7 @@ impl SessionManager {
                         Some(e.started_at),
                         0,
                         None,
+                        e.display_name.clone(),
                     )
                 })
                 .collect();
@@ -1967,7 +1969,7 @@ impl SessionManager {
                         }
                         _ => SessionStatus::Stopped,
                     };
-                    EnrichedSession::new(
+                    EnrichedSession::new_with_display_name(
                         e.session_id.clone(),
                         e.harness_id.clone(),
                         None,
@@ -1981,6 +1983,7 @@ impl SessionManager {
                         Some(e.started_at),
                         0,
                         None,
+                        e.display_name.clone(),
                     )
                 })
                 .collect();
@@ -2291,7 +2294,7 @@ impl SessionManager {
                             }
                             _ => SessionStatus::Stopped,
                         };
-                        EnrichedSession::new(
+                        EnrichedSession::new_with_display_name(
                             e.session_id.clone(),
                             e.harness_id.clone(),
                             None,
@@ -2305,6 +2308,7 @@ impl SessionManager {
                             Some(e.started_at),
                             0,
                             None,
+                            e.display_name.clone(),
                         )
                     })
                     .collect();
@@ -2391,25 +2395,23 @@ impl SessionManager {
         let list_snapshot: Vec<EnrichedSession> = {
             let mut guard = self.sessions.lock().await;
 
-            // Not found guard.
-            if !guard.contains_key(session_id) {
-                return Err(SessionError::SessionNotFound {
-                    session_id: session_id.to_string(),
-                });
-            }
-
-            // Terminated guard: BC-2.08.005 Invariant 4 / F-P52-001.
-            if let Some(entry) = guard.get(session_id) {
-                if entry.state == SessionState::Terminated {
+            // Single get_mut covers not-found + Terminated guard + update in one map lookup.
+            match guard.get_mut(session_id) {
+                None => {
+                    return Err(SessionError::SessionNotFound {
+                        session_id: session_id.to_string(),
+                    });
+                }
+                Some(entry) if entry.state == SessionState::Terminated => {
+                    // Terminated guard: BC-2.08.005 Invariant 4 / F-P52-001.
                     return Err(SessionError::InvalidSessionName {
                         reason: "session terminated".to_string(),
                     });
                 }
-            }
-
-            // Update display_name in-memory entry.
-            if let Some(entry) = guard.get_mut(session_id) {
-                entry.display_name = new_name.clone();
+                Some(entry) => {
+                    // Update display_name in-memory entry.
+                    entry.display_name = new_name.clone();
+                }
             }
 
             // Build snapshot while holding lock (consistent with updated display_name).
@@ -2424,7 +2426,10 @@ impl SessionManager {
                         }
                         _ => SessionStatus::Stopped,
                     };
-                    EnrichedSession::new(
+                    // BC-2.08.008 PC-4a: broadcast MUST carry the full SessionSnapshot
+                    // including the new display_name — use new_with_display_name so the
+                    // renamed session's display_name is present in the wire payload.
+                    EnrichedSession::new_with_display_name(
                         e.session_id.clone(),
                         e.harness_id.clone(),
                         None,
@@ -2438,6 +2443,7 @@ impl SessionManager {
                         Some(e.started_at),
                         0,
                         None,
+                        e.display_name.clone(),
                     )
                 })
                 .collect()
@@ -2506,9 +2512,6 @@ impl SessionManager {
     ///   so TUI clients see an atomic list without the GC'd session.
     /// - NO `SessionStateChanged` is emitted by the GC task (already emitted at Terminated
     ///   transition by kill_confirm_monitor / watchdog / post_spawn_monitor).
-    ///
-    /// Implemented in S-037.
-    #[allow(dead_code)]
     fn spawn_gc_task(
         session_id: String,
         sidecar_path: std::path::PathBuf,
@@ -2563,7 +2566,7 @@ impl SessionManager {
                             }
                             _ => SessionStatus::Stopped,
                         };
-                        EnrichedSession::new(
+                        EnrichedSession::new_with_display_name(
                             e.session_id.clone(),
                             e.harness_id.clone(),
                             None,
@@ -2577,6 +2580,7 @@ impl SessionManager {
                             Some(e.started_at),
                             0,
                             None,
+                            e.display_name.clone(),
                         )
                     })
                     .collect();
@@ -2810,7 +2814,7 @@ async fn post_spawn_monitor(
                         }
                         _ => SessionStatus::Stopped,
                     };
-                    EnrichedSession::new(
+                    EnrichedSession::new_with_display_name(
                         entry.session_id.clone(),
                         entry.harness_id.clone(),
                         None,
@@ -2825,6 +2829,7 @@ async fn post_spawn_monitor(
                         Some(entry.started_at),
                         0,
                         None,
+                        entry.display_name.clone(),
                     )
                 })
                 .collect();
@@ -3085,7 +3090,7 @@ async fn post_spawn_monitor(
                                         SessionStatus::Stopped
                                     }
                                 };
-                                EnrichedSession::new(
+                                EnrichedSession::new_with_display_name(
                                     entry.session_id.clone(),
                                     entry.harness_id.clone(),
                                     None,
@@ -3100,6 +3105,7 @@ async fn post_spawn_monitor(
                                     Some(entry.started_at),
                                     0,
                                     None,
+                                    entry.display_name.clone(),
                                 )
                             })
                             .collect();
@@ -3399,7 +3405,7 @@ async fn transition_to_terminated_standalone(
                     SessionState::Terminating | SessionState::Terminated => SessionStatus::Stopped,
                     _ => SessionStatus::Stopped,
                 };
-                EnrichedSession::new(
+                EnrichedSession::new_with_display_name(
                     e.session_id.clone(),
                     e.harness_id.clone(),
                     None,
@@ -3413,6 +3419,7 @@ async fn transition_to_terminated_standalone(
                     Some(e.started_at),
                     0,
                     None,
+                    e.display_name.clone(),
                 )
             })
             .collect();
@@ -7307,7 +7314,7 @@ mod tests {
             );
         }
 
-        // Spawn the GC task (drives the todo!() stub — will panic under Red Gate).
+        // Spawn the GC task (implemented in S-037).
         let _gc_handle = SessionManager::spawn_gc_task(
             session_id.clone(),
             sidecar_path.clone(),
@@ -7427,7 +7434,6 @@ mod tests {
             .await;
 
         // Spawn GC task — sidecar does not exist; ENOENT must be tolerated (AC-008).
-        // Under the Red Gate, this todo!() panics; after implementation it completes cleanly.
         let gc_handle = SessionManager::spawn_gc_task(
             session_id.clone(),
             sidecar_path.clone(),
