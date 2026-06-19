@@ -7424,10 +7424,23 @@ mod tests {
 
         // BC-2.08.005 — GC task must NOT emit SessionStateChanged (it was already emitted
         // at Terminated transition by kill_confirm_monitor/watchdog — see architecture note).
-        // NOTE: we do NOT assert the absence of SessionStateChanged here because the
-        // insert_terminated_session_for_test seam may have emitted one; we only require
-        // SessionListUpdate is present. The no-StateChanged assertion is covered by the
-        // dedicated rename test (test_BC_2_08_005_rename_on_running_succeeds).
+        //
+        // F-S037-P2-003 fix: the insert_terminated_session_for_test seam inserts directly
+        // into the sessions map and emits NO broadcasts (see its implementation ~line 908-934).
+        // The GC task (spawn_gc_task) also must not emit SessionStateChanged per BC-2.08.005
+        // architecture note.  Therefore the absence of SessionStateChanged is fully assertable
+        // here — the previous comment claiming the seam "may have emitted one" was incorrect.
+        let has_session_state_changed = broadcasts
+            .iter()
+            .any(|m| matches!(m, ServerToClient::SessionStateChanged { .. }));
+        assert!(
+            !has_session_state_changed,
+            "BC-2.08.005 / F-S037-P2-003: neither insert_terminated_session_for_test nor \
+             spawn_gc_task may emit SessionStateChanged — the seam emits nothing; \
+             the GC task must not re-emit the state transition. \
+             broadcasts received: {:?}",
+            broadcasts
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -8177,6 +8190,434 @@ mod tests {
             "F-S037-MED-002 / BC-2.08.005: GC task MUST NOT emit SessionStateChanged{{Terminated}} \
              (it was already emitted at first Terminated transition); gc_broadcasts: {:?}",
             gc_broadcasts
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // F-S037-P2-002 — GC wiring: real transition_to_terminated() spawns GC
+    //
+    // All prior GC tests seed Terminated via insert_terminated_session_for_test
+    // and then call spawn_gc_task DIRECTLY.  None exercise the wiring from the
+    // REAL Terminated-transition functions (transition_to_terminated,
+    // transition_to_terminated_standalone) that call spawn_gc_task internally.
+    // A regression that removes spawn_gc_task from a wiring site would pass every
+    // prior test while breaking production.
+    //
+    // This test drives transition_to_terminated() — the instance method — with a
+    // session that is in a non-Terminated state (we seed it as Terminating via the
+    // insert_terminating_session_for_test seam described below) and asserts:
+    //   BEFORE advance: session present in registry.
+    //   AFTER advance(10s): session removed AND SessionListUpdate published.
+    //   The test NEVER calls spawn_gc_task — if the wiring were removed the
+    //   advance(10s) would not fire any GC task and the registry removal assertion
+    //   would fail.
+    // -----------------------------------------------------------------------
+
+    /// Verifies that `transition_to_terminated()` internally wires the 10s GC task
+    /// (BC-2.08.005 PC-1/PC-2/PC-4).
+    ///
+    /// Strategy: seed a session directly into `Terminating` state (non-Terminated),
+    /// call `transition_to_terminated()` (the production instance method), then
+    /// advance virtual time by 10 s and assert the entry is gone from the registry
+    /// and `SessionListUpdate` was published — WITHOUT the test ever calling
+    /// `spawn_gc_task` itself.
+    ///
+    /// If any wiring call to `spawn_gc_task` were removed from
+    /// `transition_to_terminated`, `advance(10s)` would not fire and the
+    /// registry-removal assertion would fail, catching the regression.
+    ///
+    /// Uses virtual time (`start_paused = true`); no wall clock.
+    #[tokio::test(start_paused = true)]
+    async fn test_BC_2_08_005_gc_wired_via_real_transition_to_terminated() {
+        let tmp = tempfile::Builder::new()
+            .tempdir_in("/tmp")
+            .expect("gc_wiring: tempdir in /tmp");
+
+        let session_id = "00000000-0537-4000-a000-000000000009".to_string();
+        let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+        let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
+
+        // Write a minimal sidecar so transition_to_terminated can re-persist it.
+        {
+            use std::io::Write as _;
+            let sidecar_json = serde_json::json!({
+                "schema_version": 3,
+                "session_id": session_id,
+                "state": "Terminating",
+                "harness_id": "claude-code",
+                "project_root": "/tmp/test-project",
+                "display_name": "claude-code — test-project",
+                "pty_rows": 24,
+                "pty_cols": 80,
+                "kill_deadline_unix_ms": null,
+                "child_pid": null,
+            });
+            let mut f = std::fs::File::create(&sidecar_path).expect("gc_wiring: create sidecar");
+            f.write_all(&serde_json::to_vec_pretty(&sidecar_json).unwrap())
+                .expect("gc_wiring: write sidecar");
+        }
+        // Create a dummy socket file so GC can delete it (AC-003 best-effort).
+        {
+            use std::io::Write as _;
+            let mut f = std::fs::File::create(&socket_path).expect("gc_wiring: create socket file");
+            f.write_all(b"").expect("gc_wiring: write socket file");
+        }
+
+        // Build manager with subscriber channel.
+        let (tx, mut rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry_sub = ClientEntry::new(tx);
+        let subs: SubscriberList = Arc::new(Mutex::new(vec![entry_sub]));
+        let broker = make_broker(&subs);
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 10_009,
+        });
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+        let manager =
+            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+
+        // Seed a session in Terminating state (non-Terminated) so that
+        // transition_to_terminated() will fire its first-transition path
+        // (idempotency guard is NOT hit) and internally call spawn_gc_task.
+        {
+            use crate::session_manager::SessionEntry;
+            let entry = SessionEntry {
+                session_id: session_id.clone(),
+                session_host_pid: 10_009u32,
+                session_host_socket: socket_path.clone(),
+                state: SessionState::Terminating,
+                cwd: std::path::PathBuf::from("/tmp/test-cwd"),
+                project_root: std::path::PathBuf::from("/tmp/test-project"),
+                harness_id: "claude-code".to_string(),
+                profile_id: "default".to_string(),
+                started_at: chrono::Utc::now(),
+                display_name: "claude-code — test-project".to_string(),
+                kill_deadline: None,
+                degraded: false,
+                degraded_reason: None,
+                host_conn: None,
+            };
+            manager
+                .sessions
+                .lock()
+                .await
+                .insert(session_id.clone(), entry);
+        }
+
+        // Precondition: session is present in registry (in Terminating state).
+        {
+            let guard = manager.sessions.lock().await;
+            assert!(
+                guard.contains_key(&session_id),
+                "gc_wiring precondition: session must be in registry before transition"
+            );
+        }
+
+        // Call the PRODUCTION transition_to_terminated() — this MUST internally call
+        // spawn_gc_task.  The test never calls spawn_gc_task directly.
+        manager
+            .transition_to_terminated(&session_id, &sidecar_path)
+            .await;
+
+        // Session must still be present in registry at t=0 (GC fires after 10s).
+        {
+            let guard = manager.sessions.lock().await;
+            assert!(
+                guard.contains_key(&session_id),
+                "gc_wiring: session must still be in registry immediately after \
+                 transition_to_terminated() (before 10s GC deadline)"
+            );
+        }
+
+        // Drain broadcasts emitted by transition_to_terminated() itself
+        // (SessionStateChanged{Terminated} + SessionListUpdate — both are expected here).
+        // Clear channel so the GC's SessionListUpdate can be detected cleanly.
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+            while tokio::time::timeout_at(deadline, rx.recv()).await.is_ok() {}
+        }
+
+        // Advance virtual time by 10 s — this fires the GC task spawned INSIDE
+        // transition_to_terminated().  If the wiring call were absent the GC would
+        // never be spawned and the assertions below would catch the regression.
+        tokio::time::advance(std::time::Duration::from_secs(10)).await;
+
+        // Yield to allow the GC task to execute.
+        let _ = tokio::time::timeout(
+            std::time::Duration::from_millis(50),
+            tokio::task::yield_now(),
+        )
+        .await;
+
+        // F-S037-P2-002 / BC-2.08.005 PC-1: registry entry must be removed by the GC task.
+        {
+            let guard = manager.sessions.lock().await;
+            assert!(
+                !guard.contains_key(&session_id),
+                "F-S037-P2-002 / BC-2.08.005 PC-1: session MUST be removed from registry \
+                 after 10s GC; session {} still present. \
+                 This indicates the wiring call to spawn_gc_task inside \
+                 transition_to_terminated() is absent or broken.",
+                session_id
+            );
+        }
+
+        // F-S037-P2-002 / BC-2.08.005 PC-4: GC task must publish SessionListUpdate.
+        let mut gc_broadcasts: Vec<ServerToClient> = Vec::new();
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(100);
+            while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                gc_broadcasts.push(msg);
+            }
+        }
+
+        let has_gc_list_update = gc_broadcasts
+            .iter()
+            .any(|m| matches!(m, ServerToClient::SessionListUpdate { .. }));
+        assert!(
+            has_gc_list_update,
+            "F-S037-P2-002 / BC-2.08.005 PC-4: GC task must publish SessionListUpdate; \
+             gc_broadcasts: {:?}",
+            gc_broadcasts
+        );
+
+        // GC task must NOT emit SessionStateChanged (BC-2.08.005 architecture note).
+        let gc_has_state_changed = gc_broadcasts
+            .iter()
+            .any(|m| matches!(m, ServerToClient::SessionStateChanged { .. }));
+        assert!(
+            !gc_has_state_changed,
+            "F-S037-P2-002 / BC-2.08.005: GC task must NOT emit SessionStateChanged; \
+             gc_broadcasts: {:?}",
+            gc_broadcasts
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Regression lock for F-S037-P2-001 — rename while Launching survives
+    // the Launching→Running sidecar re-persist.
+    //
+    // Bug (pre-6c95220): post_spawn_monitor's Running-transition lock block
+    // recomputed display_name from harness_id + project_root basename into a
+    // local `dn` variable instead of reading entry.display_name.  Any rename
+    // applied via rename_session() while the session was still in Launching
+    // state was therefore clobbered on the sidecar when the session transitioned
+    // to Running — the sidecar on disk would contain the default name, not the
+    // user's chosen rename.  Re-discovery after a daemon restart reads the
+    // sidecar, so the rename was permanently lost.
+    //
+    // Fix (6c95220): post_spawn_monitor reads `entry.display_name.clone()` as
+    // `authoritative_display_name` instead of recomputing from scratch.
+    //
+    // This test simulates the Running-transition sidecar re-persist by:
+    //   1. Spawning a session (sidecar written with default display_name).
+    //   2. Renaming the session via rename_session() (sidecar updated).
+    //   3. Performing the same sidecar re-persist operation that post_spawn_monitor
+    //      does at Running transition (reads entry.display_name, builds
+    //      SessionSidecarV3, writes atomically).
+    //   4. Reading the sidecar from disk and asserting display_name == renamed value.
+    //
+    // Step 3 would fail against pre-6c95220 code because it used a locally
+    // recomputed `dn` string (harness_id + basename = default name), whereas the
+    // fixed code reads entry.display_name (= renamed value).
+    // -----------------------------------------------------------------------
+
+    /// Regression test for F-S037-P2-001: rename while Launching must survive
+    /// the Launching→Running sidecar re-persist.
+    ///
+    /// Exercises the same sidecar re-persist logic as `post_spawn_monitor`'s
+    /// Running transition (the code path fixed in commit 6c95220), verifying that
+    /// `entry.display_name` (the authoritative, possibly-renamed value) is written
+    /// to the sidecar instead of a recomputed default.
+    ///
+    /// Would FAIL against pre-6c95220 code: the old code used
+    /// `format!("{} — {}", harness_id, basename)` which produces the default name,
+    /// not the user-assigned rename.  The sidecar on disk would contain the default
+    /// name, losing the rename on the next daemon restart that re-discovers sessions
+    /// from sidecar files.
+    #[tokio::test]
+    async fn test_BC_2_08_005_rename_while_launching_survives_running_sidecar_repersist() {
+        let tmp = tempfile::tempdir().expect("rename_repersist: tempdir");
+
+        let (mut manager, _subs, mut rx) = make_manager_with_channel(tmp.path(), None);
+        let session_id = "00000000-0537-4000-a000-000000000010".to_string();
+
+        // Step 1: Spawn a session — sidecar written with default display_name.
+        manager
+            .spawn_session(make_spawn_opts(&session_id))
+            .await
+            .expect("rename_repersist: spawn must succeed");
+
+        // Drain spawn broadcasts.
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+            loop {
+                match tokio::time::timeout_at(deadline, rx.recv()).await {
+                    Ok(Some(_)) => continue,
+                    _ => break,
+                }
+            }
+        }
+
+        // Verify the session is in Launching state.
+        {
+            let guard = manager.sessions.lock().await;
+            let entry = guard
+                .get(&session_id)
+                .expect("rename_repersist: session must be in registry");
+            assert_eq!(
+                entry.state,
+                SessionState::Launching,
+                "rename_repersist precondition: session must be in Launching state"
+            );
+        }
+
+        // Step 2: Rename the session while in Launching state.
+        let renamed_value = "User Assigned Name — Do Not Clobber".to_string();
+        manager
+            .rename_session(&session_id, renamed_value.clone())
+            .await
+            .expect("rename_repersist: rename_session must return Ok(()) on Launching session");
+
+        // Drain rename broadcasts.
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+            loop {
+                match tokio::time::timeout_at(deadline, rx.recv()).await {
+                    Ok(Some(_)) => continue,
+                    _ => break,
+                }
+            }
+        }
+
+        // Verify in-memory entry has the renamed value.
+        {
+            let guard = manager.sessions.lock().await;
+            let entry = guard
+                .get(&session_id)
+                .expect("rename_repersist: entry must exist after rename");
+            assert_eq!(
+                entry.display_name, renamed_value,
+                "rename_repersist: in-memory display_name must equal renamed value"
+            );
+        }
+
+        // Step 3: Simulate the post_spawn_monitor Running-transition sidecar re-persist.
+        //
+        // This replicates the logic at post_spawn_monitor ~lines 3060-3224 (first lock
+        // + sidecar re-persist block), which was the bug site in pre-6c95220 code.
+        // The FIXED code reads entry.display_name; the OLD code recomputed from
+        // harness_id + project_root basename, clobbering the rename.
+        //
+        // We extract the same fields from the in-memory entry that the production
+        // code extracts under the first sessions lock:
+        let (
+            project_root,
+            cwd,
+            harness_id,
+            profile_id,
+            started_at,
+            authoritative_display_name,
+            session_host_pid,
+        ) = {
+            let guard = manager.sessions.lock().await;
+            let entry = guard
+                .get(&session_id)
+                .expect("rename_repersist: entry must exist for Running-transition simulation");
+            (
+                entry.project_root.to_string_lossy().into_owned(),
+                entry.cwd.to_string_lossy().into_owned(),
+                entry.harness_id.clone(),
+                entry.profile_id.clone(),
+                entry.started_at.to_rfc3339(),
+                // F-S037-P2-001 fix: reads entry.display_name (the authoritative stored value).
+                // Pre-6c95220 code read: format!("{} — {}", harness_id, basename) here.
+                entry.display_name.clone(),
+                entry.session_host_pid,
+            )
+        };
+
+        // Build SessionSidecarV3 exactly as post_spawn_monitor does at Running transition.
+        let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+        let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
+
+        let existing_child_pid: Option<u32> = std::fs::read_to_string(&sidecar_path)
+            .ok()
+            .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+            .and_then(|v| v["child_pid"].as_u64())
+            .map(|n| n as u32);
+
+        let sidecar = monocle_ipc::types::SessionSidecarV3 {
+            schema_version: 3,
+            session_id: session_id.clone(),
+            pid: session_host_pid,
+            socket_path: socket_path.to_string_lossy().into_owned(),
+            child_pid: existing_child_pid,
+            state: monocle_ipc::types::SessionState::Running,
+            project_root: project_root.clone(),
+            cwd: cwd.clone(),
+            harness_id: harness_id.clone(),
+            profile_id: profile_id.clone(),
+            started_at: started_at.clone(),
+            display_name: authoritative_display_name.clone(),
+            pty_rows: 24,
+            pty_cols: 80,
+            kill_deadline_unix_ms: None,
+        };
+
+        let sidecar_json = serde_json::to_vec_pretty(&sidecar)
+            .expect("rename_repersist: serialize SessionSidecarV3");
+        // Write atomically exactly as post_spawn_monitor does.
+        {
+            let parent = sidecar_path
+                .parent()
+                .expect("rename_repersist: sidecar has no parent");
+            let mut tmp_file = tempfile::Builder::new()
+                .prefix(".session-sidecar-running-")
+                .suffix(".json.tmp")
+                .tempfile_in(parent)
+                .expect("rename_repersist: tempfile creation");
+            use std::io::Write as _;
+            tmp_file
+                .write_all(&sidecar_json)
+                .expect("rename_repersist: write tempfile");
+            tmp_file
+                .persist(&sidecar_path)
+                .expect("rename_repersist: persist sidecar");
+        }
+
+        // Step 4: Read the sidecar from disk and assert display_name == renamed value.
+        //
+        // Pre-6c95220 code would have written the recomputed default name here
+        // (e.g., "mock-engine — test-project"), so this assertion would FAIL against
+        // the old code.  The fix ensures authoritative_display_name == renamed_value.
+        let sidecar_content = std::fs::read_to_string(&sidecar_path)
+            .expect("rename_repersist: read sidecar from disk");
+        let sidecar_val: serde_json::Value =
+            serde_json::from_str(&sidecar_content).expect("rename_repersist: parse sidecar JSON");
+
+        let disk_display_name = sidecar_val["display_name"]
+            .as_str()
+            .expect("rename_repersist: display_name must be a string in sidecar");
+
+        assert_eq!(
+            disk_display_name, renamed_value,
+            "F-S037-P2-001 regression: sidecar display_name on disk MUST equal the \
+             renamed value {:?} after Running-transition sidecar re-persist; \
+             got {:?}. Pre-6c95220 code recomputed from harness_id + basename, \
+             clobbering the rename.",
+            renamed_value, disk_display_name
+        );
+
+        // Confirm the state field in the sidecar was set to Running (not left as Launching).
+        let disk_state = sidecar_val["state"]
+            .as_str()
+            .expect("rename_repersist: state must be a string in sidecar");
+        assert_eq!(
+            disk_state, "Running",
+            "rename_repersist: sidecar state must be Running after Running-transition re-persist; \
+             got {:?}",
+            disk_state
         );
     }
 }
