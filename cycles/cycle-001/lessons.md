@@ -2420,3 +2420,25 @@ Each adversary pass found genuinely new defects via sibling-path cross-reading t
 1. Orchestrator MUST run `git log develop..origin/develop` or `git fetch && git status` at session start to detect any direct commits to develop since the last checkpoint.
 2. Before dispatching story PR merge, orchestrator verifies develop HEAD matches expected SHA (from last STATE.md checkpoint). If diverged, surface the direct commit and determine rebase vs merge strategy before proceeding.
 3. Human contributors should avoid direct commits to develop during active story delivery cycles; prefer PRs or wait until in-flight stories are merged.
+
+---
+
+### PROCESS-GAP-FACTORY-ARTIFACTS-NOT-PUSHED: spec-bumping agents committed but did not push factory-artifacts
+
+**Date:** 2026-06-19
+**Severity:** process-gap (HIGH — CI impact)
+**Origin:** S-038 cycle. Spec-bumping agents (architect d53de6c, story-writer 2cb491f, product-owner d9cd944/485cfbb) committed to the shared .factory (factory-artifacts) worktree but did NOT push to origin/factory-artifacts. This left origin 4 commits stale:
+- d53de6c spec(S-038): single-writer mandate (BC-2.08.006→v1.5.0, SS-session-manager→v2.15.0, BC-2.08.007→v1.5.6, etc.)
+- 2cb491f fix(S-038): story doc defects
+- d9cd944 fix(BC-2.04.010): add lock.app to PC-3 (→v1.4.0)
+- 485cfbb fix(version-pin-registry): BC-2.04.010 last_bump_commit
+
+CI checks out origin/factory-artifacts at PR-open time for POL-11 (monocle-version-pin-freshness). Because origin/factory-artifacts was stale, the merged S-038 develop code (PR #44 @ 8d649ea) was conformant to the local (v1.5.6/v1.5.0) specs but those specs were not on origin. PR #44 passed CI because origin/registry still read BC-2.08.007 v1.5.5 (matching the stale source comment) — POL-11 passed spuriously-consistent. PR #45 (chore: fix v1.5.5→v1.5.6 comment) then saw POL-11 fail stale-forward once origin was pushed. The gap was invisible during delivery but created a window where CI was validating against stale spec state.
+
+**Codify (PROCESS-GAP-FACTORY-ARTIFACTS-NOT-PUSHED):**
+1. The orchestrator MUST verify `git -C .factory log origin/factory-artifacts..HEAD` is empty after every spec-bumping agent dispatch (architect, product-owner, story-writer, spec-steward). If the count is non-zero, push immediately before proceeding with the next step.
+2. Spec-bumping agents (architect, product-owner, story-writer) SHOULD push factory-artifacts themselves after each commit (as part of the registry-atomicity single-commit burst). If the agent does not push, the orchestrator is responsible for catching the gap at the next heartbeat.
+3. Add to the convergence/burst checklist: "After every factory-artifacts commit: `git -C .factory log origin/factory-artifacts..HEAD` must return empty. If not, push before continuing."
+4. This is distinct from L-S027-004 (registry atomicity within a single commit). That lesson covers spec-file + registry in one atomic commit. This lesson covers the additional push-to-origin step that must follow each atomic commit.
+
+**Impact of this instance:** PR #44 passed CI spuriously-consistent (no harm to develop); PR #45 required to fix the stale comment. Resolved by pushing 4 commits to origin/factory-artifacts (push result: f8f0b38..485cfbb). POL-11 now flags exactly 1 expected stale literal (the PR #45 target comment) and nothing unexpected.

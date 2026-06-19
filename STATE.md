@@ -2,10 +2,10 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "8.00"
+version: "8.01"
 status: active
 producer: state-manager
-timestamp: 2026-06-19T00:00:00Z
+timestamp: 2026-06-19T00:01:00Z
 phase: phase-3-v1A-wave-8
 current_step: "D-336 (2026-06-19): S-035 MERGED to develop via PR #43 @ 270b7d4. Fourth Wave-8 story (third Tier-2). attach_session/detach_session, BC-2.08.007+BC-2.08.008, 8 pts. 9-pass adversarial convergence (3 consecutive CLEAN: passes 7/8/9). CRIT-001 silent Detached→Terminated fixed; Ruling L (proxy_task kill-reader for attached sessions); 4-disposition action×state matrix. Sprint-state v1.50; STORY-INDEX v5.49. Wave 8: 4/12 done (27/74 pts). S-036 now UNBLOCKED."
 prior_step: "D-335 (2026-06-19): S-037 MERGED to develop via PR #42 @ a7e4081. Third Wave-8 story (second Tier-2). GC task + rename_session. 7-pass adversarial convergence (3 consecutive CLEAN: passes 5/6/7). SEC-001 (CWE-20) + SEC-002 (CWE-706) fixed IN-SCOPE (b2d65db). Sprint-state v1.49; STORY-INDEX v5.48. Wave 8: 3/12 done (19/74 pts)."
@@ -46,11 +46,11 @@ next_session_resume_protocol: |
   KEY VERSION PINS (canonical source: .factory/specs/version-pin-registry.yaml):
   STORY-INDEX v5.49 | sprint-state v1.50 | wave-schedule v2.1
   dependency-graph-expansion v2.7 | BC-INDEX v1.43.8 | EVAL-INDEX v1.23
-  ARCH-INDEX v1.0.30 | SS-ipc v1.24.0 | SS-session-manager v2.14.0
+  ARCH-INDEX v1.0.30 | SS-ipc v1.24.0 | SS-session-manager v2.15.0
   SS-embedded-pty v1.7.0 | SS-engine-module-v2-delta v1.6.0
   SS-daemon-wiring-v2-delta v1.11.4 | SS-deps-pin-manifest-v2-delta v1.0.2
   prd v1.28.3 | product-brief v2.0.4 | domain-monocle-vision-synthesis v2.2.3
-  BC-2.08.007 v1.5.5 | BC-2.08.008 v1.3.7 | S-035 v1.2.3
+  BC-2.08.007 v1.5.6 | BC-2.08.008 v1.3.7 | S-035 v1.2.3
 
   NEXT-ACTION (Wave-8 Tier 2 — S-035 done, continue Tier-2):
   S-038 (hook injection, 3 pts, needs S-033 — ready).
@@ -241,6 +241,7 @@ None. All durable task register items are non-blocking.
 | F-S035-001 | RESOLVED D-336 | architect/implementer | n | kill-after-attach reader ownership → RESOLVED via SS-session-manager Ruling L (proxy_task fast-path kill confirmation; kill reader=None+proxy=Some delegation). Fixed in-scope. |
 | F-S035-AC005-DAEMON-BROADCAST | pending | story-writer (S-039/S-047) | n | daemon-side ServerToClient::ScrollbackChunk* forwarding (AC-005) deferred — session-host emits empty scrollback dump; screen-content source = S-039 (PTY output pipeline) / S-047 (live parser). TODO(S-039/S-047) tracker in session_manager/mod.rs attach Step 7. Non-blocking. |
 | F-S035-LAUNCHING-CONN-DETACH-MATRIX | pending | architect | n | action×state matrix Detached/Launching cell ambiguity — detach on Launching-WITH-established-host_conn: matrix says Err(SessionNotReady) if host_conn not yet active but impl LaunchingWithConn path transitions to Detached. Official TUI never reaches this path. Architect to clarify matrix wording. Non-blocking. |
+| PROCESS-GAP-FACTORY-ARTIFACTS-NOT-PUSHED | codified 2026-06-19 | devops/orchestrator | n | [process-gap] S-038 cycle: spec-bumping agents (architect/story-writer/product-owner) committed 4 commits to factory-artifacts but never pushed — origin was 4 commits stale (f8f0b38→485cfbb). CI POL-11 checks out origin/factory-artifacts at PR-open time; stale origin caused PR #44 to pass spuriously-consistent and PR #45 to fail stale-forward. Fixed by pushing 4 commits 2026-06-19. CODIFY: orchestrator MUST verify `git -C .factory log origin/factory-artifacts..HEAD` is empty after every spec-bumping dispatch; add to burst checklist. Lesson: cycles/cycle-001/lessons.md §PROCESS-GAP-FACTORY-ARTIFACTS-NOT-PUSHED. |
 
 ## Resolved/Closed Tasks (archived)
 
