@@ -2033,7 +2033,7 @@ async fn test_BC_2_08_007_attach_detach_cycle() {
 //   12s watchdog fires, and assert SIGKILL was NOT invoked.
 // ---------------------------------------------------------------------------
 
-/// Ruling L (SS-session-manager v2.12.0, Change L-3): when `kill_session()` is called on
+/// Ruling L (SS-session-manager §Ruling L, Change L-3): when `kill_session()` is called on
 /// an attached (Running) session whose `host_conn.reader` is None (proxy_task owns the
 /// connection), `kill_session()` sends `DaemonToHost::Kill` on the writer and delegates
 /// `StateChanged{Terminated}` handling to the proxy_task (fast path). The 12s watchdog
@@ -2225,7 +2225,7 @@ async fn test_kill_attached_session_fast_path() {
 //   → assert session transitions to Terminated via the defensive proxy_task arm.
 // ---------------------------------------------------------------------------
 
-/// Ruling L defensive path (SS-session-manager v2.12.0): when the session-host
+/// Ruling L defensive path (SS-session-manager §Ruling L): when the session-host
 /// sends only `Goodbye` (natural exit without prior `Terminated`), the proxy_task
 /// MUST call the force-terminate routine and publish `SessionStateChanged{Terminated}`.
 ///

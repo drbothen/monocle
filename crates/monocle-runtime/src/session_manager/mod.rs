@@ -2958,7 +2958,7 @@ impl SessionManager {
                     // F-S035-PASS3-LOW-001: corrected comment — ALL OtherState variants
                     // (Launching, Terminating, Terminated, and any future states) return
                     // SessionHostDead.  This is the matrix-compliant behavior per
-                    // SS-session-manager.md v2.13.0 action×state matrix: attach on any
+                    // SS-session-manager §action×state matrix: attach on any
                     // non-Running/non-Detached state → "attach_failed" (wire code).
                     // The prior comment erroneously claimed Launching would yield SessionNotReady;
                     // the code never did that — SessionNotReady is only raised by detach_session
@@ -3263,7 +3263,7 @@ impl SessionManager {
                     }
 
                     // Handle PeerCred failure and other failures with split semantics
-                    // (F-S035-PASS2-LOW-001 / SS-session-manager v2.13.0 / BC-2.08.007 Inv 5):
+                    // (F-S035-PASS2-LOW-001 / SS-session-manager §PeerCred split semantics / BC-2.08.007 Inv 5):
                     //
                     // - PeerCredFailed (UID mismatch — host is not our child / impersonation):
                     //   transition → Terminated (StateChanged{Terminated} + SessionListUpdate + GC),
@@ -3348,7 +3348,7 @@ impl SessionManager {
                     };
 
                     // Step 5 (BC-2.08.007 PC-5 / AC-003): start PTY proxy task.
-                    // Ruling L (SS-session-manager v2.12.0 L-1): pass sessions + sidecar_path so the
+                    // Ruling L (SS-session-manager §Ruling L-1): pass sessions + sidecar_path so the
                     // proxy_task can call transition_to_terminated_standalone on StateChanged{Terminated}
                     // or Goodbye (fast-path kill confirmation for attached sessions).
                     // Reuse the sidecar_path computed above (same path, avoids duplicate join).
@@ -3378,7 +3378,7 @@ impl SessionManager {
                                 // the proxy_task delivers StateChanged{Terminated} via the fast path
                                 // (Ruling L L-2) without needing kill_confirm_monitor.
                                 // The 12s watchdog remains the fallback if the session-host is
-                                // unresponsive. See SS-session-manager v2.12.0 §Ruling L.
+                                // unresponsive. See SS-session-manager §Ruling L.
                                 reader: None,
                                 proxy_task: Some(proxy_handle),
                             });
@@ -3442,6 +3442,11 @@ impl SessionManager {
                     // Note: ServerToClient::ScrollbackChunk/ScrollbackDumpComplete are SS-09 scope;
                     // for S-035 we log the chunk count but do not broadcast (variants not yet defined
                     // in ServerToClient). The proxy task has been started and will stream live PtyBytes.
+                    //
+                    // TODO(S-039/S-047): forward received ScrollbackChunk*/ScrollbackDumpComplete to
+                    // TUI clients as ServerToClient::ScrollbackChunk once the session-host PTY→vt100
+                    // screen-content source exists (currently empty dump; AC-005 daemon-forwarding
+                    // obligation). Owning stories: S-039 (PTY output pipeline) / S-047 (live parser).
 
                     // F-S035-003: validate chunk count (BC-2.08.007 §Screen-state transfer step 5a).
                     // Daemon stays a forwarding pipe but MUST NOT silently drop a truncated dump.
