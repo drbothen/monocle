@@ -3,9 +3,9 @@ document_type: lessons-learned
 level: ops
 project: monocle
 cycle: cycle-001
-version: "1.3"
+version: "1.5"
 producer: state-manager
-timestamp: 2026-06-01T18:00:00Z
+timestamp: 2026-06-19T00:00:00Z
 input-hash: "[live-state]"
 ---
 
@@ -2336,3 +2336,41 @@ Each prior fix wrote a changelog entry claiming propagation was complete, but di
 **Recurrence class:** This is a sibling of L-CWD-PROPAGATION-ATTESTATION (false changelog attestation class). Both patterns share the same root cause: an agent asserts completeness without verifying against the authoritative source. The difference is that L-CWD-PROPAGATION-ATTESTATION involves fix-completeness attestation within a file, while L-VERIFICATION-ARTIFACT-FALSE-GREEN involves completeness attestation about a different file's conformance to an index.
 
 **Guard:** PRD-COUNT-CROSSCHECK-RULE in durable_task_register (devops-engineer tooling task). Until the mechanical check exists: PO must manually query BC-INDEX §Summary counts for each affected SS-NN and assert PRD §2.NN row counts match before declaring any §2 sync sweep CLEAN.
+
+---
+
+## S-037 Delivery Lessons (D-335, 2026-06-19)
+
+### L-S037-SEC-INSCOPE [codified]: PR-stage security findings on a story's own new code must be fixed in-scope
+
+**Date:** 2026-06-19
+**Severity:** process-gap (default behavior drift — pr-manager initially flagged SEC-001/002 for S-047 deferral)
+**Origin:** D-335 S-037 delivery. PR security review found SEC-001 (CWE-20, new_name validation) and SEC-002 (CWE-706, UUID guard) in rename_session — code authored in S-037. pr-manager initially flagged both for deferral to S-047. Orchestrator overrode per CLAUDE.md production-grade default: AI-built defects in the AI's own story's new code are the AI's responsibility to fix in scope.
+
+**Root cause:** pr-manager defaulted to the cheaper path (defer to downstream story) when the production-grade path is: fix in scope, then re-verify. The key distinction is "security finding on new code authored by THIS story" vs "security finding on existing code out of scope" — the former is always in-scope.
+
+**Codify (L-S037-SEC-INSCOPE):**
+1. Security findings identified by security-reviewer on code AUTHORED in the current story MUST be fixed in-scope, regardless of severity (MEDIUM, LOW, or above).
+2. Deferral to a downstream story is only legitimate for security findings on PRE-EXISTING code outside the story's new-code boundary.
+3. After in-scope security fix: security-reviewer MUST re-verify the fix; adversary MUST re-verify CLEAN before pr-manager proceeds to merge.
+4. pr-manager checklist item: before logging any security finding as "deferred to S-NNN", confirm the finding is NOT on code authored in the current story.
+
+**Guard:** CLAUDE.md §Canonical Principle Rule 4 already covers this ("AI-built defects are the AI's responsibility to fix"). This lesson reinforces applying Rule 4 specifically to PR-stage security findings on story-authored code.
+
+---
+
+### L-S037-TAUTOLOGICAL-TEST: regression tests must drive production code paths, not re-implement logic inline
+
+**Date:** 2026-06-19
+**Severity:** HIGH (adversarial pass 3 finding — would have produced false-green coverage)
+**Origin:** D-335 S-037 adversarial pass 3 (F-S037-P3-002). A regression test for a fix was found to re-implement the fix logic in the test body itself. The test would have passed against pre-fix code (tautological assertion).
+
+**Root cause:** The test author used the fixed logic as both the production code path AND the expected-value computation in the assertion. This breaks the red-gate discipline: a regression test MUST fail against pre-fix code.
+
+**Codify (L-S037-TAUTOLOGICAL-TEST):**
+1. Regression tests must assert against LITERAL expected values derived from the production contract (BC clause, spec prose), not values computed by re-running the same logic being tested.
+2. Mental check before committing a regression test: "Would this test FAIL if I reverted the fix?" If NO, the test is tautological.
+3. Adversary review axis (add to adversary prompt checklist): "For each new regression test, check whether the expected value is independently derived or re-computed from the same logic under test."
+4. Test-writer must state the source of the expected value in the test comment: `// Expected: per BC-N.NN.NNN PC-M canonical value` or `// Expected: literal "X" because the fix ensures Y`.
+
+**Recurrence risk:** This pattern is common when implementers write regression tests immediately after writing the fix — the fix logic is fresh in context and can leak into the test assertion. Adversarial review is the correct defense layer.

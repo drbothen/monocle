@@ -210,9 +210,9 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.47"
-  last_bump_commit: "[D-334 — S-034 status draft→done; S-034 row updated]"
-  last_bump_date: "2026-06-18"
+  current_version: "5.48"
+  last_bump_commit: "[D-335 — S-037 status draft→done; §Trace v5.47+v5.48 added]"
+  last_bump_date: "2026-06-19"
 
 VP-INDEX:
   path: specs/verification-properties/VP-INDEX.md
@@ -234,9 +234,9 @@ EVAL-INDEX:
 
 sprint-state:
   path: stories/sprint-state.yaml
-  current_version: "1.48"
-  last_bump_commit: "[D-334 — S-034 status draft→done; done 33→34; draft 17→16; points_complete 200→208]"
-  last_bump_date: "2026-06-18"
+  current_version: "1.49"
+  last_bump_commit: "[D-335 — S-037 status draft→done; done 34→35; draft 16→15; points_complete 208→211]"
+  last_bump_date: "2026-06-19"
 
 nfr-catalog:
   path: specs/prd-supplements/nfr-catalog.md
@@ -955,9 +955,9 @@ wave-schedule:
 
 dependency-graph-expansion:
   path: stories/dependency-graph-expansion.md
-  current_version: "2.6"
-  last_bump_commit: "[D-334 — STORY-INDEX input pin cascade 5.45→5.47]"
-  last_bump_date: "2026-06-18"
+  current_version: "2.7"
+  last_bump_commit: "[D-335 — STORY-INDEX input pin cascade 5.47→5.48]"
+  last_bump_date: "2026-06-19"
 
 S-033-session-manager-spawn:
   path: stories/S-033-session-manager-spawn.md
