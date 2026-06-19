@@ -749,11 +749,14 @@ impl SessionManager {
     /// ```
     ///
     /// This function does NOT exist in production builds.
-    // The helper is used by the test-writer's upcoming IMP-001 tests.
-    // Until those tests land this attribute prevents a dead_code warning.
-    #[cfg(test)]
+    // The helper is used by IMP-001 tests (inline unit tests) and S-035 integration
+    // tests (tests/ dir). Integration tests run as separate crates and do NOT see
+    // `cfg(test)` from the library — they require `feature = "test-utils"`. The
+    // `test-utils` feature is activated via the self-referential dev-dep in Cargo.toml:
+    // `monocle-runtime = { path = ".", features = ["test-utils"] }`.
+    #[cfg(any(test, feature = "test-utils"))]
     #[allow(dead_code)]
-    pub(crate) async fn insert_detached_session_for_test(
+    pub async fn insert_detached_session_for_test(
         &self,
         session_id: &str,
         pid: u32,
@@ -2365,15 +2368,930 @@ impl SessionManager {
     }
 
     /// Detach the daemon from a running session-host.
-    #[allow(clippy::todo)]
-    pub async fn detach_session(&mut self, _session_id: &str) -> Result<(), SessionError> {
-        todo!("S-033 (S-035 scope): implement detach_session()")
+    ///
+    /// Steps (BC-2.08.007 §detach_session postconditions):
+    /// 1. Look up session; return `Err(SessionNotFound)` if absent.
+    /// 2. If Running: send `DaemonToHost::Detach` over control connection.
+    ///    → abort proxy: `proxy_task.take().map(|t| t.abort())`.
+    ///    → set `host_conn = None`.
+    ///    → transition to `Detached`.
+    ///    → update sidecar (`state: "Detached"`) atomically via `tempfile::persist`.
+    ///    → emit `SessionStateChanged{Detached}` BEFORE `SessionListUpdate` under mutex.
+    /// 3. If Detached: idempotent `Ok(())` (EC-186).
+    /// 4. If Launching with `host_conn: None`: `Err(SessionNotReady)` (AC-014, F-P51-001).
+    /// 5. If Terminating/Terminated: per action×state matrix (SS-session-manager.md §Terminated-in-grace).
+    pub async fn detach_session(&mut self, session_id: &str) -> Result<(), SessionError> {
+        use monocle_ipc::types::DaemonToHost;
+        use tokio::io::AsyncWriteExt;
+
+        // SEC-002 (CWE-22): validate session_id is a UUID before constructing file paths.
+        if uuid::Uuid::parse_str(session_id).is_err() {
+            return Err(SessionError::SessionNotFound {
+                session_id: session_id.to_string(),
+            });
+        }
+
+        // --- Extract what we need from the registry, releasing the lock before I/O ---
+        enum DetachPath {
+            /// Session is Running: send Detach over existing writer.
+            Running {
+                writer: Arc<Mutex<tokio::net::unix::OwnedWriteHalf>>,
+            },
+            /// Session is Detached: idempotent Ok(()).
+            Detached,
+            /// Session is Launching with host_conn=None: SessionNotReady (F-P51-001).
+            LaunchingNoConn,
+            /// Session is Launching with established conn (treat as Running for Detach).
+            LaunchingWithConn {
+                writer: Arc<Mutex<tokio::net::unix::OwnedWriteHalf>>,
+            },
+            /// Session is Terminating or Terminated: per action×state matrix → Ok(()) idempotent.
+            TerminatingOrTerminated,
+            /// Not found.
+            NotFound,
+        }
+
+        let detach_path = {
+            let guard = self.sessions.lock().await;
+            match guard.get(session_id) {
+                None => DetachPath::NotFound,
+                Some(entry) => match entry.state {
+                    SessionState::Detached => DetachPath::Detached,
+                    SessionState::Terminating | SessionState::Terminated => {
+                        DetachPath::TerminatingOrTerminated
+                    }
+                    SessionState::Running => {
+                        // Running must have host_conn (invariant); writer is always Some.
+                        if let Some(conn) = entry.host_conn.as_ref() {
+                            DetachPath::Running {
+                                writer: Arc::clone(&conn.writer),
+                            }
+                        } else {
+                            // Defensive: Running without host_conn — treat as not ready.
+                            DetachPath::LaunchingNoConn
+                        }
+                    }
+                    SessionState::Launching => match entry.host_conn.as_ref() {
+                        None => DetachPath::LaunchingNoConn,
+                        Some(conn) => DetachPath::LaunchingWithConn {
+                            writer: Arc::clone(&conn.writer),
+                        },
+                    },
+                    _ => DetachPath::TerminatingOrTerminated,
+                },
+            }
+            // guard released
+        };
+
+        match detach_path {
+            DetachPath::NotFound => {
+                return Err(SessionError::SessionNotFound {
+                    session_id: session_id.to_string(),
+                });
+            }
+            DetachPath::Detached => {
+                // EC-186: idempotent Ok(()).
+                return Ok(());
+            }
+            DetachPath::LaunchingNoConn => {
+                // AC-014 / F-P51-001: defensive invariant for untrusted clients.
+                return Err(SessionError::SessionNotReady {
+                    session_id: session_id.to_string(),
+                });
+            }
+            DetachPath::TerminatingOrTerminated => {
+                // Per action×state matrix: idempotent Ok(()).
+                return Ok(());
+            }
+            DetachPath::Running { writer } | DetachPath::LaunchingWithConn { writer } => {
+                // Send DaemonToHost::Detach over the control connection (BC-2.08.007 detach PC-1).
+                let detach_msg = serde_json::to_vec(&DaemonToHost::Detach)
+                    .map_err(|e| SessionError::Io(std::io::Error::other(e)))?;
+                if detach_msg.len() > MAX_FRAME_LEN {
+                    return Err(SessionError::Io(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!(
+                            "outbound Detach message exceeds MAX_FRAME_LEN: {} bytes",
+                            detach_msg.len()
+                        ),
+                    )));
+                }
+                let len = (detach_msg.len() as u32).to_le_bytes();
+                {
+                    let mut w = writer.lock().await;
+                    let r1 = w.write_all(&len).await;
+                    let r2 = if r1.is_ok() {
+                        w.write_all(&detach_msg).await
+                    } else {
+                        r1
+                    };
+                    let r3 = if r2.is_ok() { w.flush().await } else { r2 };
+                    // Best-effort: log write failure but continue (proxy abort + state transition
+                    // must proceed regardless of whether the Detach message reached the session-host).
+                    if let Err(e) = r3 {
+                        tracing::warn!(
+                            session_id = %session_id,
+                            error = %e,
+                            "detach_session: failed to send DaemonToHost::Detach (best-effort); \
+                             continuing with proxy abort and state transition"
+                        );
+                    }
+                }
+            }
+        }
+
+        // Extract proxy_task and abort it; build sidecar path and snapshot.
+        // These are done under the sessions lock so the state transition + broadcast are atomic.
+        let sidecar_path = self
+            .runtime_dir
+            .join(format!("session-{}.json", session_id));
+
+        // Build list snapshot + transition state + extract proxy_task for abort — all under lock.
+        let (proxy_task_to_abort, list_snapshot) = {
+            use monocle_core::engine::{EnrichedSession, SessionStatus};
+            let mut guard = self.sessions.lock().await;
+
+            let proxy_task_handle = if let Some(entry) = guard.get_mut(session_id) {
+                // Abort proxy task: canonical pattern (BC-2.08.007 Architecture Compliance Rule).
+                let handle = entry.host_conn.as_mut().and_then(|c| c.proxy_task.take());
+                // Clear host_conn and transition state (BC-2.08.007 detach PC-3/PC-4).
+                entry.host_conn = None;
+                entry.state = SessionState::Detached;
+                handle
+            } else {
+                None
+            };
+
+            // Build list snapshot while lock is held (consistent post-transition state).
+            let snapshot: Vec<EnrichedSession> = guard
+                .values()
+                .map(|e| {
+                    let status = match e.state {
+                        SessionState::Launching | SessionState::Running => SessionStatus::Active,
+                        SessionState::Detached => SessionStatus::Idle,
+                        SessionState::Terminating | SessionState::Terminated => {
+                            SessionStatus::Stopped
+                        }
+                        _ => SessionStatus::Stopped,
+                    };
+                    EnrichedSession::new_with_display_name(
+                        e.session_id.clone(),
+                        e.harness_id.clone(),
+                        None,
+                        None,
+                        status,
+                        None,
+                        e.project_root
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .map(|s| s.to_string()),
+                        Some(e.started_at),
+                        0,
+                        None,
+                        e.display_name.clone(),
+                    )
+                })
+                .collect();
+            // sessions lock released here
+            (proxy_task_handle, snapshot)
+        };
+
+        // Abort proxy task outside the lock (abort() is synchronous; no .await needed).
+        if let Some(t) = proxy_task_to_abort {
+            t.abort();
+        }
+
+        // Update sidecar atomically: state → "Detached" (BC-2.08.007 detach PC-5).
+        // Read existing sidecar, update state field, persist via tempfile.
+        let sidecar_update_result: Result<(), SessionError> = (|| {
+            let existing = std::fs::read_to_string(&sidecar_path).map_err(|e| {
+                SessionError::SidecarWriteFailed {
+                    path: sidecar_path.to_string_lossy().into_owned(),
+                    reason: format!("detach_session: could not read sidecar: {e}"),
+                }
+            })?;
+            let mut val = serde_json::from_str::<serde_json::Value>(&existing).map_err(|e| {
+                SessionError::SidecarWriteFailed {
+                    path: sidecar_path.to_string_lossy().into_owned(),
+                    reason: format!("detach_session: could not parse sidecar JSON: {e}"),
+                }
+            })?;
+            val["state"] = serde_json::json!("Detached");
+            let updated =
+                serde_json::to_vec_pretty(&val).map_err(|e| SessionError::SidecarWriteFailed {
+                    path: sidecar_path.to_string_lossy().into_owned(),
+                    reason: format!("detach_session: failed to serialize sidecar: {e}"),
+                })?;
+            let dir = sidecar_path
+                .parent()
+                .ok_or_else(|| SessionError::SidecarWriteFailed {
+                    path: sidecar_path.to_string_lossy().into_owned(),
+                    reason: "detach_session: sidecar path has no parent".to_string(),
+                })?;
+            let mut tmp = tempfile::Builder::new()
+                .prefix(".session-sidecar-detach-")
+                .suffix(".json.tmp")
+                .tempfile_in(dir)
+                .map_err(|e| SessionError::SidecarWriteFailed {
+                    path: sidecar_path.to_string_lossy().into_owned(),
+                    reason: format!("detach_session: tempfile creation failed: {e}"),
+                })?;
+            use std::io::Write as _;
+            tmp.write_all(&updated)
+                .map_err(|e| SessionError::SidecarWriteFailed {
+                    path: sidecar_path.to_string_lossy().into_owned(),
+                    reason: format!("detach_session: write to tempfile failed: {e}"),
+                })?;
+            tmp.persist(&sidecar_path)
+                .map_err(|e| SessionError::SidecarWriteFailed {
+                    path: sidecar_path.to_string_lossy().into_owned(),
+                    reason: format!("detach_session: tempfile persist failed: {}", e.error),
+                })?;
+            Ok(())
+        })();
+
+        if let Err(e) = sidecar_update_result {
+            tracing::warn!(
+                session_id = %session_id,
+                error = %e,
+                "detach_session: sidecar update failed (state in memory is Detached; \
+                 daemon restart may re-discover as previous state from stale sidecar)"
+            );
+        }
+
+        // Emit SessionStateChanged{Detached} BEFORE SessionListUpdate under the sessions lock
+        // (BC-2.08.008 Invariant 4 — both try_send calls under a single lock acquisition).
+        {
+            let _guard = self.sessions.lock().await;
+            let state_changed = monocle_ipc::types::ServerToClient::SessionStateChanged {
+                session_id: session_id.to_string(),
+                new_state: SessionState::Detached,
+            };
+            crate::ipc_server::broadcast_to_subscribers(&self.broker, state_changed).await;
+
+            let list_update = monocle_ipc::types::ServerToClient::SessionListUpdate {
+                sessions: list_snapshot,
+            };
+            crate::ipc_server::broadcast_to_subscribers(&self.broker, list_update).await;
+            // sessions lock released here — both try_send calls completed atomically.
+        }
+
+        tracing::info!(
+            session_id = %session_id,
+            "session detached (Running → Detached)"
+        );
+
+        Ok(())
     }
 
-    /// Re-attach the daemon to a running session-host.
-    #[allow(clippy::todo)]
-    pub async fn attach_session(&mut self, _session_id: &str) -> Result<(), SessionError> {
-        todo!("S-033 (S-035 scope): implement attach_session()")
+    /// Re-attach the daemon to a Detached session-host.
+    ///
+    /// Steps (BC-2.08.007 §attach_session postconditions):
+    /// 1. Look up session; return `Err(SessionNotFound)` if absent.
+    /// 2. If Running: idempotent `Ok(())` (EC-185 — no duplicate proxy_task).
+    /// 3. If Detached: UDS connect → SO_PEERCRED (verify peer uid matches daemon uid) →
+    ///    send `DaemonToHost::Attach` → receive `ScrollbackChunk*` + `ScrollbackDumpComplete`
+    ///    within 5s timeout (EC-188: `Err(SessionHostDead)` if timeout) →
+    ///    start proxy task via `spawn_pty_proxy_task()` →
+    ///    set `host_conn = Some(SessionHostConnection { writer, proxy_task: Some(handle) })` →
+    ///    transition to `Running` →
+    ///    emit `SessionStateChanged{Running}` BEFORE `SessionListUpdate` under mutex (BC-2.08.008 Invariant 4).
+    /// 4. If session-host dead (UDS connect fails / liveness probe ESRCH): transition to
+    ///    `Terminated`; `Err(SessionHostDead)` (EC-187, wire code `"attach_failed"`).
+    /// 5. If SO_PEERCRED UID mismatch: abort attach; `Err(SessionHostDead)` (BC-2.08.007 PC-2).
+    pub fn attach_session(
+        &mut self,
+        session_id: &str,
+    ) -> impl std::future::Future<Output = Result<(), SessionError>> + Send + 'static {
+        // CRITICAL (EC-188 / BC-2.08.007): The 5-second attach deadline MUST be computed
+        // synchronously at call time — NOT inside the returned async block.
+        //
+        // Background: `let attach_future = manager.attach_session(id)` in tests creates the
+        // future without polling it. When `start_paused = true` and an outer `tokio::select!`
+        // races `attach_future` against `tokio::time::advance(5001ms)`, the advance may fire
+        // BEFORE `attach_future` is first polled. If the sleep is created inside the async
+        // block (at first-poll time), its deadline would be
+        //   T+5001ms + 5s = T+10001ms (far in the future),
+        // which the test never reaches → the panic branch fires.
+        //
+        // Fix: compute `deadline` HERE, synchronously, when `attach_session()` is called at
+        // virtual T+0. The returned async block captures `deadline` by value. When the async
+        // block eventually runs `sleep_until(deadline).poll()`, tokio checks
+        //   Instant::now() >= deadline  →  T+5001ms >= T+5000ms  →  Poll::Ready
+        // regardless of whether the timer was ever registered with the time driver.
+        //
+        // In production (no paused time), this is a no-op: the sleep fires after 5 real seconds.
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+
+        // Clone Arcs synchronously so the returned async block owns its data without
+        // borrowing `&mut self`. This allows the return type to be `'static`.
+        let sessions = Arc::clone(&self.sessions);
+        let peer_cred_verifier = Arc::clone(&self.peer_cred_verifier);
+        let broker = Arc::clone(&self.broker);
+        let session_id = session_id.to_string();
+
+        async move {
+            use monocle_ipc::types::DaemonToHost;
+            use tokio::io::AsyncReadExt;
+            use tokio::io::AsyncWriteExt;
+            use tokio::net::UnixStream;
+
+            // Build the 5-second sleep from the deadline computed at call time (see above).
+            let timeout_sleep = tokio::time::sleep_until(deadline);
+            tokio::pin!(timeout_sleep);
+
+            // SEC-002 (CWE-22): validate session_id is a UUID before constructing file paths.
+            if uuid::Uuid::parse_str(&session_id).is_err() {
+                return Err(SessionError::SessionNotFound {
+                    session_id: session_id.to_string(),
+                });
+            }
+
+            // --- Inspect session state WITHOUT yielding via try_lock() ---
+            //
+            // We use try_lock() (non-blocking) for the initial state inspection so that
+            // NO yield occurs before we enter the 5-second attach protocol below.
+            //
+            // If try_lock() fails (mutex contended — very rare in practice), we fall back
+            // to lock().await, which may yield once.
+            enum AttachPath {
+                Running,
+                Detached {
+                    pid: u32,
+                    socket_path: PathBuf,
+                },
+                NotFound,
+                /// Other states (Launching, Terminating, Terminated) — return appropriate error.
+                OtherState {
+                    state: SessionState,
+                },
+            }
+
+            let attach_path = match sessions.try_lock() {
+                Ok(guard) => match guard.get(&session_id) {
+                    None => AttachPath::NotFound,
+                    Some(entry) => match &entry.state {
+                        SessionState::Running => AttachPath::Running,
+                        SessionState::Detached => AttachPath::Detached {
+                            pid: entry.session_host_pid,
+                            socket_path: entry.session_host_socket.clone(),
+                        },
+                        other => AttachPath::OtherState {
+                            state: other.clone(),
+                        },
+                    },
+                },
+                Err(_) => {
+                    // Fallback: mutex contended — lock() may yield once, but we proceed.
+                    // The timeout deadline was captured at call time, so this yield doesn't
+                    // affect the 5-second window.
+                    let guard = sessions.lock().await;
+                    match guard.get(&session_id) {
+                        None => AttachPath::NotFound,
+                        Some(entry) => match &entry.state {
+                            SessionState::Running => AttachPath::Running,
+                            SessionState::Detached => AttachPath::Detached {
+                                pid: entry.session_host_pid,
+                                socket_path: entry.session_host_socket.clone(),
+                            },
+                            other => AttachPath::OtherState {
+                                state: other.clone(),
+                            },
+                        },
+                    }
+                }
+            };
+
+            match attach_path {
+                AttachPath::NotFound => Err(SessionError::SessionNotFound {
+                    session_id: session_id.to_string(),
+                }),
+                AttachPath::Running => {
+                    // EC-185: already attached — idempotent Ok(()).
+                    Ok(())
+                }
+                AttachPath::OtherState { state } => {
+                    // Launching (host_conn=None) → SessionNotReady (defensive).
+                    // Terminating/Terminated → SessionHostDead (host is shutting down).
+                    tracing::debug!(
+                        session_id = %session_id,
+                        ?state,
+                        "attach_session: unexpected state; returning SessionHostDead"
+                    );
+                    Err(SessionError::SessionHostDead {
+                        session_id: session_id.to_string(),
+                    })
+                }
+                AttachPath::Detached { pid, socket_path } => {
+                    // --- Detached path: full attach protocol (BC-2.08.007 PC-1 through PC-9) ---
+                    //
+                    // The ENTIRE connect → verify → send → scrollback sequence runs inside a
+                    // 5-second `tokio::time::timeout`. The timeout wraps the outermost async block
+                    // so that the timer is registered on the FIRST POLL of `attach_session` — before
+                    // any I/O operation yields. This is required for `tokio::time::pause/advance` in
+                    // tests to work correctly (EC-188 test vector uses `start_paused = true`).
+                    //
+                    // On timeout: Err(SessionHostDead), SIGTERM to PID (EC-188).
+                    // On UDS connect failure: EC-187 path (liveness probe → Terminated).
+                    // On SO_PEERCRED mismatch: Err(SessionHostDead) without state transition.
+                    //
+                    // Returns: Ok((OwnedReadHalf, OwnedWriteHalf, scrollback_chunks, metadata))
+                    //        | Err((SessionError, ConnectFailed: bool))
+                    //
+                    // The bool distinguishes EC-187 (connect failed → state=Terminated) from EC-188
+                    // (timeout → caller SIGTERMs) and other errors.
+                    enum AttachOutcome {
+                        /// Successfully completed attach protocol; caller proceeds with proxy/Running.
+                        Success {
+                            reader: tokio::net::unix::OwnedReadHalf,
+                            writer: tokio::net::unix::OwnedWriteHalf,
+                            scrollback_chunks: Vec<monocle_ipc::types::HostToDaemon>,
+                            total_chunks: u32,
+                            cursor_row: u16,
+                            cursor_col: u16,
+                            pty_rows: u16,
+                            pty_cols: u16,
+                        },
+                        /// UDS connect failed (EC-187): caller must transition → Terminated.
+                        ConnectFailed,
+                        /// SO_PEERCRED UID mismatch: caller returns SessionHostDead.
+                        PeerCredFailed,
+                        /// Protocol error during scrollback receive: caller returns SessionHostDead.
+                        ProtocolError,
+                        /// 5-second timeout fired (EC-188): caller SIGTERMs session-host.
+                        Timeout,
+                    }
+
+                    // Run the attach protocol (connect → verify → send → scrollback) inside a
+                    // biased select! against the pre-registered timeout_sleep.
+                    //
+                    // biased: ensures the work branch is polled first on each select! iteration,
+                    // so we don't spuriously time out when the work is already ready.
+                    //
+                    // timeout_sleep is the Sleep future created and registered at the start of
+                    // attach_session() (before any yield point). Its timer was registered with
+                    // tokio's time driver at T+0 via the noop-waker poll. If tokio::time::advance()
+                    // fired before we reach this select!, the Sleep's internal state is "elapsed"
+                    // and Sleep::poll() returns Poll::Ready(()) immediately — triggering EC-188.
+                    let outcome: AttachOutcome = tokio::select! {
+                        biased;
+                        // Work branch: full attach protocol.
+                        protocol_result = async {
+                            // Step 1 (BC-2.08.007 PC-1): UDS connect.
+                            let stream = match UnixStream::connect(&socket_path).await {
+                                Ok(s) => s,
+                                Err(e) => {
+                                    tracing::warn!(
+                                        session_id = %session_id,
+                                        socket = %socket_path.display(),
+                                        error = %e,
+                                        "attach_session: UDS connect failed (EC-187)"
+                                    );
+                                    return AttachOutcome::ConnectFailed;
+                                }
+                            };
+
+                            // Step 2 (BC-2.08.007 PC-2 / AC-001): SO_PEERCRED UID verification.
+                            if let Err(verify_err) = peer_cred_verifier.verify(&stream) {
+                                tracing::warn!(
+                                    session_id = %session_id,
+                                    error = %verify_err,
+                                    "attach_session: SO_PEERCRED UID mismatch (BC-2.08.007 PC-2)"
+                                );
+                                return AttachOutcome::PeerCredFailed;
+                            }
+
+                            // Split into read/write halves AFTER UID check.
+                            let (mut reader, mut writer) = stream.into_split();
+
+                            // Step 3 (BC-2.08.007 PC-3 / AC-002): send DaemonToHost::Attach.
+                            let attach_msg = match serde_json::to_vec(&DaemonToHost::Attach) {
+                                Ok(b) => b,
+                                Err(e) => {
+                                    tracing::error!(
+                                        session_id = %session_id,
+                                        error = %e,
+                                        "attach_session: failed to serialize DaemonToHost::Attach"
+                                    );
+                                    return AttachOutcome::ProtocolError;
+                                }
+                            };
+                            if attach_msg.len() > MAX_FRAME_LEN {
+                                tracing::error!(
+                                    session_id = %session_id,
+                                    len = attach_msg.len(),
+                                    "attach_session: DaemonToHost::Attach exceeds MAX_FRAME_LEN"
+                                );
+                                return AttachOutcome::ProtocolError;
+                            }
+                            let len_bytes = (attach_msg.len() as u32).to_le_bytes();
+                            if writer.write_all(&len_bytes).await.is_err()
+                                || writer.write_all(&attach_msg).await.is_err()
+                                || writer.flush().await.is_err()
+                            {
+                                tracing::warn!(
+                                    session_id = %session_id,
+                                    "attach_session: failed to send DaemonToHost::Attach"
+                                );
+                                return AttachOutcome::ProtocolError;
+                            }
+
+                            // Step 4 (BC-2.08.007 PC-4 / AC-002): receive ScrollbackChunk* +
+                            // ScrollbackDumpComplete. The retired single-message ScrollbackDump
+                            // MUST NOT be accepted (Invariant 3 / AC-010).
+                            let mut chunks: Vec<monocle_ipc::types::HostToDaemon> = Vec::new();
+                            loop {
+                                let mut len_buf = [0u8; 4];
+                                if reader.read_exact(&mut len_buf).await.is_err() {
+                                    return AttachOutcome::ProtocolError;
+                                }
+                                let msg_len = u32::from_le_bytes(len_buf) as usize;
+                                if msg_len == 0 || msg_len > MAX_FRAME_LEN {
+                                    tracing::warn!(
+                                        session_id = %session_id,
+                                        len = msg_len,
+                                        "attach_session: invalid scrollback message length"
+                                    );
+                                    return AttachOutcome::ProtocolError;
+                                }
+                                let mut body = vec![0u8; msg_len];
+                                if reader.read_exact(&mut body).await.is_err() {
+                                    return AttachOutcome::ProtocolError;
+                                }
+
+                                // Deserialize — serde will reject unknown variants (e.g., retired
+                                // "scrollback_dump") with an Err (AC-010 / Invariant 3).
+                                let msg: monocle_ipc::types::HostToDaemon =
+                                    match serde_json::from_slice(&body) {
+                                        Ok(m) => m,
+                                        Err(e) => {
+                                            tracing::warn!(
+                                                session_id = %session_id,
+                                                error = %e,
+                                                "attach_session: failed to deserialize HostToDaemon \
+                                                 during scrollback — may be retired ScrollbackDump \
+                                                 (BC-2.08.007 Invariant 3 / AC-010)"
+                                            );
+                                            return AttachOutcome::ProtocolError;
+                                        }
+                                    };
+
+                                match msg {
+                                    monocle_ipc::types::HostToDaemon::ScrollbackChunk { .. } => {
+                                        chunks.push(msg);
+                                    }
+                                    monocle_ipc::types::HostToDaemon::ScrollbackDumpComplete {
+                                        total_chunks,
+                                        cursor_row,
+                                        cursor_col,
+                                        pty_rows,
+                                        pty_cols,
+                                    } => {
+                                        return AttachOutcome::Success {
+                                            reader,
+                                            writer,
+                                            scrollback_chunks: chunks,
+                                            total_chunks,
+                                            cursor_row,
+                                            cursor_col,
+                                            pty_rows,
+                                            pty_cols,
+                                        };
+                                    }
+                                    other => {
+                                        tracing::warn!(
+                                            session_id = %session_id,
+                                            msg_type = ?std::mem::discriminant(&other),
+                                            "attach_session: unexpected HostToDaemon during scrollback \
+                                             drain; continuing to wait for ScrollbackDumpComplete"
+                                        );
+                                    }
+                                }
+                            }
+                        } => protocol_result,
+
+                        // Timeout branch: 5-second deadline (EC-188).
+                        // timeout_sleep was pre-registered at T+0 at function entry.
+                        // If advance(5001ms) already fired, Sleep::poll() returns Ready immediately
+                        // (the timer's internal state is "elapsed"), triggering EC-188.
+                        _ = &mut timeout_sleep => AttachOutcome::Timeout,
+                    };
+
+                    // Handle outcome variants.
+                    let outcome = match outcome {
+                        AttachOutcome::Timeout => {
+                            // EC-188: 5-second timeout fired. SIGTERM to non-responsive session-host.
+                            tracing::warn!(
+                                session_id = %session_id,
+                                pid = pid,
+                                "attach_session: 5-second timeout (EC-188); sending SIGTERM to session-host PID"
+                            );
+                            use nix::sys::signal::{kill as nix_kill, Signal};
+                            use nix::unistd::Pid;
+                            let nix_pid = Pid::from_raw(pid as i32);
+                            if let Err(e) = nix_kill(nix_pid, Signal::SIGTERM) {
+                                tracing::debug!(
+                                    session_id = %session_id,
+                                    pid = pid,
+                                    error = %e,
+                                    "attach_session: SIGTERM to non-responsive session-host failed (best-effort)"
+                                );
+                            }
+                            return Err(SessionError::SessionHostDead {
+                                session_id: session_id.to_string(),
+                            });
+                        }
+                        other => other,
+                    };
+
+                    // Handle connect failure (EC-187): liveness probe → transition to Terminated.
+                    if matches!(outcome, AttachOutcome::ConnectFailed) {
+                        use nix::sys::signal::kill as nix_kill;
+                        use nix::unistd::Pid;
+                        let nix_pid = Pid::from_raw(pid as i32);
+                        let liveness = nix_kill(nix_pid, None);
+                        let is_dead = matches!(liveness, Err(nix::errno::Errno::ESRCH));
+
+                        {
+                            let mut guard = sessions.lock().await;
+                            if let Some(entry) = guard.get_mut(&session_id) {
+                                entry.state = SessionState::Terminated;
+                            }
+                        }
+
+                        if is_dead {
+                            tracing::info!(
+                                session_id = %session_id,
+                                pid = pid,
+                                "attach_session: liveness probe confirms session-host dead (ESRCH); \
+                                 state → Terminated (EC-187)"
+                            );
+                        } else {
+                            tracing::warn!(
+                                session_id = %session_id,
+                                pid = pid,
+                                "attach_session: UDS connect failed but liveness probe did not return \
+                                 ESRCH; state → Terminated (EC-187)"
+                            );
+                        }
+
+                        return Err(SessionError::SessionHostDead {
+                            session_id: session_id.to_string(),
+                        });
+                    }
+
+                    // Handle other failures (PeerCred mismatch, protocol error).
+                    if !matches!(outcome, AttachOutcome::Success { .. }) {
+                        return Err(SessionError::SessionHostDead {
+                            session_id: session_id.to_string(),
+                        });
+                    }
+
+                    // Extract success components.
+                    let (
+                        reader,
+                        writer,
+                        scrollback_chunks,
+                        total_chunks,
+                        cursor_row,
+                        cursor_col,
+                        pty_rows,
+                        pty_cols,
+                    ) = match outcome {
+                        AttachOutcome::Success {
+                            reader,
+                            writer,
+                            scrollback_chunks,
+                            total_chunks,
+                            cursor_row,
+                            cursor_col,
+                            pty_rows,
+                            pty_cols,
+                        } => (
+                            reader,
+                            writer,
+                            scrollback_chunks,
+                            total_chunks,
+                            cursor_row,
+                            cursor_col,
+                            pty_rows,
+                            pty_cols,
+                        ),
+                        _ => unreachable!("matched Success above"),
+                    };
+
+                    // Step 5 (BC-2.08.007 PC-5 / AC-003): start PTY proxy task.
+                    let proxy_handle = SessionManager::spawn_pty_proxy_task(
+                        session_id.to_string(),
+                        reader,
+                        Arc::clone(&broker),
+                    );
+
+                    // Wrap writer in Arc<Mutex<>> for storage in SessionHostConnection.
+                    let writer_arc = Arc::new(Mutex::new(writer));
+
+                    // Step 6 (BC-2.08.007 PC-6 / AC-004): transition to Running, emit broadcasts.
+                    // Build snapshot + update host_conn + emit broadcasts — all under one lock.
+                    {
+                        use monocle_core::engine::{EnrichedSession, SessionStatus};
+                        let mut guard = sessions.lock().await;
+
+                        // Update SessionEntry: store connection + proxy_task + transition to Running.
+                        if let Some(entry) = guard.get_mut(&session_id) {
+                            entry.host_conn = Some(SessionHostConnection {
+                                writer: Arc::clone(&writer_arc),
+                                reader: None, // Reader is owned by proxy_task; kill on Running uses existing conn
+                                proxy_task: Some(proxy_handle),
+                            });
+                            entry.state = SessionState::Running;
+                        }
+
+                        // Build list snapshot while holding the lock.
+                        let list_snapshot: Vec<EnrichedSession> = guard
+                            .values()
+                            .map(|e| {
+                                let status = match e.state {
+                                    SessionState::Launching | SessionState::Running => {
+                                        SessionStatus::Active
+                                    }
+                                    SessionState::Detached => SessionStatus::Idle,
+                                    SessionState::Terminating | SessionState::Terminated => {
+                                        SessionStatus::Stopped
+                                    }
+                                    _ => SessionStatus::Stopped,
+                                };
+                                EnrichedSession::new_with_display_name(
+                                    e.session_id.clone(),
+                                    e.harness_id.clone(),
+                                    None,
+                                    None,
+                                    status,
+                                    None,
+                                    e.project_root
+                                        .file_name()
+                                        .and_then(|n| n.to_str())
+                                        .map(|s| s.to_string()),
+                                    Some(e.started_at),
+                                    0,
+                                    None,
+                                    e.display_name.clone(),
+                                )
+                            })
+                            .collect();
+
+                        // BC-2.08.008 Invariant 4: SessionStateChanged{Running} BEFORE SessionListUpdate,
+                        // both under the same mutex hold.
+                        let state_changed =
+                            monocle_ipc::types::ServerToClient::SessionStateChanged {
+                                session_id: session_id.to_string(),
+                                new_state: SessionState::Running,
+                            };
+                        crate::ipc_server::broadcast_to_subscribers(&broker, state_changed).await;
+
+                        let list_update = monocle_ipc::types::ServerToClient::SessionListUpdate {
+                            sessions: list_snapshot,
+                        };
+                        crate::ipc_server::broadcast_to_subscribers(&broker, list_update).await;
+                        // sessions lock released here — both try_send calls completed atomically.
+                    }
+
+                    // Step 7 (AC-005): forward scrollback chunks to TUI clients via broker.
+                    // This is fire-and-forget forwarding; TUI stores them for screen reconstruction
+                    // (SS-09 scope). The chunks are forwarded AFTER the Running transition so that
+                    // TUI clients receive the state transition before the scrollback data.
+                    //
+                    // Note: ServerToClient::ScrollbackChunk/ScrollbackDumpComplete are SS-09 scope;
+                    // for S-035 we log the chunk count but do not broadcast (variants not yet defined
+                    // in ServerToClient). The proxy task has been started and will stream live PtyBytes.
+                    tracing::debug!(
+                        session_id = %session_id,
+                        chunk_count = scrollback_chunks.len(),
+                        total_chunks = total_chunks,
+                        cursor_row = cursor_row,
+                        cursor_col = cursor_col,
+                        pty_rows = pty_rows,
+                        pty_cols = pty_cols,
+                        "attach_session: scrollback dump received (forwarding to broker is SS-09 scope)"
+                    );
+
+                    tracing::info!(
+                        session_id = %session_id,
+                        "session attached (Detached → Running)"
+                    );
+
+                    Ok(())
+                }
+            }
+        } // end async move
+    }
+
+    /// Spawn the PTY proxy task for a newly-attached session.
+    ///
+    /// Reads `HostToDaemon::PtyBytes` from the control connection read half and
+    /// forwards them to the daemon broker as `ServerToClient::PtyOutput { session_id, bytes }`.
+    /// Called by `attach_session()` after `ScrollbackDumpComplete` is received.
+    ///
+    /// Returns a `JoinHandle<()>` stored in `SessionHostConnection.proxy_task`.
+    ///
+    /// The task exits when the read half yields EOF or an I/O error (session-host
+    /// closed the connection). This is normal on session detach or termination.
+    fn spawn_pty_proxy_task(
+        session_id: String,
+        mut reader: tokio::net::unix::OwnedReadHalf,
+        broker: Arc<monocle_ipc::server::SubscriberList>,
+    ) -> JoinHandle<()> {
+        use tokio::io::AsyncReadExt;
+
+        tokio::spawn(async move {
+            loop {
+                // Read 4-byte LE length prefix.
+                let mut len_buf = [0u8; 4];
+                match reader.read_exact(&mut len_buf).await {
+                    Ok(_) => {}
+                    Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+                        tracing::debug!(
+                            session_id = %session_id,
+                            "proxy_task: session-host closed control connection (EOF)"
+                        );
+                        break;
+                    }
+                    Err(e) => {
+                        tracing::debug!(
+                            session_id = %session_id,
+                            error = %e,
+                            "proxy_task: read error on control connection; exiting"
+                        );
+                        break;
+                    }
+                }
+
+                let msg_len = u32::from_le_bytes(len_buf) as usize;
+                if msg_len == 0 || msg_len > MAX_FRAME_LEN {
+                    tracing::warn!(
+                        session_id = %session_id,
+                        len = msg_len,
+                        "proxy_task: invalid message length; exiting"
+                    );
+                    break;
+                }
+
+                let mut body = vec![0u8; msg_len];
+                if let Err(e) = reader.read_exact(&mut body).await {
+                    tracing::debug!(
+                        session_id = %session_id,
+                        error = %e,
+                        "proxy_task: failed to read message body; exiting"
+                    );
+                    break;
+                }
+
+                // Deserialize as HostToDaemon.
+                let msg: monocle_ipc::types::HostToDaemon = match serde_json::from_slice(&body) {
+                    Ok(m) => m,
+                    Err(e) => {
+                        tracing::warn!(
+                            session_id = %session_id,
+                            error = %e,
+                            "proxy_task: failed to deserialize HostToDaemon; skipping frame"
+                        );
+                        continue;
+                    }
+                };
+
+                match msg {
+                    monocle_ipc::types::HostToDaemon::PtyBytes { bytes } => {
+                        // Forward PTY bytes to broker as PtyOutput (SS-09 scope for TUI rendering).
+                        // For S-035, broadcast is a best-effort no-op if ServerToClient::PtyOutput
+                        // is not yet defined; the broker will handle known variants.
+                        let _ = (&broker, &bytes, &session_id);
+                        // No-op broadcast for S-035: SS-09 defines ServerToClient::PtyOutput.
+                        // The proxy task must exist and consume bytes to keep the socket from
+                        // blocking; the actual fan-out to TUI clients is SS-09 scope.
+                    }
+                    monocle_ipc::types::HostToDaemon::PtyReset => {
+                        tracing::debug!(
+                            session_id = %session_id,
+                            "proxy_task: received PtyReset from session-host"
+                        );
+                        // SS-09: broadcast ServerToClient::PtyReset to TUI clients.
+                    }
+                    monocle_ipc::types::HostToDaemon::Goodbye => {
+                        tracing::debug!(
+                            session_id = %session_id,
+                            "proxy_task: received Goodbye from session-host; exiting"
+                        );
+                        break;
+                    }
+                    other => {
+                        tracing::trace!(
+                            session_id = %session_id,
+                            msg_type = ?std::mem::discriminant(&other),
+                            "proxy_task: non-PtyBytes message from session-host (post-Running)"
+                        );
+                    }
+                }
+            }
+        })
     }
 
     /// Rename a session — updates `display_name` in the sidecar and publishes

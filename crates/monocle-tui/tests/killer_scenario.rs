@@ -472,6 +472,14 @@ async fn test_BC_2_06_022_killer_scenario_accept() {
         ClientToServer::KillSession { .. } => {
             panic!("unexpected KillSession in this test context");
         }
+        // S-035 stub: AttachSession is not expected in this PermissionDecision test context.
+        ClientToServer::AttachSession { .. } => {
+            panic!("unexpected AttachSession in this test context");
+        }
+        // S-035 stub: DetachSession is not expected in this PermissionDecision test context.
+        ClientToServer::DetachSession { .. } => {
+            panic!("unexpected DetachSession in this test context");
+        }
     }
 
     // Step 6: Modal must still be in overlay_stack — not popped on send (BC-2.06.023).
@@ -701,6 +709,14 @@ async fn test_BC_2_06_022_killer_scenario_multi_prompt() {
         ClientToServer::KillSession { .. } => {
             panic!("unexpected KillSession in this test context");
         }
+        // S-035 stub: AttachSession is not expected in this PermissionDecision test context.
+        ClientToServer::AttachSession { .. } => {
+            panic!("unexpected AttachSession in this test context");
+        }
+        // S-035 stub: DetachSession is not expected in this PermissionDecision test context.
+        ClientToServer::DetachSession { .. } => {
+            panic!("unexpected DetachSession in this test context");
+        }
     }
 
     // Step 5: MockDaemon sends PermissionPromptResolved for P1 over the REAL UDS socket.
@@ -776,6 +792,14 @@ async fn test_BC_2_06_022_killer_scenario_multi_prompt() {
         // S-034 stub: KillSession is not expected in this test context.
         ClientToServer::KillSession { .. } => {
             panic!("unexpected KillSession in this test context");
+        }
+        // S-035 stub: AttachSession is not expected in this PermissionDecision test context.
+        ClientToServer::AttachSession { .. } => {
+            panic!("unexpected AttachSession in this test context");
+        }
+        // S-035 stub: DetachSession is not expected in this PermissionDecision test context.
+        ClientToServer::DetachSession { .. } => {
+            panic!("unexpected DetachSession in this test context");
         }
     }
 
@@ -963,6 +987,14 @@ async fn test_BC_2_06_022_killer_scenario_accept_always() {
         ClientToServer::KillSession { .. } => {
             panic!("unexpected KillSession in this test context");
         }
+        // S-035 stub: AttachSession is not expected in this PermissionDecision test context.
+        ClientToServer::AttachSession { .. } => {
+            panic!("unexpected AttachSession in this test context");
+        }
+        // S-035 stub: DetachSession is not expected in this PermissionDecision test context.
+        ClientToServer::DetachSession { .. } => {
+            panic!("unexpected DetachSession in this test context");
+        }
     }
 
     // Overlay_stack is NOT modified on send — awaiting PermissionPromptResolved from daemon.
@@ -1034,6 +1066,14 @@ async fn test_BC_2_06_022_killer_scenario_accept_always() {
         // S-034 stub: KillSession is not expected in this test context.
         ClientToServer::KillSession { .. } => {
             panic!("unexpected KillSession in this test context");
+        }
+        // S-035 stub: AttachSession is not expected in this PermissionDecision test context.
+        ClientToServer::AttachSession { .. } => {
+            panic!("unexpected AttachSession in this test context");
+        }
+        // S-035 stub: DetachSession is not expected in this PermissionDecision test context.
+        ClientToServer::DetachSession { .. } => {
+            panic!("unexpected DetachSession in this test context");
         }
     }
 
@@ -1494,6 +1534,14 @@ async fn test_BC_2_06_022_killer_scenario_isolation_parallel_safe() {
         ClientToServer::KillSession { .. } => {
             panic!("unexpected KillSession in this test context");
         }
+        // S-035 stub: AttachSession is not expected in this PermissionDecision test context.
+        ClientToServer::AttachSession { .. } => {
+            panic!("unexpected AttachSession in this test context");
+        }
+        // S-035 stub: DetachSession is not expected in this PermissionDecision test context.
+        ClientToServer::DetachSession { .. } => {
+            panic!("unexpected DetachSession in this test context");
+        }
     }
 
     // Verify Daemon B received Deny for pid_b (not contaminated by App A's Allow).
@@ -1523,6 +1571,14 @@ async fn test_BC_2_06_022_killer_scenario_isolation_parallel_safe() {
         // S-034 stub: KillSession is not expected in this test context.
         ClientToServer::KillSession { .. } => {
             panic!("unexpected KillSession in this test context");
+        }
+        // S-035 stub: AttachSession is not expected in this PermissionDecision test context.
+        ClientToServer::AttachSession { .. } => {
+            panic!("unexpected AttachSession in this test context");
+        }
+        // S-035 stub: DetachSession is not expected in this PermissionDecision test context.
+        ClientToServer::DetachSession { .. } => {
+            panic!("unexpected DetachSession in this test context");
         }
     }
 

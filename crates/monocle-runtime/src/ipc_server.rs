@@ -178,6 +178,14 @@ async fn spawn_client_task(
                     Ok(ClientToServer::KillSession { session_id }) => {
                         handle_kill_session(session_id, &tx, &state).await;
                     }
+                    // S-035: AttachSession handler (BC-2.08.007 §attach_session)
+                    Ok(ClientToServer::AttachSession { session_id }) => {
+                        handle_attach_session(session_id, &tx, &state).await;
+                    }
+                    // S-035: DetachSession handler (BC-2.08.007 §detach_session)
+                    Ok(ClientToServer::DetachSession { session_id }) => {
+                        handle_detach_session(session_id, &tx, &state).await;
+                    }
                     Err(IpcError::Disconnected) => {
                         tracing::debug!("TUI client disconnected (EOF)");
                         break;
@@ -500,6 +508,120 @@ async fn handle_permission_decision(
             tracing::debug!(
                 "PermissionDecision for {prompt_id} silently discarded (not in registry)"
             );
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// S-035: AttachSession IPC handler
+// ---------------------------------------------------------------------------
+
+/// Handle a `ClientToServer::AttachSession` message from a TUI client.
+///
+/// IPC handler steps (BC-2.08.007 §attach_session — S-035):
+/// 1. Retrieve session_manager from daemon state.
+/// 2. Call `session_manager.attach_session(session_id)`.
+/// 3. On error: send `ServerToClient::Error { code, message }` to requesting client.
+/// 4. On success: `attach_session()` has already emitted `SessionStateChanged{Running}` +
+///    `SessionListUpdate` to all clients under the sessions mutex (BC-2.08.008 Invariant 4).
+///
+/// BC-5.38.005 self-check: "If I include this real implementation, will the test for
+/// this function pass trivially without any implementer work?"
+/// Answer: YES — this is non-trivial wiring that calls attach_session() (itself todo!()).
+/// The todo!() in attach_session() will propagate failure; this body stays minimal but
+/// the effective behavior is unimplemented until attach_session() is implemented.
+#[allow(clippy::todo)]
+async fn handle_attach_session(
+    session_id: String,
+    client_tx: &tokio::sync::mpsc::Sender<ServerToClient>,
+    state: &DaemonState,
+) {
+    use crate::session_manager::{session_error_to_code, IpcOp};
+
+    let sm = match state.session_manager.as_ref() {
+        Some(sm) => sm,
+        None => {
+            tracing::error!("handle_attach_session: session_manager is None (daemon wiring bug)");
+            let _ = client_tx
+                .send(ServerToClient::Error {
+                    code: "invalid_request".to_string(),
+                    message: "session_manager not initialized".to_string(),
+                })
+                .await;
+            return;
+        }
+    };
+
+    let attach_result = sm.lock().await.attach_session(&session_id).await;
+    match attach_result {
+        Ok(()) => {
+            // attach_session() emitted SessionStateChanged{Running} + SessionListUpdate to all
+            // clients (BC-2.08.008 Invariant 4). No additional response to requesting client.
+        }
+        Err(e) => {
+            let _ = client_tx
+                .send(ServerToClient::Error {
+                    code: session_error_to_code(IpcOp::Attach, &e).to_string(),
+                    message: e.to_string(),
+                })
+                .await;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// S-035: DetachSession IPC handler
+// ---------------------------------------------------------------------------
+
+/// Handle a `ClientToServer::DetachSession` message from a TUI client.
+///
+/// IPC handler steps (BC-2.08.007 §detach_session — S-035):
+/// 1. Retrieve session_manager from daemon state.
+/// 2. Call `session_manager.detach_session(session_id)`.
+/// 3. On error: send `ServerToClient::Error { code, message }` to requesting client.
+/// 4. On success: `detach_session()` has already emitted `SessionStateChanged{Detached}` +
+///    `SessionListUpdate` to all clients under the sessions mutex (BC-2.08.008 Invariant 4).
+///
+/// BC-5.38.005 self-check: "If I include this real implementation, will the test for
+/// this function pass trivially without any implementer work?"
+/// Answer: YES — this is non-trivial wiring that calls detach_session() (itself todo!()).
+/// The todo!() in detach_session() will propagate failure; this body stays minimal but
+/// the effective behavior is unimplemented until detach_session() is implemented.
+#[allow(clippy::todo)]
+async fn handle_detach_session(
+    session_id: String,
+    client_tx: &tokio::sync::mpsc::Sender<ServerToClient>,
+    state: &DaemonState,
+) {
+    use crate::session_manager::{session_error_to_code, IpcOp};
+
+    let sm = match state.session_manager.as_ref() {
+        Some(sm) => sm,
+        None => {
+            tracing::error!("handle_detach_session: session_manager is None (daemon wiring bug)");
+            let _ = client_tx
+                .send(ServerToClient::Error {
+                    code: "invalid_request".to_string(),
+                    message: "session_manager not initialized".to_string(),
+                })
+                .await;
+            return;
+        }
+    };
+
+    let detach_result = sm.lock().await.detach_session(&session_id).await;
+    match detach_result {
+        Ok(()) => {
+            // detach_session() emitted SessionStateChanged{Detached} + SessionListUpdate to all
+            // clients (BC-2.08.008 Invariant 4). No additional response to requesting client.
+        }
+        Err(e) => {
+            let _ = client_tx
+                .send(ServerToClient::Error {
+                    code: session_error_to_code(IpcOp::Detach, &e).to_string(),
+                    message: e.to_string(),
+                })
+                .await;
         }
     }
 }

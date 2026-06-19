@@ -137,6 +137,14 @@ async fn test_f_s026_adv5_crit001_decision_message_traverses_wire_to_daemon() {
         ClientToServer::KillSession { .. } => {
             panic!("unexpected KillSession in this test context");
         }
+        // S-035 stub: AttachSession is not expected in this PermissionDecision test context.
+        ClientToServer::AttachSession { .. } => {
+            panic!("unexpected AttachSession in this test context");
+        }
+        // S-035 stub: DetachSession is not expected in this PermissionDecision test context.
+        ClientToServer::DetachSession { .. } => {
+            panic!("unexpected DetachSession in this test context");
+        }
     }
 
     reader_handle.abort();
@@ -216,6 +224,14 @@ async fn test_f_s026_adv5_crit001_reconnect_rewires_ipc_tx_to_new_channel() {
         // S-034 stub: KillSession is not expected in this test context.
         ClientToServer::KillSession { .. } => {
             panic!("unexpected KillSession in this test context");
+        }
+        // S-035 stub: AttachSession is not expected in this PermissionDecision test context.
+        ClientToServer::AttachSession { .. } => {
+            panic!("unexpected AttachSession in this test context");
+        }
+        // S-035 stub: DetachSession is not expected in this PermissionDecision test context.
+        ClientToServer::DetachSession { .. } => {
+            panic!("unexpected DetachSession in this test context");
         }
     }
 
