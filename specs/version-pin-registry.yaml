@@ -124,8 +124,8 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "2.12.0"
-  last_bump_commit: "[Ruling L (F-S035-001) — proxy_task is kill-confirm reader for attached sessions; force_terminate_session delegation; spawn_pty_proxy_task gains sessions+sidecar_path; kill_session ExistingConn distinguishes proxy-owned vs pre-Running race]"
+  current_version: "2.13.0"
+  last_bump_commit: "[F-S035-PASS2-LOW-001 — attach_session uid-mismatch → Terminated (broadcasting+GC); protocol-error → stays Detached; action×state matrix Detached cell updated]"
   last_bump_date: "2026-06-19"
 
 SS-embedded-pty:
@@ -791,15 +791,15 @@ BC-2.08.006:
 
 BC-2.08.007:
   path: specs/behavioral-contracts/ss-08/BC-2.08.007.md
-  current_version: "1.5.3"
-  last_bump_commit: "[Burst-E D-305 — Story Anchor resolved S-TBD → S-035]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.5.4"
+  last_bump_commit: "[F-S035-PASS2-LOW-001 — uid-mismatch → Terminated (broadcasting+GC); protocol-error → stays Detached; Invariant 5 + Postcondition 2 updated]"
+  last_bump_date: "2026-06-19"
 
 BC-2.08.008:
   path: specs/behavioral-contracts/ss-08/BC-2.08.008.md
-  current_version: "1.3.5"
-  last_bump_commit: "[ADV-S034-IMPORTANT-001 / SS-session-manager §Ruling K (implemented at v2.11.0): clarified natural-exit Terminated ownership = S-039/S-040; S-034 = kill-path daemon broadcast]"
-  last_bump_date: "2026-06-18"
+  current_version: "1.3.6"
+  last_bump_commit: "[SS-session-manager Architecture Source pin cascade — F-S035-PASS2-LOW-001 uid-mismatch/protocol-error split in attach_session action×state matrix]"
+  last_bump_date: "2026-06-19"
 
 BC-2.09.001:
   path: specs/behavioral-contracts/ss-09/BC-2.09.001.md

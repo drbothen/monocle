@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.12.0"
+version: "2.13.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -767,7 +767,7 @@ variants and codes (F-P52-001 hard constraint honored).
 | `kill_session()` | Ok(()) — PID fallback SIGTERM; Launching→Terminating | Ok(()) — Kill over host_conn; Launching→Terminating | Ok(()) — Kill over host_conn; Running→Terminating | Ok(()) — fresh UDS+SO_PEERCRED + Kill; Detached→Terminating | Ok(()) — idempotent (BC-2.08.003 Inv 2) | Ok(()) — idempotent (BC-2.08.003 Inv 2; kill already complete) |
 | `rename_session()` | Ok(()) — metadata op; no host_conn needed (BC-2.06.025 Inv 5) | Ok(()) — same | Ok(()) — metadata op | Ok(()) — metadata op | Ok(()) — metadata op; display_name update proceeds (TUI blocks this path per BC-2.06.025 Inv 4; daemon allows it defensively since rename is idempotent metadata) | Err(InvalidSessionName{"session terminated"}) → "rename_failed" (BC-2.08.005 Inv 4) |
 | `detach_session()` | Err(SessionNotReady) → "session_not_ready" (F-P50-001) | Err(SessionNotReady) if host_conn not yet active for detach; see §Post-spawn monitor item 8 | Ok(()) — Running→Detached | Ok(()) — idempotent (already detached) | Ok(()) — idempotent (no active connection; consistent with detach-on-Terminated) | Ok(()) — idempotent (host dead; no connection to sever) |
-| `attach_session()` | Err(SessionNotFound) or state-error — not valid target | N/A (not yet Running) | N/A (already attached) | Ok(()) — Detached→Running; fresh ScrollbackDump | Err(SessionHostDead) → "attach_failed" (session is being killed) | Err(SessionHostDead) → "attach_failed" (host process is dead) |
+| `attach_session()` | Err(SessionNotFound) or state-error — not valid target | N/A (not yet Running) | N/A (already attached) | Ok(()) — Detached→Running; fresh ScrollbackDump. Failure subpaths: (a) SO_PEERCRED uid mismatch → Detached→Terminated (transition_to_terminated_standalone, full broadcasts+GC) + Err(SessionHostDead) — uid mismatch is structural/dead-host, not retryable; (b) protocol error after uid match → stay Detached (no transition) + Err(SessionHostDead) — host is alive+verified, retry is legitimate. | Err(SessionHostDead) → "attach_failed" (session is being killed) | Err(SessionHostDead) → "attach_failed" (host process is dead) |
 | `resize_session()` | WARN-drop (ResizePane carve-out) | WARN-drop | Ok(()) | WARN-drop (no active proxy; resize forwarded but no PTY streaming; IPC handler carve-out applies to all resize errors regardless of session state) | WARN-drop | WARN-drop |
 | `send_key_input()` | Err(SessionNotFound or SessionHostDead) → "attach_failed" | SessionHostDead if host not live | Ok(()) — forwarded to stdin | Err — no active proxy/stdin path (session detached; use AttachSession first); maps to nearest existing code — SessionHostDead → "attach_failed" or SessionNotFound → "session_not_found" depending on impl; untrusted-client path | Err(SessionHostDead) → "attach_failed" | Err(SessionHostDead) → "attach_failed" |
 
@@ -3767,6 +3767,24 @@ Add to the S-035 test suite:
 - `test_proxy_task_handles_goodbye_without_terminated`: attach a session, send only `Goodbye`
   from the mock session-host (no prior `StateChanged{Terminated}`), assert session transitions
   to Terminated (defensive path).
+
+---
+
+## §Trace v2.13.0
+
+**F-S035-PASS2-LOW-001 — attach_session uid-mismatch → Terminated (broadcasting+GC); protocol-error → stays Detached; action×state matrix Detached cell updated** (2026-06-19):
+
+- **Change:** Terminated-in-grace action×state matrix `attach_session()` Detached cell
+  updated to document the two failure subpaths explicitly:
+  (a) SO_PEERCRED uid mismatch → `Detached→Terminated` via `transition_to_terminated_standalone`
+  (full broadcasts + GC) + `Err(SessionHostDead)`.
+  (b) Protocol error after uid match → stay `Detached` (no transition, no broadcast) +
+  `Err(SessionHostDead)` — host alive and verified-as-ours; retry is legitimate.
+- **Rationale:** uid mismatch is structural (not our child process owns the socket), identical
+  to the kill-session EC-163 uid-mismatch path which already calls `transition_to_terminated`.
+  Protocol errors post-uid-check are transient exchange failures on a verified-live host.
+- **Downstream:** BC-2.08.007 v1.5.4 updated (Invariant 5 + Postcondition 2).
+- **SE-16d monotonicity:** v2.13.0 timestamp 2026-06-19 >= v2.12.0 timestamp 2026-06-19. PASS.
 
 ---
 

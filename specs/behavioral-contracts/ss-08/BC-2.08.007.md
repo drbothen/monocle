@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.3"
+version: "1.5.4"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-03T23:30:00Z
+timestamp: 2026-06-19T00:00:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md]
 input-hash: "6613339"
@@ -60,7 +60,10 @@ background. The TUI can re-attach at any time.
 
 1. `SessionManager` connects to `<runtime_dir>/session-<session_id>.sock`.
 2. Verifies SO_PEERCRED peer uid matches daemon uid before sending any messages (per
-   SS-session-manager.md §Per-session UDS security; failure → abort attach).
+   SS-session-manager.md §Per-session UDS security; uid mismatch → abort attach AND
+   transition session to `Terminated` via `transition_to_terminated_standalone` with full
+   broadcasts + GC, then return `Err(SessionError::SessionHostDead)`; see Invariant 5 for
+   the full uid-mismatch vs. protocol-error disposition split).
 3. Sends `DaemonToHost::Attach` over the connection.
 4. Receives the full `HostToDaemon::ScrollbackChunk*` + `HostToDaemon::ScrollbackDumpComplete`
    chunked scrollback sequence within 5 seconds total. (C5/C2-002 fix: chunked protocol
@@ -83,7 +86,7 @@ background. The TUI can re-attach at any time.
 ## Postconditions (detach)
 
 1. `SessionManager` sends `DaemonToHost::Detach` over the connection.
-2. The proxy task for this session is terminated (`proxy_task.take().map(|t| t.abort())`). `proxy_task` is typed `Option<JoinHandle<()>>` as of SS-session-manager.md v2.12.0; `.take()` clears the field and `.map(|t| t.abort())` aborts the task if present.
+2. The proxy task for this session is terminated (`proxy_task.take().map(|t| t.abort())`). `proxy_task` is typed `Option<JoinHandle<()>>` as of SS-session-manager.md v2.13.0; `.take()` clears the field and `.map(|t| t.abort())` aborts the task if present.
 3. `SessionEntry.host_conn` is set to `None`.
 4. `SessionEntry.state` transitions to `Detached`.
 5. `session-state.json` is updated to `state: "Detached"` (atomically).
@@ -104,13 +107,22 @@ background. The TUI can re-attach at any time.
    ScrollbackDumpComplete` — styled cells `Vec<Vec<SerializedCell>>` (full fg/bg color +
    attrs). The retired single-message `ScrollbackDump` form MUST NOT be used. The TUI
    MUST reset its parser for the session BEFORE applying the dump to prevent double-counting
-   live parser state. See SS-session-manager.md v2.12.0 §Screen-state transfer for the
+   live parser state. See SS-session-manager.md v2.13.0 §Screen-state transfer for the
    full reconstruction protocol.
 4. The 5-second timeout applies to the full `ScrollbackChunk*` + `ScrollbackDumpComplete`
    sequence for both re-discovery (BC-2.08.004) and interactive attach. After 5s without
    `ScrollbackDumpComplete`, the session is treated as non-responsive.
 5. SO_PEERCRED peer-credential check is mandatory on attach before sending any messages.
-   A peer uid mismatch aborts the attach (session treated as dead).
+   A peer uid mismatch aborts the attach and MUST transition the session to `Terminated` via
+   `transition_to_terminated_standalone` (publishing `SessionStateChanged{Terminated}` before
+   `SessionListUpdate`, spawning GC) — identical to the uid-mismatch handling in
+   `kill_session()` (EC-163 path). Rationale: uid mismatch is structural, not transient — the
+   socket is owned by a process that is not our session-host child; the session is effectively
+   dead. Leaving it `Detached` would allow infinite retry against a hostile or dead socket.
+   A protocol error occurring AFTER SO_PEERCRED succeeds (uid matched) does NOT transition to
+   `Terminated`; the session stays `Detached` (no transition, no broadcast) because the host
+   process is alive and verified-as-ours — a subsequent `attach_session()` call is a legitimate
+   retry.
 
 ## Edge Cases
 
@@ -143,7 +155,7 @@ background. The TUI can re-attach at any time.
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — detach/attach are explicitly named session lifecycle operations in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager `attach_session()`, `detach_session()`) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.12.0 §Public API (attach_session, detach_session signatures); §Per-session UDS protocol (DaemonToHost::Attach/Detach, HostToDaemon::ScrollbackChunk/ScrollbackDumpComplete); §Screen-state transfer on Attach; §Re-discovery state handling (I3-005 Detached preservation across restart); §host_conn type (proxy_task: Option<JoinHandle<()>> — F-P50-001); §Mapping table (SessionNotReady → "session_not_ready" on DetachSession arm; defensive precondition note — F-P51-001); SS-daemon-wiring-v2-delta.md v1.11.4 §3b (SessionStateChanged{Running} before SessionListUpdate on attach) |
+| Architecture Source | SS-session-manager.md v2.13.0 §Public API (attach_session, detach_session signatures); §Per-session UDS protocol (DaemonToHost::Attach/Detach, HostToDaemon::ScrollbackChunk/ScrollbackDumpComplete); §Screen-state transfer on Attach; §Re-discovery state handling (I3-005 Detached preservation across restart); §host_conn type (proxy_task: Option<JoinHandle<()>> — F-P50-001); §Mapping table (SessionNotReady → "session_not_ready" on DetachSession arm; defensive precondition note — F-P51-001); §Terminated-in-grace action×state matrix (attach_session Detached cell: uid-mismatch → Terminated, protocol-error → stays Detached — F-S035-PASS2-LOW-001); SS-daemon-wiring-v2-delta.md v1.11.4 §3b (SessionStateChanged{Running} before SessionListUpdate on attach) |
 | Test Name | test_BC_2_08_007_attach_receives_scrollback_detach_keeps_session_alive |
 
 ## Related BCs
@@ -269,6 +281,43 @@ SE-16d monotonicity: v1.5.0 timestamp 2026-06-14 > v1.4.2 timestamp 2026-06-13. 
 **Initial production — v1A PRD delta** (2026-06-03T23:30:00Z):
 - BC-2.08.007 authored for SS-08 as part of the v1A control-center pivot BC burst.
 - SE-16d PASS: 2026-06-03T23:30:00Z (new artifact).
+
+## §Trace v1.5.4
+
+**F-S035-PASS2-LOW-001 adjudication — uid-mismatch → Terminated (broadcasting+GC); protocol-error → stays Detached** (2026-06-19T00:00:00Z):
+
+- **Finding (F-S035-PASS2-LOW-001):** Invariant 5 said "session treated as dead" on uid mismatch
+  without specifying whether the entry transitions to `Terminated` or stays `Detached`. This
+  ambiguity led the implementation to apply the same no-transition path as protocol errors.
+
+- **Adjudication decision (split treatment):**
+  - **Peer-cred mismatch (uid mismatch):** MUST transition to `Terminated` via
+    `transition_to_terminated_standalone` (publishes `SessionStateChanged{Terminated}` before
+    `SessionListUpdate`, spawns GC), then return `Err(SessionHostDead)`. Rationale: uid mismatch
+    is structural — the socket is owned by a process that is not our session-host child. The
+    session is effectively dead. Leaving it `Detached` allows infinite retry against a
+    hostile/dead socket. The kill-session path already handles uid mismatch on a fresh connect as
+    a `transition_to_terminated` call (EC-163); attach must be consistent.
+  - **Protocol error (after uid match):** Stay `Detached` (no transition, no broadcast), return
+    `Err(SessionHostDead)`. Rationale: SO_PEERCRED passed means the peer uid matched — the host
+    process is alive and is ours. The error is in the attach exchange (framing, deserialization,
+    unexpected message type), not in host liveness. A subsequent `attach_session()` is a
+    legitimate retry. Forcing `Terminated` would permanently destroy a live, verified session.
+    This disposition does NOT violate BC-2.08.008 Inv 1 because no state transition occurs.
+
+- **Changes (normative):**
+  - **Invariant 5** — rewritten to specify the split disposition explicitly.
+  - **Postcondition 2** — extended with the uid-mismatch transition obligation and a pointer to
+    Invariant 5 for the full split.
+
+- **Consistency with CRIT-001 fix:** The EC-187 ConnectFailed path was also fixed in the same
+  adversarial cycle to use `transition_to_terminated_standalone` (CRIT-001). Both uid-mismatch
+  and ConnectFailed now use the same broadcasting+GC path. Protocol errors remain Detached.
+
+- **Architecture Source pin:** SS-session-manager.md v2.13.0 → v2.13.0 (action×state matrix
+  attach row Detached cell updated with uid-mismatch vs. protocol-error subpath notation).
+
+- **SE-16d monotonicity:** v1.5.4 timestamp 2026-06-19 > v1.5.3 timestamp 2026-06-16. PASS.
 
 ## §Trace v1.5.3
 
