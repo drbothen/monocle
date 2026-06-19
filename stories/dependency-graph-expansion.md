@@ -1,7 +1,7 @@
 ---
 document_type: dependency-graph
 level: L4
-version: "2.7"
+version: "2.8"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-19T00:00:00Z
@@ -12,10 +12,10 @@ inputs:
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
   - {path: .factory/specs/architecture/SS-tui.md, version: "1.8.2"}
   - {path: .factory/specs/architecture/SS-config.md, version: "1.3.0"}
-  - {path: .factory/stories/STORY-INDEX.md, version: "5.48"}
+  - {path: .factory/stories/STORY-INDEX.md, version: "5.49"}
   - {path: .factory/plans/phase-2-expansion-story-plan.md, version: "1.0"}
 input-hash: "[live-state]"
-traces_to: .factory/stories/STORY-INDEX.md v5.48
+traces_to: .factory/stories/STORY-INDEX.md v5.49
 ---
 
 # Dependency Graph: monocle Phase 2 Expansion (Waves 4-9)
@@ -534,6 +534,31 @@ Critical path through Waves 8-9: S-033 (8pts) → S-035 (8pts) → S-039 (8pts) 
 | S-042 | 9 | 5 | S-039 | S-043 |
 | S-043 | 9 | 3 | S-039, S-042 | — |
 | S-044 | 9 | 13 | S-033, S-035, S-040, S-041 | — |
+
+## §Trace v2.8 — D-336: STORY-INDEX input pin cascade 5.48→5.49 (2026-06-19)
+
+**Bump:** 2.7 → 2.8.
+**Scope (D-336 STORY-INDEX pin cascade):**
+- STORY-INDEX.md pin refreshed: `"5.48"` → `"5.49"` (S-035 status draft→done; §Trace v5.49 added).
+- `traces_to` updated to STORY-INDEX.md v5.49.
+- No normative dependency data or body content changed. Inputs-pin cascade only.
+**SE-16d PASS:** 2026-06-19 >= 2026-06-19.
+
+## §Trace v2.7 — D-335: STORY-INDEX input pin cascade 5.47→5.48 (2026-06-19)
+
+**Bump:** 2.6 → 2.7.
+**Scope (D-335 STORY-INDEX pin cascade):**
+- STORY-INDEX.md pin refreshed: `"5.47"` → `"5.48"` (S-037 status draft→done; §Trace v5.48 added).
+- No normative dependency data or body content changed. Inputs-pin cascade only.
+**SE-16d PASS:** 2026-06-19 >= 2026-06-19.
+
+## §Trace v2.6 — D-334: STORY-INDEX input pin cascade 5.46→5.47 (2026-06-18)
+
+**Bump:** 2.5 → 2.6.
+**Scope (D-334 STORY-INDEX pin cascade):**
+- STORY-INDEX.md pin refreshed: `"5.45"` → `"5.47"` (S-033/S-034 merged; §Trace v5.46/v5.47 added).
+- No normative dependency data or body content changed. Inputs-pin cascade only.
+**SE-16d PASS:** 2026-06-18 >= 2026-06-16.
 
 ## §Trace v2.5 — D-324: inputs-pin refresh — BC-INDEX 1.27→1.43.8, SS-ipc 1.6.0→1.24.0, STORY-INDEX 4.7→5.45 (2026-06-16)
 

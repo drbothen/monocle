@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.48"
+version: "5.49"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-19T00:00:00Z
@@ -85,7 +85,7 @@ traces_to: .factory/specs/prd.md
 | S-DAEMON-WIRE-FIX-001 | Second-Signal Exit Codes (SigtermDuringDrain=143, SigintDuringDrain=130) | EPIC-04 | 5 | 8 | draft | — |
 | S-033 | SessionManager::spawn_session — SessionHostSpawner, SessionEntry, Sidecar, SpawnAck, and SessionStateChanged{Launching} | EPIC-08 | 8 | 8 | done | S-034, S-035, S-036, S-037, S-038, S-044, S-045, S-047, S-048 |
 | S-034 | SessionManager::kill_session — DaemonToHost::Kill Within 500ms; Terminating/Terminated Transitions; 12s Watchdog | EPIC-08 | 8 | 8 | done | S-036, S-037, S-047 |
-| S-035 | SessionManager::attach_session and detach_session — Chunked Scrollback, SO_PEERCRED, Session-Host Stays Alive | EPIC-08 | 8 | 8 | draft | S-036, S-039, S-044, S-047 |
+| S-035 | SessionManager::attach_session and detach_session — Chunked Scrollback, SO_PEERCRED, Session-Host Stays Alive | EPIC-08 | 8 | 8 | done | S-036, S-039, S-044, S-047 |
 | S-036 | SessionManager::rediscover_sessions — setsid Persistence; All States Handled Within 5s; UDS Bind Blocked | EPIC-08 | 8 | 8 | draft | — |
 | S-037 | SessionManager GC Task — Terminated Sessions Removed After 10s Grace Period | EPIC-08 | 3 | 8 | done | — |
 | S-038 | SessionManager Hook Auto-Injection — hooks-settings.json Writer + SpawnOptions.hooks_settings_path Population | EPIC-08 | 3 | 8 | draft | — |
@@ -498,6 +498,18 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.49
+
+**S-035 MERGED — Wave-8 fourth delivery (D-336, 2026-06-19):**
+
+- S-035 Story Registry row: `draft` → `done`. PR #43 @ 270b7d4 (squash-merge 2026-06-19).
+- 9-pass adversarial convergence (3 consecutive CLEAN: passes 7/8/9). Security PASS. 11 CI checks green.
+- attach_session/detach_session. CRIT-001 silent Detached→Terminated fixed. Ruling L proxy_task kill-reader.
+- SS-session-manager v2.11.0→v2.14.0; BC-2.08.007 v1.5.5; BC-2.08.008 v1.3.7. S-036 UNBLOCKED.
+- Wave 8: 4/12 stories done (27/74 pts). 36/51 stories done (219/311 pts).
+- SE-16d monotonicity: v5.49 timestamp 2026-06-19 >= v5.48 timestamp 2026-06-19. PASS.
+- SE-22 v2 sibling-sweep: sprint-state.yaml v1.49→v1.50 (done 35→36, draft 15→14, points_complete 211→219); STATE.md v7.99→v8.00.
 
 ## §Trace v5.48
 

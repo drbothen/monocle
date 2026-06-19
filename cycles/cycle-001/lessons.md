@@ -2374,3 +2374,49 @@ Each prior fix wrote a changelog entry claiming propagation was complete, but di
 4. Test-writer must state the source of the expected value in the test comment: `// Expected: per BC-N.NN.NNN PC-M canonical value` or `// Expected: literal "X" because the fix ensures Y`.
 
 **Recurrence risk:** This pattern is common when implementers write regression tests immediately after writing the fix — the fix logic is fresh in context and can leak into the test assertion. Adversarial review is the correct defense layer.
+
+---
+
+## S-035 Lessons (D-336, 2026-06-19)
+
+### L-S035-DEEP-CONVERGENCE [codified]: deep fresh-context adversarial value for stateful concurrency code
+
+**Date:** 2026-06-19
+**Severity:** process (convergence discipline reinforcement)
+**Origin:** D-336 S-035 attach_session/detach_session required 9 adversarial passes (6 with findings including 1 CRITICAL silent-transition + multiple TOCTOU/sidecar-clobber + EC-187/EC-188 sibling-path asymmetry).
+
+Each adversary pass found genuinely new defects via sibling-path cross-reading that prior passes missed. This reinforces the rule: for stateful concurrency code (session state machines, concurrent attach/kill/detach paths), fresh-context adversarial review must run until 3 consecutive CLEAN — not until the first CLEAN.
+
+**Codify (L-S035-DEEP-CONVERGENCE):**
+1. For stateful subsystems (session state machines, concurrent message passing, shared-state actor models), the adversary must apply a sibling-path cross-read axis on every pass: "For each code path being fixed, enumerate all sibling paths (same state transition, different entry condition) and verify the fix propagates symmetrically."
+2. Partial-fix recurrence (fixing one path/layer but not its siblings) is the dominant failure mode in stateful code — adversary should prioritize sibling-path checks over novel-finding searches after pass 3.
+3. 9 passes is within normal range for an 8-pt stateful story with concurrent attach/kill paths. Do NOT shorten the mandatory 3-consecutive-CLEAN gate.
+
+---
+
+### L-S035-SIBLING-CONSISTENCY [codified]: failure-disposition paths must be reviewed for sibling consistency
+
+**Date:** 2026-06-19
+**Severity:** HIGH (adversarial pattern)
+**Origin:** D-336 S-035. Failure-disposition paths (ConnectFailed/PeerCredFailed/Timeout/ProtocolError) and in-memory-vs-sidecar layers required sibling-consistency review across 4 attach-failure dispositions. Partial fixes recurred 3x:
+- Pass 2: P2-001 fixed session_list in S-035 scope but missed sibling in S-037.
+- Pass 3: TOCTOU guard fixed in-memory but not sidecar layer.
+- Pass 5: EC-187 disposition fixed but sibling EC-188 path missed.
+
+**Codify (L-S035-SIBLING-CONSISTENCY):**
+1. Adversary should always apply the partial-fix-regression / sibling-path axis: after any finding is reported fixed, enumerate all sibling paths (same operation, different error code; same layer, different state variant; same transition, different entry condition) and probe each for the same defect.
+2. For error-code taxonomies (EC-NNN), fixing one EC-NNN disposition without checking all sibling EC-NNN dispositions in the same function is a known recurrence pattern — adversary must check all siblings in the same pass.
+3. For layered writes (in-memory + sidecar/persist), any fix that updates in-memory state must be checked for sidecar/persist layer consistency in the same pass.
+
+---
+
+### L-S035-DIRECT-DEVELOP-COMMIT: direct commits to develop diverge from merge; check develop sync at session start
+
+**Date:** 2026-06-19
+**Severity:** process-gap
+**Origin:** D-336 S-035. A human docs commit (5ff0180) was made directly to develop and diverged from the S-035 branch tip, requiring reconciliation before clean squash-merge.
+
+**Codify (L-S035-DIRECT-DEVELOP-COMMIT):**
+1. Orchestrator MUST run `git log develop..origin/develop` or `git fetch && git status` at session start to detect any direct commits to develop since the last checkpoint.
+2. Before dispatching story PR merge, orchestrator verifies develop HEAD matches expected SHA (from last STATE.md checkpoint). If diverged, surface the direct commit and determine rebase vs merge strategy before proceeding.
+3. Human contributors should avoid direct commits to develop during active story delivery cycles; prefer PRs or wait until in-flight stories are merged.
