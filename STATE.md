@@ -2,18 +2,18 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "8.01"
+version: "8.02"
 status: active
 producer: state-manager
-timestamp: 2026-06-19T00:01:00Z
+timestamp: 2026-06-19T01:00:00Z
 phase: phase-3-v1A-wave-8
-current_step: "D-336 (2026-06-19): S-035 MERGED to develop via PR #43 @ 270b7d4. Fourth Wave-8 story (third Tier-2). attach_session/detach_session, BC-2.08.007+BC-2.08.008, 8 pts. 9-pass adversarial convergence (3 consecutive CLEAN: passes 7/8/9). CRIT-001 silent Detached→Terminated fixed; Ruling L (proxy_task kill-reader for attached sessions); 4-disposition action×state matrix. Sprint-state v1.50; STORY-INDEX v5.49. Wave 8: 4/12 done (27/74 pts). S-036 now UNBLOCKED."
-prior_step: "D-335 (2026-06-19): S-037 MERGED to develop via PR #42 @ a7e4081. Third Wave-8 story (second Tier-2). GC task + rename_session. 7-pass adversarial convergence (3 consecutive CLEAN: passes 5/6/7). SEC-001 (CWE-20) + SEC-002 (CWE-706) fixed IN-SCOPE (b2d65db). Sprint-state v1.49; STORY-INDEX v5.48. Wave 8: 3/12 done (19/74 pts)."
+current_step: "D-338 (2026-06-19): S-038 MERGED to develop via PR #44 @ 8d649ea + chore PR #45 @ 7f005af. Fifth Wave-8 story. WAVE-8 TIER-2 COMPLETE (S-033+S-034+S-037+S-035+S-038). Single-writer mandate: lifecycle step 9 sole canonical write_hooks_settings_json. BC-2.08.006→v1.5.0; BC-2.04.010→v1.4.0; SS-session-manager→v2.15.0; BC-2.08.007→v1.5.6. SEC-001/002 fixed in-scope. 6-pass adversarial (3 CLEAN). Sprint-state v1.51; STORY-INDEX v5.50. Wave 8: 5/12 done (30/74 pts). develop HEAD: 7f005af."
+prior_step: "D-336 (2026-06-19): S-035 MERGED to develop via PR #43 @ 270b7d4. Fourth Wave-8 story (third Tier-2). attach_session/detach_session, BC-2.08.007+BC-2.08.008, 8 pts. 9-pass adversarial convergence (3 consecutive CLEAN: passes 7/8/9). CRIT-001 silent Detached→Terminated fixed; Ruling L (proxy_task kill-reader for attached sessions). Sprint-state v1.50; STORY-INDEX v5.49. Wave 8: 4/12 done (27/74 pts)."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
-traces_to: "D-001..D-241 at cycles/cycle-001/decisions-archive.md. D-242..D-332 appended at cycles/cycle-001/decisions-archive.md §Phase-1d+Phase-2+Phase-3. Full durable_task_register YAML (127+ entries) at cycles/cycle-001/task-register-full.yaml."
-awaiting: "Next Tier-2 dispatch: S-038 (hook injection, 3 pts, needs S-033 — ready). S-036 (needs S-033+S-034+S-035 — now UNBLOCKED). SEC-006-CCR-URL-VALIDATION MUST be fixed before S-045. S-046 waits on S-032; S-047 waits on S-033+S-034+S-035+S-046; S-048 waits on S-022+S-033+S-047. F-W8INT-001/002/003 parked for Wave-8 integration gate."
+traces_to: "D-001..D-241 at cycles/cycle-001/decisions-archive.md. D-242..D-338 appended at cycles/cycle-001/decisions-archive.md §Phase-1d+Phase-2+Phase-3. Full durable_task_register YAML (127+ entries) at cycles/cycle-001/task-register-full.yaml."
+awaiting: "Wave-8 Tier-2 COMPLETE (S-037/S-035/S-038 merged). Next: S-036 (UNBLOCKED — attach-detach dependent GC/monitor; needs S-033+S-034+S-035, all done). SEC-006-CCR-URL-VALIDATION MUST be fixed before S-045. S-039/S-040 own PTY output pipeline. S-046 waits on S-032; S-047 waits on S-033+S-034+S-035+S-046; S-048 waits on S-022+S-033+S-047. F-W8INT-001/002/003 parked for Wave-8 integration gate."
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: 2026-06-03
@@ -21,41 +21,41 @@ dtu_services: [hook-endpoints-x5]
 current_cycle: cycle-001
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v8.00 — 2026-06-19
-  PHASE-3 v1A ACTIVE — WAVE 8 TIER 2 — S-035 DONE, NEXT: S-038/S-036
+  ZERO-CONTEXT RESUME CHECKPOINT v8.01 — 2026-06-19
+  PHASE-3 v1A ACTIVE — WAVE 8 TIER-2 COMPLETE — NEXT: S-036
   ============================================================================
-  POSITION: Phase-3 TDD implementation, v1A control-center scope, Wave 8 Tier 2.
-  STATUS: S-035 MERGED (PR #43 @ 270b7d4, D-336). develop @ 270b7d4. S-035
-  worktree cleaned up. 10 workspace crates (incl. monocle-session-host). 36/51
-  stories done (219/311 pts). Wave 8: 4/12 done (27/74 pts).
-  Human directive: CONTINUE WAVE-8 TIER-2 AUTONOMOUSLY.
-  Demo default GOING FORWARD: WEBM + .tape ONLY (NO GIF).
-  Branch protection: 11 required CI contexts enforced (10 ci.yml + DTU fidelity).
-  NOTE: Branch protection uses BARE check names (no 'CI /' prefix) — FIXED D-335.
+  POSITION: Phase-3 TDD implementation, v1A control-center scope, Wave 8.
+  STATUS: S-038 MERGED PR #44 @ 8d649ea + chore PR #45 @ 7f005af (D-338).
+  develop @ 7f005af. S-038 worktree cleaned up. 10 workspace crates.
+  37/51 stories done (222/311 pts). Wave 8: 5/12 done (30/74 pts).
+  WAVE-8 TIER-2 COMPLETE: S-033+S-034+S-037+S-035+S-038 all merged.
+  Human directive: CONTINUE WAVE-8 AUTONOMOUSLY.
+  Demo default: WEBM + .tape ONLY (NO GIF).
+  Branch protection: 11 required CI contexts enforced (bare check names).
 
   READ FIRST (in order):
   1. /Users/jmagady/Dev/monocle/NEXT-SESSION-RESUME.md  <- concise entry point
   2. /Users/jmagady/Dev/monocle/CLAUDE.md               <- production-grade + routing
   3. This STATE.md (task register table below)          <- task register + history pointers
 
-  CORPUS FACTS (post-S-035-merge, checkpoint D-336):
-  Stories: 51 total / 311 pts (36 done; 14 draft v1A Waves 8-9; 1 blocked)
+  CORPUS FACTS (post-S-038-merge, checkpoint D-338):
+  Stories: 51 total / 311 pts (37 done; 13 draft v1A Waves 8-9; 1 blocked)
   New v1A: S-033..S-048 (16 stories); EPIC-08 Session Manager; EPIC-09 Embedded PTY
   Waves: 8-9; 25 v1A BCs; 5 holdouts HS-EXP-011..015 anchored
 
   KEY VERSION PINS (canonical source: .factory/specs/version-pin-registry.yaml):
-  STORY-INDEX v5.49 | sprint-state v1.50 | wave-schedule v2.1
-  dependency-graph-expansion v2.7 | BC-INDEX v1.43.8 | EVAL-INDEX v1.23
+  STORY-INDEX v5.50 | sprint-state v1.51 | wave-schedule v2.1
+  dependency-graph-expansion v2.9 | BC-INDEX v1.43.8 | EVAL-INDEX v1.25
   ARCH-INDEX v1.0.30 | SS-ipc v1.24.0 | SS-session-manager v2.15.0
   SS-embedded-pty v1.7.0 | SS-engine-module-v2-delta v1.6.0
-  SS-daemon-wiring-v2-delta v1.11.4 | SS-deps-pin-manifest-v2-delta v1.0.2
+  SS-daemon-wiring-v2-delta v1.12.0 | SS-deps-pin-manifest-v2-delta v1.0.2
   prd v1.28.3 | product-brief v2.0.4 | domain-monocle-vision-synthesis v2.2.3
-  BC-2.08.007 v1.5.6 | BC-2.08.008 v1.3.7 | S-035 v1.2.3
+  BC-2.08.006 v1.5.0 | BC-2.04.010 v1.4.0 | BC-2.08.007 v1.5.6 | S-038 v1.5
 
-  NEXT-ACTION (Wave-8 Tier 2 — S-035 done, continue Tier-2):
-  S-038 (hook injection, 3 pts, needs S-033 — ready).
-  S-036 (rediscovery, 8 pts, needs S-033+S-034+S-035 — NOW UNBLOCKED).
+  NEXT-ACTION (Wave-8 Tier-2 COMPLETE — continue Wave-8):
+  S-036 (rediscovery, 8 pts, UNBLOCKED — needs S-033+S-034+S-035, all done).
   PREREQUISITE: SEC-006-CCR-URL-VALIDATION MUST be fixed before S-045 (CWE-20/93).
+  S-039/S-040 own PTY output pipeline (Wave 9, not yet dispatched).
   S-046 waits on S-032; S-047 needs S-033+S-034+S-035+S-046;
   S-048 needs S-022+S-033+S-047. F-W8INT-001/002/003 parked for Wave-8 gate;
   do NOT re-raise as in-scope findings during per-story delivery.
@@ -74,6 +74,9 @@ next_session_resume_protocol: |
   5. Unique /tmp paths per story dispatch
   6. Architect = spec only; all code to implementer-in-worktree
   7. pr-manager must complete all 9 steps
+  CRITICAL: after every factory-artifacts commit, verify `git -C .factory log
+  origin/factory-artifacts..HEAD` is empty — push immediately if not
+  (PROCESS-GAP-FACTORY-ARTIFACTS-NOT-PUSHED, codified D-337).
 
   RATIFIED DECISIONS (do NOT re-litigate):
   - D-238: session-host-owns-PTY; daemon restart SURVIVES (CASE 2); NO tmux default
@@ -86,18 +89,21 @@ next_session_resume_protocol: |
   - D-334: S-034 MERGED PR #41 @ 4dfe0db. Kill path complete. Rulings H/I/J/K.
   - D-335: S-037 MERGED PR #42 @ a7e4081. GC task + rename_session. SEC-001/002 fixed in-scope.
   - D-336: S-035 MERGED PR #43 @ 270b7d4. attach/detach. Ruling L. 9-pass convergence. S-036 UNBLOCKED.
+  - D-337: PROCESS-GAP-FACTORY-ARTIFACTS-NOT-PUSHED codified (c8ceee1). Always push factory-artifacts.
+  - D-338: S-038 MERGED PR #44 @ 8d649ea + PR #45 @ 7f005af. WAVE-8 TIER-2 COMPLETE.
+           Single-writer mandate (BC-2.08.006 v1.5.0). SEC-001/002 fixed in-scope (daeb4f2).
   - Spawn-path Model A: SpawnOptions on wire; SpawnRecipe daemon-internal
   - IPC: 12-code wire taxonomy; 9-variant SessionError; schema_version 3
   - PTY (ADR-0011): portable-pty 0.9.0 + vt100 0.16.2 + tui-term =0.3.4; MSRV 1.88
   - SessionState: 5 variants (Launching/Running/Detached/Terminating/Terminated)
-  - Full history: cycles/cycle-001/decisions-archive.md (D-001..D-336)
+  - Full history: cycles/cycle-001/decisions-archive.md (D-001..D-338)
 
   KNOWN-FLAKY TESTS (do NOT flag as new findings):
   cli_daemon_stop, factory_self_referential, test_BC_2_07_006,
   wit-bindgen unmatched-skip, PATH isolation flake.
 
   factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'`
-  develop HEAD: 270b7d4 (S-035 merged PR #43; 11 CI checks passed; clean merge)
+  develop HEAD: 7f005af (S-038 chore PR #45; 11 CI checks passed; clean merge)
   ============================================================================
 ---
 
@@ -111,7 +117,7 @@ next_session_resume_protocol: |
 | 0.5-0.9 Brief + market intel | DONE 2026-05-14 | brief v2.0.4; validate-brief VALID |
 | 1 Spec Crystallization | DONE D-170 APPROVED | 57-pass Phase-1d adversarial. 113 Phase-1 BCs (138 total incl Phase-2 v1A). <!-- version-pin-historical: BC-INDEX v1.43.7 at Phase-1d close --> |
 | 2 Story Decomp v1A | PASSED/APPROVED D-325 | 26 passes (3/3 clean). 51 stories/311 pts. Gate APPROVED Joshua Magady 2026-06-16. |
-| 3 TDD v1A Waves 8-9 | IN PROGRESS — Wave 8 Tier 2 | S-033 MERGED PR #40 @ c7e10f2 (D-332). S-034 MERGED PR #41 @ 4dfe0db (D-334). S-037 MERGED PR #42 @ a7e4081 (D-335). S-035 MERGED PR #43 @ 270b7d4 (D-336). Wave 8: 4/12 done (27/74 pts). 36/51 stories done (219/311 pts). S-036 UNBLOCKED. Next: S-038/S-036. |
+| 3 TDD v1A Waves 8-9 | IN PROGRESS — Wave 8 | S-033 MERGED PR #40 @ c7e10f2 (D-332). S-034 MERGED PR #41 @ 4dfe0db (D-334). S-037 MERGED PR #42 @ a7e4081 (D-335). S-035 MERGED PR #43 @ 270b7d4 (D-336). S-038 MERGED PR #44 @ 8d649ea + PR #45 @ 7f005af (D-338). Wave 8: 5/12 done (30/74 pts). 37/51 stories done (222/311 pts). TIER-2 COMPLETE. Next: S-036 (UNBLOCKED). |
 | 3 TDD Waves 1-7 (pre-pivot) | COMPLETE D-232 | 32/33 done (192/195 pts). 1514 tests. develop @ 6811103 |
 | 4-7 | PENDING after Phase-3 v1A | Old observe-only scope superseded by v1A control-center |
 
@@ -217,7 +223,10 @@ None. All durable task register items are non-blocking.
 | OBS-1-BC2.09.002-TRACE-LINE-NUMBERS | deferred-housekeeping | architect | n | BC-2.09.002 Trace cites stale SS-embedded-pty line numbers |
 | DEDUP-IPC-HANDLER-SKELETON | pending-orch-action | architect | n | Dedup SS-session-manager IPC vs SS-daemon-wiring-v2-delta §3 |
 | OBS-HS-PROSE-PHASE4-PREP | deferred-phase4-prep | story-writer | n | HS-EXP-014/013 prose imprecisions for Phase-4 holdout-eval |
-| BURST-GAP-001-S038-HOOK-SCHEMA | pending | story-writer | n | S-038 hook schema gap |
+| F-S038-EXIT72-ENFORCEMENT | pending | daemon-mode/phase-5 story | n | BC-2.08.006 Inv5/EC-183 mandate daemon exit 72 on hooks-settings write failure; DaemonExit taxonomy has no code-72 variant; TUI auto-start logs+continues. PRE-EXISTING/system-level; deferred to phase-5 or dedicated story. |
+| F-S038-INV6-PROD-CANON-TEST | pending | test-writer/follow-up | n | No integration test asserts BC-2.08.006 Invariant 6 production canonicalization (lifecycle writes to non-canonical runtime_dir.join while SessionManager stores canonical). Symlinked-runtime_dir integration test missing. Non-blocking. |
+| F-S038-TRACING-TEST-DOC-DEVERSION | pending | implementer | n | [LOW] doc-comment at session_manager/mod.rs ~line 11621 embeds tracing-test version literal as prose. De-version in future pass. |
+| BURST-GAP-001-S038-HOOK-SCHEMA | CLOSED D-338 | story-writer | n | S-038 hook schema gap — RESOLVED in F-S038-AC004-SCHEMA burst (AC-004 schema array-of-hook-objects fix, S-038 v1.5) |
 | BURST-GAP-002-S033-SESSIONNOTREADY-VARIANT | pending | story-writer | n | S-033 SessionNotReady variant gap |
 | BURST-GAP-003-S043-TUITERM-SCROLLBACK-API | pending | story-writer | n | S-043 tui-term scrollback API gap |
 | BURST-GAP-004-S043-S042-CROSSSTORY-RESET | pending | story-writer | n | S-043/S-042 cross-story reset gap |
@@ -237,7 +246,7 @@ None. All durable task register items are non-blocking.
 | SEC-002-RENAME-UUID-GUARD | RESOLVED D-335 | implementer/security | n | CWE-706 UUID guard in rename_session — FIXED IN-SCOPE S-037 commit b2d65db. security-reviewer re-verified PASS; adversary re-verified CLEAN. |
 | F-S037-OBS-SPAWN-DISPLAYNAME-NOCAP | pending | architect/implementer | n | [LOW] spawn_session default display_name (harness_id — basename) not length-capped while rename_session caps at 256 bytes; latent asymmetry, unreachable in practice (NAME_MAX ~255), pre-existing, outside BC-2.08.005 scope. Non-blocking. |
 | F-S037-PRREV-OBS | pending | implementer | n | [LOW] pr-reviewer non-blocking: (a) consider filtering Unicode Cf-class chars in new_name; (b) spawn_blocking for GC filesystem ops future improvement; (c) defensive guard suggestion on EC-163 path. Bundle for future hardening pass. |
-| DEMO-BINARY-ARTIFACTS-DEVELOP | pending | devops/human-decision | n | ~3.2 MB WEBM added by S-037 (docs/demo-evidence/S-037/) + ~13 MB from S-033 + ~3.1 MB from S-035 (docs/demo-evidence/S-035/). Now 3 stories' WEBMs on develop (S-033/S-034 GIFs+WEBM, S-037 WEBM, S-035 WEBM). Repo-hygiene policy decision still pending. |
+| DEMO-BINARY-ARTIFACTS-DEVELOP | pending | devops/human-decision | n | ~6 MB WEBM added by S-038 (docs/demo-evidence/S-038/) + prior S-033/S-034/S-037/S-035. Now 5 stories' demo binaries on develop. Repo-hygiene policy decision still pending. |
 | F-S035-001 | RESOLVED D-336 | architect/implementer | n | kill-after-attach reader ownership → RESOLVED via SS-session-manager Ruling L (proxy_task fast-path kill confirmation; kill reader=None+proxy=Some delegation). Fixed in-scope. |
 | F-S035-AC005-DAEMON-BROADCAST | pending | story-writer (S-039/S-047) | n | daemon-side ServerToClient::ScrollbackChunk* forwarding (AC-005) deferred — session-host emits empty scrollback dump; screen-content source = S-039 (PTY output pipeline) / S-047 (live parser). TODO(S-039/S-047) tracker in session_manager/mod.rs attach Step 7. Non-blocking. |
 | F-S035-LAUNCHING-CONN-DETACH-MATRIX | pending | architect | n | action×state matrix Detached/Launching cell ambiguity — detach on Launching-WITH-established-host_conn: matrix says Err(SessionNotReady) if host_conn not yet active but impl LaunchingWithConn path transitions to Detached. Official TUI never reaches this path. Architect to clarify matrix wording. Non-blocking. |
@@ -245,7 +254,7 @@ None. All durable task register items are non-blocking.
 
 ## Resolved/Closed Tasks (archived)
 
-43 entries. Full detail at `cycles/cycle-001/task-register-full.yaml`:
+47 entries. Full detail at `cycles/cycle-001/task-register-full.yaml`:
 POL-14-PARENTHETICAL-ANCHOR-PIN, POL-11-MIRROR-TABLE-BLIND-SPOT, TD-MULTI-CLIENT-ATTACH-STORM-001,
 DTU-CLONE-STORY, ADV-W5GATE-HIGH-001, F-DW-HIGH-001, BC-HOOK-034-typo, S-005-main-wiring,
 ADV-W3GATE-MED-002, ADV-W3GATE-MED-004, ADV-W4GATE-MED-002, S-029-PROCESS-GAP-PC-LABEL-DRIFT,
@@ -260,6 +269,10 @@ PROCESS-GAP-BRANCH-PROTECTION-CHECK-NAME-MISMATCH (RESOLVED D-335 2026-06-19).
 SEC-001-RENAME-NEWNAME-VALIDATION (RESOLVED D-335 2026-06-19 — fixed in-scope S-037 b2d65db).
 SEC-002-RENAME-UUID-GUARD (RESOLVED D-335 2026-06-19 — fixed in-scope S-037 b2d65db).
 F-S035-001 (RESOLVED D-336 2026-06-19 — kill-after-attach reader ownership fixed via Ruling L; proxy_task fast-path kill confirmation).
+SEC-001-S038-HOOKS-PERMS (RESOLVED D-338 2026-06-19 — CWE-732 perms-before-persist; fixed in-scope S-038 commit daeb4f2).
+SEC-002-S038-HOOKS-DEBUG (RESOLVED D-338 2026-06-19 — CWE-532 redacting Debug impl + leak test; fixed in-scope S-038 commit daeb4f2).
+F-S038-CONV-001 (RESOLVED D-338 2026-06-19 — BC-2.04.010 PC-3 missing lock.app; fixed via BC-2.04.010→v1.4.0).
+BURST-GAP-001-S038-HOOK-SCHEMA (RESOLVED D-338 2026-06-19 — AC-004 schema fix in S-038 v1.5 burst; CLOSED).
 
 ## Decision History
 
@@ -267,7 +280,8 @@ Full decisions archive: `cycles/cycle-001/decisions-archive.md`
 D-001..D-241: early phases; D-242..D-336: Phase-1d + Phase-2 + Phase-3 (appended 2026-06-16/17/18/19)
 
 Key decisions last session:
-- D-336 (2026-06-19): S-035 MERGED to develop via PR #43 @ 270b7d4. Fourth Wave-8 story (third Tier-2). attach_session/detach_session, BC-2.08.007 v1.5.5 + BC-2.08.008 v1.3.7, 8 pts. 9-pass adversarial convergence (3 consecutive CLEAN: passes 7/8/9). CRIT-001 silent Detached→Terminated on EC-187 fixed; Ruling L (proxy_task kill-reader delegation); 4-disposition action×state matrix. SS-session-manager v2.11.0→v2.14.0. SEC-002 path-traversal class honored. S-036 UNBLOCKED. sprint-state v1.49→v1.50; STORY-INDEX v5.48→v5.49. STATE v7.99→v8.00.
+- D-338 (2026-06-19): S-038 MERGED to develop via PR #44 @ 8d649ea (squash) + chore PR #45 @ 7f005af. Fifth Wave-8 story; WAVE-8 TIER-2 COMPLETE. 6-pass adversarial convergence (3 consecutive CLEAN: passes 4/5/6). Single-writer mandate: lifecycle step 9 is sole canonical write_hooks_settings_json; lifecycle::write_hooks_settings + HooksSettings/HooksMap/HookEntry/HookCommand removed. lock.app='monocle' mandatory. BC-2.08.006→v1.5.0; BC-2.04.010→v1.4.0 (PC-3 lock.app). SS-session-manager→v2.15.0; BC-2.08.007→v1.5.6 (arch-source cascade). SEC-001 (CWE-732 perms-before-persist) + SEC-002 (CWE-532 redacting Debug) fixed in-scope (daeb4f2). security-reviewer re-verify PASS; adversary re-verify CLEAN. 10 BC-2.08.006 tests. 11/11 CI. develop HEAD: 7f005af. sprint-state v1.50→v1.51; STORY-INDEX v5.49→v5.50. STATE v8.01→v8.02.
+- D-336 (2026-06-19): S-035 MERGED to develop via PR #43 @ 270b7d4. Fourth Wave-8 story. 9-pass adversarial (3 CLEAN). attach/detach. CRIT-001 fixed. Ruling L. S-036 UNBLOCKED. Sprint-state v1.50; STORY-INDEX v5.49. STATE v8.00→v8.01.
 - D-335 (2026-06-19): S-037 MERGED to develop via PR #42 @ a7e4081. Third Wave-8 story (second Tier-2). GC task + rename_session. 7-pass adversarial convergence (3 consecutive CLEAN: passes 5/6/7). SEC-001 (CWE-20) + SEC-002 (CWE-706) fixed in-scope (b2d65db). PROCESS-GAP-BRANCH-PROTECTION-CHECK-NAME-MISMATCH RESOLVED. Wave 8: 3/12 done (19/74 pts). sprint-state v1.48→v1.49; STORY-INDEX v5.47→v5.48. STATE v7.98→v7.99.
 - D-334 (2026-06-18): S-034 MERGED to develop via PR #41 @ 4dfe0db. Second Wave-8 story (first Tier-2). Kill path: 18-pass adversarial convergence (3 CLEAN). SS-session-manager v2.11.0, BC-2.08.003 v1.5.0, BC-2.08.008 v1.3.5. Unblocks S-037. Wave 8: 2/12 done (16/74 pts). sprint-state v1.47→v1.48; STORY-INDEX v5.46→v5.47. STATE v7.97→v7.98.
 - D-333 (2026-06-17): Zero-context resume checkpoint. develop @ 314326e. S-034 worktree ready. Wave-8 Tier-2 autonomous delivery authorized. Demo: WEBM+.tape-NO-GIF. 11 CI branch-protection contexts enforced. STATE v7.95→v7.96.

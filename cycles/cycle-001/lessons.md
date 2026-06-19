@@ -3,9 +3,9 @@ document_type: lessons-learned
 level: ops
 project: monocle
 cycle: cycle-001
-version: "1.5"
+version: "1.6"
 producer: state-manager
-timestamp: 2026-06-19T00:00:00Z
+timestamp: 2026-06-19T01:00:00Z
 input-hash: "[live-state]"
 ---
 
@@ -2442,3 +2442,20 @@ CI checks out origin/factory-artifacts at PR-open time for POL-11 (monocle-versi
 4. This is distinct from L-S027-004 (registry atomicity within a single commit). That lesson covers spec-file + registry in one atomic commit. This lesson covers the additional push-to-origin step that must follow each atomic commit.
 
 **Impact of this instance:** PR #44 passed CI spuriously-consistent (no harm to develop); PR #45 required to fix the stale comment. Resolved by pushing 4 commits to origin/factory-artifacts (push result: f8f0b38..485cfbb). POL-11 now flags exactly 1 expected stale literal (the PR #45 target comment) and nothing unexpected.
+
+---
+
+### L-S038-SINGLE-SOURCE-WRITER [codified]: Single canonical writer before adding a new one
+
+**Date:** 2026-06-19
+**Severity:** codified (HIGH — security gap + spec drift class)
+**Origin:** D-338 S-038. S-038 initially DUPLICATED an existing production writer (lifecycle::write_hooks_settings, live in daemon startup) with a divergent schema — the new session_manager writer had lock.app but the live lifecycle writer LACKED lock.app. This produced:
+- A CRITICAL security gap (BC-2.08.006 Inv2): in production the lifecycle writer ran (no lock.app); the SessionManager writer only ran in unit tests.
+- Green tests masking a dead-in-prod writer: the test suite invoked the new canonical writer directly, never exercising the live lifecycle path.
+- Adversary pass-1 (BLOCKER F-S038-PASS1-BLOCKER-001): caught the dual-writer pattern as "regression-impossible-by-construction" failure.
+- Architect-adjudicated resolution (BC-2.08.006→v1.5.0): SINGLE-WRITER mandate — lifecycle step 9 calls the sole canonical session_manager::write_hooks_settings_json. lifecycle::write_hooks_settings + HooksSettings/HooksMap/HookEntry/HookCommand REMOVED.
+
+**Lesson:**
+Before adding a new writer/serializer, GREP for an existing one. If one exists (even in a different module), reconcile to a single canonical source rather than adding a parallel writer with a divergent schema. The adversary/implementer must check for pre-existing siblings under the Partial-Fix/duplication axis. New canonical writers should be wired into ALL live production code paths (not just tests) before the story closes.
+
+**Codify indicator:** This pattern should be added to SS-conventions-anti-patterns.md §Anti-Patterns as "Parallel Writer Syndrome" — verify pre-existing writer before implementing a new one.

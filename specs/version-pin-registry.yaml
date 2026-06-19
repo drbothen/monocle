@@ -210,8 +210,8 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.49"
-  last_bump_commit: "[D-336 — S-035 status draft→done; §Trace v5.49 added]"
+  current_version: "5.50"
+  last_bump_commit: "[D-338 — S-038 status draft→done; §Trace v5.50 added; Wave-8 Tier-2 COMPLETE]"
   last_bump_date: "2026-06-19"
 
 VP-INDEX:
@@ -234,8 +234,8 @@ EVAL-INDEX:
 
 sprint-state:
   path: stories/sprint-state.yaml
-  current_version: "1.50"
-  last_bump_commit: "[D-336 — S-035 status draft→done; done 35→36; draft 15→14; points_complete 211→219]"
+  current_version: "1.51"
+  last_bump_commit: "[D-338 — S-038 status draft→done; done 36→37; draft 14→13; points_complete 219→222; Wave-8 Tier-2 COMPLETE]"
   last_bump_date: "2026-06-19"
 
 nfr-catalog:
@@ -955,8 +955,8 @@ wave-schedule:
 
 dependency-graph-expansion:
   path: stories/dependency-graph-expansion.md
-  current_version: "2.8"
-  last_bump_commit: "[D-336 — STORY-INDEX input pin cascade 5.48→5.49]"
+  current_version: "2.9"
+  last_bump_commit: "[D-338 — STORY-INDEX input pin cascade 5.49→5.50]"
   last_bump_date: "2026-06-19"
 
 S-033-session-manager-spawn:
@@ -1053,6 +1053,12 @@ S-037-session-manager-gc:
   path: stories/S-037-session-manager-gc.md
   current_version: "1.0.3"
   last_bump_commit: "[F-S038-PASS1-001 — BC-2.08.005 BC status comment pin v1.0.7→v1.0.8]" # version-pin-historical
+  last_bump_date: "2026-06-19"
+
+S-038-session-manager-hook-injection:
+  path: stories/S-038-session-manager-hook-injection.md
+  current_version: "1.5"
+  last_bump_commit: "[D-338 state checkpoint — S-038 delivered; no story file bump in this burst (already at v1.5 from F-S038-AC004-SCHEMA burst)]"
   last_bump_date: "2026-06-19"
 
 S-039-pty-output-pipeline:

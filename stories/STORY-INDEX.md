@@ -1,10 +1,10 @@
 ---
 document_type: story-index
 level: L4
-version: "5.49"
+version: "5.50"
 status: active
 producer: vsdd-factory:state-manager
-timestamp: 2026-06-19T00:00:00Z
+timestamp: 2026-06-19T01:00:00Z
 phase: 2
 inputs:
   - .factory/specs/prd.md
@@ -88,7 +88,7 @@ traces_to: .factory/specs/prd.md
 | S-035 | SessionManager::attach_session and detach_session — Chunked Scrollback, SO_PEERCRED, Session-Host Stays Alive | EPIC-08 | 8 | 8 | done | S-036, S-039, S-044, S-047 |
 | S-036 | SessionManager::rediscover_sessions — setsid Persistence; All States Handled Within 5s; UDS Bind Blocked | EPIC-08 | 8 | 8 | draft | — |
 | S-037 | SessionManager GC Task — Terminated Sessions Removed After 10s Grace Period | EPIC-08 | 3 | 8 | done | — |
-| S-038 | SessionManager Hook Auto-Injection — hooks-settings.json Writer + SpawnOptions.hooks_settings_path Population | EPIC-08 | 3 | 8 | draft | — |
+| S-038 | SessionManager Hook Auto-Injection — hooks-settings.json Writer + SpawnOptions.hooks_settings_path Population | EPIC-08 | 3 | 8 | done | — |
 | S-039 | PTY Output Pipeline — vt100::Parser, PseudoTerminal Render, PtyOutput IPC Handler, Auto-Attach on First Entry | EPIC-09 | 8 | 9 | draft | S-040, S-042, S-043 |
 | S-040 | Full-Fidelity Keyboard Forwarding — key_event_to_pty_bytes, Kitty Protocol CSI u, and Bracketed Paste | EPIC-09 | 8 | 9 | draft | S-041, S-044 |
 | S-041 | Mouse Forwarding — mouse_event_to_pty_bytes, SGR 1006 Scoped Entry/Exit, Out-of-Pane Clip | EPIC-09 | 5 | 9 | draft | S-044 |
@@ -498,6 +498,19 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.50
+
+**S-038 MERGED — Wave-8 fifth delivery, Tier-2 COMPLETE (D-338, 2026-06-19):**
+
+- S-038 Story Registry row: `draft` → `done`. PR #44 @ 8d649ea (squash-merge 2026-06-19).
+- 6-pass adversarial convergence (3 consecutive CLEAN: passes 4/5/6). Security PASS. 11/11 CI checks green.
+- Single-writer mandate: lifecycle step 9 calls write_hooks_settings_json (sole canonical writer). lock.app='monocle' mandatory.
+- BC-2.08.006→v1.5.0; BC-2.04.010→v1.4.0 (PC-3 lock.app added). SS-session-manager→v2.15.0; BC-2.08.007→v1.5.6 (arch-source cascade).
+- SEC-001 (CWE-732) + SEC-002 (CWE-532) fixed in-scope (daeb4f2). Follow-up chore PR #45 @ 7f005af. develop HEAD: 7f005af.
+- Wave 8: 5/12 stories done (30/74 pts). WAVE-8 TIER-2 COMPLETE. 37/51 stories done (222/311 pts).
+- SE-16d monotonicity: v5.50 timestamp 2026-06-19 >= v5.49 timestamp 2026-06-19. PASS.
+- SE-22 v2 sibling-sweep: sprint-state.yaml v1.50→v1.51 (done 36→37, draft 14→13, points_complete 219→222); STATE.md v8.01→v8.02.
 
 ## §Trace v5.49
 

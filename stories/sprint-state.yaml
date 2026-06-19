@@ -1,9 +1,9 @@
 ---
 document_type: sprint-state
-version: "1.50"
+version: "1.51"
 status: active
 producer: vsdd-factory:state-manager
-timestamp: 2026-06-19T00:00:00Z
+timestamp: 2026-06-19T01:00:00Z
 phase: 2
 target_implementation_phase: 3
 traces_to: STORY-INDEX.md
@@ -521,12 +521,12 @@ stories:
     epic: EPIC-08
     wave: 8
     points: 3
-    status: draft
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 8. Depends on S-033. BC: BC-2.08.006."
+    completed_at: "2026-06-19"
+    pr_url: "https://github.com/jmagady/monocle/pull/44"
+    notes: "Wave 8. PR #44 @ 8d649ea (squash-merge 2026-06-19). 6-pass adversarial convergence (3 consecutive CLEAN: passes 4/5/6). Single-writer mandate: lifecycle step 9 calls session_manager::write_hooks_settings_json (sole canonical writer); lifecycle::write_hooks_settings + HooksSettings/HooksMap/HookEntry/HookCommand removed. lock.app='monocle' mandatory via BC-2.08.006→v1.5.0. Cross-BC reconciliation: BC-2.04.010→v1.4.0 (mandatory lock.app in PC-3). SS-session-manager→v2.15.0; BC-2.08.007→v1.5.6 (arch-source cascade). SEC-001 (CWE-732) + SEC-002 (CWE-532) found in security review and FIXED IN-SCOPE (daeb4f2). 10 BC-2.08.006 tests green. Follow-up chore PR #45 @ 7f005af (BC-2.08.007 comment pin v1.5.5→v1.5.6). develop HEAD now 7f005af. D-338."
 
   - id: S-039
     title: "PTY Output Pipeline — vt100::Parser, PseudoTerminal Render, PtyOutput IPC Handler, Auto-Attach on First Entry"
@@ -653,12 +653,12 @@ summary:
   not_started: 0
   in_progress: 0
   review: 0
-  done: 36
+  done: 37
   ready: 0
   blocked: 1
-  draft: 14
+  draft: 13
   total_points: 311
-  points_complete: 219
+  points_complete: 222
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
@@ -688,6 +688,14 @@ summary:
   # total_stories note: 51 = 33 Phase-3 stories (including S-PHASE-3-PREP and S-DTU-001) + 2 Wave-8
   #   pre-existing (S-032, S-DAEMON-WIRE-FIX-001) + 16 new v1A (S-033..S-048). Blocked count (1) is
   #   S-PHASE-3-PREP (blocked on vsdd-factory spec-kit-mcp rc.19+).
+  # v1.51 updates (2026-06-19):
+  # - D-338: S-038 MERGED to develop via PR #44 @ 8d649ea (squash-merge 2026-06-19).
+  #   S-038 status: draft → done. completed_at: "2026-06-19". pr_url set.
+  #   done: 36 → 37; draft: 14 → 13; points_complete: 219 → 222.
+  #   Single-writer mandate. lock.app=monocle. BC-2.08.006→v1.5.0; BC-2.04.010→v1.4.0.
+  #   SS-session-manager→v2.15.0; BC-2.08.007→v1.5.6. SEC-001/002 fixed in-scope daeb4f2.
+  #   Follow-up chore PR #45 @ 7f005af. develop HEAD: 7f005af.
+  #   Wave 8: 5/12 done (30/74 pts). WAVE-8 TIER-2 COMPLETE (S-033+S-034+S-037+S-035+S-038).
   # v1.50 updates (2026-06-19):
   # - D-336: S-035 MERGED to develop via PR #43 @ 270b7d4 (squash-merge 2026-06-19).
   #   S-035 status: draft → done. completed_at: "2026-06-19". pr_url set.
