@@ -639,6 +639,16 @@ pub struct SessionManager {
     /// exist in production builds so there is no runtime code path that could reach it.
     #[cfg(any(test, feature = "test-utils"))]
     pid_sigterm_fn: Option<Arc<dyn Fn(nix::unistd::Pid) -> nix::Result<()> + Send + Sync>>,
+    /// Failure-injection seam for the watchdog SIGKILL call (F-S035-PASS2-IMP-001).
+    ///
+    /// Mirrors `pid_sigterm_fn` above. Enables tests to assert that the 12s watchdog
+    /// SIGKILL was NOT invoked on the fast-path kill (proxy_task delivers Terminated
+    /// before the deadline fires), without requiring a real SIGKILL to any process.
+    ///
+    /// Security gate: gated `cfg(any(test, feature = "test-utils"))`. The field does NOT
+    /// exist in production builds.
+    #[cfg(any(test, feature = "test-utils"))]
+    pid_sigkill_fn: Option<Arc<dyn Fn(nix::unistd::Pid) -> nix::Result<()> + Send + Sync>>,
 }
 
 impl std::fmt::Debug for SessionManager {
@@ -670,6 +680,8 @@ impl SessionManager {
             peer_cred_verifier: Arc::new(RealPeerCredVerifier),
             #[cfg(any(test, feature = "test-utils"))]
             pid_sigterm_fn: None,
+            #[cfg(any(test, feature = "test-utils"))]
+            pid_sigkill_fn: None,
         }
     }
 
@@ -730,6 +742,23 @@ impl SessionManager {
         f: Arc<dyn Fn(nix::unistd::Pid) -> nix::Result<()> + Send + Sync>,
     ) -> &mut Self {
         self.pid_sigterm_fn = Some(f);
+        self
+    }
+
+    /// Inject a synthetic SIGKILL function for the 12s watchdog path (F-S035-PASS2-IMP-001).
+    ///
+    /// Mirrors `with_pid_sigterm_fn`. Enables tests to capture whether the watchdog
+    /// SIGKILL was (or was NOT) invoked — e.g., to assert the fast-path kill test
+    /// never reaches the watchdog deadline.
+    ///
+    /// Security gate: gated `cfg(any(test, feature = "test-utils"))` — does NOT exist
+    /// in production builds.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn with_pid_sigkill_fn(
+        &mut self,
+        f: Arc<dyn Fn(nix::unistd::Pid) -> nix::Result<()> + Send + Sync>,
+    ) -> &mut Self {
+        self.pid_sigkill_fn = Some(f);
         self
     }
 
@@ -1608,6 +1637,8 @@ impl SessionManager {
                                 sidecar_path,
                                 socket_path,
                                 watchdog_deadline,
+                                #[cfg(any(test, feature = "test-utils"))]
+                                self.pid_sigkill_fn.clone(),
                             );
                             return Ok(());
                         }
@@ -1683,6 +1714,8 @@ impl SessionManager {
                     sidecar_path,
                     socket_path,
                     watchdog_deadline,
+                    #[cfg(any(test, feature = "test-utils"))]
+                    self.pid_sigkill_fn.clone(),
                 );
             }
             KillPath::PidFallback { pid, socket_path } => {
@@ -1739,6 +1772,8 @@ impl SessionManager {
                     sidecar_path,
                     socket_path,
                     watchdog_deadline,
+                    #[cfg(any(test, feature = "test-utils"))]
+                    self.pid_sigkill_fn.clone(),
                 );
             }
             KillPath::FreshConnect { pid, socket_path } => {
@@ -1837,6 +1872,8 @@ impl SessionManager {
                             sidecar_path,
                             socket_path,
                             watchdog_deadline,
+                            #[cfg(any(test, feature = "test-utils"))]
+                            self.pid_sigkill_fn.clone(),
                         );
                     }
                 }
@@ -2153,6 +2190,10 @@ impl SessionManager {
     /// raced — only the first one to acquire the lock while the session is still
     /// Terminating will fire SIGKILL; the second finds Terminated and returns without
     /// action.
+    // F-S035-PASS2-IMP-001: the cfg-gated pid_sigkill_fn parameter pushes argument count to 8
+    // in test/test-utils builds. The allow is justified: the extra arg is test-only and removing
+    // it would require a separate builder struct just for this internal helper.
+    #[allow(clippy::too_many_arguments)]
     fn spawn_kill_watchdog(
         session_id: String,
         session_host_pid: u32,
@@ -2164,6 +2205,11 @@ impl SessionManager {
         // (MED-005: single originating instant, not independent now+12s inside the watchdog task).
         // Using sleep_until with this pre-computed Instant ensures paused-clock tests work correctly.
         deadline: tokio::time::Instant,
+        // F-S035-PASS2-IMP-001: SIGKILL injection seam for tests. None → real nix_kill(SIGKILL).
+        // Gated cfg(any(test, feature = "test-utils")); the field does not exist in production.
+        #[cfg(any(test, feature = "test-utils"))] pid_sigkill_fn: Option<
+            Arc<dyn Fn(nix::unistd::Pid) -> nix::Result<()> + Send + Sync>,
+        >,
     ) -> tokio::task::JoinHandle<()> {
         tokio::spawn(async move {
             // Wait until the pre-computed 12s deadline (10s SIGTERM window + 2s buffer per BC-2.08.003 PC-5).
@@ -2212,7 +2258,17 @@ impl SessionManager {
                         );
 
                         let nix_pid = Pid::from_raw(session_host_pid as i32);
-                        match nix_kill(nix_pid, Signal::SIGKILL) {
+                        // F-S035-PASS2-IMP-001: route through injection seam when present
+                        // (test-only; in production the seam does not exist → real nix_kill).
+                        #[cfg(any(test, feature = "test-utils"))]
+                        let sigkill_result = if let Some(ref f) = pid_sigkill_fn {
+                            f(nix_pid)
+                        } else {
+                            nix_kill(nix_pid, Signal::SIGKILL)
+                        };
+                        #[cfg(not(any(test, feature = "test-utils")))]
+                        let sigkill_result = nix_kill(nix_pid, Signal::SIGKILL);
+                        match sigkill_result {
                             Ok(()) => {
                                 tracing::debug!(
                                     session_id = %session_id,
@@ -3079,8 +3135,7 @@ impl SessionManager {
                     };
 
                     // The sidecar_path for EC-187, PeerCredFailed, and proxy_task.
-                    let sidecar_path =
-                        runtime_dir.join(format!("session-{}.json", session_id));
+                    let sidecar_path = runtime_dir.join(format!("session-{}.json", session_id));
 
                     // Handle connect failure (EC-187): liveness probe → transition to Terminated
                     // via transition_to_terminated_standalone so StateChanged{Terminated} is
@@ -8234,6 +8289,7 @@ mod tests {
             sidecar_path.clone(),
             tmp.path().join(format!("session-{}.sock", session_id)),
             watchdog_deadline,
+            None, // pid_sigkill_fn: use real nix_kill in this Ruling J test
         );
 
         // Verify the child is alive before the watchdog fires.
@@ -8373,6 +8429,7 @@ mod tests {
             sidecar_path.clone(),
             tmp.path().join(format!("session-{}.sock", session_id)),
             watchdog_deadline,
+            None, // pid_sigkill_fn: use real nix_kill in this Ruling J no-child test
         );
 
         // Advance virtual time to fire the watchdog (>= 12s).

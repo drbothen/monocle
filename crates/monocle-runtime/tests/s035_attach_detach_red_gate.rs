@@ -1179,21 +1179,19 @@ async fn test_BC_2_08_008_state_changed_ordering_on_attach_detach() {
 // ---------------------------------------------------------------------------
 // Test 8: test_BC_2_08_007_attach_running_session_dead
 //
-// Verifies: BC-2.08.007 EC-187, AC-013 — session-host died between detach and
-// re-attach: UDS connect fails → liveness probe dead → state → Terminated →
-// Err(SessionHostDead) → wire "attach_failed".
-//
-// FAILS NOW: attach_session() is todo!() — panics.
+// Verifies: BC-2.08.007 EC-187, AC-013 / BC-2.08.008 Invariant 1 / AC-015
+// STRENGTHENED (F-S035-PASS2-CRIT-001): also asserts SessionStateChanged{Terminated}
+// is broadcast AND precedes SessionListUpdate (not just final state == Terminated + Err).
 // ---------------------------------------------------------------------------
 
-/// BC-2.08.007 EC-187, AC-013: `attach_session()` on a Detached session whose
-/// session-host died (UDS connect fails) MUST:
-/// 1. Transition `SessionEntry.state` to `Terminated`.
-/// 2. Return `Err(SessionError::SessionHostDead { session_id })` → wire `"attach_failed"`.
+/// BC-2.08.007 EC-187, AC-013 / BC-2.08.008 Invariant 1 / AC-015:
+/// `attach_session()` on a Detached session whose session-host died (UDS connect fails) MUST:
+/// 1. Return `Err(SessionError::SessionHostDead { session_id })`.
+/// 2. Transition `SessionEntry.state` to `Terminated`.
+/// 3. Broadcast `SessionStateChanged{Terminated}` BEFORE `SessionListUpdate`
+///    (BC-2.08.008 Inv 1 — no silent transitions; F-S035-PASS2-CRIT-001).
 ///
 /// The socket is intentionally NOT bound — connect will fail immediately.
-///
-/// FAILS NOW: `attach_session()` is `todo!()` → panics.
 #[tokio::test]
 async fn test_BC_2_08_007_attach_running_session_dead() {
     // BC-2.08.007 EC-187 canonical test vector:
@@ -1205,16 +1203,13 @@ async fn test_BC_2_08_007_attach_running_session_dead() {
     let socket_path = tmp.path().join(format!("session-{}.sock", &session_id));
 
     // NOTE: socket_path is intentionally NOT bound — UDS connect will fail.
-    let (mut manager, _subs, _rx) = make_manager(tmp.path(), 55_108);
+    let (mut manager, _subs, mut rx) = make_manager(tmp.path(), 55_108);
 
     // Insert session in Detached state with a non-existent socket (dead session-host).
     manager
         .insert_detached_session_for_test(&session_id, 55_108, socket_path.clone())
         .await;
 
-    // FAILS: attach_session() is todo!() → panics here.
-    // When implemented: UDS connect fails (socket doesn't exist) → dead session-host
-    // path → SessionEntry.state → Terminated → Err(SessionHostDead).
     let result = manager.attach_session(&session_id).await;
     assert!(
         matches!(
@@ -1242,6 +1237,47 @@ async fn test_BC_2_08_007_attach_running_session_dead() {
         snap.state
     );
 
+    // F-S035-PASS2-CRIT-001 / BC-2.08.008 Invariant 1: the transition MUST NOT be silent.
+    // Drain broker rx and assert SessionStateChanged{Terminated} was broadcast AND precedes
+    // SessionListUpdate (both must appear; ordering must match).
+    let msgs = drain_messages(&mut rx, 500).await;
+
+    let terminated_idx = msgs.iter().position(|m| {
+        matches!(
+            m,
+            monocle_ipc::types::ServerToClient::SessionStateChanged {
+                new_state: monocle_ipc::types::SessionState::Terminated,
+                ..
+            }
+        )
+    });
+    let list_update_idx = msgs.iter().position(|m| {
+        matches!(
+            m,
+            monocle_ipc::types::ServerToClient::SessionListUpdate { .. }
+        )
+    });
+
+    assert!(
+        terminated_idx.is_some(),
+        "EC-187 / BC-2.08.008 Inv 1 / AC-015: SessionStateChanged{{Terminated}} MUST be \
+         broadcast on EC-187 path (no silent transitions). Got messages: {:?}",
+        msgs.iter().map(std::mem::discriminant).collect::<Vec<_>>()
+    );
+    assert!(
+        list_update_idx.is_some(),
+        "EC-187 / BC-2.08.008 Inv 1: SessionListUpdate MUST be broadcast on EC-187 path. \
+         Got messages: {:?}",
+        msgs.iter().map(std::mem::discriminant).collect::<Vec<_>>()
+    );
+    assert!(
+        terminated_idx.unwrap() < list_update_idx.unwrap(),
+        "BC-2.08.008 Inv 1 ordering: SessionStateChanged{{Terminated}} (idx {}) MUST precede \
+         SessionListUpdate (idx {})",
+        terminated_idx.unwrap(),
+        list_update_idx.unwrap()
+    );
+
     // Wire code: SessionHostDead on Attach path → "attach_failed".
     let wire_code = monocle_runtime::session_manager::session_error_to_code(
         monocle_runtime::session_manager::IpcOp::Attach,
@@ -1254,6 +1290,223 @@ async fn test_BC_2_08_007_attach_running_session_dead() {
         "EC-187: SessionHostDead on Attach path must map to 'attach_failed' wire code. Got: {:?}",
         wire_code
     );
+}
+
+// ---------------------------------------------------------------------------
+// F-S035-PASS2-LOW-001: PeerCredFailed transitions to Terminated with broadcasts.
+//
+// test_BC_2_08_007_attach_peer_cred_mismatch_transitions_to_terminated:
+//   Detached session + FakePeerCredVerifier{allow:false} → attach
+//   → state==Terminated, SessionStateChanged{Terminated} before SessionListUpdate,
+//   Err(SessionHostDead).
+// ---------------------------------------------------------------------------
+
+/// F-S035-PASS2-LOW-001 / BC-2.08.007 Invariant 5:
+/// When SO_PEERCRED UID check fails (PeerCredFailed — host is not our child /
+/// potential impersonation), attach_session MUST:
+/// 1. Transition to Terminated (StateChanged{Terminated} + SessionListUpdate + GC).
+/// 2. Return Err(SessionHostDead).
+/// This is consistent with kill_session EC-163.
+#[tokio::test]
+async fn test_BC_2_08_007_attach_peer_cred_mismatch_transitions_to_terminated() {
+    let tmp = isolated_runtime_dir();
+    let session_id = "035b0000-0001-4000-a000-000000000001".to_string();
+    let socket_path = tmp.path().join(format!("session-{}.sock", &session_id));
+
+    let (mut manager, _subs, mut rx) =
+        make_manager_with_socket(tmp.path(), 55_180, socket_path.clone());
+    // FakePeerCredVerifier with allow:false — simulates UID mismatch.
+    manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifier { allow: false }));
+
+    // Bind the socket so connect succeeds (PeerCred check happens after connect).
+    let listener = tokio::net::UnixListener::bind(&socket_path).expect("bind mock socket");
+
+    manager
+        .insert_detached_session_for_test(&session_id, 55_180, socket_path.clone())
+        .await;
+
+    // Mock host: just accepts the connection (we don't need the scrollback protocol since
+    // PeerCred check happens immediately after connect, before sending Attach).
+    let mock_host = tokio::spawn(async move {
+        let _ = tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept()).await;
+        // Keep alive briefly so attach_session can complete the PeerCred check.
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    });
+
+    let result = manager.attach_session(&session_id).await;
+
+    assert!(
+        matches!(
+            result,
+            Err(SessionError::SessionHostDead { session_id: ref sid })
+            if sid == &session_id
+        ),
+        "F-S035-PASS2-LOW-001: PeerCredFailed MUST return Err(SessionHostDead). Got: {:?}",
+        result
+    );
+
+    // State must be Terminated (uid mismatch → session untrusted → terminated).
+    let sessions = manager.session_list().await;
+    let snap = sessions
+        .iter()
+        .find(|s| s.session_id == session_id)
+        .expect("session must remain in registry after PeerCred failure");
+    assert_eq!(
+        snap.state,
+        monocle_ipc::types::SessionState::Terminated,
+        "F-S035-PASS2-LOW-001: state MUST be Terminated after PeerCredFailed \
+         (BC-2.08.007 Inv 5). Got: {:?}",
+        snap.state
+    );
+
+    // BC-2.08.008 Invariant 1: StateChanged{Terminated} broadcast AND precedes SessionListUpdate.
+    let msgs = drain_messages(&mut rx, 500).await;
+
+    let terminated_idx = msgs.iter().position(|m| {
+        matches!(
+            m,
+            monocle_ipc::types::ServerToClient::SessionStateChanged {
+                new_state: monocle_ipc::types::SessionState::Terminated,
+                ..
+            }
+        )
+    });
+    let list_update_idx = msgs.iter().position(|m| {
+        matches!(
+            m,
+            monocle_ipc::types::ServerToClient::SessionListUpdate { .. }
+        )
+    });
+
+    assert!(
+        terminated_idx.is_some(),
+        "F-S035-PASS2-LOW-001 / BC-2.08.008 Inv 1: SessionStateChanged{{Terminated}} MUST be \
+         broadcast on PeerCredFailed path. Got messages: {:?}",
+        msgs.iter().map(std::mem::discriminant).collect::<Vec<_>>()
+    );
+    assert!(
+        list_update_idx.is_some(),
+        "F-S035-PASS2-LOW-001 / BC-2.08.008 Inv 1: SessionListUpdate MUST be broadcast on \
+         PeerCredFailed path. Got messages: {:?}",
+        msgs.iter().map(std::mem::discriminant).collect::<Vec<_>>()
+    );
+    assert!(
+        terminated_idx.unwrap() < list_update_idx.unwrap(),
+        "BC-2.08.008 Inv 1 ordering: SessionStateChanged{{Terminated}} (idx {}) MUST precede \
+         SessionListUpdate (idx {}) on PeerCredFailed path",
+        terminated_idx.unwrap(),
+        list_update_idx.unwrap()
+    );
+
+    mock_host.abort();
+}
+
+// ---------------------------------------------------------------------------
+// F-S035-PASS2-LOW-001: ProtocolError stays Detached — no broadcast.
+//
+// test_BC_2_08_007_attach_protocol_error_stays_detached:
+//   Mock passes uid check (FakePeerCredVerifier{allow:true}) but sends an
+//   invalid first byte → protocol error → state stays Detached, NO
+//   SessionStateChanged broadcast, Err(SessionHostDead).
+// ---------------------------------------------------------------------------
+
+/// F-S035-PASS2-LOW-001 / BC-2.08.007:
+/// When SO_PEERCRED passes but a protocol error occurs during the scrollback exchange
+/// (ProtocolError — host is alive and ours, transient error), attach_session MUST:
+/// 1. Stay Detached (NO state transition).
+/// 2. NOT broadcast any SessionStateChanged.
+/// 3. Return Err(SessionHostDead). A later attach retry is legitimate.
+#[tokio::test]
+async fn test_BC_2_08_007_attach_protocol_error_stays_detached() {
+    use tokio::io::AsyncWriteExt as _;
+
+    let tmp = isolated_runtime_dir();
+    let session_id = "035c0000-0001-4000-a000-000000000001".to_string();
+    let socket_path = tmp.path().join(format!("session-{}.sock", &session_id));
+
+    let (mut manager, _subs, mut rx) =
+        make_manager_with_socket(tmp.path(), 55_181, socket_path.clone());
+    // PeerCred passes.
+    manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifier { allow: true }));
+
+    let listener = tokio::net::UnixListener::bind(&socket_path).expect("bind mock socket");
+
+    manager
+        .insert_detached_session_for_test(&session_id, 55_181, socket_path.clone())
+        .await;
+
+    // Mock host: accepts connect (PeerCred passes), absorbs the Attach message,
+    // then sends a malformed length prefix (a 4-byte value claiming 16 MiB payload)
+    // to trigger a protocol error on the scrollback read.
+    let mock_host = tokio::spawn(async move {
+        let (mut conn, _) =
+            tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
+                .await
+                .expect("mock: timed out")
+                .expect("mock: accept failed");
+
+        // Absorb DaemonToHost::Attach.
+        let _ = tokio::time::timeout(std::time::Duration::from_secs(3), async {
+            let mut len_buf = [0u8; 4];
+            let _ = tokio::io::AsyncReadExt::read_exact(&mut conn, &mut len_buf).await;
+            let msg_len = u32::from_le_bytes(len_buf) as usize;
+            let mut body = vec![0u8; msg_len.min(4096)];
+            let _ = tokio::io::AsyncReadExt::read_exact(&mut conn, &mut body).await;
+        })
+        .await;
+
+        // Send a malformed length prefix: 16 MiB (exceeds MAX_FRAME_LEN = 256 KiB).
+        // attach_session reads the length prefix first and rejects oversized frames,
+        // returning AttachOutcome::ProtocolError.
+        let huge_len: u32 = 16 * 1024 * 1024;
+        let _ = conn.write_all(&huge_len.to_le_bytes()).await;
+
+        // Keep alive briefly so attach_session can process the error.
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    });
+
+    let result = manager.attach_session(&session_id).await;
+
+    assert!(
+        matches!(
+            result,
+            Err(SessionError::SessionHostDead { session_id: ref sid })
+            if sid == &session_id
+        ),
+        "F-S035-PASS2-LOW-001 ProtocolError: MUST return Err(SessionHostDead). Got: {:?}",
+        result
+    );
+
+    // State must remain Detached (host is alive and ours; transient protocol error).
+    let sessions = manager.session_list().await;
+    let snap = sessions
+        .iter()
+        .find(|s| s.session_id == session_id)
+        .expect("session must remain in registry after protocol error");
+    assert_eq!(
+        snap.state,
+        monocle_ipc::types::SessionState::Detached,
+        "F-S035-PASS2-LOW-001 ProtocolError: state MUST remain Detached (host alive and ours; \
+         transient error — retry is legitimate). Got: {:?}",
+        snap.state
+    );
+
+    // NO SessionStateChanged broadcast must have been emitted.
+    let msgs = drain_messages(&mut rx, 300).await;
+    let has_state_changed = msgs.iter().any(|m| {
+        matches!(
+            m,
+            monocle_ipc::types::ServerToClient::SessionStateChanged { .. }
+        )
+    });
+    assert!(
+        !has_state_changed,
+        "F-S035-PASS2-LOW-001 ProtocolError: NO SessionStateChanged MUST be broadcast \
+         (state stays Detached; no transition). Got messages: {:?}",
+        msgs.iter().map(std::mem::discriminant).collect::<Vec<_>>()
+    );
+
+    mock_host.abort();
 }
 
 // ---------------------------------------------------------------------------
@@ -1696,21 +1949,29 @@ async fn test_BC_2_08_007_attach_detach_cycle() {
 
 // ---------------------------------------------------------------------------
 // F-S035-001 / Ruling L: kill-after-attach fast confirmation via proxy_task.
+// Re-authored per F-S035-PASS2-IMP-001 to actually call kill_session() (Change L-3)
+// and assert NO SIGKILL was issued (proxy delivered Terminated before 12s watchdog).
 //
 // test_kill_attached_session_fast_path:
-//   Attach a session → kill → assert SessionStateChanged{Terminated} arrives
-//   within 500ms via the proxy_task path (NOT the 12s SIGKILL watchdog).
-//   Uses paused virtual time; assert transition arrives well before 12s.
+//   Attach a session → call kill_session() → mock host receives DaemonToHost::Kill
+//   on the proxy connection and responds with StateChanged{Terminated} → proxy_task
+//   delivers the transition → assert SessionStateChanged{Terminated} arrives before
+//   12s watchdog fires, and assert SIGKILL was NOT invoked.
 // ---------------------------------------------------------------------------
 
-/// Ruling L (SS-session-manager v2.12.0): when kill_session is called on an attached
-/// (Running) session whose `host_conn.reader` is None (proxy_task owns the connection),
-/// the proxy_task MUST deliver SessionStateChanged{Terminated} via the fast path
-/// (StateChanged{Terminated} from session-host) within 500ms — without waiting for
-/// the 12s SIGKILL watchdog.
+/// Ruling L (SS-session-manager v2.12.0, Change L-3): when `kill_session()` is called on
+/// an attached (Running) session whose `host_conn.reader` is None (proxy_task owns the
+/// connection), `kill_session()` sends `DaemonToHost::Kill` on the writer and delegates
+/// `StateChanged{Terminated}` handling to the proxy_task (fast path). The 12s watchdog
+/// is spawned as fallback but must NOT fire in the fast-path scenario.
 ///
-/// FAILS NOW: proxy_task does not handle StateChanged{Terminated} — it falls through
-/// to the `other =>` warn arm and does NOT call transition_to_terminated_standalone.
+/// This test verifies Change L-3 (reader=None + proxy=Some delegation in kill_session):
+/// 1. attach → proxy_task owns reader; reader=None; proxy_task=Some in host_conn.
+/// 2. kill_session() is called (exercises L-3 code path).
+/// 3. Mock host receives DaemonToHost::Kill on the proxy connection and responds with
+///    StateChanged{Terminated}.
+/// 4. proxy_task delivers SessionStateChanged{Terminated} (fast path, <100ms virtual time).
+/// 5. SIGKILL was NOT invoked (watchdog deadline not reached; pid_sigkill_fn never called).
 #[tokio::test(start_paused = true)]
 async fn test_kill_attached_session_fast_path() {
     // Set up: attach a session so proxy_task is active (reader=None, proxy_task=Some).
@@ -1723,7 +1984,16 @@ async fn test_kill_attached_session_fast_path() {
         make_manager_with_socket(tmp.path(), 55_201, socket_path.clone());
     manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifier { allow: true }));
 
-    // Write a minimal sidecar so kill_session can read it.
+    // Install pid_sigkill_fn seam to detect if SIGKILL was ever invoked.
+    // The fast-path test MUST NOT invoke it (proxy delivers Terminated before 12s deadline).
+    let sigkill_invoked = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let sigkill_invoked_clone = std::sync::Arc::clone(&sigkill_invoked);
+    manager.with_pid_sigkill_fn(Arc::new(move |_pid| {
+        sigkill_invoked_clone.store(true, std::sync::atomic::Ordering::SeqCst);
+        Ok(())
+    }));
+
+    // Write a minimal sidecar so kill_session can read it for the Ruling J child-kill path.
     {
         use std::io::Write as _;
         let mut f =
@@ -1751,9 +2021,9 @@ async fn test_kill_attached_session_fast_path() {
         .insert_detached_session_for_test(&session_id, 55_201, socket_path.clone())
         .await;
 
-    // Mock session-host: handles attach protocol then sends StateChanged{Terminated}
-    // when signaled (simulating kill → session dies quickly).
-    let (kill_tx, kill_rx) = tokio::sync::oneshot::channel::<()>();
+    // Mock session-host: handles the attach protocol, then when it receives
+    // DaemonToHost::Kill on the proxy connection, responds with StateChanged{Terminated}.
+    // This exercises the full Change L-3 code path end-to-end.
     let mock_host = tokio::spawn(async move {
         let (mut conn, _) =
             tokio::time::timeout(std::time::Duration::from_secs(5), listener.accept())
@@ -1785,10 +2055,17 @@ async fn test_kill_attached_session_fast_path() {
         )
         .await;
 
-        // Wait for kill signal from test.
-        let _ = kill_rx.await;
+        // Wait for DaemonToHost::Kill on this same connection (proxy_task is now the writer).
+        // kill_session() sends Kill on the writer held by host_conn (same socket as proxy_task
+        // reads from on the other half). The mock receives Kill here.
+        let msg = read_daemon_to_host(&mut conn, 5_000).await;
+        assert!(
+            matches!(msg, monocle_ipc::types::DaemonToHost::Kill),
+            "mock: expected DaemonToHost::Kill from kill_session(), got {:?}",
+            msg
+        );
 
-        // Simulate session-host receiving Kill and responding with Terminated.
+        // Respond with StateChanged{Terminated} — simulating the session-host handling Kill.
         send_host_to_daemon(
             &mut conn,
             &monocle_ipc::types::HostToDaemon::StateChanged {
@@ -1799,7 +2076,7 @@ async fn test_kill_attached_session_fast_path() {
         .await;
 
         // Keep conn alive briefly so proxy_task can read the message.
-        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
     });
 
     // Attach the session.
@@ -1811,23 +2088,29 @@ async fn test_kill_attached_session_fast_path() {
     // Drain Running broadcasts.
     let _ = drain_messages(&mut rx, 200).await;
 
-    // Verify proxy_task is present (session is Running with proxy).
+    // Verify proxy_task is present — Ruling L precondition (reader=None, proxy_task=Some).
     assert!(
         manager.has_proxy_task_for_session(&session_id).await,
-        "Ruling L precondition: proxy_task must be active after attach"
+        "Ruling L precondition (L-3): proxy_task must be active after attach \
+         (reader=None, proxy_task=Some in host_conn)"
     );
 
-    // Signal mock host to send Terminated.
-    let _ = kill_tx.send(());
+    // Call kill_session() — exercises the L-3 branch (reader=None + proxy=Some delegation).
+    manager
+        .kill_session(&session_id)
+        .await
+        .expect("kill_session must return Ok(()) for Running session");
 
-    // Advance virtual time minimally to let proxy_task process the message.
-    // The fast path delivers Terminated without any sleep.
-    tokio::time::advance(std::time::Duration::from_millis(100)).await;
+    // Advance virtual time minimally to let proxy_task read Kill response and deliver
+    // StateChanged{Terminated}. The fast path requires NO sleep — only yield.
+    // We advance 200ms (well below the 12s watchdog deadline).
+    tokio::time::advance(std::time::Duration::from_millis(200)).await;
     tokio::task::yield_now().await;
     tokio::task::yield_now().await;
+    tokio::task::yield_now().await;
 
-    // Collect broadcasts: assert SessionStateChanged{Terminated} arrived.
-    // We do NOT wait for the 12s watchdog deadline (only advance 100ms).
+    // Collect broadcasts: assert SessionStateChanged{Terminated} arrived via proxy_task.
+    // We do NOT advance to 12s — the watchdog must NOT have fired.
     let msgs = drain_messages(&mut rx, 500).await;
     let terminated_arrived = msgs.iter().any(|m| {
         matches!(
@@ -1840,11 +2123,21 @@ async fn test_kill_attached_session_fast_path() {
     });
     assert!(
         terminated_arrived,
-        "Ruling L: proxy_task MUST deliver SessionStateChanged{{Terminated}} within 100ms virtual time \
-         (fast path, NOT 12s watchdog). Got messages: {:?}",
-        msgs.iter()
-            .map(std::mem::discriminant)
-            .collect::<Vec<_>>()
+        "Ruling L (Change L-3): proxy_task MUST deliver SessionStateChanged{{Terminated}} \
+         within 200ms virtual time (fast path, NOT 12s watchdog). \
+         kill_session() sends Kill on writer; proxy_task reads Terminated and calls \
+         transition_to_terminated_standalone. Got messages: {:?}",
+        msgs.iter().map(std::mem::discriminant).collect::<Vec<_>>()
+    );
+
+    // Critical assertion: SIGKILL was NOT invoked.
+    // We only advanced 200ms; the 12s watchdog deadline was NOT reached.
+    // If the watchdog somehow fired and issued SIGKILL, the test infrastructure would be wrong.
+    assert!(
+        !sigkill_invoked.load(std::sync::atomic::Ordering::SeqCst),
+        "Ruling L (Change L-3): SIGKILL MUST NOT be invoked on the fast path \
+         (proxy_task delivers Terminated before the 12s watchdog deadline). \
+         pid_sigkill_fn was unexpectedly called — the watchdog fired prematurely."
     );
 
     mock_host.abort();
