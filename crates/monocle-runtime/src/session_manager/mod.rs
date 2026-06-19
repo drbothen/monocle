@@ -2632,7 +2632,9 @@ impl SessionManager {
         //
         // Mirrors the guard pattern in transition_to_terminated_standalone:
         //   `if entry.state != SessionState::Terminated { … } else { return; }`
-        let proxy_task_to_abort = {
+        // Returns (proxy_task_handle, already_terminal) — already_terminal must remain
+        // visible after the block for the F-S035-PASS4-HIGH-001 sidecar-write gate below.
+        let (proxy_task_to_abort, already_terminal) = {
             use monocle_core::engine::{EnrichedSession, SessionStatus};
             let mut guard = self.sessions.lock().await;
 
@@ -2664,7 +2666,7 @@ impl SessionManager {
                      no Detached broadcast emitted (F-S035-PASS3-MED-001)"
                 );
                 // guard released here
-                proxy_task_handle
+                (proxy_task_handle, true)
             } else {
                 // Normal path: entry is still Running (or Launching-with-conn).
                 // Clear host_conn and transition state (BC-2.08.007 detach PC-3/PC-4).
@@ -2720,87 +2722,103 @@ impl SessionManager {
                 crate::ipc_server::broadcast_to_subscribers(&self.broker, list_update).await;
                 // sessions lock released here — transition + both broadcasts were atomic.
 
-                proxy_task_handle
+                (proxy_task_handle, false)
             }
         };
 
         // Abort proxy task outside the lock (abort() is synchronous; no .await needed).
+        // This is idempotent regardless of which path won the TOCTOU race.
         if let Some(t) = proxy_task_to_abort {
             t.abort();
         }
 
-        // Update sidecar atomically: state → "Detached" (BC-2.08.007 detach PC-5).
-        // Read existing sidecar, update state field, persist via tempfile.
-        // Sidecar write is blocking I/O and stays outside the lock (acceptable: the
-        // in-memory state is already Detached; sidecar reflects the durable view for restart).
-        let sidecar_update_result: Result<(), SessionError> = (|| {
-            let existing = std::fs::read_to_string(&sidecar_path).map_err(|e| {
-                SessionError::SidecarWriteFailed {
-                    path: sidecar_path.to_string_lossy().into_owned(),
-                    reason: format!("detach_session: could not read sidecar: {e}"),
-                }
-            })?;
-            let mut val = serde_json::from_str::<serde_json::Value>(&existing).map_err(|e| {
-                SessionError::SidecarWriteFailed {
-                    path: sidecar_path.to_string_lossy().into_owned(),
-                    reason: format!("detach_session: could not parse sidecar JSON: {e}"),
-                }
-            })?;
-            val["state"] = serde_json::json!("Detached");
-            let updated =
-                serde_json::to_vec_pretty(&val).map_err(|e| SessionError::SidecarWriteFailed {
-                    path: sidecar_path.to_string_lossy().into_owned(),
-                    reason: format!("detach_session: failed to serialize sidecar: {e}"),
+        // F-S035-PASS4-HIGH-001: Gate the sidecar write on the NORMAL (!already_terminal) path
+        // only. On the lost race (already_terminal == true), transition_to_terminated_standalone
+        // has ALREADY written `state: "Terminated"` to the sidecar. Writing "Detached" here would
+        // clobber that durable record, causing S-036 rediscovery to see Detached for a dead session
+        // (violates AC-008 / BC-2.08.007 Inv 1). Skip the sidecar write and the "detached" info
+        // log entirely on the lost-race path — the Terminated sidecar and its orphaned-GC timer
+        // from the proxy path stand as the authoritative durable record.
+        if !already_terminal {
+            // Update sidecar atomically: state → "Detached" (BC-2.08.007 detach PC-5).
+            // Read existing sidecar, update state field, persist via tempfile.
+            // Sidecar write is blocking I/O and stays outside the lock (acceptable: the
+            // in-memory state is already Detached; sidecar reflects the durable view for restart).
+            let sidecar_update_result: Result<(), SessionError> = (|| {
+                let existing = std::fs::read_to_string(&sidecar_path).map_err(|e| {
+                    SessionError::SidecarWriteFailed {
+                        path: sidecar_path.to_string_lossy().into_owned(),
+                        reason: format!("detach_session: could not read sidecar: {e}"),
+                    }
                 })?;
-            let dir = sidecar_path
-                .parent()
-                .ok_or_else(|| SessionError::SidecarWriteFailed {
-                    path: sidecar_path.to_string_lossy().into_owned(),
-                    reason: "detach_session: sidecar path has no parent".to_string(),
+                let mut val =
+                    serde_json::from_str::<serde_json::Value>(&existing).map_err(|e| {
+                        SessionError::SidecarWriteFailed {
+                            path: sidecar_path.to_string_lossy().into_owned(),
+                            reason: format!("detach_session: could not parse sidecar JSON: {e}"),
+                        }
+                    })?;
+                val["state"] = serde_json::json!("Detached");
+                let updated = serde_json::to_vec_pretty(&val).map_err(|e| {
+                    SessionError::SidecarWriteFailed {
+                        path: sidecar_path.to_string_lossy().into_owned(),
+                        reason: format!("detach_session: failed to serialize sidecar: {e}"),
+                    }
                 })?;
-            let mut tmp = tempfile::Builder::new()
-                .prefix(".session-sidecar-detach-")
-                .suffix(".json.tmp")
-                .tempfile_in(dir)
-                .map_err(|e| SessionError::SidecarWriteFailed {
-                    path: sidecar_path.to_string_lossy().into_owned(),
-                    reason: format!("detach_session: tempfile creation failed: {e}"),
-                })?;
-            use std::io::Write as _;
-            tmp.write_all(&updated)
-                .map_err(|e| SessionError::SidecarWriteFailed {
-                    path: sidecar_path.to_string_lossy().into_owned(),
-                    reason: format!("detach_session: write to tempfile failed: {e}"),
-                })?;
-            tmp.persist(&sidecar_path)
-                .map_err(|e| SessionError::SidecarWriteFailed {
-                    path: sidecar_path.to_string_lossy().into_owned(),
-                    reason: format!("detach_session: tempfile persist failed: {}", e.error),
-                })?;
-            Ok(())
-        })();
+                let dir =
+                    sidecar_path
+                        .parent()
+                        .ok_or_else(|| SessionError::SidecarWriteFailed {
+                            path: sidecar_path.to_string_lossy().into_owned(),
+                            reason: "detach_session: sidecar path has no parent".to_string(),
+                        })?;
+                let mut tmp = tempfile::Builder::new()
+                    .prefix(".session-sidecar-detach-")
+                    .suffix(".json.tmp")
+                    .tempfile_in(dir)
+                    .map_err(|e| SessionError::SidecarWriteFailed {
+                        path: sidecar_path.to_string_lossy().into_owned(),
+                        reason: format!("detach_session: tempfile creation failed: {e}"),
+                    })?;
+                use std::io::Write as _;
+                tmp.write_all(&updated)
+                    .map_err(|e| SessionError::SidecarWriteFailed {
+                        path: sidecar_path.to_string_lossy().into_owned(),
+                        reason: format!("detach_session: write to tempfile failed: {e}"),
+                    })?;
+                tmp.persist(&sidecar_path)
+                    .map_err(|e| SessionError::SidecarWriteFailed {
+                        path: sidecar_path.to_string_lossy().into_owned(),
+                        reason: format!("detach_session: tempfile persist failed: {}", e.error),
+                    })?;
+                Ok(())
+            })();
 
-        if let Err(e) = sidecar_update_result {
-            // F-S035-004: elevate to ERROR — sidecar persist failure breaks restart-durability
-            // (AC-008 / BC-2.08.007 detach PC-5). S-036 rediscovery reads the sidecar; if it
-            // still shows a pre-Detached state, the session will be re-classified incorrectly
-            // on daemon restart. The live detach ALREADY succeeded (in-memory state = Detached,
-            // proxy aborted) and must stand — do NOT revert. But the persistence failure MUST
-            // be loud so operators can detect and recover the sidecar manually.
-            tracing::error!(
+            if let Err(e) = sidecar_update_result {
+                // F-S035-004: elevate to ERROR — sidecar persist failure breaks restart-durability
+                // (AC-008 / BC-2.08.007 detach PC-5). S-036 rediscovery reads the sidecar; if it
+                // still shows a pre-Detached state, the session will be re-classified incorrectly
+                // on daemon restart. The live detach ALREADY succeeded (in-memory state = Detached,
+                // proxy aborted) and must stand — do NOT revert. But the persistence failure MUST
+                // be loud so operators can detect and recover the sidecar manually.
+                tracing::error!(
+                    session_id = %session_id,
+                    error = %e,
+                    sidecar_path = %sidecar_path.display(),
+                    "detach_session: sidecar persist FAILED — restart-durability compromised \
+                     (AC-008 / BC-2.08.007 detach PC-5). In-memory state is Detached; \
+                     daemon restart may re-discover session in stale pre-Detached state."
+                );
+            }
+
+            tracing::info!(
                 session_id = %session_id,
-                error = %e,
-                sidecar_path = %sidecar_path.display(),
-                "detach_session: sidecar persist FAILED — restart-durability compromised \
-                 (AC-008 / BC-2.08.007 detach PC-5). In-memory state is Detached; \
-                 daemon restart may re-discover session in stale pre-Detached state."
+                "session detached (Running → Detached)"
             );
         }
-
-        tracing::info!(
-            session_id = %session_id,
-            "session detached (Running → Detached)"
-        );
+        // On the lost-race path (already_terminal == true): the proxy-written "Terminated"
+        // sidecar stands. No sidecar write, no "detached" info log. The debug log above
+        // (inside the lock block) is sufficient to record the lost-race event.
 
         Ok(())
     }
@@ -10517,6 +10535,9 @@ mod tests {
         let broker_clone = Arc::clone(&manager.broker);
         let session_id_clone = session_id.clone();
         let notif_release_for_inject = Arc::clone(&notif_release);
+        // Pass sidecar_path into the inject task so it can write "Terminated" durably,
+        // exactly as transition_to_terminated_standalone does on the proxy path.
+        let sidecar_path_for_inject = sidecar_path.clone();
         tokio::spawn(async move {
             // Inject Terminated state (simulating proxy_task / watchdog racing detach).
             {
@@ -10527,6 +10548,30 @@ mod tests {
                     // proxy path clears host_conn before transitioning
                     entry.host_conn = None;
                 }
+            }
+            // Write "Terminated" to the durable sidecar — exactly as
+            // transition_to_terminated_standalone does when the proxy_task wins the race.
+            // This is the write that detach_session must NOT clobber with "Detached"
+            // (F-S035-PASS4-HIGH-001 fix target).
+            {
+                use std::io::Write as _;
+                let existing = std::fs::read_to_string(&sidecar_path_for_inject)
+                    .expect("inject: read sidecar");
+                let mut val: serde_json::Value =
+                    serde_json::from_str(&existing).expect("inject: parse sidecar");
+                val["state"] = serde_json::json!("Terminated");
+                let updated = serde_json::to_vec_pretty(&val).expect("inject: serialize sidecar");
+                let dir = sidecar_path_for_inject
+                    .parent()
+                    .expect("inject: sidecar has no parent");
+                let mut tmp = tempfile::Builder::new()
+                    .prefix(".session-sidecar-inject-terminated-")
+                    .suffix(".json.tmp")
+                    .tempfile_in(dir)
+                    .expect("inject: create tempfile");
+                tmp.write_all(&updated).expect("inject: write tempfile");
+                tmp.persist(&sidecar_path_for_inject)
+                    .expect("inject: persist sidecar");
             }
             // Emit the SessionStateChanged{Terminated} broadcast (as proxy path would).
             let terminated_broadcast = monocle_ipc::types::ServerToClient::SessionStateChanged {
@@ -10568,6 +10613,35 @@ mod tests {
                 "PASS3-MED-001: detach_session MUST NOT overwrite Terminated entry to \
                  Detached (F-S035-PASS3-MED-001 regression); got state: {:?}",
                 entry.state
+            );
+        }
+
+        // --- Step 4b (F-S035-PASS4-HIGH-001): durable sidecar MUST still show "Terminated".
+        //
+        // The inject task above wrote state="Terminated" to the sidecar — simulating what
+        // transition_to_terminated_standalone does on the proxy path. detach_session on the
+        // lost-race path MUST NOT clobber that with "Detached". Read the sidecar from disk
+        // and assert the state field is "Terminated".
+        //
+        // Without the fix (before gating the sidecar write on !already_terminal), this
+        // assertion would FAIL — detach_session would overwrite the sidecar unconditionally,
+        // writing "Detached" over the proxy-written "Terminated", and this assertion would
+        // see "Detached" where it expects "Terminated".
+        {
+            let sidecar_raw = std::fs::read_to_string(&sidecar_path)
+                .expect("PASS4-HIGH-001: sidecar file must exist on disk");
+            let sidecar_val: serde_json::Value = serde_json::from_str(&sidecar_raw)
+                .expect("PASS4-HIGH-001: sidecar must be valid JSON");
+            let on_disk_state = sidecar_val
+                .get("state")
+                .and_then(|v| v.as_str())
+                .unwrap_or("<missing>");
+            assert_eq!(
+                on_disk_state, "Terminated",
+                "PASS4-HIGH-001: sidecar on disk MUST be \"Terminated\" after detach lost-race; \
+                 detach_session MUST NOT clobber the proxy-written \"Terminated\" sidecar with \
+                 \"Detached\" (F-S035-PASS4-HIGH-001 regression). Got: {:?}",
+                on_disk_state
             );
         }
 
