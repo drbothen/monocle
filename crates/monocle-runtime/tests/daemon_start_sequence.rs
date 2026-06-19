@@ -390,26 +390,23 @@ async fn test_BC_2_04_010_hooks_settings_no_session_start() {
 /// Exercises BC-2.04.001 SOQ-2 invariant: lock file must be written BEFORE
 /// hooks-settings.json.
 ///
-/// The test verifies that `write_hooks_settings` is only called after
-/// `write_lock_file` has succeeded. We inject this by verifying that if the
-/// daemon is inspected mid-sequence, hooks-settings.json doesn't appear before
-/// the lock file.
+/// Calls the real `daemon_start_sequence` against an isolated temporary
+/// runtime directory, then asserts:
+/// 1. `monocle.lock` exists (step 8 of the start sequence).
+/// 2. `hooks-settings.json` exists (step 9, after lock).
+/// 3. `monocle.lock` mtime <= `hooks-settings.json` mtime — catches any
+///    sequence inversion on platforms with sub-second file timestamps.
 ///
-/// The primary verification is structural: we call `write_lock_file` directly
-/// and then `write_hooks_settings`, ensuring the lock file path is accessible
-/// before hooks-settings.json is written.
+/// `write_hooks_settings_json` is fully implemented; no stubs are involved.
 #[tokio::test]
 async fn test_BC_2_04_001_soq2_ordering_lock_before_hooks_settings() {
     let tmp = isolated_runtime_dir();
     let runtime_dir = tmp.path().join("monocle-runtime");
     std::fs::create_dir_all(&runtime_dir).expect("create runtime_dir");
 
-    // Verify SOQ-2 at the function level: write_lock_file stub must be called BEFORE
-    // write_hooks_settings stub. Both are todo!() stubs; we test that they exist and
-    // are callable in the correct order.
-
-    // The daemon_start_sequence enforces this ordering. A full start must result
-    // in both files present, with lock file's mtime <= hooks-settings.json's mtime.
+    // daemon_start_sequence enforces SOQ-2 ordering: lock file written before
+    // hooks-settings.json. A successful start produces both files; mtime comparison
+    // verifies the ordering invariant.
     let (_state, _listener) = daemon_start_sequence(&runtime_dir)
         .await
         .expect("daemon_start_sequence must succeed");
