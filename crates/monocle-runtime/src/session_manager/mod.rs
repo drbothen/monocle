@@ -611,7 +611,9 @@ struct SessionEntry {
 ///
 /// `Default` provides empty-string URLs for test contexts where a real hook server
 /// is not running. Production code populates the fields from the live hook endpoint.
-#[derive(Debug, Clone, Default)]
+/// CWE-532: Debug output MUST NOT leak auth tokens contained in curl command strings.
+/// Derives `Clone` and `Default`; `Debug` is manually implemented with redacted fields.
+#[derive(Clone, Default)]
 pub struct HookEndpointConfig {
     /// curl command string for `PreToolUse` hook endpoint.
     pub pre_tool_use: String,
@@ -621,6 +623,17 @@ pub struct HookEndpointConfig {
     pub stop: String,
     /// curl command string for `UserPromptSubmit` hook endpoint.
     pub user_prompt_submit: String,
+}
+
+impl std::fmt::Debug for HookEndpointConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HookEndpointConfig")
+            .field("pre_tool_use", &"<redacted>")
+            .field("notification", &"<redacted>")
+            .field("stop", &"<redacted>")
+            .field("user_prompt_submit", &"<redacted>")
+            .finish()
+    }
 }
 
 /// Write `hooks-settings.json` atomically to `path` using `tempfile::persist`.
@@ -686,15 +699,17 @@ pub fn write_hooks_settings_json(
     serde_json::to_writer_pretty(&mut tmp, &payload)
         .map_err(|e| std::io::Error::other(format!("JSON serialization failed: {e}")))?;
 
-    // Persist (atomic rename — no partial content visible at target path).
-    tmp.persist(path).map_err(|e| e.error)?;
-
-    // Set mode 0o600: owner read+write only (BC-2.04.010 PC-2).
+    // Set mode 0o600 on the TEMP file BEFORE persist so the atomic rename installs
+    // the file at the canonical path already at 0o600 (CWE-732: no window where the
+    // file exists at the target path with an incorrect mode; BC-2.04.010 PC-2).
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))?;
+        std::fs::set_permissions(tmp.path(), std::fs::Permissions::from_mode(0o600))?;
     }
+
+    // Persist (atomic rename — no partial content visible at target path).
+    tmp.persist(path).map_err(|e| e.error)?;
 
     Ok(())
 }
@@ -11987,6 +12002,53 @@ mod tests {
             pre_tool_use_cmd.contains(&format!(":{real_port}")),
             "BC-2.08.006 EC-182 real-config: re-written file must contain port {real_port}; \
              got command: {pre_tool_use_cmd}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // SEC-002 regression: HookEndpointConfig Debug must NOT leak auth tokens.
+    // CWE-532 — sensitive data must not appear in Debug output / logs / panics.
+    // -----------------------------------------------------------------------
+
+    /// HookEndpointConfig::fmt must redact all fields.
+    ///
+    /// Asserts:
+    /// - The formatted output contains "<redacted>" for every field.
+    /// - The formatted output does NOT contain any substring of the fake token.
+    ///
+    /// This prevents CWE-532: token leakage via {:?} in log spans, panic
+    /// messages, or tracing instrumentation.
+    #[test]
+    fn test_hook_endpoint_config_debug_does_not_leak_token() {
+        let fake_token =
+            "monocle-v1:deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+        let config = HookEndpointConfig {
+            pre_tool_use: format!("curl -H 'X-Monocle-Authorization: {fake_token}' pre"),
+            notification: format!("curl -H 'X-Monocle-Authorization: {fake_token}' notif"),
+            stop: format!("curl -H 'X-Monocle-Authorization: {fake_token}' stop"),
+            user_prompt_submit: format!("curl -H 'X-Monocle-Authorization: {fake_token}' submit"),
+        };
+
+        let debug_output = format!("{:?}", config);
+
+        // Must contain the "<redacted>" sentinel for all four fields.
+        assert!(
+            debug_output.contains("<redacted>"),
+            "SEC-002 / CWE-532: HookEndpointConfig Debug output must contain '<redacted>' \
+             for all fields; got: {debug_output}"
+        );
+
+        // Must NOT contain any part of the token that could appear in a log line.
+        // Split on ":" so both the scheme prefix and the hex blob are checked.
+        assert!(
+            !debug_output.contains("deadbeef"),
+            "SEC-002 / CWE-532: HookEndpointConfig Debug output MUST NOT contain any \
+             part of the auth token (found 'deadbeef'); got: {debug_output}"
+        );
+        assert!(
+            !debug_output.contains("monocle-v1"),
+            "SEC-002 / CWE-532: HookEndpointConfig Debug output MUST NOT contain the \
+             token scheme prefix 'monocle-v1'; got: {debug_output}"
         );
     }
 }
