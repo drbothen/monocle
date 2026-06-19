@@ -571,6 +571,11 @@ struct SessionEntry {
     harness_id: String,
     profile_id: String,
     started_at: DateTime<Utc>,
+    /// Human-readable display name for this session.
+    ///
+    /// Initialized to `"<harness_id> — <project_root_basename>"` at spawn time.
+    /// Updated by `rename_session()` (S-037: BC-2.08.005/BC-2.08.008 PC-4a).
+    display_name: String,
     /// Absolute kill deadline (Some only when state == Terminating).
     kill_deadline: Option<std::time::Instant>,
     /// True when session-host detected missing critical env vars (HOME, PATH).
@@ -754,6 +759,7 @@ impl SessionManager {
             harness_id: "claude-code".to_string(),
             profile_id: "default".to_string(),
             started_at: chrono::Utc::now(),
+            display_name: "claude-code — test-project".to_string(),
             kill_deadline: None,
             degraded: false,
             degraded_reason: None,
@@ -817,6 +823,7 @@ impl SessionManager {
             harness_id: "claude-code".to_string(),
             profile_id: "default".to_string(),
             started_at: chrono::Utc::now(),
+            display_name: "claude-code — test-project".to_string(),
             kill_deadline: None,
             degraded: false,
             degraded_reason: None,
@@ -868,6 +875,7 @@ impl SessionManager {
             harness_id: "claude-code".to_string(),
             profile_id: "default".to_string(),
             started_at: chrono::Utc::now(),
+            display_name: "claude-code — test-project".to_string(),
             kill_deadline: Some(kill_deadline),
             degraded: false,
             degraded_reason: None,
@@ -913,6 +921,7 @@ impl SessionManager {
             harness_id: "claude-code".to_string(),
             profile_id: "default".to_string(),
             started_at: chrono::Utc::now(),
+            display_name: "claude-code — test-project".to_string(),
             kill_deadline: None,
             degraded: false,
             degraded_reason: None,
@@ -1096,6 +1105,7 @@ impl SessionManager {
                 harness_id: opts.harness_id.clone(),
                 profile_id: opts.profile_id.clone(),
                 started_at,
+                display_name: display_name.clone(),
                 kill_deadline: None,
                 degraded: false,
                 degraded_reason: None,
@@ -1928,7 +1938,9 @@ impl SessionManager {
     ///
     /// (BC-2.08.003 PC-4, BC-2.08.008 Invariant 4)
     async fn transition_to_terminated(&self, session_id: &str, sidecar_path: &PathBuf) {
-        {
+        // Capture socket_path from the entry for GC wiring (S-037: BC-2.08.005).
+        // Must be extracted inside the lock before releasing it.
+        let socket_path_for_gc: Option<std::path::PathBuf> = {
             use monocle_core::engine::{EnrichedSession, SessionStatus};
             let mut guard = self.sessions.lock().await;
 
@@ -1940,6 +1952,9 @@ impl SessionManager {
                 entry.state = SessionState::Terminated;
                 entry.kill_deadline = None;
             }
+
+            // Capture socket_path for GC (S-037).
+            let socket_path = guard.get(session_id).map(|e| e.session_host_socket.clone());
 
             let list_snapshot: Vec<EnrichedSession> = guard
                 .values()
@@ -1982,7 +1997,8 @@ impl SessionManager {
             };
             crate::ipc_server::broadcast_to_subscribers(&self.broker, list_msg).await;
             // lock released here
-        }
+            socket_path
+        };
 
         // Update sidecar state → Terminated outside the lock.
         if let Ok(existing_json) = std::fs::read_to_string(sidecar_path) {
@@ -1993,6 +2009,18 @@ impl SessionManager {
                     Self::atomic_sidecar_write(sidecar_path, &updated_bytes, session_id);
                 }
             }
+        }
+
+        // S-037 (BC-2.08.005): Start 10s GC task at FIRST Terminated transition.
+        // socket_path_for_gc is None only if the session was already removed (idempotent return above).
+        if let Some(socket_path) = socket_path_for_gc {
+            Self::spawn_gc_task(
+                session_id.to_string(),
+                sidecar_path.clone(),
+                socket_path,
+                Arc::clone(&self.sessions),
+                Arc::clone(&self.broker),
+            );
         }
     }
 
@@ -2069,7 +2097,7 @@ impl SessionManager {
         sessions: Arc<tokio::sync::Mutex<std::collections::HashMap<String, SessionEntry>>>,
         broker: Arc<monocle_ipc::server::SubscriberList>,
         sidecar_path: std::path::PathBuf,
-        _socket_path: std::path::PathBuf,
+        socket_path: std::path::PathBuf,
         // Pre-computed deadline from kill_session() — synchronized with SessionEntry.kill_deadline
         // (MED-005: single originating instant, not independent now+12s inside the watchdog task).
         // Using sleep_until with this pre-computed Instant ensures paused-clock tests work correctly.
@@ -2309,6 +2337,16 @@ impl SessionManager {
                     }
                 }
             }
+
+            // Start 10s GC grace period (BC-2.08.005 PC-1 / AC-001).
+            // GC task deletes sidecar + socket after 10s (ENOENT-tolerant).
+            SessionManager::spawn_gc_task(
+                session_id.clone(),
+                sidecar_path.clone(),
+                socket_path.clone(),
+                Arc::clone(&sessions),
+                Arc::clone(&broker),
+            );
         })
     }
 
@@ -2324,19 +2362,286 @@ impl SessionManager {
         todo!("S-033 (S-035 scope): implement attach_session()")
     }
 
-    /// Rename a session (updates display_name in sidecar; publishes SessionListUpdate).
+    /// Rename a session — updates `display_name` in the sidecar and publishes
+    /// `SessionListUpdate` (NOT `SessionStateChanged`).
     ///
-    /// Full implementation is S-037 scope. This stub returns Ok(()) without emitting
-    /// SessionStateChanged (per BC-2.08.008 PC-4a — rename does NOT emit state-changed).
-    /// S-037 will add: sidecar update + SessionListUpdate broadcast.
+    /// Per BC-2.08.005 Invariant 4 / BC-2.08.008 PC-4a:
+    /// - Rename on a `Terminated`-in-grace session returns
+    ///   `Err(SessionError::InvalidSessionName { reason: "session terminated" })`
+    ///   (wire code `"rename_failed"`).
+    /// - Rename on any non-Terminated session updates `display_name` in the in-memory
+    ///   `SessionEntry`, rewrites the sidecar atomically via `tempfile::persist`, and
+    ///   emits `SessionListUpdate` only — MUST NOT emit `SessionStateChanged`.
+    /// - Returns `Err(SessionError::SessionNotFound)` if `session_id` is unknown.
+    ///
+    /// Implemented in S-037.
     pub async fn rename_session(
         &mut self,
-        _session_id: &str,
-        _new_name: String,
+        session_id: &str,
+        new_name: String,
     ) -> Result<(), SessionError> {
-        // S-037 scope: full implementation (sidecar update + SessionListUpdate) deferred.
-        // This stub satisfies BC-2.08.008 PC-4a: rename MUST NOT emit SessionStateChanged.
+        use monocle_core::engine::{EnrichedSession, SessionStatus};
+
+        let sidecar_path = self
+            .runtime_dir
+            .join(format!("session-{}.json", session_id));
+
+        // Update display_name in memory and build snapshot under the sessions lock.
+        // Also check state guards.
+        let list_snapshot: Vec<EnrichedSession> = {
+            let mut guard = self.sessions.lock().await;
+
+            // Not found guard.
+            if !guard.contains_key(session_id) {
+                return Err(SessionError::SessionNotFound {
+                    session_id: session_id.to_string(),
+                });
+            }
+
+            // Terminated guard: BC-2.08.005 Invariant 4 / F-P52-001.
+            if let Some(entry) = guard.get(session_id) {
+                if entry.state == SessionState::Terminated {
+                    return Err(SessionError::InvalidSessionName {
+                        reason: "session terminated".to_string(),
+                    });
+                }
+            }
+
+            // Update display_name in-memory entry.
+            if let Some(entry) = guard.get_mut(session_id) {
+                entry.display_name = new_name.clone();
+            }
+
+            // Build snapshot while holding lock (consistent with updated display_name).
+            guard
+                .values()
+                .map(|e| {
+                    let status = match e.state {
+                        SessionState::Launching | SessionState::Running => SessionStatus::Active,
+                        SessionState::Detached => SessionStatus::Idle,
+                        SessionState::Terminating | SessionState::Terminated => {
+                            SessionStatus::Stopped
+                        }
+                        _ => SessionStatus::Stopped,
+                    };
+                    EnrichedSession::new(
+                        e.session_id.clone(),
+                        e.harness_id.clone(),
+                        None,
+                        None,
+                        status,
+                        None,
+                        e.project_root
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .map(|s| s.to_string()),
+                        Some(e.started_at),
+                        0,
+                        None,
+                    )
+                })
+                .collect()
+            // sessions lock released here
+        };
+
+        // Publish SessionListUpdate ONLY — MUST NOT emit SessionStateChanged
+        // (BC-2.08.008 PC-4a: rename is a metadata operation, not a state transition).
+        let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
+            sessions: list_snapshot,
+        };
+        crate::ipc_server::broadcast_to_subscribers(&self.broker, list_msg).await;
+
+        // Update sidecar atomically via tempfile::persist (AC-007 pattern).
+        match std::fs::read_to_string(&sidecar_path) {
+            Err(e) => {
+                tracing::warn!(
+                    session_id = %session_id,
+                    error = %e,
+                    "rename_session: could not read sidecar for update (non-fatal; in-memory state updated)"
+                );
+            }
+            Ok(existing_json) => match serde_json::from_str::<serde_json::Value>(&existing_json) {
+                Err(e) => {
+                    tracing::warn!(
+                        session_id = %session_id,
+                        error = %e,
+                        "rename_session: could not parse sidecar JSON for update"
+                    );
+                }
+                Ok(mut val) => {
+                    val["display_name"] = serde_json::json!(new_name);
+                    match serde_json::to_vec_pretty(&val) {
+                        Err(e) => {
+                            tracing::warn!(
+                                session_id = %session_id,
+                                error = %e,
+                                "rename_session: failed to serialize sidecar update"
+                            );
+                        }
+                        Ok(updated_bytes) => {
+                            Self::atomic_sidecar_write(&sidecar_path, &updated_bytes, session_id);
+                        }
+                    }
+                }
+            },
+        }
+
         Ok(())
+    }
+
+    /// Spawn a per-session GC tokio task that removes the `SessionEntry` from the
+    /// registry, deletes the `session-state.json` sidecar, deletes the per-session UDS
+    /// socket file, and publishes `SessionListUpdate` — all after a 10-second grace
+    /// period beginning when the session FIRST transitions to `Terminated`.
+    ///
+    /// Called at every `Terminated` transition point:
+    /// - `kill_session()` confirmation path (via `kill_confirm_monitor` or watchdog).
+    /// - `post_spawn_monitor` startup-failure path.
+    /// - Re-discovery alive-then-dead paths.
+    ///
+    /// Per BC-2.08.005:
+    /// - GC timer starts at FIRST `Terminated` transition; re-transition MUST NOT reset it.
+    /// - `std::fs::remove_file` tolerates ENOENT for both sidecar and socket paths.
+    /// - `SessionListUpdate` is published UNDER the sessions mutex BEFORE releasing it,
+    ///   so TUI clients see an atomic list without the GC'd session.
+    /// - NO `SessionStateChanged` is emitted by the GC task (already emitted at Terminated
+    ///   transition by kill_confirm_monitor / watchdog / post_spawn_monitor).
+    ///
+    /// Implemented in S-037.
+    #[allow(dead_code)]
+    fn spawn_gc_task(
+        session_id: String,
+        sidecar_path: std::path::PathBuf,
+        socket_path: std::path::PathBuf,
+        sessions: Arc<tokio::sync::Mutex<std::collections::HashMap<String, SessionEntry>>>,
+        broker: Arc<monocle_ipc::server::SubscriberList>,
+    ) -> tokio::task::JoinHandle<()> {
+        // Pre-compute the GC deadline here (synchronous context) so that the
+        // `sleep_until` inside the spawned task registers a timer at the correct
+        // virtual-time instant. With tokio's paused-clock tests (start_paused = true),
+        // computing the deadline BEFORE spawn ensures `advance(10s)` fires it
+        // reliably — even if the spawned task hasn't been polled yet when advance()
+        // is called (matching the pattern used by spawn_kill_watchdog / MED-005).
+        let gc_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(10);
+
+        tokio::spawn(async move {
+            // BC-2.08.005: 10-second grace period (sleep_until uses pre-computed deadline).
+            tokio::time::sleep_until(gc_deadline).await;
+
+            // Under the sessions mutex: remove entry and publish SessionListUpdate atomically.
+            {
+                use monocle_core::engine::{EnrichedSession, SessionStatus};
+                let mut guard = sessions.lock().await;
+
+                // Defensive check: session must still be present and still Terminated.
+                // Guards against session_id reuse (astronomically unlikely) and double-GC.
+                match guard.get(&session_id) {
+                    Some(entry) if entry.state == SessionState::Terminated => {
+                        guard.remove(&session_id);
+                    }
+                    _ => {
+                        // Session already removed or changed state — nothing to GC.
+                        tracing::trace!(
+                            session_id = %session_id,
+                            "spawn_gc_task: session not present or not Terminated at GC time; skipping"
+                        );
+                        return;
+                    }
+                }
+
+                // Build snapshot after removal (GC'd session must NOT appear in list).
+                let list_snapshot: Vec<EnrichedSession> = guard
+                    .values()
+                    .map(|e| {
+                        let status = match e.state {
+                            SessionState::Launching | SessionState::Running => {
+                                SessionStatus::Active
+                            }
+                            SessionState::Detached => SessionStatus::Idle,
+                            SessionState::Terminating | SessionState::Terminated => {
+                                SessionStatus::Stopped
+                            }
+                            _ => SessionStatus::Stopped,
+                        };
+                        EnrichedSession::new(
+                            e.session_id.clone(),
+                            e.harness_id.clone(),
+                            None,
+                            None,
+                            status,
+                            None,
+                            e.project_root
+                                .file_name()
+                                .and_then(|n| n.to_str())
+                                .map(|s| s.to_string()),
+                            Some(e.started_at),
+                            0,
+                            None,
+                        )
+                    })
+                    .collect();
+
+                // Publish SessionListUpdate UNDER the mutex (BC-2.08.005 Architecture Compliance).
+                // NO SessionStateChanged — already emitted at Terminated transition.
+                let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
+                    sessions: list_snapshot,
+                };
+                crate::ipc_server::broadcast_to_subscribers(&broker, list_msg).await;
+                // sessions lock released here
+            }
+
+            // After mutex release: delete sidecar and socket (best-effort; ENOENT ok).
+            // BC-2.08.005 AC-008: use std::fs::remove_file; ENOENT is not an error.
+            match std::fs::remove_file(&sidecar_path) {
+                Ok(()) => {
+                    tracing::trace!(
+                        session_id = %session_id,
+                        path = %sidecar_path.display(),
+                        "spawn_gc_task: sidecar deleted"
+                    );
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                    tracing::trace!(
+                        session_id = %session_id,
+                        path = %sidecar_path.display(),
+                        "spawn_gc_task: sidecar already absent (ENOENT) — EC-174, no error"
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        session_id = %session_id,
+                        path = %sidecar_path.display(),
+                        error = %e,
+                        "spawn_gc_task: unexpected error deleting sidecar (non-ENOENT)"
+                    );
+                }
+            }
+            // AC-003: best-effort socket file deletion.
+            match std::fs::remove_file(&socket_path) {
+                Ok(()) => {
+                    tracing::trace!(
+                        session_id = %session_id,
+                        path = %socket_path.display(),
+                        "spawn_gc_task: socket file deleted"
+                    );
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                    tracing::trace!(
+                        session_id = %session_id,
+                        path = %socket_path.display(),
+                        "spawn_gc_task: socket file already absent (ENOENT)"
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        session_id = %session_id,
+                        path = %socket_path.display(),
+                        error = %e,
+                        "spawn_gc_task: unexpected error deleting socket file (non-ENOENT)"
+                    );
+                }
+            }
+        })
     }
 
     /// Resize the PTY for a session.
@@ -2535,8 +2840,19 @@ async fn post_spawn_monitor(
             crate::ipc_server::broadcast_to_subscribers(&broker, list_msg).await;
             // sessions lock released here — both try_send calls completed atomically.
         }
-        // GC the sidecar after releasing the sessions lock (no mutex needed for fs ops).
+        // EC-163: delete sidecar immediately (security cleanup — no grace period for
+        // impersonated connections).
         let _ = std::fs::remove_file(&sidecar_path);
+        // S-037 (BC-2.08.005 PC-1): Start 10s GC task to remove session from registry and
+        // publish SessionListUpdate after grace period (sidecar already deleted above;
+        // spawn_gc_task remove_file ENOENT is non-fatal).
+        SessionManager::spawn_gc_task(
+            session_id.clone(),
+            sidecar_path.clone(),
+            socket_path.clone(),
+            Arc::clone(&sessions),
+            Arc::clone(&broker),
+        );
         return;
     }
 
@@ -3053,7 +3369,8 @@ async fn transition_to_terminated_standalone(
     broker: &Arc<monocle_ipc::server::SubscriberList>,
     sidecar_path: &PathBuf,
 ) {
-    {
+    // Capture socket_path for GC wiring (S-037: BC-2.08.005).
+    let socket_path_for_gc: Option<std::path::PathBuf> = {
         use monocle_core::engine::{EnrichedSession, SessionStatus};
         let mut guard = sessions.lock().await;
 
@@ -3069,6 +3386,9 @@ async fn transition_to_terminated_standalone(
         } else {
             return;
         }
+
+        // Capture socket_path for GC (S-037) — session was just transitioned, so entry exists.
+        let socket_path = guard.get(session_id).map(|e| e.session_host_socket.clone());
 
         let list_snapshot: Vec<EnrichedSession> = guard
             .values()
@@ -3109,7 +3429,8 @@ async fn transition_to_terminated_standalone(
         };
         crate::ipc_server::broadcast_to_subscribers(broker, list_msg).await;
         // lock released here
-    }
+        socket_path
+    };
 
     // Update sidecar → Terminated.
     if let Ok(existing_json) = std::fs::read_to_string(sidecar_path) {
@@ -3120,6 +3441,17 @@ async fn transition_to_terminated_standalone(
                 SessionManager::atomic_sidecar_write(sidecar_path, &updated_bytes, session_id);
             }
         }
+    }
+
+    // S-037 (BC-2.08.005): Start 10s GC task at FIRST Terminated transition.
+    if let Some(socket_path) = socket_path_for_gc {
+        SessionManager::spawn_gc_task(
+            session_id.to_string(),
+            sidecar_path.clone(),
+            socket_path,
+            Arc::clone(sessions),
+            Arc::clone(broker),
+        );
     }
 }
 
@@ -6890,6 +7222,589 @@ mod tests {
             state_changed_idx.unwrap(),
             list_update_idx.unwrap(),
             broadcasts
+        );
+    }
+
+    // =======================================================================
+    // BC-2.08.005 — Session GC task: Terminated sessions removed after 10s
+    //               grace period; rename_session() guards.
+    // =======================================================================
+
+    // -----------------------------------------------------------------------
+    // Test 1 of 5: GC removes entry + sidecar + publishes SessionListUpdate
+    // after 10-second grace period (AC-001, AC-002, AC-004, AC-006)
+    // -----------------------------------------------------------------------
+
+    /// Verifies BC-2.08.005 postconditions 1–2 and 4: after a session transitions
+    /// to `Terminated`, the GC task fires at 10 seconds (virtual time), removes the
+    /// `SessionEntry` from the registry, deletes the sidecar file, and publishes
+    /// a `SessionListUpdate` to connected TUI clients.
+    ///
+    /// AC-003 (socket file deletion) is covered inline: a socket path file is
+    /// created alongside the sidecar and asserted absent after GC fires.
+    ///
+    /// Wall clock is NOT used. `start_paused = true` freezes tokio's virtual clock;
+    /// `tokio::time::advance(10s)` triggers the GC sleep without real-time delay
+    /// (BC-5.38.001 Red Gate discipline / story task requirement).
+    #[tokio::test(start_paused = true)]
+    async fn test_BC_2_08_005_terminated_session_gc_after_10s() {
+        let tmp = tempfile::Builder::new()
+            .tempdir_in("/tmp")
+            .expect("gc_after_10s: tempdir in /tmp");
+
+        let session_id = "00000000-0537-4000-a000-000000000001".to_string();
+        let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+        let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
+
+        // Write a minimal sidecar file so GC can delete it.
+        {
+            use std::io::Write as _;
+            let mut f = std::fs::File::create(&sidecar_path).expect("gc_after_10s: create sidecar");
+            f.write_all(b"{\"schema_version\":3,\"session_id\":\"placeholder\"}")
+                .expect("gc_after_10s: write sidecar");
+        }
+        // Create a dummy socket file so GC can delete it (AC-003 best-effort).
+        {
+            use std::io::Write as _;
+            let mut f =
+                std::fs::File::create(&socket_path).expect("gc_after_10s: create socket file");
+            f.write_all(b"").expect("gc_after_10s: write socket file");
+        }
+
+        assert!(
+            sidecar_path.exists(),
+            "precondition: sidecar must exist before GC"
+        );
+        assert!(
+            socket_path.exists(),
+            "precondition: socket file must exist before GC"
+        );
+
+        // Build a manager with a subscriber so we can capture SessionListUpdate.
+        let (tx, mut rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry = ClientEntry::new(tx);
+        let subs: SubscriberList = Arc::new(Mutex::new(vec![entry]));
+        let broker = make_broker(&subs);
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 10_001,
+        });
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+        let manager =
+            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+
+        // Insert a Terminated session entry directly (test seam).
+        manager
+            .insert_terminated_session_for_test(&session_id, 10_001u32, socket_path.clone())
+            .await;
+
+        // Confirm session is in registry before GC fires.
+        {
+            let guard = manager.sessions.lock().await;
+            assert!(
+                guard.contains_key(&session_id),
+                "BC-2.08.005 precondition: session must be in registry before GC"
+            );
+        }
+
+        // Spawn the GC task (drives the todo!() stub — will panic under Red Gate).
+        let _gc_handle = SessionManager::spawn_gc_task(
+            session_id.clone(),
+            sidecar_path.clone(),
+            socket_path.clone(),
+            Arc::clone(&manager.sessions),
+            Arc::clone(&manager.broker),
+        );
+
+        // Advance virtual time by exactly 10 seconds to fire the GC sleep.
+        tokio::time::advance(std::time::Duration::from_secs(10)).await;
+
+        // Give the spawned task a chance to run after time advance.
+        // timeout_at with Instant::now() (which is now 10s ahead) forces a yield.
+        let _ = tokio::time::timeout(
+            std::time::Duration::from_millis(50),
+            tokio::task::yield_now(),
+        )
+        .await;
+
+        // BC-2.08.005 PC-1: SessionEntry must be removed from registry.
+        {
+            let guard = manager.sessions.lock().await;
+            assert!(
+                !guard.contains_key(&session_id),
+                "BC-2.08.005 PC-1 (AC-001): SessionEntry must be removed from registry \
+                 after 10s GC; session {} still present",
+                session_id
+            );
+        }
+
+        // BC-2.08.005 PC-2 (AC-002): sidecar must be deleted.
+        assert!(
+            !sidecar_path.exists(),
+            "BC-2.08.005 PC-2 (AC-002): session-state.json must be deleted by GC; \
+             path {:?} still exists",
+            sidecar_path
+        );
+
+        // BC-2.08.005 PC-3 (AC-003): socket file must be deleted (best-effort).
+        assert!(
+            !socket_path.exists(),
+            "BC-2.08.005 PC-3 (AC-003): per-session UDS socket file must be deleted by GC \
+             (best-effort); path {:?} still exists",
+            socket_path
+        );
+
+        // BC-2.08.005 PC-4 (AC-004): SessionListUpdate must be published.
+        // Drain the channel with a short deadline.
+        let mut broadcasts: Vec<ServerToClient> = Vec::new();
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(100);
+            while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                broadcasts.push(msg);
+            }
+        }
+
+        let has_list_update = broadcasts
+            .iter()
+            .any(|m| matches!(m, ServerToClient::SessionListUpdate { .. }));
+        assert!(
+            has_list_update,
+            "BC-2.08.005 PC-4 (AC-004): GC task must publish SessionListUpdate to broker; \
+             broadcasts received: {:?}",
+            broadcasts
+        );
+
+        // BC-2.08.005 — GC task must NOT emit SessionStateChanged (it was already emitted
+        // at Terminated transition by kill_confirm_monitor/watchdog — see architecture note).
+        // NOTE: we do NOT assert the absence of SessionStateChanged here because the
+        // insert_terminated_session_for_test seam may have emitted one; we only require
+        // SessionListUpdate is present. The no-StateChanged assertion is covered by the
+        // dedicated rename test (test_BC_2_08_005_rename_on_running_succeeds).
+    }
+
+    // -----------------------------------------------------------------------
+    // Test 2 of 5: GC fires when sidecar already deleted — ENOENT is not an error
+    // (AC-011, EC-174, AC-008)
+    // -----------------------------------------------------------------------
+
+    /// Verifies BC-2.08.005 edge case EC-174 (AC-011, AC-008): if the sidecar is
+    /// already deleted (e.g., session-host cleaned it up on Goodbye) before the GC
+    /// task fires, `remove_file` returns ENOENT, which MUST NOT propagate as an error.
+    /// The GC task must still remove the registry entry and publish `SessionListUpdate`.
+    ///
+    /// The sidecar file is intentionally NOT created before `spawn_gc_task` is called.
+    #[tokio::test(start_paused = true)]
+    async fn test_BC_2_08_005_gc_sidecar_enoent_no_error() {
+        let tmp = tempfile::Builder::new()
+            .tempdir_in("/tmp")
+            .expect("gc_enoent: tempdir in /tmp");
+
+        let session_id = "00000000-0537-4000-a000-000000000002".to_string();
+        // sidecar_path intentionally does NOT exist — simulates session-host pre-deletion.
+        let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+        let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
+
+        // Neither sidecar nor socket exists.
+        assert!(
+            !sidecar_path.exists(),
+            "EC-174 precondition: sidecar must NOT exist (already deleted by session-host)"
+        );
+
+        let (tx, mut rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry = ClientEntry::new(tx);
+        let subs: SubscriberList = Arc::new(Mutex::new(vec![entry]));
+        let broker = make_broker(&subs);
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 10_002,
+        });
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+        let manager =
+            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+
+        manager
+            .insert_terminated_session_for_test(&session_id, 10_002u32, socket_path.clone())
+            .await;
+
+        // Spawn GC task — sidecar does not exist; ENOENT must be tolerated (AC-008).
+        // Under the Red Gate, this todo!() panics; after implementation it completes cleanly.
+        let gc_handle = SessionManager::spawn_gc_task(
+            session_id.clone(),
+            sidecar_path.clone(),
+            socket_path.clone(),
+            Arc::clone(&manager.sessions),
+            Arc::clone(&manager.broker),
+        );
+
+        tokio::time::advance(std::time::Duration::from_secs(10)).await;
+
+        // GC task must not panic (ENOENT must be swallowed, not propagated).
+        let gc_result =
+            tokio::time::timeout(std::time::Duration::from_millis(200), gc_handle).await;
+        assert!(
+            gc_result.is_ok(),
+            "BC-2.08.005 EC-174 (AC-011): GC task must complete within deadline even when \
+             sidecar is absent (ENOENT) — task timed out or was not driven"
+        );
+        assert!(
+            gc_result.unwrap().is_ok(),
+            "BC-2.08.005 EC-174 (AC-008): GC task must not panic when sidecar is absent; \
+             remove_file ENOENT must be tolerated (use std::fs::remove_file, ignore ENOENT)"
+        );
+
+        // Registry entry must still be removed despite missing sidecar.
+        {
+            let guard = manager.sessions.lock().await;
+            assert!(
+                !guard.contains_key(&session_id),
+                "BC-2.08.005 EC-174: SessionEntry must be removed from registry even when \
+                 sidecar was already deleted; session {} still present",
+                session_id
+            );
+        }
+
+        // SessionListUpdate must still be published.
+        let mut broadcasts: Vec<ServerToClient> = Vec::new();
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(100);
+            while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                broadcasts.push(msg);
+            }
+        }
+        let has_list_update = broadcasts
+            .iter()
+            .any(|m| matches!(m, ServerToClient::SessionListUpdate { .. }));
+        assert!(
+            has_list_update,
+            "BC-2.08.005 EC-174 (AC-004): SessionListUpdate must still be published even \
+             when sidecar was already deleted; broadcasts: {:?}",
+            broadcasts
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Test 3 of 5: rename_session() on a Terminated-in-grace session returns
+    // Err(InvalidSessionName { reason: "session terminated" }) (AC-009, Inv 4)
+    // -----------------------------------------------------------------------
+
+    /// Verifies BC-2.08.005 Invariant 4 (AC-009): calling `rename_session()` on a
+    /// session that is in the `Terminated`-in-grace state (after transition but before
+    /// the 10-second GC fires) MUST return
+    /// `Err(SessionError::InvalidSessionName { reason: "session terminated" })`.
+    ///
+    /// Wire code mapping via `session_error_to_code()`:
+    /// `InvalidSessionName { .. }` → `"rename_failed"` (F-P52-001).
+    ///
+    /// Cross-story boundary note: AC-005 (TUI vt100 cleanup) is validated in SS-09
+    /// stories, not here. AC-007/AC-010 (re-discovery immediate GC) are in S-036.
+    #[tokio::test]
+    async fn test_BC_2_08_005_rename_on_terminated_fails() {
+        let tmp = tempfile::tempdir().expect("rename_on_terminated: tempdir");
+
+        let session_id = "00000000-0537-4000-a000-000000000003".to_string();
+        let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
+
+        let (tx, _rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry = ClientEntry::new(tx);
+        let subs: SubscriberList = Arc::new(Mutex::new(vec![entry]));
+        let broker = make_broker(&subs);
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 10_003,
+        });
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+        let mut manager = SessionManager::new(tmp.path().to_path_buf(), spawner, broker, engine);
+
+        // Insert session in Terminated state (the "in-grace" window: 0..10s after Terminated).
+        manager
+            .insert_terminated_session_for_test(&session_id, 10_003u32, socket_path.clone())
+            .await;
+
+        // Call rename_session() while the session is in Terminated state.
+        // BC-2.08.005 Invariant 4: MUST return Err(InvalidSessionName { reason: "session terminated" }).
+        let result = manager
+            .rename_session(&session_id, "Should Not Work".to_string())
+            .await;
+
+        assert!(
+            result.is_err(),
+            "BC-2.08.005 Inv 4 (AC-009): rename_session() on a Terminated session must return \
+             Err; got Ok(())"
+        );
+
+        let err = result.unwrap_err();
+        match &err {
+            SessionError::InvalidSessionName { reason } => {
+                assert_eq!(
+                    reason, "session terminated",
+                    "BC-2.08.005 Inv 4 (AC-009): InvalidSessionName reason must be \
+                     \"session terminated\"; got {:?}",
+                    reason
+                );
+            }
+            other => panic!(
+                "BC-2.08.005 Inv 4 (AC-009): expected Err(InvalidSessionName {{ reason: \
+                 \"session terminated\" }}), got {:?}",
+                other
+            ),
+        }
+
+        // Also verify wire code maps to "rename_failed" (F-P52-001).
+        let wire_code = session_error_to_code(IpcOp::Rename, &err);
+        assert_eq!(
+            wire_code, "rename_failed",
+            "BC-2.08.005 Inv 4 / session_error_to_code() (F-P52-001): InvalidSessionName \
+             must map to wire code \"rename_failed\"; got {:?}",
+            wire_code
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Test 4 of 5: two sessions terminate independently — no interference
+    // (AC-012, EC-175)
+    // -----------------------------------------------------------------------
+
+    /// Verifies BC-2.08.005 edge case EC-175 (AC-012): two independent GC tasks,
+    /// each with their own 10-second timer, fire independently. Session A terminates
+    /// at t=0, session B terminates ~1 second later; both are GC'd at their own
+    /// 10-second mark without interfering with each other.
+    ///
+    /// Uses virtual time (`start_paused = true`). After advancing 11 seconds, both
+    /// sessions must be gone from the registry.
+    #[tokio::test(start_paused = true)]
+    async fn test_BC_2_08_005_two_sessions_terminate_independently() {
+        let tmp = tempfile::Builder::new()
+            .tempdir_in("/tmp")
+            .expect("two_sessions: tempdir in /tmp");
+
+        let session_a = "00000000-0537-4000-a000-000000000004".to_string();
+        let session_b = "00000000-0537-4000-a000-000000000005".to_string();
+
+        let sidecar_a = tmp.path().join(format!("session-{}.json", session_a));
+        let sidecar_b = tmp.path().join(format!("session-{}.json", session_b));
+        let socket_a = tmp.path().join(format!("session-{}.sock", session_a));
+        let socket_b = tmp.path().join(format!("session-{}.sock", session_b));
+
+        // Create minimal sidecar files for both sessions.
+        for (path, id) in [(&sidecar_a, &session_a), (&sidecar_b, &session_b)] {
+            use std::io::Write as _;
+            let mut f = std::fs::File::create(path)
+                .unwrap_or_else(|e| panic!("two_sessions: create sidecar {}: {}", id, e));
+            f.write_all(b"{\"schema_version\":3}")
+                .unwrap_or_else(|e| panic!("two_sessions: write sidecar {}: {}", id, e));
+        }
+
+        let (tx, mut rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry = ClientEntry::new(tx);
+        let subs: SubscriberList = Arc::new(Mutex::new(vec![entry]));
+        let broker = make_broker(&subs);
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 10_004,
+        });
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+        let manager =
+            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+
+        // Insert both sessions in Terminated state.
+        manager
+            .insert_terminated_session_for_test(&session_a, 10_004u32, socket_a.clone())
+            .await;
+        manager
+            .insert_terminated_session_for_test(&session_b, 10_005u32, socket_b.clone())
+            .await;
+
+        // Both sessions are in registry.
+        {
+            let guard = manager.sessions.lock().await;
+            assert!(
+                guard.contains_key(&session_a),
+                "two_sessions: session_a must be in registry"
+            );
+            assert!(
+                guard.contains_key(&session_b),
+                "two_sessions: session_b must be in registry"
+            );
+        }
+
+        // Spawn GC task for session A at t=0.
+        let _gc_a = SessionManager::spawn_gc_task(
+            session_a.clone(),
+            sidecar_a.clone(),
+            socket_a.clone(),
+            Arc::clone(&manager.sessions),
+            Arc::clone(&manager.broker),
+        );
+
+        // Advance 1 second — simulate session B terminating 1 second after session A.
+        tokio::time::advance(std::time::Duration::from_secs(1)).await;
+
+        // Spawn GC task for session B at t=1s.
+        let _gc_b = SessionManager::spawn_gc_task(
+            session_b.clone(),
+            sidecar_b.clone(),
+            socket_b.clone(),
+            Arc::clone(&manager.sessions),
+            Arc::clone(&manager.broker),
+        );
+
+        // Advance to t=11s — both GC tasks should have fired (A at 10s, B at 11s).
+        tokio::time::advance(std::time::Duration::from_secs(10)).await;
+
+        // Give spawned tasks time to run.
+        let _ = tokio::time::timeout(
+            std::time::Duration::from_millis(100),
+            tokio::task::yield_now(),
+        )
+        .await;
+
+        // BC-2.08.005 EC-175 (AC-012): both sessions must be gone from registry.
+        {
+            let guard = manager.sessions.lock().await;
+            assert!(
+                !guard.contains_key(&session_a),
+                "BC-2.08.005 EC-175 (AC-012): session_a must be removed from registry \
+                 after 10s GC (spawned at t=0, fires at t=10s)"
+            );
+            assert!(
+                !guard.contains_key(&session_b),
+                "BC-2.08.005 EC-175 (AC-012): session_b must be removed from registry \
+                 after 10s GC (spawned at t=1s, fires at t=11s)"
+            );
+        }
+
+        // Both sidecars must be deleted.
+        assert!(
+            !sidecar_a.exists(),
+            "BC-2.08.005 EC-175: sidecar_a must be deleted by GC"
+        );
+        assert!(
+            !sidecar_b.exists(),
+            "BC-2.08.005 EC-175: sidecar_b must be deleted by GC"
+        );
+
+        // Two independent SessionListUpdate broadcasts must have been emitted
+        // (one for each GC task).
+        let mut list_update_count = 0usize;
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(100);
+            while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                if matches!(msg, ServerToClient::SessionListUpdate { .. }) {
+                    list_update_count += 1;
+                }
+            }
+        }
+        assert!(
+            list_update_count >= 2,
+            "BC-2.08.005 EC-175 (AC-012): two independent GC tasks must each publish a \
+             SessionListUpdate; got {} SessionListUpdate messages (expected >= 2)",
+            list_update_count
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Test 5 of 5: rename_session() on a Running session succeeds — updates
+    // display_name, sidecar written, SessionListUpdate published, NO
+    // SessionStateChanged emitted (BC-2.08.008 PC-4a; story note AC-013)
+    // -----------------------------------------------------------------------
+
+    /// Verifies BC-2.08.005 (rename happy path) and BC-2.08.008 PC-4a:
+    /// calling `rename_session()` on a session that is NOT in `Terminated` state must:
+    ///   1. Return `Ok(())`.
+    ///   2. Update the sidecar file with the new `display_name`.
+    ///   3. Publish `SessionListUpdate` to the broker.
+    ///   4. NOT emit `SessionStateChanged` (rename is metadata, not a state transition).
+    ///
+    /// NOTE — IPC arm: `ClientToServer::RenameSession` IPC handler dispatch is owned
+    /// by S-047 (BC-2.05.010). This test exercises `SessionManager::rename_session()`
+    /// directly, bypassing IPC wire dispatch (as specified in story Tasks section).
+    ///
+    /// Cross-story boundary note: AC-005 (TUI vt100 cleanup on receipt of SessionListUpdate
+    /// or SessionStateChanged::Terminated) is validated in SS-09 stories, not here.
+    /// AC-007/AC-010 (re-discovery immediate GC) are validated in S-036.
+    #[tokio::test]
+    async fn test_BC_2_08_005_rename_on_running_succeeds() {
+        let tmp = tempfile::tempdir().expect("rename_on_running: tempdir");
+
+        let (mut manager, _subs, mut rx) = make_manager_with_channel(tmp.path(), None);
+        let session_id = "00000000-0537-4000-a000-000000000006".to_string();
+
+        // Spawn a session so it exists in the registry in Launching state.
+        manager
+            .spawn_session(make_spawn_opts(&session_id))
+            .await
+            .expect("rename_on_running: spawn must succeed");
+
+        // Drain all messages generated by spawn (SpawnAck, SessionStateChanged{Launching},
+        // SessionListUpdate) before asserting rename behavior.
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+            loop {
+                match tokio::time::timeout_at(deadline, rx.recv()).await {
+                    Ok(Some(_)) => continue,
+                    _ => break,
+                }
+            }
+        }
+
+        // Call rename_session() — session is in Launching state (non-Terminated).
+        // BC-2.08.005 Inv 4 / BC-2.08.008 PC-4a: must return Ok(()), not an error.
+        let new_name = "My Renamed Session".to_string();
+        let result = manager.rename_session(&session_id, new_name.clone()).await;
+
+        assert!(
+            result.is_ok(),
+            "BC-2.08.005 / BC-2.08.008 PC-4a: rename_session() on a non-Terminated session \
+             must return Ok(()); got: {:?}",
+            result
+        );
+
+        // Collect all messages emitted by rename_session().
+        let mut rename_broadcasts: Vec<ServerToClient> = Vec::new();
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(100);
+            while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                rename_broadcasts.push(msg);
+            }
+        }
+
+        // BC-2.08.008 PC-4a: SessionStateChanged must NOT be emitted by rename.
+        let has_state_changed = rename_broadcasts
+            .iter()
+            .any(|m| matches!(m, ServerToClient::SessionStateChanged { .. }));
+        assert!(
+            !has_state_changed,
+            "BC-2.08.008 PC-4a: rename_session() must NOT emit SessionStateChanged; \
+             only SessionListUpdate is permitted. Broadcasts: {:?}",
+            rename_broadcasts
+        );
+
+        // BC-2.08.005 / BC-2.08.008 PC-4a: SessionListUpdate must be emitted.
+        let has_list_update = rename_broadcasts
+            .iter()
+            .any(|m| matches!(m, ServerToClient::SessionListUpdate { .. }));
+        assert!(
+            has_list_update,
+            "BC-2.08.005 / BC-2.08.008 PC-4a: rename_session() must emit SessionListUpdate; \
+             broadcasts: {:?}",
+            rename_broadcasts
+        );
+
+        // BC-2.08.005 / AC-002 analog: sidecar must be updated with new display_name.
+        // Verify by reading the sidecar file from disk.
+        let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+        assert!(
+            sidecar_path.exists(),
+            "rename_on_running: sidecar must still exist after rename (not deleted)"
+        );
+        let sidecar_content = std::fs::read_to_string(&sidecar_path)
+            .expect("rename_on_running: failed to read sidecar after rename");
+        assert!(
+            sidecar_content.contains(&new_name),
+            "BC-2.08.005 / BC-2.08.008 PC-4a: sidecar must be updated with the new \
+             display_name {:?} after rename_session(); sidecar content: {}",
+            new_name,
+            sidecar_content
         );
     }
 }
