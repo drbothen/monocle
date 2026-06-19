@@ -2378,6 +2378,12 @@ impl SessionManager {
     ///   emits `SessionListUpdate` only — MUST NOT emit `SessionStateChanged`.
     /// - Returns `Err(SessionError::SessionNotFound)` if `session_id` is unknown.
     ///
+    /// **Ordering (F-S037-P2-004):**
+    /// update display_name (in memory) → write sidecar → publish SessionListUpdate.
+    /// If the sidecar write fails, the in-memory rename is reverted and
+    /// `Err(SessionError::SidecarWriteFailed)` is returned — the broadcast is NOT
+    /// sent, so clients never observe a success they cannot rely on.
+    ///
     /// Implemented in S-037.
     pub async fn rename_session(
         &mut self,
@@ -2390,13 +2396,13 @@ impl SessionManager {
             .runtime_dir
             .join(format!("session-{}.json", session_id));
 
-        // Update display_name in memory and build snapshot under the sessions lock.
-        // Also check state guards.
-        let list_snapshot: Vec<EnrichedSession> = {
+        // Step 1: save prior name, update display_name in memory, build snapshot.
+        // All under the sessions lock.
+        let (prior_name, list_snapshot): (String, Vec<EnrichedSession>) = {
             let mut guard = self.sessions.lock().await;
 
             // Single get_mut covers not-found + Terminated guard + update in one map lookup.
-            match guard.get_mut(session_id) {
+            let prior_name = match guard.get_mut(session_id) {
                 None => {
                     return Err(SessionError::SessionNotFound {
                         session_id: session_id.to_string(),
@@ -2409,13 +2415,15 @@ impl SessionManager {
                     });
                 }
                 Some(entry) => {
+                    let prior = entry.display_name.clone();
                     // Update display_name in-memory entry.
                     entry.display_name = new_name.clone();
+                    prior
                 }
-            }
+            };
 
             // Build snapshot while holding lock (consistent with updated display_name).
-            guard
+            let snapshot = guard
                 .values()
                 .map(|e| {
                     let status = match e.state {
@@ -2446,51 +2454,84 @@ impl SessionManager {
                         e.display_name.clone(),
                     )
                 })
-                .collect()
+                .collect();
             // sessions lock released here
+            (prior_name, snapshot)
         };
 
-        // Publish SessionListUpdate ONLY — MUST NOT emit SessionStateChanged
+        // Step 2 (F-S037-P2-004): write sidecar BEFORE broadcasting.
+        // On failure: revert in-memory display_name and return Err — do NOT broadcast
+        // success to clients that cannot rely on it.
+        let sidecar_write_result: Result<(), SessionError> = (|| {
+            let existing_json = std::fs::read_to_string(&sidecar_path).map_err(|e| {
+                SessionError::SidecarWriteFailed {
+                    path: sidecar_path.to_string_lossy().into_owned(),
+                    reason: format!("could not read sidecar for rename update: {e}"),
+                }
+            })?;
+            let mut val =
+                serde_json::from_str::<serde_json::Value>(&existing_json).map_err(|e| {
+                    SessionError::SidecarWriteFailed {
+                        path: sidecar_path.to_string_lossy().into_owned(),
+                        reason: format!("could not parse sidecar JSON for rename update: {e}"),
+                    }
+                })?;
+            val["display_name"] = serde_json::json!(new_name);
+            let updated_bytes =
+                serde_json::to_vec_pretty(&val).map_err(|e| SessionError::SidecarWriteFailed {
+                    path: sidecar_path.to_string_lossy().into_owned(),
+                    reason: format!("failed to serialize sidecar rename update: {e}"),
+                })?;
+            let dir = sidecar_path
+                .parent()
+                .ok_or_else(|| SessionError::SidecarWriteFailed {
+                    path: sidecar_path.to_string_lossy().into_owned(),
+                    reason: "sidecar path has no parent directory".to_string(),
+                })?;
+            let mut tmp = tempfile::Builder::new()
+                .prefix(".session-sidecar-rename-")
+                .suffix(".json.tmp")
+                .tempfile_in(dir)
+                .map_err(|e| SessionError::SidecarWriteFailed {
+                    path: sidecar_path.to_string_lossy().into_owned(),
+                    reason: format!("tempfile creation failed for rename: {e}"),
+                })?;
+            use std::io::Write as _;
+            tmp.write_all(&updated_bytes)
+                .map_err(|e| SessionError::SidecarWriteFailed {
+                    path: sidecar_path.to_string_lossy().into_owned(),
+                    reason: format!("write to tempfile failed for rename: {e}"),
+                })?;
+            tmp.persist(&sidecar_path)
+                .map_err(|e| SessionError::SidecarWriteFailed {
+                    path: sidecar_path.to_string_lossy().into_owned(),
+                    reason: format!("tempfile persist failed for rename: {}", e.error),
+                })?;
+            Ok(())
+        })();
+
+        if let Err(write_err) = sidecar_write_result {
+            // Revert in-memory display_name — the sidecar was not updated, so the
+            // rename did not durably succeed.  Do NOT broadcast a success event.
+            tracing::warn!(
+                session_id = %session_id,
+                error = %write_err,
+                prior_name = %prior_name,
+                "rename_session: sidecar write failed; reverting in-memory display_name"
+            );
+            let mut guard = self.sessions.lock().await;
+            if let Some(entry) = guard.get_mut(session_id) {
+                entry.display_name = prior_name;
+            }
+            return Err(write_err);
+        }
+
+        // Step 3: broadcast SessionListUpdate ONLY — MUST NOT emit SessionStateChanged
         // (BC-2.08.008 PC-4a: rename is a metadata operation, not a state transition).
         let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
             sessions: list_snapshot,
         };
         crate::ipc_server::broadcast_to_subscribers(&self.broker, list_msg).await;
-
-        // Update sidecar atomically via tempfile::persist (AC-007 pattern).
-        match std::fs::read_to_string(&sidecar_path) {
-            Err(e) => {
-                tracing::warn!(
-                    session_id = %session_id,
-                    error = %e,
-                    "rename_session: could not read sidecar for update (non-fatal; in-memory state updated)"
-                );
-            }
-            Ok(existing_json) => match serde_json::from_str::<serde_json::Value>(&existing_json) {
-                Err(e) => {
-                    tracing::warn!(
-                        session_id = %session_id,
-                        error = %e,
-                        "rename_session: could not parse sidecar JSON for update"
-                    );
-                }
-                Ok(mut val) => {
-                    val["display_name"] = serde_json::json!(new_name);
-                    match serde_json::to_vec_pretty(&val) {
-                        Err(e) => {
-                            tracing::warn!(
-                                session_id = %session_id,
-                                error = %e,
-                                "rename_session: failed to serialize sidecar update"
-                            );
-                        }
-                        Ok(updated_bytes) => {
-                            Self::atomic_sidecar_write(&sidecar_path, &updated_bytes, session_id);
-                        }
-                    }
-                }
-            },
-        }
 
         Ok(())
     }
@@ -3033,22 +3074,22 @@ async fn post_spawn_monitor(
                         // Transition state and collect all daemon-owned fields.
                         let fields = if let Some(entry) = guard.get_mut(&session_id) {
                             entry.state = SessionState::Running;
-                            let dn = format!(
-                                "{} — {}",
-                                entry.harness_id,
-                                entry
-                                    .project_root
-                                    .file_name()
-                                    .and_then(|n| n.to_str())
-                                    .unwrap_or("unknown")
-                            );
+                            // F-S037-P2-001: Use the STORED entry.display_name (which may have
+                            // been updated by rename_session() while in Launching state) rather
+                            // than recomputing it from harness_id + basename.  The stored value
+                            // is always valid because spawn_session() initialises it to the
+                            // default "<harness_id> — <basename>" string at spawn time.
+                            // Recomputing here would clobber any rename that happened between
+                            // spawn and Running transition, losing the rename on the next daemon
+                            // restart (re-discovery reads the sidecar).
+                            let authoritative_display_name = entry.display_name.clone();
                             Some((
                                 entry.project_root.to_string_lossy().into_owned(),
                                 entry.cwd.to_string_lossy().into_owned(),
                                 entry.harness_id.clone(),
                                 entry.profile_id.clone(),
                                 entry.started_at.to_rfc3339(),
-                                dn,
+                                authoritative_display_name,
                                 entry.session_host_pid,
                             ))
                         } else {
