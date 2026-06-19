@@ -390,7 +390,7 @@ struct StartSequenceLockContent {
 /// 6. Register `ClaudeCodeModule` + `VsddFactoryAdapter` in `EngineModuleRegistry`.
 /// 7. Generate session token: `OsRng` → 32 bytes → 64 hex lowercase (no `monocle-v1:` prefix).
 /// 8. **SOQ-2 commit point**: write lock file via `write_lock_file`, mode 0o600.
-/// 9. Write `hooks-settings.json` via `write_hooks_settings`, mode 0o600.
+/// 9. Write `hooks-settings.json` via `write_hooks_settings_json` (single-writer in `session_manager`), mode 0o600.
 /// 10. Remove stale UDS socket at `<runtime_dir>/monocle.sock`, bind tokio `UnixListener`,
 ///     mode 0o600. Spawn `run_accept_loop` as a Tokio task.
 /// 11. Init crash recovery checkpoint infrastructure (stateless; verifies path is writable).
