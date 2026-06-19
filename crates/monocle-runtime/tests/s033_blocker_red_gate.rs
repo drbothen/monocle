@@ -39,7 +39,9 @@
 
 use monocle_core::engine::SpawnRecipe;
 use monocle_runtime::lifecycle::daemon_start_sequence;
-use monocle_runtime::session_manager::{SessionError, SessionHostSpawner, SpawnedHostHandle};
+use monocle_runtime::session_manager::{
+    HookEndpointConfig, SessionError, SessionHostSpawner, SpawnedHostHandle,
+};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -467,6 +469,7 @@ async fn test_BC_2_08_001_B003_peercred_mismatch_terminates_session() {
         }),
         broker,
         Arc::new(EngineB3),
+        HookEndpointConfig::default(),
     );
 
     // Inject the rejecting verifier: simulates UID mismatch (EC-163).
@@ -691,6 +694,7 @@ async fn test_BC_2_08_001_B003_peercred_match_proceeds_to_running() {
         spawner,
         broker,
         Arc::new(SucceedingEngine2),
+        HookEndpointConfig::default(),
     );
 
     let session_id = "b003b000-0000-4000-a000-000000000001".to_string();
@@ -848,6 +852,7 @@ async fn test_BC_2_08_001_B004_sidecar_on_disk_deserializes_as_v3() {
         spawner,
         broker,
         Arc::new(SucceedingEngine3),
+        HookEndpointConfig::default(),
     );
 
     let session_id = "b0040000-0000-4000-a000-000000000001".to_string();
@@ -1126,6 +1131,7 @@ async fn test_BC_2_08_001_B005_daemon_owned_fields_preserved_after_host_overwrit
         }),
         broker,
         Arc::new(EngineB5),
+        HookEndpointConfig::default(),
     );
 
     // Allow the connection: same-UID / matching scenario.
@@ -1424,6 +1430,7 @@ async fn test_BC_2_08_001_HIGH001_host_conn_is_some_after_running() {
         }),
         broker,
         Arc::new(SucceedingEngineH1),
+        HookEndpointConfig::default(),
     );
 
     let session_id = "0a010000-0000-4000-a000-000000000001".to_string();
@@ -1717,6 +1724,7 @@ async fn test_BC_2_08_001_HIGH003_sidecar_repersisted_with_running_state() {
         }),
         broker,
         Arc::new(SucceedingEngineH3),
+        HookEndpointConfig::default(),
     );
 
     let session_id = "0a030000-0000-4000-a000-000000000001".to_string();
@@ -1904,6 +1912,7 @@ async fn test_BC_2_08_001_MED002_collision_retry_deterministic() {
         spawner,
         broker,
         Arc::new(SucceedingEngineM2),
+        HookEndpointConfig::default(),
     );
 
     // --------------------------------------------------------------------------
@@ -2184,6 +2193,7 @@ async fn test_BC_2_08_001_MED004_degraded_env_sets_session_degraded() {
         }),
         broker,
         Arc::new(SucceedingEngineM4),
+        HookEndpointConfig::default(),
     );
 
     let session_id = "0e040000-0000-4000-a000-000000000001".to_string();
@@ -2443,6 +2453,7 @@ async fn test_BC_2_08_001_MED001_real_session_host_reaches_running() {
         spawner,
         broker,
         Arc::new(SucceedingEngineM1),
+        HookEndpointConfig::default(),
     );
 
     let session_id = "0e010000-0000-4000-a000-000000000001".to_string();
@@ -2714,6 +2725,7 @@ async fn test_BC_2_08_001_MED003_running_pair_not_interleaved_under_concurrent_m
         spawner,
         broker,
         Arc::new(Med003Engine),
+        HookEndpointConfig::default(),
     );
 
     // Spawn all N sessions (sequential is fine — the race is at the Running send, not spawn).

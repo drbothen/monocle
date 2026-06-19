@@ -49,10 +49,11 @@ use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 
 use monocle_runtime::errors::DaemonStartError;
-use monocle_runtime::lifecycle::{daemon_start_sequence, write_hooks_settings, write_lock_file};
+use monocle_runtime::lifecycle::{daemon_start_sequence, write_lock_file};
 use monocle_runtime::ring::{RingBuffer, RotationConfig};
+use monocle_runtime::session_manager::{write_hooks_settings_json, HookEndpointConfig};
 use monocle_runtime::types::{
-    EngineModuleRegistry, EventBusHookEvent, EventBusTx, HooksSettings, EVENT_BUS_CAPACITY,
+    EngineModuleRegistry, EventBusHookEvent, EventBusTx, EVENT_BUS_CAPACITY,
 };
 use tempfile::TempDir;
 
@@ -789,10 +790,10 @@ async fn test_BC_2_04_001_crash_recovery_checkpoint_init() {
 }
 
 // ---------------------------------------------------------------------------
-// write_hooks_settings unit-level tests (direct function call, not via full sequence)
+// write_hooks_settings_json unit-level tests (direct function call, not via full sequence)
 // ---------------------------------------------------------------------------
 
-/// Exercises BC-2.04.010 via `write_hooks_settings` directly.
+/// Exercises BC-2.04.010 via `write_hooks_settings_json` directly.
 ///
 /// Verifies the hooks-settings.json file structure when called standalone.
 /// This is a more targeted test than the full-sequence test above.
@@ -802,10 +803,15 @@ fn test_BC_2_04_010_write_hooks_settings_creates_valid_schema() {
     let runtime_dir = tmp.path();
 
     let auth_token = "a".repeat(64);
-    write_hooks_settings(runtime_dir, 7891, &auth_token)
-        .expect("write_hooks_settings must succeed");
-
+    let wire_token = format!("monocle-v1:{auth_token}");
     let hs_path = runtime_dir.join("hooks-settings.json");
+    let config = HookEndpointConfig {
+        pre_tool_use: format!("curl -s -X POST http://127.0.0.1:7891/hooks/pre-tool-use -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: {wire_token}' -d @-"),
+        notification: format!("curl -s -X POST http://127.0.0.1:7891/hooks/notification -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: {wire_token}' -d @-"),
+        stop: format!("curl -s -X POST http://127.0.0.1:7891/hooks/stop -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: {wire_token}' -d @-"),
+        user_prompt_submit: format!("curl -s -X POST http://127.0.0.1:7891/hooks/prompt-submit -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: {wire_token}' -d @-"),
+    };
+    write_hooks_settings_json(&config, &hs_path).expect("write_hooks_settings_json must succeed");
     assert!(hs_path.exists(), "hooks-settings.json must exist");
 
     let content = std::fs::read_to_string(&hs_path).expect("read hooks-settings.json");
@@ -847,17 +853,22 @@ fn test_BC_2_04_010_write_hooks_settings_creates_valid_schema() {
     );
 }
 
-/// Exercises BC-2.04.010 PC-3: `write_hooks_settings` sets file mode 0o600.
+/// Exercises BC-2.04.010 PC-3: `write_hooks_settings_json` sets file mode 0o600.
 #[test]
 fn test_BC_2_04_010_write_hooks_settings_mode_0o600_direct() {
     let tmp = isolated_runtime_dir();
     let runtime_dir = tmp.path();
 
     let auth_token = "b".repeat(64);
-    write_hooks_settings(runtime_dir, 7891, &auth_token)
-        .expect("write_hooks_settings must succeed");
-
+    let wire_token = format!("monocle-v1:{auth_token}");
     let hs_path = runtime_dir.join("hooks-settings.json");
+    let config = HookEndpointConfig {
+        pre_tool_use: format!("curl -s -X POST http://127.0.0.1:7891/hooks/pre-tool-use -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: {wire_token}' -d @-"),
+        notification: format!("curl -s -X POST http://127.0.0.1:7891/hooks/notification -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: {wire_token}' -d @-"),
+        stop: format!("curl -s -X POST http://127.0.0.1:7891/hooks/stop -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: {wire_token}' -d @-"),
+        user_prompt_submit: format!("curl -s -X POST http://127.0.0.1:7891/hooks/prompt-submit -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: {wire_token}' -d @-"),
+    };
+    write_hooks_settings_json(&config, &hs_path).expect("write_hooks_settings_json must succeed");
     let meta = std::fs::metadata(&hs_path).expect("metadata");
     let mode = meta.permissions().mode() & 0o777;
     assert_eq!(mode, 0o600, "hooks-settings.json must have mode 0o600");
@@ -873,10 +884,15 @@ fn test_BC_2_04_010_hook_commands_reference_correct_port() {
 
     let auth_token = "c".repeat(64);
     let port: u16 = 9001;
-    write_hooks_settings(runtime_dir, port, &auth_token)
-        .expect("write_hooks_settings must succeed");
-
+    let wire_token = format!("monocle-v1:{auth_token}");
     let hs_path = runtime_dir.join("hooks-settings.json");
+    let config = HookEndpointConfig {
+        pre_tool_use: format!("curl -s -X POST http://127.0.0.1:{port}/hooks/pre-tool-use -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: {wire_token}' -d @-"),
+        notification: format!("curl -s -X POST http://127.0.0.1:{port}/hooks/notification -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: {wire_token}' -d @-"),
+        stop: format!("curl -s -X POST http://127.0.0.1:{port}/hooks/stop -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: {wire_token}' -d @-"),
+        user_prompt_submit: format!("curl -s -X POST http://127.0.0.1:{port}/hooks/prompt-submit -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: {wire_token}' -d @-"),
+    };
+    write_hooks_settings_json(&config, &hs_path).expect("write_hooks_settings_json must succeed");
     let content = std::fs::read_to_string(&hs_path).expect("read file");
     let json: serde_json::Value = serde_json::from_str(&content).expect("valid JSON");
 
@@ -977,51 +993,6 @@ fn test_BC_2_04_001_engine_module_registry_registers_both_modules() {
 }
 
 // ---------------------------------------------------------------------------
-// HooksSettings type tests
-// ---------------------------------------------------------------------------
-
-/// Exercises the `HooksSettings` struct serialization round-trip.
-///
-/// Verifies that `HooksSettings` serializes to JSON and deserializes back
-/// to the same structure without data loss.
-#[test]
-fn test_BC_2_04_010_hooks_settings_type_serialization_roundtrip() {
-    use monocle_runtime::types::{HookCommand, HookEntry, HooksMap, HooksSettings};
-
-    let settings = HooksSettings {
-        hooks: HooksMap {
-            pre_tool_use: vec![HookEntry::command_all("echo pre-tool-use".to_string())],
-            post_tool_use: vec![],
-            notification: vec![HookEntry::command_all("echo notification".to_string())],
-            stop: vec![HookEntry::command_all("echo stop".to_string())],
-            user_prompt_submit: vec![HookEntry::command_all("echo prompt".to_string())],
-            pre_compact: vec![],
-        },
-    };
-
-    let json = serde_json::to_string_pretty(&settings).expect("serialize HooksSettings");
-    let deserialized: HooksSettings =
-        serde_json::from_str(&json).expect("deserialize HooksSettings");
-
-    assert_eq!(deserialized.hooks.pre_tool_use.len(), 1);
-    assert_eq!(deserialized.hooks.post_tool_use.len(), 0);
-    assert_eq!(deserialized.hooks.notification.len(), 1);
-    assert_eq!(deserialized.hooks.stop.len(), 1);
-    assert_eq!(deserialized.hooks.user_prompt_submit.len(), 1);
-    assert_eq!(deserialized.hooks.pre_compact.len(), 0);
-
-    // Verify SessionStart key is absent from the serialized JSON.
-    let json_value: serde_json::Value = serde_json::from_str(&json).expect("valid JSON");
-    assert!(
-        json_value
-            .get("hooks")
-            .and_then(|h| h.get("SessionStart"))
-            .is_none(),
-        "SessionStart must be absent from serialized HooksSettings"
-    );
-}
-
-// ---------------------------------------------------------------------------
 // MED-002: Token embedded in hook commands (BC-2.04.010 PC-3 wire token)
 // MED-003: matcher field present as "" in every active hook entry
 // ---------------------------------------------------------------------------
@@ -1029,7 +1000,7 @@ fn test_BC_2_04_010_hooks_settings_type_serialization_roundtrip() {
 /// Exercises BC-2.04.010 PC-3: each active hook command contains
 /// `monocle-v1:<token>` in the X-Monocle-Authorization header.
 ///
-/// The `write_hooks_settings` function must embed the wire token
+/// The `write_hooks_settings_json` function must embed the wire token
 /// `monocle-v1:<auth_token>` in the `-H 'X-Monocle-Authorization: ...'`
 /// argument of every active hook curl command.
 #[test]
@@ -1038,9 +1009,15 @@ fn test_BC_2_04_010_hook_commands_contain_wire_token() {
     let runtime_dir = tmp.path();
 
     let auth_token = "abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234";
-    write_hooks_settings(runtime_dir, 9001, auth_token).expect("write_hooks_settings must succeed");
-
+    let wire_token = format!("monocle-v1:{auth_token}");
     let hs_path = runtime_dir.join("hooks-settings.json");
+    let config = HookEndpointConfig {
+        pre_tool_use: format!("curl -s -X POST http://127.0.0.1:9001/hooks/pre-tool-use -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: {wire_token}' -d @-"),
+        notification: format!("curl -s -X POST http://127.0.0.1:9001/hooks/notification -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: {wire_token}' -d @-"),
+        stop: format!("curl -s -X POST http://127.0.0.1:9001/hooks/stop -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: {wire_token}' -d @-"),
+        user_prompt_submit: format!("curl -s -X POST http://127.0.0.1:9001/hooks/prompt-submit -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: {wire_token}' -d @-"),
+    };
+    write_hooks_settings_json(&config, &hs_path).expect("write_hooks_settings_json must succeed");
     let content = std::fs::read_to_string(&hs_path).expect("read hooks-settings.json");
     let json: serde_json::Value = serde_json::from_str(&content).expect("valid JSON");
 
@@ -1211,10 +1188,15 @@ fn test_BC_2_04_010_hook_entries_have_empty_matcher_field() {
     let runtime_dir = tmp.path();
 
     let auth_token = "e".repeat(64);
-    write_hooks_settings(runtime_dir, 9002, &auth_token)
-        .expect("write_hooks_settings must succeed");
-
+    let wire_token = format!("monocle-v1:{auth_token}");
     let hs_path = runtime_dir.join("hooks-settings.json");
+    let config = HookEndpointConfig {
+        pre_tool_use: format!("curl -s -X POST http://127.0.0.1:9002/hooks/pre-tool-use -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: {wire_token}' -d @-"),
+        notification: format!("curl -s -X POST http://127.0.0.1:9002/hooks/notification -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: {wire_token}' -d @-"),
+        stop: format!("curl -s -X POST http://127.0.0.1:9002/hooks/stop -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: {wire_token}' -d @-"),
+        user_prompt_submit: format!("curl -s -X POST http://127.0.0.1:9002/hooks/prompt-submit -H 'Content-Type: application/json' -H 'X-Monocle-Authorization: {wire_token}' -d @-"),
+    };
+    write_hooks_settings_json(&config, &hs_path).expect("write_hooks_settings_json must succeed");
     let content = std::fs::read_to_string(&hs_path).expect("read hooks-settings.json");
     let json: serde_json::Value = serde_json::from_str(&content).expect("valid JSON");
 
@@ -1664,5 +1646,49 @@ async fn test_BC_2_05_001_daemon_start_sequence_returns_err_when_uds_path_too_lo
     assert!(
         !lock_path.exists(),
         "INV-6: monocle.lock must be removed on step 10 UdsPathTooLong failure"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// BC-2.08.006 Invariant 2: daemon-written hooks-settings.json contains lock.app="monocle"
+// ---------------------------------------------------------------------------
+
+/// Verifies that daemon_start_sequence() writes hooks-settings.json containing
+/// lock.app="monocle" (BC-2.08.006 Invariant 2, S-038 single-writer mandate).
+///
+/// Prior to S-038, lifecycle::write_hooks_settings() was the production writer.
+/// That function emitted NO lock field, making the file usable by arbitrary `claude`
+/// processes (security gap). The single-writer mandate routes step 9 through
+/// session_manager::write_hooks_settings_json(), which always emits lock.app="monocle".
+///
+/// This test is the regression guard for finding F-S038-PASS1-001 (BLOCKER).
+#[tokio::test]
+async fn test_BC_2_08_006_daemon_startup_hooks_settings_has_lock_app_monocle() {
+    let tmp = isolated_runtime_dir();
+    let runtime_dir = tmp.path().join("monocle-runtime");
+    std::fs::create_dir_all(&runtime_dir).expect("create runtime_dir");
+
+    let (_state, _listener) = daemon_start_sequence(&runtime_dir)
+        .await
+        .expect("daemon_start_sequence must succeed");
+
+    let hs_path = runtime_dir.join("hooks-settings.json");
+    let content = std::fs::read_to_string(&hs_path).expect("read hooks-settings.json");
+    let json: serde_json::Value = serde_json::from_str(&content).expect("valid JSON");
+
+    let lock_app = json
+        .get("lock")
+        .and_then(|l| l.get("app"))
+        .and_then(|v| v.as_str())
+        .expect(
+            "BC-2.08.006 Invariant 2: lock.app must be present in daemon-written \
+             hooks-settings.json (single-writer mandate: lifecycle step 9 calls \
+             write_hooks_settings_json which always emits lock.app)",
+        );
+    assert_eq!(
+        lock_app, "monocle",
+        "BC-2.08.006 Invariant 2: lock.app must be \"monocle\" in daemon-written file; \
+         got: {:?}",
+        lock_app
     );
 }

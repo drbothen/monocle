@@ -787,6 +787,7 @@ impl SessionManager {
         spawner: Arc<dyn SessionHostSpawner>,
         broker: Arc<monocle_ipc::server::SubscriberList>,
         engine_module: Arc<dyn monocle_core::engine::EngineModule>,
+        hook_endpoint_config: HookEndpointConfig,
     ) -> Self {
         // BC-2.08.006 Invariant 6: canonicalize runtime_dir to eliminate symlinks.
         // On failure (dir doesn't exist yet in tests), fall back to the raw path —
@@ -795,30 +796,12 @@ impl SessionManager {
             std::fs::canonicalize(&runtime_dir).unwrap_or_else(|_| runtime_dir.clone());
         let hooks_settings_path = canonical_dir.join("hooks-settings.json");
 
-        // Default hook endpoint config (empty-string URLs).
-        // In production, lifecycle::write_hooks_settings() wrote the file before new() is
-        // called (SOQ-2 ordering: step 9 before step 10/DaemonState construction).
-        // In tests, new() is the first writer; it writes with default (empty-string) URLs.
-        let hook_endpoint_config = HookEndpointConfig::default();
-
-        // BC-2.08.006 Invariant 5: write hooks-settings.json atomically at startup.
-        // IDEMPOTENT GUARD: only write if the file does not already exist.
-        // In production, lifecycle::write_hooks_settings() (Phase 1 / BC-2.04.010) wrote
-        // the file with the real port + auth_token before SessionManager::new() is called
-        // (daemon_start_sequence step 9 precedes DaemonState/SessionManager construction).
-        // Writing unconditionally would overwrite the real file with empty-URL defaults.
-        // In tests without a pre-existing lifecycle write (unit tests), the file is absent
-        // and new() writes it; the EC-182 guard in spawn_session() re-writes if later deleted.
-        if !hooks_settings_path.exists() {
-            if let Err(err) = write_hooks_settings_json(&hook_endpoint_config, &hooks_settings_path)
-            {
-                tracing::error!(
-                    path = %hooks_settings_path.display(),
-                    err = %err,
-                    "failed to write hooks-settings.json at daemon startup (BC-2.08.006 Invariant 5)"
-                );
-            }
-        }
+        // S-038 single-writer mandate: lifecycle step 9 (via write_hooks_settings_json) is the
+        // SOLE startup writer of hooks-settings.json. SessionManager::new() NO LONGER writes
+        // the file here — it receives the already-written config via hook_endpoint_config.
+        // In production: lifecycle called write_hooks_settings_json before new() (SOQ-2 ordering).
+        // In tests: pass HookEndpointConfig::default() and the EC-182 guard in spawn_session()
+        // will write the file if absent at spawn time.
 
         Self {
             sessions: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
@@ -5128,7 +5111,13 @@ mod tests {
 
         // broker expects Arc<SubscriberList> = Arc<Arc<Mutex<Vec<ClientEntry>>>>
         let broker = Arc::new(Arc::clone(&subscriber_list));
-        let manager = SessionManager::new(tmp_dir.to_path_buf(), spawner, broker, engine);
+        let manager = SessionManager::new(
+            tmp_dir.to_path_buf(),
+            spawner,
+            broker,
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         (manager, subscriber_list, rx)
     }
@@ -5992,6 +5981,7 @@ mod tests {
             spawner,
             make_broker(&subs),
             engine,
+            HookEndpointConfig::default(),
         );
 
         let session_id = "00000000-0001-4000-a000-000000000150".to_string();
@@ -6077,7 +6067,13 @@ mod tests {
         });
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
         // Manager uses the read-only dir so sidecar write fails.
-        let mut manager = SessionManager::new(ro_dir.clone(), spawner, make_broker(&subs), engine);
+        let mut manager = SessionManager::new(
+            ro_dir.clone(),
+            spawner,
+            make_broker(&subs),
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         let session_id = "00000000-0001-4000-a000-000000000151".to_string();
         let opts = make_spawn_opts(&session_id);
@@ -6182,6 +6178,7 @@ mod tests {
             spawner,
             make_broker(&subs),
             engine,
+            HookEndpointConfig::default(),
         );
 
         let session_id = "00000000-0001-4000-a000-000000009003".to_string();
@@ -6300,6 +6297,7 @@ mod tests {
             spawner,
             broker,
             engine,
+            HookEndpointConfig::default(),
         );
 
         // Build DaemonState with the shared session manager.
@@ -6622,6 +6620,7 @@ mod tests {
             spawner,
             make_broker(&empty_subs),
             engine,
+            HookEndpointConfig::default(),
         );
 
         let session_id = "00000000-0001-4000-a000-000000000050".to_string();
@@ -6661,6 +6660,7 @@ mod tests {
             spawner,
             make_broker(&subs),
             engine,
+            HookEndpointConfig::default(),
         );
 
         let session_id = "00000000-0001-4000-a000-000000000060".to_string();
@@ -6725,6 +6725,7 @@ mod tests {
             spawner,
             make_broker(&subs),
             engine,
+            HookEndpointConfig::default(),
         );
 
         let session_id = "00000000-0001-4000-a000-000000000070".to_string();
@@ -6809,6 +6810,7 @@ mod tests {
             spawner,
             make_broker(&subs),
             engine,
+            HookEndpointConfig::default(),
         );
 
         let session_id = "00000000-0001-4000-a000-000000000080".to_string();
@@ -6964,6 +6966,7 @@ mod tests {
             spawner,
             broker,
             engine,
+            HookEndpointConfig::default(),
         );
 
         // Build a DaemonState with session_manager Some(_).
@@ -7045,6 +7048,7 @@ mod tests {
             spawner,
             broker,
             engine,
+            HookEndpointConfig::default(),
         );
         let mut state = crate::state::DaemonState::new();
         state.session_manager = Some(tokio::sync::Mutex::new(session_manager));
@@ -7136,7 +7140,13 @@ mod tests {
         let entry = monocle_ipc::server::ClientEntry::new(tx.clone());
         let subs: monocle_ipc::server::SubscriberList = Arc::new(Mutex::new(vec![entry]));
         let broker = Arc::new(Arc::clone(&subs));
-        let mut manager = SessionManager::new(tmp.path().to_path_buf(), spawner, broker, engine);
+        let mut manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker,
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         // Spawn a background task that acts as the session-host:
         // accepts the connection and sends StateChanged{Running} over the UDS.
@@ -7722,6 +7732,7 @@ mod tests {
             spawner,
             broker,
             engine,
+            HookEndpointConfig::default(),
         )));
 
         // Spawn two sessions concurrently via the same manager (under the mutex).
@@ -7938,6 +7949,7 @@ mod tests {
             spawner,
             broker.clone(),
             Arc::new(SucceedingMockEngine {}),
+            HookEndpointConfig::default(),
         );
 
         // Pre-seed the registry so the IPC handler's first UUID gen will collide.
@@ -8038,8 +8050,13 @@ mod tests {
         let entry = monocle_ipc::server::ClientEntry::new(tx.clone());
         let subs: monocle_ipc::server::SubscriberList = Arc::new(Mutex::new(vec![entry]));
         let broker = Arc::new(Arc::clone(&subs));
-        let session_manager =
-            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+        let session_manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker.clone(),
+            engine,
+            HookEndpointConfig::default(),
+        );
         let mut state = crate::state::DaemonState::new();
         state.session_manager = Some(tokio::sync::Mutex::new(session_manager));
 
@@ -8187,7 +8204,13 @@ mod tests {
             fake_pid: 99_901,
         });
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
-        let mut manager = SessionManager::new(tmp.path().to_path_buf(), spawner, broker, engine);
+        let mut manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker,
+            engine,
+            HookEndpointConfig::default(),
+        );
         // Inject the test verifier: allows any connection (simulates same-UID).
         // AC-010: SO_PEERCRED must be applied — we verify it IS called (not skipped) by using
         // FakePeerCredVerifier{allow:true}; the mismatch variant below proves the reject path.
@@ -8413,7 +8436,13 @@ mod tests {
             fake_pid: 99_902,
         });
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
-        let mut manager = SessionManager::new(tmp.path().to_path_buf(), spawner, broker, engine);
+        let mut manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker,
+            engine,
+            HookEndpointConfig::default(),
+        );
         // FakePeerCredVerifier{allow:false}: every verify() call returns Err(PermissionDenied).
         // This simulates the SO_PEERCRED UID mismatch path (EC-163).
         manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifier { allow: false }));
@@ -8545,8 +8574,13 @@ mod tests {
         let subs: SubscriberList = Arc::new(Mutex::new(vec![entry]));
         let broker = make_broker(&subs);
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
-        let manager =
-            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+        let manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker.clone(),
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         // Insert a Terminating session entry with the fake session-host PID.
         // The fake PID (9_999_998) will return ESRCH — that is the expected benign path.
@@ -8685,8 +8719,13 @@ mod tests {
         let subs: SubscriberList = Arc::new(Mutex::new(vec![entry]));
         let broker = make_broker(&subs);
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
-        let manager =
-            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+        let manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker.clone(),
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         // Insert a Terminating session entry with the fake session-host PID.
         // The fake PID (9_999_997) will return ESRCH — benign.
@@ -8861,8 +8900,13 @@ mod tests {
             fake_pid: 10_001,
         });
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
-        let manager =
-            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+        let manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker.clone(),
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         // Insert a Terminated session entry directly (test seam).
         manager
@@ -9003,8 +9047,13 @@ mod tests {
             fake_pid: 10_002,
         });
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
-        let manager =
-            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+        let manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker.clone(),
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         manager
             .insert_terminated_session_for_test(&session_id, 10_002u32, socket_path.clone())
@@ -9096,7 +9145,13 @@ mod tests {
             fake_pid: 10_003,
         });
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
-        let mut manager = SessionManager::new(tmp.path().to_path_buf(), spawner, broker, engine);
+        let mut manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker,
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         // Insert session in Terminated state (the "in-grace" window: 0..10s after Terminated).
         manager
@@ -9186,8 +9241,13 @@ mod tests {
             fake_pid: 10_004,
         });
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
-        let manager =
-            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+        let manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker.clone(),
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         // Insert both sessions in Terminated state.
         manager
@@ -9908,8 +9968,13 @@ mod tests {
             fake_pid: 10_008,
         });
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
-        let manager =
-            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+        let manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker.clone(),
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         // Step 1: Insert session already in Terminated state (test seam).
         // This simulates the state after the FIRST legitimate Terminated transition.
@@ -10122,8 +10187,13 @@ mod tests {
             fake_pid: 10_009,
         });
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
-        let manager =
-            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+        let manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker.clone(),
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         // Seed a session in Terminating state (non-Terminated) so that
         // transition_to_terminated() will fire its first-transition path
@@ -10324,7 +10394,13 @@ mod tests {
             socket_path: socket_path.clone(),
         });
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
-        let mut manager = SessionManager::new(tmp.path().to_path_buf(), spawner, broker, engine);
+        let mut manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker,
+            engine,
+            HookEndpointConfig::default(),
+        );
         // FakePeerCredVerifier{allow:true}: SO_PEERCRED check always passes.
         manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifier { allow: true }));
 
@@ -11104,7 +11180,13 @@ mod tests {
             captured: Arc::clone(&captured),
         });
 
-        let mut manager = SessionManager::new(tmp.path().to_path_buf(), spawner, broker, engine);
+        let mut manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker,
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         let session_id = uuid::Uuid::new_v4().to_string();
         let opts = SpawnOptions::for_spawn_request(
@@ -11117,9 +11199,17 @@ mod tests {
         .with_daemon_fields(session_id, PathBuf::new());
 
         let result = manager.spawn_session(opts).await;
-        // spawn_session may succeed or fail (spawner is mock); either way, if
-        // spawn_recipe() was called we captured the opts.
-        let _ = result; // result does not drive the assertion
+        // spawn_session() MUST succeed: CapturingMockEngine returns a valid SpawnRecipe,
+        // MockSessionHostSpawner (spawn_result: None) returns Ok(SpawnHandle). If it fails,
+        // this indicates a test-infrastructure regression, not a production bug.
+        // (F-S038-PASS1-006 fix)
+        assert!(
+            result.is_ok(),
+            "test_BC_2_08_006_spawn_options_hooks_settings_path_populated: \
+             spawn_session() MUST succeed with CapturingMockEngine + MockSessionHostSpawner; \
+             got Err: {:?}",
+            result.err()
+        );
 
         // The key assertion: opts.hooks_settings_path MUST equal the path that
         // the daemon wrote hooks-settings.json to at startup.
@@ -11536,11 +11626,22 @@ mod tests {
         // SessionManager::new() currently stores PathBuf::new() and does NOT call
         // write_hooks_settings_json(). When the implementer wires it, new() will write
         // the file to tmp.path().join("hooks-settings.json").
-        let mut manager = SessionManager::new(tmp.path().to_path_buf(), spawner, broker, engine);
+        let mut manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker,
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         // Simulate: delete hooks-settings.json after daemon startup (EC-182 scenario).
-        // With the current stub, this file was never written, so this is a no-op.
-        let hooks_path = tmp.path().join("hooks-settings.json");
+        // Canonicalize to avoid macOS symlink prefix mismatch (/var vs /private/var).
+        // (F-S038-PASS1-003 fix)
+        let hooks_path = tmp
+            .path()
+            .canonicalize()
+            .expect("canonicalize tmp path")
+            .join("hooks-settings.json");
         let _ = std::fs::remove_file(&hooks_path); // ignore NotFound
 
         // Call spawn_session() — EC-182 guard should detect missing file and re-write.
@@ -11634,7 +11735,13 @@ mod tests {
         let engine: Arc<dyn monocle_core::engine::EngineModule> =
             Arc::new(NonUtf8PathRejectingMockEngine {});
 
-        let mut manager = SessionManager::new(tmp.path().to_path_buf(), spawner, broker, engine);
+        let mut manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker,
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         // Post-implementation: inject a non-UTF-8 PathBuf via the with_hooks_settings_path_for_test
         // seam (added in S-038 implementation per the post-implementation note in the original stub).
@@ -11695,5 +11802,191 @@ mod tests {
                 other
             ),
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // Additional S-038 regression tests (PASS1 findings)
+    // -----------------------------------------------------------------------
+
+    /// write_hooks_settings_json() always emits lock.app="monocle" (BC-2.08.006 Invariant 2).
+    ///
+    /// This is the unit-level guard for the single-writer mandate.
+    /// The integration-level guard is test_BC_2_08_006_daemon_startup_hooks_settings_has_lock_app_monocle
+    /// in daemon_start_sequence.rs.
+    #[test]
+    fn test_BC_2_08_006_production_writer_always_emits_lock_app() {
+        let tmp = tempfile::TempDir::new().expect("test setup: failed to create temp dir");
+        let path = tmp.path().join("hooks-settings.json");
+
+        let port: u16 = 54321;
+        let token = "abcd".repeat(16); // 64 hex chars
+        let wire_token = format!("monocle-v1:{token}");
+        let config = HookEndpointConfig {
+            pre_tool_use: format!(
+                "curl -s -X POST http://127.0.0.1:{port}/hooks/pre-tool-use \
+                 -H 'Content-Type: application/json' \
+                 -H 'X-Monocle-Authorization: {wire_token}' -d @-"
+            ),
+            notification: format!(
+                "curl -s -X POST http://127.0.0.1:{port}/hooks/notification \
+                 -H 'Content-Type: application/json' \
+                 -H 'X-Monocle-Authorization: {wire_token}' -d @-"
+            ),
+            stop: format!(
+                "curl -s -X POST http://127.0.0.1:{port}/hooks/stop \
+                 -H 'Content-Type: application/json' \
+                 -H 'X-Monocle-Authorization: {wire_token}' -d @-"
+            ),
+            user_prompt_submit: format!(
+                "curl -s -X POST http://127.0.0.1:{port}/hooks/prompt-submit \
+                 -H 'Content-Type: application/json' \
+                 -H 'X-Monocle-Authorization: {wire_token}' -d @-"
+            ),
+        };
+
+        write_hooks_settings_json(&config, &path).expect("write_hooks_settings_json must succeed");
+
+        let content = std::fs::read_to_string(&path).expect("read hooks-settings.json");
+        let json: serde_json::Value = serde_json::from_str(&content).expect("valid JSON");
+
+        let lock_app = json
+            .get("lock")
+            .and_then(|l| l.get("app"))
+            .and_then(|v| v.as_str())
+            .expect(
+                "BC-2.08.006 Invariant 2: write_hooks_settings_json() MUST always emit \
+                 lock.app in the written file",
+            );
+        assert_eq!(
+            lock_app, "monocle",
+            "BC-2.08.006 Invariant 2: lock.app must be \"monocle\"; got: {:?}",
+            lock_app
+        );
+    }
+
+    /// EC-182 re-write uses the real HookEndpointConfig (not empty-string defaults).
+    ///
+    /// Constructs a SessionManager with a REAL HookEndpointConfig (non-empty curl URLs
+    /// with port 54321), deletes hooks-settings.json, calls spawn_session(), and asserts:
+    /// (a) file is re-created, (b) file contains the real port URL, (c) lock.app present.
+    #[tokio::test]
+    #[tracing_test::traced_test]
+    async fn test_BC_2_08_006_ec182_rewrites_with_real_config() {
+        let tmp = tempfile::TempDir::new()
+            .expect("test setup: failed to create temp dir for EC-182 real config test");
+
+        let (tx, _rx) = mpsc::channel::<monocle_ipc::types::ServerToClient>(64);
+        let entry = monocle_ipc::server::ClientEntry::new(tx);
+        let subscriber_list: monocle_ipc::server::SubscriberList =
+            Arc::new(Mutex::new(vec![entry]));
+        let broker = Arc::new(Arc::clone(&subscriber_list));
+
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 88_002,
+        });
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+
+        let real_port: u16 = 54321;
+        let wire_token =
+            "monocle-v1:abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234";
+        let real_config = HookEndpointConfig {
+            pre_tool_use: format!(
+                "curl -s -X POST http://127.0.0.1:{real_port}/hooks/pre-tool-use \
+                 -H 'Content-Type: application/json' \
+                 -H 'X-Monocle-Authorization: {wire_token}' -d @-"
+            ),
+            notification: format!(
+                "curl -s -X POST http://127.0.0.1:{real_port}/hooks/notification \
+                 -H 'Content-Type: application/json' \
+                 -H 'X-Monocle-Authorization: {wire_token}' -d @-"
+            ),
+            stop: format!(
+                "curl -s -X POST http://127.0.0.1:{real_port}/hooks/stop \
+                 -H 'Content-Type: application/json' \
+                 -H 'X-Monocle-Authorization: {wire_token}' -d @-"
+            ),
+            user_prompt_submit: format!(
+                "curl -s -X POST http://127.0.0.1:{real_port}/hooks/prompt-submit \
+                 -H 'Content-Type: application/json' \
+                 -H 'X-Monocle-Authorization: {wire_token}' -d @-"
+            ),
+        };
+
+        let mut manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker,
+            engine,
+            real_config,
+        );
+
+        // Simulate EC-182: delete hooks-settings.json after daemon startup.
+        let hooks_path = tmp
+            .path()
+            .canonicalize()
+            .expect("canonicalize tmp path")
+            .join("hooks-settings.json");
+        let _ = std::fs::remove_file(&hooks_path); // ignore NotFound
+
+        let session_id = uuid::Uuid::new_v4().to_string();
+        let opts = SpawnOptions::for_spawn_request(
+            tmp.path().to_path_buf(),
+            tmp.path().to_path_buf(),
+            "claude-code".to_string(),
+            "default".to_string(),
+            None,
+        )
+        .with_daemon_fields(session_id, PathBuf::new());
+
+        let spawn_result = manager.spawn_session(opts).await;
+
+        // (a) spawn_session() must succeed.
+        assert!(
+            spawn_result.is_ok(),
+            "BC-2.08.006 EC-182 real-config: spawn_session() MUST succeed after re-writing \
+             hooks-settings.json; got Err: {:?}",
+            spawn_result.err()
+        );
+
+        // (b) hooks-settings.json must be re-created.
+        assert!(
+            hooks_path.exists(),
+            "BC-2.08.006 EC-182 real-config: hooks-settings.json MUST be re-created \
+             at spawn time when deleted"
+        );
+
+        // (c) file must contain the real port URL and lock.app.
+        let content =
+            std::fs::read_to_string(&hooks_path).expect("read re-created hooks-settings.json");
+        let json: serde_json::Value = serde_json::from_str(&content).expect("valid JSON");
+
+        let lock_app = json
+            .get("lock")
+            .and_then(|l| l.get("app"))
+            .and_then(|v| v.as_str())
+            .expect("lock.app must be present in EC-182 re-written file");
+        assert_eq!(
+            lock_app, "monocle",
+            "lock.app must be 'monocle' in EC-182 re-write"
+        );
+
+        // Verify the real port appears in one of the hook commands.
+        let pre_tool_use_cmd = json
+            .get("hooks")
+            .and_then(|h| h.get("PreToolUse"))
+            .and_then(|v| v.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|e| e.get("hooks"))
+            .and_then(|v| v.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|c| c.get("command"))
+            .and_then(|v| v.as_str())
+            .expect("PreToolUse command must exist");
+        assert!(
+            pre_tool_use_cmd.contains(&format!(":{real_port}")),
+            "BC-2.08.006 EC-182 real-config: re-written file must contain port {real_port}; \
+             got command: {pre_tool_use_cmd}"
+        );
     }
 }

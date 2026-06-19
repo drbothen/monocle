@@ -446,6 +446,7 @@ impl DaemonState {
                     spawner,
                     broker,
                     engine,
+                    crate::session_manager::HookEndpointConfig::default(),
                 )))
             },
             session_id_gen: std::sync::Arc::new(crate::session_manager::UuidV4Generator),

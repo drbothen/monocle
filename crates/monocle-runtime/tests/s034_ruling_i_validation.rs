@@ -29,7 +29,8 @@
 
 use monocle_core::engine::{SpawnOptions, SpawnRecipe};
 use monocle_runtime::session_manager::{
-    PeerCredVerifier, SessionError, SessionHostSpawner, SessionManager, SpawnedHostHandle,
+    HookEndpointConfig, PeerCredVerifier, SessionError, SessionHostSpawner, SessionManager,
+    SpawnedHostHandle,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -148,6 +149,7 @@ fn make_manager_with_socket(
         spawner,
         broker,
         Arc::new(RulingITestEngine),
+        HookEndpointConfig::default(),
     );
     (manager, subscriber_list, rx)
 }

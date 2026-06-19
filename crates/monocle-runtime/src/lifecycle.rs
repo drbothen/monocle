@@ -559,12 +559,44 @@ pub async fn daemon_start_sequence(
         }
     };
 
-    // Step 9: Write hooks-settings.json AFTER lock file (SOQ-2).
+    // Step 9: Write hooks-settings.json AFTER lock file (SOQ-2) via the SOLE canonical
+    // writer: session_manager::write_hooks_settings_json (single-writer mandate, S-038).
+    // This guarantees lock.app="monocle" is always present in the production file.
     // INV-6: on failure, remove lock file before returning.
-    if let Err(e) = write_hooks_settings(runtime_dir, port, &auth_token) {
+    let wire_token = format!("monocle-v1:{auth_token}");
+    let hook_cfg = crate::session_manager::HookEndpointConfig {
+        pre_tool_use: format!(
+            "curl -s -X POST http://127.0.0.1:{port}/hooks/pre-tool-use \
+            -H 'Content-Type: application/json' \
+            -H 'X-Monocle-Authorization: {wire_token}' \
+            -d @-"
+        ),
+        notification: format!(
+            "curl -s -X POST http://127.0.0.1:{port}/hooks/notification \
+            -H 'Content-Type: application/json' \
+            -H 'X-Monocle-Authorization: {wire_token}' \
+            -d @-"
+        ),
+        stop: format!(
+            "curl -s -X POST http://127.0.0.1:{port}/hooks/stop \
+            -H 'Content-Type: application/json' \
+            -H 'X-Monocle-Authorization: {wire_token}' \
+            -d @-"
+        ),
+        user_prompt_submit: format!(
+            "curl -s -X POST http://127.0.0.1:{port}/hooks/prompt-submit \
+            -H 'Content-Type: application/json' \
+            -H 'X-Monocle-Authorization: {wire_token}' \
+            -d @-"
+        ),
+    };
+    let hooks_settings_path = runtime_dir.join("hooks-settings.json");
+    if let Err(e) =
+        crate::session_manager::write_hooks_settings_json(&hook_cfg, &hooks_settings_path)
+    {
         tracing::error!(
             error = %e,
-            "daemon_start_sequence: step 9 (write_hooks_settings) failed; removing lock file (INV-6)"
+            "daemon_start_sequence: step 9 (write_hooks_settings_json) failed; removing lock file (INV-6)"
         );
         if let Err(cleanup_err) = daemon_lock.release() {
             tracing::error!(
@@ -572,7 +604,9 @@ pub async fn daemon_start_sequence(
                 "daemon_start_sequence: lock file cleanup failed after step 9 failure"
             );
         }
-        return Err(e);
+        return Err(DaemonStartError::HooksSettingsWriteFailure(
+            std::io::Error::other(e.to_string()),
+        ));
     }
 
     // Step 10: Bind the UDS socket via UdsTransport::bind (BC-2.05.001).
@@ -674,6 +708,7 @@ pub async fn daemon_start_sequence(
                 spawner,
                 broker,
                 engine,
+                hook_cfg.clone(),
             )))
         },
         session_id_gen: std::sync::Arc::new(crate::session_manager::UuidV4Generator),
@@ -756,92 +791,6 @@ pub async fn daemon_start_sequence(
     );
 
     Ok((daemon_state, listener))
-}
-
-/// Write `hooks-settings.json` atomically into the runtime directory (BC-2.04.010).
-///
-/// Creates a `NamedTempFile` in `runtime_dir`, serializes the [`crate::types::HooksSettings`]
-/// struct to pretty-printed JSON via `serde_json::to_writer_pretty`, sets mode 0o600, then
-/// persists the file to `<runtime_dir>/hooks-settings.json` via `tempfile::persist`.
-///
-/// # Schema
-///
-/// The generated JSON has:
-/// - 4 active hooks: `PreToolUse`, `Notification`, `Stop`, `UserPromptSubmit`
-/// - `PostToolUse`: empty array `[]` (JC-2 — PostToolUse absent from Phase 1)
-/// - `PreCompact`: empty array `[]` (not in canonical 5 endpoints)
-/// - `SessionStart`: absent entirely (JC-2 closure)
-///
-/// Each active hook entry contains a single `command` item invoking the monocle hook
-/// bridge script at `http://127.0.0.1:<port>/hooks/<hook-path>` with the
-/// `monocle-v1:<auth_token>` wire token in the `X-Monocle-Authorization` header.
-///
-/// # SOQ-2 Invariant
-///
-/// This function MUST only be called AFTER `write_lock_file` has succeeded
-/// (BC-2.04.001 step 9 follows step 8). Callers in `daemon_start_sequence` enforce this.
-///
-/// # Errors
-///
-/// Returns [`DaemonStartError::HooksSettingsWriteFailure`] on I/O failure.
-pub fn write_hooks_settings(
-    runtime_dir: &Path,
-    port: u16,
-    auth_token: &str,
-) -> Result<(), DaemonStartError> {
-    use crate::types::{HookEntry, HooksMap, HooksSettings};
-
-    // Build the wire token with monocle-v1: prefix for the Authorization header.
-    let wire_token = format!("monocle-v1:{auth_token}");
-
-    // Build the curl command for a given hook endpoint path.
-    let make_command = |hook_path: &str| -> String {
-        format!(
-            "curl -s -X POST http://127.0.0.1:{port}/hooks/{hook_path} \
-            -H 'Content-Type: application/json' \
-            -H 'X-Monocle-Authorization: {wire_token}' \
-            -d @-"
-        )
-    };
-
-    let settings = HooksSettings {
-        hooks: HooksMap {
-            pre_tool_use: vec![HookEntry::command_all(make_command("pre-tool-use"))],
-            post_tool_use: vec![],
-            notification: vec![HookEntry::command_all(make_command("notification"))],
-            stop: vec![HookEntry::command_all(make_command("stop"))],
-            user_prompt_submit: vec![HookEntry::command_all(make_command("prompt-submit"))],
-            pre_compact: vec![],
-        },
-    };
-
-    let hs_path = runtime_dir.join("hooks-settings.json");
-
-    let mut tmp = tempfile::NamedTempFile::new_in(runtime_dir)
-        .map_err(DaemonStartError::HooksSettingsWriteFailure)?;
-
-    serde_json::to_writer_pretty(&mut tmp, &settings).map_err(|e| {
-        DaemonStartError::HooksSettingsWriteFailure(std::io::Error::other(format!(
-            "JSON serialize failed: {e}"
-        )))
-    })?;
-
-    tmp.flush()
-        .map_err(DaemonStartError::HooksSettingsWriteFailure)?;
-
-    tmp.persist(&hs_path)
-        .map_err(|e| DaemonStartError::HooksSettingsWriteFailure(e.error))?;
-
-    std::fs::set_permissions(&hs_path, std::fs::Permissions::from_mode(0o600))
-        .map_err(DaemonStartError::HooksSettingsWriteFailure)?;
-
-    tracing::info!(
-        path = %hs_path.display(),
-        port = port,
-        "hooks-settings.json written (BC-2.04.010)"
-    );
-
-    Ok(())
 }
 
 /// Write the daemon lock file (BC-2.04.001 step 8, SOQ-2 commit point).

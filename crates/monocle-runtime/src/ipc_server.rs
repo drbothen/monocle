@@ -311,16 +311,10 @@ async fn handle_spawn_session(
 ) {
     use crate::session_manager::{session_error_to_code, IpcOp, SessionError};
 
-    // Derive hooks_settings_path from lock_file_path parent + "hooks-settings.json".
-    // If lock_file_path is empty (test path), fall back to temp_dir.
-    let hooks_settings_path = if state.lock_file_path.is_empty() {
-        std::env::temp_dir().join("hooks-settings.json")
-    } else {
-        std::path::Path::new(&state.lock_file_path)
-            .parent()
-            .unwrap_or_else(|| std::path::Path::new("/tmp"))
-            .join("hooks-settings.json")
-    };
+    // SessionManager owns the canonical hooks-settings.json path (S-038 single-writer mandate).
+    // The path passed to with_daemon_fields() is immediately overwritten by spawn_session()
+    // from self.hooks_settings_path — so derive an empty placeholder here.
+    let hooks_settings_path = std::path::PathBuf::new();
 
     // Step 1: generate session_id via the injectable seam (EC-152 / Ruling F).
     // Production: state.session_id_gen is UuidV4Generator → uuid::Uuid::new_v4().to_string().
