@@ -525,12 +525,8 @@ async fn handle_permission_decision(
 /// 4. On success: `attach_session()` has already emitted `SessionStateChanged{Running}` +
 ///    `SessionListUpdate` to all clients under the sessions mutex (BC-2.08.008 Invariant 4).
 ///
-/// BC-5.38.005 self-check: "If I include this real implementation, will the test for
-/// this function pass trivially without any implementer work?"
-/// Answer: YES — this is non-trivial wiring that calls attach_session() (itself todo!()).
-/// The todo!() in attach_session() will propagate failure; this body stays minimal but
-/// the effective behavior is unimplemented until attach_session() is implemented.
-#[allow(clippy::todo)]
+/// The `session_manager is None` branch is an unreachable-in-production daemon-wiring guard
+/// (the daemon always initializes session_manager before starting the IPC listener).
 async fn handle_attach_session(
     session_id: String,
     client_tx: &tokio::sync::mpsc::Sender<ServerToClient>,
@@ -582,12 +578,8 @@ async fn handle_attach_session(
 /// 4. On success: `detach_session()` has already emitted `SessionStateChanged{Detached}` +
 ///    `SessionListUpdate` to all clients under the sessions mutex (BC-2.08.008 Invariant 4).
 ///
-/// BC-5.38.005 self-check: "If I include this real implementation, will the test for
-/// this function pass trivially without any implementer work?"
-/// Answer: YES — this is non-trivial wiring that calls detach_session() (itself todo!()).
-/// The todo!() in detach_session() will propagate failure; this body stays minimal but
-/// the effective behavior is unimplemented until detach_session() is implemented.
-#[allow(clippy::todo)]
+/// The `session_manager is None` branch is an unreachable-in-production daemon-wiring guard
+/// (the daemon always initializes session_manager before starting the IPC listener).
 async fn handle_detach_session(
     session_id: String,
     client_tx: &tokio::sync::mpsc::Sender<ServerToClient>,

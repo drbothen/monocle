@@ -946,6 +946,29 @@ impl SessionManager {
             .insert(session_id.to_string(), entry);
     }
 
+    /// Test accessor: returns `true` if `session_id` has an active `proxy_task` in its
+    /// `SessionHostConnection`.
+    ///
+    /// Used by F-S035-002 (concurrent-attach strengthening) to assert the single-proxy-task
+    /// invariant (BC-2.08.007 Invariant 2 / AC-009) without exposing internals to production
+    /// binaries.
+    ///
+    /// Returns `false` if the session does not exist, has no `host_conn`, or `proxy_task`
+    /// is `None`.
+    ///
+    /// This function does NOT exist in production builds.
+    #[cfg(any(test, feature = "test-utils"))]
+    #[allow(dead_code)]
+    pub async fn has_proxy_task_for_session(&self, session_id: &str) -> bool {
+        let guard = self.sessions.lock().await;
+        guard
+            .get(session_id)
+            .and_then(|e| e.host_conn.as_ref())
+            .and_then(|c| c.proxy_task.as_ref())
+            .map(|t| !t.is_finished())
+            .unwrap_or(false)
+    }
+
     /// Spawn a new session from the given `SpawnOptions`.
     ///
     /// Steps (BC-2.08.001):
@@ -1620,12 +1643,35 @@ impl SessionManager {
                             .await;
                     });
                 } else {
-                    // reader was None (e.g. pre-Running race where monitor hasn't stored it yet).
-                    // Watchdog will handle the 12s timeout path.
-                    tracing::debug!(
-                        session_id = %session_id,
-                        "kill_session ExistingConn: host_conn.reader is None — watchdog-only path"
-                    );
+                    // Ruling L (L-3): reader is None — check for proxy_task delegation.
+                    // If proxy_task is Some, it owns the connection and will deliver
+                    // StateChanged{Terminated} via the fast-path when the session-host responds
+                    // to the Kill message. Do NOT abort the proxy_task; the 12s watchdog remains
+                    // the fallback in case the session-host is unresponsive.
+                    let has_proxy = {
+                        let guard = self.sessions.lock().await;
+                        guard
+                            .get(session_id)
+                            .and_then(|e| e.host_conn.as_ref())
+                            .and_then(|c| c.proxy_task.as_ref())
+                            .is_some()
+                    };
+                    if has_proxy {
+                        tracing::debug!(
+                            session_id = %session_id,
+                            "kill_session ExistingConn: reader is None — \
+                             Terminated handling delegated to proxy_task (Ruling L); \
+                             12s watchdog remains as fallback"
+                        );
+                    } else {
+                        // Both reader and proxy_task are None — rare pre-Running race.
+                        // Watchdog-only fallback.
+                        tracing::debug!(
+                            session_id = %session_id,
+                            "kill_session ExistingConn: reader is None AND proxy_task is None — \
+                             watchdog-only (pre-Running race)"
+                        );
+                    }
                 }
 
                 // Spawn 12s watchdog.
@@ -2611,11 +2657,19 @@ impl SessionManager {
         })();
 
         if let Err(e) = sidecar_update_result {
-            tracing::warn!(
+            // F-S035-004: elevate to ERROR — sidecar persist failure breaks restart-durability
+            // (AC-008 / BC-2.08.007 detach PC-5). S-036 rediscovery reads the sidecar; if it
+            // still shows a pre-Detached state, the session will be re-classified incorrectly
+            // on daemon restart. The live detach ALREADY succeeded (in-memory state = Detached,
+            // proxy aborted) and must stand — do NOT revert. But the persistence failure MUST
+            // be loud so operators can detect and recover the sidecar manually.
+            tracing::error!(
                 session_id = %session_id,
                 error = %e,
-                "detach_session: sidecar update failed (state in memory is Detached; \
-                 daemon restart may re-discover as previous state from stale sidecar)"
+                sidecar_path = %sidecar_path.display(),
+                "detach_session: sidecar persist FAILED — restart-durability compromised \
+                 (AC-008 / BC-2.08.007 detach PC-5). In-memory state is Detached; \
+                 daemon restart may re-discover session in stale pre-Detached state."
             );
         }
 
@@ -2689,6 +2743,11 @@ impl SessionManager {
         let peer_cred_verifier = Arc::clone(&self.peer_cred_verifier);
         let broker = Arc::clone(&self.broker);
         let session_id = session_id.to_string();
+        let runtime_dir = self.runtime_dir.clone();
+        // F-S035-005: clone pid_sigterm_fn seam so attach-timeout SIGTERM routes through
+        // the same injection seam as kill_session PidFallback (testability / consistency).
+        #[cfg(any(test, feature = "test-utils"))]
+        let pid_sigterm_fn = self.pid_sigterm_fn.clone();
 
         async move {
             use monocle_ipc::types::DaemonToHost;
@@ -2981,6 +3040,8 @@ impl SessionManager {
                     let outcome = match outcome {
                         AttachOutcome::Timeout => {
                             // EC-188: 5-second timeout fired. SIGTERM to non-responsive session-host.
+                            // F-S035-005: route through pid_sigterm_fn seam (same as kill_session
+                            // PidFallback) for testability and consistency (ADV-S034-IMPORTANT-001).
                             tracing::warn!(
                                 session_id = %session_id,
                                 pid = pid,
@@ -2989,7 +3050,15 @@ impl SessionManager {
                             use nix::sys::signal::{kill as nix_kill, Signal};
                             use nix::unistd::Pid;
                             let nix_pid = Pid::from_raw(pid as i32);
-                            if let Err(e) = nix_kill(nix_pid, Signal::SIGTERM) {
+                            #[cfg(any(test, feature = "test-utils"))]
+                            let sigterm_result = if let Some(ref f) = pid_sigterm_fn {
+                                f(nix_pid)
+                            } else {
+                                nix_kill(nix_pid, Signal::SIGTERM)
+                            };
+                            #[cfg(not(any(test, feature = "test-utils")))]
+                            let sigterm_result = nix_kill(nix_pid, Signal::SIGTERM);
+                            if let Err(e) = sigterm_result {
                                 tracing::debug!(
                                     session_id = %session_id,
                                     pid = pid,
@@ -3081,10 +3150,17 @@ impl SessionManager {
                     };
 
                     // Step 5 (BC-2.08.007 PC-5 / AC-003): start PTY proxy task.
+                    // Ruling L (SS-session-manager v2.12.0 L-1): pass sessions + sidecar_path so the
+                    // proxy_task can call transition_to_terminated_standalone on StateChanged{Terminated}
+                    // or Goodbye (fast-path kill confirmation for attached sessions).
+                    let proxy_sidecar_path =
+                        runtime_dir.join(format!("session-{}.json", session_id));
                     let proxy_handle = SessionManager::spawn_pty_proxy_task(
                         session_id.to_string(),
                         reader,
                         Arc::clone(&broker),
+                        Arc::clone(&sessions),
+                        proxy_sidecar_path,
                     );
 
                     // Wrap writer in Arc<Mutex<>> for storage in SessionHostConnection.
@@ -3100,7 +3176,13 @@ impl SessionManager {
                         if let Some(entry) = guard.get_mut(&session_id) {
                             entry.host_conn = Some(SessionHostConnection {
                                 writer: Arc::clone(&writer_arc),
-                                reader: None, // Reader is owned by proxy_task; kill on Running uses existing conn
+                                // Ruling L (L-4): reader is None because the proxy_task owns
+                                // the read half. On kill_session for an attached (Running) session,
+                                // the proxy_task delivers StateChanged{Terminated} via the fast path
+                                // (Ruling L L-2) without needing kill_confirm_monitor.
+                                // The 12s watchdog remains the fallback if the session-host is
+                                // unresponsive. See SS-session-manager v2.12.0 §Ruling L.
+                                reader: None,
                                 proxy_task: Some(proxy_handle),
                             });
                             entry.state = SessionState::Running;
@@ -3163,6 +3245,23 @@ impl SessionManager {
                     // Note: ServerToClient::ScrollbackChunk/ScrollbackDumpComplete are SS-09 scope;
                     // for S-035 we log the chunk count but do not broadcast (variants not yet defined
                     // in ServerToClient). The proxy task has been started and will stream live PtyBytes.
+
+                    // F-S035-003: validate chunk count (BC-2.08.007 §Screen-state transfer step 5a).
+                    // Daemon stays a forwarding pipe but MUST NOT silently drop a truncated dump.
+                    let received_chunks = scrollback_chunks.len() as u32;
+                    if received_chunks != total_chunks {
+                        tracing::warn!(
+                            session_id = %session_id,
+                            received_chunks = received_chunks,
+                            total_chunks = total_chunks,
+                            "attach_session: scrollback chunk count mismatch — \
+                             received {} chunks but ScrollbackDumpComplete reported {}; \
+                             scrollback may be truncated (BC-2.08.007 §Screen-state transfer step 5a)",
+                            received_chunks,
+                            total_chunks,
+                        );
+                    }
+
                     tracing::debug!(
                         session_id = %session_id,
                         chunk_count = scrollback_chunks.len(),
@@ -3187,18 +3286,27 @@ impl SessionManager {
 
     /// Spawn the PTY proxy task for a newly-attached session.
     ///
-    /// Reads `HostToDaemon::PtyBytes` from the control connection read half and
-    /// forwards them to the daemon broker as `ServerToClient::PtyOutput { session_id, bytes }`.
+    /// Reads `HostToDaemon` messages from the control connection read half and:
+    /// - `PtyBytes`: forwards bytes to the daemon broker (SS-09 scope for TUI rendering).
+    /// - `PtyReset`: logs debug (SS-09 scope for reset broadcasting).
+    /// - `StateChanged{Terminated}` (Ruling L, L-2): calls `transition_to_terminated_standalone`
+    ///   to deliver the fast-path kill confirmation without waiting for the 12s watchdog.
+    /// - `Goodbye` (Ruling L, L-2 defensive): calls `transition_to_terminated_standalone`
+    ///   for natural session exit that did not send a prior Terminated.
+    /// - `other`: logs WARN (not trace) for unexpected variants.
+    ///
     /// Called by `attach_session()` after `ScrollbackDumpComplete` is received.
     ///
     /// Returns a `JoinHandle<()>` stored in `SessionHostConnection.proxy_task`.
     ///
-    /// The task exits when the read half yields EOF or an I/O error (session-host
-    /// closed the connection). This is normal on session detach or termination.
+    /// The task exits when the read half yields EOF, an I/O error, or after handling
+    /// a Terminated/Goodbye message. This is normal on session detach or termination.
     fn spawn_pty_proxy_task(
         session_id: String,
         mut reader: tokio::net::unix::OwnedReadHalf,
         broker: Arc<monocle_ipc::server::SubscriberList>,
+        sessions: Arc<tokio::sync::Mutex<HashMap<String, SessionEntry>>>,
+        sidecar_path: PathBuf,
     ) -> JoinHandle<()> {
         use tokio::io::AsyncReadExt;
 
@@ -3275,18 +3383,49 @@ impl SessionManager {
                         );
                         // SS-09: broadcast ServerToClient::PtyReset to TUI clients.
                     }
+                    // Ruling L (L-2): StateChanged{Terminated} fast-path kill confirmation.
+                    // The session-host sent Terminated — publish the transition immediately
+                    // without waiting for the 12s SIGKILL watchdog.
+                    monocle_ipc::types::HostToDaemon::StateChanged {
+                        new_state: monocle_ipc::types::SessionState::Terminated,
+                        ..
+                    } => {
+                        tracing::debug!(
+                            session_id = %session_id,
+                            "proxy_task: received StateChanged{{Terminated}} — fast-path kill confirmation (Ruling L)"
+                        );
+                        transition_to_terminated_standalone(
+                            &session_id,
+                            &sessions,
+                            &broker,
+                            &sidecar_path,
+                        )
+                        .await;
+                        break;
+                    }
+                    // Ruling L (L-2 defensive): Goodbye without prior Terminated — natural exit.
+                    // Call force-terminate routine so the session is cleaned up consistently.
                     monocle_ipc::types::HostToDaemon::Goodbye => {
                         tracing::debug!(
                             session_id = %session_id,
-                            "proxy_task: received Goodbye from session-host; exiting"
+                            "proxy_task: received Goodbye (natural exit without prior Terminated); \
+                             triggering force-terminate (Ruling L defensive path)"
                         );
+                        transition_to_terminated_standalone(
+                            &session_id,
+                            &sessions,
+                            &broker,
+                            &sidecar_path,
+                        )
+                        .await;
                         break;
                     }
                     other => {
-                        tracing::trace!(
+                        // Ruling L (L-2): warn (NOT trace) for unexpected variants.
+                        tracing::warn!(
                             session_id = %session_id,
                             msg_type = ?std::mem::discriminant(&other),
-                            "proxy_task: non-PtyBytes message from session-host (post-Running)"
+                            "proxy_task: unexpected HostToDaemon variant from session-host (post-Running)"
                         );
                     }
                 }
