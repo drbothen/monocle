@@ -2615,67 +2615,111 @@ impl SessionManager {
 
         // Single lock acquisition: transition + snapshot + both broadcasts (BC-2.08.008 Inv 4:
         // SessionStateChanged{Detached} BEFORE SessionListUpdate, both under this one lock hold).
+        //
+        // F-S035-PASS3-MED-001 (TOCTOU guard): Between the writer-send .await above and this
+        // re-acquired lock, the proxy_task (which holds a clone of `self.sessions` Arc) may have
+        // called transition_to_terminated_standalone and set entry.state = Terminated.  If we
+        // unconditionally overwrite to Detached here, we would:
+        //   • Resurrect an already-Terminated entry to Detached.
+        //   • Emit a spurious SessionStateChanged{Detached} broadcast after the
+        //     SessionStateChanged{Terminated} already sent by the proxy path.
+        //   • Leave an orphaned GC task chasing a sidecar the registry now shows as Detached.
+        //
+        // Fix: re-check entry.state inside the re-acquired lock.  If already Terminating or
+        // Terminated, the proxy-driven transition stands — do NOT overwrite and do NOT emit
+        // the Detached broadcasts.  Still take (and below: abort) the proxy_task handle since
+        // abort() is idempotent and harmless if the task already exited.
+        //
+        // Mirrors the guard pattern in transition_to_terminated_standalone:
+        //   `if entry.state != SessionState::Terminated { … } else { return; }`
         let proxy_task_to_abort = {
             use monocle_core::engine::{EnrichedSession, SessionStatus};
             let mut guard = self.sessions.lock().await;
 
-            let proxy_task_handle = if let Some(entry) = guard.get_mut(session_id) {
-                // Extract proxy_task handle before clearing host_conn.
-                let handle = entry.host_conn.as_mut().and_then(|c| c.proxy_task.take());
-                // Clear host_conn and transition state (BC-2.08.007 detach PC-3/PC-4).
-                entry.host_conn = None;
-                entry.state = SessionState::Detached;
-                handle
-            } else {
-                None
-            };
-
-            // Build list snapshot while lock is held (consistent post-transition state).
-            let list_snapshot: Vec<EnrichedSession> = guard
-                .values()
+            // TOCTOU guard: classify the current state before any mutation.
+            let already_terminal = guard
+                .get(session_id)
                 .map(|e| {
-                    let status = match e.state {
-                        SessionState::Launching | SessionState::Running => SessionStatus::Active,
-                        SessionState::Detached => SessionStatus::Idle,
-                        SessionState::Terminating | SessionState::Terminated => {
-                            SessionStatus::Stopped
-                        }
-                        _ => SessionStatus::Stopped,
-                    };
-                    EnrichedSession::new_with_display_name(
-                        e.session_id.clone(),
-                        e.harness_id.clone(),
-                        None,
-                        None,
-                        status,
-                        None,
-                        e.project_root
-                            .file_name()
-                            .and_then(|n| n.to_str())
-                            .map(|s| s.to_string()),
-                        Some(e.started_at),
-                        0,
-                        None,
-                        e.display_name.clone(),
+                    matches!(
+                        e.state,
+                        SessionState::Terminating | SessionState::Terminated
                     )
                 })
-                .collect();
+                .unwrap_or(false);
 
-            // BC-2.08.008 Invariant 4: SessionStateChanged{Detached} BEFORE SessionListUpdate,
-            // both emitted under THIS single lock hold — no stale-snapshot window.
-            let state_changed = monocle_ipc::types::ServerToClient::SessionStateChanged {
-                session_id: session_id.to_string(),
-                new_state: SessionState::Detached,
-            };
-            crate::ipc_server::broadcast_to_subscribers(&self.broker, state_changed).await;
+            // Extract the proxy_task handle regardless of terminal state (abort is idempotent).
+            let proxy_task_handle = guard
+                .get_mut(session_id)
+                .and_then(|e| e.host_conn.as_mut())
+                .and_then(|c| c.proxy_task.take());
 
-            let list_update = monocle_ipc::types::ServerToClient::SessionListUpdate {
-                sessions: list_snapshot,
-            };
-            crate::ipc_server::broadcast_to_subscribers(&self.broker, list_update).await;
-            // sessions lock released here — transition + both broadcasts were atomic.
+            if already_terminal {
+                // Proxy-driven Terminated transition won the race.  The Terminated state and
+                // broadcasts already stand.  Do NOT overwrite to Detached; do NOT emit
+                // SessionStateChanged{Detached} or SessionListUpdate here.
+                tracing::debug!(
+                    session_id = %session_id,
+                    "detach_session: re-acquired lock found entry already Terminating/Terminated \
+                     (proxy_task raced); detach lost-race — Terminated transition stands, \
+                     no Detached broadcast emitted (F-S035-PASS3-MED-001)"
+                );
+                // guard released here
+                proxy_task_handle
+            } else {
+                // Normal path: entry is still Running (or Launching-with-conn).
+                // Clear host_conn and transition state (BC-2.08.007 detach PC-3/PC-4).
+                if let Some(entry) = guard.get_mut(session_id) {
+                    entry.host_conn = None;
+                    entry.state = SessionState::Detached;
+                }
 
-            proxy_task_handle
+                // Build list snapshot while lock is held (consistent post-transition state).
+                let list_snapshot: Vec<EnrichedSession> = guard
+                    .values()
+                    .map(|e| {
+                        let status = match e.state {
+                            SessionState::Launching | SessionState::Running => SessionStatus::Active,
+                            SessionState::Detached => SessionStatus::Idle,
+                            SessionState::Terminating | SessionState::Terminated => {
+                                SessionStatus::Stopped
+                            }
+                            _ => SessionStatus::Stopped,
+                        };
+                        EnrichedSession::new_with_display_name(
+                            e.session_id.clone(),
+                            e.harness_id.clone(),
+                            None,
+                            None,
+                            status,
+                            None,
+                            e.project_root
+                                .file_name()
+                                .and_then(|n| n.to_str())
+                                .map(|s| s.to_string()),
+                            Some(e.started_at),
+                            0,
+                            None,
+                            e.display_name.clone(),
+                        )
+                    })
+                    .collect();
+
+                // BC-2.08.008 Invariant 4: SessionStateChanged{Detached} BEFORE SessionListUpdate,
+                // both emitted under THIS single lock hold — no stale-snapshot window.
+                let state_changed = monocle_ipc::types::ServerToClient::SessionStateChanged {
+                    session_id: session_id.to_string(),
+                    new_state: SessionState::Detached,
+                };
+                crate::ipc_server::broadcast_to_subscribers(&self.broker, state_changed).await;
+
+                let list_update = monocle_ipc::types::ServerToClient::SessionListUpdate {
+                    sessions: list_snapshot,
+                };
+                crate::ipc_server::broadcast_to_subscribers(&self.broker, list_update).await;
+                // sessions lock released here — transition + both broadcasts were atomic.
+
+                proxy_task_handle
+            }
         };
 
         // Abort proxy task outside the lock (abort() is synchronous; no .await needed).
@@ -2891,8 +2935,14 @@ impl SessionManager {
                     Ok(())
                 }
                 AttachPath::OtherState { state } => {
-                    // Launching (host_conn=None) → SessionNotReady (defensive).
-                    // Terminating/Terminated → SessionHostDead (host is shutting down).
+                    // F-S035-PASS3-LOW-001: corrected comment — ALL OtherState variants
+                    // (Launching, Terminating, Terminated, and any future states) return
+                    // SessionHostDead.  This is the matrix-compliant behavior per
+                    // SS-session-manager.md v2.13.0 action×state matrix: attach on any
+                    // non-Running/non-Detached state → "attach_failed" (wire code).
+                    // The prior comment erroneously claimed Launching would yield SessionNotReady;
+                    // the code never did that — SessionNotReady is only raised by detach_session
+                    // (F-P51-001) for Launching-with-no-control-connection.
                     tracing::debug!(
                         session_id = %session_id,
                         ?state,
