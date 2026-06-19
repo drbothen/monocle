@@ -1514,3 +1514,90 @@ Priority order (fewest dependencies first):
 5. `handle_pre_tool_use_inner` — BC-2.04.007 (9 failing tests, includes Defer/oneshot path)
 
 After each inner handler is implemented, the corresponding outer-handler guard tests remain green.
+
+---
+document_type: red-gate-log
+story_id: S-035
+step: 3
+branch: story/S-035-session-manager-attach-detach
+timestamp: 2026-06-19T00:00:00Z
+producer: vsdd-factory:test-writer
+---
+
+# Red Gate Log — S-035 Step 3 (SessionManager attach_session / detach_session)
+
+## Summary
+
+**Status: RED GATE VERIFIED**
+
+11 behavioral tests FAIL. 0 vacuous passes. `cargo clippy --workspace --all-targets -- -D warnings`
+passes (no new warnings). `cargo build --workspace` succeeds. 2 pre-existing S-033 production
+smoke test failures (missing `monocle-session-host` binary) are unrelated to S-035 and existed
+on develop before this change.
+
+## Test Results
+
+| Test File | Tests | Passed | Failed |
+|-----------|-------|--------|--------|
+| `crates/monocle-runtime/tests/s035_attach_detach_red_gate.rs` | 11 | 0 | 11 |
+| All other workspace tests | pre-existing baseline | unchanged | +0 new failures |
+
+## Failing Tests (11 — Red Gate confirmed)
+
+All 11 failures are `todo!()` panics from `attach_session()` or `detach_session()` in
+`crates/monocle-runtime/src/session_manager/mod.rs`.
+
+| Test | BC / AC | Stub line that panics | Failure message |
+|------|---------|-----------------------|-----------------|
+| `test_BC_2_08_007_attach_receives_scrollback_detach_keeps_session_alive` | BC-2.08.007 PC-1–9, AC-002–007 | mod.rs:2409 | `not yet implemented: S-035: implement attach_session()` |
+| `test_BC_2_08_007_attach_5s_timeout_session_host_dead` | BC-2.08.007 EC-188, AC-002 | mod.rs:2409 | `not yet implemented: S-035: implement attach_session()` |
+| `test_BC_2_08_007_attach_running_idempotent` | BC-2.08.007 EC-185, AC-011 | mod.rs:2409 | `not yet implemented: S-035: implement attach_session()` |
+| `test_BC_2_08_007_detach_detached_idempotent` | BC-2.08.007 EC-186, AC-012 | mod.rs:2387 | `not yet implemented: S-035: implement detach_session()` |
+| `test_BC_2_08_007_detach_launching_session_not_ready` | BC-2.08.007 F-P51-001, AC-014 | mod.rs:2387 | `not yet implemented: S-035: implement detach_session()` |
+| `test_BC_2_08_007_sidecar_updated_on_detach` | BC-2.08.007 detach PC-5, AC-006/008 | mod.rs:2387 | `not yet implemented: S-035: implement detach_session()` |
+| `test_BC_2_08_008_state_changed_ordering_on_attach_detach` | BC-2.08.008 Invariant 4, AC-004/007/015 | mod.rs:2409 | `not yet implemented: S-035: implement attach_session()` |
+| `test_BC_2_08_007_attach_running_session_dead` | BC-2.08.007 EC-187, AC-013 | mod.rs:2409 | `not yet implemented: S-035: implement attach_session()` |
+| `test_BC_2_08_007_concurrent_attach_no_duplicate_proxy_task` | BC-2.08.007 Invariant 2, AC-009 | mod.rs:2409 | `not yet implemented: S-035: implement attach_session()` |
+| `test_BC_2_08_007_retired_scrollback_dump_rejected` | BC-2.08.007 Invariant 3, AC-010 | mod.rs:2409 | `not yet implemented: S-035: implement attach_session()` |
+| `test_BC_2_08_007_attach_detach_cycle` | BC-2.08.007 canonical test vector | mod.rs:2387 | `not yet implemented: S-035: implement detach_session()` |
+
+## Production Code Change
+
+One surgical change to `session_manager/mod.rs` was required to make the integration tests
+accessible:
+
+- `insert_detached_session_for_test`: promoted from `#[cfg(test)] pub(crate)` to
+  `#[cfg(any(test, feature = "test-utils"))] pub`. This change is still fully gated behind
+  the cfg/feature guard — it does not exist in production builds. The `test-utils` feature
+  is activated by the self-referential dev-dep already present in `Cargo.toml`:
+  `monocle-runtime = { path = ".", features = ["test-utils"] }`.
+
+## Handoff to Implementer
+
+Make each `todo!()` stub pass its corresponding test, one at a time, with minimum code.
+Priority order (dependency ordering):
+
+1. `detach_session()` — drives 4 direct detach tests (plus cycle test step 2)
+2. `attach_session()` — drives 7 direct attach tests (plus cycle test step 3 + idempotent)
+3. `spawn_pty_proxy_task()` — required by `attach_session()` (inner helper, not directly tested)
+
+Attachment sequence per BC-2.08.007 PC-1–PC-9:
+1. `UnixStream::connect(socket_path)` — EC-187: if ENOENT/ECONNREFUSED → Terminated + SessionHostDead
+2. SO_PEERCRED via `peer_cred_verifier.verify()` — EC-163: if Err → abort conn
+3. Length-prefix JSON frame: send `DaemonToHost::Attach`
+4. `tokio::time::timeout(5s)`: receive `ScrollbackChunk*` (seq 0..N-1) + `ScrollbackDumpComplete`
+   - On timeout → Terminated + `Err(SessionHostDead)` → wire `"attach_failed"`
+   - Unknown/retired message (not ScrollbackChunk or ScrollbackDumpComplete) → WARN + fail
+5. `spawn_pty_proxy_task(session_id, reader, broker)` → `JoinHandle<()>` → `proxy_task: Some(...)`
+6. `host_conn = Some(SessionHostConnection { writer, reader: None, proxy_task })`
+7. `state → Running`; update sidecar
+8. Emit `SessionStateChanged{Running}` THEN `SessionListUpdate` (same mutex hold — BC-2.08.008 Invariant 4)
+
+Detachment sequence per BC-2.08.007 detach PC-1–PC-7:
+1. Guard: if state == Detached → `Ok(())` (idempotent EC-186)
+2. Guard: if state == Launching AND host_conn.is_none() → `Err(SessionNotReady)` (F-P51-001)
+3. Send `DaemonToHost::Detach` via `host_conn.writer`
+4. `host_conn.proxy_task.take().map(|t| t.abort())` (canonical abort pattern)
+5. `host_conn = None`
+6. `state → Detached`; update sidecar via `tempfile::persist`
+7. Emit `SessionStateChanged{Detached}` THEN `SessionListUpdate` (same mutex hold)

@@ -124,9 +124,9 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "2.11.0"
-  last_bump_commit: "[Ruling K (F-S034-ADV-IMPORTANT-001) — §Main event loop child_exit_watch arms annotated with S-040 ownership; S-034 scope is Kill handler only; doc-comment correction specified for step_event_loop]"
-  last_bump_date: "2026-06-17"
+  current_version: "2.12.0"
+  last_bump_commit: "[Ruling L (F-S035-001) — proxy_task is kill-confirm reader for attached sessions; force_terminate_session delegation; spawn_pty_proxy_task gains sessions+sidecar_path; kill_session ExistingConn distinguishes proxy-owned vs pre-Running race]"
+  last_bump_date: "2026-06-19"
 
 SS-embedded-pty:
   path: specs/architecture/SS-embedded-pty.md
@@ -798,7 +798,7 @@ BC-2.08.007:
 BC-2.08.008:
   path: specs/behavioral-contracts/ss-08/BC-2.08.008.md
   current_version: "1.3.5"
-  last_bump_commit: "[ADV-S034-IMPORTANT-001 / SS-session-manager v2.11.0 Ruling K: clarified natural-exit Terminated ownership = S-039/S-040; S-034 = kill-path daemon broadcast]"
+  last_bump_commit: "[ADV-S034-IMPORTANT-001 / SS-session-manager §Ruling K (implemented at v2.11.0): clarified natural-exit Terminated ownership = S-039/S-040; S-034 = kill-path daemon broadcast]"
   last_bump_date: "2026-06-18"
 
 BC-2.09.001:

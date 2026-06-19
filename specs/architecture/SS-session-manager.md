@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.11.0"
+version: "2.12.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
-timestamp: 2026-06-17T00:00:00Z
+timestamp: 2026-06-19T00:00:00Z
 inputs:
   - research/domain-monocle-vision-synthesis.md
   - specs/product-brief.md
@@ -3611,6 +3611,182 @@ if let Some(pid) = pid {
     force_terminate_session(&session_id, &sessions, &broker, &sidecar_path).await;
 }
 ```
+
+---
+
+### Ruling L — proxy_task is the kill-confirm reader for attached sessions (F-S035-001)
+
+**Status:** AUTHORITATIVE. Resolves F-S035-001 (MEDIUM, cross-story-integration). Amends
+§spawn_pty_proxy_task and §kill_session ExistingConn reader=None path. S-035 in-scope fix.
+
+#### Finding
+
+After `attach_session()` completes, `host_conn` stores
+`SessionHostConnection { writer, reader: None, proxy_task: Some(handle) }`. The reader is
+owned exclusively by the proxy_task. When `kill_session()` subsequently fires on a Running
+(post-attach) session, `host_conn.reader.take()` returns `None`. The existing code falls to
+the watchdog-only branch, bypassing `kill_confirm_monitor`. The clean `StateChanged{Terminated}`
+confirmation (target: <500ms per BC-2.08.003) is degraded to the 12-second SIGKILL watchdog.
+
+Additionally: the proxy_task's `other =>` arm discards `HostToDaemon::StateChanged{Terminated}`
+silently. The `Goodbye` arm breaks the loop but does not call `transition_to_terminated`. Both
+are defects: an attached session whose host sends `StateChanged{Terminated}` or `Goodbye`
+without a prior kill (natural exit path, once S-039/S-040 wires it) would leave the session
+stuck in `Running` with no state transition published.
+
+#### Dependency analysis — why this is S-035 in-scope (not deferred to S-039/S-047)
+
+S-039/S-040 own: PTY output fan-out (`PtyBytes` → broker → TUI), PTY reader task, harness
+child exit detection (`child_exit_watch` arm). S-047 owns: `KeyInput`, `Resize`, live
+interaction commands. None of these are prerequisites for handling `StateChanged{Terminated}`
+in the proxy_task — the proxy_task already holds the reader and the broker, and
+`transition_to_terminated` (the GC path) is existing S-034 code. The fix is a purely additive
+match arm in S-035's own `spawn_pty_proxy_task`. No new IPC variants required.
+
+#### Normative changes (S-035 implementer must implement)
+
+**Change L-1 — `spawn_pty_proxy_task` signature extended:**
+
+```rust
+fn spawn_pty_proxy_task(
+    session_id: String,
+    reader: tokio::net::unix::OwnedReadHalf,
+    broker: Arc<monocle_ipc::server::SubscriberList>,
+    sessions: Arc<tokio::sync::Mutex<HashMap<String, SessionEntry>>>,   // NEW
+    sidecar_path: PathBuf,                                               // NEW
+) -> JoinHandle<()>
+```
+
+Both call sites (post-spawn monitor Running transition and `attach_session`) MUST pass the new
+parameters.
+
+**Change L-2 — proxy_task match arms for state-change messages:**
+
+The `other =>` discard arm MUST be replaced with explicit handling:
+
+```rust
+HostToDaemon::StateChanged { new_state: SessionState::Terminated, .. } => {
+    // Session-host confirmed termination on the attach connection.
+    // Publish Terminated transition (BC-2.08.008 I4: StateChanged BEFORE SessionListUpdate).
+    // This is the fast-path kill confirmation for attached sessions (<500ms).
+    tracing::info!(session_id = %session_id,
+        "proxy_task: StateChanged{Terminated} received — transitioning session to Terminated");
+    force_terminate_session(&session_id, &sessions, &broker, &sidecar_path).await;
+    break;
+}
+HostToDaemon::Goodbye => {
+    // Session-host closed the connection. If StateChanged{Terminated} was already received
+    // above, this branch is unreachable (loop already broke). If Goodbye arrives without
+    // a prior Terminated: session-host exited unexpectedly (natural exit, S-039/S-040 path,
+    // or protocol violation). Transition to Terminated defensively.
+    tracing::debug!(session_id = %session_id,
+        "proxy_task: Goodbye received; transitioning session to Terminated");
+    force_terminate_session(&session_id, &sessions, &broker, &sidecar_path).await;
+    break;
+}
+other => {
+    // Unexpected HostToDaemon variant received post-Running on proxy connection.
+    // ScrollbackChunk / ScrollbackDumpComplete should not arrive here (scrollback dump
+    // completed before proxy_task was started). StateChanged{non-Terminated} is logged
+    // at WARN — protocol invariant violation (session-host should only send Running once).
+    tracing::warn!(
+        session_id = %session_id,
+        msg_type = ?std::mem::discriminant(&other),
+        "proxy_task: unexpected HostToDaemon variant (post-Running); ignoring"
+    );
+}
+```
+
+**Change L-3 — `kill_session` ExistingConn reader=None path — distinguish proxy-owned from
+pre-Running race:**
+
+The existing `else` branch (reader=None fallback, line ~1622) handles two distinct cases that
+MUST be distinguished:
+
+```rust
+if let Some(existing_reader) = maybe_reader {
+    // ExistingConn SUCCESS path — reader present (post-spawn-monitor path).
+    // ... (unchanged: spawn kill_confirm_monitor) ...
+} else {
+    // reader is None. Two sub-cases:
+    let has_proxy = {
+        let guard = self.sessions.lock().await;
+        guard.get(session_id)
+            .and_then(|e| e.host_conn.as_ref())
+            .map(|c| c.proxy_task.is_some())
+            .unwrap_or(false)
+    };
+    if has_proxy {
+        // Attached session: proxy_task owns the reader and will handle
+        // StateChanged{Terminated} via Change L-2. Do NOT abort the proxy_task.
+        // The watchdog below provides the 12s fallback if the session-host is unresponsive.
+        // Expected fast path: proxy_task receives StateChanged{Terminated} within 500ms
+        // and calls force_terminate_session. Watchdog finds state != Terminating and exits.
+        tracing::debug!(
+            session_id = %session_id,
+            "kill_session ExistingConn: reader=None, proxy_task=Some — \
+             Terminated handling delegated to proxy_task (F-S035-001 fix)"
+        );
+    } else {
+        // Pre-Running race: host_conn established but monitor has not yet stored reader
+        // (StateChanged{Running} not yet received). Watchdog-only path. Unchanged.
+        tracing::debug!(
+            session_id = %session_id,
+            "kill_session ExistingConn: reader=None, proxy_task=None — watchdog-only path \
+             (pre-Running race)"
+        );
+    }
+}
+```
+
+**The proxy_task MUST NOT be aborted.** Aborting would race with an in-flight
+`StateChanged{Terminated}` message. The correct design: leave the proxy_task running; it
+self-terminates after processing `StateChanged{Terminated}` or `Goodbye` (Change L-2).
+
+**Change L-4 — host_conn comment at attach_session result storage:**
+
+```rust
+reader: None, // Reader is owned by proxy_task (spawn_pty_proxy_task).
+              // kill_session on an attached Running session detects reader=None + proxy_task=Some
+              // and delegates StateChanged{Terminated} handling to the proxy_task (Ruling L /
+              // F-S035-001 fix). Watchdog is the 12s fallback.
+```
+
+#### BC-2.08.003 integration note
+
+BC-2.08.003 PC-1 (<500ms kill confirmation) is preserved for attached sessions via this ruling:
+the proxy_task reads `StateChanged{Terminated}` from the session-host on the same connection
+where `DaemonToHost::Kill` was sent, and calls `force_terminate_session` immediately. The
+watchdog fires at 12s only if the session-host fails to respond.
+
+#### Tests required (S-035 in-scope)
+
+Add to the S-035 test suite:
+- `test_kill_attached_session_fast_path`: attach a session, kill it, assert
+  `SessionStateChanged{Terminated}` is received within 500ms (proxy_task fast path, no SIGKILL).
+- `test_proxy_task_handles_goodbye_without_terminated`: attach a session, send only `Goodbye`
+  from the mock session-host (no prior `StateChanged{Terminated}`), assert session transitions
+  to Terminated (defensive path).
+
+---
+
+## §Trace v2.12.0
+
+**Ruling L (F-S035-001) — proxy_task is the kill-confirm reader for attached sessions; force_terminate_session delegation** (2026-06-19):
+
+- **Ruling L** added: after `attach_session()`, `host_conn.reader` is `None` (reader owned by
+  proxy_task). `kill_session` ExistingConn reader=None path must distinguish proxy-owned
+  (reader=None + proxy_task=Some) from pre-Running race (reader=None + proxy_task=None). For
+  proxy-owned: proxy_task handles `StateChanged{Terminated}` via Change L-2, calling
+  `force_terminate_session` (existing GC path). Do NOT abort the proxy_task — aborting races
+  with in-flight Terminated message. Watchdog is the 12s fallback. `spawn_pty_proxy_task`
+  gains `sessions` + `sidecar_path` parameters. `Goodbye` arm calls `force_terminate_session`
+  defensively. `other =>` arm logs WARN (not trace) for unexpected variants. Two new tests:
+  `test_kill_attached_session_fast_path` and `test_proxy_task_handles_goodbye_without_terminated`.
+  Fix is S-035 in-scope: proxy_task, `spawn_pty_proxy_task`, and `kill_session` ExistingConn path
+  are all S-035 code; no dependency on S-039/S-047 (PtyBytes fan-out, KeyInput, harness child exit).
+
+- SE-16d monotonicity: v2.12.0 timestamp 2026-06-19 > v2.11.0 timestamp 2026-06-17. PASS.
 
 ---
 
