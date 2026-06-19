@@ -5120,6 +5120,11 @@ pub struct RediscoveryReport {
 // Test naming convention: test_BC_S_SS_NNN_<assertion_name>
 // ===========================================================================
 
+// S-036 TDD test suite for rediscover_sessions() — in a separate file for clarity.
+// All tests in this module are failing (Red Gate) against the current todo!() stub.
+#[cfg(test)]
+mod rediscovery_tests;
+
 #[cfg(test)]
 #[allow(non_snake_case, clippy::while_let_loop, clippy::io_other_error)]
 mod tests {
