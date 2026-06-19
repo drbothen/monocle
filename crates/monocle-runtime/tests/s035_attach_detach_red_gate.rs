@@ -578,6 +578,11 @@ async fn test_BC_2_08_007_attach_5s_timeout_session_host_dead() {
 
     let (mut manager, _subs, mut rx) = make_manager(tmp.path(), 55_102);
     manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifier { allow: true }));
+    // F-S035-PASS6-MED-001: Install pid_sigterm_fn seam so the EC-188 timeout path
+    // NEVER reaches the real nix::kill(Pid::from_raw(55102), SIGTERM) syscall.
+    // Without this seam, a live PID 55102 on the host receives a real SIGTERM —
+    // a non-deterministic, potentially destructive side effect in CI/dev environments.
+    manager.with_pid_sigterm_fn(Arc::new(|_pid| Ok(())));
 
     // Bind the socket — the mock host connects but NEVER sends ScrollbackDumpComplete.
     let listener =
