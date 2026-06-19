@@ -597,6 +597,124 @@ struct SessionEntry {
 }
 
 // ---------------------------------------------------------------------------
+// HookEndpointConfig — BC-2.08.006 / BC-2.04.010
+// ---------------------------------------------------------------------------
+
+/// Holds the 4 URL-bearing hook endpoint strings used to write `hooks-settings.json`.
+///
+/// `PostToolUse` and `PreCompact` are ALWAYS written as reserved-empty JSON arrays `[]`;
+/// they are NOT represented as `String` fields here
+/// (BC-2.08.006 PC-3 / BC-2.04.010 PC-3).
+///
+/// The exact URL format (curl POST to `http://127.0.0.1:<port>/hooks/<endpoint>` with
+/// `X-Monocle-Authorization` header) is defined in BC-2.04.010 PC-3.
+///
+/// `Default` provides empty-string URLs for test contexts where a real hook server
+/// is not running. Production code populates the fields from the live hook endpoint.
+/// CWE-532: Debug output MUST NOT leak auth tokens contained in curl command strings.
+/// Derives `Clone` and `Default`; `Debug` is manually implemented with redacted fields.
+#[derive(Clone, Default)]
+pub struct HookEndpointConfig {
+    /// curl command string for `PreToolUse` hook endpoint.
+    pub pre_tool_use: String,
+    /// curl command string for `Notification` hook endpoint.
+    pub notification: String,
+    /// curl command string for `Stop` hook endpoint.
+    pub stop: String,
+    /// curl command string for `UserPromptSubmit` hook endpoint.
+    pub user_prompt_submit: String,
+}
+
+impl std::fmt::Debug for HookEndpointConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HookEndpointConfig")
+            .field("pre_tool_use", &"<redacted>")
+            .field("notification", &"<redacted>")
+            .field("stop", &"<redacted>")
+            .field("user_prompt_submit", &"<redacted>")
+            .finish()
+    }
+}
+
+/// Write `hooks-settings.json` atomically to `path` using `tempfile::persist`.
+///
+/// Implements the BC-2.04.010 PC-3 schema:
+/// - 4 URL-bearing keys (PreToolUse, Notification, Stop, UserPromptSubmit): each is an
+///   array containing one hook object `{ "matcher": "", "hooks": [{ "type": "command",
+///   "command": "<curl_cmd>" }] }`.
+/// - PostToolUse and PreCompact: empty JSON arrays `[]` (forward-compat placeholders).
+/// - `lock.app = "monocle"` — prevents external `claude` processes from routing hooks
+///   to monocle's daemon (BC-2.08.006 Invariant 2).
+/// - `SessionStart` is NOT a key (Claude Code invokes it via its own internal lifecycle).
+///
+/// Atomicity: `NamedTempFile::new_in(parent_dir)` → write JSON → `persist(path)`.
+/// File permissions: 0o600 on Unix (BC-2.04.010 PC-2).
+///
+/// Returns `Err(SessionError::Io)` on any I/O failure; no partial file is left at the
+/// target path (`tempfile::persist` uses `rename(2)` — atomic on POSIX).
+pub fn write_hooks_settings_json(
+    config: &HookEndpointConfig,
+    path: &std::path::Path,
+) -> Result<(), SessionError> {
+    // Build the BC-2.04.010 PC-3 schema.
+    // Each URL-bearing key is an array of one hook-object:
+    //   [{ "matcher": "", "hooks": [{ "type": "command", "command": "<curl>" }] }]
+    let make_hook_arr = |cmd: &str| {
+        serde_json::json!([{
+            "matcher": "",
+            "hooks": [{
+                "type": "command",
+                "command": cmd
+            }]
+        }])
+    };
+
+    let payload = serde_json::json!({
+        "hooks": {
+            "PreToolUse": make_hook_arr(&config.pre_tool_use),
+            "Notification": make_hook_arr(&config.notification),
+            "Stop": make_hook_arr(&config.stop),
+            "UserPromptSubmit": make_hook_arr(&config.user_prompt_submit),
+            "PostToolUse": serde_json::Value::Array(vec![]),
+            "PreCompact": serde_json::Value::Array(vec![])
+        },
+        "lock": {
+            "app": "monocle"
+        }
+    });
+
+    // Atomic write: create NamedTempFile in the same directory as the target path
+    // (required for POSIX rename(2) atomicity — cross-device rename fails).
+    let parent = path.parent().ok_or_else(|| {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            format!(
+                "hooks-settings.json path has no parent directory: {:?}",
+                path
+            ),
+        )
+    })?;
+
+    let mut tmp = tempfile::NamedTempFile::new_in(parent)?;
+    serde_json::to_writer_pretty(&mut tmp, &payload)
+        .map_err(|e| std::io::Error::other(format!("JSON serialization failed: {e}")))?;
+
+    // Set mode 0o600 on the TEMP file BEFORE persist so the atomic rename installs
+    // the file at the canonical path already at 0o600 (CWE-732: no window where the
+    // file exists at the target path with an incorrect mode; BC-2.04.010 PC-2).
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(tmp.path(), std::fs::Permissions::from_mode(0o600))?;
+    }
+
+    // Persist (atomic rename — no partial content visible at target path).
+    tmp.persist(path).map_err(|e| e.error)?;
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // SessionManager
 // ---------------------------------------------------------------------------
 
@@ -625,6 +743,20 @@ pub struct SessionManager {
     /// Production default: `RealPeerCredVerifier` (performs real SO_PEERCRED check).
     /// Tests inject `FakePeerCredVerifier` to simulate UID mismatch without forking.
     peer_cred_verifier: Arc<dyn PeerCredVerifier>,
+    /// Absolute canonicalized path to the shared `hooks-settings.json` file written at
+    /// daemon startup (S-038 / BC-2.08.006 Invariant 3 + Invariant 6).
+    ///
+    /// Written once in `SessionManager::new()` via `write_hooks_settings_json()` and
+    /// populated into `SpawnOptions.hooks_settings_path` before every `spawn_recipe()` call.
+    /// The path is derived from the canonicalized `runtime_dir` at construction time
+    /// (BC-2.08.006 Invariant 6 — no symlinks in the stored path).
+    hooks_settings_path: PathBuf,
+    /// Cached hook endpoint config for EC-182 re-write guard in `spawn_session()`.
+    ///
+    /// Populated at `new()` time. If `hooks-settings.json` is deleted between daemon
+    /// startup and a spawn call, `spawn_session()` uses this cached config to re-write
+    /// the file (BC-2.08.006 EC-182 / AC-013).
+    hook_endpoint_config: HookEndpointConfig,
     /// Failure-injection seam for the PidFallback SIGTERM call (ADV-S034-IMPORTANT-001).
     ///
     /// `None` in production (cfg gate ensures it is always `None` in non-test builds).
@@ -670,7 +802,22 @@ impl SessionManager {
         spawner: Arc<dyn SessionHostSpawner>,
         broker: Arc<monocle_ipc::server::SubscriberList>,
         engine_module: Arc<dyn monocle_core::engine::EngineModule>,
+        hook_endpoint_config: HookEndpointConfig,
     ) -> Self {
+        // BC-2.08.006 Invariant 6: canonicalize runtime_dir to eliminate symlinks.
+        // On failure (dir doesn't exist yet in tests), fall back to the raw path —
+        // the file write below will fail gracefully in that case.
+        let canonical_dir =
+            std::fs::canonicalize(&runtime_dir).unwrap_or_else(|_| runtime_dir.clone());
+        let hooks_settings_path = canonical_dir.join("hooks-settings.json");
+
+        // S-038 single-writer mandate: lifecycle step 9 (via write_hooks_settings_json) is the
+        // SOLE startup writer of hooks-settings.json. SessionManager::new() NO LONGER writes
+        // the file here — it receives the already-written config via hook_endpoint_config.
+        // In production: lifecycle called write_hooks_settings_json before new() (SOQ-2 ordering).
+        // In tests: pass HookEndpointConfig::default() and the EC-182 guard in spawn_session()
+        // will write the file if absent at spawn time.
+
         Self {
             sessions: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
             runtime_dir,
@@ -678,6 +825,8 @@ impl SessionManager {
             broker,
             engine_module,
             peer_cred_verifier: Arc::new(RealPeerCredVerifier),
+            hooks_settings_path,
+            hook_endpoint_config,
             #[cfg(any(test, feature = "test-utils"))]
             pid_sigterm_fn: None,
             #[cfg(any(test, feature = "test-utils"))]
@@ -709,6 +858,25 @@ impl SessionManager {
     #[cfg(any(test, feature = "test-utils"))]
     pub fn with_peer_cred_verifier(&mut self, verifier: Arc<dyn PeerCredVerifier>) -> &mut Self {
         self.peer_cred_verifier = verifier;
+        self
+    }
+
+    /// Override `hooks_settings_path` for tests that need to inject a non-standard path
+    /// (e.g., a non-UTF-8 `PathBuf` to exercise EC-183 / BC-2.08.006 edge case).
+    ///
+    /// This seam is ONLY available in test/test-utils builds.  In production, the path
+    /// is derived from canonicalized `runtime_dir` and is immutable after `new()`.
+    ///
+    /// # Test usage (EC-183 — non-UTF-8 path injection)
+    ///
+    /// ```rust,ignore
+    /// use std::os::unix::ffi::OsStrExt;
+    /// let non_utf8_path = PathBuf::from(OsStr::from_bytes(b"/tmp/\xff\xfe/hooks-settings.json"));
+    /// manager.with_hooks_settings_path_for_test(non_utf8_path);
+    /// ```
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn with_hooks_settings_path_for_test(&mut self, path: PathBuf) -> &mut Self {
+        self.hooks_settings_path = path;
         self
     }
 
@@ -1036,6 +1204,32 @@ impl SessionManager {
             });
         }
         let session_id = proposed_id;
+
+        // EC-182 re-write guard (BC-2.08.006 edge case EC-182 / AC-013):
+        // If hooks-settings.json was deleted between daemon startup and this spawn call
+        // (e.g., by an external process cleaning up the runtime_dir), re-write it now.
+        // Skip the guard if hooks_settings_path is empty (shouldn't happen in production;
+        // guards against test scenarios where new() couldn't canonicalize runtime_dir).
+        let mut opts = opts;
+        if !self.hooks_settings_path.as_os_str().is_empty() && !self.hooks_settings_path.exists() {
+            tracing::warn!("hooks-settings.json missing at spawn time; re-writing");
+            if let Err(err) =
+                write_hooks_settings_json(&self.hook_endpoint_config, &self.hooks_settings_path)
+            {
+                tracing::error!(
+                    path = %self.hooks_settings_path.display(),
+                    err = %err,
+                    "EC-182: failed to re-write hooks-settings.json at spawn time"
+                );
+                // Continue — the engine module will fail if the file is truly required.
+            }
+        }
+
+        // AC-008 (BC-2.08.006 postcondition 2 / ownership boundary):
+        // Populate opts.hooks_settings_path so ClaudeCodeModule::spawn_recipe() (S-045)
+        // can append "--settings <path>" to SpawnRecipe.args.
+        // S-038 MUST NOT append "--settings" itself — that is S-045's responsibility.
+        opts.hooks_settings_path = self.hooks_settings_path.clone();
 
         // Step 1 (BC-2.08.001 PC-1): call spawn_recipe() FIRST — before any OS process.
         let recipe: SpawnRecipe = self.engine_module.spawn_recipe(&opts)?;
@@ -4932,7 +5126,13 @@ mod tests {
 
         // broker expects Arc<SubscriberList> = Arc<Arc<Mutex<Vec<ClientEntry>>>>
         let broker = Arc::new(Arc::clone(&subscriber_list));
-        let manager = SessionManager::new(tmp_dir.to_path_buf(), spawner, broker, engine);
+        let manager = SessionManager::new(
+            tmp_dir.to_path_buf(),
+            spawner,
+            broker,
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         (manager, subscriber_list, rx)
     }
@@ -5796,6 +5996,7 @@ mod tests {
             spawner,
             make_broker(&subs),
             engine,
+            HookEndpointConfig::default(),
         );
 
         let session_id = "00000000-0001-4000-a000-000000000150".to_string();
@@ -5881,7 +6082,13 @@ mod tests {
         });
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
         // Manager uses the read-only dir so sidecar write fails.
-        let mut manager = SessionManager::new(ro_dir.clone(), spawner, make_broker(&subs), engine);
+        let mut manager = SessionManager::new(
+            ro_dir.clone(),
+            spawner,
+            make_broker(&subs),
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         let session_id = "00000000-0001-4000-a000-000000000151".to_string();
         let opts = make_spawn_opts(&session_id);
@@ -5986,6 +6193,7 @@ mod tests {
             spawner,
             make_broker(&subs),
             engine,
+            HookEndpointConfig::default(),
         );
 
         let session_id = "00000000-0001-4000-a000-000000009003".to_string();
@@ -6104,6 +6312,7 @@ mod tests {
             spawner,
             broker,
             engine,
+            HookEndpointConfig::default(),
         );
 
         // Build DaemonState with the shared session manager.
@@ -6426,6 +6635,7 @@ mod tests {
             spawner,
             make_broker(&empty_subs),
             engine,
+            HookEndpointConfig::default(),
         );
 
         let session_id = "00000000-0001-4000-a000-000000000050".to_string();
@@ -6465,6 +6675,7 @@ mod tests {
             spawner,
             make_broker(&subs),
             engine,
+            HookEndpointConfig::default(),
         );
 
         let session_id = "00000000-0001-4000-a000-000000000060".to_string();
@@ -6529,6 +6740,7 @@ mod tests {
             spawner,
             make_broker(&subs),
             engine,
+            HookEndpointConfig::default(),
         );
 
         let session_id = "00000000-0001-4000-a000-000000000070".to_string();
@@ -6613,6 +6825,7 @@ mod tests {
             spawner,
             make_broker(&subs),
             engine,
+            HookEndpointConfig::default(),
         );
 
         let session_id = "00000000-0001-4000-a000-000000000080".to_string();
@@ -6768,6 +6981,7 @@ mod tests {
             spawner,
             broker,
             engine,
+            HookEndpointConfig::default(),
         );
 
         // Build a DaemonState with session_manager Some(_).
@@ -6849,6 +7063,7 @@ mod tests {
             spawner,
             broker,
             engine,
+            HookEndpointConfig::default(),
         );
         let mut state = crate::state::DaemonState::new();
         state.session_manager = Some(tokio::sync::Mutex::new(session_manager));
@@ -6940,7 +7155,13 @@ mod tests {
         let entry = monocle_ipc::server::ClientEntry::new(tx.clone());
         let subs: monocle_ipc::server::SubscriberList = Arc::new(Mutex::new(vec![entry]));
         let broker = Arc::new(Arc::clone(&subs));
-        let mut manager = SessionManager::new(tmp.path().to_path_buf(), spawner, broker, engine);
+        let mut manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker,
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         // Spawn a background task that acts as the session-host:
         // accepts the connection and sends StateChanged{Running} over the UDS.
@@ -7526,6 +7747,7 @@ mod tests {
             spawner,
             broker,
             engine,
+            HookEndpointConfig::default(),
         )));
 
         // Spawn two sessions concurrently via the same manager (under the mutex).
@@ -7742,6 +7964,7 @@ mod tests {
             spawner,
             broker.clone(),
             Arc::new(SucceedingMockEngine {}),
+            HookEndpointConfig::default(),
         );
 
         // Pre-seed the registry so the IPC handler's first UUID gen will collide.
@@ -7842,8 +8065,13 @@ mod tests {
         let entry = monocle_ipc::server::ClientEntry::new(tx.clone());
         let subs: monocle_ipc::server::SubscriberList = Arc::new(Mutex::new(vec![entry]));
         let broker = Arc::new(Arc::clone(&subs));
-        let session_manager =
-            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+        let session_manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker.clone(),
+            engine,
+            HookEndpointConfig::default(),
+        );
         let mut state = crate::state::DaemonState::new();
         state.session_manager = Some(tokio::sync::Mutex::new(session_manager));
 
@@ -7991,7 +8219,13 @@ mod tests {
             fake_pid: 99_901,
         });
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
-        let mut manager = SessionManager::new(tmp.path().to_path_buf(), spawner, broker, engine);
+        let mut manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker,
+            engine,
+            HookEndpointConfig::default(),
+        );
         // Inject the test verifier: allows any connection (simulates same-UID).
         // AC-010: SO_PEERCRED must be applied — we verify it IS called (not skipped) by using
         // FakePeerCredVerifier{allow:true}; the mismatch variant below proves the reject path.
@@ -8217,7 +8451,13 @@ mod tests {
             fake_pid: 99_902,
         });
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
-        let mut manager = SessionManager::new(tmp.path().to_path_buf(), spawner, broker, engine);
+        let mut manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker,
+            engine,
+            HookEndpointConfig::default(),
+        );
         // FakePeerCredVerifier{allow:false}: every verify() call returns Err(PermissionDenied).
         // This simulates the SO_PEERCRED UID mismatch path (EC-163).
         manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifier { allow: false }));
@@ -8349,8 +8589,13 @@ mod tests {
         let subs: SubscriberList = Arc::new(Mutex::new(vec![entry]));
         let broker = make_broker(&subs);
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
-        let manager =
-            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+        let manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker.clone(),
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         // Insert a Terminating session entry with the fake session-host PID.
         // The fake PID (9_999_998) will return ESRCH — that is the expected benign path.
@@ -8489,8 +8734,13 @@ mod tests {
         let subs: SubscriberList = Arc::new(Mutex::new(vec![entry]));
         let broker = make_broker(&subs);
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
-        let manager =
-            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+        let manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker.clone(),
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         // Insert a Terminating session entry with the fake session-host PID.
         // The fake PID (9_999_997) will return ESRCH — benign.
@@ -8665,8 +8915,13 @@ mod tests {
             fake_pid: 10_001,
         });
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
-        let manager =
-            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+        let manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker.clone(),
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         // Insert a Terminated session entry directly (test seam).
         manager
@@ -8807,8 +9062,13 @@ mod tests {
             fake_pid: 10_002,
         });
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
-        let manager =
-            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+        let manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker.clone(),
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         manager
             .insert_terminated_session_for_test(&session_id, 10_002u32, socket_path.clone())
@@ -8900,7 +9160,13 @@ mod tests {
             fake_pid: 10_003,
         });
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
-        let mut manager = SessionManager::new(tmp.path().to_path_buf(), spawner, broker, engine);
+        let mut manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker,
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         // Insert session in Terminated state (the "in-grace" window: 0..10s after Terminated).
         manager
@@ -8990,8 +9256,13 @@ mod tests {
             fake_pid: 10_004,
         });
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
-        let manager =
-            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+        let manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker.clone(),
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         // Insert both sessions in Terminated state.
         manager
@@ -9712,8 +9983,13 @@ mod tests {
             fake_pid: 10_008,
         });
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
-        let manager =
-            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+        let manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker.clone(),
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         // Step 1: Insert session already in Terminated state (test seam).
         // This simulates the state after the FIRST legitimate Terminated transition.
@@ -9926,8 +10202,13 @@ mod tests {
             fake_pid: 10_009,
         });
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
-        let manager =
-            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+        let manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker.clone(),
+            engine,
+            HookEndpointConfig::default(),
+        );
 
         // Seed a session in Terminating state (non-Terminated) so that
         // transition_to_terminated() will fire its first-transition path
@@ -10128,7 +10409,13 @@ mod tests {
             socket_path: socket_path.clone(),
         });
         let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
-        let mut manager = SessionManager::new(tmp.path().to_path_buf(), spawner, broker, engine);
+        let mut manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker,
+            engine,
+            HookEndpointConfig::default(),
+        );
         // FakePeerCredVerifier{allow:true}: SO_PEERCRED check always passes.
         manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifier { allow: true }));
 
@@ -10714,5 +11001,1054 @@ mod tests {
                 spurious_detached
             );
         }
+    }
+
+    // =======================================================================
+    // BC-2.08.006 — Hook Auto-Injection: hooks-settings.json writer +
+    //               SpawnOptions.hooks_settings_path population (S-038)
+    //
+    // All 6 tests MUST fail against the current stubs (Red Gate per BC-5.38.001):
+    //   - write_hooks_settings_json() → todo!()  (panics on call)
+    //   - SessionManager::new() sets hooks_settings_path = PathBuf::new()
+    //     (so path propagated to opts is always empty — never matches a real file)
+    //   - EC-182 re-write guard is a commented-out stub (no actual re-write)
+    //
+    // Authoritative schema: BC-2.04.010 PC-3.
+    // SCOPE BOUNDARY: --settings argv injection is S-045 (test_BC_2_03_005_...).
+    //   Do NOT assert argv here.
+    // EC-181 is UNREACHABLE by design — no test.
+    // =======================================================================
+
+    // -----------------------------------------------------------------------
+    // Helper: CapturingMockEngine — records the last SpawnOptions passed to
+    // spawn_recipe() for inspection by the test.  Captures into an
+    // Arc<Mutex<Option<SpawnOptions>>> seam.
+    // -----------------------------------------------------------------------
+
+    /// Engine mock that records the `SpawnOptions` it receives in `spawn_recipe()`.
+    ///
+    /// The captured value is stored in `captured` (Arc<Mutex<Option<SpawnOptions>>>)
+    /// so the test can inspect fields like `hooks_settings_path` after the call
+    /// completes.  Returns a valid `SpawnRecipe` (success path) so that
+    /// `spawn_session()` proceeds normally past the recipe step.
+    struct CapturingMockEngine {
+        captured: Arc<tokio::sync::Mutex<Option<SpawnOptions>>>,
+    }
+
+    #[async_trait::async_trait]
+    impl monocle_core::engine::EngineModule for CapturingMockEngine {
+        fn id(&self) -> &'static str {
+            "capturing-mock-engine"
+        }
+
+        fn metadata(
+            &self,
+        ) -> Result<monocle_core::engine::EngineMetadata, monocle_core::engine::EngineMetadataError>
+        {
+            unimplemented!("not needed for S-038 hook injection tests")
+        }
+
+        fn detect(&self, _proc: &monocle_core::engine::ProcessSnapshot) -> bool {
+            false
+        }
+
+        async fn enrich(
+            &self,
+            _proc: &monocle_core::engine::ProcessSnapshot,
+        ) -> Result<monocle_core::engine::EnrichedSession, monocle_core::engine::EngineMetadataError>
+        {
+            unimplemented!("not needed for S-038 hook injection tests")
+        }
+
+        async fn on_hook(
+            &self,
+            _event: monocle_core::hook_events::HookEvent,
+        ) -> monocle_core::engine::HookResponse {
+            unimplemented!("not needed for S-038 hook injection tests")
+        }
+
+        fn spawn_recipe(
+            &self,
+            opts: &SpawnOptions,
+        ) -> Result<monocle_core::engine::SpawnRecipe, EngineError> {
+            // Capture the opts under the Mutex (non-async context; use blocking_lock
+            // is not available inside spawn_recipe which is sync — use try_lock instead,
+            // which is guaranteed to succeed because no other thread holds the lock at
+            // this point in the test).
+            *self.captured.try_lock().expect(
+                "CapturingMockEngine: could not acquire capture lock in spawn_recipe — \
+                 concurrent call or lock poisoning; this is a test-infrastructure bug",
+            ) = Some(opts.clone());
+            Ok(monocle_core::engine::SpawnRecipe::new(
+                PathBuf::from("claude"),
+                vec!["--dangerously-skip-permissions".to_string()],
+                std::collections::HashMap::new(),
+                opts.worktree_root.clone(),
+            ))
+        }
+    }
+
+    /// Engine mock that returns `EngineError::InvalidPath` when the
+    /// `opts.hooks_settings_path` is non-UTF-8 (i.e., `to_str()` returns `None`).
+    /// Returns a valid recipe for any other input, matching production behavior where
+    /// `ClaudeCodeModule::spawn_recipe()` (S-045) will attempt `path.to_str()?` and
+    /// surface `InvalidPath` on failure.
+    ///
+    /// S-038 scope boundary: S-038 populates `opts.hooks_settings_path`; S-045
+    /// converts it to a `--settings` arg and returns `InvalidPath` on failure.
+    /// This mock simulates the S-045 boundary for the EC-183 test.
+    struct NonUtf8PathRejectingMockEngine {}
+
+    #[async_trait::async_trait]
+    impl monocle_core::engine::EngineModule for NonUtf8PathRejectingMockEngine {
+        fn id(&self) -> &'static str {
+            "non-utf8-path-rejecting-engine"
+        }
+
+        fn metadata(
+            &self,
+        ) -> Result<monocle_core::engine::EngineMetadata, monocle_core::engine::EngineMetadataError>
+        {
+            unimplemented!("not needed for S-038 EC-183 test")
+        }
+
+        fn detect(&self, _proc: &monocle_core::engine::ProcessSnapshot) -> bool {
+            false
+        }
+
+        async fn enrich(
+            &self,
+            _proc: &monocle_core::engine::ProcessSnapshot,
+        ) -> Result<monocle_core::engine::EnrichedSession, monocle_core::engine::EngineMetadataError>
+        {
+            unimplemented!("not needed for S-038 EC-183 test")
+        }
+
+        async fn on_hook(
+            &self,
+            _event: monocle_core::hook_events::HookEvent,
+        ) -> monocle_core::engine::HookResponse {
+            unimplemented!("not needed for S-038 EC-183 test")
+        }
+
+        /// Returns `InvalidPath` if `opts.hooks_settings_path` is non-UTF-8.
+        /// Simulates the S-045 `ClaudeCodeModule::spawn_recipe()` boundary behavior
+        /// (EC-183 / BC-2.08.006 edge case).
+        fn spawn_recipe(
+            &self,
+            opts: &SpawnOptions,
+        ) -> Result<monocle_core::engine::SpawnRecipe, EngineError> {
+            // Simulate S-045 behavior: PathBuf::to_str() returns None for non-UTF-8 paths.
+            match opts.hooks_settings_path.to_str() {
+                None => Err(EngineError::InvalidPath(format!(
+                    "hooks_settings_path contains non-UTF-8 bytes: {:?}",
+                    opts.hooks_settings_path
+                ))),
+                Some(_) => Ok(monocle_core::engine::SpawnRecipe::new(
+                    PathBuf::from("claude"),
+                    vec!["--dangerously-skip-permissions".to_string()],
+                    std::collections::HashMap::new(),
+                    opts.worktree_root.clone(),
+                )),
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Test 1 of 6: spawn_session() populates opts.hooks_settings_path with the
+    //              daemon's canonical hooks-settings.json path (AC-008).
+    // -----------------------------------------------------------------------
+
+    /// spawn_session() sets opts.hooks_settings_path = self.hooks_settings_path
+    /// (the daemon's canonical hooks-settings.json path) before calling spawn_recipe().
+    ///
+    /// RED GATE: With the current stub, `SessionManager::new()` stores
+    /// `hooks_settings_path = PathBuf::new()` (empty). The capturing mock records
+    /// the opts as-passed. The test asserts the path equals the *runtime_dir* +
+    /// "hooks-settings.json", which is `PathBuf::new()` from the stub — so the
+    /// assertion `== Some(expected_path)` fails because `PathBuf::new()` !=
+    /// `tmp/hooks-settings.json`. The test FAILS until the implementer wires
+    /// `write_hooks_settings_json()` in `new()` and stores the real path.
+    ///
+    /// Exercises: BC-2.08.006 postcondition 2 / AC-008 ownership boundary.
+    /// Does NOT assert argv (that is S-045's test: test_BC_2_03_005_...).
+    #[tokio::test]
+    async fn test_BC_2_08_006_spawn_options_hooks_settings_path_populated() {
+        let tmp = tempfile::TempDir::new()
+            .expect("test setup: failed to create temp dir for hooks settings path test");
+
+        let (tx, _rx) = mpsc::channel::<monocle_ipc::types::ServerToClient>(64);
+        let entry = monocle_ipc::server::ClientEntry::new(tx);
+        let subscriber_list: monocle_ipc::server::SubscriberList =
+            Arc::new(Mutex::new(vec![entry]));
+        let broker = Arc::new(Arc::clone(&subscriber_list));
+
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 99_999,
+        });
+
+        // Capturing engine records opts passed to spawn_recipe().
+        let captured: Arc<tokio::sync::Mutex<Option<SpawnOptions>>> =
+            Arc::new(tokio::sync::Mutex::new(None));
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(CapturingMockEngine {
+            captured: Arc::clone(&captured),
+        });
+
+        let mut manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker,
+            engine,
+            HookEndpointConfig::default(),
+        );
+
+        let session_id = uuid::Uuid::new_v4().to_string();
+        let opts = SpawnOptions::for_spawn_request(
+            tmp.path().to_path_buf(),
+            tmp.path().to_path_buf(),
+            "claude-code".to_string(),
+            "default".to_string(),
+            None,
+        )
+        .with_daemon_fields(session_id, PathBuf::new());
+
+        let result = manager.spawn_session(opts).await;
+        // spawn_session() MUST succeed: CapturingMockEngine returns a valid SpawnRecipe,
+        // MockSessionHostSpawner (spawn_result: None) returns Ok(SpawnHandle). If it fails,
+        // this indicates a test-infrastructure regression, not a production bug.
+        // (F-S038-PASS1-006 fix)
+        assert!(
+            result.is_ok(),
+            "test_BC_2_08_006_spawn_options_hooks_settings_path_populated: \
+             spawn_session() MUST succeed with CapturingMockEngine + MockSessionHostSpawner; \
+             got Err: {:?}",
+            result.err()
+        );
+
+        // The key assertion: opts.hooks_settings_path MUST equal the path that
+        // the daemon wrote hooks-settings.json to at startup.
+        // Expected path: canonical(runtime_dir).join("hooks-settings.json").
+        let expected_hooks_path = tmp
+            .path()
+            .canonicalize()
+            .expect("test setup: could not canonicalize tmp path")
+            .join("hooks-settings.json");
+
+        let captured_guard = captured.lock().await;
+        let captured_opts = captured_guard.as_ref().expect(
+            "test_BC_2_08_006_spawn_options_hooks_settings_path_populated: \
+             spawn_recipe() was not called — opts were never captured; \
+             SessionManager must call spawn_recipe() during spawn_session()",
+        );
+
+        assert_eq!(
+            captured_opts.hooks_settings_path, expected_hooks_path,
+            "test_BC_2_08_006_spawn_options_hooks_settings_path_populated \
+             (BC-2.08.006 AC-008): opts.hooks_settings_path MUST equal the \
+             canonical hooks-settings.json path written at daemon startup. \
+             Got: {:?}, expected: {:?}",
+            captured_opts.hooks_settings_path, expected_hooks_path
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Test 2 of 6: hooks-settings.json JSON content matches BC-2.04.010 PC-3
+    //              schema (AC-002, AC-003, AC-004).
+    // -----------------------------------------------------------------------
+
+    /// write_hooks_settings_json() produces JSON matching BC-2.04.010 PC-3:
+    ///   - 4 URL-bearing keys (PreToolUse, Notification, Stop, UserPromptSubmit):
+    ///     each is an array of one hook object with "type":"command" and a curl
+    ///     POST command embedding the port (54321) + auth token in the URL and
+    ///     X-Monocle-Authorization header.
+    ///   - PostToolUse: [] (empty array, NOT empty string).
+    ///   - PreCompact: [] (empty array, NOT empty string).
+    ///   - lock.app == "monocle".
+    ///   - SessionStart is NOT a key.
+    ///
+    /// RED GATE: write_hooks_settings_json() hits `todo!()` → panics.
+    /// The test FAILS immediately (panic is caught by Rust's test harness as a
+    /// test failure, not a binary crash).
+    ///
+    /// Exercises: BC-2.08.006 postconditions 2, 3 / BC-2.04.010 PC-3.
+    ///
+    /// RED GATE mechanism: write_hooks_settings_json() hits todo!() — the panic
+    /// propagates up and the test runner marks this test FAILED.
+    #[test]
+    fn test_BC_2_08_006_hooks_settings_json_content() {
+        let tmp = tempfile::TempDir::new()
+            .expect("test setup: failed to create temp dir for hooks settings content test");
+        let path = tmp.path().join("hooks-settings.json");
+
+        let port: u16 = 54321;
+        let token = "a".repeat(64); // 64 hex chars per BC-2.04.010 PC-3
+        let config = HookEndpointConfig {
+            pre_tool_use: format!(
+                "curl -s -X POST http://127.0.0.1:{port}/hooks/pre-tool-use \
+                 -H 'Content-Type: application/json' \
+                 -H 'X-Monocle-Authorization: monocle-v1:{token}' -d @-"
+            ),
+            notification: format!(
+                "curl -s -X POST http://127.0.0.1:{port}/hooks/notification \
+                 -H 'Content-Type: application/json' \
+                 -H 'X-Monocle-Authorization: monocle-v1:{token}' -d @-"
+            ),
+            stop: format!(
+                "curl -s -X POST http://127.0.0.1:{port}/hooks/stop \
+                 -H 'Content-Type: application/json' \
+                 -H 'X-Monocle-Authorization: monocle-v1:{token}' -d @-"
+            ),
+            user_prompt_submit: format!(
+                "curl -s -X POST http://127.0.0.1:{port}/hooks/prompt-submit \
+                 -H 'Content-Type: application/json' \
+                 -H 'X-Monocle-Authorization: monocle-v1:{token}' -d @-"
+            ),
+        };
+
+        // RED GATE: write_hooks_settings_json() hits todo!() — panics here.
+        // Implementer replaces todo!() with real code; assertions below then run.
+        write_hooks_settings_json(&config, &path)
+            .expect("write_hooks_settings_json must succeed on a writable path");
+
+        // Read and parse the written file.
+        let raw = std::fs::read_to_string(&path)
+            .expect("hooks-settings.json must exist after write_hooks_settings_json");
+        let val: serde_json::Value =
+            serde_json::from_str(&raw).expect("hooks-settings.json must be valid JSON");
+
+        // (a) Top-level "hooks" object must exist.
+        let hooks = val
+            .get("hooks")
+            .expect("BC-2.04.010 PC-3: top-level 'hooks' key must be present")
+            .as_object()
+            .expect("BC-2.04.010 PC-3: 'hooks' must be a JSON object");
+
+        // (b) 4 URL-bearing keys: each is an array-of-one-hook-object with
+        //     "type":"command" and the expected curl command string.
+        for (key, expected_cmd) in &[
+            ("PreToolUse", &config.pre_tool_use),
+            ("Notification", &config.notification),
+            ("Stop", &config.stop),
+            ("UserPromptSubmit", &config.user_prompt_submit),
+        ] {
+            let hook_arr = hooks
+                .get(*key)
+                .unwrap_or_else(|| panic!("BC-2.04.010 PC-3: '{}' key must be present", key))
+                .as_array()
+                .unwrap_or_else(|| panic!("BC-2.04.010 PC-3: '{}' must be a JSON array", key));
+            assert_eq!(
+                hook_arr.len(),
+                1,
+                "BC-2.04.010 PC-3: '{}' array must contain exactly 1 hook object",
+                key
+            );
+            let hook_obj = hook_arr[0]
+                .as_object()
+                .unwrap_or_else(|| panic!("BC-2.04.010 PC-3: '{}[0]' must be a JSON object", key));
+            // Each hook object: { "matcher": "", "hooks": [{ "type": "command",
+            //                                                 "command": "<url>" }] }
+            let inner_hooks = hook_obj
+                .get("hooks")
+                .unwrap_or_else(|| panic!("BC-2.04.010 PC-3: '{}[0].hooks' must be present", key))
+                .as_array()
+                .unwrap_or_else(|| {
+                    panic!("BC-2.04.010 PC-3: '{}[0].hooks' must be a JSON array", key)
+                });
+            assert_eq!(
+                inner_hooks.len(),
+                1,
+                "BC-2.04.010 PC-3: '{}[0].hooks' must contain exactly 1 command object",
+                key
+            );
+            let cmd_obj = inner_hooks[0].as_object().unwrap_or_else(|| {
+                panic!(
+                    "BC-2.04.010 PC-3: '{}[0].hooks[0]' must be a JSON object",
+                    key
+                )
+            });
+            assert_eq!(
+                cmd_obj.get("type").and_then(|v| v.as_str()),
+                Some("command"),
+                "BC-2.04.010 PC-3: '{}[0].hooks[0].type' must be \"command\"",
+                key
+            );
+            assert_eq!(
+                cmd_obj.get("command").and_then(|v| v.as_str()),
+                Some(expected_cmd.as_str()),
+                "BC-2.04.010 PC-3: '{}[0].hooks[0].command' must match the \
+                 expected curl command for port={} and token; \
+                 got: {:?}, expected: {:?}",
+                key,
+                port,
+                cmd_obj.get("command"),
+                expected_cmd
+            );
+        }
+
+        // (c) PostToolUse and PreCompact MUST be empty JSON arrays, NOT empty strings.
+        //     BC-2.04.010 PC-3 Invariant 5 / AC-003.
+        for reserved_key in &["PostToolUse", "PreCompact"] {
+            let arr = hooks
+                .get(*reserved_key)
+                .unwrap_or_else(|| {
+                    panic!(
+                        "BC-2.04.010 PC-3 / AC-003: '{}' must be present",
+                        reserved_key
+                    )
+                })
+                .as_array()
+                .unwrap_or_else(|| {
+                    panic!(
+                        "BC-2.04.010 PC-3 / AC-003: '{}' must be a JSON array [], \
+                         NOT a string or null; got: {:?}",
+                        reserved_key,
+                        hooks.get(*reserved_key)
+                    )
+                });
+            assert!(
+                arr.is_empty(),
+                "BC-2.04.010 PC-3 / AC-003: '{}' must be an EMPTY array []; \
+                 got: {:?}",
+                reserved_key,
+                arr
+            );
+        }
+
+        // (d) lock.app == "monocle" (AC-004).
+        let lock_app = val
+            .get("lock")
+            .expect("AC-004: top-level 'lock' key must be present")
+            .get("app")
+            .and_then(|v| v.as_str())
+            .expect("AC-004: 'lock.app' must be a string");
+        assert_eq!(
+            lock_app, "monocle",
+            "AC-004: lock.app must be \"monocle\"; got: {:?}",
+            lock_app
+        );
+
+        // (e) SessionStart MUST NOT be a key (AC-004 / BC-2.04.010 PC-3).
+        assert!(
+            !hooks.contains_key("SessionStart"),
+            "BC-2.04.010 PC-3 / AC-004: 'SessionStart' MUST NOT be present in \
+             hooks-settings.json; Claude Code invokes session-start via its own \
+             internal lifecycle, not via hooks-settings.json"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Test 3 of 6: write_hooks_settings_json() uses tempfile::persist (atomic).
+    //              File mode 0o600 on Unix (AC-006 / BC-2.08.006 Invariant 5 /
+    //              BC-2.04.010 PC-1 + PC-2).
+    // -----------------------------------------------------------------------
+
+    /// write_hooks_settings_json() MUST write atomically (no partial content window)
+    /// via `tempfile::persist` and MUST set file mode 0o600 on Unix.
+    ///
+    /// RED GATE: write_hooks_settings_json() hits `todo!()` → test FAILS (panic).
+    ///
+    /// Exercises: BC-2.08.006 Invariant 5 / BC-2.04.010 PC-1, PC-2 / AC-006.
+    ///
+    /// Atomicity assertion: verify the file is created via rename (not in-place write)
+    /// by checking the file content is fully present immediately after the call —
+    /// there is no observable partial-content window.  (A naked std::fs::write would
+    /// produce the same result for small files; the production guard is the forbidden-
+    /// pattern lint in SS-conventions-anti-patterns.md.  This test asserts the outcome:
+    /// valid JSON + mode 0o600.)
+    /// RED GATE mechanism: write_hooks_settings_json() hits todo!() — the panic
+    /// propagates up and the test runner marks this test FAILED.
+    #[test]
+    fn test_BC_2_08_006_hooks_settings_json_atomic_write() {
+        let tmp = tempfile::TempDir::new()
+            .expect("test setup: failed to create temp dir for atomic write test");
+        let path = tmp.path().join("hooks-settings.json");
+
+        let config = HookEndpointConfig {
+            pre_tool_use: "curl -s -X POST http://127.0.0.1:1234/hooks/pre-tool-use \
+                           -H 'Content-Type: application/json' \
+                           -H 'X-Monocle-Authorization: monocle-v1:aa' -d @-"
+                .to_string(),
+            notification: "curl -s -X POST http://127.0.0.1:1234/hooks/notification \
+                           -H 'Content-Type: application/json' \
+                           -H 'X-Monocle-Authorization: monocle-v1:aa' -d @-"
+                .to_string(),
+            stop: "curl -s -X POST http://127.0.0.1:1234/hooks/stop \
+                   -H 'Content-Type: application/json' \
+                   -H 'X-Monocle-Authorization: monocle-v1:aa' -d @-"
+                .to_string(),
+            user_prompt_submit: "curl -s -X POST http://127.0.0.1:1234/hooks/prompt-submit \
+                                 -H 'Content-Type: application/json' \
+                                 -H 'X-Monocle-Authorization: monocle-v1:aa' -d @-"
+                .to_string(),
+        };
+
+        // RED GATE: write_hooks_settings_json() hits todo!() — panics here.
+        // Implementer replaces todo!() with real code; assertions below then run.
+        write_hooks_settings_json(&config, &path)
+            .expect("write_hooks_settings_json must succeed on a writable path");
+
+        // (a) File must exist and contain valid JSON (atomic write succeeded).
+        assert!(
+            path.exists(),
+            "BC-2.08.006 Invariant 5: hooks-settings.json must exist after \
+             write_hooks_settings_json() returns Ok"
+        );
+        let raw = std::fs::read_to_string(&path)
+            .expect("hooks-settings.json must be readable after atomic write");
+        let _val: serde_json::Value = serde_json::from_str(&raw).expect(
+            "BC-2.08.006 Invariant 5: hooks-settings.json must contain valid \
+                 JSON after write; partial content would indicate non-atomic write",
+        );
+
+        // (b) File mode must be 0o600 on Unix (BC-2.04.010 PC-2 / AC-006).
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::MetadataExt;
+            let meta = std::fs::metadata(&path)
+                .expect("BC-2.04.010 PC-2: could not stat hooks-settings.json");
+            let mode = meta.mode() & 0o777;
+            assert_eq!(
+                mode, 0o600,
+                "BC-2.04.010 PC-2 / AC-006: hooks-settings.json mode must be 0o600 \
+                 (owner read+write only); got: 0o{:o}. \
+                 tempfile::persist does not guarantee 0o600; \
+                 set_permissions() must be called explicitly.",
+                mode
+            );
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Test 4 of 6: write_hooks_settings_json() failure during SessionManager::new()
+    //              propagates error (daemon start fails) (AC-007 / AC-011 / EC-180).
+    // -----------------------------------------------------------------------
+
+    /// If write_hooks_settings_json() fails during daemon initialization, the error
+    /// MUST propagate to the caller — the daemon MUST NOT start.
+    ///
+    /// RED GATE: This test exercises write_hooks_settings_json() directly on a path
+    /// where the parent directory has been removed (not writable). The function
+    /// hits `todo!()` → panics → test FAILS.
+    ///
+    /// Design note: `SessionManager::new()` currently does NOT call
+    /// `write_hooks_settings_json()` at all (stub). When the implementer wires it,
+    /// `new()` must return a `Result` or panic/abort on failure.  This test validates
+    /// the FUNCTION-LEVEL contract: write_hooks_settings_json() returns Err on I/O
+    /// failure, which the implementer must then propagate from `new()`.
+    ///
+    /// Exercises: BC-2.08.006 Invariant 4 + Invariant 5 / AC-007 / AC-011 / EC-180.
+    /// RED GATE mechanism: write_hooks_settings_json() hits todo!() — the panic
+    /// propagates up and the test runner marks this test FAILED.
+    #[test]
+    fn test_BC_2_08_006_startup_write_fail_aborts_daemon() {
+        let tmp = tempfile::TempDir::new()
+            .expect("test setup: failed to create temp dir for startup write fail test");
+
+        // Create a file at the target path to simulate a permission/IO error:
+        // write to a path whose parent dir has been removed after the tmp dir was
+        // created.  Use a subdirectory that we then delete.
+        let nonexistent_parent = tmp.path().join("gone");
+        // Do NOT create `nonexistent_parent` — so any write to a path inside it fails.
+        let bad_path = nonexistent_parent.join("hooks-settings.json");
+
+        let config = HookEndpointConfig {
+            pre_tool_use: "curl -s -X POST http://127.0.0.1:9999/hooks/pre-tool-use \
+                           -H 'Content-Type: application/json' \
+                           -H 'X-Monocle-Authorization: monocle-v1:bb' -d @-"
+                .to_string(),
+            notification: "curl -s -X POST http://127.0.0.1:9999/hooks/notification \
+                           -H 'Content-Type: application/json' \
+                           -H 'X-Monocle-Authorization: monocle-v1:bb' -d @-"
+                .to_string(),
+            stop: "curl -s -X POST http://127.0.0.1:9999/hooks/stop \
+                   -H 'Content-Type: application/json' \
+                   -H 'X-Monocle-Authorization: monocle-v1:bb' -d @-"
+                .to_string(),
+            user_prompt_submit: "curl -s -X POST http://127.0.0.1:9999/hooks/prompt-submit \
+                 -H 'Content-Type: application/json' \
+                 -H 'X-Monocle-Authorization: monocle-v1:bb' -d @-"
+                .to_string(),
+        };
+
+        // RED GATE: write_hooks_settings_json() hits todo!() — panics here.
+        // Implementer replaces todo!() with real code; assertions below then run.
+        let result = write_hooks_settings_json(&config, &bad_path);
+
+        // --- POST-IMPLEMENTATION ASSERTIONS ---
+        //
+        // write_hooks_settings_json() MUST return Err when the parent dir does not exist.
+        // The daemon MUST NOT start if this fails (AC-011 / EC-180).
+        assert!(
+            result.is_err(),
+            "BC-2.08.006 Invariant 5 / AC-011 / EC-180: write_hooks_settings_json() \
+             MUST return Err when the write fails (parent dir does not exist). \
+             Got Ok — this would allow the daemon to start with no hooks-settings.json."
+        );
+        // The error must NOT leave a partial file at the bad_path (tempfile::persist
+        // guarantees atomicity — the temp file creation itself fails, so no file is
+        // left at the target path).
+        assert!(
+            !bad_path.exists(),
+            "BC-2.08.006 Invariant 5 / AC-011: on write failure, NO file must be \
+             left at the target path (atomic write guarantees no partial content)"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Test 5 of 6: EC-182 re-write guard — if hooks-settings.json is deleted
+    //              between daemon startup and spawn, re-write at spawn time
+    //              (AC-013 / EC-182).
+    // -----------------------------------------------------------------------
+
+    /// If hooks-settings.json is deleted between SessionManager::new() and
+    /// spawn_session(), spawn_session() MUST re-write the file, log WARN
+    /// "hooks-settings.json missing at spawn time; re-writing", and proceed.
+    ///
+    /// RED GATE: The EC-182 guard is a commented-out stub in spawn_session().
+    /// The test:
+    ///   (a) requires write_hooks_settings_json() to not panic (todo!() → test FAILS
+    ///       before the assertion stage is reached), OR
+    ///   (b) if write_hooks_settings_json() were implemented, the EC-182 guard stub
+    ///       would skip the re-write, so the file would not exist after spawn,
+    ///       causing the file-exists assertion to FAIL.
+    /// Both paths produce a test failure — Red Gate holds.
+    ///
+    /// Exercises: BC-2.08.006 edge case EC-182 / AC-013.
+    ///
+    /// NOTE: This test uses #[traced_test] to assert the WARN log is emitted.
+    /// The `no-env-filter` feature of tracing-test is required; monocle-runtime
+    /// Cargo.toml already declares `tracing-test = { version = "0.2.6",
+    /// features = ["no-env-filter"] }`.
+    #[tokio::test]
+    #[tracing_test::traced_test]
+    async fn test_BC_2_08_006_missing_settings_file_rewrites_at_spawn() {
+        let tmp = tempfile::TempDir::new()
+            .expect("test setup: failed to create temp dir for EC-182 re-write test");
+
+        let (tx, _rx) = mpsc::channel::<monocle_ipc::types::ServerToClient>(64);
+        let entry = monocle_ipc::server::ClientEntry::new(tx);
+        let subscriber_list: monocle_ipc::server::SubscriberList =
+            Arc::new(Mutex::new(vec![entry]));
+        let broker = Arc::new(Arc::clone(&subscriber_list));
+
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 88_001,
+        });
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+
+        // SessionManager::new() currently stores PathBuf::new() and does NOT call
+        // write_hooks_settings_json(). When the implementer wires it, new() will write
+        // the file to tmp.path().join("hooks-settings.json").
+        let mut manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker,
+            engine,
+            HookEndpointConfig::default(),
+        );
+
+        // Simulate: delete hooks-settings.json after daemon startup (EC-182 scenario).
+        // Canonicalize to avoid macOS symlink prefix mismatch (/var vs /private/var).
+        // (F-S038-PASS1-003 fix)
+        let hooks_path = tmp
+            .path()
+            .canonicalize()
+            .expect("canonicalize tmp path")
+            .join("hooks-settings.json");
+        let _ = std::fs::remove_file(&hooks_path); // ignore NotFound
+
+        // Call spawn_session() — EC-182 guard should detect missing file and re-write.
+        let session_id = uuid::Uuid::new_v4().to_string();
+        let opts = SpawnOptions::for_spawn_request(
+            tmp.path().to_path_buf(),
+            tmp.path().to_path_buf(),
+            "claude-code".to_string(),
+            "default".to_string(),
+            None,
+        )
+        .with_daemon_fields(session_id, PathBuf::new());
+
+        let spawn_result = manager.spawn_session(opts).await;
+
+        // spawn_session() MUST succeed (re-write and proceed).
+        assert!(
+            spawn_result.is_ok(),
+            "BC-2.08.006 EC-182: spawn_session() MUST succeed after re-writing \
+             hooks-settings.json; got Err: {:?}",
+            spawn_result.err()
+        );
+
+        // hooks-settings.json MUST exist after spawn (EC-182 re-write guard ran).
+        assert!(
+            hooks_path.exists(),
+            "BC-2.08.006 EC-182 / AC-013: hooks-settings.json MUST exist after \
+             spawn_session() detects the missing file and re-writes it. \
+             The EC-182 re-write guard stub was not implemented."
+        );
+
+        // WARN MUST have been logged: "hooks-settings.json missing at spawn time; re-writing".
+        // Captured by #[traced_test] (tracing-test crate).
+        assert!(
+            logs_contain("hooks-settings.json missing at spawn time"),
+            "BC-2.08.006 EC-182 / AC-013: spawn_session() MUST emit \
+             tracing::warn!(\"hooks-settings.json missing at spawn time; re-writing\") \
+             when the file is absent. No such log was captured."
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Test 6 of 6: Non-UTF-8 hooks_settings_path returned from spawn_recipe()
+    //              maps to wire code "invalid_spawn_arg" (AC-012 / EC-183).
+    // -----------------------------------------------------------------------
+
+    /// When opts.hooks_settings_path contains non-UTF-8 bytes, ClaudeCodeModule::
+    /// spawn_recipe() (S-045 boundary) returns EngineError::InvalidPath, which
+    /// SessionManager propagates and which session_error_to_code() maps to
+    /// wire code "invalid_spawn_arg".
+    ///
+    /// S-038 SCOPE: S-038 populates opts.hooks_settings_path in spawn_session().
+    ///              The argv injection and path-to-str conversion is S-045.
+    ///              This test simulates the S-045 boundary via NonUtf8PathRejectingMockEngine.
+    ///
+    /// RED GATE: With the current stub, SessionManager::new() stores PathBuf::new()
+    /// (an empty, valid-UTF-8 path) in hooks_settings_path.  spawn_session() copies
+    /// PathBuf::new() into opts.hooks_settings_path.  NonUtf8PathRejectingMockEngine
+    /// calls to_str() on this path — PathBuf::new().to_str() returns Some("") (valid
+    /// UTF-8), so the mock returns a VALID SpawnRecipe instead of InvalidPath.
+    /// The test asserts spawn_session() returns Err(EngineError::InvalidPath), but
+    /// spawn_session() succeeds → assertion FAILS → Red Gate holds.
+    ///
+    /// When implemented, SessionManager::new() will:
+    ///   1. Construct the real hooks_settings_path from a non-UTF-8-pathlike source, OR
+    ///   2. On Unix, store a path derived from tmp.path() (which is valid UTF-8).
+    /// For this test to exercise the error path AFTER implementation, the test
+    /// MUST inject a non-UTF-8 path through a separate construction seam.
+    /// See comment below re: post-implementation path.
+    ///
+    /// Exercises: BC-2.08.006 edge case EC-183 / AC-012.
+    /// Does NOT add a new SessionError variant (forbidden per S-038 AC-012).
+    #[tokio::test]
+    async fn test_BC_2_08_006_non_utf8_hooks_path_returned_from_spawn_recipe() {
+        let tmp = tempfile::TempDir::new()
+            .expect("test setup: failed to create temp dir for EC-183 non-UTF-8 test");
+
+        let (tx, _rx) = mpsc::channel::<monocle_ipc::types::ServerToClient>(64);
+        let entry = monocle_ipc::server::ClientEntry::new(tx);
+        let subscriber_list: monocle_ipc::server::SubscriberList =
+            Arc::new(Mutex::new(vec![entry]));
+        let broker = Arc::new(Arc::clone(&subscriber_list));
+
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 77_001,
+        });
+
+        // Use the NonUtf8PathRejectingMockEngine which simulates S-045 behavior:
+        // returns InvalidPath when opts.hooks_settings_path is non-UTF-8.
+        let engine: Arc<dyn monocle_core::engine::EngineModule> =
+            Arc::new(NonUtf8PathRejectingMockEngine {});
+
+        let mut manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker,
+            engine,
+            HookEndpointConfig::default(),
+        );
+
+        // Post-implementation: inject a non-UTF-8 PathBuf via the with_hooks_settings_path_for_test
+        // seam (added in S-038 implementation per the post-implementation note in the original stub).
+        // This exercises EC-183: NonUtf8PathRejectingMockEngine simulates ClaudeCodeModule::spawn_recipe()
+        // (S-045) returning InvalidPath when opts.hooks_settings_path contains non-UTF-8 bytes.
+        //
+        // Non-UTF-8 path construction (Unix only — OsStrExt is Unix-specific):
+        //   \xff\xfe bytes are invalid UTF-8 sequences; PathBuf::from_bytes succeeds on Unix
+        //   because OsStr on Unix is just bytes, not guaranteed UTF-8.
+        #[cfg(unix)]
+        {
+            use std::ffi::OsStr;
+            use std::os::unix::ffi::OsStrExt;
+            let non_utf8_bytes: &[u8] = b"/tmp/\xff\xfe/hooks-settings.json";
+            let non_utf8_path = PathBuf::from(OsStr::from_bytes(non_utf8_bytes));
+            manager.with_hooks_settings_path_for_test(non_utf8_path);
+        }
+
+        let session_id = uuid::Uuid::new_v4().to_string();
+        let opts = SpawnOptions::for_spawn_request(
+            tmp.path().to_path_buf(),
+            tmp.path().to_path_buf(),
+            "claude-code".to_string(),
+            "default".to_string(),
+            None,
+        )
+        .with_daemon_fields(session_id, PathBuf::new());
+
+        let result = manager.spawn_session(opts).await;
+
+        // Assert: spawn_session() MUST return Err(SessionError::EngineError(InvalidPath))
+        // when the hooks_settings_path is non-UTF-8 (BC-2.08.006 EC-183 / AC-012).
+        let err = result.expect_err(
+            "BC-2.08.006 EC-183: spawn_session() MUST return Err when \
+             opts.hooks_settings_path is non-UTF-8 (NonUtf8PathRejectingMockEngine \
+             simulates ClaudeCodeModule::spawn_recipe() returning InvalidPath; \
+             with_hooks_settings_path_for_test injects the non-UTF-8 path)",
+        );
+
+        // The error must map to wire code "invalid_spawn_arg" (no new variant needed).
+        let code = session_error_to_code(IpcOp::Spawn, &err);
+        assert_eq!(
+            code, "invalid_spawn_arg",
+            "BC-2.08.006 EC-183 / AC-012: EngineError::InvalidPath must map to \
+             wire code \"invalid_spawn_arg\" (existing code — no new SessionError \
+             variant); got: {:?}",
+            code
+        );
+
+        // Verify the underlying error IS an InvalidPath variant.
+        match err {
+            SessionError::EngineError(EngineError::InvalidPath(_)) => {
+                // Correct: S-045 boundary returns InvalidPath for non-UTF-8 path.
+            }
+            other => panic!(
+                "BC-2.08.006 EC-183: expected SessionError::EngineError(InvalidPath), \
+                 got: {:?}",
+                other
+            ),
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Additional S-038 regression tests (PASS1 findings)
+    // -----------------------------------------------------------------------
+
+    /// write_hooks_settings_json() always emits lock.app="monocle" (BC-2.08.006 Invariant 2).
+    ///
+    /// This is the unit-level guard for the single-writer mandate.
+    /// The integration-level guard is test_BC_2_08_006_daemon_startup_hooks_settings_has_lock_app_monocle
+    /// in daemon_start_sequence.rs.
+    #[test]
+    fn test_BC_2_08_006_production_writer_always_emits_lock_app() {
+        let tmp = tempfile::TempDir::new().expect("test setup: failed to create temp dir");
+        let path = tmp.path().join("hooks-settings.json");
+
+        let port: u16 = 54321;
+        let token = "abcd".repeat(16); // 64 hex chars
+        let wire_token = format!("monocle-v1:{token}");
+        let config = HookEndpointConfig {
+            pre_tool_use: format!(
+                "curl -s -X POST http://127.0.0.1:{port}/hooks/pre-tool-use \
+                 -H 'Content-Type: application/json' \
+                 -H 'X-Monocle-Authorization: {wire_token}' -d @-"
+            ),
+            notification: format!(
+                "curl -s -X POST http://127.0.0.1:{port}/hooks/notification \
+                 -H 'Content-Type: application/json' \
+                 -H 'X-Monocle-Authorization: {wire_token}' -d @-"
+            ),
+            stop: format!(
+                "curl -s -X POST http://127.0.0.1:{port}/hooks/stop \
+                 -H 'Content-Type: application/json' \
+                 -H 'X-Monocle-Authorization: {wire_token}' -d @-"
+            ),
+            user_prompt_submit: format!(
+                "curl -s -X POST http://127.0.0.1:{port}/hooks/prompt-submit \
+                 -H 'Content-Type: application/json' \
+                 -H 'X-Monocle-Authorization: {wire_token}' -d @-"
+            ),
+        };
+
+        write_hooks_settings_json(&config, &path).expect("write_hooks_settings_json must succeed");
+
+        let content = std::fs::read_to_string(&path).expect("read hooks-settings.json");
+        let json: serde_json::Value = serde_json::from_str(&content).expect("valid JSON");
+
+        let lock_app = json
+            .get("lock")
+            .and_then(|l| l.get("app"))
+            .and_then(|v| v.as_str())
+            .expect(
+                "BC-2.08.006 Invariant 2: write_hooks_settings_json() MUST always emit \
+                 lock.app in the written file",
+            );
+        assert_eq!(
+            lock_app, "monocle",
+            "BC-2.08.006 Invariant 2: lock.app must be \"monocle\"; got: {:?}",
+            lock_app
+        );
+    }
+
+    /// EC-182 re-write uses the real HookEndpointConfig (not empty-string defaults).
+    ///
+    /// Constructs a SessionManager with a REAL HookEndpointConfig (non-empty curl URLs
+    /// with port 54321), deletes hooks-settings.json, calls spawn_session(), and asserts:
+    /// (a) file is re-created, (b) file contains the real port URL, (c) lock.app present.
+    #[tokio::test]
+    #[tracing_test::traced_test]
+    async fn test_BC_2_08_006_ec182_rewrites_with_real_config() {
+        let tmp = tempfile::TempDir::new()
+            .expect("test setup: failed to create temp dir for EC-182 real config test");
+
+        let (tx, _rx) = mpsc::channel::<monocle_ipc::types::ServerToClient>(64);
+        let entry = monocle_ipc::server::ClientEntry::new(tx);
+        let subscriber_list: monocle_ipc::server::SubscriberList =
+            Arc::new(Mutex::new(vec![entry]));
+        let broker = Arc::new(Arc::clone(&subscriber_list));
+
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 88_002,
+        });
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+
+        let real_port: u16 = 54321;
+        let wire_token =
+            "monocle-v1:abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234abcd1234";
+        let real_config = HookEndpointConfig {
+            pre_tool_use: format!(
+                "curl -s -X POST http://127.0.0.1:{real_port}/hooks/pre-tool-use \
+                 -H 'Content-Type: application/json' \
+                 -H 'X-Monocle-Authorization: {wire_token}' -d @-"
+            ),
+            notification: format!(
+                "curl -s -X POST http://127.0.0.1:{real_port}/hooks/notification \
+                 -H 'Content-Type: application/json' \
+                 -H 'X-Monocle-Authorization: {wire_token}' -d @-"
+            ),
+            stop: format!(
+                "curl -s -X POST http://127.0.0.1:{real_port}/hooks/stop \
+                 -H 'Content-Type: application/json' \
+                 -H 'X-Monocle-Authorization: {wire_token}' -d @-"
+            ),
+            user_prompt_submit: format!(
+                "curl -s -X POST http://127.0.0.1:{real_port}/hooks/prompt-submit \
+                 -H 'Content-Type: application/json' \
+                 -H 'X-Monocle-Authorization: {wire_token}' -d @-"
+            ),
+        };
+
+        let mut manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker,
+            engine,
+            real_config,
+        );
+
+        // Simulate EC-182: delete hooks-settings.json after daemon startup.
+        let hooks_path = tmp
+            .path()
+            .canonicalize()
+            .expect("canonicalize tmp path")
+            .join("hooks-settings.json");
+        let _ = std::fs::remove_file(&hooks_path); // ignore NotFound
+
+        let session_id = uuid::Uuid::new_v4().to_string();
+        let opts = SpawnOptions::for_spawn_request(
+            tmp.path().to_path_buf(),
+            tmp.path().to_path_buf(),
+            "claude-code".to_string(),
+            "default".to_string(),
+            None,
+        )
+        .with_daemon_fields(session_id, PathBuf::new());
+
+        let spawn_result = manager.spawn_session(opts).await;
+
+        // (a) spawn_session() must succeed.
+        assert!(
+            spawn_result.is_ok(),
+            "BC-2.08.006 EC-182 real-config: spawn_session() MUST succeed after re-writing \
+             hooks-settings.json; got Err: {:?}",
+            spawn_result.err()
+        );
+
+        // (b) hooks-settings.json must be re-created.
+        assert!(
+            hooks_path.exists(),
+            "BC-2.08.006 EC-182 real-config: hooks-settings.json MUST be re-created \
+             at spawn time when deleted"
+        );
+
+        // (c) file must contain the real port URL and lock.app.
+        let content =
+            std::fs::read_to_string(&hooks_path).expect("read re-created hooks-settings.json");
+        let json: serde_json::Value = serde_json::from_str(&content).expect("valid JSON");
+
+        let lock_app = json
+            .get("lock")
+            .and_then(|l| l.get("app"))
+            .and_then(|v| v.as_str())
+            .expect("lock.app must be present in EC-182 re-written file");
+        assert_eq!(
+            lock_app, "monocle",
+            "lock.app must be 'monocle' in EC-182 re-write"
+        );
+
+        // Verify the real port appears in one of the hook commands.
+        let pre_tool_use_cmd = json
+            .get("hooks")
+            .and_then(|h| h.get("PreToolUse"))
+            .and_then(|v| v.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|e| e.get("hooks"))
+            .and_then(|v| v.as_array())
+            .and_then(|arr| arr.first())
+            .and_then(|c| c.get("command"))
+            .and_then(|v| v.as_str())
+            .expect("PreToolUse command must exist");
+        assert!(
+            pre_tool_use_cmd.contains(&format!(":{real_port}")),
+            "BC-2.08.006 EC-182 real-config: re-written file must contain port {real_port}; \
+             got command: {pre_tool_use_cmd}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // SEC-002 regression: HookEndpointConfig Debug must NOT leak auth tokens.
+    // CWE-532 — sensitive data must not appear in Debug output / logs / panics.
+    // -----------------------------------------------------------------------
+
+    /// HookEndpointConfig::fmt must redact all fields.
+    ///
+    /// Asserts:
+    /// - The formatted output contains "<redacted>" for every field.
+    /// - The formatted output does NOT contain any substring of the fake token.
+    ///
+    /// This prevents CWE-532: token leakage via {:?} in log spans, panic
+    /// messages, or tracing instrumentation.
+    #[test]
+    fn test_hook_endpoint_config_debug_does_not_leak_token() {
+        let fake_token =
+            "monocle-v1:deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+        let config = HookEndpointConfig {
+            pre_tool_use: format!("curl -H 'X-Monocle-Authorization: {fake_token}' pre"),
+            notification: format!("curl -H 'X-Monocle-Authorization: {fake_token}' notif"),
+            stop: format!("curl -H 'X-Monocle-Authorization: {fake_token}' stop"),
+            user_prompt_submit: format!("curl -H 'X-Monocle-Authorization: {fake_token}' submit"),
+        };
+
+        let debug_output = format!("{:?}", config);
+
+        // Must contain the "<redacted>" sentinel for all four fields.
+        assert!(
+            debug_output.contains("<redacted>"),
+            "SEC-002 / CWE-532: HookEndpointConfig Debug output must contain '<redacted>' \
+             for all fields; got: {debug_output}"
+        );
+
+        // Must NOT contain any part of the token that could appear in a log line.
+        // Split on ":" so both the scheme prefix and the hex blob are checked.
+        assert!(
+            !debug_output.contains("deadbeef"),
+            "SEC-002 / CWE-532: HookEndpointConfig Debug output MUST NOT contain any \
+             part of the auth token (found 'deadbeef'); got: {debug_output}"
+        );
+        assert!(
+            !debug_output.contains("monocle-v1"),
+            "SEC-002 / CWE-532: HookEndpointConfig Debug output MUST NOT contain the \
+             token scheme prefix 'monocle-v1'; got: {debug_output}"
+        );
     }
 }

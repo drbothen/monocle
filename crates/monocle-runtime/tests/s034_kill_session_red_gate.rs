@@ -178,7 +178,13 @@ fn make_manager(
         Arc::new(Mutex::new(vec![ClientEntry::new(tx)]));
     let broker = Arc::new(Arc::clone(&subscriber_list));
     let spawner: Arc<dyn SessionHostSpawner> = Arc::new(FakePidSpawner { pid });
-    let manager = SessionManager::new(tmp.to_path_buf(), spawner, broker, Arc::new(KillTestEngine));
+    let manager = SessionManager::new(
+        tmp.to_path_buf(),
+        spawner,
+        broker,
+        Arc::new(KillTestEngine),
+        monocle_runtime::session_manager::HookEndpointConfig::default(),
+    );
     (manager, subscriber_list, rx)
 }
 
@@ -201,7 +207,13 @@ fn make_manager_with_socket(
         Arc::new(Mutex::new(vec![ClientEntry::new(tx)]));
     let broker = Arc::new(Arc::clone(&subscriber_list));
     let spawner: Arc<dyn SessionHostSpawner> = Arc::new(FixedSocketSpawner { pid, socket_path });
-    let manager = SessionManager::new(tmp.to_path_buf(), spawner, broker, Arc::new(KillTestEngine));
+    let manager = SessionManager::new(
+        tmp.to_path_buf(),
+        spawner,
+        broker,
+        Arc::new(KillTestEngine),
+        monocle_runtime::session_manager::HookEndpointConfig::default(),
+    );
     (manager, subscriber_list, rx)
 }
 

@@ -30,8 +30,9 @@ pub mod handlers;
 /// [`lifecycle::DaemonExit`], [`lifecycle::exit_with`] (S-005),
 /// [`lifecycle::write_recovery_checkpoint`], [`lifecycle::read_recovery_checkpoint`] (S-007).
 /// Extended by S-017 with [`lifecycle::daemon_start_sequence`],
-/// [`lifecycle::write_hooks_settings`], [`lifecycle::write_lock_file`],
-/// and [`lifecycle::remove_hooks_settings`].
+/// [`lifecycle::write_lock_file`], and [`lifecycle::remove_hooks_settings`].
+/// hooks-settings.json writes are delegated to [`session_manager::write_hooks_settings_json`]
+/// (single-writer mandate, S-038).
 pub mod lifecycle;
 /// Daemon lock file lifecycle: acquire, detect stale, release (S-006).
 pub mod lock;
@@ -47,9 +48,9 @@ pub mod server;
 pub mod state;
 /// Shared runtime types: [`types::RecoveryCheckpoint`] and [`types::ShutdownReason`] (S-007).
 /// Extended by S-017 with [`types::EventBusHookEvent`], [`types::EventBusTx`],
-/// [`types::EventBusRx`], [`types::EVENT_BUS_CAPACITY`], [`types::HooksSettings`],
-/// [`types::HooksMap`], [`types::HookEntry`], [`types::HookCommand`],
+/// [`types::EventBusRx`], [`types::EVENT_BUS_CAPACITY`],
 /// and [`types::EngineModuleRegistry`].
+/// Hook endpoint configuration types live in [`session_manager::HookEndpointConfig`] (S-038).
 pub mod types;
 
 /// Bounded event bus fan-out task and drop counter utilities (S-018, BC-2.04.011).

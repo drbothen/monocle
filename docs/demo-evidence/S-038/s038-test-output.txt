@@ -1,0 +1,66 @@
+S-038: SessionManager Hook Auto-Injection — Test Evidence Transcript
+BC-2.08.006: Single canonical hooks-settings.json writer + SpawnOptions.hooks_settings_path population
+======================================================================================
+
+--- UNIT TESTS: cargo test -p monocle-runtime --lib BC_2_08_006 -- --nocapture ---
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running unittests src/lib.rs (target/debug/deps/monocle_runtime-57cdcc94e2c67ae5)
+
+running 8 tests
+2026-06-19T17:38:41.627330Z  WARN monocle_runtime::session_manager: hooks-settings.json missing at spawn time; re-writing
+2026-06-19T17:38:41.627356Z  WARN test_BC_2_08_006_ec182_rewrites_with_real_config: monocle_runtime::session_manager: hooks-settings.json missing at spawn time; re-writing
+2026-06-19T17:38:41.627356Z  WARN test_BC_2_08_006_missing_settings_file_rewrites_at_spawn: monocle_runtime::session_manager: hooks-settings.json missing at spawn time; re-writing
+test session_manager::tests::test_BC_2_08_006_startup_write_fail_aborts_daemon ... ok
+2026-06-19T17:38:41.627941Z  WARN monocle_runtime::session_manager: hooks-settings.json missing at spawn time; re-writing
+2026-06-19T17:38:41.628690Z ERROR monocle_runtime::session_manager: EC-182: failed to re-write hooks-settings.json at spawn time path=/tmp/[non-utf8]/hooks-settings.json err=I/O error: No such file or directory (os error 2)
+test session_manager::tests::test_BC_2_08_006_non_utf8_hooks_path_returned_from_spawn_recipe ... ok
+test session_manager::tests::test_BC_2_08_006_hooks_settings_json_atomic_write ... ok
+test session_manager::tests::test_BC_2_08_006_hooks_settings_json_content ... ok
+test session_manager::tests::test_BC_2_08_006_production_writer_always_emits_lock_app ... ok
+2026-06-19T17:38:41.633115Z  INFO test_BC_2_08_006_ec182_rewrites_with_real_config: monocle_runtime::session_manager: session spawned (Launching) session_id=2f2f98fe-abf8-46ed-8b02-ba8572821115 pid=88002 harness_id=claude-code
+2026-06-19T17:38:41.633117Z  INFO test_BC_2_08_006_missing_settings_file_rewrites_at_spawn: monocle_runtime::session_manager: session spawned (Launching) session_id=66cb8772-f66d-4d2c-913f-6d7aec420bff pid=88001 harness_id=claude-code
+2026-06-19T17:38:41.633117Z  INFO monocle_runtime::session_manager: session spawned (Launching) session_id=b1a4dcc6-805f-4946-9d4f-14ffa1dbb4b9 pid=99999 harness_id=claude-code
+test session_manager::tests::test_BC_2_08_006_spawn_options_hooks_settings_path_populated ... ok
+test session_manager::tests::test_BC_2_08_006_ec182_rewrites_with_real_config ... ok
+test session_manager::tests::test_BC_2_08_006_missing_settings_file_rewrites_at_spawn ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 73 filtered out; finished in 0.01s
+
+======================================================================================
+
+--- INTEGRATION TEST: cargo test -p monocle-runtime --test daemon_start_sequence test_BC_2_08_006 -- --nocapture ---
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.17s
+     Running tests/daemon_start_sequence.rs (target/debug/deps/daemon_start_sequence-ab158d8d1aad7d2f)
+
+running 1 test
+test test_BC_2_08_006_daemon_startup_hooks_settings_has_lock_app_monocle ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 33 filtered out; finished in 0.00s
+
+======================================================================================
+
+SUMMARY: 9/9 tests PASS
+  - 8 unit tests (session_manager::tests::test_BC_2_08_006_*)
+  - 1 integration test (daemon_start_sequence::test_BC_2_08_006_daemon_startup_hooks_settings_has_lock_app_monocle)
+
+AC COVERAGE:
+  AC-001 (4 URL-bearing hooks, array-of-objects per BC-2.04.010):
+    test_BC_2_08_006_hooks_settings_json_content PASS
+  AC-001 (PostToolUse/PreCompact empty arrays):
+    test_BC_2_08_006_hooks_settings_json_content PASS
+  AC-001 (lock.app="monocle", no SessionStart):
+    test_BC_2_08_006_production_writer_always_emits_lock_app PASS
+    test_BC_2_08_006_daemon_startup_hooks_settings_has_lock_app_monocle PASS
+  AC-002 (atomic write tempfile::persist + 0o600):
+    test_BC_2_08_006_hooks_settings_json_atomic_write PASS
+  AC-003 (SpawnOptions.hooks_settings_path populated before spawn_recipe):
+    test_BC_2_08_006_spawn_options_hooks_settings_path_populated PASS
+  AC-004 (EC-182 re-write with real config at spawn time):
+    test_BC_2_08_006_ec182_rewrites_with_real_config PASS
+    test_BC_2_08_006_missing_settings_file_rewrites_at_spawn PASS
+  AC-005 (startup write failure aborts daemon DaemonStartError::HooksSettingsWriteFailure):
+    test_BC_2_08_006_startup_write_fail_aborts_daemon PASS
+  AC-006 (non-UTF-8 path → EngineError::InvalidPath → "invalid_spawn_arg"):
+    test_BC_2_08_006_non_utf8_hooks_path_returned_from_spawn_recipe PASS
