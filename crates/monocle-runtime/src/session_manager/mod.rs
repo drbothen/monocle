@@ -8405,38 +8405,75 @@ mod tests {
     // Fix (6c95220): post_spawn_monitor reads `entry.display_name.clone()` as
     // `authoritative_display_name` instead of recomputing from scratch.
     //
-    // This test simulates the Running-transition sidecar re-persist by:
-    //   1. Spawning a session (sidecar written with default display_name).
-    //   2. Renaming the session via rename_session() (sidecar updated).
-    //   3. Performing the same sidecar re-persist operation that post_spawn_monitor
-    //      does at Running transition (reads entry.display_name, builds
-    //      SessionSidecarV3, writes atomically).
-    //   4. Reading the sidecar from disk and asserting display_name == renamed value.
+    // This test drives the PRODUCTION post_spawn_monitor code path end-to-end:
+    //   1. Bind a test UDS socket (in /tmp for macOS SUN_LEN limit).
+    //   2. Inject ControlledUdsMockSpawner + FakePeerCredVerifier{allow:true}.
+    //   3. spawn_session() — sidecar written with default display_name.
+    //   4. rename_session() while session is in Launching state.
+    //   5. Background task sends HostToDaemon::StateChanged{Running} over the UDS.
+    //   6. Poll session_list() until state==Running (production transition complete).
+    //   7. Read sidecar from disk; assert display_name == renamed value.
     //
-    // Step 3 would fail against pre-6c95220 code because it used a locally
-    // recomputed `dn` string (harness_id + basename = default name), whereas the
-    // fixed code reads entry.display_name (= renamed value).
+    // Step 7 FAILS against pre-6c95220 code because that code recomputed
+    // `format!("{} — {}", harness_id, basename)` in post_spawn_monitor rather
+    // than reading entry.display_name, clobbering the rename on the sidecar.
+    // The current code (ab46ab9 / 6c95220) reads entry.display_name; this test
+    // would revert to FAIL if that line reverted to the recomputed default.
     // -----------------------------------------------------------------------
 
-    /// Regression test for F-S037-P2-001: rename while Launching must survive
-    /// the Launching→Running sidecar re-persist.
+    /// Regression lock for F-S037-P2-001: rename while Launching MUST survive
+    /// the PRODUCTION post_spawn_monitor Launching→Running sidecar re-persist.
     ///
-    /// Exercises the same sidecar re-persist logic as `post_spawn_monitor`'s
-    /// Running transition (the code path fixed in commit 6c95220), verifying that
-    /// `entry.display_name` (the authoritative, possibly-renamed value) is written
-    /// to the sidecar instead of a recomputed default.
+    /// Drives the REAL production `post_spawn_monitor` task via a test-controlled
+    /// UDS socket (`ControlledUdsMockSpawner`) and `FakePeerCredVerifier{allow:true}`.
+    /// A background task sends `HostToDaemon::StateChanged{Running}` over the socket;
+    /// the test polls `session_list()` until `state == Running` (proving the PRODUCTION
+    /// Running-transition code path executed), then reads the sidecar from disk and
+    /// asserts `display_name == renamed_value`.
     ///
-    /// Would FAIL against pre-6c95220 code: the old code used
-    /// `format!("{} — {}", harness_id, basename)` which produces the default name,
-    /// not the user-assigned rename.  The sidecar on disk would contain the default
-    /// name, losing the rename on the next daemon restart that re-discovers sessions
-    /// from sidecar files.
+    /// Production entry point: `post_spawn_monitor` (line ~3039 — `if new_state ==
+    /// SessionState::Running` branch, first-lock field extraction at ~3081:
+    /// `let authoritative_display_name = entry.display_name.clone()`).
+    ///
+    /// Non-tautological because:
+    /// - The test never writes the sidecar itself.
+    /// - The sidecar is written exclusively by the PRODUCTION `post_spawn_monitor`
+    ///   Running-transition block.
+    /// - If that block reverted to `format!("{} — {}", harness_id, basename)` at
+    ///   the field extraction site (~line 3081), the sidecar would contain the default
+    ///   name and `assert_eq!(disk_display_name, renamed_value)` would FAIL.
     #[tokio::test]
     async fn test_BC_2_08_005_rename_while_launching_survives_running_sidecar_repersist() {
-        let tmp = tempfile::tempdir().expect("rename_repersist: tempdir");
+        use tokio::io::AsyncWriteExt;
+        use tokio::net::UnixListener;
 
-        let (mut manager, _subs, mut rx) = make_manager_with_channel(tmp.path(), None);
+        // Use /tmp for the runtime dir and socket (macOS SUN_LEN = 104 chars).
+        let tmp = tempfile::Builder::new()
+            .tempdir_in("/tmp")
+            .expect("rename_repersist: tempdir in /tmp");
+
         let session_id = "00000000-0537-4000-a000-000000000010".to_string();
+        let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
+        let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+
+        // Bind the test UDS listener BEFORE spawn_session() so post_spawn_monitor
+        // can connect immediately after spawn.
+        let listener = UnixListener::bind(&socket_path).expect("rename_repersist: bind UDS");
+
+        // Build manager with ControlledUdsMockSpawner (returns our socket_path) and
+        // FakePeerCredVerifier{allow:true} so SO_PEERCRED passes in post_spawn_monitor.
+        let (tx, mut rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry_sub = ClientEntry::new(tx);
+        let subs: SubscriberList = Arc::new(Mutex::new(vec![entry_sub]));
+        let broker = make_broker(&subs);
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(ControlledUdsMockSpawner {
+            pid: 55_010,
+            socket_path: socket_path.clone(),
+        });
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+        let mut manager = SessionManager::new(tmp.path().to_path_buf(), spawner, broker, engine);
+        // FakePeerCredVerifier{allow:true}: SO_PEERCRED check always passes.
+        manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifier { allow: true }));
 
         // Step 1: Spawn a session — sidecar written with default display_name.
         manager
@@ -8444,9 +8481,9 @@ mod tests {
             .await
             .expect("rename_repersist: spawn must succeed");
 
-        // Drain spawn broadcasts.
+        // Drain spawn broadcasts (Launching pair).
         {
-            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(100);
             loop {
                 match tokio::time::timeout_at(deadline, rx.recv()).await {
                     Ok(Some(_)) => continue,
@@ -8455,16 +8492,17 @@ mod tests {
             }
         }
 
-        // Verify the session is in Launching state.
+        // Precondition: session is in Launching state.
         {
-            let guard = manager.sessions.lock().await;
-            let entry = guard
-                .get(&session_id)
-                .expect("rename_repersist: session must be in registry");
+            let snapshots = manager.session_list().await;
+            let snap = snapshots
+                .iter()
+                .find(|s| s.session_id == session_id)
+                .expect("rename_repersist: session must appear in session_list after spawn");
             assert_eq!(
-                entry.state,
-                SessionState::Launching,
-                "rename_repersist precondition: session must be in Launching state"
+                snap.state,
+                monocle_ipc::types::SessionState::Launching,
+                "rename_repersist precondition: session must be Launching after spawn"
             );
         }
 
@@ -8473,11 +8511,11 @@ mod tests {
         manager
             .rename_session(&session_id, renamed_value.clone())
             .await
-            .expect("rename_repersist: rename_session must return Ok(()) on Launching session");
+            .expect("rename_repersist: rename_session must succeed on Launching session");
 
         // Drain rename broadcasts.
         {
-            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(100);
             loop {
                 match tokio::time::timeout_at(deadline, rx.recv()).await {
                     Ok(Some(_)) => continue,
@@ -8486,7 +8524,7 @@ mod tests {
             }
         }
 
-        // Verify in-memory entry has the renamed value.
+        // Confirm in-memory rename is stored.
         {
             let guard = manager.sessions.lock().await;
             let entry = guard
@@ -8494,101 +8532,70 @@ mod tests {
                 .expect("rename_repersist: entry must exist after rename");
             assert_eq!(
                 entry.display_name, renamed_value,
-                "rename_repersist: in-memory display_name must equal renamed value"
+                "rename_repersist: in-memory display_name must equal renamed value before Running"
             );
         }
 
-        // Step 3: Simulate the post_spawn_monitor Running-transition sidecar re-persist.
+        // Step 3: Act as the session-host — accept the connection and send
+        // HostToDaemon::StateChanged{Running} to drive the PRODUCTION post_spawn_monitor
+        // Running-transition code path (lines ~3039–3259 in mod.rs).
         //
-        // This replicates the logic at post_spawn_monitor ~lines 3060-3224 (first lock
-        // + sidecar re-persist block), which was the bug site in pre-6c95220 code.
-        // The FIXED code reads entry.display_name; the OLD code recomputed from
-        // harness_id + project_root basename, clobbering the rename.
+        // This is the ONLY place the sidecar gets updated with Running state and
+        // display_name.  The test body never writes the sidecar.
+        tokio::spawn(async move {
+            if let Ok((mut stream, _)) = listener.accept().await {
+                let msg = serde_json::json!({
+                    "type": "state_changed",
+                    "new_state": "Running",
+                    "degraded_env": null
+                });
+                let bytes = serde_json::to_vec(&msg).unwrap();
+                let len = bytes.len() as u32;
+                stream.write_all(&len.to_le_bytes()).await.ok();
+                stream.write_all(&bytes).await.ok();
+                stream.flush().await.ok();
+                // Keep stream alive until flushed; drop after.
+            }
+        });
+
+        // Step 4: Poll session_list() until state==Running, proving the PRODUCTION
+        // post_spawn_monitor Running-transition block has executed.
         //
-        // We extract the same fields from the in-memory entry that the production
-        // code extracts under the first sessions lock:
-        let (
-            project_root,
-            cwd,
-            harness_id,
-            profile_id,
-            started_at,
-            authoritative_display_name,
-            session_host_pid,
-        ) = {
-            let guard = manager.sessions.lock().await;
-            let entry = guard
-                .get(&session_id)
-                .expect("rename_repersist: entry must exist for Running-transition simulation");
-            (
-                entry.project_root.to_string_lossy().into_owned(),
-                entry.cwd.to_string_lossy().into_owned(),
-                entry.harness_id.clone(),
-                entry.profile_id.clone(),
-                entry.started_at.to_rfc3339(),
-                // F-S037-P2-001 fix: reads entry.display_name (the authoritative stored value).
-                // Pre-6c95220 code read: format!("{} — {}", harness_id, basename) here.
-                entry.display_name.clone(),
-                entry.session_host_pid,
-            )
-        };
-
-        // Build SessionSidecarV3 exactly as post_spawn_monitor does at Running transition.
-        let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
-        let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
-
-        let existing_child_pid: Option<u32> = std::fs::read_to_string(&sidecar_path)
-            .ok()
-            .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
-            .and_then(|v| v["child_pid"].as_u64())
-            .map(|n| n as u32);
-
-        let sidecar = monocle_ipc::types::SessionSidecarV3 {
-            schema_version: 3,
-            session_id: session_id.clone(),
-            pid: session_host_pid,
-            socket_path: socket_path.to_string_lossy().into_owned(),
-            child_pid: existing_child_pid,
-            state: monocle_ipc::types::SessionState::Running,
-            project_root: project_root.clone(),
-            cwd: cwd.clone(),
-            harness_id: harness_id.clone(),
-            profile_id: profile_id.clone(),
-            started_at: started_at.clone(),
-            display_name: authoritative_display_name.clone(),
-            pty_rows: 24,
-            pty_cols: 80,
-            kill_deadline_unix_ms: None,
-        };
-
-        let sidecar_json = serde_json::to_vec_pretty(&sidecar)
-            .expect("rename_repersist: serialize SessionSidecarV3");
-        // Write atomically exactly as post_spawn_monitor does.
-        {
-            let parent = sidecar_path
-                .parent()
-                .expect("rename_repersist: sidecar has no parent");
-            let mut tmp_file = tempfile::Builder::new()
-                .prefix(".session-sidecar-running-")
-                .suffix(".json.tmp")
-                .tempfile_in(parent)
-                .expect("rename_repersist: tempfile creation");
-            use std::io::Write as _;
-            tmp_file
-                .write_all(&sidecar_json)
-                .expect("rename_repersist: write tempfile");
-            tmp_file
-                .persist(&sidecar_path)
-                .expect("rename_repersist: persist sidecar");
+        // If post_spawn_monitor never fires (e.g., sidecar write moved outside the
+        // production block), the state stays Launching and the assertion below fails.
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(3);
+        let mut reached_running = false;
+        loop {
+            if tokio::time::Instant::now() >= deadline {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            let snapshots = manager.session_list().await;
+            if let Some(snap) = snapshots.iter().find(|s| s.session_id == session_id) {
+                if snap.state == monocle_ipc::types::SessionState::Running {
+                    reached_running = true;
+                    break;
+                }
+            }
         }
 
-        // Step 4: Read the sidecar from disk and assert display_name == renamed value.
+        assert!(
+            reached_running,
+            "rename_repersist: production post_spawn_monitor must transition session to Running \
+             within 3s of receiving StateChanged{{Running}}; session remained in Launching. \
+             This means the production Running-transition code path did NOT execute, so the \
+             sidecar re-persist assertion below is unreachable — fix post_spawn_monitor wiring."
+        );
+
+        // Step 5: Read the sidecar from disk and assert display_name == renamed value.
         //
-        // Pre-6c95220 code would have written the recomputed default name here
-        // (e.g., "mock-engine — test-project"), so this assertion would FAIL against
-        // the old code.  The fix ensures authoritative_display_name == renamed_value.
+        // The sidecar was written EXCLUSIVELY by the PRODUCTION post_spawn_monitor
+        // Running-transition block (~lines 3162–3220).  If that block extracted
+        // `format!("{} — {}", harness_id, basename)` instead of reading
+        // `entry.display_name`, the sidecar would contain "claude-code — test-project"
+        // (the default), not the renamed value — and this assertion would FAIL.
         let sidecar_content = std::fs::read_to_string(&sidecar_path)
-            .expect("rename_repersist: read sidecar from disk");
+            .expect("rename_repersist: sidecar must exist on disk after Running transition");
         let sidecar_val: serde_json::Value =
             serde_json::from_str(&sidecar_content).expect("rename_repersist: parse sidecar JSON");
 
@@ -8598,14 +8605,14 @@ mod tests {
 
         assert_eq!(
             disk_display_name, renamed_value,
-            "F-S037-P2-001 regression: sidecar display_name on disk MUST equal the \
-             renamed value {:?} after Running-transition sidecar re-persist; \
-             got {:?}. Pre-6c95220 code recomputed from harness_id + basename, \
-             clobbering the rename.",
+            "F-S037-P2-001 regression: sidecar display_name on disk MUST equal {:?} after \
+             PRODUCTION post_spawn_monitor Running-transition re-persist; got {:?}. \
+             Pre-6c95220 code recomputed from harness_id + basename, clobbering the rename. \
+             This test drives the real production code path — it is NOT tautological.",
             renamed_value, disk_display_name
         );
 
-        // Confirm the state field in the sidecar was set to Running (not left as Launching).
+        // Also assert state field was set to Running in the sidecar.
         let disk_state = sidecar_val["state"]
             .as_str()
             .expect("rename_repersist: state must be a string in sidecar");
@@ -8614,6 +8621,102 @@ mod tests {
             "rename_repersist: sidecar state must be Running after Running-transition re-persist; \
              got {:?}",
             disk_state
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Regression lock for F-S037-P3-001 — session_list() InitialState carries rename.
+    //
+    // Bug (pre-ab46ab9): session_list() recomputed display_name from
+    // `format!("{} — {}", entry.harness_id, basename)` instead of reading
+    // `entry.display_name`.  After rename_session() updated the in-memory entry,
+    // session_list() still returned the stale default name, so InitialState
+    // snapshots delivered to newly-connected clients would not reflect renames.
+    //
+    // Fix (ab46ab9): session_list() reads `entry.display_name.clone()`.
+    //
+    // This test:
+    //   1. Spawns a session (default display_name set).
+    //   2. Renames the session via production rename_session().
+    //   3. Calls production session_list() and asserts the returned SessionSnapshot
+    //      for that session_id has display_name == renamed value.
+    //
+    // Would FAIL against pre-ab46ab9 code: old session_list() recomputed the
+    // default "claude-code — test-project" string, not the renamed value.
+    // -----------------------------------------------------------------------
+
+    /// Regression lock for F-S037-P3-001: session_list() InitialState snapshot
+    /// must carry the renamed display_name, not the recomputed default.
+    ///
+    /// Production entry point: `SessionManager::session_list()` (~line 2720):
+    /// `let display_name = entry.display_name.clone()`.
+    ///
+    /// Would FAIL against pre-ab46ab9 code: old `session_list()` computed
+    /// `format!("{} — {}", entry.harness_id, basename)` unconditionally, so any
+    /// rename set by `rename_session()` was invisible to callers of `session_list()`.
+    #[tokio::test]
+    async fn test_BC_2_08_005_session_list_carries_rename_after_rename_session() {
+        let tmp = tempfile::Builder::new()
+            .tempdir_in("/tmp")
+            .expect("session_list_rename: tempdir in /tmp");
+
+        let (mut manager, _subs, _rx) = make_manager_with_channel(tmp.path(), None);
+        let session_id = "00000000-0537-4000-a000-000000000011".to_string();
+
+        // Step 1: Spawn a session — default display_name is set by spawn_session().
+        manager
+            .spawn_session(make_spawn_opts(&session_id))
+            .await
+            .expect("session_list_rename: spawn must succeed");
+
+        // Capture the default display_name for contrast.
+        let default_display_name = {
+            let guard = manager.sessions.lock().await;
+            guard
+                .get(&session_id)
+                .expect("session_list_rename: entry must exist after spawn")
+                .display_name
+                .clone()
+        };
+
+        // Step 2: Rename the session via the PRODUCTION rename_session().
+        let renamed_value = "Renamed — Must Appear In session_list".to_string();
+        assert_ne!(
+            renamed_value, default_display_name,
+            "session_list_rename: renamed value must differ from default (test design check)"
+        );
+        manager
+            .rename_session(&session_id, renamed_value.clone())
+            .await
+            .expect("session_list_rename: rename_session must succeed on Launching session");
+
+        // Step 3: Call the PRODUCTION session_list() and assert the snapshot carries
+        // the renamed display_name.
+        //
+        // Pre-ab46ab9 code computed `format!("{} — {}", entry.harness_id, basename)`
+        // unconditionally, returning default_display_name here instead of renamed_value.
+        // The fix reads entry.display_name.clone() — renamed_value after rename_session().
+        let snapshots = manager.session_list().await;
+        let snap = snapshots
+            .iter()
+            .find(|s| s.session_id == session_id)
+            .expect("session_list_rename: renamed session must appear in session_list()");
+
+        assert_eq!(
+            snap.display_name, renamed_value,
+            "F-S037-P3-001 regression: session_list() MUST return display_name == {:?} \
+             (the renamed value) for session {}; got {:?}. \
+             Pre-ab46ab9 code recomputed the default from harness_id + basename, \
+             so InitialState snapshots delivered to new clients would not reflect renames.",
+            renamed_value, session_id, snap.display_name
+        );
+
+        // Sanity: confirm the result is different from the pre-rename default.
+        assert_ne!(
+            snap.display_name, default_display_name,
+            "session_list_rename: post-rename session_list() display_name must differ from \
+             pre-rename default {:?}; got {:?}",
+            default_display_name, snap.display_name
         );
     }
 }
