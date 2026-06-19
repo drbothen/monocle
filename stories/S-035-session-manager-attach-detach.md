@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-035
 epic_id: EPIC-08
-version: "1.2"
+version: "1.2.1"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -210,7 +210,7 @@ Files to MODIFY (all established by S-033):
 | File | Change |
 |------|--------|
 | `crates/monocle-runtime/src/session_manager/mod.rs` | Add `attach_session()` and `detach_session()` implementations |
-| `crates/monocle-runtime/src/ipc_handler.rs` | Add `ClientToServer::AttachSession` and `ClientToServer::DetachSession` arms |
+| `crates/monocle-runtime/src/ipc_server.rs` | Add `ClientToServer::AttachSession` and `ClientToServer::DetachSession` arms |
 | `crates/monocle-session-host/src/main.rs` | Add `DaemonToHost::Attach` handler (snapshot vt100 screen; stream ScrollbackChunk*; resume PtyBytes immediately); add `DaemonToHost::Detach` handler (stop streaming; stay alive) |
 
 ## Token Budget Estimate
@@ -242,7 +242,7 @@ Files to MODIFY (all established by S-033):
 | PTY proxy task | `monocle-runtime/src/session_manager/mod.rs` | Effectful (broker event publish loop) |
 | `DaemonToHost::Attach` handler | `crates/monocle-session-host/src/main.rs` | Effectful (vt100 screen snapshot; ScrollbackChunk streaming; PtyBytes resume) |
 | `DaemonToHost::Detach` handler | `crates/monocle-session-host/src/main.rs` | Effectful (stop streaming; continue alive) |
-| IPC handler `AttachSession`/`DetachSession` arms | `monocle-runtime/src/ipc_handler.rs` | Effectful (IPC dispatch; error propagation) |
+| IPC handler `AttachSession`/`DetachSession` arms | `monocle-runtime/src/ipc_server.rs` | Effectful (IPC dispatch; error propagation) |
 
 ## Edge Cases
 
@@ -256,7 +256,7 @@ Files to MODIFY (all established by S-033):
 ## IPC Handler Arm Ownership Disambiguation
 
 S-035 authors the **`ClientToServer::AttachSession`** and **`ClientToServer::DetachSession`** arms
-in `monocle-runtime/src/ipc_handler.rs`.
+in `monocle-runtime/src/ipc_server.rs`.
 The canonical 7-arm split across the SS-08/SS-09 stories is:
 
 | IPC Handler Arm | Owning Story |

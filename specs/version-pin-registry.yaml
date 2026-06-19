@@ -1039,9 +1039,9 @@ S-034-session-manager-kill:
 
 S-035-session-manager-attach-detach:
   path: stories/S-035-session-manager-attach-detach.md
-  current_version: "1.2"
-  last_bump_commit: "[Wave-8 story authoring — SessionManager attach/detach path, BC-2.05.010/011, BC-2.08.007]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.2.1"
+  last_bump_commit: "[F-S035-PASS3-LOW-002 — correct ipc_handler.rs → ipc_server.rs (file does not exist; S-033/S-034 established ipc_server.rs)]"
+  last_bump_date: "2026-06-19"
 
 S-036-session-manager-rediscovery:
   path: stories/S-036-session-manager-rediscovery.md
