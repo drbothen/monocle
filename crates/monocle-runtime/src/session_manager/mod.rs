@@ -2678,7 +2678,9 @@ impl SessionManager {
                     .values()
                     .map(|e| {
                         let status = match e.state {
-                            SessionState::Launching | SessionState::Running => SessionStatus::Active,
+                            SessionState::Launching | SessionState::Running => {
+                                SessionStatus::Active
+                            }
                             SessionState::Detached => SessionStatus::Idle,
                             SessionState::Terminating | SessionState::Terminated => {
                                 SessionStatus::Stopped
@@ -10337,5 +10339,273 @@ mod tests {
              pre-rename default {:?}; got {:?}",
             default_display_name, snap.display_name
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // F-S035-PASS3-MED-001: TOCTOU guard in detach_session
+    //
+    // Verifies that if the session transitions to Terminated BETWEEN
+    // detach_session's initial-lock read (which sees Running) and its
+    // re-acquired-lock state mutation, detach does NOT:
+    //   (a) overwrite entry.state back to Detached, and
+    //   (b) emit a spurious SessionStateChanged{Detached} broadcast.
+    //
+    // The Terminated transition (from the proxy path) must stand.
+    //
+    // Race simulation technique (current_thread scheduler — deterministic):
+    //
+    //   1. Test spawns a "writer-hold" task that acquires the writer mutex and
+    //      waits for a release signal (notif_release).  The task also posts
+    //      "writer held" (notif_held) so the test can synchronise.
+    //   2. Test waits for "writer held", then spawns an "inject" task that will
+    //      inject Terminated into sessions and then signal the writer-hold task
+    //      to release.  The inject task is ready-to-run when spawned but runs
+    //      only when the current task yields.
+    //   3. Test calls `manager.detach_session()`:
+    //      a. Initial sessions read → sees Running → takes DetachPath::Running.
+    //      b. Tries writer.lock().await → BLOCKS (writer-hold task owns it) →
+    //         tokio runtime yields to next ready task.
+    //      c. inject task runs: sets entry.state = Terminated, emits
+    //         SessionStateChanged{Terminated}, signals notif_release.
+    //      d. writer-hold task runs: receives release signal, drops writer guard.
+    //      e. detach_session: acquires writer, writes DaemonToHost::Detach,
+    //         flushes.
+    //      f. detach re-acquires sessions lock.  TOCTOU guard fires: state ==
+    //         Terminated → skips Detached mutation, skips Detached broadcasts,
+    //         returns Ok(()).
+    //   4. Test asserts: entry.state == Terminated (NOT Detached).
+    //   5. Test asserts: NO SessionStateChanged{Detached} in broadcast stream.
+    // -----------------------------------------------------------------------
+
+    /// F-S035-PASS3-MED-001: detach_session MUST NOT resurrect a session entry
+    /// that transitioned to Terminated during the writer-send yield point.
+    ///
+    /// Scenario: detach reads Running state (initial lock), begins writer send.
+    /// While detach blocks on writer.lock().await, the proxy path sets
+    /// entry.state = Terminated.  When detach re-acquires sessions, the guard
+    /// detects Terminated and skips the Detached mutation + broadcasts.
+    ///
+    /// Assertions:
+    /// - Final entry.state == Terminated (NOT Detached).
+    /// - No SessionStateChanged{Detached} in the broadcast stream.
+    /// - detach_session returns Ok(()) (lost-race is idempotent).
+    #[tokio::test(flavor = "current_thread")]
+    async fn test_F_S035_PASS3_MED_001_detach_toctou_guard_no_resurrect_on_terminated() {
+        use tokio::net::UnixStream;
+        use tokio::sync::Notify;
+
+        let tmp = tempfile::tempdir().expect("PASS3-MED-001: tempdir");
+        let (mut manager, _subs, mut rx) = make_manager_with_channel(tmp.path(), None);
+
+        let session_id = "00000000-0535-4000-a000-000000000001".to_string();
+
+        // --- Step 1: Build a Running session with a live writer connection.
+        //
+        // Use UnixStream::pair().  We wrap the write half in Arc<Mutex<...>> so the
+        // "writer-hold" task can hold the mutex and force detach_session to yield at
+        // writer.lock().await.  The read end is held open so writes don't fail (EOF).
+        let (peer_a, peer_b) = UnixStream::pair().expect("PASS3-MED-001: UnixStream::pair");
+        let (_, write_half) = peer_a.into_split();
+        let writer_arc: Arc<Mutex<tokio::net::unix::OwnedWriteHalf>> =
+            Arc::new(Mutex::new(write_half));
+
+        // Keep read end open (so writes don't get EPIPE/broken-pipe).
+        // Drain it in a background task to prevent kernel-buffer fill.
+        let (peer_b_read, _peer_b_write) = peer_b.into_split();
+        tokio::spawn(async move {
+            use tokio::io::AsyncReadExt;
+            let mut buf = vec![0u8; 4096];
+            let mut reader = peer_b_read;
+            loop {
+                match reader.read(&mut buf).await {
+                    Ok(0) | Err(_) => break,
+                    Ok(_) => continue,
+                }
+            }
+        });
+
+        let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
+        {
+            let mut guard = manager.sessions.lock().await;
+            guard.insert(
+                session_id.clone(),
+                SessionEntry {
+                    session_id: session_id.clone(),
+                    session_host_pid: 99_535,
+                    session_host_socket: socket_path.clone(),
+                    state: SessionState::Running,
+                    cwd: PathBuf::from("/tmp/test-cwd"),
+                    project_root: PathBuf::from("/tmp/test-project"),
+                    harness_id: "claude-code".to_string(),
+                    profile_id: "default".to_string(),
+                    started_at: chrono::Utc::now(),
+                    display_name: "claude-code — test-project".to_string(),
+                    kill_deadline: None,
+                    degraded: false,
+                    degraded_reason: None,
+                    host_conn: Some(SessionHostConnection {
+                        writer: Arc::clone(&writer_arc),
+                        reader: None,
+                        proxy_task: None,
+                    }),
+                },
+            );
+        }
+
+        // Write the sidecar that detach_session will try to update (PC-5).
+        let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+        let sidecar_json = serde_json::json!({
+            "schema_version": "v3",
+            "session_id": session_id,
+            "state": "Running",
+            "harness_id": "claude-code",
+            "profile_id": "default",
+            "session_host_pid": 99535,
+            "session_host_socket": socket_path.to_str().unwrap_or("/tmp/test.sock"),
+            "cwd": "/tmp/test-cwd",
+            "project_root": "/tmp/test-project",
+            "started_at_unix_ms": 0u64,
+            "hooks_settings_path": "/tmp/hooks.json",
+            "child_pid": serde_json::Value::Null,
+            "kill_deadline_unix_ms": serde_json::Value::Null
+        });
+        {
+            use std::io::Write as _;
+            let mut f =
+                std::fs::File::create(&sidecar_path).expect("PASS3-MED-001: create sidecar file");
+            f.write_all(&serde_json::to_vec_pretty(&sidecar_json).unwrap())
+                .expect("PASS3-MED-001: write sidecar");
+        }
+
+        // Drain any initial broadcasts (none expected — we inserted directly).
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(20);
+            loop {
+                match tokio::time::timeout_at(deadline, rx.recv()).await {
+                    Ok(Some(_)) => continue,
+                    _ => break,
+                }
+            }
+        }
+
+        // --- Step 2: Set up the race simulation tasks.
+        //
+        // notif_held:    writer-hold task → test: "writer mutex now held"
+        // notif_release: inject task → writer-hold task: "you may now release"
+        let notif_held = Arc::new(Notify::new());
+        let notif_release = Arc::new(Notify::new());
+
+        // "writer-hold" task: acquires writer mutex, signals held, waits for
+        // release signal, then drops writer guard.  This forces detach_session
+        // to yield at writer.lock().await, giving the inject task a chance to run.
+        let writer_arc_for_hold = Arc::clone(&writer_arc);
+        let notif_held_clone = Arc::clone(&notif_held);
+        let notif_release_clone = Arc::clone(&notif_release);
+        tokio::spawn(async move {
+            let _guard = writer_arc_for_hold.lock().await;
+            notif_held_clone.notify_one(); // signal: writer held
+            notif_release_clone.notified().await; // wait for inject to signal release
+                                                  // _guard drops here → writer mutex released → detach unblocks
+        });
+
+        // Wait until the writer-hold task actually holds the mutex.
+        notif_held.notified().await;
+
+        // "inject" task: will run when detach_session yields (blocked on writer).
+        // Simulates transition_to_terminated_standalone (proxy path) running concurrently.
+        let sessions_clone = Arc::clone(&manager.sessions);
+        let broker_clone = Arc::clone(&manager.broker);
+        let session_id_clone = session_id.clone();
+        let notif_release_for_inject = Arc::clone(&notif_release);
+        tokio::spawn(async move {
+            // Inject Terminated state (simulating proxy_task / watchdog racing detach).
+            {
+                let mut guard = sessions_clone.lock().await;
+                if let Some(entry) = guard.get_mut(&session_id_clone) {
+                    entry.state = SessionState::Terminated;
+                    entry.kill_deadline = None;
+                    // proxy path clears host_conn before transitioning
+                    entry.host_conn = None;
+                }
+            }
+            // Emit the SessionStateChanged{Terminated} broadcast (as proxy path would).
+            let terminated_broadcast = monocle_ipc::types::ServerToClient::SessionStateChanged {
+                session_id: session_id_clone.clone(),
+                new_state: SessionState::Terminated,
+            };
+            crate::ipc_server::broadcast_to_subscribers(&broker_clone, terminated_broadcast).await;
+            // Signal the writer-hold task to release the writer mutex.
+            notif_release_for_inject.notify_one();
+        });
+
+        // --- Step 3: Call detach_session.
+        //
+        // Execution sequence (current_thread runtime, deterministic):
+        //   a. Initial sessions read → Running → DetachPath::Running (extracts writer Arc).
+        //   b. writer.lock().await → BLOCKS (writer-hold owns it) → runtime yields.
+        //   c. inject task runs: sets Terminated, emits Terminated broadcast, notifies release.
+        //   d. writer-hold task runs: receives release, drops writer guard.
+        //   e. detach resumes: acquires writer, writes DaemonToHost::Detach, flushes.
+        //   f. detach re-acquires sessions lock → reads Terminated →
+        //      TOCTOU guard fires (F-S035-PASS3-MED-001) → skips mutation + broadcasts.
+        //   g. Returns Ok(()).
+        let result = manager.detach_session(&session_id).await;
+        assert!(
+            result.is_ok(),
+            "PASS3-MED-001: detach_session lost-race MUST return Ok(()); got: {:?}",
+            result
+        );
+
+        // --- Step 4: entry.state MUST be Terminated (NOT Detached).
+        {
+            let guard = manager.sessions.lock().await;
+            let entry = guard
+                .get(&session_id)
+                .expect("PASS3-MED-001: session must still exist in registry");
+            assert_eq!(
+                entry.state,
+                SessionState::Terminated,
+                "PASS3-MED-001: detach_session MUST NOT overwrite Terminated entry to \
+                 Detached (F-S035-PASS3-MED-001 regression); got state: {:?}",
+                entry.state
+            );
+        }
+
+        // --- Step 5: NO SessionStateChanged{Detached} must appear in the broadcast stream.
+        //
+        // The stream contains: SessionStateChanged{Terminated} (injected above).
+        // It must NOT contain: SessionStateChanged{Detached} (which the pre-fix code
+        // would unconditionally emit).
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(100);
+            let mut broadcasts: Vec<monocle_ipc::types::ServerToClient> = Vec::new();
+            loop {
+                match tokio::time::timeout_at(deadline, rx.recv()).await {
+                    Ok(Some(msg)) => broadcasts.push(msg),
+                    _ => break,
+                }
+            }
+
+            let spurious_detached: Vec<_> = broadcasts
+                .iter()
+                .filter(|m| {
+                    matches!(
+                        m,
+                        monocle_ipc::types::ServerToClient::SessionStateChanged {
+                            new_state: SessionState::Detached,
+                            ..
+                        }
+                    )
+                })
+                .collect();
+
+            assert!(
+                spurious_detached.is_empty(),
+                "PASS3-MED-001: detach_session MUST NOT emit SessionStateChanged{{Detached}} \
+                 after losing the TOCTOU race to a Terminated transition \
+                 (F-S035-PASS3-MED-001); spurious broadcasts: {:?}",
+                spurious_detached
+            );
+        }
     }
 }
