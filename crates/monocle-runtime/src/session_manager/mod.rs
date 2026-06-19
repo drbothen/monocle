@@ -15,6 +15,16 @@
 /// MED-002 fix: was 1 MiB; corrected to 256 KiB per spec bound.
 const MAX_FRAME_LEN: usize = 256 * 1024;
 
+/// Maximum byte length for a session `display_name` supplied to `rename_session()`.
+///
+/// The spec (SS-session-manager.md §SessionError taxonomy) states `InvalidSessionName`
+/// fires for "Empty name or name exceeding length limit" but does not prescribe the
+/// exact byte bound. Production-grade default (mirroring spawn_session UUID guard
+/// philosophy): 256 bytes — aligns with TUI panel display constraints and the JSON
+/// sidecar field budget. Names longer than this are rejected with
+/// `InvalidSessionName { reason: "name exceeds 256-byte limit" }`.
+const MAX_DISPLAY_NAME_BYTES: usize = 256;
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -571,6 +581,11 @@ struct SessionEntry {
     harness_id: String,
     profile_id: String,
     started_at: DateTime<Utc>,
+    /// Human-readable display name for this session.
+    ///
+    /// Initialized to `"<harness_id> — <project_root_basename>"` at spawn time.
+    /// Updated by `rename_session()` (S-037: BC-2.08.005/BC-2.08.008 PC-4a).
+    display_name: String,
     /// Absolute kill deadline (Some only when state == Terminating).
     kill_deadline: Option<std::time::Instant>,
     /// True when session-host detected missing critical env vars (HOME, PATH).
@@ -754,6 +769,7 @@ impl SessionManager {
             harness_id: "claude-code".to_string(),
             profile_id: "default".to_string(),
             started_at: chrono::Utc::now(),
+            display_name: "claude-code — test-project".to_string(),
             kill_deadline: None,
             degraded: false,
             degraded_reason: None,
@@ -817,6 +833,7 @@ impl SessionManager {
             harness_id: "claude-code".to_string(),
             profile_id: "default".to_string(),
             started_at: chrono::Utc::now(),
+            display_name: "claude-code — test-project".to_string(),
             kill_deadline: None,
             degraded: false,
             degraded_reason: None,
@@ -868,6 +885,7 @@ impl SessionManager {
             harness_id: "claude-code".to_string(),
             profile_id: "default".to_string(),
             started_at: chrono::Utc::now(),
+            display_name: "claude-code — test-project".to_string(),
             kill_deadline: Some(kill_deadline),
             degraded: false,
             degraded_reason: None,
@@ -913,6 +931,7 @@ impl SessionManager {
             harness_id: "claude-code".to_string(),
             profile_id: "default".to_string(),
             started_at: chrono::Utc::now(),
+            display_name: "claude-code — test-project".to_string(),
             kill_deadline: None,
             degraded: false,
             degraded_reason: None,
@@ -1096,6 +1115,7 @@ impl SessionManager {
                 harness_id: opts.harness_id.clone(),
                 profile_id: opts.profile_id.clone(),
                 started_at,
+                display_name: display_name.clone(),
                 kill_deadline: None,
                 degraded: false,
                 degraded_reason: None,
@@ -1123,7 +1143,7 @@ impl SessionManager {
                             SessionStatus::Stopped
                         }
                     };
-                    EnrichedSession::new(
+                    EnrichedSession::new_with_display_name(
                         e.session_id.clone(),
                         e.harness_id.clone(),
                         None,
@@ -1137,6 +1157,7 @@ impl SessionManager {
                         Some(e.started_at),
                         0,
                         None,
+                        e.display_name.clone(),
                     )
                 })
                 .collect()
@@ -1836,7 +1857,7 @@ impl SessionManager {
                         }
                         _ => SessionStatus::Stopped,
                     };
-                    EnrichedSession::new(
+                    EnrichedSession::new_with_display_name(
                         e.session_id.clone(),
                         e.harness_id.clone(),
                         None,
@@ -1850,6 +1871,7 @@ impl SessionManager {
                         Some(e.started_at),
                         0,
                         None,
+                        e.display_name.clone(),
                     )
                 })
                 .collect();
@@ -1928,7 +1950,9 @@ impl SessionManager {
     ///
     /// (BC-2.08.003 PC-4, BC-2.08.008 Invariant 4)
     async fn transition_to_terminated(&self, session_id: &str, sidecar_path: &PathBuf) {
-        {
+        // Capture socket_path from the entry for GC wiring (S-037: BC-2.08.005).
+        // Must be extracted inside the lock before releasing it.
+        let socket_path_for_gc: Option<std::path::PathBuf> = {
             use monocle_core::engine::{EnrichedSession, SessionStatus};
             let mut guard = self.sessions.lock().await;
 
@@ -1941,6 +1965,9 @@ impl SessionManager {
                 entry.kill_deadline = None;
             }
 
+            // Capture socket_path for GC (S-037).
+            let socket_path = guard.get(session_id).map(|e| e.session_host_socket.clone());
+
             let list_snapshot: Vec<EnrichedSession> = guard
                 .values()
                 .map(|e| {
@@ -1952,7 +1979,7 @@ impl SessionManager {
                         }
                         _ => SessionStatus::Stopped,
                     };
-                    EnrichedSession::new(
+                    EnrichedSession::new_with_display_name(
                         e.session_id.clone(),
                         e.harness_id.clone(),
                         None,
@@ -1966,6 +1993,7 @@ impl SessionManager {
                         Some(e.started_at),
                         0,
                         None,
+                        e.display_name.clone(),
                     )
                 })
                 .collect();
@@ -1982,7 +2010,8 @@ impl SessionManager {
             };
             crate::ipc_server::broadcast_to_subscribers(&self.broker, list_msg).await;
             // lock released here
-        }
+            socket_path
+        };
 
         // Update sidecar state → Terminated outside the lock.
         if let Ok(existing_json) = std::fs::read_to_string(sidecar_path) {
@@ -1993,6 +2022,18 @@ impl SessionManager {
                     Self::atomic_sidecar_write(sidecar_path, &updated_bytes, session_id);
                 }
             }
+        }
+
+        // S-037 (BC-2.08.005): Start 10s GC task at FIRST Terminated transition.
+        // socket_path_for_gc is None only if the session was already removed (idempotent return above).
+        if let Some(socket_path) = socket_path_for_gc {
+            Self::spawn_gc_task(
+                session_id.to_string(),
+                sidecar_path.clone(),
+                socket_path,
+                Arc::clone(&self.sessions),
+                Arc::clone(&self.broker),
+            );
         }
     }
 
@@ -2069,7 +2110,7 @@ impl SessionManager {
         sessions: Arc<tokio::sync::Mutex<std::collections::HashMap<String, SessionEntry>>>,
         broker: Arc<monocle_ipc::server::SubscriberList>,
         sidecar_path: std::path::PathBuf,
-        _socket_path: std::path::PathBuf,
+        socket_path: std::path::PathBuf,
         // Pre-computed deadline from kill_session() — synchronized with SessionEntry.kill_deadline
         // (MED-005: single originating instant, not independent now+12s inside the watchdog task).
         // Using sleep_until with this pre-computed Instant ensures paused-clock tests work correctly.
@@ -2263,7 +2304,7 @@ impl SessionManager {
                             }
                             _ => SessionStatus::Stopped,
                         };
-                        EnrichedSession::new(
+                        EnrichedSession::new_with_display_name(
                             e.session_id.clone(),
                             e.harness_id.clone(),
                             None,
@@ -2277,6 +2318,7 @@ impl SessionManager {
                             Some(e.started_at),
                             0,
                             None,
+                            e.display_name.clone(),
                         )
                     })
                     .collect();
@@ -2309,6 +2351,16 @@ impl SessionManager {
                     }
                 }
             }
+
+            // Start 10s GC grace period (BC-2.08.005 PC-1 / AC-001).
+            // GC task deletes sidecar + socket after 10s (ENOENT-tolerant).
+            SessionManager::spawn_gc_task(
+                session_id.clone(),
+                sidecar_path.clone(),
+                socket_path.clone(),
+                Arc::clone(&sessions),
+                Arc::clone(&broker),
+            );
         })
     }
 
@@ -2324,19 +2376,387 @@ impl SessionManager {
         todo!("S-033 (S-035 scope): implement attach_session()")
     }
 
-    /// Rename a session (updates display_name in sidecar; publishes SessionListUpdate).
+    /// Rename a session — updates `display_name` in the sidecar and publishes
+    /// `SessionListUpdate` (NOT `SessionStateChanged`).
     ///
-    /// Full implementation is S-037 scope. This stub returns Ok(()) without emitting
-    /// SessionStateChanged (per BC-2.08.008 PC-4a — rename does NOT emit state-changed).
-    /// S-037 will add: sidecar update + SessionListUpdate broadcast.
+    /// Per BC-2.08.005 Invariant 4 / BC-2.08.008 PC-4a:
+    /// - Rename on a `Terminated`-in-grace session returns
+    ///   `Err(SessionError::InvalidSessionName { reason: "session terminated" })`
+    ///   (wire code `"rename_failed"`).
+    /// - Rename on any non-Terminated session updates `display_name` in the in-memory
+    ///   `SessionEntry`, rewrites the sidecar atomically via `tempfile::persist`, and
+    ///   emits `SessionListUpdate` only — MUST NOT emit `SessionStateChanged`.
+    /// - Returns `Err(SessionError::SessionNotFound)` if `session_id` is unknown.
+    ///
+    /// **Guard ordering (SEC-001 / SEC-002 defense-in-depth):**
+    /// 1. UUID format guard — `session_id` must be a valid UUID before any path is
+    ///    constructed (CWE-706; mirrors `spawn_session`'s SEC-003 guard).
+    /// 2. `new_name` validation — reject empty names, names exceeding
+    ///    `MAX_DISPLAY_NAME_BYTES` (256 bytes), and names containing control
+    ///    characters (including NUL `\x00`), path separators (`/`, `\`), or newlines
+    ///    (`\n`, `\r`) (CWE-20; applied before any in-memory mutation or sidecar I/O).
+    /// 3. Registry lookup → Terminated guard → SessionNotFound check.
+    /// 4. In-memory mutation → sidecar write → broadcast.
+    ///
+    /// **Ordering (F-S037-P2-004):**
+    /// update display_name (in memory) → write sidecar → publish SessionListUpdate.
+    /// If the sidecar write fails, the in-memory rename is reverted and
+    /// `Err(SessionError::SidecarWriteFailed)` is returned — the broadcast is NOT
+    /// sent, so clients never observe a success they cannot rely on.
+    ///
+    /// Implemented in S-037.
     pub async fn rename_session(
         &mut self,
-        _session_id: &str,
-        _new_name: String,
+        session_id: &str,
+        new_name: String,
     ) -> Result<(), SessionError> {
-        // S-037 scope: full implementation (sidecar update + SessionListUpdate) deferred.
-        // This stub satisfies BC-2.08.008 PC-4a: rename MUST NOT emit SessionStateChanged.
+        use monocle_core::engine::{EnrichedSession, SessionStatus};
+
+        // SEC-002 (CWE-706): UUID format guard — defense-in-depth, mirrors spawn_session
+        // SEC-003. Even though the registry get_mut implicitly requires the session to
+        // exist, an explicit UUID check BEFORE constructing the sidecar path prevents
+        // path-traversal injection from a malformed session_id string (e.g. "../evil").
+        // This guard fires before any file I/O or state mutation.
+        if uuid::Uuid::parse_str(session_id).is_err() {
+            return Err(SessionError::SessionNotFound {
+                session_id: session_id.to_string(),
+            });
+        }
+
+        // SEC-001 (CWE-20): validate new_name before any in-memory mutation or sidecar
+        // write. Mirrors spawn_session's validation philosophy: fail fast, before any
+        // side effect. Rules applied:
+        //   1. Empty name — display_name of "" is meaningless in the TUI.
+        //   2. Exceeds MAX_DISPLAY_NAME_BYTES (256) — prevents unbounded sidecar growth
+        //      and TUI panel overflow. Spec: SS-session-manager.md §SessionError taxonomy
+        //      ("name exceeding length limit"); exact bound not specified, production-grade
+        //      default of 256 bytes chosen to match UI display constraints.
+        //   3. Control characters (bytes 0x00–0x1F, 0x7F) — NUL injection, terminal
+        //      escape injection, and JSON serialization hazard.
+        //   4. Path separators ('/', '\') — defense-in-depth against CWE-22 if the name
+        //      were ever used in a file-system context.
+        //   5. Newlines ('\n', '\r') — log injection and multi-line display corruption.
+        //      (Note: '\n' and '\r' are already caught by the control-char check; listed
+        //      explicitly for documentation clarity.)
+        if new_name.is_empty() {
+            return Err(SessionError::InvalidSessionName {
+                reason: "name must not be empty".to_string(),
+            });
+        }
+        if new_name.len() > MAX_DISPLAY_NAME_BYTES {
+            return Err(SessionError::InvalidSessionName {
+                reason: format!(
+                    "name exceeds {MAX_DISPLAY_NAME_BYTES}-byte limit ({} bytes)",
+                    new_name.len()
+                ),
+            });
+        }
+        if new_name.chars().any(|c| {
+            c.is_control()        // catches NUL, newline, carriage-return, tab, ESC, …
+                || c == '/'
+                || c == '\\'
+        }) {
+            return Err(SessionError::InvalidSessionName {
+                reason: "name contains forbidden character (control char, '/', or '\\')"
+                    .to_string(),
+            });
+        }
+
+        let sidecar_path = self
+            .runtime_dir
+            .join(format!("session-{}.json", session_id));
+
+        // Step 1: save prior name, update display_name in memory, build snapshot.
+        // All under the sessions lock.
+        let (prior_name, list_snapshot): (String, Vec<EnrichedSession>) = {
+            let mut guard = self.sessions.lock().await;
+
+            // Single get_mut covers not-found + Terminated guard + update in one map lookup.
+            let prior_name = match guard.get_mut(session_id) {
+                None => {
+                    return Err(SessionError::SessionNotFound {
+                        session_id: session_id.to_string(),
+                    });
+                }
+                Some(entry) if entry.state == SessionState::Terminated => {
+                    // Terminated guard: BC-2.08.005 Invariant 4 / F-P52-001.
+                    return Err(SessionError::InvalidSessionName {
+                        reason: "session terminated".to_string(),
+                    });
+                }
+                Some(entry) => {
+                    let prior = entry.display_name.clone();
+                    // Update display_name in-memory entry.
+                    entry.display_name = new_name.clone();
+                    prior
+                }
+            };
+
+            // Build snapshot while holding lock (consistent with updated display_name).
+            let snapshot = guard
+                .values()
+                .map(|e| {
+                    let status = match e.state {
+                        SessionState::Launching | SessionState::Running => SessionStatus::Active,
+                        SessionState::Detached => SessionStatus::Idle,
+                        SessionState::Terminating | SessionState::Terminated => {
+                            SessionStatus::Stopped
+                        }
+                        _ => SessionStatus::Stopped,
+                    };
+                    // BC-2.08.008 PC-4a: broadcast MUST carry the full SessionSnapshot
+                    // including the new display_name — use new_with_display_name so the
+                    // renamed session's display_name is present in the wire payload.
+                    EnrichedSession::new_with_display_name(
+                        e.session_id.clone(),
+                        e.harness_id.clone(),
+                        None,
+                        None,
+                        status,
+                        None,
+                        e.project_root
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .map(|s| s.to_string()),
+                        Some(e.started_at),
+                        0,
+                        None,
+                        e.display_name.clone(),
+                    )
+                })
+                .collect();
+            // sessions lock released here
+            (prior_name, snapshot)
+        };
+
+        // Step 2 (F-S037-P2-004): write sidecar BEFORE broadcasting.
+        // On failure: revert in-memory display_name and return Err — do NOT broadcast
+        // success to clients that cannot rely on it.
+        let sidecar_write_result: Result<(), SessionError> = (|| {
+            let existing_json = std::fs::read_to_string(&sidecar_path).map_err(|e| {
+                SessionError::SidecarWriteFailed {
+                    path: sidecar_path.to_string_lossy().into_owned(),
+                    reason: format!("could not read sidecar for rename update: {e}"),
+                }
+            })?;
+            let mut val =
+                serde_json::from_str::<serde_json::Value>(&existing_json).map_err(|e| {
+                    SessionError::SidecarWriteFailed {
+                        path: sidecar_path.to_string_lossy().into_owned(),
+                        reason: format!("could not parse sidecar JSON for rename update: {e}"),
+                    }
+                })?;
+            val["display_name"] = serde_json::json!(new_name);
+            let updated_bytes =
+                serde_json::to_vec_pretty(&val).map_err(|e| SessionError::SidecarWriteFailed {
+                    path: sidecar_path.to_string_lossy().into_owned(),
+                    reason: format!("failed to serialize sidecar rename update: {e}"),
+                })?;
+            let dir = sidecar_path
+                .parent()
+                .ok_or_else(|| SessionError::SidecarWriteFailed {
+                    path: sidecar_path.to_string_lossy().into_owned(),
+                    reason: "sidecar path has no parent directory".to_string(),
+                })?;
+            let mut tmp = tempfile::Builder::new()
+                .prefix(".session-sidecar-rename-")
+                .suffix(".json.tmp")
+                .tempfile_in(dir)
+                .map_err(|e| SessionError::SidecarWriteFailed {
+                    path: sidecar_path.to_string_lossy().into_owned(),
+                    reason: format!("tempfile creation failed for rename: {e}"),
+                })?;
+            use std::io::Write as _;
+            tmp.write_all(&updated_bytes)
+                .map_err(|e| SessionError::SidecarWriteFailed {
+                    path: sidecar_path.to_string_lossy().into_owned(),
+                    reason: format!("write to tempfile failed for rename: {e}"),
+                })?;
+            tmp.persist(&sidecar_path)
+                .map_err(|e| SessionError::SidecarWriteFailed {
+                    path: sidecar_path.to_string_lossy().into_owned(),
+                    reason: format!("tempfile persist failed for rename: {}", e.error),
+                })?;
+            Ok(())
+        })();
+
+        if let Err(write_err) = sidecar_write_result {
+            // Revert in-memory display_name — the sidecar was not updated, so the
+            // rename did not durably succeed.  Do NOT broadcast a success event.
+            tracing::warn!(
+                session_id = %session_id,
+                error = %write_err,
+                prior_name = %prior_name,
+                "rename_session: sidecar write failed; reverting in-memory display_name"
+            );
+            let mut guard = self.sessions.lock().await;
+            if let Some(entry) = guard.get_mut(session_id) {
+                entry.display_name = prior_name;
+            }
+            return Err(write_err);
+        }
+
+        // Step 3: broadcast SessionListUpdate ONLY — MUST NOT emit SessionStateChanged
+        // (BC-2.08.008 PC-4a: rename is a metadata operation, not a state transition).
+        let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
+            sessions: list_snapshot,
+        };
+        crate::ipc_server::broadcast_to_subscribers(&self.broker, list_msg).await;
+
         Ok(())
+    }
+
+    /// Spawn a per-session GC tokio task that removes the `SessionEntry` from the
+    /// registry, deletes the `session-state.json` sidecar, deletes the per-session UDS
+    /// socket file, and publishes `SessionListUpdate` — all after a 10-second grace
+    /// period beginning when the session FIRST transitions to `Terminated`.
+    ///
+    /// Called at every `Terminated` transition point:
+    /// - `kill_session()` confirmation path (via `kill_confirm_monitor` or watchdog).
+    /// - `post_spawn_monitor` startup-failure path.
+    /// - Re-discovery alive-then-dead paths.
+    ///
+    /// Per BC-2.08.005:
+    /// - GC timer starts at FIRST `Terminated` transition; re-transition MUST NOT reset it.
+    /// - `std::fs::remove_file` tolerates ENOENT for both sidecar and socket paths.
+    /// - `SessionListUpdate` is published UNDER the sessions mutex BEFORE releasing it,
+    ///   so TUI clients see an atomic list without the GC'd session.
+    /// - NO `SessionStateChanged` is emitted by the GC task (already emitted at Terminated
+    ///   transition by kill_confirm_monitor / watchdog / post_spawn_monitor).
+    fn spawn_gc_task(
+        session_id: String,
+        sidecar_path: std::path::PathBuf,
+        socket_path: std::path::PathBuf,
+        sessions: Arc<tokio::sync::Mutex<std::collections::HashMap<String, SessionEntry>>>,
+        broker: Arc<monocle_ipc::server::SubscriberList>,
+    ) -> tokio::task::JoinHandle<()> {
+        // Pre-compute the GC deadline here (synchronous context) so that the
+        // `sleep_until` inside the spawned task registers a timer at the correct
+        // virtual-time instant. With tokio's paused-clock tests (start_paused = true),
+        // computing the deadline BEFORE spawn ensures `advance(10s)` fires it
+        // reliably — even if the spawned task hasn't been polled yet when advance()
+        // is called (matching the pattern used by spawn_kill_watchdog / MED-005).
+        let gc_deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(10);
+
+        tokio::spawn(async move {
+            // BC-2.08.005: 10-second grace period (sleep_until uses pre-computed deadline).
+            tokio::time::sleep_until(gc_deadline).await;
+
+            // Under the sessions mutex: remove entry and publish SessionListUpdate atomically.
+            {
+                use monocle_core::engine::{EnrichedSession, SessionStatus};
+                let mut guard = sessions.lock().await;
+
+                // Defensive check: session must still be present and still Terminated.
+                // Guards against session_id reuse (astronomically unlikely) and double-GC.
+                match guard.get(&session_id) {
+                    Some(entry) if entry.state == SessionState::Terminated => {
+                        guard.remove(&session_id);
+                    }
+                    _ => {
+                        // Session already removed or changed state — nothing to GC.
+                        tracing::trace!(
+                            session_id = %session_id,
+                            "spawn_gc_task: session not present or not Terminated at GC time; skipping"
+                        );
+                        return;
+                    }
+                }
+
+                // Build snapshot after removal (GC'd session must NOT appear in list).
+                let list_snapshot: Vec<EnrichedSession> = guard
+                    .values()
+                    .map(|e| {
+                        let status = match e.state {
+                            SessionState::Launching | SessionState::Running => {
+                                SessionStatus::Active
+                            }
+                            SessionState::Detached => SessionStatus::Idle,
+                            SessionState::Terminating | SessionState::Terminated => {
+                                SessionStatus::Stopped
+                            }
+                            _ => SessionStatus::Stopped,
+                        };
+                        EnrichedSession::new_with_display_name(
+                            e.session_id.clone(),
+                            e.harness_id.clone(),
+                            None,
+                            None,
+                            status,
+                            None,
+                            e.project_root
+                                .file_name()
+                                .and_then(|n| n.to_str())
+                                .map(|s| s.to_string()),
+                            Some(e.started_at),
+                            0,
+                            None,
+                            e.display_name.clone(),
+                        )
+                    })
+                    .collect();
+
+                // Publish SessionListUpdate UNDER the mutex (BC-2.08.005 Architecture Compliance).
+                // NO SessionStateChanged — already emitted at Terminated transition.
+                let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
+                    sessions: list_snapshot,
+                };
+                crate::ipc_server::broadcast_to_subscribers(&broker, list_msg).await;
+                // sessions lock released here
+            }
+
+            // After mutex release: delete sidecar and socket (best-effort; ENOENT ok).
+            // BC-2.08.005 AC-008: use std::fs::remove_file; ENOENT is not an error.
+            match std::fs::remove_file(&sidecar_path) {
+                Ok(()) => {
+                    tracing::trace!(
+                        session_id = %session_id,
+                        path = %sidecar_path.display(),
+                        "spawn_gc_task: sidecar deleted"
+                    );
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                    tracing::trace!(
+                        session_id = %session_id,
+                        path = %sidecar_path.display(),
+                        "spawn_gc_task: sidecar already absent (ENOENT) — EC-174, no error"
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        session_id = %session_id,
+                        path = %sidecar_path.display(),
+                        error = %e,
+                        "spawn_gc_task: unexpected error deleting sidecar (non-ENOENT)"
+                    );
+                }
+            }
+            // AC-003: best-effort socket file deletion.
+            match std::fs::remove_file(&socket_path) {
+                Ok(()) => {
+                    tracing::trace!(
+                        session_id = %session_id,
+                        path = %socket_path.display(),
+                        "spawn_gc_task: socket file deleted"
+                    );
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                    tracing::trace!(
+                        session_id = %session_id,
+                        path = %socket_path.display(),
+                        "spawn_gc_task: socket file already absent (ENOENT)"
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        session_id = %session_id,
+                        path = %socket_path.display(),
+                        error = %e,
+                        "spawn_gc_task: unexpected error deleting socket file (non-ENOENT)"
+                    );
+                }
+            }
+        })
     }
 
     /// Resize the PTY for a session.
@@ -2373,15 +2793,11 @@ impl SessionManager {
             .await
             .values()
             .map(|entry| {
-                let display_name = format!(
-                    "{} — {}",
-                    entry.harness_id,
-                    entry
-                        .project_root
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("unknown")
-                );
+                // F-S037-P3-001/P3-003: read the authoritative stored display_name so that
+                // renames survive reconnects (BC-2.08.008 PC-4a).  The default name is set
+                // once at spawn time (spawn_session line ~1001) and updated by rename_session;
+                // session_list() must never recompute it from harness_id + basename.
+                let display_name = entry.display_name.clone();
                 monocle_ipc::types::SessionSnapshot::new(
                     entry.session_id.clone(),
                     entry.harness_id.clone(),
@@ -2505,7 +2921,7 @@ async fn post_spawn_monitor(
                         }
                         _ => SessionStatus::Stopped,
                     };
-                    EnrichedSession::new(
+                    EnrichedSession::new_with_display_name(
                         entry.session_id.clone(),
                         entry.harness_id.clone(),
                         None,
@@ -2520,6 +2936,7 @@ async fn post_spawn_monitor(
                         Some(entry.started_at),
                         0,
                         None,
+                        entry.display_name.clone(),
                     )
                 })
                 .collect();
@@ -2535,8 +2952,19 @@ async fn post_spawn_monitor(
             crate::ipc_server::broadcast_to_subscribers(&broker, list_msg).await;
             // sessions lock released here — both try_send calls completed atomically.
         }
-        // GC the sidecar after releasing the sessions lock (no mutex needed for fs ops).
+        // EC-163: delete sidecar immediately (security cleanup — no grace period for
+        // impersonated connections).
         let _ = std::fs::remove_file(&sidecar_path);
+        // S-037 (BC-2.08.005 PC-1): Start 10s GC task to remove session from registry and
+        // publish SessionListUpdate after grace period (sidecar already deleted above;
+        // spawn_gc_task remove_file ENOENT is non-fatal).
+        SessionManager::spawn_gc_task(
+            session_id.clone(),
+            sidecar_path.clone(),
+            socket_path.clone(),
+            Arc::clone(&sessions),
+            Arc::clone(&broker),
+        );
         return;
     }
 
@@ -2712,22 +3140,22 @@ async fn post_spawn_monitor(
                         // Transition state and collect all daemon-owned fields.
                         let fields = if let Some(entry) = guard.get_mut(&session_id) {
                             entry.state = SessionState::Running;
-                            let dn = format!(
-                                "{} — {}",
-                                entry.harness_id,
-                                entry
-                                    .project_root
-                                    .file_name()
-                                    .and_then(|n| n.to_str())
-                                    .unwrap_or("unknown")
-                            );
+                            // F-S037-P2-001: Use the STORED entry.display_name (which may have
+                            // been updated by rename_session() while in Launching state) rather
+                            // than recomputing it from harness_id + basename.  The stored value
+                            // is always valid because spawn_session() initialises it to the
+                            // default "<harness_id> — <basename>" string at spawn time.
+                            // Recomputing here would clobber any rename that happened between
+                            // spawn and Running transition, losing the rename on the next daemon
+                            // restart (re-discovery reads the sidecar).
+                            let authoritative_display_name = entry.display_name.clone();
                             Some((
                                 entry.project_root.to_string_lossy().into_owned(),
                                 entry.cwd.to_string_lossy().into_owned(),
                                 entry.harness_id.clone(),
                                 entry.profile_id.clone(),
                                 entry.started_at.to_rfc3339(),
-                                dn,
+                                authoritative_display_name,
                                 entry.session_host_pid,
                             ))
                         } else {
@@ -2769,7 +3197,7 @@ async fn post_spawn_monitor(
                                         SessionStatus::Stopped
                                     }
                                 };
-                                EnrichedSession::new(
+                                EnrichedSession::new_with_display_name(
                                     entry.session_id.clone(),
                                     entry.harness_id.clone(),
                                     None,
@@ -2784,6 +3212,7 @@ async fn post_spawn_monitor(
                                     Some(entry.started_at),
                                     0,
                                     None,
+                                    entry.display_name.clone(),
                                 )
                             })
                             .collect();
@@ -3053,7 +3482,8 @@ async fn transition_to_terminated_standalone(
     broker: &Arc<monocle_ipc::server::SubscriberList>,
     sidecar_path: &PathBuf,
 ) {
-    {
+    // Capture socket_path for GC wiring (S-037: BC-2.08.005).
+    let socket_path_for_gc: Option<std::path::PathBuf> = {
         use monocle_core::engine::{EnrichedSession, SessionStatus};
         let mut guard = sessions.lock().await;
 
@@ -3070,6 +3500,9 @@ async fn transition_to_terminated_standalone(
             return;
         }
 
+        // Capture socket_path for GC (S-037) — session was just transitioned, so entry exists.
+        let socket_path = guard.get(session_id).map(|e| e.session_host_socket.clone());
+
         let list_snapshot: Vec<EnrichedSession> = guard
             .values()
             .map(|e| {
@@ -3079,7 +3512,7 @@ async fn transition_to_terminated_standalone(
                     SessionState::Terminating | SessionState::Terminated => SessionStatus::Stopped,
                     _ => SessionStatus::Stopped,
                 };
-                EnrichedSession::new(
+                EnrichedSession::new_with_display_name(
                     e.session_id.clone(),
                     e.harness_id.clone(),
                     None,
@@ -3093,6 +3526,7 @@ async fn transition_to_terminated_standalone(
                     Some(e.started_at),
                     0,
                     None,
+                    e.display_name.clone(),
                 )
             })
             .collect();
@@ -3109,7 +3543,8 @@ async fn transition_to_terminated_standalone(
         };
         crate::ipc_server::broadcast_to_subscribers(broker, list_msg).await;
         // lock released here
-    }
+        socket_path
+    };
 
     // Update sidecar → Terminated.
     if let Ok(existing_json) = std::fs::read_to_string(sidecar_path) {
@@ -3120,6 +3555,17 @@ async fn transition_to_terminated_standalone(
                 SessionManager::atomic_sidecar_write(sidecar_path, &updated_bytes, session_id);
             }
         }
+    }
+
+    // S-037 (BC-2.08.005): Start 10s GC task at FIRST Terminated transition.
+    if let Some(socket_path) = socket_path_for_gc {
+        SessionManager::spawn_gc_task(
+            session_id.to_string(),
+            sidecar_path.clone(),
+            socket_path,
+            Arc::clone(sessions),
+            Arc::clone(broker),
+        );
     }
 }
 
@@ -6890,6 +7336,1783 @@ mod tests {
             state_changed_idx.unwrap(),
             list_update_idx.unwrap(),
             broadcasts
+        );
+    }
+
+    // =======================================================================
+    // BC-2.08.005 — Session GC task: Terminated sessions removed after 10s
+    //               grace period; rename_session() guards.
+    // =======================================================================
+
+    // -----------------------------------------------------------------------
+    // Test 1 of 5: GC removes entry + sidecar + publishes SessionListUpdate
+    // after 10-second grace period (AC-001, AC-002, AC-004, AC-006)
+    // -----------------------------------------------------------------------
+
+    /// Verifies BC-2.08.005 postconditions 1–2 and 4: after a session transitions
+    /// to `Terminated`, the GC task fires at 10 seconds (virtual time), removes the
+    /// `SessionEntry` from the registry, deletes the sidecar file, and publishes
+    /// a `SessionListUpdate` to connected TUI clients.
+    ///
+    /// AC-003 (socket file deletion) is covered inline: a socket path file is
+    /// created alongside the sidecar and asserted absent after GC fires.
+    ///
+    /// Wall clock is NOT used. `start_paused = true` freezes tokio's virtual clock;
+    /// `tokio::time::advance(10s)` triggers the GC sleep without real-time delay
+    /// (BC-5.38.001 Red Gate discipline / story task requirement).
+    #[tokio::test(start_paused = true)]
+    async fn test_BC_2_08_005_terminated_session_gc_after_10s() {
+        let tmp = tempfile::Builder::new()
+            .tempdir_in("/tmp")
+            .expect("gc_after_10s: tempdir in /tmp");
+
+        let session_id = "00000000-0537-4000-a000-000000000001".to_string();
+        let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+        let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
+
+        // Write a minimal sidecar file so GC can delete it.
+        {
+            use std::io::Write as _;
+            let mut f = std::fs::File::create(&sidecar_path).expect("gc_after_10s: create sidecar");
+            f.write_all(b"{\"schema_version\":3,\"session_id\":\"placeholder\"}")
+                .expect("gc_after_10s: write sidecar");
+        }
+        // Create a dummy socket file so GC can delete it (AC-003 best-effort).
+        {
+            use std::io::Write as _;
+            let mut f =
+                std::fs::File::create(&socket_path).expect("gc_after_10s: create socket file");
+            f.write_all(b"").expect("gc_after_10s: write socket file");
+        }
+
+        assert!(
+            sidecar_path.exists(),
+            "precondition: sidecar must exist before GC"
+        );
+        assert!(
+            socket_path.exists(),
+            "precondition: socket file must exist before GC"
+        );
+
+        // Build a manager with a subscriber so we can capture SessionListUpdate.
+        let (tx, mut rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry = ClientEntry::new(tx);
+        let subs: SubscriberList = Arc::new(Mutex::new(vec![entry]));
+        let broker = make_broker(&subs);
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 10_001,
+        });
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+        let manager =
+            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+
+        // Insert a Terminated session entry directly (test seam).
+        manager
+            .insert_terminated_session_for_test(&session_id, 10_001u32, socket_path.clone())
+            .await;
+
+        // Confirm session is in registry before GC fires.
+        {
+            let guard = manager.sessions.lock().await;
+            assert!(
+                guard.contains_key(&session_id),
+                "BC-2.08.005 precondition: session must be in registry before GC"
+            );
+        }
+
+        // Spawn the GC task (implemented in S-037).
+        let _gc_handle = SessionManager::spawn_gc_task(
+            session_id.clone(),
+            sidecar_path.clone(),
+            socket_path.clone(),
+            Arc::clone(&manager.sessions),
+            Arc::clone(&manager.broker),
+        );
+
+        // Advance virtual time by exactly 10 seconds to fire the GC sleep.
+        tokio::time::advance(std::time::Duration::from_secs(10)).await;
+
+        // Give the spawned task a chance to run after time advance.
+        // timeout_at with Instant::now() (which is now 10s ahead) forces a yield.
+        let _ = tokio::time::timeout(
+            std::time::Duration::from_millis(50),
+            tokio::task::yield_now(),
+        )
+        .await;
+
+        // BC-2.08.005 PC-1: SessionEntry must be removed from registry.
+        {
+            let guard = manager.sessions.lock().await;
+            assert!(
+                !guard.contains_key(&session_id),
+                "BC-2.08.005 PC-1 (AC-001): SessionEntry must be removed from registry \
+                 after 10s GC; session {} still present",
+                session_id
+            );
+        }
+
+        // BC-2.08.005 PC-2 (AC-002): sidecar must be deleted.
+        assert!(
+            !sidecar_path.exists(),
+            "BC-2.08.005 PC-2 (AC-002): session-state.json must be deleted by GC; \
+             path {:?} still exists",
+            sidecar_path
+        );
+
+        // BC-2.08.005 PC-3 (AC-003): socket file must be deleted (best-effort).
+        assert!(
+            !socket_path.exists(),
+            "BC-2.08.005 PC-3 (AC-003): per-session UDS socket file must be deleted by GC \
+             (best-effort); path {:?} still exists",
+            socket_path
+        );
+
+        // BC-2.08.005 PC-4 (AC-004): SessionListUpdate must be published.
+        // Drain the channel with a short deadline.
+        let mut broadcasts: Vec<ServerToClient> = Vec::new();
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(100);
+            while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                broadcasts.push(msg);
+            }
+        }
+
+        let has_list_update = broadcasts
+            .iter()
+            .any(|m| matches!(m, ServerToClient::SessionListUpdate { .. }));
+        assert!(
+            has_list_update,
+            "BC-2.08.005 PC-4 (AC-004): GC task must publish SessionListUpdate to broker; \
+             broadcasts received: {:?}",
+            broadcasts
+        );
+
+        // BC-2.08.005 — GC task must NOT emit SessionStateChanged (it was already emitted
+        // at Terminated transition by kill_confirm_monitor/watchdog — see architecture note).
+        //
+        // F-S037-P2-003 fix: the insert_terminated_session_for_test seam inserts directly
+        // into the sessions map and emits NO broadcasts (see its implementation ~line 908-934).
+        // The GC task (spawn_gc_task) also must not emit SessionStateChanged per BC-2.08.005
+        // architecture note.  Therefore the absence of SessionStateChanged is fully assertable
+        // here — the previous comment claiming the seam "may have emitted one" was incorrect.
+        let has_session_state_changed = broadcasts
+            .iter()
+            .any(|m| matches!(m, ServerToClient::SessionStateChanged { .. }));
+        assert!(
+            !has_session_state_changed,
+            "BC-2.08.005 / F-S037-P2-003: neither insert_terminated_session_for_test nor \
+             spawn_gc_task may emit SessionStateChanged — the seam emits nothing; \
+             the GC task must not re-emit the state transition. \
+             broadcasts received: {:?}",
+            broadcasts
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Test 2 of 5: GC fires when sidecar already deleted — ENOENT is not an error
+    // (AC-011, EC-174, AC-008)
+    // -----------------------------------------------------------------------
+
+    /// Verifies BC-2.08.005 edge case EC-174 (AC-011, AC-008): if the sidecar is
+    /// already deleted (e.g., session-host cleaned it up on Goodbye) before the GC
+    /// task fires, `remove_file` returns ENOENT, which MUST NOT propagate as an error.
+    /// The GC task must still remove the registry entry and publish `SessionListUpdate`.
+    ///
+    /// The sidecar file is intentionally NOT created before `spawn_gc_task` is called.
+    #[tokio::test(start_paused = true)]
+    async fn test_BC_2_08_005_gc_sidecar_enoent_no_error() {
+        let tmp = tempfile::Builder::new()
+            .tempdir_in("/tmp")
+            .expect("gc_enoent: tempdir in /tmp");
+
+        let session_id = "00000000-0537-4000-a000-000000000002".to_string();
+        // sidecar_path intentionally does NOT exist — simulates session-host pre-deletion.
+        let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+        let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
+
+        // Neither sidecar nor socket exists.
+        assert!(
+            !sidecar_path.exists(),
+            "EC-174 precondition: sidecar must NOT exist (already deleted by session-host)"
+        );
+
+        let (tx, mut rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry = ClientEntry::new(tx);
+        let subs: SubscriberList = Arc::new(Mutex::new(vec![entry]));
+        let broker = make_broker(&subs);
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 10_002,
+        });
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+        let manager =
+            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+
+        manager
+            .insert_terminated_session_for_test(&session_id, 10_002u32, socket_path.clone())
+            .await;
+
+        // Spawn GC task — sidecar does not exist; ENOENT must be tolerated (AC-008).
+        let gc_handle = SessionManager::spawn_gc_task(
+            session_id.clone(),
+            sidecar_path.clone(),
+            socket_path.clone(),
+            Arc::clone(&manager.sessions),
+            Arc::clone(&manager.broker),
+        );
+
+        tokio::time::advance(std::time::Duration::from_secs(10)).await;
+
+        // GC task must not panic (ENOENT must be swallowed, not propagated).
+        let gc_result =
+            tokio::time::timeout(std::time::Duration::from_millis(200), gc_handle).await;
+        assert!(
+            gc_result.is_ok(),
+            "BC-2.08.005 EC-174 (AC-011): GC task must complete within deadline even when \
+             sidecar is absent (ENOENT) — task timed out or was not driven"
+        );
+        assert!(
+            gc_result.unwrap().is_ok(),
+            "BC-2.08.005 EC-174 (AC-008): GC task must not panic when sidecar is absent; \
+             remove_file ENOENT must be tolerated (use std::fs::remove_file, ignore ENOENT)"
+        );
+
+        // Registry entry must still be removed despite missing sidecar.
+        {
+            let guard = manager.sessions.lock().await;
+            assert!(
+                !guard.contains_key(&session_id),
+                "BC-2.08.005 EC-174: SessionEntry must be removed from registry even when \
+                 sidecar was already deleted; session {} still present",
+                session_id
+            );
+        }
+
+        // SessionListUpdate must still be published.
+        let mut broadcasts: Vec<ServerToClient> = Vec::new();
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(100);
+            while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                broadcasts.push(msg);
+            }
+        }
+        let has_list_update = broadcasts
+            .iter()
+            .any(|m| matches!(m, ServerToClient::SessionListUpdate { .. }));
+        assert!(
+            has_list_update,
+            "BC-2.08.005 EC-174 (AC-004): SessionListUpdate must still be published even \
+             when sidecar was already deleted; broadcasts: {:?}",
+            broadcasts
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Test 3 of 5: rename_session() on a Terminated-in-grace session returns
+    // Err(InvalidSessionName { reason: "session terminated" }) (AC-009, Inv 4)
+    // -----------------------------------------------------------------------
+
+    /// Verifies BC-2.08.005 Invariant 4 (AC-009): calling `rename_session()` on a
+    /// session that is in the `Terminated`-in-grace state (after transition but before
+    /// the 10-second GC fires) MUST return
+    /// `Err(SessionError::InvalidSessionName { reason: "session terminated" })`.
+    ///
+    /// Wire code mapping via `session_error_to_code()`:
+    /// `InvalidSessionName { .. }` → `"rename_failed"` (F-P52-001).
+    ///
+    /// Cross-story boundary note: AC-005 (TUI vt100 cleanup) is validated in SS-09
+    /// stories, not here. AC-007/AC-010 (re-discovery immediate GC) are in S-036.
+    #[tokio::test]
+    async fn test_BC_2_08_005_rename_on_terminated_fails() {
+        let tmp = tempfile::tempdir().expect("rename_on_terminated: tempdir");
+
+        let session_id = "00000000-0537-4000-a000-000000000003".to_string();
+        let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
+
+        let (tx, _rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry = ClientEntry::new(tx);
+        let subs: SubscriberList = Arc::new(Mutex::new(vec![entry]));
+        let broker = make_broker(&subs);
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 10_003,
+        });
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+        let mut manager = SessionManager::new(tmp.path().to_path_buf(), spawner, broker, engine);
+
+        // Insert session in Terminated state (the "in-grace" window: 0..10s after Terminated).
+        manager
+            .insert_terminated_session_for_test(&session_id, 10_003u32, socket_path.clone())
+            .await;
+
+        // Call rename_session() while the session is in Terminated state.
+        // BC-2.08.005 Invariant 4: MUST return Err(InvalidSessionName { reason: "session terminated" }).
+        let result = manager
+            .rename_session(&session_id, "Should Not Work".to_string())
+            .await;
+
+        assert!(
+            result.is_err(),
+            "BC-2.08.005 Inv 4 (AC-009): rename_session() on a Terminated session must return \
+             Err; got Ok(())"
+        );
+
+        let err = result.unwrap_err();
+        match &err {
+            SessionError::InvalidSessionName { reason } => {
+                assert_eq!(
+                    reason, "session terminated",
+                    "BC-2.08.005 Inv 4 (AC-009): InvalidSessionName reason must be \
+                     \"session terminated\"; got {:?}",
+                    reason
+                );
+            }
+            other => panic!(
+                "BC-2.08.005 Inv 4 (AC-009): expected Err(InvalidSessionName {{ reason: \
+                 \"session terminated\" }}), got {:?}",
+                other
+            ),
+        }
+
+        // Also verify wire code maps to "rename_failed" (F-P52-001).
+        let wire_code = session_error_to_code(IpcOp::Rename, &err);
+        assert_eq!(
+            wire_code, "rename_failed",
+            "BC-2.08.005 Inv 4 / session_error_to_code() (F-P52-001): InvalidSessionName \
+             must map to wire code \"rename_failed\"; got {:?}",
+            wire_code
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Test 4 of 5: two sessions terminate independently — no interference
+    // (AC-012, EC-175)
+    // -----------------------------------------------------------------------
+
+    /// Verifies BC-2.08.005 edge case EC-175 (AC-012): two independent GC tasks,
+    /// each with their own 10-second timer, fire independently. Session A terminates
+    /// at t=0, session B terminates ~1 second later; both are GC'd at their own
+    /// 10-second mark without interfering with each other.
+    ///
+    /// Uses virtual time (`start_paused = true`). After advancing 11 seconds, both
+    /// sessions must be gone from the registry.
+    #[tokio::test(start_paused = true)]
+    async fn test_BC_2_08_005_two_sessions_terminate_independently() {
+        let tmp = tempfile::Builder::new()
+            .tempdir_in("/tmp")
+            .expect("two_sessions: tempdir in /tmp");
+
+        let session_a = "00000000-0537-4000-a000-000000000004".to_string();
+        let session_b = "00000000-0537-4000-a000-000000000005".to_string();
+
+        let sidecar_a = tmp.path().join(format!("session-{}.json", session_a));
+        let sidecar_b = tmp.path().join(format!("session-{}.json", session_b));
+        let socket_a = tmp.path().join(format!("session-{}.sock", session_a));
+        let socket_b = tmp.path().join(format!("session-{}.sock", session_b));
+
+        // Create minimal sidecar files for both sessions.
+        for (path, id) in [(&sidecar_a, &session_a), (&sidecar_b, &session_b)] {
+            use std::io::Write as _;
+            let mut f = std::fs::File::create(path)
+                .unwrap_or_else(|e| panic!("two_sessions: create sidecar {}: {}", id, e));
+            f.write_all(b"{\"schema_version\":3}")
+                .unwrap_or_else(|e| panic!("two_sessions: write sidecar {}: {}", id, e));
+        }
+
+        let (tx, mut rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry = ClientEntry::new(tx);
+        let subs: SubscriberList = Arc::new(Mutex::new(vec![entry]));
+        let broker = make_broker(&subs);
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 10_004,
+        });
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+        let manager =
+            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+
+        // Insert both sessions in Terminated state.
+        manager
+            .insert_terminated_session_for_test(&session_a, 10_004u32, socket_a.clone())
+            .await;
+        manager
+            .insert_terminated_session_for_test(&session_b, 10_005u32, socket_b.clone())
+            .await;
+
+        // Both sessions are in registry.
+        {
+            let guard = manager.sessions.lock().await;
+            assert!(
+                guard.contains_key(&session_a),
+                "two_sessions: session_a must be in registry"
+            );
+            assert!(
+                guard.contains_key(&session_b),
+                "two_sessions: session_b must be in registry"
+            );
+        }
+
+        // Spawn GC task for session A at t=0.
+        let _gc_a = SessionManager::spawn_gc_task(
+            session_a.clone(),
+            sidecar_a.clone(),
+            socket_a.clone(),
+            Arc::clone(&manager.sessions),
+            Arc::clone(&manager.broker),
+        );
+
+        // Advance 1 second — simulate session B terminating 1 second after session A.
+        tokio::time::advance(std::time::Duration::from_secs(1)).await;
+
+        // Spawn GC task for session B at t=1s.
+        let _gc_b = SessionManager::spawn_gc_task(
+            session_b.clone(),
+            sidecar_b.clone(),
+            socket_b.clone(),
+            Arc::clone(&manager.sessions),
+            Arc::clone(&manager.broker),
+        );
+
+        // Advance to t=11s — both GC tasks should have fired (A at 10s, B at 11s).
+        tokio::time::advance(std::time::Duration::from_secs(10)).await;
+
+        // Give spawned tasks time to run.
+        let _ = tokio::time::timeout(
+            std::time::Duration::from_millis(100),
+            tokio::task::yield_now(),
+        )
+        .await;
+
+        // BC-2.08.005 EC-175 (AC-012): both sessions must be gone from registry.
+        {
+            let guard = manager.sessions.lock().await;
+            assert!(
+                !guard.contains_key(&session_a),
+                "BC-2.08.005 EC-175 (AC-012): session_a must be removed from registry \
+                 after 10s GC (spawned at t=0, fires at t=10s)"
+            );
+            assert!(
+                !guard.contains_key(&session_b),
+                "BC-2.08.005 EC-175 (AC-012): session_b must be removed from registry \
+                 after 10s GC (spawned at t=1s, fires at t=11s)"
+            );
+        }
+
+        // Both sidecars must be deleted.
+        assert!(
+            !sidecar_a.exists(),
+            "BC-2.08.005 EC-175: sidecar_a must be deleted by GC"
+        );
+        assert!(
+            !sidecar_b.exists(),
+            "BC-2.08.005 EC-175: sidecar_b must be deleted by GC"
+        );
+
+        // Two independent SessionListUpdate broadcasts must have been emitted
+        // (one for each GC task).
+        let mut list_update_count = 0usize;
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(100);
+            while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                if matches!(msg, ServerToClient::SessionListUpdate { .. }) {
+                    list_update_count += 1;
+                }
+            }
+        }
+        assert!(
+            list_update_count >= 2,
+            "BC-2.08.005 EC-175 (AC-012): two independent GC tasks must each publish a \
+             SessionListUpdate; got {} SessionListUpdate messages (expected >= 2)",
+            list_update_count
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Test 5 of 5: rename_session() on a Running session succeeds — updates
+    // display_name, sidecar written, SessionListUpdate published, NO
+    // SessionStateChanged emitted (BC-2.08.008 PC-4a; story note AC-013)
+    // -----------------------------------------------------------------------
+
+    /// Verifies BC-2.08.005 (rename happy path) and BC-2.08.008 PC-4a:
+    /// calling `rename_session()` on a session that is NOT in `Terminated` state must:
+    ///   1. Return `Ok(())`.
+    ///   2. Update the sidecar file with the new `display_name`.
+    ///   3. Publish `SessionListUpdate` to the broker.
+    ///   4. NOT emit `SessionStateChanged` (rename is metadata, not a state transition).
+    ///
+    /// NOTE — IPC arm: `ClientToServer::RenameSession` IPC handler dispatch is owned
+    /// by S-047 (BC-2.05.010). This test exercises `SessionManager::rename_session()`
+    /// directly, bypassing IPC wire dispatch (as specified in story Tasks section).
+    ///
+    /// Cross-story boundary note: AC-005 (TUI vt100 cleanup on receipt of SessionListUpdate
+    /// or SessionStateChanged::Terminated) is validated in SS-09 stories, not here.
+    /// AC-007/AC-010 (re-discovery immediate GC) are validated in S-036.
+    #[tokio::test]
+    async fn test_BC_2_08_005_rename_on_running_succeeds() {
+        let tmp = tempfile::tempdir().expect("rename_on_running: tempdir");
+
+        let (mut manager, _subs, mut rx) = make_manager_with_channel(tmp.path(), None);
+        let session_id = "00000000-0537-4000-a000-000000000006".to_string();
+
+        // Spawn a session so it exists in the registry in Launching state.
+        manager
+            .spawn_session(make_spawn_opts(&session_id))
+            .await
+            .expect("rename_on_running: spawn must succeed");
+
+        // Drain all messages generated by spawn (SpawnAck, SessionStateChanged{Launching},
+        // SessionListUpdate) before asserting rename behavior.
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+            loop {
+                match tokio::time::timeout_at(deadline, rx.recv()).await {
+                    Ok(Some(_)) => continue,
+                    _ => break,
+                }
+            }
+        }
+
+        // Call rename_session() — session is in Launching state (non-Terminated).
+        // BC-2.08.005 Inv 4 / BC-2.08.008 PC-4a: must return Ok(()), not an error.
+        let new_name = "My Renamed Session".to_string();
+        let result = manager.rename_session(&session_id, new_name.clone()).await;
+
+        assert!(
+            result.is_ok(),
+            "BC-2.08.005 / BC-2.08.008 PC-4a: rename_session() on a non-Terminated session \
+             must return Ok(()); got: {:?}",
+            result
+        );
+
+        // Collect all messages emitted by rename_session().
+        let mut rename_broadcasts: Vec<ServerToClient> = Vec::new();
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(100);
+            while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                rename_broadcasts.push(msg);
+            }
+        }
+
+        // BC-2.08.008 PC-4a: SessionStateChanged must NOT be emitted by rename.
+        let has_state_changed = rename_broadcasts
+            .iter()
+            .any(|m| matches!(m, ServerToClient::SessionStateChanged { .. }));
+        assert!(
+            !has_state_changed,
+            "BC-2.08.008 PC-4a: rename_session() must NOT emit SessionStateChanged; \
+             only SessionListUpdate is permitted. Broadcasts: {:?}",
+            rename_broadcasts
+        );
+
+        // BC-2.08.005 / BC-2.08.008 PC-4a: SessionListUpdate must be emitted.
+        let has_list_update = rename_broadcasts
+            .iter()
+            .any(|m| matches!(m, ServerToClient::SessionListUpdate { .. }));
+        assert!(
+            has_list_update,
+            "BC-2.08.005 / BC-2.08.008 PC-4a: rename_session() must emit SessionListUpdate; \
+             broadcasts: {:?}",
+            rename_broadcasts
+        );
+
+        // BC-2.08.005 / AC-002 analog: sidecar must be updated with new display_name.
+        // Verify by reading the sidecar file from disk.
+        let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+        assert!(
+            sidecar_path.exists(),
+            "rename_on_running: sidecar must still exist after rename (not deleted)"
+        );
+        let sidecar_content = std::fs::read_to_string(&sidecar_path)
+            .expect("rename_on_running: failed to read sidecar after rename");
+        assert!(
+            sidecar_content.contains(&new_name),
+            "BC-2.08.005 / BC-2.08.008 PC-4a: sidecar must be updated with the new \
+             display_name {:?} after rename_session(); sidecar content: {}",
+            new_name,
+            sidecar_content
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Test 6 of 6: F-S037-MED-001 — rename broadcast carries updated display_name
+    //
+    // Verifies that the `SessionListUpdate` payload emitted by `rename_session()`
+    // carries the NEW `display_name` for the renamed session, not the old empty
+    // string that the pre-fix `EnrichedSession::new()` constructor produced.
+    //
+    // Regression: before the S-037 fix the rename code called `EnrichedSession::new()`
+    // which unconditionally sets `display_name = String::new()`. After the fix it
+    // calls `EnrichedSession::new_with_display_name(... e.display_name.clone())`.
+    // This test would have FAILED against the old code (display_name == "") and
+    // PASSES against the fixed code (display_name == "My Renamed Session").
+    // -----------------------------------------------------------------------
+
+    /// Verifies BC-2.08.005 AC-002 / BC-2.08.008 PC-4a broadcast correctness:
+    /// after `rename_session()`, the `SessionListUpdate` payload MUST carry the
+    /// updated `display_name` for the renamed session.
+    ///
+    /// This is the F-S037-MED-001 coverage gap: Test 5 verified the sidecar on
+    /// disk but never inspected the wire payload. This test closes that gap by
+    /// asserting on the broadcast `EnrichedSession.display_name` field directly.
+    ///
+    /// The old `EnrichedSession::new()` constructor sets `display_name = ""`,
+    /// which would fail this assertion. The fix uses `new_with_display_name`
+    /// which propagates `e.display_name.clone()` from the in-memory entry.
+    #[tokio::test]
+    async fn test_BC_2_08_005_rename_broadcast_carries_new_display_name() {
+        let tmp = tempfile::tempdir().expect("rename_broadcast: tempdir");
+
+        let (mut manager, _subs, mut rx) = make_manager_with_channel(tmp.path(), None);
+        let session_id = "00000000-0537-4000-a000-000000000007".to_string();
+
+        // Spawn a session so it exists in the registry in Launching state.
+        manager
+            .spawn_session(make_spawn_opts(&session_id))
+            .await
+            .expect("rename_broadcast: spawn must succeed");
+
+        // Drain all messages generated by spawn before asserting rename behavior.
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+            loop {
+                match tokio::time::timeout_at(deadline, rx.recv()).await {
+                    Ok(Some(_)) => continue,
+                    _ => break,
+                }
+            }
+        }
+
+        // Rename the session.
+        let new_name = "My Renamed Session".to_string();
+        manager
+            .rename_session(&session_id, new_name.clone())
+            .await
+            .expect("rename_broadcast: rename_session must return Ok(())");
+
+        // Collect all messages emitted by rename_session().
+        let mut rename_broadcasts: Vec<ServerToClient> = Vec::new();
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(100);
+            while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                rename_broadcasts.push(msg);
+            }
+        }
+
+        // Extract the SessionListUpdate from the broadcast set.
+        let list_update = rename_broadcasts.iter().find_map(|m| {
+            if let ServerToClient::SessionListUpdate { sessions } = m {
+                Some(sessions)
+            } else {
+                None
+            }
+        });
+        assert!(
+            list_update.is_some(),
+            "F-S037-MED-001 / BC-2.08.005 PC-4a: SessionListUpdate must be present \
+             in rename broadcast; got: {:?}",
+            rename_broadcasts
+        );
+
+        // Find the EnrichedSession for our session_id in the payload.
+        let sessions = list_update.unwrap();
+        let enriched = sessions.iter().find(|s| s.session_id == session_id);
+        assert!(
+            enriched.is_some(),
+            "F-S037-MED-001: SessionListUpdate payload must contain an EnrichedSession \
+             for session_id {:?}; payload: {:?}",
+            session_id,
+            sessions
+        );
+
+        // Assert the display_name in the BROADCAST payload — not the sidecar.
+        // Old code: EnrichedSession::new() → display_name == "" → this assertion FAILS.
+        // New code: EnrichedSession::new_with_display_name(... e.display_name.clone())
+        //           → display_name == "My Renamed Session" → this assertion PASSES.
+        let actual_display_name = &enriched.unwrap().display_name;
+        assert_eq!(
+            actual_display_name, &new_name,
+            "F-S037-MED-001 / BC-2.08.005 AC-002: SessionListUpdate broadcast MUST carry \
+             the new display_name {:?} in the EnrichedSession payload; got {:?}. \
+             (Old EnrichedSession::new() produced display_name=\"\", which would fail here.)",
+            new_name, actual_display_name
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // SEC-001 (CWE-20): rename_session() new_name validation
+    //
+    // Defense-in-depth: rename_session() must validate `new_name` before any
+    // in-memory mutation or sidecar write. Mirrors spawn_session's UUID guard
+    // (SEC-003) philosophy: fail fast, before side effects.
+    //
+    // Validation rules:
+    //   1. Empty name → InvalidSessionName { reason: "name must not be empty" }
+    //   2. Over-length (>256 bytes) → InvalidSessionName { reason: "…limit…" }
+    //   3. Control char (incl. NUL, newline, \r, ESC) → InvalidSessionName { … }
+    //   4. Path separator ('/' or '\') → InvalidSessionName { … }
+    //
+    // All invalid-name cases must:
+    //   - Return Err(InvalidSessionName) BEFORE any in-memory mutation.
+    //   - Return BEFORE any broadcast (no SessionListUpdate for a rejected rename).
+    //   - Map to wire code "rename_failed" via session_error_to_code().
+    // -----------------------------------------------------------------------
+
+    /// SEC-001 (CWE-20): rename_session() rejects an empty new_name with
+    /// Err(InvalidSessionName) and NO state mutation or broadcast.
+    ///
+    /// Also confirms wire code is "rename_failed".
+    #[tokio::test]
+    async fn test_sec001_rename_session_rejects_empty_name() {
+        let tmp = tempfile::tempdir().expect("sec001_empty: tempdir");
+        let (mut manager, _subs, mut rx) = make_manager_with_channel(tmp.path(), None);
+        let session_id = "00000000-0537-4000-a000-000000000090".to_string();
+
+        // Spawn a session so it exists in the registry.
+        manager
+            .spawn_session(make_spawn_opts(&session_id))
+            .await
+            .expect("sec001_empty: spawn must succeed");
+        // Drain spawn messages.
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+            loop {
+                match tokio::time::timeout_at(deadline, rx.recv()).await {
+                    Ok(Some(_)) => continue,
+                    _ => break,
+                }
+            }
+        }
+
+        // Capture display_name before rename attempt.
+        let name_before = {
+            let guard = manager.sessions.lock().await;
+            guard.get(&session_id).map(|e| e.display_name.clone())
+        };
+
+        // Attempt rename with empty name — must fail.
+        let result = manager.rename_session(&session_id, String::new()).await;
+        assert!(
+            matches!(result, Err(SessionError::InvalidSessionName { .. })),
+            "SEC-001: rename with empty name must return Err(InvalidSessionName); got: {:?}",
+            result
+        );
+
+        // Wire code must be "rename_failed".
+        let wire_code = session_error_to_code(IpcOp::Rename, result.as_ref().unwrap_err());
+        assert_eq!(
+            wire_code, "rename_failed",
+            "SEC-001: InvalidSessionName must map to wire code \"rename_failed\"; got {:?}",
+            wire_code
+        );
+
+        // No state mutation — display_name must be unchanged.
+        let name_after = {
+            let guard = manager.sessions.lock().await;
+            guard.get(&session_id).map(|e| e.display_name.clone())
+        };
+        assert_eq!(
+            name_before, name_after,
+            "SEC-001: empty-name rejection MUST NOT mutate display_name; \
+             before={:?} after={:?}",
+            name_before, name_after
+        );
+
+        // No broadcast must have been emitted for the rejected rename.
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+            let mut stray: Vec<ServerToClient> = Vec::new();
+            while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                stray.push(msg);
+            }
+            assert!(
+                stray.is_empty(),
+                "SEC-001: rename rejection must emit NO broadcast; got: {:?}",
+                stray
+            );
+        }
+    }
+
+    /// SEC-001 (CWE-20): rename_session() rejects a new_name exceeding 256 bytes
+    /// with Err(InvalidSessionName) and NO state mutation or broadcast.
+    #[tokio::test]
+    async fn test_sec001_rename_session_rejects_overlength_name() {
+        let tmp = tempfile::tempdir().expect("sec001_long: tempdir");
+        let (mut manager, _subs, mut rx) = make_manager_with_channel(tmp.path(), None);
+        let session_id = "00000000-0537-4000-a000-000000000091".to_string();
+
+        manager
+            .spawn_session(make_spawn_opts(&session_id))
+            .await
+            .expect("sec001_long: spawn must succeed");
+        // Drain spawn messages.
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+            loop {
+                match tokio::time::timeout_at(deadline, rx.recv()).await {
+                    Ok(Some(_)) => continue,
+                    _ => break,
+                }
+            }
+        }
+
+        // Build a name that is exactly 257 bytes (one over the 256-byte limit).
+        let too_long = "a".repeat(MAX_DISPLAY_NAME_BYTES + 1);
+        assert_eq!(too_long.len(), MAX_DISPLAY_NAME_BYTES + 1);
+
+        let name_before = {
+            let guard = manager.sessions.lock().await;
+            guard.get(&session_id).map(|e| e.display_name.clone())
+        };
+
+        let result = manager.rename_session(&session_id, too_long).await;
+        assert!(
+            matches!(result, Err(SessionError::InvalidSessionName { .. })),
+            "SEC-001: rename with over-length name must return Err(InvalidSessionName); got: {:?}",
+            result
+        );
+
+        let wire_code = session_error_to_code(IpcOp::Rename, result.as_ref().unwrap_err());
+        assert_eq!(
+            wire_code, "rename_failed",
+            "SEC-001: over-length InvalidSessionName must map to \"rename_failed\"; got {:?}",
+            wire_code
+        );
+
+        let name_after = {
+            let guard = manager.sessions.lock().await;
+            guard.get(&session_id).map(|e| e.display_name.clone())
+        };
+        assert_eq!(
+            name_before, name_after,
+            "SEC-001: over-length rejection MUST NOT mutate display_name; \
+             before={:?} after={:?}",
+            name_before, name_after
+        );
+
+        // No broadcast.
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+            let mut stray: Vec<ServerToClient> = Vec::new();
+            while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                stray.push(msg);
+            }
+            assert!(
+                stray.is_empty(),
+                "SEC-001: over-length rename rejection must emit NO broadcast; got: {:?}",
+                stray
+            );
+        }
+    }
+
+    /// SEC-001 (CWE-20): rename_session() rejects names containing control
+    /// characters (NUL, newline, carriage return) or path separators ('/' and '\').
+    ///
+    /// Each bad name is tested independently: must return Err(InvalidSessionName)
+    /// with NO state mutation and NO broadcast.
+    #[tokio::test]
+    async fn test_sec001_rename_session_rejects_forbidden_chars() {
+        // Test cases: (label, forbidden name)
+        let bad_names: &[(&str, &str)] = &[
+            ("NUL byte", "session\x00name"),
+            ("newline", "session\nname"),
+            ("carriage return", "session\rname"),
+            ("ESC char", "session\x1bname"),
+            ("forward slash", "session/name"),
+            ("backslash", "session\\name"),
+            ("tab char", "session\tname"),
+        ];
+
+        for (label, bad_name) in bad_names {
+            let tmp = tempfile::tempdir()
+                .unwrap_or_else(|e| panic!("sec001_chars/{label}: tempdir: {e}"));
+            let (mut manager, _subs, mut rx) = make_manager_with_channel(tmp.path(), None);
+            // Use a unique session_id per iteration.
+            let session_id = format!(
+                "00000000-0537-4000-a000-{:012x}",
+                bad_names.iter().position(|(l, _)| l == label).unwrap_or(0) + 0x92
+            );
+
+            manager
+                .spawn_session(make_spawn_opts(&session_id))
+                .await
+                .unwrap_or_else(|e| panic!("sec001_chars/{label}: spawn: {e}"));
+            // Drain spawn messages.
+            {
+                let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+                loop {
+                    match tokio::time::timeout_at(deadline, rx.recv()).await {
+                        Ok(Some(_)) => continue,
+                        _ => break,
+                    }
+                }
+            }
+
+            let name_before = {
+                let guard = manager.sessions.lock().await;
+                guard.get(&session_id).map(|e| e.display_name.clone())
+            };
+
+            let result = manager
+                .rename_session(&session_id, bad_name.to_string())
+                .await;
+            assert!(
+                matches!(result, Err(SessionError::InvalidSessionName { .. })),
+                "SEC-001/{label}: rename with forbidden char must return Err(InvalidSessionName); \
+                 name={bad_name:?} got: {result:?}"
+            );
+
+            let wire_code = session_error_to_code(IpcOp::Rename, result.as_ref().unwrap_err());
+            assert_eq!(
+                wire_code, "rename_failed",
+                "SEC-001/{label}: InvalidSessionName must map to \"rename_failed\"; got {wire_code:?}"
+            );
+
+            let name_after = {
+                let guard = manager.sessions.lock().await;
+                guard.get(&session_id).map(|e| e.display_name.clone())
+            };
+            assert_eq!(
+                name_before, name_after,
+                "SEC-001/{label}: forbidden-char rejection MUST NOT mutate display_name; \
+                 before={name_before:?} after={name_after:?}"
+            );
+
+            // No broadcast.
+            {
+                let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+                let mut stray: Vec<ServerToClient> = Vec::new();
+                while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                    stray.push(msg);
+                }
+                assert!(
+                    stray.is_empty(),
+                    "SEC-001/{label}: forbidden-char rename rejection must emit NO broadcast; \
+                     got: {stray:?}"
+                );
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // SEC-002 (CWE-706): rename_session() UUID guard before path construction
+    //
+    // Defense-in-depth: rename_session() must validate that `session_id` is a
+    // valid UUID BEFORE constructing the sidecar path, mirroring spawn_session's
+    // SEC-003 guard. A malformed session_id (e.g. "../evil") must be rejected
+    // immediately — before any file I/O or state mutation — even though the
+    // registry get_mut would also reject it (unknown key).
+    //
+    // The guard returns Err(SessionNotFound) for a malformed session_id (same as
+    // for an unknown-but-valid UUID), ensuring the caller cannot distinguish
+    // "not found" from "malformed id" in the wire response.
+    // -----------------------------------------------------------------------
+
+    /// SEC-002 (CWE-706): rename_session() rejects a malformed (non-UUID) session_id
+    /// before constructing any file path, returning Err(SessionNotFound).
+    ///
+    /// Tested inputs include path-traversal strings, absolute paths, NUL bytes,
+    /// and empty string — all must fail with SessionNotFound and no sidecar I/O.
+    #[tokio::test]
+    async fn test_sec002_rename_session_rejects_malformed_session_id() {
+        let tmp = tempfile::tempdir().expect("sec002: tempdir");
+        let (mut manager, _subs, mut rx) = make_manager_with_channel(tmp.path(), None);
+
+        let bad_ids: &[&str] = &[
+            "../evil",
+            "../../etc/passwd",
+            "/absolute/path",
+            "session/../escape",
+            "null\x00byte",
+            "",
+            "not-a-uuid",
+            "12345",
+        ];
+
+        for bad_id in bad_ids {
+            let result = manager
+                .rename_session(bad_id, "ValidName".to_string())
+                .await;
+            assert!(
+                matches!(result, Err(SessionError::SessionNotFound { .. })),
+                "SEC-002: rename with malformed session_id {:?} must return \
+                 Err(SessionNotFound); got: {:?}",
+                bad_id,
+                result
+            );
+
+            // No broadcast emitted.
+            {
+                let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(20);
+                let mut stray: Vec<ServerToClient> = Vec::new();
+                while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                    stray.push(msg);
+                }
+                assert!(
+                    stray.is_empty(),
+                    "SEC-002: malformed session_id rename must emit NO broadcast; got: {:?}",
+                    stray
+                );
+            }
+        }
+
+        // Belt-and-suspenders: no session entry must exist (none were spawned).
+        let sessions = manager.session_list().await;
+        assert!(
+            sessions.is_empty(),
+            "SEC-002: no session entries must exist after all rejections; got {:?}",
+            sessions.iter().map(|s| &s.session_id).collect::<Vec<_>>()
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Test 7 of 6 (bonus — AC-006 invariant): F-S037-MED-002
+    // Duplicate Terminated transition must NOT reset the GC timer or spawn a
+    // second GC task.
+    //
+    // AC-006: "the 10s GC timer begins at the FIRST Terminated transition; a
+    // duplicate/second Terminated MUST NOT reset the timer or spawn a second
+    // GC task; GC not cancellable."
+    //
+    // Guards exercised:
+    //   - transition_to_terminated() idempotency guard (line ~1951): if
+    //     entry.state == Terminated, return immediately without broadcast or
+    //     new GC task.
+    //   - spawn_gc_task() defensive check (line ~2541): session must still be
+    //     present AND still Terminated at GC fire time (guards against
+    //     hypothetical double-spawn; both tasks would see the entry but only
+    //     the first to acquire the lock removes it, the second short-circuits).
+    //
+    // Strategy: use spawn_gc_task() directly for the FIRST termination (so we
+    // control the deadline), then call transition_to_terminated() for the
+    // DUPLICATE (exercises the idempotency guard). Advance 10s and assert
+    // exactly one removal and exactly one GC SessionListUpdate.
+    // -----------------------------------------------------------------------
+
+    /// Verifies BC-2.08.005 AC-006: a duplicate `Terminated` transition MUST NOT
+    /// reset the 10-second GC timer or spawn a second GC task.
+    ///
+    /// Setup:
+    ///  1. Insert session in `Terminated` state (bypassing full kill flow).
+    ///  2. Spawn GC task directly (first GC task, deadline = now + 10s).
+    ///  3. Call `transition_to_terminated()` a second time (duplicate).
+    ///     The idempotency guard (`entry.state == Terminated → return`) MUST
+    ///     short-circuit: no new broadcast, no new GC task.
+    ///  4. Advance virtual time by exactly 10s — fires only the FIRST GC task.
+    ///  5. Assert: session removed from registry (exactly one removal at deadline).
+    ///  6. Assert: no second `SessionStateChanged{Terminated}` was broadcast by the
+    ///     duplicate call (idempotency guard fired).
+    ///  7. Assert: exactly one `SessionListUpdate` from the GC task (not two).
+    #[tokio::test(start_paused = true)]
+    async fn test_BC_2_08_005_duplicate_terminated_does_not_reset_gc() {
+        let tmp = tempfile::Builder::new()
+            .tempdir_in("/tmp")
+            .expect("dup_terminated: tempdir in /tmp");
+
+        let session_id = "00000000-0537-4000-a000-000000000008".to_string();
+        let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+        let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
+
+        // Write a minimal sidecar file for the session.
+        {
+            use std::io::Write as _;
+            let sidecar_json = serde_json::json!({
+                "schema_version": 3,
+                "session_id": session_id,
+                "state": "Terminated",
+                "harness_id": "claude-code",
+                "project_root": "/tmp/test-project",
+                "display_name": "claude-code — test-project",
+                "pty_rows": 24,
+                "pty_cols": 80,
+                "kill_deadline_unix_ms": null,
+                "child_pid": null,
+            });
+            let mut f =
+                std::fs::File::create(&sidecar_path).expect("dup_terminated: create sidecar");
+            f.write_all(&serde_json::to_vec_pretty(&sidecar_json).unwrap())
+                .expect("dup_terminated: write sidecar");
+        }
+        // Create a dummy socket file so GC can delete it.
+        {
+            use std::io::Write as _;
+            let mut f =
+                std::fs::File::create(&socket_path).expect("dup_terminated: create socket file");
+            f.write_all(b"").expect("dup_terminated: write socket file");
+        }
+
+        // Build manager with subscriber channel.
+        let (tx, mut rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry = ClientEntry::new(tx);
+        let subs: SubscriberList = Arc::new(Mutex::new(vec![entry]));
+        let broker = make_broker(&subs);
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 10_008,
+        });
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+        let manager =
+            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+
+        // Step 1: Insert session already in Terminated state (test seam).
+        // This simulates the state after the FIRST legitimate Terminated transition.
+        manager
+            .insert_terminated_session_for_test(&session_id, 10_008u32, socket_path.clone())
+            .await;
+
+        // Step 2: Spawn the FIRST GC task directly (deadline = now + 10s).
+        // This is the GC task that the real first transition_to_terminated() would have spawned.
+        let _first_gc = SessionManager::spawn_gc_task(
+            session_id.clone(),
+            sidecar_path.clone(),
+            socket_path.clone(),
+            Arc::clone(&manager.sessions),
+            Arc::clone(&manager.broker),
+        );
+
+        // Step 3: Call transition_to_terminated() a SECOND time (duplicate).
+        // The idempotency guard (entry.state == Terminated → return) MUST short-circuit:
+        //   - No new SessionStateChanged{Terminated} broadcast.
+        //   - No new GC task spawned (socket_path_for_gc stays None → spawn_gc_task not called).
+        manager
+            .transition_to_terminated(&session_id, &sidecar_path)
+            .await;
+
+        // Drain any broadcasts produced by the duplicate call.
+        // The idempotency guard must have returned before any broadcast.
+        let mut dup_broadcasts: Vec<ServerToClient> = Vec::new();
+        {
+            // Short deadline — the paused clock makes time-based drains deterministic.
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+            while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                dup_broadcasts.push(msg);
+            }
+        }
+
+        // Assert: the duplicate transition_to_terminated() must NOT have broadcast
+        // SessionStateChanged{Terminated} — the idempotency guard short-circuits before
+        // any broadcast call.
+        let dup_state_changed_count = dup_broadcasts
+            .iter()
+            .filter(|m| {
+                matches!(
+                    m,
+                    ServerToClient::SessionStateChanged {
+                        session_id: sid,
+                        new_state: monocle_ipc::types::SessionState::Terminated,
+                    } if sid == &session_id
+                )
+            })
+            .count();
+        assert_eq!(
+            dup_state_changed_count, 0,
+            "F-S037-MED-002 / BC-2.08.005 AC-006: duplicate transition_to_terminated() \
+             MUST NOT emit SessionStateChanged{{Terminated}} — idempotency guard must have \
+             fired; got {} broadcasts: {:?}",
+            dup_state_changed_count, dup_broadcasts
+        );
+
+        // Assert: session is still in the registry (GC has not fired yet — clock not advanced).
+        {
+            let guard = manager.sessions.lock().await;
+            assert!(
+                guard.contains_key(&session_id),
+                "F-S037-MED-002: session must still be in registry before 10s GC deadline"
+            );
+        }
+
+        // Step 4: Advance virtual time by exactly 10s to fire the FIRST (and only) GC task.
+        tokio::time::advance(std::time::Duration::from_secs(10)).await;
+
+        // Give the spawned GC task a chance to run after the time advance.
+        let _ = tokio::time::timeout(
+            std::time::Duration::from_millis(50),
+            tokio::task::yield_now(),
+        )
+        .await;
+
+        // Step 5: Assert session removed — exactly one GC removal at the original deadline.
+        {
+            let guard = manager.sessions.lock().await;
+            assert!(
+                !guard.contains_key(&session_id),
+                "F-S037-MED-002 / BC-2.08.005 AC-006: session MUST be removed by the first \
+                 GC task at the 10s deadline; session {} still present after advance(10s)",
+                session_id
+            );
+        }
+
+        // Step 6/7: Drain the GC-emitted broadcasts and assert exactly one SessionListUpdate.
+        // A second GC task (if erroneously spawned) would have fired at a reset 10s deadline
+        // and emitted a second SessionListUpdate — which cannot happen because the
+        // idempotency guard prevents spawn_gc_task from being called twice.
+        let mut gc_broadcasts: Vec<ServerToClient> = Vec::new();
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(100);
+            while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                gc_broadcasts.push(msg);
+            }
+        }
+
+        let gc_list_update_count = gc_broadcasts
+            .iter()
+            .filter(|m| matches!(m, ServerToClient::SessionListUpdate { .. }))
+            .count();
+        assert_eq!(
+            gc_list_update_count, 1,
+            "F-S037-MED-002 / BC-2.08.005 AC-006: exactly ONE SessionListUpdate must be \
+             emitted by the GC task; a second GC task would produce two. \
+             Got {} SessionListUpdates in gc_broadcasts: {:?}",
+            gc_list_update_count, gc_broadcasts
+        );
+
+        // Assert: the GC broadcasts must NOT contain a SessionStateChanged{Terminated}
+        // (GC task must not re-emit the state transition per BC-2.08.005 architecture note).
+        let gc_state_changed = gc_broadcasts.iter().any(|m| {
+            matches!(
+                m,
+                ServerToClient::SessionStateChanged {
+                    new_state: monocle_ipc::types::SessionState::Terminated,
+                    ..
+                }
+            )
+        });
+        assert!(
+            !gc_state_changed,
+            "F-S037-MED-002 / BC-2.08.005: GC task MUST NOT emit SessionStateChanged{{Terminated}} \
+             (it was already emitted at first Terminated transition); gc_broadcasts: {:?}",
+            gc_broadcasts
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // F-S037-P2-002 — GC wiring: real transition_to_terminated() spawns GC
+    //
+    // All prior GC tests seed Terminated via insert_terminated_session_for_test
+    // and then call spawn_gc_task DIRECTLY.  None exercise the wiring from the
+    // REAL Terminated-transition functions (transition_to_terminated,
+    // transition_to_terminated_standalone) that call spawn_gc_task internally.
+    // A regression that removes spawn_gc_task from a wiring site would pass every
+    // prior test while breaking production.
+    //
+    // This test drives transition_to_terminated() — the instance method — with a
+    // session that is in a non-Terminated state (we seed it as Terminating via the
+    // insert_terminating_session_for_test seam described below) and asserts:
+    //   BEFORE advance: session present in registry.
+    //   AFTER advance(10s): session removed AND SessionListUpdate published.
+    //   The test NEVER calls spawn_gc_task — if the wiring were removed the
+    //   advance(10s) would not fire any GC task and the registry removal assertion
+    //   would fail.
+    // -----------------------------------------------------------------------
+
+    /// Verifies that `transition_to_terminated()` internally wires the 10s GC task
+    /// (BC-2.08.005 PC-1/PC-2/PC-4).
+    ///
+    /// Strategy: seed a session directly into `Terminating` state (non-Terminated),
+    /// call `transition_to_terminated()` (the production instance method), then
+    /// advance virtual time by 10 s and assert the entry is gone from the registry
+    /// and `SessionListUpdate` was published — WITHOUT the test ever calling
+    /// `spawn_gc_task` itself.
+    ///
+    /// If any wiring call to `spawn_gc_task` were removed from
+    /// `transition_to_terminated`, `advance(10s)` would not fire and the
+    /// registry-removal assertion would fail, catching the regression.
+    ///
+    /// Uses virtual time (`start_paused = true`); no wall clock.
+    #[tokio::test(start_paused = true)]
+    async fn test_BC_2_08_005_gc_wired_via_real_transition_to_terminated() {
+        let tmp = tempfile::Builder::new()
+            .tempdir_in("/tmp")
+            .expect("gc_wiring: tempdir in /tmp");
+
+        let session_id = "00000000-0537-4000-a000-000000000009".to_string();
+        let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+        let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
+
+        // Write a minimal sidecar so transition_to_terminated can re-persist it.
+        {
+            use std::io::Write as _;
+            let sidecar_json = serde_json::json!({
+                "schema_version": 3,
+                "session_id": session_id,
+                "state": "Terminating",
+                "harness_id": "claude-code",
+                "project_root": "/tmp/test-project",
+                "display_name": "claude-code — test-project",
+                "pty_rows": 24,
+                "pty_cols": 80,
+                "kill_deadline_unix_ms": null,
+                "child_pid": null,
+            });
+            let mut f = std::fs::File::create(&sidecar_path).expect("gc_wiring: create sidecar");
+            f.write_all(&serde_json::to_vec_pretty(&sidecar_json).unwrap())
+                .expect("gc_wiring: write sidecar");
+        }
+        // Create a dummy socket file so GC can delete it (AC-003 best-effort).
+        {
+            use std::io::Write as _;
+            let mut f = std::fs::File::create(&socket_path).expect("gc_wiring: create socket file");
+            f.write_all(b"").expect("gc_wiring: write socket file");
+        }
+
+        // Build manager with subscriber channel.
+        let (tx, mut rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry_sub = ClientEntry::new(tx);
+        let subs: SubscriberList = Arc::new(Mutex::new(vec![entry_sub]));
+        let broker = make_broker(&subs);
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 10_009,
+        });
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+        let manager =
+            SessionManager::new(tmp.path().to_path_buf(), spawner, broker.clone(), engine);
+
+        // Seed a session in Terminating state (non-Terminated) so that
+        // transition_to_terminated() will fire its first-transition path
+        // (idempotency guard is NOT hit) and internally call spawn_gc_task.
+        {
+            use crate::session_manager::SessionEntry;
+            let entry = SessionEntry {
+                session_id: session_id.clone(),
+                session_host_pid: 10_009u32,
+                session_host_socket: socket_path.clone(),
+                state: SessionState::Terminating,
+                cwd: std::path::PathBuf::from("/tmp/test-cwd"),
+                project_root: std::path::PathBuf::from("/tmp/test-project"),
+                harness_id: "claude-code".to_string(),
+                profile_id: "default".to_string(),
+                started_at: chrono::Utc::now(),
+                display_name: "claude-code — test-project".to_string(),
+                kill_deadline: None,
+                degraded: false,
+                degraded_reason: None,
+                host_conn: None,
+            };
+            manager
+                .sessions
+                .lock()
+                .await
+                .insert(session_id.clone(), entry);
+        }
+
+        // Precondition: session is present in registry (in Terminating state).
+        {
+            let guard = manager.sessions.lock().await;
+            assert!(
+                guard.contains_key(&session_id),
+                "gc_wiring precondition: session must be in registry before transition"
+            );
+        }
+
+        // Call the PRODUCTION transition_to_terminated() — this MUST internally call
+        // spawn_gc_task.  The test never calls spawn_gc_task directly.
+        manager
+            .transition_to_terminated(&session_id, &sidecar_path)
+            .await;
+
+        // Session must still be present in registry at t=0 (GC fires after 10s).
+        {
+            let guard = manager.sessions.lock().await;
+            assert!(
+                guard.contains_key(&session_id),
+                "gc_wiring: session must still be in registry immediately after \
+                 transition_to_terminated() (before 10s GC deadline)"
+            );
+        }
+
+        // Drain broadcasts emitted by transition_to_terminated() itself
+        // (SessionStateChanged{Terminated} + SessionListUpdate — both are expected here).
+        // Clear channel so the GC's SessionListUpdate can be detected cleanly.
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+            while tokio::time::timeout_at(deadline, rx.recv()).await.is_ok() {}
+        }
+
+        // Advance virtual time by 10 s — this fires the GC task spawned INSIDE
+        // transition_to_terminated().  If the wiring call were absent the GC would
+        // never be spawned and the assertions below would catch the regression.
+        tokio::time::advance(std::time::Duration::from_secs(10)).await;
+
+        // Yield to allow the GC task to execute.
+        let _ = tokio::time::timeout(
+            std::time::Duration::from_millis(50),
+            tokio::task::yield_now(),
+        )
+        .await;
+
+        // F-S037-P2-002 / BC-2.08.005 PC-1: registry entry must be removed by the GC task.
+        {
+            let guard = manager.sessions.lock().await;
+            assert!(
+                !guard.contains_key(&session_id),
+                "F-S037-P2-002 / BC-2.08.005 PC-1: session MUST be removed from registry \
+                 after 10s GC; session {} still present. \
+                 This indicates the wiring call to spawn_gc_task inside \
+                 transition_to_terminated() is absent or broken.",
+                session_id
+            );
+        }
+
+        // F-S037-P2-002 / BC-2.08.005 PC-4: GC task must publish SessionListUpdate.
+        let mut gc_broadcasts: Vec<ServerToClient> = Vec::new();
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(100);
+            while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                gc_broadcasts.push(msg);
+            }
+        }
+
+        let has_gc_list_update = gc_broadcasts
+            .iter()
+            .any(|m| matches!(m, ServerToClient::SessionListUpdate { .. }));
+        assert!(
+            has_gc_list_update,
+            "F-S037-P2-002 / BC-2.08.005 PC-4: GC task must publish SessionListUpdate; \
+             gc_broadcasts: {:?}",
+            gc_broadcasts
+        );
+
+        // GC task must NOT emit SessionStateChanged (BC-2.08.005 architecture note).
+        let gc_has_state_changed = gc_broadcasts
+            .iter()
+            .any(|m| matches!(m, ServerToClient::SessionStateChanged { .. }));
+        assert!(
+            !gc_has_state_changed,
+            "F-S037-P2-002 / BC-2.08.005: GC task must NOT emit SessionStateChanged; \
+             gc_broadcasts: {:?}",
+            gc_broadcasts
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Regression lock for F-S037-P2-001 — rename while Launching survives
+    // the Launching→Running sidecar re-persist.
+    //
+    // Bug (pre-6c95220): post_spawn_monitor's Running-transition lock block
+    // recomputed display_name from harness_id + project_root basename into a
+    // local `dn` variable instead of reading entry.display_name.  Any rename
+    // applied via rename_session() while the session was still in Launching
+    // state was therefore clobbered on the sidecar when the session transitioned
+    // to Running — the sidecar on disk would contain the default name, not the
+    // user's chosen rename.  Re-discovery after a daemon restart reads the
+    // sidecar, so the rename was permanently lost.
+    //
+    // Fix (6c95220): post_spawn_monitor reads `entry.display_name.clone()` as
+    // `authoritative_display_name` instead of recomputing from scratch.
+    //
+    // This test drives the PRODUCTION post_spawn_monitor code path end-to-end:
+    //   1. Bind a test UDS socket (in /tmp for macOS SUN_LEN limit).
+    //   2. Inject ControlledUdsMockSpawner + FakePeerCredVerifier{allow:true}.
+    //   3. spawn_session() — sidecar written with default display_name.
+    //   4. rename_session() while session is in Launching state.
+    //   5. Background task sends HostToDaemon::StateChanged{Running} over the UDS.
+    //   6. Poll session_list() until state==Running (production transition complete).
+    //   7. Read sidecar from disk; assert display_name == renamed value.
+    //
+    // Step 7 FAILS against pre-6c95220 code because that code recomputed
+    // `format!("{} — {}", harness_id, basename)` in post_spawn_monitor rather
+    // than reading entry.display_name, clobbering the rename on the sidecar.
+    // The current code (ab46ab9 / 6c95220) reads entry.display_name; this test
+    // would revert to FAIL if that line reverted to the recomputed default.
+    // -----------------------------------------------------------------------
+
+    /// Regression lock for F-S037-P2-001: rename while Launching MUST survive
+    /// the PRODUCTION post_spawn_monitor Launching→Running sidecar re-persist.
+    ///
+    /// Drives the REAL production `post_spawn_monitor` task via a test-controlled
+    /// UDS socket (`ControlledUdsMockSpawner`) and `FakePeerCredVerifier{allow:true}`.
+    /// A background task sends `HostToDaemon::StateChanged{Running}` over the socket;
+    /// the test polls `session_list()` until `state == Running` (proving the PRODUCTION
+    /// Running-transition code path executed), then reads the sidecar from disk and
+    /// asserts `display_name == renamed_value`.
+    ///
+    /// Production entry point: `post_spawn_monitor` (line ~3039 — `if new_state ==
+    /// SessionState::Running` branch, first-lock field extraction at ~3081:
+    /// `let authoritative_display_name = entry.display_name.clone()`).
+    ///
+    /// Non-tautological because:
+    /// - The test never writes the sidecar itself.
+    /// - The sidecar is written exclusively by the PRODUCTION `post_spawn_monitor`
+    ///   Running-transition block.
+    /// - If that block reverted to `format!("{} — {}", harness_id, basename)` at
+    ///   the field extraction site (~line 3081), the sidecar would contain the default
+    ///   name and `assert_eq!(disk_display_name, renamed_value)` would FAIL.
+    #[tokio::test]
+    async fn test_BC_2_08_005_rename_while_launching_survives_running_sidecar_repersist() {
+        use tokio::io::AsyncWriteExt;
+        use tokio::net::UnixListener;
+
+        // Use /tmp for the runtime dir and socket (macOS SUN_LEN = 104 chars).
+        let tmp = tempfile::Builder::new()
+            .tempdir_in("/tmp")
+            .expect("rename_repersist: tempdir in /tmp");
+
+        let session_id = "00000000-0537-4000-a000-000000000010".to_string();
+        let socket_path = tmp.path().join(format!("session-{}.sock", session_id));
+        let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+
+        // Bind the test UDS listener BEFORE spawn_session() so post_spawn_monitor
+        // can connect immediately after spawn.
+        let listener = UnixListener::bind(&socket_path).expect("rename_repersist: bind UDS");
+
+        // Build manager with ControlledUdsMockSpawner (returns our socket_path) and
+        // FakePeerCredVerifier{allow:true} so SO_PEERCRED passes in post_spawn_monitor.
+        let (tx, mut rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry_sub = ClientEntry::new(tx);
+        let subs: SubscriberList = Arc::new(Mutex::new(vec![entry_sub]));
+        let broker = make_broker(&subs);
+        let spawner: Arc<dyn SessionHostSpawner> = Arc::new(ControlledUdsMockSpawner {
+            pid: 55_010,
+            socket_path: socket_path.clone(),
+        });
+        let engine: Arc<dyn monocle_core::engine::EngineModule> = Arc::new(SucceedingMockEngine {});
+        let mut manager = SessionManager::new(tmp.path().to_path_buf(), spawner, broker, engine);
+        // FakePeerCredVerifier{allow:true}: SO_PEERCRED check always passes.
+        manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifier { allow: true }));
+
+        // Step 1: Spawn a session — sidecar written with default display_name.
+        manager
+            .spawn_session(make_spawn_opts(&session_id))
+            .await
+            .expect("rename_repersist: spawn must succeed");
+
+        // Drain spawn broadcasts (Launching pair).
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(100);
+            loop {
+                match tokio::time::timeout_at(deadline, rx.recv()).await {
+                    Ok(Some(_)) => continue,
+                    _ => break,
+                }
+            }
+        }
+
+        // Precondition: session is in Launching state.
+        {
+            let snapshots = manager.session_list().await;
+            let snap = snapshots
+                .iter()
+                .find(|s| s.session_id == session_id)
+                .expect("rename_repersist: session must appear in session_list after spawn");
+            assert_eq!(
+                snap.state,
+                monocle_ipc::types::SessionState::Launching,
+                "rename_repersist precondition: session must be Launching after spawn"
+            );
+        }
+
+        // Step 2: Rename the session while in Launching state.
+        let renamed_value = "User Assigned Name — Do Not Clobber".to_string();
+        manager
+            .rename_session(&session_id, renamed_value.clone())
+            .await
+            .expect("rename_repersist: rename_session must succeed on Launching session");
+
+        // Drain rename broadcasts.
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(100);
+            loop {
+                match tokio::time::timeout_at(deadline, rx.recv()).await {
+                    Ok(Some(_)) => continue,
+                    _ => break,
+                }
+            }
+        }
+
+        // Confirm in-memory rename is stored.
+        {
+            let guard = manager.sessions.lock().await;
+            let entry = guard
+                .get(&session_id)
+                .expect("rename_repersist: entry must exist after rename");
+            assert_eq!(
+                entry.display_name, renamed_value,
+                "rename_repersist: in-memory display_name must equal renamed value before Running"
+            );
+        }
+
+        // Step 3: Act as the session-host — accept the connection and send
+        // HostToDaemon::StateChanged{Running} to drive the PRODUCTION post_spawn_monitor
+        // Running-transition code path (lines ~3039–3259 in mod.rs).
+        //
+        // This is the ONLY place the sidecar gets updated with Running state and
+        // display_name.  The test body never writes the sidecar.
+        tokio::spawn(async move {
+            if let Ok((mut stream, _)) = listener.accept().await {
+                let msg = serde_json::json!({
+                    "type": "state_changed",
+                    "new_state": "Running",
+                    "degraded_env": null
+                });
+                let bytes = serde_json::to_vec(&msg).unwrap();
+                let len = bytes.len() as u32;
+                stream.write_all(&len.to_le_bytes()).await.ok();
+                stream.write_all(&bytes).await.ok();
+                stream.flush().await.ok();
+                // Keep stream alive until flushed; drop after.
+            }
+        });
+
+        // Step 4: Poll session_list() until state==Running, proving the PRODUCTION
+        // post_spawn_monitor Running-transition block has executed.
+        //
+        // If post_spawn_monitor never fires (e.g., sidecar write moved outside the
+        // production block), the state stays Launching and the assertion below fails.
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(3);
+        let mut reached_running = false;
+        loop {
+            if tokio::time::Instant::now() >= deadline {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            let snapshots = manager.session_list().await;
+            if let Some(snap) = snapshots.iter().find(|s| s.session_id == session_id) {
+                if snap.state == monocle_ipc::types::SessionState::Running {
+                    reached_running = true;
+                    break;
+                }
+            }
+        }
+
+        assert!(
+            reached_running,
+            "rename_repersist: production post_spawn_monitor must transition session to Running \
+             within 3s of receiving StateChanged{{Running}}; session remained in Launching. \
+             This means the production Running-transition code path did NOT execute, so the \
+             sidecar re-persist assertion below is unreachable — fix post_spawn_monitor wiring."
+        );
+
+        // Step 5: Read the sidecar from disk and assert display_name == renamed value.
+        //
+        // The sidecar was written EXCLUSIVELY by the PRODUCTION post_spawn_monitor
+        // Running-transition block (~lines 3162–3220).  If that block extracted
+        // `format!("{} — {}", harness_id, basename)` instead of reading
+        // `entry.display_name`, the sidecar would contain "claude-code — test-project"
+        // (the default), not the renamed value — and this assertion would FAIL.
+        let sidecar_content = std::fs::read_to_string(&sidecar_path)
+            .expect("rename_repersist: sidecar must exist on disk after Running transition");
+        let sidecar_val: serde_json::Value =
+            serde_json::from_str(&sidecar_content).expect("rename_repersist: parse sidecar JSON");
+
+        let disk_display_name = sidecar_val["display_name"]
+            .as_str()
+            .expect("rename_repersist: display_name must be a string in sidecar");
+
+        assert_eq!(
+            disk_display_name, renamed_value,
+            "F-S037-P2-001 regression: sidecar display_name on disk MUST equal {:?} after \
+             PRODUCTION post_spawn_monitor Running-transition re-persist; got {:?}. \
+             Pre-6c95220 code recomputed from harness_id + basename, clobbering the rename. \
+             This test drives the real production code path — it is NOT tautological.",
+            renamed_value, disk_display_name
+        );
+
+        // Also assert state field was set to Running in the sidecar.
+        let disk_state = sidecar_val["state"]
+            .as_str()
+            .expect("rename_repersist: state must be a string in sidecar");
+        assert_eq!(
+            disk_state, "Running",
+            "rename_repersist: sidecar state must be Running after Running-transition re-persist; \
+             got {:?}",
+            disk_state
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // Regression lock for F-S037-P3-001 — session_list() InitialState carries rename.
+    //
+    // Bug (pre-ab46ab9): session_list() recomputed display_name from
+    // `format!("{} — {}", entry.harness_id, basename)` instead of reading
+    // `entry.display_name`.  After rename_session() updated the in-memory entry,
+    // session_list() still returned the stale default name, so InitialState
+    // snapshots delivered to newly-connected clients would not reflect renames.
+    //
+    // Fix (ab46ab9): session_list() reads `entry.display_name.clone()`.
+    //
+    // This test:
+    //   1. Spawns a session (default display_name set).
+    //   2. Renames the session via production rename_session().
+    //   3. Calls production session_list() and asserts the returned SessionSnapshot
+    //      for that session_id has display_name == renamed value.
+    //
+    // Would FAIL against pre-ab46ab9 code: old session_list() recomputed the
+    // default "claude-code — test-project" string, not the renamed value.
+    // -----------------------------------------------------------------------
+
+    /// Regression lock for F-S037-P3-001: session_list() InitialState snapshot
+    /// must carry the renamed display_name, not the recomputed default.
+    ///
+    /// Production entry point: `SessionManager::session_list()` (~line 2720):
+    /// `let display_name = entry.display_name.clone()`.
+    ///
+    /// Would FAIL against pre-ab46ab9 code: old `session_list()` computed
+    /// `format!("{} — {}", entry.harness_id, basename)` unconditionally, so any
+    /// rename set by `rename_session()` was invisible to callers of `session_list()`.
+    #[tokio::test]
+    async fn test_BC_2_08_005_session_list_carries_rename_after_rename_session() {
+        let tmp = tempfile::Builder::new()
+            .tempdir_in("/tmp")
+            .expect("session_list_rename: tempdir in /tmp");
+
+        let (mut manager, _subs, _rx) = make_manager_with_channel(tmp.path(), None);
+        let session_id = "00000000-0537-4000-a000-000000000011".to_string();
+
+        // Step 1: Spawn a session — default display_name is set by spawn_session().
+        manager
+            .spawn_session(make_spawn_opts(&session_id))
+            .await
+            .expect("session_list_rename: spawn must succeed");
+
+        // Capture the default display_name for contrast.
+        let default_display_name = {
+            let guard = manager.sessions.lock().await;
+            guard
+                .get(&session_id)
+                .expect("session_list_rename: entry must exist after spawn")
+                .display_name
+                .clone()
+        };
+
+        // Step 2: Rename the session via the PRODUCTION rename_session().
+        let renamed_value = "Renamed — Must Appear In session_list".to_string();
+        assert_ne!(
+            renamed_value, default_display_name,
+            "session_list_rename: renamed value must differ from default (test design check)"
+        );
+        manager
+            .rename_session(&session_id, renamed_value.clone())
+            .await
+            .expect("session_list_rename: rename_session must succeed on Launching session");
+
+        // Step 3: Call the PRODUCTION session_list() and assert the snapshot carries
+        // the renamed display_name.
+        //
+        // Pre-ab46ab9 code computed `format!("{} — {}", entry.harness_id, basename)`
+        // unconditionally, returning default_display_name here instead of renamed_value.
+        // The fix reads entry.display_name.clone() — renamed_value after rename_session().
+        let snapshots = manager.session_list().await;
+        let snap = snapshots
+            .iter()
+            .find(|s| s.session_id == session_id)
+            .expect("session_list_rename: renamed session must appear in session_list()");
+
+        assert_eq!(
+            snap.display_name, renamed_value,
+            "F-S037-P3-001 regression: session_list() MUST return display_name == {:?} \
+             (the renamed value) for session {}; got {:?}. \
+             Pre-ab46ab9 code recomputed the default from harness_id + basename, \
+             so InitialState snapshots delivered to new clients would not reflect renames.",
+            renamed_value, session_id, snap.display_name
+        );
+
+        // Sanity: confirm the result is different from the pre-rename default.
+        assert_ne!(
+            snap.display_name, default_display_name,
+            "session_list_rename: post-rename session_list() display_name must differ from \
+             pre-rename default {:?}; got {:?}",
+            default_display_name, snap.display_name
         );
     }
 }
