@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-037
 epic_id: EPIC-08
-version: "1.0.2"
+version: "1.0.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -26,7 +26,7 @@ inputs:
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "ab7950d"
 traces_to: "Implements BC-2.08.005 (GC task: Terminated sessions removed from registry after 10s grace period; sidecar + socket deleted; SessionListUpdate published)"
-# BC status: BC-2.08.005 v1.0.7 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status: BC-2.08.005 v1.0.8 — non-empty; status draft pending Phase-2 adversarial convergence gate
 ---
 
 # S-037: SessionManager GC Task — Terminated Sessions Removed After 10s Grace Period

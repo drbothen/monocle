@@ -124,8 +124,8 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "2.14.0"
-  last_bump_commit: "[F-S035-PASS5-MED-001 — EC-188 timeout → Terminated (transition_to_terminated_standalone); action×state matrix Detached cell subpath (d) added; four-subpath canonical enumeration in Invariant 5]"
+  current_version: "2.15.0"
+  last_bump_commit: "[F-S038-PASS1-001/002/005 — single-writer mandate: lifecycle step 9 calls write_hooks_settings_json; SessionManager::new() receives real HookEndpointConfig; EC-182 re-write uses real config; lifecycle::write_hooks_settings + HooksSettings/HooksMap removed]"
   last_bump_date: "2026-06-19"
 
 SS-embedded-pty:
@@ -142,9 +142,9 @@ SS-engine-module-v2-delta:
 
 SS-daemon-wiring-v2-delta:
   path: specs/architecture/SS-daemon-wiring-v2-delta.md
-  current_version: "1.11.4"
-  last_bump_commit: "[Pass-52 F-P52-001 D-295 — errata trace: Terminated-in-grace action×state disposition matrix added to error table; false 'Running/Detached only' SS-ipc claim corrected in §Trace]"
-  last_bump_date: "2026-06-14"
+  current_version: "1.12.0"
+  last_bump_commit: "[F-S038-PASS1-001 — step-9 single-writer mandate documented; state.hooks_settings_path spec drift fixed (derive from lock_file_path parent); SessionManager::new() new hook_endpoint_config parameter]"
+  last_bump_date: "2026-06-19"
 
 SS-deps-pin-manifest-v2-delta:
   path: specs/architecture/SS-deps-pin-manifest-v2-delta.md
@@ -228,8 +228,8 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.23"
-  last_bump_commit: "[F-S035-PASS6-LOW-001 — S-035 story pin cascade 1.2.2→1.2.3]"
+  current_version: "1.25"
+  last_bump_commit: "[F-S038-PASS1-001 — S-036 input pin v1.1→v1.2; S-037 input pin v1.0.2→v1.0.3 (arch-source cascade)]" # version-pin-historical
   last_bump_date: "2026-06-19"
 
 sprint-state:
@@ -707,8 +707,8 @@ BC-2.07.006:
 
 BC-2.03.005:
   path: specs/behavioral-contracts/ss-03/BC-2.03.005.md
-  current_version: "1.1.6"
-  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  current_version: "1.1.7"
+  last_bump_commit: "[F-S038-PASS1-001 — arch-source pin cascade: SS-session-manager v2.14.0→v2.15.0; no behavioral changes]" # version-pin-historical
   last_bump_date: "2026-06-19"
 
 BC-2.03.006:
@@ -719,92 +719,92 @@ BC-2.03.006:
 
 BC-2.03.007:
   path: specs/behavioral-contracts/ss-03/BC-2.03.007.md
-  current_version: "1.2.6"
-  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  current_version: "1.2.7"
+  last_bump_commit: "[F-S038-PASS1-001 — arch-source pin cascade: SS-session-manager v2.14.0→v2.15.0; no behavioral changes]" # version-pin-historical
   last_bump_date: "2026-06-19"
 
 BC-2.03.008:
   path: specs/behavioral-contracts/ss-03/BC-2.03.008.md
-  current_version: "1.0.9"
-  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  current_version: "1.1.0"
+  last_bump_commit: "[F-S038-PASS1-001 — arch-source pin cascade: SS-session-manager v2.14.0→v2.15.0; no behavioral changes]" # version-pin-historical
   last_bump_date: "2026-06-19"
 
 BC-2.05.009:
   path: specs/behavioral-contracts/ss-05/BC-2.05.009.md
-  current_version: "1.5.6"
-  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  current_version: "1.5.7"
+  last_bump_commit: "[F-S038-PASS1-001 — arch-source pin cascade: SS-session-manager v2.14.0→v2.15.0; SS-daemon-wiring-v2-delta v1.11.4→v1.12.0; no behavioral changes]" # version-pin-historical
   last_bump_date: "2026-06-19"
 
 BC-2.05.010:
   path: specs/behavioral-contracts/ss-05/BC-2.05.010.md
-  current_version: "1.9.5"
-  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  current_version: "1.9.6"
+  last_bump_commit: "[F-S038-PASS1-001 — arch-source pin cascade: SS-session-manager v2.14.0→v2.15.0; SS-daemon-wiring-v2-delta v1.11.4→v1.12.0; no behavioral changes]" # version-pin-historical
   last_bump_date: "2026-06-19"
 
 BC-2.05.011:
   path: specs/behavioral-contracts/ss-05/BC-2.05.011.md
-  current_version: "1.2.6"
-  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  current_version: "1.2.7"
+  last_bump_commit: "[F-S038-PASS1-001 — arch-source pin cascade: SS-session-manager v2.14.0→v2.15.0; SS-daemon-wiring-v2-delta v1.11.4→v1.12.0; no behavioral changes]" # version-pin-historical
   last_bump_date: "2026-06-19"
 
 BC-2.06.025:
   path: specs/behavioral-contracts/ss-06/BC-2.06.025.md
-  current_version: "1.5.5"
-  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  current_version: "1.5.6"
+  last_bump_commit: "[F-S038-PASS1-001 — arch-source pin cascade: SS-session-manager v2.14.0→v2.15.0; SS-daemon-wiring-v2-delta v1.11.4→v1.12.0; no behavioral changes]" # version-pin-historical
   last_bump_date: "2026-06-19"
 
 BC-2.08.001:
   path: specs/behavioral-contracts/ss-08/BC-2.08.001.md
-  current_version: "1.5.4"
-  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  current_version: "1.5.5"
+  last_bump_commit: "[F-S038-PASS1-001 — arch-source pin cascade: SS-session-manager v2.14.0→v2.15.0; SS-daemon-wiring-v2-delta v1.11.4→v1.12.0]" # version-pin-historical
   last_bump_date: "2026-06-19"
 
 BC-2.08.002:
   path: specs/behavioral-contracts/ss-08/BC-2.08.002.md
-  current_version: "1.2.4"
-  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  current_version: "1.2.5"
+  last_bump_commit: "[F-S038-PASS1-001 — arch-source pin cascade: SS-session-manager v2.14.0→v2.15.0]" # version-pin-historical
   last_bump_date: "2026-06-19"
 
 BC-2.08.003:
   path: specs/behavioral-contracts/ss-08/BC-2.08.003.md
-  current_version: "1.5.1"
-  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  current_version: "1.5.2"
+  last_bump_commit: "[F-S038-PASS1-001 — arch-source pin cascade: SS-session-manager v2.14.0→v2.15.0; SS-daemon-wiring-v2-delta v1.11.4→v1.12.0; no behavioral changes]" # version-pin-historical
   last_bump_date: "2026-06-19"
 
 BC-2.08.004:
   path: specs/behavioral-contracts/ss-08/BC-2.08.004.md
-  current_version: "1.3.3"
-  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  current_version: "1.3.4"
+  last_bump_commit: "[F-S038-PASS1-001 — arch-source pin cascade: SS-session-manager v2.14.0→v2.15.0; SS-daemon-wiring-v2-delta v1.11.4→v1.12.0; no behavioral changes]" # version-pin-historical
   last_bump_date: "2026-06-19"
 
 BC-2.08.005:
   path: specs/behavioral-contracts/ss-08/BC-2.08.005.md
-  current_version: "1.0.7"
-  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  current_version: "1.0.8"
+  last_bump_commit: "[F-S038-PASS1-001 — arch-source pin cascade: SS-session-manager v2.14.0→v2.15.0; SS-daemon-wiring-v2-delta v1.11.4→v1.12.0; no behavioral changes]" # version-pin-historical
   last_bump_date: "2026-06-19"
 
 BC-2.08.006:
   path: specs/behavioral-contracts/ss-08/BC-2.08.006.md
-  current_version: "1.4.1"
-  last_bump_commit: "SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001" # version-pin-historical
+  current_version: "1.5.0"
+  last_bump_commit: "[F-S038-PASS1-001/002/005 — single-writer mandate; Invariant 2 enforcement mechanism; EC-181 regression-impossible-by-construction; EC-182 rewritten (file-deleted-at-spawn + real-config obligation); EC-182b concurrent-spawns; 2 test vectors added; arch-source pins → SS-session-manager v2.15.0 + SS-daemon-wiring-v2-delta v1.12.0]"
   last_bump_date: "2026-06-19"
 
 BC-2.08.007:
   path: specs/behavioral-contracts/ss-08/BC-2.08.007.md
-  current_version: "1.5.5"
-  last_bump_commit: "[F-S035-PASS5-MED-001 — EC-188 timeout → Terminated (transition_to_terminated_standalone + broadcasts + GC); Invariant 5 enumerates all four attach-failure dispositions (ConnectFailed/PeerCredFailed/ProtocolError/Timeout)]"
+  current_version: "1.5.6"
+  last_bump_commit: "[F-S038-PASS1-001 — arch-source pin cascade: SS-session-manager v2.14.0→v2.15.0; SS-daemon-wiring-v2-delta v1.11.4→v1.12.0; no behavioral changes]" # version-pin-historical
   last_bump_date: "2026-06-19"
 
 BC-2.08.008:
   path: specs/behavioral-contracts/ss-08/BC-2.08.008.md
-  current_version: "1.3.7"
-  last_bump_commit: "[SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001 EC-188 timeout subpath (d)]" # version-pin-historical
+  current_version: "1.3.8"
+  last_bump_commit: "[F-S038-PASS1-001 — arch-source pin cascade: SS-session-manager v2.14.0→v2.15.0; SS-daemon-wiring-v2-delta v1.11.4→v1.12.0; no behavioral changes]" # version-pin-historical
   last_bump_date: "2026-06-19"
 
 BC-2.09.001:
   path: specs/behavioral-contracts/ss-09/BC-2.09.001.md
-  current_version: "1.3.6"
-  last_bump_commit: "[SS-session-manager v2.13.0→v2.14.0 Architecture Source pin cascade — F-S035-PASS5-MED-001]" # version-pin-historical
+  current_version: "1.3.7"
+  last_bump_commit: "[F-S038-PASS1-001 — arch-source pin cascade: SS-session-manager v2.14.0→v2.15.0; no behavioral changes]" # version-pin-historical
   last_bump_date: "2026-06-19"
 
 BC-2.09.002:
@@ -979,8 +979,8 @@ S-040-keyboard-forwarding:
 
 S-046-pty-output-fan-out:
   path: stories/S-046-pty-output-fan-out.md
-  current_version: "1.5"
-  last_bump_commit: "[F-S035-PASS5-MED-001 — SS-session-manager narrative citation v2.13.0→v2.14.0]" # version-pin-historical
+  current_version: "1.6"
+  last_bump_commit: "[F-S038-PASS1-001 — SS-session-manager narrative citation v2.14.0→v2.15.0; no behavioral changes]"
   last_bump_date: "2026-06-19"
 
 S-047-ipc-lifecycle-variants:
@@ -1045,14 +1045,14 @@ S-035-session-manager-attach-detach:
 
 S-036-session-manager-rediscovery:
   path: stories/S-036-session-manager-rediscovery.md
-  current_version: "1.1"
-  last_bump_commit: "[F-S035-PASS5-MED-001 — BC-2.08.002/BC-2.08.004 BC status comment pins updated (v1.2.3→v1.2.4 / v1.3.2→v1.3.3)]" # version-pin-historical
+  current_version: "1.2"
+  last_bump_commit: "[F-S038-PASS1-001 — inputs pin cascade: BC-2.08.002 v1.2.3→v1.2.5; BC-2.08.004 v1.3.2→v1.3.4; SS-session-manager v2.6.1→v2.15.0; SS-daemon-wiring-v2-delta v1.11.4→v1.12.0; BC status comment updated]" # version-pin-historical
   last_bump_date: "2026-06-19"
 
 S-037-session-manager-gc:
   path: stories/S-037-session-manager-gc.md
-  current_version: "1.0.2"
-  last_bump_commit: "[F-S035-PASS5-MED-001 — BC-2.08.005 BC status comment pin updated (v1.0.6→v1.0.7)]" # version-pin-historical
+  current_version: "1.0.3"
+  last_bump_commit: "[F-S038-PASS1-001 — BC-2.08.005 BC status comment pin v1.0.7→v1.0.8]" # version-pin-historical
   last_bump_date: "2026-06-19"
 
 S-039-pty-output-pipeline:

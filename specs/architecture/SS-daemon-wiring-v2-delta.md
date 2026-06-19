@@ -3,7 +3,7 @@ document_type: architecture-section-delta
 level: L3
 section: "daemon-wiring-v2-delta"
 subsystem: SS-04
-version: "1.11.4"
+version: "1.12.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -125,6 +125,38 @@ step 8b is inserted before both.
 a pre-existing session sidecar is discovered and the session appears in the initial state push
 to a TUI client that connects after the daemon starts.
 
+**Step 9 single-writer mandate (F-S038-PASS1-001 — v1.12.0):** Step 9 calls
+`session_manager::write_hooks_settings_json` as the sole writer of `hooks-settings.json`.
+`lifecycle::write_hooks_settings` (using `HooksSettings`/`HooksMap`/`HookEntry` types) is
+removed. The new step-9 invocation:
+
+```rust
+// Step 9 (updated — single-writer call):
+let hook_endpoint_config = session_manager::HookEndpointConfig {
+    pre_tool_use:        format!("curl -s -X POST http://127.0.0.1:{port}/hooks/pre-tool-use \
+                                 -H 'Content-Type: application/json' \
+                                 -H 'X-Monocle-Authorization: monocle-v1:{auth_token}' -d @-"),
+    notification:        format!("curl -s -X POST http://127.0.0.1:{port}/hooks/notification \
+                                 -H 'Content-Type: application/json' \
+                                 -H 'X-Monocle-Authorization: monocle-v1:{auth_token}' -d @-"),
+    stop:                format!("curl -s -X POST http://127.0.0.1:{port}/hooks/stop \
+                                 -H 'Content-Type: application/json' \
+                                 -H 'X-Monocle-Authorization: monocle-v1:{auth_token}' -d @-"),
+    user_prompt_submit:  format!("curl -s -X POST http://127.0.0.1:{port}/hooks/prompt-submit \
+                                 -H 'Content-Type: application/json' \
+                                 -H 'X-Monocle-Authorization: monocle-v1:{auth_token}' -d @-"),
+};
+let hs_path = canonical_runtime_dir.join("hooks-settings.json");
+session_manager::write_hooks_settings_json(&hook_endpoint_config, &hs_path)
+    .map_err(DaemonStartError::HooksSettingsWriteFailure)?;
+// Then pass hook_endpoint_config into SessionManager::new():
+// SessionManager::new(runtime_dir, spawner, broker, engine, hook_endpoint_config)
+```
+
+`SessionManager::new()` receives the real `hook_endpoint_config` so the EC-182 re-write
+path in `spawn_session()` can re-write the file with real curl URLs if the file is deleted
+between startup and a spawn call.
+
 <a id="ipc-handler-new-clienttoserver-variants"></a>
 ### 3. IPC handler — new ClientToServer variants
 
@@ -169,9 +201,24 @@ ClientToServer::SpawnSession { opts } => {
     // C30-001: SpawnOptions is #[non_exhaustive]; functional-update (`..opts`) is E0639
     // outside the defining crate. Use the consuming builder `with_daemon_fields()` instead.
     // project_root, worktree_root, harness_id, profile_id, ccr_base_url came from TUI.
+    //
+    // hooks_settings_path derivation: DaemonState does NOT have a hooks_settings_path field
+    // (the path is a pure function of lock_file_path). Derive it here by taking the parent
+    // directory of lock_file_path (the runtime_dir) and appending "hooks-settings.json".
+    // If lock_file_path is empty (test path), fall back to temp_dir.
+    // This derivation is identical on every call because lock_file_path is fixed for the
+    // daemon's lifetime, and the file was written at step 9 (single-writer mandate).
+    let hooks_settings_path = if state.lock_file_path.is_empty() {
+        std::env::temp_dir().join("hooks-settings.json")
+    } else {
+        std::path::Path::new(&state.lock_file_path)
+            .parent()
+            .unwrap_or_else(|| std::path::Path::new("/tmp"))
+            .join("hooks-settings.json")
+    };
     let opts = opts.with_daemon_fields(
         session_id,
-        state.hooks_settings_path.clone(), // pre-written at step 9
+        hooks_settings_path, // pre-written at step 9 by lifecycle (single-writer)
     );
     // I27-001 (Model A): The TUI sends SpawnOptions (user intent). spawn_session() internals:
     //   a. Calls engine_module.spawn_recipe(&opts)? — DAEMON-SIDE recipe construction.
@@ -709,6 +756,27 @@ The implementer MUST:
 
 If no in-process SessionManager stub exists in D-235 (i.e., the stub was skeletal), the
 implementer creates `SessionManager` from scratch per SS-08.
+
+---
+
+## §Trace v1.12.0
+
+**F-S038-PASS1-001/002/005 — Single-writer mandate: lifecycle step 9 calls `session_manager::write_hooks_settings_json`; `state.hooks_settings_path` spec drift fixed** (2026-06-19):
+
+- **Root problem:** The SpawnSession handler sample at §3 Step 3 referenced
+  `state.hooks_settings_path.clone()` but `DaemonState` has no `hooks_settings_path` field —
+  the actual implementation derives the path from `lock_file_path` parent + `"hooks-settings.json"`.
+  This was a spec-vs-implementation drift introduced when the hooks_settings_path storage model
+  was changed from DaemonState field to on-demand derivation.
+- **Step 3 fix:** Sample code updated to derive `hooks_settings_path` from
+  `state.lock_file_path` parent directory, matching `ipc_server.rs` implementation.
+- **Step 9 single-writer mandate:** Added §"Step 9 single-writer mandate" in §2
+  (daemon_start_sequence section). Documents that `lifecycle::write_hooks_settings` is removed;
+  step 9 calls `session_manager::write_hooks_settings_json` with a real `HookEndpointConfig`
+  constructed from port+auth_token. Includes pseudocode for the updated step-9 invocation and
+  the `SessionManager::new()` signature change (new `hook_endpoint_config` parameter).
+- **Downstream:** BC-2.08.006 v1.5.0; SS-session-manager v2.15.0.
+- **SE-16d monotonicity:** v1.12.0 timestamp 2026-06-19 >= v1.11.4 timestamp 2026-06-14. PASS.
 
 ---
 

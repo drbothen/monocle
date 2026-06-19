@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-036
 epic_id: EPIC-08
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -20,15 +20,15 @@ behavioral_contracts: [BC-2.08.002, BC-2.08.004]
 verification_properties: []
 estimated_days: 4
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.002.md, version: "1.2.3"}
-  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.004.md, version: "1.3.2"}
-  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
-  - {path: .factory/specs/architecture/SS-daemon-wiring-v2-delta.md, version: "1.11.4"}
+  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.002.md, version: "1.2.5"}
+  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.004.md, version: "1.3.4"}
+  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.15.0"}
+  - {path: .factory/specs/architecture/SS-daemon-wiring-v2-delta.md, version: "1.12.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.08.002 (session-host setsid + survival across graceful daemon restart) and BC-2.08.004 (rediscover_sessions: all alive sessions visible after restart within 5s; UDS bind blocked until complete)"
-# BC status: BC-2.08.002 v1.2.4, BC-2.08.004 v1.3.3 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status: BC-2.08.002 v1.2.5, BC-2.08.004 v1.3.4 — non-empty; status draft pending Phase-2 adversarial convergence gate
 ---
 
 # S-036: SessionManager::rediscover_sessions — setsid Persistence; All States Handled Within 5s; UDS Bind Blocked

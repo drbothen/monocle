@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.5"
+version: "1.5.6"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-19T00:00:00Z
@@ -86,7 +86,7 @@ background. The TUI can re-attach at any time.
 ## Postconditions (detach)
 
 1. `SessionManager` sends `DaemonToHost::Detach` over the connection.
-2. The proxy task for this session is terminated (`proxy_task.take().map(|t| t.abort())`). `proxy_task` is typed `Option<JoinHandle<()>>` as of SS-session-manager.md v2.14.0; `.take()` clears the field and `.map(|t| t.abort())` aborts the task if present.
+2. The proxy task for this session is terminated (`proxy_task.take().map(|t| t.abort())`). `proxy_task` is typed `Option<JoinHandle<()>>` as of SS-session-manager.md v2.15.0; `.take()` clears the field and `.map(|t| t.abort())` aborts the task if present.
 3. `SessionEntry.host_conn` is set to `None`.
 4. `SessionEntry.state` transitions to `Detached`.
 5. `session-state.json` is updated to `state: "Detached"` (atomically).
@@ -107,7 +107,7 @@ background. The TUI can re-attach at any time.
    ScrollbackDumpComplete` — styled cells `Vec<Vec<SerializedCell>>` (full fg/bg color +
    attrs). The retired single-message `ScrollbackDump` form MUST NOT be used. The TUI
    MUST reset its parser for the session BEFORE applying the dump to prevent double-counting
-   live parser state. See SS-session-manager.md v2.14.0 §Screen-state transfer for the
+   live parser state. See SS-session-manager.md v2.15.0 §Screen-state transfer for the
    full reconstruction protocol.
 4. The 5-second timeout applies to the full `ScrollbackChunk*` + `ScrollbackDumpComplete`
    sequence for both re-discovery (BC-2.08.004) and interactive attach. After 5s without
@@ -169,7 +169,7 @@ background. The TUI can re-attach at any time.
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — detach/attach are explicitly named session lifecycle operations in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager `attach_session()`, `detach_session()`) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.14.0 §Public API (attach_session, detach_session signatures); §Per-session UDS protocol (DaemonToHost::Attach/Detach, HostToDaemon::ScrollbackChunk/ScrollbackDumpComplete); §Screen-state transfer on Attach; §Re-discovery state handling (I3-005 Detached preservation across restart); §host_conn type (proxy_task: Option<JoinHandle<()>> — F-P50-001); §Mapping table (SessionNotReady → "session_not_ready" on DetachSession arm; defensive precondition note — F-P51-001); §Terminated-in-grace action×state matrix (attach_session Detached cell: uid-mismatch → Terminated, protocol-error → stays Detached, EC-188 timeout → Terminated — F-S035-PASS5-MED-001); SS-daemon-wiring-v2-delta.md v1.11.4 §3b (SessionStateChanged{Running} before SessionListUpdate on attach) |
+| Architecture Source | SS-session-manager.md v2.15.0 §Public API (attach_session, detach_session signatures); §Per-session UDS protocol (DaemonToHost::Attach/Detach, HostToDaemon::ScrollbackChunk/ScrollbackDumpComplete); §Screen-state transfer on Attach; §Re-discovery state handling (I3-005 Detached preservation across restart); §host_conn type (proxy_task: Option<JoinHandle<()>> — F-P50-001); §Mapping table (SessionNotReady → "session_not_ready" on DetachSession arm; defensive precondition note — F-P51-001); §Terminated-in-grace action×state matrix (attach_session Detached cell: uid-mismatch → Terminated, protocol-error → stays Detached, EC-188 timeout → Terminated — F-S035-PASS5-MED-001); SS-daemon-wiring-v2-delta.md v1.12.0 §3b (SessionStateChanged{Running} before SessionListUpdate on attach) |
 | Test Name | test_BC_2_08_007_attach_receives_scrollback_detach_keeps_session_alive |
 
 ## Related BCs
@@ -295,6 +295,12 @@ SE-16d monotonicity: v1.5.0 timestamp 2026-06-14 > v1.4.2 timestamp 2026-06-13. 
 **Initial production — v1A PRD delta** (2026-06-03T23:30:00Z):
 - BC-2.08.007 authored for SS-08 as part of the v1A control-center pivot BC burst.
 - SE-16d PASS: 2026-06-03T23:30:00Z (new artifact).
+
+## §Trace v1.5.6
+
+**SS-session-manager v2.14.0 → v2.15.0 + SS-daemon-wiring-v2-delta v1.11.4 → v1.12.0 Architecture Source pin cascade (F-S038-PASS1-001)** (2026-06-19):
+- Architecture Source pins updated (Traceability table + two inline references in Postconditions/Invariants). No behavioral content changes to this BC.
+- SE-16d monotonicity: v1.5.6 timestamp 2026-06-19 >= v1.5.5 timestamp 2026-06-19. PASS.
 
 ## §Trace v1.5.5
 

@@ -1601,3 +1601,54 @@ Detachment sequence per BC-2.08.007 detach PC-1–PC-7:
 5. `host_conn = None`
 6. `state → Detached`; update sidecar via `tempfile::persist`
 7. Emit `SessionStateChanged{Detached}` THEN `SessionListUpdate` (same mutex hold)
+
+---
+document_type: red-gate-log
+story_id: S-038
+step: 3
+branch: story/S-038-session-manager-hook-injection
+timestamp: 2026-06-19T00:00:00Z
+producer: vsdd-factory:test-writer
+---
+
+# Red Gate Log — S-038 Step 3 (Hook Auto-Injection)
+
+## Summary
+
+**Status: RED GATE VERIFIED**
+
+6 new BC-2.08.006 tests written. All 6 FAIL against current stubs. 0 pass vacuously.
+`cargo build --workspace` succeeds. `cargo clippy --workspace --all-targets -- -D warnings` passes.
+All pre-existing tests pass (no regressions).
+
+## Test File
+
+`crates/monocle-runtime/src/session_manager/mod.rs` — inline `#[cfg(test)] mod tests` block,
+appended after existing S-034/S-035/S-037 test section (line ~10826).
+
+## Test Names and Failure Modes
+
+| Test | Status | Failure Reason |
+|------|--------|----------------|
+| `test_BC_2_08_006_spawn_options_hooks_settings_path_populated` | FAILED | `assert_eq!` fails: `opts.hooks_settings_path == ""` but expected canonical path (stub stores `PathBuf::new()`) |
+| `test_BC_2_08_006_hooks_settings_json_content` | FAILED | `write_hooks_settings_json()` panics with `todo!("S-038: implement write_hooks_settings_json")` |
+| `test_BC_2_08_006_hooks_settings_json_atomic_write` | FAILED | `write_hooks_settings_json()` panics with `todo!("S-038: implement write_hooks_settings_json")` |
+| `test_BC_2_08_006_startup_write_fail_aborts_daemon` | FAILED | `write_hooks_settings_json()` panics with `todo!("S-038: implement write_hooks_settings_json")` |
+| `test_BC_2_08_006_missing_settings_file_rewrites_at_spawn` | FAILED | `assert!(hooks_path.exists())` fails — EC-182 guard stub is commented out, file never re-written |
+| `test_BC_2_08_006_non_utf8_hooks_path_returned_from_spawn_recipe` | FAILED | `expect_err` fails — spawn_session() returns Ok (stub stores `PathBuf::new()` which is valid UTF-8; mock engine doesn't return InvalidPath) |
+
+## Pre-Existing Tests
+
+73 monocle-runtime unit tests: all PASS. Integration tests across workspace: all PASS.
+Total workspace passing count unchanged from baseline 1514 (6 new failures are the S-038 tests only).
+
+## Stub State
+
+- `write_hooks_settings_json()`: `todo!("S-038: implement write_hooks_settings_json — BC-2.08.006 Invariant 5")`
+- `SessionManager::new()`: sets `hooks_settings_path = PathBuf::new()` (empty stub)
+- `spawn_session()`: EC-182 guard commented out; `opts.hooks_settings_path = self.hooks_settings_path.clone()` live (but clones empty path)
+
+## Mocks Added
+
+- `CapturingMockEngine`: records `SpawnOptions` passed to `spawn_recipe()` into `Arc<Mutex<Option<SpawnOptions>>>` for test assertions
+- `NonUtf8PathRejectingMockEngine`: returns `EngineError::InvalidPath` when `opts.hooks_settings_path.to_str()` is `None` (simulates S-045 boundary behavior for EC-183)

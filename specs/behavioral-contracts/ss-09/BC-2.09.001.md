@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.6"
+version: "1.3.7"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -132,7 +132,7 @@ TUI's IPC socket. This timing budget covers: IPC framing decode → `vt100::Pars
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — this BC defines the PTY byte pipeline performance contract: IPC → vt100 → tui-term within 100ms, which is the core of CAP-009's embedded PTY widget capability |
 | Architecture Module | monocle-tui (App::on_pty_output, pty_parsers, PseudoTerminal widget) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.7.0 §PTY Widget Pipeline; §Parser ownership in TUI; §O4 memory bound; §I7 per-session scroll offset; §EmbeddedTerminal ENTRY (auto-attach mandate, I11-001 PRONG A); SS-session-manager.md v2.14.0 §Screen-state transfer (C5); ADR-0011 v1.2.1 §Decision |
+| Architecture Source | SS-embedded-pty.md v1.7.0 §PTY Widget Pipeline; §Parser ownership in TUI; §O4 memory bound; §I7 per-session scroll offset; §EmbeddedTerminal ENTRY (auto-attach mandate, I11-001 PRONG A); SS-session-manager.md v2.15.0 §Screen-state transfer (C5); ADR-0011 v1.2.1 §Decision |
 | Test Name | test_BC_2_09_001_pty_output_renders_within_100ms |
 
 ## Related BCs
@@ -153,6 +153,13 @@ S-039 — Implement TUI PTY widget (vt100 parser, PseudoTerminal render, PtyOutp
 ## VP Anchors
 
 VP-TBD — PTY output render latency tests (filled after VP creation)
+
+## §Trace v1.3.7
+
+**SS-session-manager v2.14.0 → v2.15.0 Architecture Source pin cascade (F-S038-PASS1-001)** (2026-06-19):
+- Architecture Source pin: SS-session-manager.md v2.14.0 → v2.15.0 (single-writer mandate +
+  HookEndpointConfig construction). No behavioral content changes to this BC.
+- SE-16d monotonicity: v1.3.7 timestamp 2026-06-19 >= v1.3.6 timestamp 2026-06-19. PASS.
 
 ## §Trace v1.3.6
 

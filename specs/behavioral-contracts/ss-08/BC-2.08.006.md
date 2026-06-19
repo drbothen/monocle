@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.1"
+version: "1.5.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -31,11 +31,28 @@ removal_reason: null
 Every session spawned by monocle has the hooks-settings.json path injected as
 `--settings <hooks_settings_path>` in the harness child process's CLI args. This injection
 is automatic — no user configuration required. The `lock.app = 'monocle'` filter in the
-hook JS ensures only monocle-launched sessions trigger monocle's hook endpoints. This BC
+hook JSON ensures only monocle-launched sessions trigger monocle's hook endpoints. This BC
 verifies the end-to-end injection chain: daemon writes hooks-settings.json → `SpawnOptions`
 carries the path → `ClaudeCodeModule::spawn_recipe()` produces `--settings <path>` in args
 → session-host builds the harness `CommandBuilder` with those args → harness child process
 has `--settings` in its argv.
+
+**Single-writer mandate (F-S038-PASS1-001):** `session_manager::write_hooks_settings_json`
+is the SOLE canonical function that serializes `hooks-settings.json`. It is called from two
+sites, both passing a fully-populated `HookEndpointConfig`:
+1. **lifecycle step 9** (`lifecycle::write_hooks_settings` is replaced by a call to
+   `session_manager::write_hooks_settings_json` with a real `HookEndpointConfig` constructed
+   from the daemon's `port` and `auth_token`). This write happens before UDS bind; abort on
+   failure (exit code 72).
+2. **EC-182 re-write** inside `SessionManager::spawn_session()` if the file is absent at
+   spawn time: calls `write_hooks_settings_json` with `self.hook_endpoint_config`, which holds
+   the real config passed to `SessionManager::new()`.
+
+`lifecycle::write_hooks_settings` (the pre-S-038 function using `HooksSettings`/`HooksMap`
+structs) is removed. `HooksSettings`, `HooksMap`, and their `lock`-field-absent serialization
+path are replaced by the `serde_json::json!` schema in `write_hooks_settings_json`.
+`HookEndpointConfig::default()` (empty-string URLs) is used ONLY in tests that do not set up
+a real daemon port; production construction always provides a real config.
 
 ## Preconditions
 
@@ -92,6 +109,10 @@ has `--settings` in its argv.
 2. The `lock.app = 'monocle'` filter in hooks-settings.json is REQUIRED for every
    monocle-launched session. A hooks-settings.json without this filter would cause ALL
    `claude` processes on the system to route hooks to monocle, not just monocle-launched ones.
+   This invariant is enforced at the function level: `session_manager::write_hooks_settings_json`
+   always emits `"lock": {"app": "monocle"}` unconditionally in its `serde_json::json!` payload.
+   There is no code path through which hooks-settings.json can be written without this field,
+   because all writes go through this single function (F-S038-PASS1-001 single-writer mandate).
 3. **Shared hooks file (BC-HOOK-010 model):** `hooks-settings.json` is a single shared file
    at `<runtime_dir>/hooks-settings.json` — NOT per-session. It is written once at daemon
    startup (per BC-2.04.010 / BC-HOOK-010). All concurrent session spawns in the same
@@ -142,8 +163,9 @@ has `--settings` in its argv.
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
 | EC-180 | `hooks_settings_path` refers to a file that was deleted after daemon startup (e.g., runtime_dir cleaned externally) | `claude --settings <deleted_path>` fails to find the file; Claude Code exits with an error; session-host sends `StateChanged::Terminated`; TUI shows "session failed to start"; daemon GC's the entry |
-| EC-181 | hooks-settings.json missing `lock.app` filter (regression) | All external `claude` processes on the system would route hooks to monocle; this is a data-integrity defect; the daemon MUST include `lock.app = 'monocle'` when writing the hooks file at daemon startup (invariant enforced by the daemon's hook-file writer, not by the session-host) |
-| EC-182 | Two sessions spawned concurrently | Both reference the SAME `<runtime_dir>/hooks-settings.json`; no file-level conflict; each `claude` process has `--settings <runtime_dir>/hooks-settings.json` in its argv; the shared file is read-only after daemon startup (no concurrent writes during spawn) |
+| EC-181 | hooks-settings.json missing `lock.app` filter (regression) | All external `claude` processes on the system would route hooks to monocle; this is a data-integrity defect; this regression is prevented by the single-writer mandate (Description §Single-writer mandate): only `write_hooks_settings_json` writes the file, and it always emits `lock.app = 'monocle'` unconditionally. No code path can produce a hooks-settings.json without this field. |
+| EC-182 | hooks-settings.json file deleted between daemon startup (step 9) and a `spawn_session()` call (e.g., external process cleans runtime_dir) | `SessionManager::spawn_session()` checks for file existence before spawning. If absent, it calls `write_hooks_settings_json(&self.hook_endpoint_config, &self.hooks_settings_path)` to re-write the file. The re-written file contains REAL curl URLs (real daemon port + auth_token) and `lock.app = 'monocle'` because `self.hook_endpoint_config` was populated with the real config at `SessionManager::new()` construction (lifecycle step 9 passes the real `HookEndpointConfig` — see Description §Single-writer mandate). A re-write that uses `HookEndpointConfig::default()` (empty URLs) would produce non-functional hooks; this is FORBIDDEN in production. If the re-write fails, `spawn_session()` logs ERROR and continues; the session-host will fail when `claude --settings` cannot read the file. |
+| EC-182b | Two sessions spawned concurrently | Both reference the SAME `<runtime_dir>/hooks-settings.json`; no file-level conflict; each `claude` process has `--settings <runtime_dir>/hooks-settings.json` in its argv; the shared file is read-only after daemon startup (no concurrent writes during spawn under normal conditions) |
 | EC-183 | `tempfile::persist` fails during step 9 (e.g., `runtime_dir` exists but a cross-device rename is attempted, or filesystem is mounted read-only after daemon start) | Daemon logs `ERROR: failed to write hooks-settings.json: <reason>` and exits with code 72. No partial file is left at the target path (tempfile guarantees this via `rename(2)` semantics — the temp file is only unlinked, never partially moved). No UDS bind happens; the TUI never receives an IPC connection; TUI displays a startup error banner (same path as binary-not-found startup failure). Invariant 5 enforces this hard-exit; a daemon that proceeds without a hooks-settings.json would spawn sessions whose hook injection silently fails. |
 | EC-184 | `runtime_dir` is a symlink and the symlink target changes between canonicalize (step 1) and hooks-settings.json write (step 9) | The `hooks_settings_path` embedded in `DaemonState` and all subsequent `SpawnOptions` continues to point to the canonicalized (real) path resolved at step 1, not the symlink. The re-targeted symlink is irrelevant: `hooks-settings.json` was written to the canonical path; the `--settings` arg carries the canonical path; the file is accessible by `claude`. No error; no divergence. Invariant 6 (canonicalize-at-startup) is the mechanism that eliminates this race. |
 
@@ -157,6 +179,8 @@ has `--settings` in its argv.
 | Daemon startup with `runtime_dir` pointing to a symlink (Invariant 6) | `DaemonState.hooks_settings_path` equals `std::fs::canonicalize(runtime_dir).unwrap().join("hooks-settings.json")`; symlink does NOT appear in the stored path | unit |
 | `tempfile::persist` injected to return `Err(...)` in step 9 (Invariant 5 — EC-183) | Daemon exits with code 72; no UDS socket created; `hooks-settings.json` is absent or unchanged at the target path | unit (daemon startup) |
 | `runtime_dir` does not exist at daemon startup (Invariant 6 — EC-184 precursor) | Daemon exits with code 69; logs `ERROR: runtime_dir does not exist: <path>`; no UDS bind | unit (daemon startup) |
+| hooks-settings.json written by lifecycle step 9 (production path, real port+token) | File parses as valid JSON; contains `"lock": {"app": "monocle"}`; PreToolUse/Notification/Stop/UserPromptSubmit arrays each contain one hook object with a non-empty `"command"` curl string pointing to `127.0.0.1:<port>/hooks/<endpoint>`; PostToolUse and PreCompact are empty arrays; no `"SessionStart"` key | unit (lifecycle hook-file writer) |
+| hooks-settings.json deleted at spawn time (EC-182 re-write path) | `spawn_session()` re-writes the file via `write_hooks_settings_json(&self.hook_endpoint_config, ...)`; re-written file has `lock.app = 'monocle'` and non-empty curl URLs (real port+token from `hook_endpoint_config`); spawn proceeds normally | unit (spawn_session EC-182 path) |
 
 ## Verification Properties
 
@@ -177,7 +201,7 @@ has `--settings` in its argv.
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — hook auto-injection on spawn is explicitly named in CAP-008; this BC defines the complete injection chain from daemon hook-file write through to child process argv |
 | L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness — hooks-settings.json is written to monocle's runtime_dir, NOT to Claude Code's config directory; the `--settings` flag mechanism ensures monocle does not touch `~/.monocle/settings.json` or any Claude Code-owned path) |
 | Architecture Module | monocle-runtime (SessionManager spawn; daemon hook-file writer); monocle-session-host (CommandBuilder construction from recipe) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.14.0 §SpawnRecipe integration with EngineModule; SS-engine-module-v2-delta.md v1.6.0 §Hook auto-injection invariant; BC-HOOK-027; BC-HOOK-028 |
+| Architecture Source | SS-session-manager.md v2.15.0 §SpawnRecipe integration with EngineModule (single-writer mandate, HookEndpointConfig construction); SS-engine-module-v2-delta.md v1.6.0 §Hook auto-injection invariant; SS-daemon-wiring-v2-delta.md v1.12.0 §lifecycle step 9 single-writer call; BC-HOOK-027; BC-HOOK-028 |
 | Cross-Ref | BC-2.03.005 (spawn_recipe() produces --settings arg); BC-HOOK-027 (monocle never writes ~/.monocle/settings.json); BC-HOOK-028 (no env-var alternative for hook injection); BC-2.04.010 (hook tmpfile generation — writes shared per-runtimeDir hooks-settings.json at daemon startup); BC-HOOK-010 (authoritative: hooks-settings.json is per-runtimeDir, not per-session) |
 | Test Name | test_BC_2_08_006_hook_auto_injection_settings_arg_in_child_argv |
 
@@ -200,6 +224,40 @@ S-038 — Implement hook auto-injection in session spawn path
 
 VP-TBD — Hook injection end-to-end tests (filled after VP creation)
 
+
+## §Trace v1.5.0
+
+**F-S038-PASS1-001 BLOCKER + F-S038-PASS1-002 HIGH + F-S038-PASS1-005 MED — Single-writer mandate + HookEndpointConfig real-config construction + EC-182 real-config re-write** (2026-06-19):
+
+- **Root problem (F-001 BLOCKER):** Two divergent writers of `hooks-settings.json` existed in S-038:
+  (1) `lifecycle::write_hooks_settings` — production writer, called at step 9 before UDS bind. Uses
+  `HooksSettings`/`HooksMap`/`HookEntry` types that have NO `lock` field → production file lacked
+  `lock.app = 'monocle'` → BC-2.08.006 Invariant 2 / EC-181 violated.
+  (2) `session_manager::write_hooks_settings_json` — S-038's new function, emits `lock.app` correctly
+  but used `HookEndpointConfig::default()` (empty URLs) in `SessionManager::new()` under an
+  `if !path.exists()` guard. Since the lifecycle file already existed, S-038's writer was dead code
+  in production.
+- **Decision (single-writer mandate):** `session_manager::write_hooks_settings_json` is the SOLE
+  canonical writer. `lifecycle::write_hooks_settings` (with its `HooksSettings`/`HooksMap` types)
+  is removed. Lifecycle step 9 calls `session_manager::write_hooks_settings_json` with a
+  `HookEndpointConfig` constructed from the daemon's real `port` and `auth_token`.
+- **EC-182 real-config obligation (F-002 HIGH + F-005 MED):** `SessionManager::new()` now receives
+  a caller-provided `HookEndpointConfig` (populated by lifecycle from real port+token). The
+  `if !path.exists()` write-on-absent guard in `new()` is removed — lifecycle is the sole step-9
+  writer; `new()` only stores the config for EC-182 re-writes. The EC-182 re-write in
+  `spawn_session()` uses `self.hook_endpoint_config` which now holds real curl URLs + lock.app.
+- **Abort-on-failure ownership:** Lifecycle step 9 calls `write_hooks_settings_json` and propagates
+  `Err` → `DaemonStartError::HooksSettingsWriteFailure` → daemon exits code 72. `SessionManager`'s
+  EC-182 re-write logs ERROR and continues (non-fatal: spawn may still fail if file truly absent,
+  which is the correct behavior; daemon has already started successfully at that point).
+- **Changes to this BC:** Description updated with §Single-writer mandate. Invariant 2 updated to
+  name the enforcement mechanism. EC-181 updated (regression path is now impossible by construction).
+  EC-182 rewritten to describe the file-deleted-at-spawn scenario with real-config re-write
+  obligation. EC-182b added for concurrent-spawns (previously mislabeled EC-182). Test vectors
+  updated: two new rows for production-writer lock.app assertion and EC-182 real-content assertion.
+  Architecture Source pin updated to SS-session-manager v2.15.0 + SS-daemon-wiring-v2-delta v1.12.0.
+- SE-16d monotonicity: v1.5.0 timestamp 2026-06-19 >= v1.4.1 timestamp 2026-06-19. PASS (same-day
+  sequential minor bump).
 
 ## §Trace v1.4.1
 

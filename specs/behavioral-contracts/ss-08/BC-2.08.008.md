@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.7"
+version: "1.3.8"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-19T00:00:00Z
@@ -79,7 +79,7 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
    The per-client channel FIFO draining order then guarantees that if both messages are
    delivered, `SessionStateChanged` is received first. The mutex provides the atomicity
    window for both enqueues — it does NOT directly control wire order (the channel FIFO does).
-   See SS-daemon-wiring-v2-delta.md v1.11.4 §3b for the canonical emission code pattern.
+   See SS-daemon-wiring-v2-delta.md v1.12.0 §3b for the canonical emission code pattern.
 
    **Ordered-pair split on full buffer:** If the first `.try_send()` (SessionStateChanged)
    succeeds but the second `.try_send()` (SessionListUpdate) fails (client buffer full), the
@@ -96,7 +96,7 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
    only — it is NOT a `SessionState` transition. `SessionStateChanged` carries
    `new_state: SessionState` and cannot convey the updated name. Only `SessionListUpdate`
    (carrying the full `SessionSnapshot` with updated `display_name`) is emitted for rename.
-   See SS-daemon-wiring-v2-delta.md v1.11.4 §3b emission table.
+   See SS-daemon-wiring-v2-delta.md v1.12.0 §3b emission table.
 
 4b. The `InitialState` push (on TUI client connect) includes the current session list with
    current states. TUI clients that connect after a transition has already occurred will see
@@ -197,7 +197,7 @@ It is emitted in addition to (not as a replacement for) `SessionListUpdate`.
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC defines the `SessionStateChanged` IPC message which is the primary notification mechanism for session lifecycle state transitions; it is the trigger for the wizard auto-advance and EmbeddedTerminal exit, both of which are core session lifecycle behaviors in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager state transitions → broker publish); monocle-ipc (`ServerToClient::SessionStateChanged` variant); monocle-tui (wizard auto-advance, EmbeddedTerminal exit handlers) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.14.0 §Session lifecycle state machine (state transitions, including re-discovery GC and Detached re-discovery; IPC handler generates UUID + sends SpawnAck before spawn_session(); Ruling K: natural-exit Terminated detection is S-039/S-040 PTY master EOF scope — not S-034; Ruling L: proxy_task is kill-confirm reader for attached sessions); SS-embedded-pty.md v1.7.0 §TUI AppMode Extensions (SessionCreation::Launching auto-transition to EmbeddedTerminal; `launching_session_id: Option<String>` field added — F-P41-IMP-001); SS-ipc.md v1.24.0 §ServerToClient::SpawnAck (new variant; per-client point-to-point delivery before SessionStateChanged{Launching}); SS-daemon-wiring-v2-delta.md v1.11.4 §3b (SessionStateChanged emission rule, ordered-pair-split-on-Full disconnect rule, rename-only-SessionListUpdate rule) |
+| Architecture Source | SS-session-manager.md v2.15.0 §Session lifecycle state machine (state transitions, including re-discovery GC and Detached re-discovery; IPC handler generates UUID + sends SpawnAck before spawn_session(); Ruling K: natural-exit Terminated detection is S-039/S-040 PTY master EOF scope — not S-034; Ruling L: proxy_task is kill-confirm reader for attached sessions); SS-embedded-pty.md v1.7.0 §TUI AppMode Extensions (SessionCreation::Launching auto-transition to EmbeddedTerminal; `launching_session_id: Option<String>` field added — F-P41-IMP-001); SS-ipc.md v1.24.0 §ServerToClient::SpawnAck (new variant; per-client point-to-point delivery before SessionStateChanged{Launching}); SS-daemon-wiring-v2-delta.md v1.12.0 §3b (SessionStateChanged emission rule, ordered-pair-split-on-Full disconnect rule, rename-only-SessionListUpdate rule) |
 | Cross-Ref | BC-2.09.008 (SessionCreation wizard auto-transition to EmbeddedTerminal on Running); BC-2.08.003 (kill → Terminating transition; 12s watchdog → Terminated); BC-2.05.003 (SessionListUpdate — emitted concurrently with SessionStateChanged for same transition) |
 | Test Name | test_BC_2_08_008_session_state_changed_emitted_on_every_transition |
 
@@ -222,6 +222,15 @@ S-033, S-034, S-035, S-039/S-040 — Implement SessionStateChanged broadcast on 
 ## VP Anchors
 
 VP-TBD — SessionStateChanged emission and TUI response integration tests (filled after VP creation)
+
+## §Trace v1.3.8
+
+**SS-session-manager v2.14.0 → v2.15.0 + SS-daemon-wiring-v2-delta v1.11.4 → v1.12.0 Architecture Source pin cascade (F-S038-PASS1-001)** (2026-06-19):
+- Architecture Source pin cascade: SS-session-manager.md v2.14.0 → v2.15.0 (single-writer
+  mandate + HookEndpointConfig construction); SS-daemon-wiring-v2-delta.md v1.11.4 → v1.12.0
+  (step-9 single-writer mandate documented; state.hooks_settings_path drift fixed).
+  No behavioral content changes to this BC — only arch-source version pins updated.
+- SE-16d monotonicity: v1.3.8 timestamp 2026-06-19 >= v1.3.7 timestamp 2026-06-19. PASS.
 
 ## §Trace v1.3.7
 

@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.14.0"
+version: "2.15.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -1971,7 +1971,59 @@ describe the correct shared-file behavior. This reconciliation is the canonical 
 further BC-2.08.006 edits are needed.
 
 The `--settings` arg carries this shared path. No user action required. `lock.app = 'monocle'`
-filter in the hook JS ensures only monocle-launched sessions trigger the monocle endpoint.
+filter in the hook JSON ensures only monocle-launched sessions trigger the monocle endpoint.
+
+**Single-writer mandate (F-S038-PASS1-001 — BC-2.08.006 v1.5.0):**
+`session_manager::write_hooks_settings_json` is the SOLE function that serializes
+`hooks-settings.json`. It is called from exactly two sites:
+
+1. **Lifecycle step 9** — `daemon_start_sequence` constructs a `HookEndpointConfig` from the
+   daemon's real `port` and `auth_token`, then calls
+   `session_manager::write_hooks_settings_json(&config, &hooks_settings_path)`. This replaces the
+   former `lifecycle::write_hooks_settings` function (which used `HooksSettings`/`HooksMap`/`HookEntry`
+   types lacking a `lock` field — the missing `lock.app` was a security/data-integrity defect).
+   `lifecycle::write_hooks_settings` and the `HooksSettings`, `HooksMap`, `HookEntry` types in
+   `types.rs` are removed. The `serde_json::json!` schema in `write_hooks_settings_json` is the
+   canonical serialization. Failure at step 9 → `DaemonStartError::HooksSettingsWriteFailure` →
+   daemon exits code 72 (abort-on-failure, no partial file, no UDS bind).
+
+2. **EC-182 re-write** inside `SessionManager::spawn_session()` — if hooks-settings.json is
+   absent at spawn time (external deletion), `spawn_session()` calls
+   `write_hooks_settings_json(&self.hook_endpoint_config, &self.hooks_settings_path)`. This
+   produces a file with real curl URLs + `lock.app = 'monocle'` because `hook_endpoint_config`
+   was populated at construction with the real config (see `SessionManager::new()` below).
+
+**`SessionManager::new()` — real `HookEndpointConfig` required:**
+`SessionManager::new()` signature MUST accept a `hook_endpoint_config: HookEndpointConfig`
+parameter from the caller. In production, lifecycle constructs this from real port+token before
+calling `SessionManager::new()`. The previously-existing `if !path.exists()` write guard in
+`new()` is REMOVED: `new()` no longer writes hooks-settings.json. Lifecycle owns the step-9 write;
+`new()` only stores the config in `self.hook_endpoint_config` for EC-182 re-writes.
+
+In tests that do not set up a real daemon, the caller passes `HookEndpointConfig::default()`
+(empty-string URLs). This is acceptable in test contexts where the written file's URL content
+is not verified. Production construction ALWAYS provides non-empty URLs.
+
+```rust
+// Lifecycle step 9 (pseudocode — canonical single-writer call):
+let hook_endpoint_config = HookEndpointConfig {
+    pre_tool_use:        make_curl_cmd(port, auth_token, "pre-tool-use"),
+    notification:        make_curl_cmd(port, auth_token, "notification"),
+    stop:                make_curl_cmd(port, auth_token, "stop"),
+    user_prompt_submit:  make_curl_cmd(port, auth_token, "prompt-submit"),
+};
+session_manager::write_hooks_settings_json(&hook_endpoint_config, &hs_path)?;
+// ... then construct SessionManager::new(runtime_dir, spawner, broker, engine, hook_endpoint_config)
+
+// SessionManager::new() signature (updated):
+pub fn new(
+    runtime_dir: PathBuf,
+    spawner: Arc<dyn SessionHostSpawner>,
+    broker: Arc<monocle_ipc::server::SubscriberList>,
+    engine_module: Arc<dyn monocle_core::engine::EngineModule>,
+    hook_endpoint_config: HookEndpointConfig,  // NEW: passed from lifecycle with real port+token
+) -> Self
+```
 
 ---
 
@@ -3212,7 +3264,7 @@ locus for UUID v4 collisions. `spawn_session()` MUST NOT perform its own retry l
 
 #### Rationale
 
-F-P41-IMP-001 (BC-2.08.001 v1.5.4) established that UUID generation lives in the IPC handler,
+F-P41-IMP-001 (BC-2.08.001 v1.5.5) established that UUID generation lives in the IPC handler,
 not inside `spawn_session()`. `spawn_session()` receives an already-generated `session_id` via
 `opts.with_daemon_fields()`. If `spawn_session()` detects a collision (session_id already in
 registry), the correct response is `Err(SessionError::SessionIdCollision { session_id })` — it
@@ -3767,6 +3819,34 @@ Add to the S-035 test suite:
 - `test_proxy_task_handles_goodbye_without_terminated`: attach a session, send only `Goodbye`
   from the mock session-host (no prior `StateChanged{Terminated}`), assert session transitions
   to Terminated (defensive path).
+
+---
+
+## §Trace v2.15.0
+
+**F-S038-PASS1-001/002/005 — Single-writer mandate: lifecycle step 9 calls `write_hooks_settings_json`; `SessionManager::new()` receives real `HookEndpointConfig`; EC-182 re-write uses real config** (2026-06-19):
+
+- **Root problem (dual-writer divergence):** Two divergent writers of `hooks-settings.json`
+  existed before this change: (1) `lifecycle::write_hooks_settings` using `HooksSettings`/`HooksMap`
+  types with NO `lock` field → production file lacked `lock.app = 'monocle'` (Invariant 2 violated,
+  EC-181 latent defect); (2) `session_manager::write_hooks_settings_json` emitting correct schema
+  but using `HookEndpointConfig::default()` (empty URLs) in `SessionManager::new()`, making
+  EC-182 re-writes silently non-functional.
+- **Decision:** `session_manager::write_hooks_settings_json` is the sole canonical writer.
+  `lifecycle::write_hooks_settings` and the `HooksSettings`/`HooksMap`/`HookEntry` types in
+  `monocle-runtime/src/types.rs` are removed.
+- **Lifecycle step 9 change:** `daemon_start_sequence` constructs a `HookEndpointConfig` from real
+  `port` and `auth_token`, calls `session_manager::write_hooks_settings_json`, propagates failure
+  as `DaemonStartError::HooksSettingsWriteFailure` (exit code 72). Abort-on-failure obligation
+  moves cleanly to lifecycle's single write call.
+- **`SessionManager::new()` signature change:** Adds `hook_endpoint_config: HookEndpointConfig`
+  parameter. Removes the `if !path.exists()` write guard (lifecycle owns step-9 write; `new()`
+  stores config for EC-182 re-writes only). Production callers pass real config; test callers
+  may pass `HookEndpointConfig::default()` when file content is not verified.
+- **EC-182 re-write path:** `spawn_session()` re-writes with `self.hook_endpoint_config` — now
+  holds real config → re-written file has real curl URLs and `lock.app = 'monocle'`.
+- **Downstream:** BC-2.08.006 v1.5.0; SS-daemon-wiring-v2-delta v1.12.0.
+- **SE-16d monotonicity:** v2.15.0 timestamp 2026-06-19 >= v2.14.0 timestamp 2026-06-19. PASS.
 
 ---
 
