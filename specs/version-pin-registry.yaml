@@ -228,8 +228,8 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.22"
-  last_bump_commit: "[F-S035-PASS5-MED-001 — S-035 story pin cascade 1.2.1→1.2.2]"
+  current_version: "1.23"
+  last_bump_commit: "[F-S035-PASS6-LOW-001 — S-035 story pin cascade 1.2.2→1.2.3]"
   last_bump_date: "2026-06-19"
 
 sprint-state:
@@ -1039,8 +1039,8 @@ S-034-session-manager-kill:
 
 S-035-session-manager-attach-detach:
   path: stories/S-035-session-manager-attach-detach.md
-  current_version: "1.2.2"
-  last_bump_commit: "[F-S035-PASS5-MED-001 — AC-002 EC-188 + state transition to Terminated; EC-188 edge case row updated; test task assertion updated; inputs BC-2.08.007 1.5.5 + SS-session-manager 2.14.0]"
+  current_version: "1.2.3"
+  last_bump_commit: "[F-S035-PASS6-LOW-001 — BC-2.08.008 input pin 1.3.4→1.3.7; input-hash [pending]→d879bc9]"
   last_bump_date: "2026-06-19"
 
 S-036-session-manager-rediscovery:

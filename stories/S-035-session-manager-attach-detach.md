@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-035
 epic_id: EPIC-08
-version: "1.2.2"
+version: "1.2.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -21,11 +21,11 @@ verification_properties: []
 estimated_days: 4
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.007.md, version: "1.5.5"}
-  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.008.md, version: "1.3.4"}
+  - {path: .factory/specs/behavioral-contracts/ss-08/BC-2.08.008.md, version: "1.3.7"}
   - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.14.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
-input-hash: "[pending]"
+input-hash: "d879bc9"
 traces_to: "Implements BC-2.08.007 (attach_session: chunked scrollback protocol; SO_PEERCRED; detach_session: session-host survives) and BC-2.08.008 (SessionStateChanged{Running/Detached} broadcast on attach/detach)"
 # BC status: non-empty; status draft pending Phase-2 adversarial convergence gate (authoritative versions in inputs: frontmatter)
 ---
