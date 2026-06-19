@@ -3391,7 +3391,7 @@ impl SessionManager {
                                     "attach_session: SIGTERM to non-responsive session-host failed (best-effort)"
                                 );
                             }
-                            // BC-2.08.007 v1.5.5 (F-S035-PASS5-MED-001): SIGTERM declares the
+                            // BC-2.08.007 v1.5.6 (F-S035-PASS5-MED-001): SIGTERM declares the
                             // session-host dead — consistent with EC-187/PeerCredFailed. Transition
                             // to Terminated (StateChanged{Terminated} BEFORE SessionListUpdate + GC)
                             // BEFORE returning Err(SessionHostDead).
