@@ -2546,19 +2546,25 @@ impl SessionManager {
             }
         }
 
-        // Extract proxy_task and abort it; build sidecar path and snapshot.
-        // These are done under the sessions lock so the state transition + broadcast are atomic.
+        // F-S035-PASS2-IMP-002: build list_snapshot + transition state + emit BOTH broadcasts
+        // under a SINGLE lock acquisition. This closes the stale-snapshot window that previously
+        // existed because the broadcasts happened in a separate second lock acquisition, allowing
+        // a concurrent op to mutate the registry between the first (transition) and second (broadcast)
+        // lock holds. The attach path already does all of this under one lock; detach now mirrors it.
+        //
+        // proxy_task.abort() is synchronous (no .await needed) and stays outside the lock.
         let sidecar_path = self
             .runtime_dir
             .join(format!("session-{}.json", session_id));
 
-        // Build list snapshot + transition state + extract proxy_task for abort — all under lock.
-        let (proxy_task_to_abort, list_snapshot) = {
+        // Single lock acquisition: transition + snapshot + both broadcasts (BC-2.08.008 Inv 4:
+        // SessionStateChanged{Detached} BEFORE SessionListUpdate, both under this one lock hold).
+        let proxy_task_to_abort = {
             use monocle_core::engine::{EnrichedSession, SessionStatus};
             let mut guard = self.sessions.lock().await;
 
             let proxy_task_handle = if let Some(entry) = guard.get_mut(session_id) {
-                // Abort proxy task: canonical pattern (BC-2.08.007 Architecture Compliance Rule).
+                // Extract proxy_task handle before clearing host_conn.
                 let handle = entry.host_conn.as_mut().and_then(|c| c.proxy_task.take());
                 // Clear host_conn and transition state (BC-2.08.007 detach PC-3/PC-4).
                 entry.host_conn = None;
@@ -2569,7 +2575,7 @@ impl SessionManager {
             };
 
             // Build list snapshot while lock is held (consistent post-transition state).
-            let snapshot: Vec<EnrichedSession> = guard
+            let list_snapshot: Vec<EnrichedSession> = guard
                 .values()
                 .map(|e| {
                     let status = match e.state {
@@ -2598,8 +2604,22 @@ impl SessionManager {
                     )
                 })
                 .collect();
-            // sessions lock released here
-            (proxy_task_handle, snapshot)
+
+            // BC-2.08.008 Invariant 4: SessionStateChanged{Detached} BEFORE SessionListUpdate,
+            // both emitted under THIS single lock hold — no stale-snapshot window.
+            let state_changed = monocle_ipc::types::ServerToClient::SessionStateChanged {
+                session_id: session_id.to_string(),
+                new_state: SessionState::Detached,
+            };
+            crate::ipc_server::broadcast_to_subscribers(&self.broker, state_changed).await;
+
+            let list_update = monocle_ipc::types::ServerToClient::SessionListUpdate {
+                sessions: list_snapshot,
+            };
+            crate::ipc_server::broadcast_to_subscribers(&self.broker, list_update).await;
+            // sessions lock released here — transition + both broadcasts were atomic.
+
+            proxy_task_handle
         };
 
         // Abort proxy task outside the lock (abort() is synchronous; no .await needed).
@@ -2609,6 +2629,8 @@ impl SessionManager {
 
         // Update sidecar atomically: state → "Detached" (BC-2.08.007 detach PC-5).
         // Read existing sidecar, update state field, persist via tempfile.
+        // Sidecar write is blocking I/O and stays outside the lock (acceptable: the
+        // in-memory state is already Detached; sidecar reflects the durable view for restart).
         let sidecar_update_result: Result<(), SessionError> = (|| {
             let existing = std::fs::read_to_string(&sidecar_path).map_err(|e| {
                 SessionError::SidecarWriteFailed {
@@ -2671,23 +2693,6 @@ impl SessionManager {
                  (AC-008 / BC-2.08.007 detach PC-5). In-memory state is Detached; \
                  daemon restart may re-discover session in stale pre-Detached state."
             );
-        }
-
-        // Emit SessionStateChanged{Detached} BEFORE SessionListUpdate under the sessions lock
-        // (BC-2.08.008 Invariant 4 — both try_send calls under a single lock acquisition).
-        {
-            let _guard = self.sessions.lock().await;
-            let state_changed = monocle_ipc::types::ServerToClient::SessionStateChanged {
-                session_id: session_id.to_string(),
-                new_state: SessionState::Detached,
-            };
-            crate::ipc_server::broadcast_to_subscribers(&self.broker, state_changed).await;
-
-            let list_update = monocle_ipc::types::ServerToClient::SessionListUpdate {
-                sessions: list_snapshot,
-            };
-            crate::ipc_server::broadcast_to_subscribers(&self.broker, list_update).await;
-            // sessions lock released here — both try_send calls completed atomically.
         }
 
         tracing::info!(
@@ -3073,20 +3078,19 @@ impl SessionManager {
                         other => other,
                     };
 
-                    // Handle connect failure (EC-187): liveness probe → transition to Terminated.
+                    // The sidecar_path for EC-187, PeerCredFailed, and proxy_task.
+                    let sidecar_path =
+                        runtime_dir.join(format!("session-{}.json", session_id));
+
+                    // Handle connect failure (EC-187): liveness probe → transition to Terminated
+                    // via transition_to_terminated_standalone so StateChanged{Terminated} is
+                    // published (BC-2.08.008 Invariant 1 / AC-015 — no silent transitions).
                     if matches!(outcome, AttachOutcome::ConnectFailed) {
                         use nix::sys::signal::kill as nix_kill;
                         use nix::unistd::Pid;
                         let nix_pid = Pid::from_raw(pid as i32);
                         let liveness = nix_kill(nix_pid, None);
                         let is_dead = matches!(liveness, Err(nix::errno::Errno::ESRCH));
-
-                        {
-                            let mut guard = sessions.lock().await;
-                            if let Some(entry) = guard.get_mut(&session_id) {
-                                entry.state = SessionState::Terminated;
-                            }
-                        }
 
                         if is_dead {
                             tracing::info!(
@@ -3104,16 +3108,72 @@ impl SessionManager {
                             );
                         }
 
+                        // Publish StateChanged{Terminated} + SessionListUpdate + spawn GC
+                        // (F-S035-PASS2-CRIT-001: replaces silent entry.state = Terminated
+                        // that violated BC-2.08.008 Invariant 1 / AC-015).
+                        transition_to_terminated_standalone(
+                            &session_id,
+                            &sessions,
+                            &broker,
+                            &sidecar_path,
+                        )
+                        .await;
+
                         return Err(SessionError::SessionHostDead {
                             session_id: session_id.to_string(),
                         });
                     }
 
-                    // Handle other failures (PeerCred mismatch, protocol error).
-                    if !matches!(outcome, AttachOutcome::Success { .. }) {
-                        return Err(SessionError::SessionHostDead {
-                            session_id: session_id.to_string(),
-                        });
+                    // Handle PeerCred failure and other failures with split semantics
+                    // (F-S035-PASS2-LOW-001 / SS-session-manager v2.13.0 / BC-2.08.007 Inv 5):
+                    //
+                    // - PeerCredFailed (UID mismatch — host is not our child / impersonation):
+                    //   transition → Terminated (StateChanged{Terminated} + SessionListUpdate + GC),
+                    //   consistent with kill_session EC-163. Then return Err(SessionHostDead).
+                    //
+                    // - ProtocolError (SO_PEERCRED passed — host alive and ours; transient exchange
+                    //   error): stay Detached (NO transition, NO broadcast). A later retry is
+                    //   legitimate. Return Err(SessionHostDead) (no state change).
+                    match &outcome {
+                        AttachOutcome::PeerCredFailed => {
+                            tracing::warn!(
+                                session_id = %session_id,
+                                "attach_session: SO_PEERCRED UID mismatch (PeerCredFailed) — \
+                                 transitioning to Terminated (BC-2.08.007 Inv 5 / F-S035-PASS2-LOW-001)"
+                            );
+                            transition_to_terminated_standalone(
+                                &session_id,
+                                &sessions,
+                                &broker,
+                                &sidecar_path,
+                            )
+                            .await;
+                            return Err(SessionError::SessionHostDead {
+                                session_id: session_id.to_string(),
+                            });
+                        }
+                        AttachOutcome::ProtocolError => {
+                            // SO_PEERCRED passed — host is alive and ours. Transient exchange
+                            // error; stay Detached. A later attach retry is legitimate.
+                            // NO state transition, NO broadcast (F-S035-PASS2-LOW-001).
+                            tracing::warn!(
+                                session_id = %session_id,
+                                "attach_session: protocol error after SO_PEERCRED passed — \
+                                 staying Detached, no transition (F-S035-PASS2-LOW-001)"
+                            );
+                            return Err(SessionError::SessionHostDead {
+                                session_id: session_id.to_string(),
+                            });
+                        }
+                        AttachOutcome::Success { .. } => {
+                            // Proceed below.
+                        }
+                        // ConnectFailed and Timeout handled above; this arm is unreachable.
+                        _ => {
+                            return Err(SessionError::SessionHostDead {
+                                session_id: session_id.to_string(),
+                            });
+                        }
                     }
 
                     // Extract success components.
@@ -3153,14 +3213,13 @@ impl SessionManager {
                     // Ruling L (SS-session-manager v2.12.0 L-1): pass sessions + sidecar_path so the
                     // proxy_task can call transition_to_terminated_standalone on StateChanged{Terminated}
                     // or Goodbye (fast-path kill confirmation for attached sessions).
-                    let proxy_sidecar_path =
-                        runtime_dir.join(format!("session-{}.json", session_id));
+                    // Reuse the sidecar_path computed above (same path, avoids duplicate join).
                     let proxy_handle = SessionManager::spawn_pty_proxy_task(
                         session_id.to_string(),
                         reader,
                         Arc::clone(&broker),
                         Arc::clone(&sessions),
-                        proxy_sidecar_path,
+                        sidecar_path.clone(),
                     );
 
                     // Wrap writer in Arc<Mutex<>> for storage in SessionHostConnection.
