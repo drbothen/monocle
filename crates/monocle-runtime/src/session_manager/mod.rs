@@ -15,6 +15,16 @@
 /// MED-002 fix: was 1 MiB; corrected to 256 KiB per spec bound.
 const MAX_FRAME_LEN: usize = 256 * 1024;
 
+/// Maximum byte length for a session `display_name` supplied to `rename_session()`.
+///
+/// The spec (SS-session-manager.md §SessionError taxonomy) states `InvalidSessionName`
+/// fires for "Empty name or name exceeding length limit" but does not prescribe the
+/// exact byte bound. Production-grade default (mirroring spawn_session UUID guard
+/// philosophy): 256 bytes — aligns with TUI panel display constraints and the JSON
+/// sidecar field budget. Names longer than this are rejected with
+/// `InvalidSessionName { reason: "name exceeds 256-byte limit" }`.
+const MAX_DISPLAY_NAME_BYTES: usize = 256;
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -2378,6 +2388,16 @@ impl SessionManager {
     ///   emits `SessionListUpdate` only — MUST NOT emit `SessionStateChanged`.
     /// - Returns `Err(SessionError::SessionNotFound)` if `session_id` is unknown.
     ///
+    /// **Guard ordering (SEC-001 / SEC-002 defense-in-depth):**
+    /// 1. UUID format guard — `session_id` must be a valid UUID before any path is
+    ///    constructed (CWE-706; mirrors `spawn_session`'s SEC-003 guard).
+    /// 2. `new_name` validation — reject empty names, names exceeding
+    ///    `MAX_DISPLAY_NAME_BYTES` (256 bytes), and names containing control
+    ///    characters (including NUL `\x00`), path separators (`/`, `\`), or newlines
+    ///    (`\n`, `\r`) (CWE-20; applied before any in-memory mutation or sidecar I/O).
+    /// 3. Registry lookup → Terminated guard → SessionNotFound check.
+    /// 4. In-memory mutation → sidecar write → broadcast.
+    ///
     /// **Ordering (F-S037-P2-004):**
     /// update display_name (in memory) → write sidecar → publish SessionListUpdate.
     /// If the sidecar write fails, the in-memory rename is reverted and
@@ -2391,6 +2411,56 @@ impl SessionManager {
         new_name: String,
     ) -> Result<(), SessionError> {
         use monocle_core::engine::{EnrichedSession, SessionStatus};
+
+        // SEC-002 (CWE-706): UUID format guard — defense-in-depth, mirrors spawn_session
+        // SEC-003. Even though the registry get_mut implicitly requires the session to
+        // exist, an explicit UUID check BEFORE constructing the sidecar path prevents
+        // path-traversal injection from a malformed session_id string (e.g. "../evil").
+        // This guard fires before any file I/O or state mutation.
+        if uuid::Uuid::parse_str(session_id).is_err() {
+            return Err(SessionError::SessionNotFound {
+                session_id: session_id.to_string(),
+            });
+        }
+
+        // SEC-001 (CWE-20): validate new_name before any in-memory mutation or sidecar
+        // write. Mirrors spawn_session's validation philosophy: fail fast, before any
+        // side effect. Rules applied:
+        //   1. Empty name — display_name of "" is meaningless in the TUI.
+        //   2. Exceeds MAX_DISPLAY_NAME_BYTES (256) — prevents unbounded sidecar growth
+        //      and TUI panel overflow. Spec: SS-session-manager.md §SessionError taxonomy
+        //      ("name exceeding length limit"); exact bound not specified, production-grade
+        //      default of 256 bytes chosen to match UI display constraints.
+        //   3. Control characters (bytes 0x00–0x1F, 0x7F) — NUL injection, terminal
+        //      escape injection, and JSON serialization hazard.
+        //   4. Path separators ('/', '\') — defense-in-depth against CWE-22 if the name
+        //      were ever used in a file-system context.
+        //   5. Newlines ('\n', '\r') — log injection and multi-line display corruption.
+        //      (Note: '\n' and '\r' are already caught by the control-char check; listed
+        //      explicitly for documentation clarity.)
+        if new_name.is_empty() {
+            return Err(SessionError::InvalidSessionName {
+                reason: "name must not be empty".to_string(),
+            });
+        }
+        if new_name.len() > MAX_DISPLAY_NAME_BYTES {
+            return Err(SessionError::InvalidSessionName {
+                reason: format!(
+                    "name exceeds {MAX_DISPLAY_NAME_BYTES}-byte limit ({} bytes)",
+                    new_name.len()
+                ),
+            });
+        }
+        if new_name.chars().any(|c| {
+            c.is_control()        // catches NUL, newline, carriage-return, tab, ESC, …
+                || c == '/'
+                || c == '\\'
+        }) {
+            return Err(SessionError::InvalidSessionName {
+                reason: "name contains forbidden character (control char, '/', or '\\')"
+                    .to_string(),
+            });
+        }
 
         let sidecar_path = self
             .runtime_dir
@@ -7966,6 +8036,332 @@ mod tests {
              the new display_name {:?} in the EnrichedSession payload; got {:?}. \
              (Old EnrichedSession::new() produced display_name=\"\", which would fail here.)",
             new_name, actual_display_name
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // SEC-001 (CWE-20): rename_session() new_name validation
+    //
+    // Defense-in-depth: rename_session() must validate `new_name` before any
+    // in-memory mutation or sidecar write. Mirrors spawn_session's UUID guard
+    // (SEC-003) philosophy: fail fast, before side effects.
+    //
+    // Validation rules:
+    //   1. Empty name → InvalidSessionName { reason: "name must not be empty" }
+    //   2. Over-length (>256 bytes) → InvalidSessionName { reason: "…limit…" }
+    //   3. Control char (incl. NUL, newline, \r, ESC) → InvalidSessionName { … }
+    //   4. Path separator ('/' or '\') → InvalidSessionName { … }
+    //
+    // All invalid-name cases must:
+    //   - Return Err(InvalidSessionName) BEFORE any in-memory mutation.
+    //   - Return BEFORE any broadcast (no SessionListUpdate for a rejected rename).
+    //   - Map to wire code "rename_failed" via session_error_to_code().
+    // -----------------------------------------------------------------------
+
+    /// SEC-001 (CWE-20): rename_session() rejects an empty new_name with
+    /// Err(InvalidSessionName) and NO state mutation or broadcast.
+    ///
+    /// Also confirms wire code is "rename_failed".
+    #[tokio::test]
+    async fn test_sec001_rename_session_rejects_empty_name() {
+        let tmp = tempfile::tempdir().expect("sec001_empty: tempdir");
+        let (mut manager, _subs, mut rx) = make_manager_with_channel(tmp.path(), None);
+        let session_id = "00000000-0537-4000-a000-000000000090".to_string();
+
+        // Spawn a session so it exists in the registry.
+        manager
+            .spawn_session(make_spawn_opts(&session_id))
+            .await
+            .expect("sec001_empty: spawn must succeed");
+        // Drain spawn messages.
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+            loop {
+                match tokio::time::timeout_at(deadline, rx.recv()).await {
+                    Ok(Some(_)) => continue,
+                    _ => break,
+                }
+            }
+        }
+
+        // Capture display_name before rename attempt.
+        let name_before = {
+            let guard = manager.sessions.lock().await;
+            guard.get(&session_id).map(|e| e.display_name.clone())
+        };
+
+        // Attempt rename with empty name — must fail.
+        let result = manager.rename_session(&session_id, String::new()).await;
+        assert!(
+            matches!(result, Err(SessionError::InvalidSessionName { .. })),
+            "SEC-001: rename with empty name must return Err(InvalidSessionName); got: {:?}",
+            result
+        );
+
+        // Wire code must be "rename_failed".
+        let wire_code = session_error_to_code(IpcOp::Rename, result.as_ref().unwrap_err());
+        assert_eq!(
+            wire_code, "rename_failed",
+            "SEC-001: InvalidSessionName must map to wire code \"rename_failed\"; got {:?}",
+            wire_code
+        );
+
+        // No state mutation — display_name must be unchanged.
+        let name_after = {
+            let guard = manager.sessions.lock().await;
+            guard.get(&session_id).map(|e| e.display_name.clone())
+        };
+        assert_eq!(
+            name_before, name_after,
+            "SEC-001: empty-name rejection MUST NOT mutate display_name; \
+             before={:?} after={:?}",
+            name_before, name_after
+        );
+
+        // No broadcast must have been emitted for the rejected rename.
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+            let mut stray: Vec<ServerToClient> = Vec::new();
+            while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                stray.push(msg);
+            }
+            assert!(
+                stray.is_empty(),
+                "SEC-001: rename rejection must emit NO broadcast; got: {:?}",
+                stray
+            );
+        }
+    }
+
+    /// SEC-001 (CWE-20): rename_session() rejects a new_name exceeding 256 bytes
+    /// with Err(InvalidSessionName) and NO state mutation or broadcast.
+    #[tokio::test]
+    async fn test_sec001_rename_session_rejects_overlength_name() {
+        let tmp = tempfile::tempdir().expect("sec001_long: tempdir");
+        let (mut manager, _subs, mut rx) = make_manager_with_channel(tmp.path(), None);
+        let session_id = "00000000-0537-4000-a000-000000000091".to_string();
+
+        manager
+            .spawn_session(make_spawn_opts(&session_id))
+            .await
+            .expect("sec001_long: spawn must succeed");
+        // Drain spawn messages.
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+            loop {
+                match tokio::time::timeout_at(deadline, rx.recv()).await {
+                    Ok(Some(_)) => continue,
+                    _ => break,
+                }
+            }
+        }
+
+        // Build a name that is exactly 257 bytes (one over the 256-byte limit).
+        let too_long = "a".repeat(MAX_DISPLAY_NAME_BYTES + 1);
+        assert_eq!(too_long.len(), MAX_DISPLAY_NAME_BYTES + 1);
+
+        let name_before = {
+            let guard = manager.sessions.lock().await;
+            guard.get(&session_id).map(|e| e.display_name.clone())
+        };
+
+        let result = manager.rename_session(&session_id, too_long).await;
+        assert!(
+            matches!(result, Err(SessionError::InvalidSessionName { .. })),
+            "SEC-001: rename with over-length name must return Err(InvalidSessionName); got: {:?}",
+            result
+        );
+
+        let wire_code = session_error_to_code(IpcOp::Rename, result.as_ref().unwrap_err());
+        assert_eq!(
+            wire_code, "rename_failed",
+            "SEC-001: over-length InvalidSessionName must map to \"rename_failed\"; got {:?}",
+            wire_code
+        );
+
+        let name_after = {
+            let guard = manager.sessions.lock().await;
+            guard.get(&session_id).map(|e| e.display_name.clone())
+        };
+        assert_eq!(
+            name_before, name_after,
+            "SEC-001: over-length rejection MUST NOT mutate display_name; \
+             before={:?} after={:?}",
+            name_before, name_after
+        );
+
+        // No broadcast.
+        {
+            let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+            let mut stray: Vec<ServerToClient> = Vec::new();
+            while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                stray.push(msg);
+            }
+            assert!(
+                stray.is_empty(),
+                "SEC-001: over-length rename rejection must emit NO broadcast; got: {:?}",
+                stray
+            );
+        }
+    }
+
+    /// SEC-001 (CWE-20): rename_session() rejects names containing control
+    /// characters (NUL, newline, carriage return) or path separators ('/' and '\').
+    ///
+    /// Each bad name is tested independently: must return Err(InvalidSessionName)
+    /// with NO state mutation and NO broadcast.
+    #[tokio::test]
+    async fn test_sec001_rename_session_rejects_forbidden_chars() {
+        // Test cases: (label, forbidden name)
+        let bad_names: &[(&str, &str)] = &[
+            ("NUL byte", "session\x00name"),
+            ("newline", "session\nname"),
+            ("carriage return", "session\rname"),
+            ("ESC char", "session\x1bname"),
+            ("forward slash", "session/name"),
+            ("backslash", "session\\name"),
+            ("tab char", "session\tname"),
+        ];
+
+        for (label, bad_name) in bad_names {
+            let tmp = tempfile::tempdir()
+                .unwrap_or_else(|e| panic!("sec001_chars/{label}: tempdir: {e}"));
+            let (mut manager, _subs, mut rx) = make_manager_with_channel(tmp.path(), None);
+            // Use a unique session_id per iteration.
+            let session_id = format!(
+                "00000000-0537-4000-a000-{:012x}",
+                bad_names.iter().position(|(l, _)| l == label).unwrap_or(0) + 0x92
+            );
+
+            manager
+                .spawn_session(make_spawn_opts(&session_id))
+                .await
+                .unwrap_or_else(|e| panic!("sec001_chars/{label}: spawn: {e}"));
+            // Drain spawn messages.
+            {
+                let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+                loop {
+                    match tokio::time::timeout_at(deadline, rx.recv()).await {
+                        Ok(Some(_)) => continue,
+                        _ => break,
+                    }
+                }
+            }
+
+            let name_before = {
+                let guard = manager.sessions.lock().await;
+                guard.get(&session_id).map(|e| e.display_name.clone())
+            };
+
+            let result = manager
+                .rename_session(&session_id, bad_name.to_string())
+                .await;
+            assert!(
+                matches!(result, Err(SessionError::InvalidSessionName { .. })),
+                "SEC-001/{label}: rename with forbidden char must return Err(InvalidSessionName); \
+                 name={bad_name:?} got: {result:?}"
+            );
+
+            let wire_code = session_error_to_code(IpcOp::Rename, result.as_ref().unwrap_err());
+            assert_eq!(
+                wire_code, "rename_failed",
+                "SEC-001/{label}: InvalidSessionName must map to \"rename_failed\"; got {wire_code:?}"
+            );
+
+            let name_after = {
+                let guard = manager.sessions.lock().await;
+                guard.get(&session_id).map(|e| e.display_name.clone())
+            };
+            assert_eq!(
+                name_before, name_after,
+                "SEC-001/{label}: forbidden-char rejection MUST NOT mutate display_name; \
+                 before={name_before:?} after={name_after:?}"
+            );
+
+            // No broadcast.
+            {
+                let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+                let mut stray: Vec<ServerToClient> = Vec::new();
+                while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                    stray.push(msg);
+                }
+                assert!(
+                    stray.is_empty(),
+                    "SEC-001/{label}: forbidden-char rename rejection must emit NO broadcast; \
+                     got: {stray:?}"
+                );
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // SEC-002 (CWE-706): rename_session() UUID guard before path construction
+    //
+    // Defense-in-depth: rename_session() must validate that `session_id` is a
+    // valid UUID BEFORE constructing the sidecar path, mirroring spawn_session's
+    // SEC-003 guard. A malformed session_id (e.g. "../evil") must be rejected
+    // immediately — before any file I/O or state mutation — even though the
+    // registry get_mut would also reject it (unknown key).
+    //
+    // The guard returns Err(SessionNotFound) for a malformed session_id (same as
+    // for an unknown-but-valid UUID), ensuring the caller cannot distinguish
+    // "not found" from "malformed id" in the wire response.
+    // -----------------------------------------------------------------------
+
+    /// SEC-002 (CWE-706): rename_session() rejects a malformed (non-UUID) session_id
+    /// before constructing any file path, returning Err(SessionNotFound).
+    ///
+    /// Tested inputs include path-traversal strings, absolute paths, NUL bytes,
+    /// and empty string — all must fail with SessionNotFound and no sidecar I/O.
+    #[tokio::test]
+    async fn test_sec002_rename_session_rejects_malformed_session_id() {
+        let tmp = tempfile::tempdir().expect("sec002: tempdir");
+        let (mut manager, _subs, mut rx) = make_manager_with_channel(tmp.path(), None);
+
+        let bad_ids: &[&str] = &[
+            "../evil",
+            "../../etc/passwd",
+            "/absolute/path",
+            "session/../escape",
+            "null\x00byte",
+            "",
+            "not-a-uuid",
+            "12345",
+        ];
+
+        for bad_id in bad_ids {
+            let result = manager
+                .rename_session(bad_id, "ValidName".to_string())
+                .await;
+            assert!(
+                matches!(result, Err(SessionError::SessionNotFound { .. })),
+                "SEC-002: rename with malformed session_id {:?} must return \
+                 Err(SessionNotFound); got: {:?}",
+                bad_id,
+                result
+            );
+
+            // No broadcast emitted.
+            {
+                let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(20);
+                let mut stray: Vec<ServerToClient> = Vec::new();
+                while let Ok(Some(msg)) = tokio::time::timeout_at(deadline, rx.recv()).await {
+                    stray.push(msg);
+                }
+                assert!(
+                    stray.is_empty(),
+                    "SEC-002: malformed session_id rename must emit NO broadcast; got: {:?}",
+                    stray
+                );
+            }
+        }
+
+        // Belt-and-suspenders: no session entry must exist (none were spawned).
+        let sessions = manager.session_list().await;
+        assert!(
+            sessions.is_empty(),
+            "SEC-002: no session entries must exist after all rejections; got {:?}",
+            sessions.iter().map(|s| &s.session_id).collect::<Vec<_>>()
         );
     }
 
