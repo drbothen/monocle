@@ -483,6 +483,14 @@ impl PeerCredVerifier for RealPeerCredVerifier {
                 peer_pid: None,
                 reason: format!("SO_PEERCRED pid() failed: {e}"),
             })?;
+        // SEC-002: peer_pid_raw=0 means the platform does not expose peer pid via SO_PEERCRED.
+        // Treat as a mismatch — never accept pid=0 as a valid match (CWE-284).
+        if peer_pid_raw == 0 {
+            return Err(PeerCredMismatch {
+                peer_pid: None,
+                reason: "SO_PEERCRED returned peer_pid=0; platform does not expose peer pid — rejecting as unsafe".to_string(),
+            });
+        }
         if peer_pid_raw == sidecar_pid {
             Ok(())
         } else {
@@ -4509,6 +4517,17 @@ impl SessionManager {
                     continue;
                 }
             };
+            // SEC-001: pid=0 is invalid — kill(0, sig) sends to entire process group (CWE-284).
+            // Reject at parse time so all downstream nix_kill call sites are safe by construction.
+            if pid == 0 {
+                tracing::warn!(path = %sidecar_path.display(), "rediscover_sessions: pid=0 in sidecar; deleting as corrupt");
+                let _ = std::fs::remove_file(&sidecar_path);
+                report.errors.push(RediscoveryError::CorruptSidecar {
+                    path: sidecar_path.clone(),
+                    reason: "pid=0 is invalid (would send signal to process group)".to_string(),
+                });
+                continue;
+            }
 
             let socket_path_str = match val.get("socket_path").and_then(|v| v.as_str()) {
                 Some(s) => s.to_string(),
@@ -4522,6 +4541,39 @@ impl SessionManager {
                     continue;
                 }
             };
+            // SEC-003: Path traversal guard on socket_path (CWE-22).
+            // socket_path drives remove_file() calls in all downstream GC branches;
+            // a crafted sidecar could delete arbitrary system files if unchecked.
+            //
+            // Note: socket paths may legitimately live outside runtime_dir on macOS
+            // where long runtime_dir paths would exceed the 104-byte SUN_LEN limit
+            // for UDS sockets (see rediscovery_tests.rs §"Socket path note").
+            // The guard therefore checks absolute + no-`..`-component, which blocks
+            // traversal attacks (e.g. "../../etc/important") without rejecting the
+            // valid /tmp/short-socket.sock pattern used in production and tests.
+            {
+                let candidate = std::path::PathBuf::from(&socket_path_str);
+                let is_safe = candidate.is_absolute()
+                    && !candidate
+                        .components()
+                        .any(|c| c == std::path::Component::ParentDir);
+                if !is_safe {
+                    tracing::warn!(
+                        path = %sidecar_path.display(),
+                        socket_path = %socket_path_str,
+                        "rediscover_sessions: socket_path is relative or contains '..'; deleting as corrupt (CWE-22)"
+                    );
+                    let _ = std::fs::remove_file(&sidecar_path);
+                    report.errors.push(RediscoveryError::CorruptSidecar {
+                        path: sidecar_path.clone(),
+                        reason: format!(
+                            "socket_path '{}' is relative or contains path traversal components",
+                            socket_path_str,
+                        ),
+                    });
+                    continue;
+                }
+            }
 
             let state_str = match val.get("state").and_then(|v| v.as_str()) {
                 Some(s) => s.to_string(),

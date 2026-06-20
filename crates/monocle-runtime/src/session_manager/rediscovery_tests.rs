@@ -361,7 +361,14 @@ async fn test_BC_2_08_004_rediscovery_running_session_reregistered() {
 
     let socket_path = short_socket_path("ac004-run");
     let _ = std::fs::remove_file(&socket_path);
-    write_sidecar_v3(tmp.path(), session_id, "Running", 0, &socket_path, None);
+    write_sidecar_v3(
+        tmp.path(),
+        session_id,
+        "Running",
+        std::process::id(),
+        &socket_path,
+        None,
+    );
 
     let mut done_rx = spawn_mock_session_host_attach(socket_path.clone());
 
@@ -534,7 +541,13 @@ async fn test_BC_2_08_004_rediscovery_schema_v1_legacy() {
 
     let socket_path = short_socket_path("ac003-v1");
     let _ = std::fs::remove_file(&socket_path);
-    write_sidecar_v1_legacy(tmp.path(), session_id, "Running", 0, &socket_path);
+    write_sidecar_v1_legacy(
+        tmp.path(),
+        session_id,
+        "Running",
+        std::process::id(),
+        &socket_path,
+    );
     let mut done_rx = spawn_mock_session_host_attach(socket_path.clone());
 
     let (mut manager, _subs, _rx) = make_rediscovery_manager(tmp.path(), true);
@@ -815,7 +828,14 @@ async fn test_BC_2_08_004_rediscovery_parallelism_8_sessions() {
     for (i, id) in session_ids.iter().enumerate() {
         let socket_path = PathBuf::from(format!("/tmp/s036-p8-{}-{}.sock", i, base_nanos));
         let _ = std::fs::remove_file(&socket_path);
-        write_sidecar_v3(tmp.path(), id, "Running", 0, &socket_path, None);
+        write_sidecar_v3(
+            tmp.path(),
+            id,
+            "Running",
+            std::process::id(),
+            &socket_path,
+            None,
+        );
         let sock = socket_path.clone();
         tokio::spawn(async move {
             let _ = std::fs::remove_file(&sock);
@@ -1011,7 +1031,14 @@ async fn test_BC_2_08_004_rediscovery_report_shape_mixed() {
     let id_alive = "00000000-0036-4000-a001-00000000000b";
     let socket_alive = short_socket_path("ac009-alive");
     let _ = std::fs::remove_file(&socket_alive);
-    write_sidecar_v3(tmp.path(), id_alive, "Running", 0, &socket_alive, None);
+    write_sidecar_v3(
+        tmp.path(),
+        id_alive,
+        "Running",
+        std::process::id(),
+        &socket_alive,
+        None,
+    );
     let mut done_alive = spawn_mock_session_host_attach(socket_alive.clone());
 
     let id_dead = "00000000-0036-4000-a001-00000000000c";
@@ -1301,7 +1328,14 @@ async fn test_BC_2_08_004_rediscovery_mixed_alive_dead_ec159() {
     let id_alive = "00000000-0036-4000-a001-00000000000f";
     let socket_alive = short_socket_path("ec159-alive");
     let _ = std::fs::remove_file(&socket_alive);
-    write_sidecar_v3(tmp.path(), id_alive, "Running", 0, &socket_alive, None);
+    write_sidecar_v3(
+        tmp.path(),
+        id_alive,
+        "Running",
+        std::process::id(),
+        &socket_alive,
+        None,
+    );
     let mut done_alive = spawn_mock_session_host_attach(socket_alive.clone());
 
     let id_dead = "00000000-0036-4000-a001-000000000010";
@@ -1402,7 +1436,14 @@ async fn test_BC_2_08_002_session_survives_daemon_graceful_restart() {
     // Step 1: Write sidecar as daemon A left it (Running, before shutdown).
     let socket_path = short_socket_path("bc002-restart");
     let _ = std::fs::remove_file(&socket_path);
-    write_sidecar_v3(tmp.path(), session_id, "Running", 0, &socket_path, None);
+    write_sidecar_v3(
+        tmp.path(),
+        session_id,
+        "Running",
+        std::process::id(),
+        &socket_path,
+        None,
+    );
 
     // Step 2: Daemon A gone — no manager A.
 
@@ -1482,7 +1523,14 @@ async fn test_BC_2_08_004_rediscovery_detached_peercred_verified_no_attach() {
 
     let socket_path = short_socket_path("med002-det");
     let _ = std::fs::remove_file(&socket_path);
-    write_sidecar_v3(tmp.path(), session_id, "Detached", 0, &socket_path, None);
+    write_sidecar_v3(
+        tmp.path(),
+        session_id,
+        "Detached",
+        std::process::id(),
+        &socket_path,
+        None,
+    );
 
     // Track: (a) whether a connection was accepted; (b) whether DaemonToHost::Attach
     // was received.
@@ -1725,7 +1773,14 @@ async fn test_BC_2_08_004_rediscovery_parallelism_8_sessions_sequential_would_ex
         let socket_path =
             std::path::PathBuf::from(format!("/tmp/s036-hi1-{}-{}.sock", i, base_nanos));
         let _ = std::fs::remove_file(&socket_path);
-        write_sidecar_v3(tmp.path(), id, "Running", 0, &socket_path, None);
+        write_sidecar_v3(
+            tmp.path(),
+            id,
+            "Running",
+            std::process::id(),
+            &socket_path,
+            None,
+        );
         let sock = socket_path.clone();
         tokio::spawn(async move {
             let _ = std::fs::remove_file(&sock);
@@ -4274,7 +4329,14 @@ async fn test_BC_2_08_004_rediscovery_missing_project_root_corrupt() {
     let valid_id = "00000000-0036-4000-a00a-000000000002";
     let valid_socket = short_socket_path("o2a-valid");
     let _ = std::fs::remove_file(&valid_socket);
-    write_sidecar_v3(tmp.path(), valid_id, "Running", 0, &valid_socket, None);
+    write_sidecar_v3(
+        tmp.path(),
+        valid_id,
+        "Running",
+        std::process::id(),
+        &valid_socket,
+        None,
+    );
     let mut done_rx = spawn_mock_session_host_attach(valid_socket.clone());
 
     let (mut manager, _subs, _rx) = make_rediscovery_manager(tmp.path(), true);
@@ -4568,7 +4630,13 @@ async fn test_BC_2_08_004_rediscovery_schema_v2_accepted() {
 
     let socket_path = short_socket_path("o1-v2");
     let _ = std::fs::remove_file(&socket_path);
-    write_sidecar_v2(tmp.path(), session_id, "Running", 0, &socket_path);
+    write_sidecar_v2(
+        tmp.path(),
+        session_id,
+        "Running",
+        std::process::id(),
+        &socket_path,
+    );
     let mut done_rx = spawn_mock_session_host_attach(socket_path.clone());
 
     let (mut manager, _subs, _rx) = make_rediscovery_manager(tmp.path(), true);
