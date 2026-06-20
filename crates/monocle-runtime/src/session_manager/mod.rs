@@ -4547,47 +4547,200 @@ impl SessionManager {
                         let _ = std::fs::remove_file(&data.sidecar_path);
                         report.found_dead += 1;
                     } else {
-                        // Not elapsed: fire-and-forget Kill message + register entry + background watchdog.
+                        // Not elapsed: SO_PEERCRED verify + Kill + register entry + background watchdog.
+                        // BC-2.08.004 PC-2b Terminating(ii/iii/iv) and BLOCKER-001.
                         let remaining_ms = deadline_ms - current_unix_ms;
                         let remaining = Duration::from_millis(remaining_ms);
                         let kill_deadline_instant = std::time::Instant::now() + remaining;
+                        // tokio::time::Instant for sleep_until (MED-001: absolute deadline).
+                        let kill_deadline_tokio =
+                            tokio::time::Instant::now() + remaining;
 
-                        // Fire-and-forget: connect + send Kill (no response needed).
-                        let sock = data.socket_path.clone();
+                        // Connect to session-host socket for SO_PEERCRED verify and Kill.
+                        let stream_opt =
+                            UnixStream::connect(&data.socket_path).await.ok();
+                        let stream = match stream_opt {
+                            Some(s) => s,
+                            None => {
+                                // Connect failed: treat as non-responsive (same as Running).
+                                tracing::warn!(
+                                    session_id = %data.session_id,
+                                    socket = %data.socket_path.display(),
+                                    "rediscover_sessions: Terminating connect failed; non-responsive treatment"
+                                );
+                                let nix_pid = Pid::from_raw(data.pid as i32);
+                                #[cfg(any(test, feature = "test-utils"))]
+                                let _ = if let Some(ref f) = self.pid_sigterm_fn {
+                                    f(nix_pid)
+                                } else {
+                                    nix_kill(nix_pid, Signal::SIGTERM)
+                                };
+                                #[cfg(not(any(test, feature = "test-utils")))]
+                                let _ = nix_kill(nix_pid, Signal::SIGTERM);
+                                let _ = std::fs::remove_file(&data.sidecar_path);
+                                report.found_dead += 1;
+                                continue;
+                            }
+                        };
+
+                        // SO_PEERCRED verify (BLOCKER-001).
+                        if let Err(verify_err) = self.peer_cred_verifier.verify(&stream) {
+                            tracing::warn!(
+                                session_id = %data.session_id,
+                                error = %verify_err,
+                                "rediscover_sessions: Terminating SO_PEERCRED mismatch; non-responsive treatment (BLOCKER-001)"
+                            );
+                            let nix_pid = Pid::from_raw(data.pid as i32);
+                            #[cfg(any(test, feature = "test-utils"))]
+                            let _ = if let Some(ref f) = self.pid_sigterm_fn {
+                                f(nix_pid)
+                            } else {
+                                nix_kill(nix_pid, Signal::SIGTERM)
+                            };
+                            #[cfg(not(any(test, feature = "test-utils")))]
+                            let _ = nix_kill(nix_pid, Signal::SIGTERM);
+                            let _ = std::fs::remove_file(&data.sidecar_path);
+                            report.found_dead += 1;
+                            continue;
+                        }
+
+                        // SO_PEERCRED matches: send Kill (fire-and-forget), keep stream
+                        // open for watchdog to receive HostToDaemon::StateChanged{Terminated}.
+                        let (mut reader, mut writer) = stream.into_split();
+                        {
+                            let kill_msg =
+                                serde_json::to_vec(&DaemonToHost::Kill).unwrap_or_default();
+                            let len_bytes = (kill_msg.len() as u32).to_le_bytes();
+                            let _ = writer.write_all(&len_bytes).await;
+                            let _ = writer.write_all(&kill_msg).await;
+                            let _ = writer.flush().await;
+                        }
+
+                        // Spawn background watchdog (excluded from 5s join_all budget per BC-2.08.004 Invariant 2).
                         let sid_clone = data.session_id.clone();
                         let pid_val = data.pid;
                         #[cfg(any(test, feature = "test-utils"))]
                         let sigkill_fn_clone = self.pid_sigkill_fn.clone();
                         let sidecar_path_clone = data.sidecar_path.clone();
+                        let sessions_arc = Arc::clone(&self.sessions);
+                        let broker_arc = Arc::clone(&self.broker);
                         tokio::spawn(async move {
-                            // Best-effort: connect and send Kill.
-                            if let Ok(mut stream) = UnixStream::connect(&sock).await {
-                                let kill_msg =
-                                    serde_json::to_vec(&DaemonToHost::Kill).unwrap_or_default();
-                                let len_bytes = (kill_msg.len() as u32).to_le_bytes();
-                                let _ = stream.write_all(&len_bytes).await;
-                                let _ = stream.write_all(&kill_msg).await;
-                                let _ = stream.flush().await;
-                            }
-                            // Background watchdog: wait for remaining time then SIGKILL.
-                            tokio::time::sleep(remaining).await;
-                            let nix_pid = Pid::from_raw(pid_val as i32);
-                            #[cfg(any(test, feature = "test-utils"))]
-                            let _ = if let Some(ref f) = sigkill_fn_clone {
-                                f(nix_pid)
-                            } else {
-                                nix_kill(nix_pid, Signal::SIGKILL)
+                            use monocle_core::engine::{EnrichedSession, SessionStatus};
+                            use monocle_ipc::types::HostToDaemon;
+
+                            // Helper: update sessions map + emit broker messages.
+                            let emit_terminated = |sessions: Arc<tokio::sync::Mutex<HashMap<String, SessionEntry>>>,
+                                                   broker: Arc<monocle_ipc::server::SubscriberList>,
+                                                   sid: String,
+                                                   sp: std::path::PathBuf| async move {
+                                let mut guard = sessions.lock().await;
+                                if let Some(entry) = guard.get_mut(&sid) {
+                                    entry.state = SessionState::Terminated;
+                                    entry.kill_deadline = None;
+                                }
+                                let list_snapshot: Vec<EnrichedSession> = guard
+                                    .values()
+                                    .map(|e| {
+                                        let status = match e.state {
+                                            SessionState::Launching
+                                            | SessionState::Running => SessionStatus::Active,
+                                            SessionState::Detached => SessionStatus::Idle,
+                                            _ => SessionStatus::Stopped,
+                                        };
+                                        EnrichedSession::new_with_display_name(
+                                            e.session_id.clone(),
+                                            e.harness_id.clone(),
+                                            None,
+                                            None,
+                                            status,
+                                            None,
+                                            e.project_root
+                                                .file_name()
+                                                .and_then(|n| n.to_str())
+                                                .map(|s| s.to_string()),
+                                            Some(e.started_at),
+                                            0,
+                                            None,
+                                            e.display_name.clone(),
+                                        )
+                                    })
+                                    .collect();
+                                drop(guard);
+                                let _ = std::fs::remove_file(&sp);
+                                let state_msg =
+                                    monocle_ipc::types::ServerToClient::SessionStateChanged {
+                                        session_id: sid.clone(),
+                                        new_state: SessionState::Terminated,
+                                    };
+                                crate::ipc_server::broadcast_to_subscribers(&broker, state_msg).await;
+                                let list_msg =
+                                    monocle_ipc::types::ServerToClient::SessionListUpdate {
+                                        sessions: list_snapshot,
+                                    };
+                                crate::ipc_server::broadcast_to_subscribers(&broker, list_msg).await;
                             };
-                            #[cfg(not(any(test, feature = "test-utils")))]
-                            let _ = nix_kill(nix_pid, Signal::SIGKILL);
-                            let _ = std::fs::remove_file(&sidecar_path_clone);
-                            tracing::debug!(
-                                session_id = %sid_clone,
-                                "rediscover_sessions: Terminating watchdog fired SIGKILL"
-                            );
+
+                            // Read HostToDaemon frames from session-host until StateChanged{Terminated}
+                            // or the absolute deadline elapses.
+                            let terminated_by_msg = async {
+                                loop {
+                                    // Read 4-byte length prefix.
+                                    let mut len_buf = [0u8; 4];
+                                    if reader.read_exact(&mut len_buf).await.is_err() {
+                                        break;
+                                    }
+                                    let len = u32::from_le_bytes(len_buf) as usize;
+                                    if len == 0 || len > 1_048_576 {
+                                        break;
+                                    }
+                                    let mut body = vec![0u8; len];
+                                    if reader.read_exact(&mut body).await.is_err() {
+                                        break;
+                                    }
+                                    if let Ok(HostToDaemon::StateChanged {
+                                        new_state: SessionState::Terminated,
+                                        ..
+                                    }) = serde_json::from_slice::<HostToDaemon>(&body)
+                                    {
+                                        return true;
+                                    }
+                                }
+                                false
+                            };
+
+                            tokio::select! {
+                                got_terminated = terminated_by_msg => {
+                                    if got_terminated {
+                                        tracing::debug!(
+                                            session_id = %sid_clone,
+                                            "rediscover_sessions: watchdog received StateChanged::Terminated"
+                                        );
+                                        emit_terminated(sessions_arc, broker_arc, sid_clone, sidecar_path_clone).await;
+                                    }
+                                    // If stream closed without Terminated, fall through to deadline path.
+                                }
+                                _ = tokio::time::sleep_until(kill_deadline_tokio) => {
+                                    // Deadline elapsed: SIGKILL + GC + broker emit (MED-001, HIGH-002).
+                                    tracing::warn!(
+                                        session_id = %sid_clone,
+                                        pid = pid_val,
+                                        "rediscover_sessions: Terminating watchdog deadline elapsed; SIGKILL"
+                                    );
+                                    let nix_pid = Pid::from_raw(pid_val as i32);
+                                    #[cfg(any(test, feature = "test-utils"))]
+                                    let _ = if let Some(ref f) = sigkill_fn_clone {
+                                        f(nix_pid)
+                                    } else {
+                                        nix_kill(nix_pid, Signal::SIGKILL)
+                                    };
+                                    #[cfg(not(any(test, feature = "test-utils")))]
+                                    let _ = nix_kill(nix_pid, Signal::SIGKILL);
+                                    emit_terminated(sessions_arc, broker_arc, sid_clone, sidecar_path_clone).await;
+                                }
+                            }
                         });
 
-                        // Register entry with state Terminating.
+                        // Register entry with state Terminating (step iii).
                         let started_at_dt = chrono::DateTime::parse_from_rfc3339(&data.started_at)
                             .map(|dt| dt.with_timezone(&chrono::Utc))
                             .unwrap_or_else(|_| chrono::Utc::now());
