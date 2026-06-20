@@ -77,6 +77,14 @@ pub struct MonocleConfig {
     /// Per BC-2.07.002 PC-5 and EC-081.
     #[serde(default)]
     pub project_profiles: HashMap<String, String>,
+
+    /// Scrollback buffer row count for `vt100::Parser`.
+    /// `None` (absent from JSON) -> apply 1000-row default.
+    /// Values above 10000 are clamped to 10000; values of 0 are clamped to 1.
+    /// See BC-2.09.007 for default/clamp semantics.
+    /// Load wiring is S-039 AC-008; consumer is S-043 via `App::scrollback_rows`.
+    #[serde(default)]
+    pub pty_scrollback_rows: Option<u32>,
 }
 
 impl Default for MonocleConfig {
@@ -87,6 +95,7 @@ impl Default for MonocleConfig {
             ccr_path: None,
             binding_overrides: default_binding_overrides(),
             project_profiles: HashMap::new(),
+            pty_scrollback_rows: None,
         }
     }
 }

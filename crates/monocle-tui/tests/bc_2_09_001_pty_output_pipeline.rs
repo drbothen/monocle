@@ -911,3 +911,66 @@ async fn test_BC_2_09_001_second_enter_skips_attach_when_dump_already_received()
         "BC-2.09.001 AC-004: mode must be EmbeddedTerminal even on the O(1) path"
     );
 }
+
+// ---------------------------------------------------------------------------
+// AC-008: config → App::scrollback_rows full wiring (config-load flow)
+// BC-2.09.001 Invariant 4
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_09_001_config_scrollback_rows_wiring
+///
+/// Exercises the FULL config→App wiring path (AC-008 / BC-2.09.001 Invariant 4):
+///   - `MonocleConfig { pty_scrollback_rows: Some(15000) }` → `App::scrollback_rows == 10000` (clamped)
+///   - `MonocleConfig { pty_scrollback_rows: Some(0) }` → `App::scrollback_rows == 1` (clamped)
+///   - `MonocleConfig { pty_scrollback_rows: None }` → `App::scrollback_rows == 1000` (default)
+///   - `MonocleConfig { pty_scrollback_rows: Some(500) }` → `App::scrollback_rows == 500` (in-range)
+///
+/// This test uses the production `App::new(config)` path — NOT a test-local copy of the
+/// clamp logic. The binding between MonocleConfig::pty_scrollback_rows and App::scrollback_rows
+/// is enforced here so that any regression in the wiring causes this test to fail.
+#[test]
+fn test_BC_2_09_001_config_scrollback_rows_wiring() {
+    // Case 1: value above 10000 is clamped to 10000.
+    let config_over = MonocleConfig {
+        pty_scrollback_rows: Some(15000),
+        ..MonocleConfig::default()
+    };
+    let app_over = App::new(config_over);
+    assert_eq!(
+        app_over.scrollback_rows, 10000,
+        "BC-2.09.001 Invariant 4 (AC-008): pty_scrollback_rows=15000 must clamp to 10000"
+    );
+
+    // Case 2: value of 0 is clamped to 1.
+    let config_zero = MonocleConfig {
+        pty_scrollback_rows: Some(0),
+        ..MonocleConfig::default()
+    };
+    let app_zero = App::new(config_zero);
+    assert_eq!(
+        app_zero.scrollback_rows, 1,
+        "BC-2.09.001 Invariant 4 (AC-008): pty_scrollback_rows=0 must clamp to 1"
+    );
+
+    // Case 3: None (absent from JSON) → 1000-row default.
+    let config_none = MonocleConfig {
+        pty_scrollback_rows: None,
+        ..MonocleConfig::default()
+    };
+    let app_none = App::new(config_none);
+    assert_eq!(
+        app_none.scrollback_rows, 1000,
+        "BC-2.09.001 Invariant 4 (AC-008): absent pty_scrollback_rows must produce default 1000"
+    );
+
+    // Case 4: valid in-range value is preserved.
+    let config_valid = MonocleConfig {
+        pty_scrollback_rows: Some(500),
+        ..MonocleConfig::default()
+    };
+    let app_valid = App::new(config_valid);
+    assert_eq!(
+        app_valid.scrollback_rows, 500,
+        "BC-2.09.001 Invariant 4 (AC-008): pty_scrollback_rows=500 must be preserved (in-range)"
+    );
+}

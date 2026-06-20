@@ -15,7 +15,10 @@ use anyhow::{Context, Result};
 use directories::ProjectDirs;
 use monocle_config::{detect_ccr, load_config, write_config, MonocleConfig};
 use monocle_core::engine::EnrichedSession;
-use monocle_core::tui::state::{AppMode, FocusSnapshot, PromptModal, ToolPayload};
+use monocle_core::tui::state::{
+    clamp_scrollback_rows, default_scrollback_rows, AppMode, FocusSnapshot, PromptModal,
+    ToolPayload,
+};
 use monocle_ipc::error::IpcError;
 use monocle_ipc::framing::read_framed;
 use monocle_ipc::reconnect::{BackoffState, RECONNECT_WINDOW_SECS};
@@ -363,6 +366,14 @@ impl App {
     /// BC-2.07.005 PC-3). Callers do NOT need to set `app.ccr_path` after construction.
     pub fn new(config: MonocleConfig) -> Self {
         let ccr_path = detect_ccr(&config);
+        // AC-008 / BC-2.09.001 Invariant 4: derive scrollback_rows from config.
+        // `None` (field absent from JSON) → apply 1000-row default.
+        // Non-None values are clamped to [1, 10000] by clamp_scrollback_rows.
+        // Both helpers live in monocle-core (pure arithmetic, no I/O).
+        let scrollback_rows = match config.pty_scrollback_rows {
+            None => default_scrollback_rows(),
+            Some(raw) => clamp_scrollback_rows(raw),
+        };
         Self {
             mode: AppMode::Dashboard {
                 focused: FocusSnapshot::Sessions,
@@ -408,9 +419,9 @@ impl App {
             pty_dump_received: HashSet::new(),
             dump_in_progress: HashMap::new(),
             pending_pty_bytes: HashMap::new(),
-            // SCROLLBACK_ROWS: default 1000; clamped to [1, 10000] (AC-008 / BC-2.09.001 Inv 4).
-            // S-039 owns the config load; run() will override this after loading config.
-            scrollback_rows: 1000,
+            // AC-008 / BC-2.09.001 Invariant 4: computed above from config.pty_scrollback_rows.
+            // None → 1000 (default_scrollback_rows); Some(raw) → clamp_scrollback_rows(raw).
+            scrollback_rows,
         }
     }
 }

@@ -241,6 +241,7 @@ fn test_BC_2_07_003_valid_config_round_trips() {
         ccr_path: Some("/usr/local/bin/ccr".to_string()),
         binding_overrides: serde_json::Value::Object(serde_json::Map::new()),
         project_profiles: std::collections::HashMap::new(),
+        pty_scrollback_rows: None,
     };
     let json = serde_json::to_string_pretty(&original).expect("original config must serialize");
     write_fixture(tmp.path(), "config.json", &json);
@@ -462,6 +463,7 @@ fn test_BC_2_07_001_write_config_no_partial_write() {
         project_profiles: [("/home/user/proj".to_string(), "profile-a".to_string())]
             .into_iter()
             .collect(),
+        pty_scrollback_rows: None,
     };
 
     let result = std::panic::catch_unwind(AssertUnwindSafe(|| write_config(&config, &config_path)));
