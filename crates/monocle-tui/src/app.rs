@@ -870,6 +870,13 @@ pub fn gc_pty_session(app: &mut App, session_id: &str) {
     app.pty_dump_received.remove(session_id);
     app.dump_in_progress.remove(session_id);
     app.pending_pty_bytes.remove(session_id);
+    // F-PASS4-MED-001: also clean up Pass-4 fields on GC.
+    // Abort any in-flight dump timeout task so it doesn't fire after the session is gone.
+    if let Some(handle) = app.dump_timeout_handles.remove(session_id) {
+        handle.abort();
+    }
+    // Remove drop counter (stale after session GC).
+    app.pending_pty_drop_count.remove(session_id);
 }
 
 /// Exit `EmbeddedTerminal` mode (if currently focused on `session_id`) then GC.
