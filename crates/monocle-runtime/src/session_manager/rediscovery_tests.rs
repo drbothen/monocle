@@ -3900,3 +3900,320 @@ async fn test_BC_2_08_004_rediscovery_watchdog_terminated_entry_gcd() {
 
     let _ = std::fs::remove_file(&socket_path);
 }
+
+// ===========================================================================
+// MED-001 — Terminating watchdog GC grace MUST be measured from the Terminated
+//           TRANSITION, not from rediscover_sessions() call time (T0).
+//
+// BC-2.08.005 PC-1: "10-second GC grace period begins at the Terminated transition."
+//
+// Bug: `watchdog_gc_deadline = T0 + 10s` is precomputed in the SYNCHRONOUS body
+// of rediscover_sessions() (mod.rs ~5248).  Both select! arms then call
+// `sleep_until(watchdog_gc_deadline)`.  When the Terminated transition fires
+// AFTER T0+10s (e.g. at T0+12s via null-deadline fresh-12s-window), the
+// precomputed gc_deadline is already in the past → the GC task fires immediately
+// → 0 seconds of grace instead of 10.
+//
+// Test strategy (deadline / SIGKILL arm):
+//   - null kill_deadline → fresh 12s window → Terminated at T0+12s
+//   - advance to T0+12s to fire the transition
+//   - at T0+12s+5s (well past T0+10s but only 5s into grace) entry MUST still exist
+//   - at T0+12s+10s (full grace) entry MUST be removed
+//
+// Test strategy (terminated_by_msg arm):
+//   - deadline far in future (T0+30s), mock sends StateChanged::Terminated at T0+7s
+//   - advance to T0+7s to fire the msg-arm Terminated transition
+//   - at T0+10.2s (past buggy T0+10s gc_deadline, but 6.8s before correct T0+17s)
+//     entry MUST still exist
+//   - at T0+17.3s entry MUST be removed
+// ===========================================================================
+
+/// MED-001 (deadline / SIGKILL arm): Terminating sidecar with NULL kill_deadline
+/// → fresh 12s window → SIGKILL fires at T0+12s → Terminated transition.
+/// GC grace MUST begin from T0+12s (the transition), NOT from T0.
+///
+/// Assertion (a): at T0+12s+5s the entry is STILL present in the registry
+///   (grace has not yet expired — would fail with buggy impl because T0+10s < T0+12s).
+/// Assertion (b): at T0+12s+10s the entry is REMOVED from the registry
+///   (full 10s grace from the transition has elapsed).
+///
+/// RED GATE: buggy impl precomputes gc_deadline=T0+10s; GC fires immediately when
+/// the transition happens at T0+12s (deadline already past) → entry removed before
+/// assertion (a) is checked → assertion (a) fails with "entry must still be present".
+///
+/// BC-2.08.005 PC-1.
+#[tokio::test(start_paused = true)]
+async fn test_BC_2_08_004_rediscovery_watchdog_gc_grace_from_transition_deadline_arm() {
+    let tmp = tempfile::tempdir().expect("MED-001-deadline: tempdir");
+    let session_id = "00000000-0036-4000-a008-000000000001";
+
+    // NULL kill_deadline → fresh 12s window from T0 → Terminated transition at T0+12s.
+    let socket_path = short_socket_path("med001-dl");
+    let _ = std::fs::remove_file(&socket_path);
+    write_sidecar_v3(
+        tmp.path(),
+        session_id,
+        "Terminating",
+        std::process::id(), // alive PID; SO_PEERCRED allow=true
+        &socket_path,
+        None, // null deadline → fresh 12s window
+    );
+
+    // Mock session-host: accept the Kill connect, then hold open (never sends Terminated).
+    // The deadline arm fires after the 12s window.
+    let sock_clone = socket_path.clone();
+    tokio::spawn(async move {
+        let _ = std::fs::remove_file(&sock_clone);
+        let listener = UnixListener::bind(&sock_clone)
+            .expect("MED-001-deadline: mock session-host bind");
+        if let Ok((_stream, _)) = listener.accept().await {
+            // Hold open for longer than the test lasts; deadline arm will fire.
+            tokio::time::sleep(Duration::from_secs(120)).await;
+        }
+    });
+    // Yield so the mock task binds the socket before rediscover_sessions connects.
+    tokio::time::sleep(Duration::from_millis(10)).await;
+
+    let (sigkill_tx, mut sigkill_rx) = mpsc::channel::<u32>(4);
+    let (mut manager, _subs, _rx) = make_rediscovery_manager(tmp.path(), true);
+    manager.with_pid_sigkill_fn(Arc::new(move |pid: nix::unistd::Pid| {
+        let _ = sigkill_tx.try_send(pid.as_raw() as u32);
+        Ok(())
+    }));
+
+    // T0: rediscover_sessions() — registers Terminating entry, spawns watchdog,
+    // precomputes watchdog_gc_deadline = T0+10s (the BUG).
+    let report = manager
+        .rediscover_sessions()
+        .await
+        .expect("MED-001-deadline: rediscover_sessions must return Ok");
+
+    assert_eq!(
+        report.found_alive, 1,
+        "MED-001-deadline: Terminating + null deadline → found_alive=1; got {}",
+        report.found_alive
+    );
+
+    // Verify entry is present immediately after rediscovery.
+    let sessions_initial = manager.session_list().await;
+    assert!(
+        sessions_initial.iter().any(|s| s.session_id == session_id),
+        "MED-001-deadline: Terminating entry MUST be present immediately after rediscovery"
+    );
+
+    // Advance to T0+12s: the 12s fresh window elapses → SIGKILL fires → Terminated transition.
+    tokio::time::advance(Duration::from_secs(12)).await;
+    // Drain the executor so the watchdog's deadline arm runs through emit_terminated
+    // and spawns the GC sub-task.
+    for _ in 0..10 {
+        tokio::task::yield_now().await;
+    }
+
+    // Confirm SIGKILL was fired (the Terminated transition happened).
+    let got_sigkill =
+        tokio::time::timeout(Duration::from_millis(200), sigkill_rx.recv()).await;
+    assert!(
+        got_sigkill.is_ok() && got_sigkill.unwrap().is_some(),
+        "MED-001-deadline: watchdog MUST fire SIGKILL at the 12s deadline"
+    );
+
+    // Yield again to let the GC sub-task be spawned and registered in the timer wheel.
+    for _ in 0..6 {
+        tokio::task::yield_now().await;
+    }
+
+    // -----------------------------------------------------------------------
+    // Assertion (a): at T0+12s+5s the entry MUST still be present.
+    //
+    // Correct impl: GC deadline = (T0+12s)+10s = T0+22s → not yet elapsed.
+    // Buggy impl:   GC deadline = T0+10s → already 2s in the past when the
+    //               transition fires at T0+12s → GC fires immediately → entry
+    //               already removed → assertion FAILS.
+    // -----------------------------------------------------------------------
+    tokio::time::advance(Duration::from_secs(5)).await;
+    for _ in 0..6 {
+        tokio::task::yield_now().await;
+    }
+
+    let sessions_mid = manager.session_list().await;
+    assert!(
+        sessions_mid.iter().any(|s| s.session_id == session_id),
+        "MED-001-deadline: [assertion a] entry MUST still be present 5s after \
+         Terminated transition (grace not yet expired). \
+         BUG: watchdog_gc_deadline precomputed at T0+10s; transition fires at T0+12s; \
+         T0+10s is already past → GC fires immediately on spawn → 0s grace. \
+         FIX: compute gc_deadline AFTER emit_terminated, not in rediscover_sessions \
+         sync body. Use spawn_gc_task() at transition time (mirrors kill_session \
+         ~mod.rs 2770)."
+    );
+
+    // -----------------------------------------------------------------------
+    // Assertion (b): at T0+12s+10s the entry MUST be removed.
+    //
+    // Correct impl: GC deadline = T0+22s; we are now at T0+12s+10s = T0+22s.
+    // -----------------------------------------------------------------------
+    // Advance the remaining 5s to reach T0+22s total.
+    tokio::time::advance(Duration::from_secs(5)).await;
+    for _ in 0..10 {
+        tokio::task::yield_now().await;
+    }
+
+    let sessions_after = manager.session_list().await;
+    assert!(
+        !sessions_after.iter().any(|s| s.session_id == session_id),
+        "MED-001-deadline: [assertion b] entry MUST be removed after full 10s GC grace \
+         from the Terminated transition (BC-2.08.005 PC-1)"
+    );
+
+    let _ = std::fs::remove_file(&socket_path);
+}
+
+/// MED-001 (terminated_by_msg arm): Terminating sidecar, deadline far in future
+/// (T0+30s), mock session-host sends StateChanged::Terminated at T0+1.5s.
+/// GC grace MUST begin from T0+1.5s (msg-arm transition), NOT from T0.
+///
+/// The key scenario: with the bug gc_deadline=T0+10s (precomputed at T0),
+/// the GC fires at T0+10s — which is only 8.5s after the T0+1.5s transition,
+/// not 10s.  The correct gc_deadline is T0+1.5s+10s = T0+11.5s.
+///
+/// Assertion (a): at T0+10.2s the entry is STILL present.
+///   Correct gc_deadline = T0+11.5s → grace not yet expired.
+///   Buggy gc_deadline = T0+10s → GC fires at T0+10s (8.5s after transition)
+///   → entry already removed → assertion FAILS.
+///
+/// Assertion (b): at T0+11.7s the entry MUST be removed.
+///
+/// BC-2.08.005 PC-1.
+#[tokio::test(start_paused = true)]
+async fn test_BC_2_08_004_rediscovery_watchdog_gc_grace_from_transition_msg_arm() {
+    let tmp = tempfile::tempdir().expect("MED-001-msg: tempdir");
+    let session_id = "00000000-0036-4000-a008-000000000002";
+
+    // Deadline far in the future (T0+30s virtual) so the msg arm fires first.
+    let future_ms = unix_now_ms() + 30_000;
+    let socket_path = short_socket_path("med001-msg");
+    let _ = std::fs::remove_file(&socket_path);
+    write_sidecar_v3(
+        tmp.path(),
+        session_id,
+        "Terminating",
+        std::process::id(),
+        &socket_path,
+        Some(future_ms),
+    );
+
+    // Mock session-host: accept Kill connect, consume Kill frame, then after
+    // a 1.5s delay (virtual time) send StateChanged::Terminated.
+    // The GC grace must begin from T0+1.5s.  With the bug, gc_deadline=T0+10s
+    // fires at T0+10s (8.5s of effective grace, not 10s).
+    let sock_clone = socket_path.clone();
+    tokio::spawn(async move {
+        let _ = std::fs::remove_file(&sock_clone);
+        let listener = UnixListener::bind(&sock_clone)
+            .expect("MED-001-msg: mock session-host bind");
+        if let Ok((mut stream, _)) = listener.accept().await {
+            // Consume the Kill frame the daemon sends fire-and-forget.
+            let mut len_buf = [0u8; 4];
+            if stream.read_exact(&mut len_buf).await.is_ok() {
+                let len = u32::from_le_bytes(len_buf) as usize;
+                if len <= 65536 {
+                    let mut body = vec![0u8; len];
+                    let _ = stream.read_exact(&mut body).await;
+                }
+            }
+            // Session exits 1.5s after re-discovery.
+            tokio::time::sleep(Duration::from_millis(1_500)).await;
+            let terminated_msg = HostToDaemon::StateChanged {
+                new_state: monocle_ipc::types::SessionState::Terminated,
+                degraded_env: None,
+            };
+            let bytes =
+                serde_json::to_vec(&terminated_msg).expect("MED-001-msg: serialize terminated");
+            let len_bytes = (bytes.len() as u32).to_le_bytes();
+            let _ = stream.write_all(&len_bytes).await;
+            let _ = stream.write_all(&bytes).await;
+            let _ = stream.flush().await;
+            // Hold stream open so the watchdog reader stays alive.
+            tokio::time::sleep(Duration::from_secs(60)).await;
+        }
+    });
+    tokio::time::sleep(Duration::from_millis(10)).await;
+
+    let (mut manager, _subs, _rx) = make_rediscovery_manager(tmp.path(), true);
+
+    // T0: rediscover_sessions() — registers Terminating, spawns watchdog.
+    // watchdog_gc_deadline = T0+10s (the BUG: should be computed at transition time).
+    let report = manager
+        .rediscover_sessions()
+        .await
+        .expect("MED-001-msg: rediscover_sessions must return Ok");
+
+    assert_eq!(
+        report.found_alive, 1,
+        "MED-001-msg: Terminating + future deadline → found_alive=1; got {}",
+        report.found_alive
+    );
+
+    // Advance to T0+1.6s: mock's 1.5s sleep fires, Terminated message written to socket.
+    // Yield multiple times to drain the executor so the watchdog reads the msg,
+    // calls emit_terminated, and spawns the GC sub-task.
+    tokio::time::advance(Duration::from_millis(1_600)).await;
+    for _ in 0..16 {
+        tokio::task::yield_now().await;
+    }
+
+    // Confirm the entry transitioned to Terminated (msg arm fired).
+    let sessions_post_transition = manager.session_list().await;
+    assert!(
+        sessions_post_transition
+            .iter()
+            .any(|s| s.session_id == session_id),
+        "MED-001-msg: entry MUST still be in registry immediately after Terminated \
+         transition (grace period just started at T0+1.5s)"
+    );
+
+    // -----------------------------------------------------------------------
+    // Advance to T0+10.2s.  This is PAST the buggy precomputed gc_deadline
+    // (T0+10s) but BEFORE the correct gc_deadline (T0+1.5s+10s = T0+11.5s).
+    //
+    // Correct impl: gc_deadline = T0+11.5s → GC has NOT fired → entry present.
+    // Buggy impl:   gc_deadline = T0+10s → GC fires at T0+10s → entry removed.
+    //
+    // Assertion (a): entry MUST still be present at T0+10.2s.
+    // RED GATE: buggy impl removes entry at T0+10s → assertion FAILS.
+    // -----------------------------------------------------------------------
+    tokio::time::advance(Duration::from_millis(8_600)).await; // now at ~T0+10.2s
+    for _ in 0..8 {
+        tokio::task::yield_now().await;
+    }
+
+    let sessions_mid = manager.session_list().await;
+    assert!(
+        sessions_mid.iter().any(|s| s.session_id == session_id),
+        "MED-001-msg: [assertion a] entry MUST still be present at T0+10.2s \
+         (Terminated at T0+1.5s; correct gc_deadline=T0+11.5s; 1.3s remain). \
+         BUG: watchdog_gc_deadline precomputed at T0+10s → GC fires at T0+10s \
+         (only 8.5s after T0+1.5s transition, not the required 10s grace). \
+         FIX: compute gc_deadline AFTER emit_terminated in the msg arm, \
+         i.e. call spawn_gc_task() at transition time (mirrors kill_session ~mod.rs 2770)."
+    );
+
+    // -----------------------------------------------------------------------
+    // Assertion (b): at T0+11.7s the entry MUST be removed.
+    // Advance the remaining ~1.5s to T0+11.7s.
+    // -----------------------------------------------------------------------
+    tokio::time::advance(Duration::from_millis(1_500)).await; // now at ~T0+11.7s
+    for _ in 0..10 {
+        tokio::task::yield_now().await;
+    }
+
+    let sessions_after = manager.session_list().await;
+    assert!(
+        !sessions_after.iter().any(|s| s.session_id == session_id),
+        "MED-001-msg: [assertion b] entry MUST be removed after 10s GC grace from \
+         the Terminated transition at T0+1.5s; correct gc_deadline=T0+11.5s \
+         (BC-2.08.005 PC-1)"
+    );
+
+    let _ = std::fs::remove_file(&socket_path);
+}
