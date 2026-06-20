@@ -4216,3 +4216,151 @@ async fn test_BC_2_08_004_rediscovery_watchdog_gc_grace_from_transition_msg_arm(
 
     let _ = std::fs::remove_file(&socket_path);
 }
+
+// ---------------------------------------------------------------------------
+// MED-001 (pass-6): Terminating dead-PID GC MUST emit broker events
+// ---------------------------------------------------------------------------
+
+/// MED-001 (pass-6): A Terminating sidecar whose recorded PID is dead
+/// (kill(pid, None) returns ESRCH) must be GC'd AND the daemon must emit
+/// `SessionStateChanged{Terminated}` then `SessionListUpdate` via the broker,
+/// in that order.
+///
+/// Per SS-daemon-wiring-v2-delta §3b emission table:
+///   "Re-discovery GC (dead session) → any → Terminated →
+///    emit SessionStateChanged{Terminated} then SessionListUpdate."
+///
+/// Every other dead-session GC path in rediscover_sessions() emits these
+/// events (Running/Launching dead-PID, Detached dead-PID, Detached
+/// connect-fail, Detached peercred-mismatch, Terminating elapsed-deadline,
+/// Terminating connect-fail, Terminating peercred-mismatch, Probe-failed).
+/// The Terminating dead-PID sibling (mod.rs ~4945-4955) is the only branch
+/// that performs GC without broker emission.
+///
+/// Current impl: lines ~4951-4954 call fs::remove_file + found_dead++
+/// but never call broadcast_to_subscribers().
+/// The broker-emission assertions FAIL.
+///
+/// Mirrors test_BC_2_08_004_rediscovery_dead_pid_emits_terminated which
+/// covers Running/Launching + Detached dead-PID paths.
+///
+/// IMPLEMENTER NOTE: the fix is to add the §3b emission block to the
+/// Terminating dead-PID branch (mod.rs ~4951), ideally by extracting the
+/// duplicated ~50-line "build EnrichedSession snapshot + broadcast
+/// SessionStateChanged{Terminated} + SessionListUpdate" block (copy-pasted
+/// ~8x across GC branches) into a single helper so this class of propagation
+/// gap cannot recur.
+#[tokio::test]
+async fn test_BC_2_08_004_rediscovery_terminating_dead_pid_emits_terminated() {
+    let tmp = tempfile::tempdir().expect("pass6-MED-001: tempdir");
+    let session_id = "00000000-0036-4000-a009-000000000001";
+
+    // Spawn a real short-lived process and reap it so the PID is definitively dead.
+    let mut child = std::process::Command::new("true")
+        .spawn()
+        .expect("pass6-MED-001: spawn 'true'");
+    let dead_pid = child.id();
+    let _ = child.wait(); // reap to avoid zombie; exits immediately
+
+    // Future deadline: the liveness probe fires before the deadline check,
+    // so this test is not sensitive to the deadline value.
+    let future_ms = unix_now_ms() + 10_000;
+    let socket_path = short_socket_path("p6med001-term-dead");
+    // No socket bound — correct impl detects dead PID before any connect attempt.
+    write_sidecar_v3(
+        tmp.path(),
+        session_id,
+        "Terminating",
+        dead_pid,
+        &socket_path,
+        Some(future_ms),
+    );
+
+    // Wire a broker subscriber BEFORE calling rediscover_sessions().
+    let (mut manager, _subs, mut rx) = make_rediscovery_manager(tmp.path(), true);
+
+    // RED GATE: current impl in the Terminating dead-PID branch (mod.rs ~4951)
+    // does fs::remove_file + found_dead++ but does NOT call
+    // broadcast_to_subscribers(). The broker-emission assertions FAIL.
+    let report = manager
+        .rediscover_sessions()
+        .await
+        .expect("pass6-MED-001: rediscover_sessions must return Ok");
+
+    // Assert A: GC basics — sidecar deleted and found_dead incremented.
+    let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+    assert!(
+        !sidecar_path.exists(),
+        "pass6-MED-001: dead-PID Terminating sidecar must be deleted; \
+         still at {:?}",
+        sidecar_path
+    );
+    assert_eq!(
+        report.found_dead, 1,
+        "pass6-MED-001: Terminating dead PID → found_dead=1; got {}",
+        report.found_dead
+    );
+    assert_eq!(
+        report.found_alive, 0,
+        "pass6-MED-001: found_alive=0; got {}",
+        report.found_alive
+    );
+    assert!(
+        !manager
+            .session_list()
+            .await
+            .iter()
+            .any(|s| s.session_id == session_id),
+        "pass6-MED-001: dead Terminating session MUST NOT appear in registry"
+    );
+
+    // Assert B + C: broker MUST emit SessionStateChanged{Terminated} then
+    // SessionListUpdate for the Terminating dead-PID GC path.
+    // RED GATE: current impl does not call broadcast_to_subscribers in this
+    // branch → both assertions FAIL.
+    let drain_deadline = tokio::time::Instant::now() + Duration::from_millis(300);
+    let mut state_changed_terminated = false;
+    let mut list_update_found = false;
+    let mut ordering_violation = false;
+    loop {
+        match tokio::time::timeout_at(drain_deadline, rx.recv()).await {
+            Ok(Some(monocle_ipc::types::ServerToClient::SessionStateChanged {
+                session_id: ref sid,
+                new_state,
+                ..
+            })) if sid == session_id => {
+                if new_state == monocle_ipc::types::SessionState::Terminated {
+                    state_changed_terminated = true;
+                    if list_update_found {
+                        // SessionListUpdate arrived BEFORE SessionStateChanged —
+                        // ordering constraint violated.
+                        ordering_violation = true;
+                    }
+                }
+            }
+            Ok(Some(monocle_ipc::types::ServerToClient::SessionListUpdate { .. })) => {
+                list_update_found = true;
+            }
+            Ok(Some(_)) => continue,
+            _ => break,
+        }
+    }
+    assert!(
+        state_changed_terminated,
+        "pass6-MED-001: Terminating dead-PID GC MUST emit \
+         SessionStateChanged{{Terminated}} to broker \
+         (SS-daemon-wiring-v2-delta §3b).  Current impl skips broker \
+         emission on Terminating dead-PID branch."
+    );
+    assert!(
+        list_update_found,
+        "pass6-MED-001: Terminating dead-PID GC MUST emit SessionListUpdate \
+         to broker after SessionStateChanged{{Terminated}} \
+         (SS-daemon-wiring-v2-delta §3b)"
+    );
+    assert!(
+        !ordering_violation,
+        "pass6-MED-001: SessionStateChanged{{Terminated}} MUST precede \
+         SessionListUpdate (SS-daemon-wiring-v2-delta §3b ordering constraint)"
+    );
+}
