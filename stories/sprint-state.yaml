@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.51"
+version: "1.52"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-19T01:00:00Z
@@ -497,12 +497,12 @@ stories:
     epic: EPIC-08
     wave: 8
     points: 8
-    status: draft
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 8. Depends on S-033, S-034, S-035. BCs: BC-2.08.002, BC-2.08.004."
+    completed_at: "2026-06-20"
+    pr_url: "https://github.com/jmagady/monocle/pull/46"
+    notes: "Wave 8. PR #46 @ d924183 (squash-merge 2026-06-20). 12-pass fresh-context adversarial convergence (3 consecutive CLEAN: passes 10/11/12). rediscover_sessions: setsid persistence (BC-2.08.002), all alive sessions visible within 5s, UDS bind blocked until complete (BC-2.08.004 v1.4.0). BLOCKER-001 SO_PEERCRED on Terminating Kill connect + BLOCKER-002 watchdog select! early-close leak fixed in-scope. HIGH/MED findings fixed in-scope. SEC-001 CWE-284 pid=0 + SEC-002 CWE-284 SO_PEERCRED pid=None + SEC-003 CWE-22 socket_path traversal all RESOLVED IN-SCOPE. AC-004 spec-text drift corrected (proxy_task: Some→None). MED-002 RESOLVED for S-036 scope. SS-session-manager v2.15.0→v2.15.1; BC-2.08.004 v1.3.5→v1.4.0; EVAL-INDEX v1.26→v1.28; S-036 v1.3→v1.5. D-339."
 
   - id: S-037
     title: "SessionManager GC Task — Terminated Sessions Removed After 10s Grace Period"
@@ -653,12 +653,12 @@ summary:
   not_started: 0
   in_progress: 0
   review: 0
-  done: 37
+  done: 38
   ready: 0
   blocked: 1
-  draft: 13
+  draft: 12
   total_points: 311
-  points_complete: 222
+  points_complete: 230
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
@@ -688,6 +688,13 @@ summary:
   # total_stories note: 51 = 33 Phase-3 stories (including S-PHASE-3-PREP and S-DTU-001) + 2 Wave-8
   #   pre-existing (S-032, S-DAEMON-WIRE-FIX-001) + 16 new v1A (S-033..S-048). Blocked count (1) is
   #   S-PHASE-3-PREP (blocked on vsdd-factory spec-kit-mcp rc.19+).
+  # v1.52 updates (2026-06-20):
+  # - D-339: S-036 MERGED to develop via PR #46 @ d924183 (squash-merge 2026-06-20).
+  #   S-036 status: draft → done. completed_at: "2026-06-20". pr_url set.
+  #   done: 37 → 38; draft: 13 → 12; points_complete: 222 → 230.
+  #   rediscover_sessions. BC-2.08.002 + BC-2.08.004 v1.4.0. 12-pass adversarial (3 CLEAN).
+  #   SEC-001/002/003-S036 RESOLVED IN-SCOPE. SS-session-manager v2.15.1. MED-002 RESOLVED.
+  #   Wave 8: 6/12 done (38/74 pts). develop HEAD: d924183.
   # v1.51 updates (2026-06-19):
   # - D-338: S-038 MERGED to develop via PR #44 @ 8d649ea (squash-merge 2026-06-19).
   #   S-038 status: draft → done. completed_at: "2026-06-19". pr_url set.

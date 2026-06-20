@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.50"
+version: "5.51"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-19T01:00:00Z
@@ -86,7 +86,7 @@ traces_to: .factory/specs/prd.md
 | S-033 | SessionManager::spawn_session — SessionHostSpawner, SessionEntry, Sidecar, SpawnAck, and SessionStateChanged{Launching} | EPIC-08 | 8 | 8 | done | S-034, S-035, S-036, S-037, S-038, S-044, S-045, S-047, S-048 |
 | S-034 | SessionManager::kill_session — DaemonToHost::Kill Within 500ms; Terminating/Terminated Transitions; 12s Watchdog | EPIC-08 | 8 | 8 | done | S-036, S-037, S-047 |
 | S-035 | SessionManager::attach_session and detach_session — Chunked Scrollback, SO_PEERCRED, Session-Host Stays Alive | EPIC-08 | 8 | 8 | done | S-036, S-039, S-044, S-047 |
-| S-036 | SessionManager::rediscover_sessions — setsid Persistence; All States Handled Within 5s; UDS Bind Blocked | EPIC-08 | 8 | 8 | draft | — |
+| S-036 | SessionManager::rediscover_sessions — setsid Persistence; All States Handled Within 5s; UDS Bind Blocked | EPIC-08 | 8 | 8 | done | — |
 | S-037 | SessionManager GC Task — Terminated Sessions Removed After 10s Grace Period | EPIC-08 | 3 | 8 | done | — |
 | S-038 | SessionManager Hook Auto-Injection — hooks-settings.json Writer + SpawnOptions.hooks_settings_path Population | EPIC-08 | 3 | 8 | done | — |
 | S-039 | PTY Output Pipeline — vt100::Parser, PseudoTerminal Render, PtyOutput IPC Handler, Auto-Attach on First Entry | EPIC-09 | 8 | 9 | draft | S-040, S-042, S-043 |
@@ -498,6 +498,19 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.51
+
+**S-036 MERGED — Wave-8 sixth delivery, Tier-3 COMPLETE (D-339, 2026-06-20):**
+
+- S-036 Story Registry row: `draft` → `done`. PR #46 @ d924183 (squash-merge 2026-06-20).
+- 12-pass fresh-context adversarial convergence (3 consecutive CLEAN: passes 10/11/12). Security review PASS (SEC-001/002/003 all RESOLVED IN-SCOPE). 11/11 CI checks green.
+- rediscover_sessions: BC-2.08.002 (setsid persistence) + BC-2.08.004 v1.4.0 (all alive sessions visible within 5s; UDS bind blocked). MED-002 RESOLVED for S-036 scope.
+- SS-session-manager v2.15.0→v2.15.1; BC-2.08.004 v1.3.5→v1.4.0; EVAL-INDEX v1.26→v1.28; S-036 v1.3→v1.5.
+- AC-004 spec-text drift corrected (proxy_task: Some→None). PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP recurred (caught+reset by orchestrator).
+- Wave 8: 6/12 stories done (38/74 pts). 38/51 stories done (230/311 pts). develop HEAD: d924183.
+- SE-16d monotonicity: v5.51 timestamp 2026-06-20 >= v5.50 timestamp 2026-06-19. PASS.
+- SE-22 v2 sibling-sweep: sprint-state.yaml v1.51→v1.52 (done 37→38, draft 13→12, points_complete 222→230); STATE.md v8.03→v8.04.
 
 ## §Trace v5.50
 

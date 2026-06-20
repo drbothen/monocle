@@ -210,9 +210,9 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.50"
-  last_bump_commit: "[D-338 — S-038 status draft→done; §Trace v5.50 added; Wave-8 Tier-2 COMPLETE]"
-  last_bump_date: "2026-06-19"
+  current_version: "5.51"
+  last_bump_commit: "[D-339 — S-036 status draft→done; §Trace v5.51 added; Wave-8 Tier-3 COMPLETE; done 37→38; pts 222→230]"
+  last_bump_date: "2026-06-20"
 
 VP-INDEX:
   path: specs/verification-properties/VP-INDEX.md
@@ -234,9 +234,9 @@ EVAL-INDEX:
 
 sprint-state:
   path: stories/sprint-state.yaml
-  current_version: "1.51"
-  last_bump_commit: "[D-338 — S-038 status draft→done; done 36→37; draft 14→13; points_complete 219→222; Wave-8 Tier-2 COMPLETE]"
-  last_bump_date: "2026-06-19"
+  current_version: "1.52"
+  last_bump_commit: "[D-339 — S-036 status draft→done; done 37→38; draft 13→12; points_complete 222→230; Wave 8: 6/12 done]"
+  last_bump_date: "2026-06-20"
 
 nfr-catalog:
   path: specs/prd-supplements/nfr-catalog.md

@@ -2459,3 +2459,19 @@ CI checks out origin/factory-artifacts at PR-open time for POL-11 (monocle-versi
 Before adding a new writer/serializer, GREP for an existing one. If one exists (even in a different module), reconcile to a single canonical source rather than adding a parallel writer with a divergent schema. The adversary/implementer must check for pre-existing siblings under the Partial-Fix/duplication axis. New canonical writers should be wired into ALL live production code paths (not just tests) before the story closes.
 
 **Codify indicator:** This pattern should be added to SS-conventions-anti-patterns.md §Anti-Patterns as "Parallel Writer Syndrome" — verify pre-existing writer before implementing a new one.
+
+---
+
+### PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP SECOND RECURRENCE (D-339, S-036 cycle)
+
+**Date:** 2026-06-20
+**Severity:** process-gap (MEDIUM — second recurrence of the same pattern)
+**Origin:** S-036 cycle. The architect agent committed a POL-11 doc-comment change (commit 772cb68) directly to the develop branch instead of routing the change to the implementer-in-worktree. The orchestrator caught the divergence (develop HEAD no longer matched expected base), reset develop to the expected state, and folded the doc-comment change into the S-036 worktree PR for delivery through the standard PR lifecycle.
+
+**Pattern:** This is the second confirmed recurrence of PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP. First recurrence was noted during the S-035 cycle (PROCESS-GAP-ARCHITECT-NO-COMMIT entry in register). The root cause is the same: the architect agent interprets its "fix in scope" mandate as permission to write to develop directly, rather than surfacing the needed code/prose change to the implementer or raising it as a follow-up task.
+
+**Positive counterpoint:** PROCESS-GAP-FACTORY-ARTIFACTS-NOT-PUSHED held this cycle — all spec-bumping agents (architect, story-writer, product-owner) committed AND pushed factory-artifacts at each dispatch. The orchestrator verification heartbeat worked as designed.
+
+**Codification update:** The existing PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP register entry now shows two recurrences. The codified rule remains: architect=spec-only; all code (including doc-comment changes in source files) must go to implementer-in-worktree. Orchestrator must detect develop-HEAD drift after every architect dispatch and recover before proceeding.
+
+**Severity escalation consideration:** Two recurrences of the same anti-pattern is a signal that the architect agent prompt or routing instruction needs strengthening, not just a register note. Recommended follow-up: codify an explicit example in SS-conventions-anti-patterns.md §Anti-Patterns showing that even single-line doc-comment changes in Rust source files are "code" and must go through implementer-in-worktree.
