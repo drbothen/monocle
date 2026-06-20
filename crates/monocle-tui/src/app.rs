@@ -15,6 +15,9 @@ use anyhow::{Context, Result};
 use directories::ProjectDirs;
 use monocle_config::{detect_ccr, load_config, write_config, MonocleConfig};
 use monocle_core::engine::EnrichedSession;
+use monocle_core::pty_constants::{
+    DUMP_WINDOW_TIMEOUT, MAX_PENDING_PTY_BYTES, MAX_PENDING_PTY_MESSAGES,
+};
 use monocle_core::tui::state::{
     clamp_scrollback_rows, default_scrollback_rows, AppMode, FocusSnapshot, PromptModal,
     ToolPayload, PTY_DEFAULT_COLS, PTY_DEFAULT_ROWS,
@@ -109,6 +112,31 @@ pub const MONOCLE_STATUS_LABEL: &str = "monocle";
 /// to produce the expected-absent string. Do NOT use in new rendering code.
 pub fn format_drop_counter(n: u64) -> String {
     format!("[dropped: {n}] {MONOCLE_STATUS_LABEL}")
+}
+
+// ---------------------------------------------------------------------------
+// AppEvent — internal application events (S-039 adversarial Pass-4, F-PASS4-MED-001)
+// ---------------------------------------------------------------------------
+
+/// Internal application events delivered from spawned tasks into the app event channel.
+///
+/// The app event channel (`app_event_tx` / receiver in the run loop) lets background
+/// tasks (e.g., dump-window timeout sleeps) deliver events to the main event loop
+/// without going through the IPC reader channel.
+///
+/// MUST NOT carry large payloads — these events are lightweight signals only.
+/// The run loop drains the channel each tick alongside `ipc_rx`.
+#[non_exhaustive]
+pub enum AppEvent {
+    /// The dump-window timeout elapsed for a session without receiving
+    /// `ScrollbackDumpComplete`. The event loop routes this to
+    /// [`on_dump_window_timeout`].
+    ///
+    /// F-PASS4-MED-001 / BC-2.09.001 Invariant 5 timeout path.
+    DumpWindowTimeout {
+        /// Session ID whose dump window elapsed.
+        session_id: String,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -353,6 +381,54 @@ pub struct App {
     /// invalid; maximum 10000; values above 10000 are clamped). Owned by S-039.
     /// S-043 reads this value via `app.scrollback_rows`; it does NOT re-load it.
     pub scrollback_rows: u16,
+
+    // -----------------------------------------------------------------------
+    // S-039 adversarial Pass-4: pending buffer caps + dump-window timeout handles
+    // F-PASS4-MED-001 — bound pending_pty_bytes (cap + timeout)
+    // -----------------------------------------------------------------------
+    /// Per-session drop counter for `pending_pty_bytes` overflow evictions (pure core).
+    ///
+    /// Incremented each time `on_pty_output` evicts the OLDEST entry from
+    /// `pending_pty_bytes[session_id]` due to the byte-cap
+    /// (`MAX_PENDING_PTY_BYTES`) or message-cap (`MAX_PENDING_PTY_MESSAGES`)
+    /// being exceeded.
+    ///
+    /// Rendered in the status bar as `"[dump: N drops]"` when
+    /// `dump_in_progress[focused] == Some(true)` AND `N > 0`.
+    ///
+    /// F-PASS4-MED-001 / BC-2.09.001 Invariant 5 cap.
+    pub pending_pty_drop_count: HashMap<String, u64>,
+
+    /// Per-session abort handles for the dump-window timeout tasks (effectful shell).
+    ///
+    /// On each successful `AttachSession` send (Ok path only), `enter_embedded_terminal`
+    /// spawns `tokio::time::sleep(DUMP_WINDOW_TIMEOUT)` and stores the `AbortHandle`
+    /// here keyed by `session_id`.
+    ///
+    /// The handle is cancelled (`.abort()`) in `on_scrollback_dump_complete` when the
+    /// dump completes normally (preventing a spurious `DumpWindowTimeout` event after
+    /// the dump arrives). On timeout the task delivers
+    /// `AppEvent::DumpWindowTimeout { session_id }` into the app event channel and
+    /// the handle is removed from this map.
+    ///
+    /// On disconnect (`on_transport_event` Disconnected), ALL handles are aborted and
+    /// the map is drained (F-PASS4-MED-002).
+    ///
+    /// Classified as EFFECTFUL: `tokio::task::AbortHandle` requires a running tokio
+    /// runtime. Lives in monocle-tui only (never in pure monocle-core).
+    pub dump_timeout_handles: HashMap<String, tokio::task::AbortHandle>,
+
+    /// Sender half of the internal app event channel (effectful shell).
+    ///
+    /// Set by the run loop after construction (before the main event loop). Background
+    /// tasks (e.g., dump-window timeout sleeps) clone this sender to deliver
+    /// `AppEvent` variants to the main event loop.
+    ///
+    /// `None` on construction; set to `Some(tx)` by the run loop at startup.
+    /// `enter_embedded_terminal` guards on `Some(ref tx)` before spawning the
+    /// timeout task — if `None` (e.g., unit tests that do not run the full event loop),
+    /// no timeout is spawned and no abort handle is stored.
+    pub app_event_tx: Option<tokio::sync::mpsc::Sender<AppEvent>>,
 }
 
 impl App {
@@ -422,6 +498,16 @@ impl App {
             // AC-008 / BC-2.09.001 Invariant 4: computed above from config.pty_scrollback_rows.
             // None → 1000 (default_scrollback_rows); Some(raw) → clamp_scrollback_rows(raw).
             scrollback_rows,
+
+            // S-039 adversarial Pass-4: buffer-cap drop counters + dump-window timeout handles.
+            // F-PASS4-MED-001: both maps start empty; populated on first on_pty_output overflow
+            // (drop_count) and on each successful AttachSession send (timeout_handles).
+            pending_pty_drop_count: HashMap::new(),
+            dump_timeout_handles: HashMap::new(),
+            // app_event_tx: None at construction; set by the run loop before the event loop.
+            // Unit tests that do not run the full event loop leave this as None, which
+            // prevents timeout tasks from being spawned (no-op guard in enter_embedded_terminal).
+            app_event_tx: None,
         }
     }
 }
@@ -451,9 +537,31 @@ pub fn on_pty_output(app: &mut App, session_id: String, bytes: Vec<u8>) {
         .unwrap_or(false)
     {
         app.pending_pty_bytes
-            .entry(session_id)
+            .entry(session_id.clone())
             .or_default()
             .push(bytes);
+
+        // F-PASS4-MED-001: enforce byte-cap and message-cap on the pending buffer.
+        // Drop OLDEST (front) entries first until both caps are satisfied.
+        // Increment pending_pty_drop_count for each evicted entry.
+        let buffer = app.pending_pty_bytes.entry(session_id.clone()).or_default();
+        loop {
+            // Check message-count cap.
+            let over_msgs = buffer.len() > MAX_PENDING_PTY_MESSAGES;
+            // Check byte-volume cap (sum of all entry lengths).
+            let total_bytes: usize = buffer.iter().map(|v| v.len()).sum();
+            let over_bytes = total_bytes > MAX_PENDING_PTY_BYTES;
+
+            if !over_msgs && !over_bytes {
+                break;
+            }
+            // Drop the OLDEST entry (index 0 = first inserted = oldest).
+            buffer.remove(0);
+            *app.pending_pty_drop_count
+                .entry(session_id.clone())
+                .or_default() += 1;
+        }
+
         return;
     }
 
@@ -533,7 +641,37 @@ pub async fn enter_embedded_terminal(app: &mut App, session_id: String) {
             );
             return;
         }
-        // F-S039-004 step 3 (Ok path): proceed to mode transition below.
+        // F-S039-004 step 3 (Ok path): AttachSession sent — proceed to mode transition.
+        //
+        // F-PASS4-MED-001: spawn a dump-window timeout task.
+        // If app_event_tx is wired (run-loop path), spawn the sleep and store the
+        // AbortHandle. If None (unit-test path without run loop), skip silently.
+        if let Some(ref event_tx) = app.app_event_tx {
+            let sid = session_id.clone();
+            let tx_clone = event_tx.clone();
+            let timeout_task = tokio::spawn(async move {
+                tokio::time::sleep(DUMP_WINDOW_TIMEOUT).await;
+                // Deliver timeout event into the app event channel.
+                // If the channel is full or closed, log and discard (idempotency
+                // guard in on_dump_window_timeout handles duplicate/late events).
+                if let Err(e) = tx_clone
+                    .send(AppEvent::DumpWindowTimeout {
+                        session_id: sid.clone(),
+                    })
+                    .await
+                {
+                    tracing::warn!(
+                        session_id = %sid,
+                        error = %e,
+                        "dump-window timeout: app_event_tx send failed — event lost \
+                         (dump state may need manual cleanup)"
+                    );
+                }
+            });
+            let abort_handle = timeout_task.abort_handle();
+            app.dump_timeout_handles
+                .insert(session_id.clone(), abort_handle);
+        }
     }
     // BC-2.09.001 AC-004 O(1) path: session already dumped → transition directly.
     // No AttachSession, no dump_in_progress change.
@@ -597,6 +735,13 @@ pub fn on_scrollback_dump_complete(
         return;
     }
 
+    // F-PASS4-MED-001: abort the dump-window timeout task if one is in flight.
+    // This prevents a spurious DumpWindowTimeout event from firing after the dump
+    // completes normally. Must run BEFORE parser reset (after idempotency guard).
+    if let Some(handle) = app.dump_timeout_handles.remove(&session_id) {
+        handle.abort();
+    }
+
     // Step 1: Reset parser with actual PTY dimensions from ScrollbackDumpComplete message.
     // Using pty_rows/pty_cols from the message ensures the parser matches the daemon's PTY.
     let scrollback_rows = app.scrollback_rows as usize;
@@ -628,6 +773,72 @@ pub fn on_scrollback_dump_complete(
 
     // Step 5: Insert into pty_dump_received (session has a complete dump for this attach).
     app.pty_dump_received.insert(session_id);
+}
+
+/// Handle `AppEvent::DumpWindowTimeout` — the dump-window timeout elapsed without
+/// receiving `ScrollbackDumpComplete`.
+///
+/// # Idempotency guard
+///
+/// Only acts if `dump_in_progress.get(&session_id) == Some(&true)`.  A spurious or
+/// late timeout event (e.g., arriving after a normal `ScrollbackDumpComplete` already
+/// cleared the flag) is silently discarded.
+///
+/// # On timeout
+///
+/// 1. Remove `dump_in_progress[session_id]` (dump window closed — failure path).
+/// 2. Clear `pending_pty_bytes[session_id]` (buffered bytes are stale; dump never completed).
+/// 3. Clear `pending_pty_drop_count[session_id]` (drop counter for this session reset).
+/// 4. Reset `pty_parsers[session_id]` to default PTY_DEFAULT_ROWS × PTY_DEFAULT_COLS
+///    (with `app.scrollback_rows`) — stale screen better than a corrupt one.
+/// 5. Do NOT insert into `pty_dump_received` — next `enter_embedded_terminal` call
+///    for the same session will re-run the full attach + dump protocol.
+/// 6. Remove the (already-elapsed) timeout handle from `dump_timeout_handles`.
+/// 7. Emit `tracing::warn!` and set `app.status_message` to a timeout notification.
+///
+/// F-PASS4-MED-001 / BC-2.09.001 Invariant 5 timeout path.
+pub fn on_dump_window_timeout(app: &mut App, session_id: String) {
+    // Idempotency guard: only act when a dump is actually in progress.
+    if app.dump_in_progress.get(&session_id) != Some(&true) {
+        tracing::trace!(
+            session_id = %session_id,
+            "on_dump_window_timeout: no active dump for session — discarding (idempotency guard)"
+        );
+        return;
+    }
+
+    tracing::warn!(
+        session_id = %session_id,
+        "scrollback dump timed out after {}s — clearing in-flight dump state (F-PASS4-MED-001)",
+        DUMP_WINDOW_TIMEOUT.as_secs()
+    );
+
+    // Step 1: Remove dump_in_progress (failure path — dump never completed).
+    app.dump_in_progress.remove(&session_id);
+
+    // Step 2: Clear buffered bytes (stale; dump never completed).
+    app.pending_pty_bytes.remove(&session_id);
+
+    // Step 3: Clear drop counter for this session.
+    app.pending_pty_drop_count.remove(&session_id);
+
+    // Step 4: Reset the parser to defaults (stale screen better than blank/corrupt).
+    // PTY_DEFAULT_ROWS × PTY_DEFAULT_COLS — dims will be refreshed on next attach.
+    let scrollback_rows = app.scrollback_rows as usize;
+    app.pty_parsers.insert(
+        session_id.clone(),
+        vt100::Parser::new(PTY_DEFAULT_ROWS, PTY_DEFAULT_COLS, scrollback_rows),
+    );
+
+    // Step 5: Do NOT insert into pty_dump_received — next enter_embedded_terminal
+    // must re-run the full attach + dump protocol.
+
+    // Step 6: Remove the (already-elapsed) timeout handle (no-op abort on elapsed task).
+    app.dump_timeout_handles.remove(&session_id);
+
+    // Step 7: Set status bar warning for the focused user.
+    let msg = format!("[warn] scrollback dump timed out for {session_id}");
+    app.status_message = Some(msg);
 }
 
 /// Remove all PTY pipeline state for a session on GC (Terminated + list removal).
@@ -1067,11 +1278,43 @@ pub fn on_transport_event(app: &mut App, event: TransportEvent) {
     match event {
         TransportEvent::Disconnected => {
             app.overlay_stack.clear();
-            app.mode = AppMode::Dashboard {
-                focused: FocusSnapshot::Sessions,
-            };
+
+            // F-PASS4-MED-002: clear ALL in-flight dump state on disconnect.
+            // Dump state from the previous connection is invalid for the new connection —
+            // ScrollbackDumpComplete will never arrive for in-flight dumps from a dead session.
+            // Steps 1-6 per architect ruling (F-PASS4-MED-002):
+
+            // 1. Clear dump_in_progress.
+            app.dump_in_progress.clear();
+            // 2. Clear pending_pty_bytes (buffered bytes from dead connection are stale).
+            app.pending_pty_bytes.clear();
+            // 3. Clear pending_pty_drop_count (stale drop counts from prior attach windows).
+            app.pending_pty_drop_count.clear();
+            // 4. Clear pty_dump_received (reconnect invalidates all prior dump receipts;
+            //    next enter_embedded_terminal must re-run the full attach + dump protocol).
+            app.pty_dump_received.clear();
+            // 5. Abort ALL dump timeout handles and drain the map.
+            for (_, handle) in app.dump_timeout_handles.drain() {
+                handle.abort();
+            }
+            // 6. If currently in EmbeddedTerminal, exit via exit_embedded_terminal (restores
+            //    prior mode + removes session from pty_dump_received — AC-005 / F-PASS4-MED-002
+            //    step 6). For all other modes, reset to Dashboard directly (existing behaviour).
+            if let AppMode::EmbeddedTerminal { session_id, .. } = &app.mode.clone() {
+                let sid = session_id.clone();
+                exit_embedded_terminal(app, &sid);
+                // exit_embedded_terminal already sets mode to Dashboard { focused: prior }.
+            } else {
+                app.mode = AppMode::Dashboard {
+                    focused: FocusSnapshot::Sessions,
+                };
+            }
+            // pty_parsers is NOT cleared — stale screen is better than blank (no-clobber).
+
+            // 7. Set reconnecting status bar message (overrides the exit_embedded_terminal
+            //    status which may have been set to None by re-attach cleanup).
             app.status_message = Some(DAEMON_DISCONNECT_STATUS.to_string());
-            tracing::warn!("IPC transport disconnected; entering reconnect state");
+            tracing::warn!("IPC transport disconnected; entering reconnect state (in-flight dump state cleared — F-PASS4-MED-002)");
         }
         // TransportEvent is #[non_exhaustive] (monocle-ipc::events) — future variants
         // (e.g., Reconnecting, Reconnected) will be added as S-025+ extends the protocol.
@@ -1424,11 +1667,10 @@ where
     W: tokio::io::AsyncWriteExt + Unpin + Send + 'static,
 {
     // Inbound reader channel: ServerToClient messages from the daemon.
-    // N=IPC_READER_CHANNEL_CAPACITY=64 — see spawn_ipc_reader doc comment for
-    // capacity rationale. Use the named constant (not a magic number) so tests
-    // can assert capacity by name (BC-2.09.001 Invariant 3 / AC-007).
-    let (inbound_tx, inbound_rx) =
-        tokio::sync::mpsc::channel::<Result<ServerToClient, IpcError>>(IPC_READER_CHANNEL_CAPACITY);
+    // F-PASS4-LOW-001: route through pty_output_channel() so the capacity test
+    // exercises the same constructor as the real event loop (not a parallel inline literal).
+    // N=IPC_READER_CHANNEL_CAPACITY=64 — see spawn_ipc_reader doc comment for rationale.
+    let (inbound_tx, inbound_rx) = pty_output_channel();
     let reader_handle = spawn_ipc_reader(read_half, inbound_tx);
 
     // Outbound command channel: ClientToServer messages to the daemon (BC-2.06.011/012/013).
@@ -2039,6 +2281,14 @@ pub async fn run() -> Result<()> {
 
     let mut app = App::new(config);
 
+    // F-PASS4-MED-001: create the app event channel for internal task → event-loop delivery.
+    // Bounded at 64 to match IPC_READER_CHANNEL_CAPACITY; dump-window timeout events are
+    // rare (one per attach window) so this provides ample headroom.
+    // The receiver is drained in the main event loop alongside ipc_rx.
+    let (app_event_tx, mut app_event_rx) =
+        tokio::sync::mpsc::channel::<AppEvent>(IPC_READER_CHANNEL_CAPACITY);
+    app.app_event_tx = Some(app_event_tx);
+
     // AC-008: receive and process InitialState from daemon.
     // The daemon sends InitialState immediately after connection.
     let initial = read_framed::<_, ServerToClient>(&mut transport).await;
@@ -2384,6 +2634,26 @@ pub async fn run() -> Result<()> {
                     // Reader task exited unexpectedly (should not happen except on TUI exit).
                     tracing::warn!("IPC reader task channel disconnected unexpectedly");
                     on_transport_event(&mut app, TransportEvent::Disconnected);
+                    break;
+                }
+            }
+        }
+
+        // 4. Drain app event channel — non-blocking try_recv; process all internal events
+        //    this tick (dump-window timeouts, etc. — F-PASS4-MED-001).
+        loop {
+            use tokio::sync::mpsc::error::TryRecvError;
+            match app_event_rx.try_recv() {
+                Ok(AppEvent::DumpWindowTimeout { session_id }) => {
+                    on_dump_window_timeout(&mut app, session_id);
+                }
+                Err(TryRecvError::Empty) => {
+                    // No app event this tick — normal.
+                    break;
+                }
+                Err(TryRecvError::Disconnected) => {
+                    // app_event_tx dropped — should only happen on TUI exit.
+                    tracing::debug!("app_event_rx: channel disconnected; no more internal events");
                     break;
                 }
             }
@@ -3141,12 +3411,37 @@ pub fn render_frame(
                 );
             }
 
+            // F-PASS4-MED-001: if a dump is in progress AND bytes were dropped due to
+            // the cap, render "[dump: N drops]" in the status bar (overrides status_message
+            // for this frame while the condition holds — transient, never persisted to
+            // app.status_message).
+            let dump_drop_status: Option<String> = {
+                let in_progress = app
+                    .dump_in_progress
+                    .get(&session_id)
+                    .copied()
+                    .unwrap_or(false);
+                let drops = app
+                    .pending_pty_drop_count
+                    .get(&session_id)
+                    .copied()
+                    .unwrap_or(0);
+                if in_progress && drops > 0 {
+                    Some(format!("[dump: {drops} drops]"))
+                } else {
+                    None
+                }
+            };
+            let pty_status_msg = dump_drop_status
+                .as_deref()
+                .or(app.status_message.as_deref());
+
             // Always render the status bar in EmbeddedTerminal mode.
             render_status_bar(
                 &app.mode,
                 app.drop_counter,
                 app.overlay_stack.len(),
-                app.status_message.as_deref(),
+                pty_status_msg,
                 app.ccr_path.as_deref(),
                 layout.status_bar_area,
                 frame.buffer_mut(),
