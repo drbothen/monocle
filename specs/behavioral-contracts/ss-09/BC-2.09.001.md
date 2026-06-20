@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.7.1"
+version: "1.7.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -153,6 +153,11 @@ TUI's IPC socket. This timing budget covers: IPC framing decode → `vt100::Pars
    S-047 bug). Constants `MAX_PENDING_PTY_BYTES` and `MAX_PENDING_PTY_MESSAGES` are defined in
    `monocle-core` (pure constants, no I/O). The dump-window timeout in Invariant 8 provides a
    complementary time-based exit; this cap provides a memory-based exit.
+   **Single-oversized-entry clarification (EC-208):** When a single `PtyOutput` entry arrives
+   whose byte length alone exceeds `MAX_PENDING_PTY_BYTES` and the buffer is otherwise empty,
+   drop-oldest eviction removes that sole entry (oldest == only entry), the buffer remains
+   empty, and the drop counter is incremented — this is the defined, intended behavior, not a
+   violation of the drop-oldest rule.
 8. **Dump-window timeout (F-PASS4-MED-001):** If `dump_in_progress[session_id] == true` and
    `DUMP_WINDOW_TIMEOUT = 10s` elapses without a `ScrollbackDumpComplete` arriving for that
    session, the TUI MUST force-resolve the dump window:
@@ -208,6 +213,7 @@ TUI's IPC socket. This timing budget covers: IPC framing decode → `vt100::Pars
 | EC-205 | `ScrollbackDumpComplete` never arrives within `DUMP_WINDOW_TIMEOUT = 10s` | Force-resolve dump window: remove `dump_in_progress` entry, clear `pending_pty_bytes`, reset parser to `PTY_DEFAULT_ROWS × PTY_DEFAULT_COLS`, surface warning, do NOT insert into `pty_dump_received`; subsequent `enter_embedded_terminal` re-triggers full attach protocol |
 | EC-206 | Transport disconnects while `dump_in_progress[session_id] == true` and session is mid-dump | `on_transport_event(Disconnected)` clears `dump_in_progress`, `pending_pty_bytes`, and `pty_dump_received` for ALL sessions; TUI exits EmbeddedTerminal mode if active; reconnecting indicator shown via `DAEMON_DISCONNECT_STATUS` constant; next `enter_embedded_terminal` after reconnect re-runs full attach protocol |
 | EC-207 | Transport reconnects; `InitialState` arrives listing sessions that were mid-dump on the old connection | `dump_in_progress` and `pending_pty_bytes` already cleared at `Disconnected`; `pty_dump_received` already cleared; parsers are preserved with stale content; next `enter_embedded_terminal` call triggers fresh `AttachSession` on the new connection |
+| EC-208 | A single `PtyOutput` message arrives whose byte length alone exceeds `MAX_PENDING_PTY_BYTES` and the buffer is otherwise empty | Drop-oldest eviction removes that sole entry (oldest == only entry); buffer remains empty; `pending_pty_drop_count` incremented; this is defined, intended behavior — the oversized message cannot fit and is safely discarded; not a violation of the drop-oldest rule |
 
 ## Canonical Test Vectors
 
@@ -253,6 +259,25 @@ S-039 — Implement TUI PTY widget (vt100 parser, PseudoTerminal render, PtyOutp
 ## VP Anchors
 
 VP-TBD — PTY output render latency tests (filled after VP creation)
+
+## §Trace v1.7.2
+
+**F-S039-P7-LOW-002 — Invariant 7: single-oversized-entry edge case clarification; EC-208 added** (2026-06-20):
+
+- **Invariant 7 extended (F-S039-P7-LOW-002):** Added normative single-oversized-entry
+  clarification: when a single `PtyOutput` entry arrives whose byte length alone exceeds
+  `MAX_PENDING_PTY_BYTES` and the buffer is otherwise empty, drop-oldest eviction removes
+  that sole entry (oldest == only entry), the buffer remains empty, and
+  `pending_pty_drop_count` is incremented. This is defined, intended behavior — the oversized
+  message cannot fit and is safely discarded. It is not a violation of the drop-oldest rule
+  (the rule holds: oldest entry is removed; it happens to also be the only entry).
+- **EC-208 added:** Dedicated edge case row documenting the single-oversized-entry scenario
+  and its expected behavior.
+- No other behavioral content changed; the implementation already handles this correctly per
+  the existing eviction loop — this clarification closes the spec gap so the implementation
+  path is explicitly covered.
+- Source finding: F-S039-P7-LOW-002 (S-039 adversarial Pass-7, LOW severity).
+- SE-16d monotonicity: v1.7.2 timestamp 2026-06-20 >= v1.7.1 timestamp 2026-06-20. PASS.
 
 ## §Trace v1.7.1
 
