@@ -618,8 +618,13 @@ pub fn on_scrollback_dump_complete(
         // Step 3: pending_pty_bytes[id] cleared by remove() above.
     }
 
-    // Step 4: dump_in_progress = false (dump window closed).
-    app.dump_in_progress.insert(session_id.clone(), false);
+    // Step 4: remove session_id from dump_in_progress (dump window closed).
+    // F-S039-REV-003: use remove() not insert(false). The idempotency guard at the top
+    // of this function checks `dump_in_progress.get(&session_id) == Some(&true)`, so
+    // absent (None) and present-false are treated identically — both are no-ops.
+    // Removing the entry eliminates stale Some(false) entries that would otherwise
+    // accumulate indefinitely, keeping the map compact (BC-2.09.001 Inv-5 step d).
+    app.dump_in_progress.remove(&session_id);
 
     // Step 5: Insert into pty_dump_received (session has a complete dump for this attach).
     app.pty_dump_received.insert(session_id);
@@ -638,6 +643,15 @@ pub fn on_scrollback_dump_complete(
 /// This is the canonical GC cleanup path for S-039 (BC-2.09.001 AC-008 / Invariant 4).
 /// S-042 owns the `pty_scroll_offsets[session_id] = 0` reset on resize (ResizePane handler);
 /// S-039 owns this full-removal on termination.
+///
+/// # Callers
+///
+/// Do NOT call this directly for session removal events. Use
+/// [`gc_session_with_mode_exit`] instead — it checks whether the TUI is in
+/// `EmbeddedTerminal` for the session being GC'd and exits that mode first.
+/// Calling `gc_pty_session` directly while in `EmbeddedTerminal` for the target
+/// session will leave the TUI stuck in `EmbeddedTerminal` with a destroyed parser
+/// (permanent "Connecting to PTY..." render-trap).
 pub fn gc_pty_session(app: &mut App, session_id: &str) {
     // BC-2.09.001 AC-008 / Invariant 4: remove all per-session PTY state on GC.
     app.pty_parsers.remove(session_id);
@@ -645,6 +659,48 @@ pub fn gc_pty_session(app: &mut App, session_id: &str) {
     app.pty_dump_received.remove(session_id);
     app.dump_in_progress.remove(session_id);
     app.pending_pty_bytes.remove(session_id);
+}
+
+/// Exit `EmbeddedTerminal` mode (if currently focused on `session_id`) then GC.
+///
+/// This is the canonical removal path for ALL session-disappears events — both
+/// `SessionStateChanged::Terminated` and `SessionListUpdate` roster-diff removal.
+/// It must be called instead of [`gc_pty_session`] directly whenever a session
+/// may be GC'd while the TUI is viewing it in `EmbeddedTerminal` mode.
+///
+/// # Behaviour
+///
+/// 1. Checks `app.mode` via a `matches!` guard. If the current mode is
+///    `AppMode::EmbeddedTerminal { session_id: sid, .. }` AND `sid == session_id`,
+///    calls [`exit_embedded_terminal`] to restore Dashboard mode and clear
+///    `pty_dump_received` for the session.
+/// 2. Calls [`gc_pty_session`] unconditionally to remove all 5 per-session maps.
+///
+/// # Safety contract (F-S039-REV-001)
+///
+/// - The `matches!` guard ensures that GC of a DIFFERENT session while the TUI is
+///   viewing ANOTHER session does NOT exit `EmbeddedTerminal` mode for the
+///   still-live session.
+/// - `exit_embedded_terminal` MUST NOT send `ClientToServer::DetachSession` to a
+///   dead/removed session. It does not — `exit_embedded_terminal` is a pure mode
+///   transition that only mutates `app.mode` and `app.pty_dump_received`.
+/// - This function NEVER panics.
+pub fn gc_session_with_mode_exit(app: &mut App, session_id: &str) {
+    // F-S039-REV-001: check whether we are currently in EmbeddedTerminal for THIS session.
+    // If so, exit that mode first so Dashboard mode is restored before the parser is destroyed.
+    // The matches! guard also ensures we do NOT exit mode for a different session's terminal.
+    let is_focused_on_this_session = matches!(
+        &app.mode,
+        AppMode::EmbeddedTerminal { session_id: sid, .. } if sid == session_id
+    );
+    if is_focused_on_this_session {
+        tracing::debug!(
+            session_id = %session_id,
+            "gc_session_with_mode_exit: exiting EmbeddedTerminal before GC (F-S039-REV-001)"
+        );
+        exit_embedded_terminal(app, session_id);
+    }
+    gc_pty_session(app, session_id);
 }
 
 /// Type alias for the inbound IPC message channel used by the PTY output pipeline.
@@ -835,8 +891,32 @@ pub fn on_initial_state(
     overlay_stack: Vec<PermissionPromptPayload>,
     drop_counter: u64,
 ) {
-    app.sessions = sessions;
     app.drop_counter = drop_counter;
+
+    // F-S039-REV-002: GC stale sessions BEFORE assigning the new roster.
+    // On reconnect, the incoming InitialState roster may not contain sessions that
+    // existed in the old app.sessions (e.g., sessions that terminated while the TUI
+    // was disconnected). Without this GC step, parsers/maps for those stale sessions
+    // accumulate across reconnects — unbounded growth.
+    //
+    // Algorithm: compute sessions present in OLD app.sessions but absent from the
+    // incoming roster, then call gc_session_with_mode_exit for each.
+    // gc_session_with_mode_exit handles the EmbeddedTerminal exit-before-GC contract
+    // (F-S039-REV-001) so this path is correct even if the TUI was viewing a stale session.
+    {
+        let new_ids: HashSet<&str> = sessions.iter().map(|s| s.session_id.as_str()).collect();
+        let stale: Vec<String> = app
+            .sessions
+            .iter()
+            .filter(|s| !new_ids.contains(s.session_id.as_str()))
+            .map(|s| s.session_id.clone())
+            .collect();
+        for id in stale {
+            gc_session_with_mode_exit(app, &id);
+        }
+    }
+
+    app.sessions = sessions;
 
     // F-S039-001 (BC-2.09.001 Inv-5): create parsers for all sessions in the initial roster.
     // Per-session PTY dims are not available at InitialState time; use canonical defaults
@@ -2366,6 +2446,12 @@ pub fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
             // Build a set of IDs in the new roster, then GC any parser whose session_id is
             // absent. This catches sessions that were terminated and dropped from the list
             // without an explicit SessionStateChanged::Terminated signal.
+            //
+            // F-S039-REV-001: use gc_session_with_mode_exit (NOT gc_pty_session directly).
+            // If the TUI is currently viewing a removed session in EmbeddedTerminal mode,
+            // gc_session_with_mode_exit exits that mode first (restores Dashboard) before
+            // destroying the parser. Calling gc_pty_session directly would leave the TUI
+            // in EmbeddedTerminal with a destroyed parser → permanent "Connecting..." trap.
             let new_ids: HashSet<&str> = sessions.iter().map(|s| s.session_id.as_str()).collect();
             let removed: Vec<String> = app
                 .sessions
@@ -2374,7 +2460,7 @@ pub fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
                 .map(|s| s.session_id.clone())
                 .collect();
             for id in removed {
-                gc_pty_session(app, &id);
+                gc_session_with_mode_exit(app, &id);
             }
 
             app.sessions = sessions;
@@ -2424,45 +2510,19 @@ pub fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
             // S-033 TUI story owns session panel state indicator updates.
             // F-S039-003 (BC-2.09.001 AC-008 / Inv-5): GC PTY state on Terminated.
             // SessionStateChanged::Terminated is the authoritative signal that a session's
-            // process has exited. Invoke gc_pty_session to remove all per-session PTY pipeline
-            // state (parser, scroll offset, dump flags, pending bytes).
+            // process has exited. Invoke gc_session_with_mode_exit to exit EmbeddedTerminal
+            // mode first (if focused on this session) then remove all per-session PTY
+            // pipeline state (parser, scroll offset, dump flags, pending bytes).
+            //
+            // F-S039-REV-001: use gc_session_with_mode_exit (centralises exit-before-GC
+            // logic; the matches! guard inside it ensures we only exit mode when the TUI
+            // is actually viewing THIS session, not a different one).
             use monocle_ipc::types::SessionState;
             if matches!(new_state, SessionState::Terminated) {
-                // F-S039-P2-003 (Ruling C): exit EmbeddedTerminal mode BEFORE GC.
-                // If the TUI is currently viewing the terminating session in EmbeddedTerminal
-                // mode, we must exit that mode first so the TUI returns to Dashboard before
-                // the per-session PTY state is removed.
-                //
-                // ORDERING CONTRACT:
-                // 1. Check if app.mode is EmbeddedTerminal for this session.
-                // 2. If so: call exit_embedded_terminal — restores Dashboard + clears
-                //    pty_dump_received. MUST NOT send ClientToServer::DetachSession
-                //    (session is already dead). exit_embedded_terminal never sends Detach,
-                //    so this is safe unconditionally.
-                // 3. THEN gc_pty_session removes all 5 per-session maps.
-                //
-                // exit_embedded_terminal is idempotent for non-EmbeddedTerminal modes:
-                // it checks the current mode and falls back to FocusSnapshot::Sessions
-                // if the mode is not EmbeddedTerminal — so calling it when NOT in
-                // EmbeddedTerminal for this session only does a no-op pty_dump_received
-                // removal (harmless, as GC removes it anyway).
-                let is_embedded_for_terminated = matches!(
-                    &app.mode,
-                    AppMode::EmbeddedTerminal { session_id: sid, .. } if sid == &session_id
-                );
-                if is_embedded_for_terminated {
-                    tracing::debug!(
-                        session_id = %session_id,
-                        "SessionStateChanged::Terminated — exiting EmbeddedTerminal mode \
-                         before GC (F-S039-P2-003)"
-                    );
-                    exit_embedded_terminal(app, &session_id);
-                }
-
-                gc_pty_session(app, &session_id);
+                gc_session_with_mode_exit(app, &session_id);
                 tracing::debug!(
                     session_id = %session_id,
-                    "SessionStateChanged::Terminated — PTY pipeline state GC'd (F-S039-003)"
+                    "SessionStateChanged::Terminated — PTY pipeline state GC'd (F-S039-003 / F-S039-REV-001)"
                 );
             } else {
                 tracing::debug!(
