@@ -2414,6 +2414,37 @@ pub fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
             // state (parser, scroll offset, dump flags, pending bytes).
             use monocle_ipc::types::SessionState;
             if matches!(new_state, SessionState::Terminated) {
+                // F-S039-P2-003 (Ruling C): exit EmbeddedTerminal mode BEFORE GC.
+                // If the TUI is currently viewing the terminating session in EmbeddedTerminal
+                // mode, we must exit that mode first so the TUI returns to Dashboard before
+                // the per-session PTY state is removed.
+                //
+                // ORDERING CONTRACT:
+                // 1. Check if app.mode is EmbeddedTerminal for this session.
+                // 2. If so: call exit_embedded_terminal — restores Dashboard + clears
+                //    pty_dump_received. MUST NOT send ClientToServer::DetachSession
+                //    (session is already dead). exit_embedded_terminal never sends Detach,
+                //    so this is safe unconditionally.
+                // 3. THEN gc_pty_session removes all 5 per-session maps.
+                //
+                // exit_embedded_terminal is idempotent for non-EmbeddedTerminal modes:
+                // it checks the current mode and falls back to FocusSnapshot::Sessions
+                // if the mode is not EmbeddedTerminal — so calling it when NOT in
+                // EmbeddedTerminal for this session only does a no-op pty_dump_received
+                // removal (harmless, as GC removes it anyway).
+                let is_embedded_for_terminated = matches!(
+                    &app.mode,
+                    AppMode::EmbeddedTerminal { session_id: sid, .. } if sid == &session_id
+                );
+                if is_embedded_for_terminated {
+                    tracing::debug!(
+                        session_id = %session_id,
+                        "SessionStateChanged::Terminated — exiting EmbeddedTerminal mode \
+                         before GC (F-S039-P2-003)"
+                    );
+                    exit_embedded_terminal(app, &session_id);
+                }
+
                 gc_pty_session(app, &session_id);
                 tracing::debug!(
                     session_id = %session_id,
