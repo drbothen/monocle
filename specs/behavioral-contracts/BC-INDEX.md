@@ -1230,6 +1230,11 @@ SE-16d monotonicity: v1.40.5 timestamp 2026-06-14T20:00:00Z > v1.40.4 timestamp 
 
 BC version bump in this dispatch:
 - BC-2.07.002 v1.0.3 → v1.1.0: `pty_scrollback_rows: Option<u32>` added to `MonocleConfig` schema.
+- BC-2.07.006 v1.0.2 → v1.0.3: Architecture Source pin cascade SS-config.md v1.3.0 → v1.4.0. No body propagation (§CCR Detection unchanged in v1.4.0).
+- BC-2.07.001 v1.1.1 → v1.1.2: Architecture Source pin cascade SS-config.md v1.3.0 → v1.4.0. No body propagation (§Atomic Write Contract unchanged in v1.4.0).
+- BC-2.07.003 v1.0.2 → v1.0.3: Architecture Source pin cascade SS-config.md v1.3.0 → v1.4.0. No body propagation (§Missing or Corrupted Config Handling unchanged in v1.4.0).
+- BC-2.07.004 v1.0.2 → v1.0.3: Architecture Source pin cascade SS-config.md v1.3.0 → v1.4.0. No body propagation (§Profile Picker Logic unchanged in v1.4.0).
+- BC-2.07.005 v1.3.1 → v1.3.2: Architecture Source pin cascade SS-config.md v1.3.0 → v1.4.0. No body propagation (§Ctrl-P Override unchanged in v1.4.0).
   Field shape (SS-07 concern): `Option<u32>` with `#[serde(default)]`; absent → `None`; backward-compatible.
   Default/clamp semantics (BC-2.09.007 concern): default 1000, clamp 1..=10000.
   Config load wiring (S-039 AC-008 concern): load at TUI startup, apply default+clamp, store in `App::scrollback_rows`.

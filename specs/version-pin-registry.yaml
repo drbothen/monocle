@@ -53,7 +53,7 @@
 SS-config:
   path: specs/architecture/SS-config.md
   current_version: "1.4.0"
-  last_bump_commit: "[pty_scrollback_rows schema extension: Option<u32> field added to MonocleConfig; BC-2.07.002 v1.0.3→v1.1.0]"
+  last_bump_commit: "[pty_scrollback_rows schema extension: Option<u32> field added to MonocleConfig; BC-2.07.002 v1.0.3→v1.1.0]" # version-pin-historical
   last_bump_date: "2026-06-20"
 
 SS-conventions-anti-patterns:
@@ -205,7 +205,7 @@ ARCH-INDEX:
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
   current_version: "1.44.0"
-  last_bump_commit: "[pty_scrollback_rows schema extension: BC-2.07.002 v1.0.3→v1.1.0; SS-config.md v1.3.0→v1.4.0; BC count unchanged 138]"
+  last_bump_commit: "[pty_scrollback_rows schema extension: BC-2.07.002 v1.0.3→v1.1.0; SS-config.md v1.3.0→v1.4.0; BC count unchanged 138]" # version-pin-historical
   last_bump_date: "2026-06-20"
 
 STORY-INDEX:
@@ -228,8 +228,8 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.28"
-  last_bump_commit: "[POL-11 pin cascade: S-036 input pin v1.4→v1.5 (adv-pass-8 AC-004 proxy_task spec-text fix)]"
+  current_version: "1.29"
+  last_bump_commit: "[POL-11 pin cascade: BC-INDEX input pin v1.43.8→v1.44.0 (pty_scrollback_rows schema extension burst)]" # version-pin-historical
   last_bump_date: "2026-06-20"
 
 sprint-state:
@@ -671,39 +671,39 @@ BC-2.06.024:
 
 BC-2.07.001:
   path: specs/behavioral-contracts/ss-07/BC-2.07.001.md
-  current_version: "1.1.1"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.1.2"
+  last_bump_commit: "[arch-source pin cascade: SS-config.md v1.3.0→v1.4.0; §Atomic Write Contract unchanged]" # version-pin-historical
+  last_bump_date: "2026-06-20"
 
 BC-2.07.002:
   path: specs/behavioral-contracts/ss-07/BC-2.07.002.md
   current_version: "1.1.0"
-  last_bump_commit: "[pty_scrollback_rows schema extension: Option<u32> field + EC-088/089/090 + BC-2.09.007 cross-ref; SS-config.md v1.3.0→v1.4.0]"
+  last_bump_commit: "[pty_scrollback_rows schema extension: Option<u32> field + EC-088/089/090 + BC-2.09.007 cross-ref; SS-config.md v1.3.0→v1.4.0]" # version-pin-historical
   last_bump_date: "2026-06-20"
 
 BC-2.07.003:
   path: specs/behavioral-contracts/ss-07/BC-2.07.003.md
-  current_version: "1.0.2"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.0.3"
+  last_bump_commit: "[arch-source pin cascade: SS-config.md v1.3.0→v1.4.0; §Missing or Corrupted Config Handling unchanged]" # version-pin-historical
+  last_bump_date: "2026-06-20"
 
 BC-2.07.004:
   path: specs/behavioral-contracts/ss-07/BC-2.07.004.md
-  current_version: "1.0.2"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.0.3"
+  last_bump_commit: "[arch-source pin cascade: SS-config.md v1.3.0→v1.4.0; §Profile Picker Logic unchanged]" # version-pin-historical
+  last_bump_date: "2026-06-20"
 
 BC-2.07.005:
   path: specs/behavioral-contracts/ss-07/BC-2.07.005.md
-  current_version: "1.3.1"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.3.2"
+  last_bump_commit: "[arch-source pin cascade: SS-config.md v1.3.0→v1.4.0; §Ctrl-P Override unchanged]" # version-pin-historical
+  last_bump_date: "2026-06-20"
 
 BC-2.07.006:
   path: specs/behavioral-contracts/ss-07/BC-2.07.006.md
-  current_version: "1.0.2"
-  last_bump_commit: "ca87a711e1964788fa3e2374c797c0e7b69b48bf"
-  last_bump_date: "2026-05-28"
+  current_version: "1.0.3"
+  last_bump_commit: "[arch-source pin cascade: SS-config.md v1.3.0→v1.4.0; §CCR Detection unchanged]" # version-pin-historical
+  last_bump_date: "2026-06-20"
 
 BC-2.03.005:
   path: specs/behavioral-contracts/ss-03/BC-2.03.005.md
@@ -955,9 +955,9 @@ wave-schedule:
 
 dependency-graph-expansion:
   path: stories/dependency-graph-expansion.md
-  current_version: "2.9"
-  last_bump_commit: "[D-338 — STORY-INDEX input pin cascade 5.49→5.50]"
-  last_bump_date: "2026-06-19"
+  current_version: "2.10"
+  last_bump_commit: "[POL-11 pin cascade: STORY-INDEX 5.50→5.51; BC-INDEX 1.43.8→1.44.0; SS-config 1.3.0→1.4.0 (pty_scrollback_rows burst)]" # version-pin-historical
+  last_bump_date: "2026-06-20"
 
 S-033-session-manager-spawn:
   path: stories/S-033-session-manager-spawn.md

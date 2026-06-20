@@ -1,7 +1,7 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.28"
+version: "1.29"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-20T00:00:00Z
@@ -35,7 +35,7 @@ inputs:
   - {path: .factory/stories/S-046-pty-output-fan-out.md, version: "1.7"}
   - {path: .factory/stories/S-047-ipc-lifecycle-variants.md, version: "1.5"}
   - {path: .factory/stories/S-048-sessions-panel-multi-project.md, version: "1.3"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.43.8"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.44.0"}
 traces_to: .factory/stories/STORY-INDEX.md
 input-hash: "[pending]"
 ---
@@ -188,6 +188,12 @@ the Wave 8-9 stories (S-033..S-048). The evaluator needs these story ACs as inpu
 scenarios. Their absence from inputs[] (F-GATE-ADV-003) left the evaluator blind to the ACs for all 5
 new holdout scenarios. No holdout scenario IDs, titles, BCs, or behavioral semantics changed.
 **SE-16d PASS:** 2026-06-16 >= 2026-06-16 (same day as v1.18). PASS (same-day sequential patch).
+
+## §Trace v1.29 — POL-11 pin cascade: BC-INDEX input pin v1.43.8 → v1.44.0 (2026-06-20)
+
+**Bump:** 1.28 → 1.29.
+**Scope:** `inputs[]` BC-INDEX pin updated: `"1.43.8"` → `"1.44.0"` (BC-INDEX was bumped in the same burst to record pty_scrollback_rows schema extension: BC-2.07.002 v1.0.3→v1.1.0; SS-config.md v1.3.0→v1.4.0). No holdout scenario IDs, BCs, or behavioral semantics changed. EVAL-INDEX is an active INDEX document per ADR-0007 §Active-set rules; its input pins must track canonical current versions.
+**SE-16d PASS:** 2026-06-20 >= 2026-06-20 (same day as v1.28). PASS.
 
 ## §Trace v1.28 — POL-11 pin cascade: S-036 input pin v1.4 → v1.5 (2026-06-20)
 

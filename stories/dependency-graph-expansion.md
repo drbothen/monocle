@@ -1,21 +1,21 @@
 ---
 document_type: dependency-graph
 level: L4
-version: "2.9"
+version: "2.10"
 status: active
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-19T01:00:00Z
 phase: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.43.8"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.44.0"}
   - {path: .factory/specs/architecture/SS-daemon-wiring.md, version: "1.3.0"}
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
   - {path: .factory/specs/architecture/SS-tui.md, version: "1.8.2"}
-  - {path: .factory/specs/architecture/SS-config.md, version: "1.3.0"}
-  - {path: .factory/stories/STORY-INDEX.md, version: "5.50"}
+  - {path: .factory/specs/architecture/SS-config.md, version: "1.4.0"}
+  - {path: .factory/stories/STORY-INDEX.md, version: "5.51"}
   - {path: .factory/plans/phase-2-expansion-story-plan.md, version: "1.0"}
 input-hash: "[live-state]"
-traces_to: .factory/stories/STORY-INDEX.md v5.50
+traces_to: .factory/stories/STORY-INDEX.md v5.51
 ---
 
 # Dependency Graph: monocle Phase 2 Expansion (Waves 4-9)
@@ -534,6 +534,26 @@ Critical path through Waves 8-9: S-033 (8pts) → S-035 (8pts) → S-039 (8pts) 
 | S-042 | 9 | 5 | S-039 | S-043 |
 | S-043 | 9 | 3 | S-039, S-042 | — |
 | S-044 | 9 | 13 | S-033, S-035, S-040, S-041 | — |
+
+## §Trace v2.10 — POL-11 pin cascade: STORY-INDEX 5.50→5.51; BC-INDEX 1.43.8→1.44.0; SS-config 1.3.0→1.4.0 (2026-06-20)
+
+**Bump:** 2.9 → 2.10.
+**Scope:** Input pin cascade for three artifacts bumped in the pty_scrollback_rows schema extension burst:
+- STORY-INDEX.md pin: `"5.50"` → `"5.51"` (S-036 status draft→done in D-339).
+- BC-INDEX.md pin: `"1.43.8"` → `"1.44.0"` (BC-2.07.002 pty_scrollback_rows extension).
+- SS-config.md pin: `"1.3.0"` → `"1.4.0"` (pty_scrollback_rows field added to MonocleConfig).
+- `traces_to` updated to STORY-INDEX.md v5.51.
+No normative dependency data changed. Inputs-pin cascade only.
+**SE-16d PASS:** 2026-06-20 >= 2026-06-19 (v2.9). PASS.
+
+## §Trace v2.9 — D-338: STORY-INDEX input pin cascade 5.49→5.50 (2026-06-19)
+
+**Bump:** 2.8 → 2.9.
+**Scope (D-338 STORY-INDEX pin cascade):**
+- STORY-INDEX.md pin refreshed: `"5.49"` → `"5.50"` (S-038 status draft→done; §Trace v5.50 added).
+- `traces_to` updated to STORY-INDEX.md v5.50.
+- No normative dependency data or body content changed. Inputs-pin cascade only.
+**SE-16d PASS:** 2026-06-19 >= 2026-06-19.
 
 ## §Trace v2.8 — D-336: STORY-INDEX input pin cascade 5.48→5.49 (2026-06-19)
 

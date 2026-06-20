@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.1"
+version: "1.1.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T00:00:00Z
@@ -125,7 +125,7 @@ at PR merge by the semgrep rule `monocle-no-direct-config-write`.
 | Capability Anchor Justification | CAP-007 ("Configuration persistence; harness profile management; profile picker; CCR detection") per ARCH-INDEX §Capability Traceability — this BC specifies the atomic write contract that is the correctness foundation of the entire config persistence layer; without it, any config-writing operation risks data loss |
 | L2 Domain Invariants | No domain-spec/invariants.md exists for this project; authority is ARCH-INDEX §SS-07 and SS-config.md §Atomic Write Contract |
 | Architecture Module | monocle-config (config.json reader/writer, harness profile schema, profile picker logic) per ARCH-INDEX Subsystem Registry SS-07 |
-| Architecture Source | SS-config.md v1.3.0 §Atomic Write Contract |
+| Architecture Source | SS-config.md v1.4.0 §Atomic Write Contract |
 | Cross-Ref | BC-2.07.002 (schema written by write_config); BC-2.07.003 (read path that relies on atomic writes to never see partial content); BC-2.01.005 (same tempfile::persist pattern for lock file) |
 | Brief Features | F-53 (monocle-config reads/writes config.json via tempfile::persist), F-58 (monocle-config atomic write requirement) |
 | Test File | `monocle-config/tests/atomic_write.rs` |
@@ -160,6 +160,13 @@ VP-TBD — config atomic write integration tests (filled after VP creation)
 - Brief features traced: F-53, F-58.
 - SE-16d: 2026-05-26T00:00:00Z >= chain high-water (new artifact; no prior chain).
 
+
+## §Trace v1.1.2
+
+**Architecture Source pin cascade: SS-config.md v1.3.0→v1.4.0** (2026-06-20):
+- Architecture Source: `SS-config.md v1.3.0` → `SS-config.md v1.4.0`.
+- No body propagation required: §Atomic Write Contract is unchanged in v1.4.0.
+- SE-16d monotonicity: 2026-06-20 > v1.1.1 date 2026-05-29. PASS.
 
 ## §Trace v1.1.1
 

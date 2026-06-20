@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.2"
+version: "1.0.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-05-26T00:00:00Z
@@ -138,7 +138,7 @@ interrupted by the picker on every launch.
 | Capability Anchor Justification | CAP-007 ("Configuration persistence; harness profile management; profile picker; CCR detection") per ARCH-INDEX §Capability Traceability — this BC specifies the sticky-per-project behavior that is the primary UX mechanism for harness profile management |
 | L2 Domain Invariants | No domain-spec/invariants.md exists for this project; authority is ARCH-INDEX §SS-07 and SS-config.md §Profile Picker Logic |
 | Architecture Module | monocle-config (config.json reader/writer, harness profile schema, profile picker logic) per ARCH-INDEX Subsystem Registry SS-07; also monocle-tui (picker rendering) |
-| Architecture Source | SS-config.md v1.3.0 §Profile Picker Logic §Sticky-Per-Project Selection (BC-2.07.004) |
+| Architecture Source | SS-config.md v1.4.0 §Profile Picker Logic §Sticky-Per-Project Selection (BC-2.07.004) |
 | Cross-Ref | BC-2.07.002 (project_profiles field in schema); BC-2.07.003 (config load path that provides config to this logic); BC-2.07.005 (Ctrl-P override and persistence on selection) |
 | Brief Features | F-57 (profile picker sticky-per-project) |
 | Test File | `monocle-config/tests/profile_picker.rs` |
@@ -174,6 +174,13 @@ VP-TBD — profile picker sticky logic unit and integration tests (filled after 
 - Brief feature traced: F-57.
 - SE-16d: 2026-05-26T00:00:00Z >= chain high-water (new artifact; no prior chain).
 
+
+## §Trace v1.0.3
+
+**Architecture Source pin cascade: SS-config.md v1.3.0→v1.4.0** (2026-06-20):
+- Architecture Source: `SS-config.md v1.3.0` → `SS-config.md v1.4.0`.
+- No body propagation required: §Profile Picker Logic §Sticky-Per-Project Selection is unchanged in v1.4.0.
+- SE-16d monotonicity: 2026-06-20 > v1.0.2 date 2026-05-29. PASS.
 
 ## §Trace v1.0.2
 
