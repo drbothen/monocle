@@ -271,12 +271,8 @@ pub fn hint_line_text(mode: &AppMode) -> String {
             "Esc: back  /: filter  q: quit".to_string()
         }
         // S-039: new mode hint lines (implementer fills canonical strings per BC-2.06.021).
-        AppMode::EmbeddedTerminal { .. } => {
-            "Ctrl-D: detach  q: quit PTY view".to_string()
-        }
-        AppMode::SessionCreation { .. } => {
-            "Enter: confirm  Esc: cancel".to_string()
-        }
+        AppMode::EmbeddedTerminal { .. } => "Ctrl-D: detach  q: quit PTY view".to_string(),
+        AppMode::SessionCreation { .. } => "Enter: confirm  Esc: cancel".to_string(),
     }
 }
 

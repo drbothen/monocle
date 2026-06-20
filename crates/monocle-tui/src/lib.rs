@@ -54,3 +54,11 @@ pub use ui::sessions_panel::UPTIME_OVERFLOW_CAP;
 pub use app::handle_server_message;
 #[doc(hidden)]
 pub use app::setup_ipc_streams_with_rx;
+
+// S-039: PTY output pipeline channel primitives — exposed for AC-007 / Invariant-3 tests.
+// Tests assert `pty_output_channel()` returns a Receiver with `max_capacity()` == 64,
+// going RED against the todo!() stub until S-039 implements it.
+#[doc(hidden)]
+pub use app::pty_output_channel;
+#[doc(hidden)]
+pub use app::IPC_READER_CHANNEL_CAPACITY;

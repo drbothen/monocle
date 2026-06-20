@@ -436,8 +436,10 @@ impl App {
 #[allow(clippy::todo)]
 #[allow(unused_variables)]
 pub fn on_pty_output(app: &mut App, session_id: String, bytes: Vec<u8>) {
-    todo!("S-039: on_pty_output — feed bytes to pty_parsers[session_id].process(&bytes) \
-           or buffer in pending_pty_bytes when dump_in_progress (BC-2.09.001 AC-001/AC-002)")
+    todo!(
+        "S-039: on_pty_output — feed bytes to pty_parsers[session_id].process(&bytes) \
+           or buffer in pending_pty_bytes when dump_in_progress (BC-2.09.001 AC-001/AC-002)"
+    )
 }
 
 /// Transition to `AppMode::EmbeddedTerminal` for `session_id`.
@@ -455,8 +457,10 @@ pub fn on_pty_output(app: &mut App, session_id: String, bytes: Vec<u8>) {
 #[allow(clippy::todo)]
 #[allow(unused_variables)]
 pub fn enter_embedded_terminal(app: &mut App, session_id: String) {
-    todo!("S-039: enter_embedded_terminal — auto-attach protocol + AppMode transition \
-           (BC-2.09.001 AC-005 / SS-embedded-pty.md §EmbeddedTerminal ENTRY)")
+    todo!(
+        "S-039: enter_embedded_terminal — auto-attach protocol + AppMode transition \
+           (BC-2.09.001 AC-005 / SS-embedded-pty.md §EmbeddedTerminal ENTRY)"
+    )
 }
 
 /// Transition out of `AppMode::EmbeddedTerminal`, restoring the prior `Dashboard` focus.
@@ -469,8 +473,10 @@ pub fn enter_embedded_terminal(app: &mut App, session_id: String) {
 #[allow(clippy::todo)]
 #[allow(unused_variables)]
 pub fn exit_embedded_terminal(app: &mut App, session_id: &str) {
-    todo!("S-039: exit_embedded_terminal — remove from pty_dump_received, restore AppMode \
-           (BC-2.09.001 AC-005 re-attach clause)")
+    todo!(
+        "S-039: exit_embedded_terminal — remove from pty_dump_received, restore AppMode \
+           (BC-2.09.001 AC-005 re-attach clause)"
+    )
 }
 
 /// Handle `ServerToClient::ScrollbackDumpComplete` for a session.
@@ -492,8 +498,10 @@ pub fn on_scrollback_dump_complete(
     pty_rows: u16,
     pty_cols: u16,
 ) {
-    todo!("S-039: on_scrollback_dump_complete — parser reset + screen reconstruction + \
-           pending_pty_bytes replay (BC-2.09.001 Invariant 5 / BC-2.05.011 PC-3)")
+    todo!(
+        "S-039: on_scrollback_dump_complete — parser reset + screen reconstruction + \
+           pending_pty_bytes replay (BC-2.09.001 Invariant 5 / BC-2.05.011 PC-3)"
+    )
 }
 
 /// Remove all PTY pipeline state for a session on GC (Terminated + list removal).
@@ -514,8 +522,39 @@ pub fn on_scrollback_dump_complete(
 #[allow(clippy::todo)]
 #[allow(unused_variables)]
 pub fn gc_pty_session(app: &mut App, session_id: &str) {
-    todo!("S-039: gc_pty_session — remove pty_parsers, pty_scroll_offsets, pty_dump_received, \
-           dump_in_progress, pending_pty_bytes for session_id (BC-2.09.001 AC-008)")
+    todo!(
+        "S-039: gc_pty_session — remove pty_parsers, pty_scroll_offsets, pty_dump_received, \
+           dump_in_progress, pending_pty_bytes for session_id (BC-2.09.001 AC-008)"
+    )
+}
+
+/// Type alias for the inbound IPC message channel used by the PTY output pipeline.
+///
+/// Aliases the `(Sender, Receiver)` pair type for `Result<ServerToClient, IpcError>` to
+/// avoid the `type_complexity` clippy lint on `pty_output_channel()` return type.
+type PtyOutputChannelPair = (
+    tokio::sync::mpsc::Sender<Result<ServerToClient, IpcError>>,
+    tokio::sync::mpsc::Receiver<Result<ServerToClient, IpcError>>,
+);
+
+/// Create the bounded inbound channel for PTY output pipeline messages (S-039 / AC-007).
+///
+/// Returns a `(Sender, Receiver)` pair bounded at `IPC_READER_CHANNEL_CAPACITY` (64).
+/// The sender end is forwarded from `spawn_ipc_reader` into the event loop;
+/// the receiver end is retained by the event loop and drained each tick via `try_recv`.
+///
+/// The reader task MUST use `tx.send(msg).await` (blocking backpressure), NOT
+/// `tx.try_send(msg)` — silent message drops violate at-least-once delivery for
+/// `PtyOutput` frames (BC-2.09.001 Invariant 3 / AC-007).
+///
+/// Self-check BC-5.38.005: YES — body = `todo!()`. Tests bind to this function
+/// to assert capacity via `rx.max_capacity()`, going RED until S-039 implements it.
+#[allow(clippy::todo)]
+pub fn pty_output_channel() -> PtyOutputChannelPair {
+    todo!(
+        "S-039: pty_output_channel — create bounded mpsc::channel(IPC_READER_CHANNEL_CAPACITY) \
+           for the PTY output pipeline inbound path (BC-2.09.001 Invariant 3 / AC-007)"
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -1015,12 +1054,25 @@ where
 // Outbound IPC writer task (F-S026-ADV5-CRIT-001 — BC-2.06.011/012/013)
 // ---------------------------------------------------------------------------
 
+/// Capacity of the inbound `ServerToClient` IPC reader channel.
+///
+/// The reader task uses `tx.send(msg).await` (blocking backpressure, NOT `try_send`)
+/// so messages are never silently dropped when the event loop is slow.
+/// N=64 provides burst absorption for high-frequency `PtyOutput` messages while
+/// keeping bounded-channel semantics (SS-conventions-anti-patterns.md §forbidden-patterns:
+/// no unbounded channels). Canonical value per BC-2.09.001 Invariant 3 / AC-007.
+///
+/// S-039 extracts this from the inline literal in `setup_ipc_streams_with_rx`
+/// to make the capacity assertable by name in tests (rather than by magic number).
+pub const IPC_READER_CHANNEL_CAPACITY: usize = 64;
+
 /// Capacity of the outbound `ClientToServer` command channel.
 ///
-/// Lower than the inbound reader channel (64) because `ClientToServer` messages are
-/// rare user-driven keypresses, not high-frequency daemon events.  N=32 provides
-/// headroom for burst scenarios while keeping bounded-channel semantics
-/// (SS-conventions-anti-patterns.md §forbidden-patterns: no unbounded channels).
+/// Lower than the inbound reader channel (`IPC_READER_CHANNEL_CAPACITY`) because
+/// `ClientToServer` messages are rare user-driven keypresses, not high-frequency
+/// daemon events.  N=32 provides headroom for burst scenarios while keeping
+/// bounded-channel semantics (SS-conventions-anti-patterns.md §forbidden-patterns:
+/// no unbounded channels).
 pub const IPC_CMD_CHANNEL_CAPACITY: usize = 32;
 
 /// Spawn a dedicated outbound writer task that drains `cmd_rx` and writes each
@@ -1157,9 +1209,11 @@ where
     W: tokio::io::AsyncWriteExt + Unpin + Send + 'static,
 {
     // Inbound reader channel: ServerToClient messages from the daemon.
-    // N=64 — same as original; see spawn_ipc_reader doc comment for capacity rationale.
+    // N=IPC_READER_CHANNEL_CAPACITY=64 — see spawn_ipc_reader doc comment for
+    // capacity rationale. Use the named constant (not a magic number) so tests
+    // can assert capacity by name (BC-2.09.001 Invariant 3 / AC-007).
     let (inbound_tx, inbound_rx) =
-        tokio::sync::mpsc::channel::<Result<ServerToClient, IpcError>>(64);
+        tokio::sync::mpsc::channel::<Result<ServerToClient, IpcError>>(IPC_READER_CHANNEL_CAPACITY);
     let reader_handle = spawn_ipc_reader(read_half, inbound_tx);
 
     // Outbound command channel: ClientToServer messages to the daemon (BC-2.06.011/012/013).
@@ -2238,7 +2292,9 @@ pub fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
             // ScrollbackChunk is accumulated by the S-047 implementer before
             // ScrollbackDumpComplete arrives. S-039 stub: no-op (accumulation
             // logic belongs to the S-047 implementation of on_scrollback_dump_complete).
-            tracing::trace!("ScrollbackChunk received (S-047/S-039 stub — accumulation not yet implemented)");
+            tracing::trace!(
+                "ScrollbackChunk received (S-047/S-039 stub — accumulation not yet implemented)"
+            );
         }
     }
     Ok(())

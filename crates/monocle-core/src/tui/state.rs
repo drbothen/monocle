@@ -12,6 +12,46 @@ use std::path::PathBuf;
 use std::time::Instant;
 use uuid::Uuid;
 
+// ---------------------------------------------------------------------------
+// S-039: PTY scrollback helpers (BC-2.09.001 Invariant 4 / AC-008)
+// Pure-core: no I/O dependencies. Lives in monocle-core per Module Purity table
+// in SS-embedded-pty.md — clamp and default are both pure arithmetic.
+// ---------------------------------------------------------------------------
+
+/// The default PTY scrollback row count when config is absent or invalid.
+///
+/// Applied by the S-039 config-load path in `run()` when
+/// `config.pty_scrollback_rows` is absent, zero, or unparseable.
+/// Tests that assert the default value must call this function, not the
+/// raw struct-initializer literal, so the test goes RED until the implementer
+/// wires the config-load path.
+///
+/// BC-2.09.001 Invariant 4 / AC-008 — owned by S-039.
+#[allow(clippy::todo)]
+pub fn default_scrollback_rows() -> u16 {
+    todo!(
+        "S-039: default_scrollback_rows — return the canonical default (1000) \
+           from the config-load path (BC-2.09.001 Invariant 4 / AC-008)"
+    )
+}
+
+/// Clamp a raw `pty_scrollback_rows` config value to the valid range `[1, 10000]`.
+///
+/// Applied by the S-039 config-load path in `run()` after reading
+/// `config.pty_scrollback_rows`. Values above 10000 are clamped to 10000;
+/// values below 1 (including 0) are clamped to 1; values in `[1, 10000]`
+/// are preserved.
+///
+/// BC-2.09.001 Invariant 4 / AC-008 — owned by S-039.
+#[allow(clippy::todo)]
+#[allow(unused_variables)]
+pub fn clamp_scrollback_rows(raw: u32) -> u16 {
+    todo!(
+        "S-039: clamp_scrollback_rows — clamp raw to [1, 10000] and cast to u16 \
+           (BC-2.09.001 Invariant 4 / AC-008)"
+    )
+}
+
 /// Top-level application mode for the TUI state machine.
 ///
 /// Intentionally NOT `#[non_exhaustive]` (AC-013): the binary crate must

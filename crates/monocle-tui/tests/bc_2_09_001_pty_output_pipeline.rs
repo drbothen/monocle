@@ -26,12 +26,15 @@
 #![allow(non_snake_case)]
 
 use monocle_config::MonocleConfig;
+use monocle_core::tui::state::{
+    clamp_scrollback_rows, default_scrollback_rows, AppMode, FocusSnapshot,
+};
 use monocle_ipc::types::ClientToServer;
 use monocle_tui::app::{
     enter_embedded_terminal, exit_embedded_terminal, on_pty_output, on_scrollback_dump_complete,
-    setup_ipc_streams_with_rx, App,
+    App, IPC_READER_CHANNEL_CAPACITY,
 };
-use monocle_core::tui::state::{AppMode, FocusSnapshot};
+use monocle_tui::pty_output_channel;
 use tokio::sync::mpsc;
 
 // ---------------------------------------------------------------------------
@@ -385,44 +388,42 @@ async fn test_BC_2_09_001_reattach_after_detach_reruns_dump_protocol() {
 /// test_BC_2_09_001_invariant_bounded_channel_send_await_not_try_send
 ///
 /// Exercises BC-2.09.001 Invariant 3:
-///   The IPC reader channel is bounded at capacity 64.
-///   The reader uses .send().await (backpressure), NOT .try_send() (drop).
+///   The IPC reader channel for the PTY output pipeline is bounded at capacity 64
+///   (`IPC_READER_CHANNEL_CAPACITY`). The reader MUST use `.send().await` (blocking
+///   backpressure), NOT `.try_send()` (silent drop). Silent drops violate at-least-once
+///   delivery for `PtyOutput` frames.
 ///
-/// This test verifies the channel capacity by inspecting setup_ipc_streams_with_rx
-/// and confirming that 64 messages can be queued without dropping (the reader
-/// uses send().await — if it used try_send, messages beyond capacity would be
-/// silently dropped, which is forbidden).
+/// This test asserts:
+///   1. `pty_output_channel()` returns a channel whose `rx.max_capacity()` equals
+///      `IPC_READER_CHANNEL_CAPACITY` (64). This call goes RED (todo!() panic) until
+///      S-039 implements `pty_output_channel()`.
+///   2. `IPC_READER_CHANNEL_CAPACITY == 64` — the named constant is the canonical
+///      value from BC-2.09.001 Invariant 3. The constant is asserted here so that
+///      any change to the capacity value is immediately visible as a test failure.
 ///
-/// We test this by: filling the inbound channel to capacity (64) with PtyOutput
-/// messages, then draining it, verifying all 64 messages were received (none dropped).
-#[tokio::test]
-async fn test_BC_2_09_001_invariant_bounded_channel_send_await_not_try_send() {
-    // Arrange: create a duplex stream pair to wire up IPC.
-    // We use tokio's duplex to avoid a real UDS socket in the unit test.
-    let (client, server) = tokio::io::duplex(65536);
-    let (server_read, _server_write) = tokio::io::split(server);
-    let (_client_read, client_write) = tokio::io::split(client);
-    let mut app = make_app();
-
-    let (_reader_handle, _writer_handle, mut inbound_rx) =
-        setup_ipc_streams_with_rx(&mut app, server_read, client_write);
-
-    // The inbound channel capacity is 64 (BC-2.09.001 Invariant 3 / AC-007).
-    // Verify channel capacity by checking that try_recv on a fresh channel is Empty,
-    // confirming the channel exists and is wired.
-    let result = inbound_rx.try_recv();
-    assert!(
-        matches!(result, Err(tokio::sync::mpsc::error::TryRecvError::Empty)),
-        "BC-2.09.001 Invariant 3: inbound channel must be empty before any messages arrive"
+/// S-039 introduces `pty_output_channel()` as the production channel constructor for
+/// the PTY output inbound path. Tests bind to this named function (not the inline
+/// literal `64`) so the Red Gate is enforced until S-039 wires the real implementation.
+#[test]
+fn test_BC_2_09_001_invariant_bounded_channel_send_await_not_try_send() {
+    // Assert the named constant holds the contractual capacity value.
+    // If the capacity is ever changed, this assertion catches the regression.
+    assert_eq!(
+        IPC_READER_CHANNEL_CAPACITY, 64,
+        "BC-2.09.001 Invariant 3: IPC_READER_CHANNEL_CAPACITY must be 64"
     );
 
-    // The channel capacity of 64 is the canonical value from BC-2.09.001 Invariant 3
-    // and SS-embedded-pty.md §PTY Widget Pipeline. We cannot directly read the channel's
-    // max_capacity() in this test without tokio internals, but we verify the wiring
-    // is correct by confirming setup_ipc_streams_with_rx returns a channel that functions.
-    // The Red Gate is enforced: setup_ipc_streams_with_rx will panic (todo!()) if not implemented.
-    drop(_reader_handle);
-    drop(_writer_handle);
+    // Call the S-039 production channel constructor.
+    // `pty_output_channel()` is `todo!()` → panics here, enforcing Red Gate.
+    // Once implemented, `rx.max_capacity()` must equal `IPC_READER_CHANNEL_CAPACITY`.
+    let (_tx, rx) = pty_output_channel();
+    assert_eq!(
+        rx.max_capacity(),
+        IPC_READER_CHANNEL_CAPACITY,
+        "BC-2.09.001 Invariant 3: pty_output_channel() receiver capacity must equal \
+         IPC_READER_CHANNEL_CAPACITY ({})",
+        IPC_READER_CHANNEL_CAPACITY
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -438,32 +439,43 @@ async fn test_BC_2_09_001_invariant_bounded_channel_send_await_not_try_send() {
 ///   - Values below 1 are clamped to 1.
 ///   - Valid values are used as-is.
 ///
-/// This test exercises the config loading path that sets App::scrollback_rows.
-/// The clamping logic is in the S-039 run() config-load path (owned by this story).
+/// This test calls production functions from monocle-core::tui::state:
+///   - `default_scrollback_rows()` — returns the canonical default from the config-load path.
+///   - `clamp_scrollback_rows(raw)` — performs the [1, 10000] clamp used in run().
+///
+/// Both functions are `todo!()` stubs until S-039 implements them. Calling them here
+/// enforces the Red Gate: each assert panics with "not yet implemented" until the
+/// implementer provides the real bodies.
+///
+/// The test does NOT call the test-local helper that existed before S-039 (that helper
+/// was tautological — it tested a copy of the logic, not the production symbol).
 #[test]
 fn test_BC_2_09_001_invariant_scrollback_rows_default_and_clamp() {
-    // Test 1: default app has scrollback_rows = 1000.
-    let app = make_app();
+    // Test 1: default scrollback_rows comes from the production default helper.
+    // `default_scrollback_rows()` is `todo!()` → panics here until S-039 implements it.
+    // The assert verifies the contractual value (1000) is returned by the config-load path,
+    // not merely the raw struct-initializer literal set in App::new().
     assert_eq!(
-        app.scrollback_rows, 1000,
-        "BC-2.09.001 Invariant 4: default scrollback_rows must be 1000"
+        default_scrollback_rows(),
+        1000,
+        "BC-2.09.001 Invariant 4: default_scrollback_rows() must return 1000 \
+         (contractual default when config is absent or invalid)"
     );
 
     // Test 2: vt100::Parser initialized with scrollback_rows.
     // We verify the parser is created with the correct scrollback size by initializing
     // a parser ourselves and checking screen state (indirect verification through the API).
+    // This sub-assertion does NOT depend on S-039 stubs — it verifies vt100 behavior.
     let parser = vt100::Parser::new(24, 80, 1000);
     let screen = parser.screen();
-    // Screen size should match the constructor args.
     let (rows, cols) = screen.size();
     assert_eq!(rows, 24, "BC-2.09.001 Invariant 4: parser rows must be 24");
     assert_eq!(cols, 80, "BC-2.09.001 Invariant 4: parser cols must be 80");
 
     // Test 3: clamping boundary — value above 10000 is clamped to 10000.
-    // S-039 owns this clamp; it happens in the config load path.
-    // We test the clamp logic directly by simulating what run() should do.
-    let raw_value: u32 = 99999;
-    let clamped = clamp_scrollback_rows(raw_value);
+    // `clamp_scrollback_rows` is `todo!()` in production → panics here until S-039 implements it.
+    // The test exercises BC-2.09.001 Invariant 4 via the PRODUCTION symbol, not a local copy.
+    let clamped = clamp_scrollback_rows(99999);
     assert_eq!(
         clamped, 10000,
         "BC-2.09.001 Invariant 4: scrollback_rows > 10000 must be clamped to 10000"
@@ -482,18 +494,6 @@ fn test_BC_2_09_001_invariant_scrollback_rows_default_and_clamp() {
         clamped_valid, 2000,
         "BC-2.09.001 Invariant 4: scrollback_rows in [1, 10000] must be used as-is"
     );
-}
-
-/// Helper that mirrors the S-039 config-load clamping logic.
-///
-/// S-039 OWNS this clamp (AC-008 / BC-2.09.001 Invariant 4). This function
-/// encodes the expected behavior; the implementer must match it in the run() path.
-/// Tests that call this helper exercise the expected clamping contract directly.
-fn clamp_scrollback_rows(raw: u32) -> u16 {
-    // S-039 implementation requirement: clamp to [1, 10000], then cast to u16.
-    // This is the behavior the implementer must reproduce in the config-load path.
-    let clamped = raw.clamp(1, 10000);
-    clamped as u16
 }
 
 // ---------------------------------------------------------------------------
@@ -679,20 +679,15 @@ async fn test_BC_2_09_001_scrollback_replay_order() {
 
     // Buffer two messages (simulating arrival while dump is in progress).
     // Receipt order: "FIRST\r\n", then "SECOND\r\n".
-    on_pty_output(
-        &mut app,
-        session_id.to_string(),
-        b"FIRST\r\n".to_vec(),
-    );
-    on_pty_output(
-        &mut app,
-        session_id.to_string(),
-        b"SECOND\r\n".to_vec(),
-    );
+    on_pty_output(&mut app, session_id.to_string(), b"FIRST\r\n".to_vec());
+    on_pty_output(&mut app, session_id.to_string(), b"SECOND\r\n".to_vec());
 
     // Verify both are buffered in order.
     {
-        let pending = app.pending_pty_bytes.get(session_id).expect("must be buffered");
+        let pending = app
+            .pending_pty_bytes
+            .get(session_id)
+            .expect("must be buffered");
         assert_eq!(pending.len(), 2, "must have exactly 2 buffered messages");
         assert_eq!(pending[0], b"FIRST\r\n", "first message must be FIRST");
         assert_eq!(pending[1], b"SECOND\r\n", "second message must be SECOND");
@@ -754,9 +749,18 @@ fn test_BC_2_09_001_session_gc_removes_parser_and_scroll_offset() {
     app.pending_pty_bytes.insert(session_id.to_string(), vec![]);
 
     // Preconditions
-    assert!(app.pty_parsers.contains_key(session_id), "precondition: parser exists");
-    assert!(app.pty_scroll_offsets.contains_key(session_id), "precondition: scroll offset exists");
-    assert!(app.pty_dump_received.contains(session_id), "precondition: dump received flag set");
+    assert!(
+        app.pty_parsers.contains_key(session_id),
+        "precondition: parser exists"
+    );
+    assert!(
+        app.pty_scroll_offsets.contains_key(session_id),
+        "precondition: scroll offset exists"
+    );
+    assert!(
+        app.pty_dump_received.contains(session_id),
+        "precondition: dump received flag set"
+    );
 
     // Act: call the GC cleanup function.
     // S-039 implements this as part of the SessionState::Terminated handler.
@@ -814,8 +818,8 @@ fn gc_session(app: &mut App, session_id: &str) {
 fn test_BC_2_09_001_render_embedded_terminal_calls_pseudo_terminal() {
     use monocle_tui::ui::embedded_terminal::render_embedded_terminal;
     use ratatui::backend::TestBackend;
-    use ratatui::Terminal;
     use ratatui::layout::Rect;
+    use ratatui::Terminal;
 
     // Arrange: headless ratatui backend (80 cols × 24 rows).
     let backend = TestBackend::new(80, 24);
@@ -888,7 +892,11 @@ async fn test_BC_2_09_001_second_enter_skips_attach_when_dump_already_received()
     );
 
     // Assert 2 (AC-004): dump_in_progress must NOT be set to true.
-    let dip = app.dump_in_progress.get(session_id).copied().unwrap_or(false);
+    let dip = app
+        .dump_in_progress
+        .get(session_id)
+        .copied()
+        .unwrap_or(false);
     assert!(
         !dip,
         "BC-2.09.001 AC-004: dump_in_progress must NOT be set when taking the O(1) path"
