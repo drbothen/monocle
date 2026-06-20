@@ -1530,3 +1530,287 @@ fn test_BC_2_09_001_render_frame_embedded_terminal_uses_focused_parser() {
          content ('OTHER_CONTENT') — only the focused session_id parser is rendered"
     );
 }
+
+// ---------------------------------------------------------------------------
+// F-S039-P2-001: ipc_tx == None rollback
+// BC-2.09.001 Invariant 5 / enter_embedded_terminal offline guard
+//
+// Regression guard: the pre-fix code set dump_in_progress = true and then fell
+// through to mode transition even when ipc_tx was None (daemon offline). This left
+// the app permanently stuck in EmbeddedTerminal with dump_in_progress = true and
+// no AttachSession ever in flight, so the dump could never complete and bytes
+// buffered forever.
+//
+// Post-fix code (F-S039-P2-001): the `let Some(ref tx) = app.ipc_tx else { rollback;
+// return; }` guard treats None identically to a send Err — dump_in_progress is
+// removed and mode is NOT transitioned.
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_09_001_enter_embedded_rollback_when_ipc_offline
+///
+/// Exercises F-S039-P2-001 (BC-2.09.001 Invariant 5):
+///   When app.ipc_tx is None (daemon offline / channel not yet wired),
+///   enter_embedded_terminal MUST perform FULL ROLLBACK:
+///   - dump_in_progress is NOT true (removed / never set to true without rollback).
+///   - AppMode is NOT transitioned to EmbeddedTerminal.
+///
+/// This test would FAIL against the pre-fix code that set dump_in_progress = true
+/// (and attempted to transition mode) before checking whether ipc_tx was Some.
+#[tokio::test]
+async fn test_BC_2_09_001_enter_embedded_rollback_when_ipc_offline() {
+    // Arrange: App with NO ipc_tx (daemon offline state).
+    let session_id = "s1-p2-001-offline";
+    let mut app = make_app_with_session(session_id);
+
+    // Ensure ipc_tx is None — daemon offline, channel not wired.
+    app.ipc_tx = None;
+
+    // Precondition: session is NOT in pty_dump_received (would trigger the
+    // auto-attach protocol path in enter_embedded_terminal).
+    assert!(
+        !app.pty_dump_received.contains(session_id),
+        "precondition (F-S039-P2-001): session must not be in pty_dump_received"
+    );
+
+    // Precondition: mode is Dashboard before the enter attempt.
+    assert!(
+        matches!(app.mode, AppMode::Dashboard { .. }),
+        "precondition (F-S039-P2-001): mode must be Dashboard before enter attempt"
+    );
+
+    // Act: enter_embedded_terminal with ipc_tx == None.
+    // Pre-fix: would set dump_in_progress = true and potentially transition mode.
+    // Post-fix: must detect None, rollback dump_in_progress, return early without mode change.
+    enter_embedded_terminal(&mut app, session_id.to_string()).await;
+
+    // Assert A (F-S039-P2-001): dump_in_progress must NOT be true.
+    // Acceptable values: key absent, or key present with value false.
+    // NOT acceptable: Some(true) — that would mean the flag was set and not rolled back.
+    let dip = app
+        .dump_in_progress
+        .get(session_id)
+        .copied()
+        .unwrap_or(false);
+    assert!(
+        !dip,
+        "F-S039-P2-001 (BC-2.09.001 Invariant 5): dump_in_progress must NOT be true when \
+         ipc_tx is None — None path must rollback identically to send Err. \
+         Got dump_in_progress[{}] = {:?}",
+        session_id,
+        app.dump_in_progress.get(session_id)
+    );
+
+    // Assert B (F-S039-P2-001): AppMode must NOT have transitioned to EmbeddedTerminal.
+    // If mode is EmbeddedTerminal, the pre-fix code path executed and the session is
+    // permanently stuck (dump never completes, bytes buffer forever).
+    assert!(
+        !matches!(&app.mode, AppMode::EmbeddedTerminal { .. }),
+        "F-S039-P2-001 (BC-2.09.001 Invariant 5): AppMode must NOT be EmbeddedTerminal \
+         when ipc_tx is None — mode transition must be skipped on offline rollback"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-S039-P2-002: idempotency guard — spurious ScrollbackDumpComplete must not
+// destroy a live parser
+// BC-2.09.001 Invariant 5 / on_scrollback_dump_complete idempotency
+//
+// Regression guard: the pre-fix code unconditionally reset the parser on any
+// ScrollbackDumpComplete message, regardless of whether dump_in_progress was
+// true. A spurious, duplicate, cross-client, or post-detach completion would
+// wipe a live populated parser — causing visible screen corruption.
+//
+// Post-fix code (F-S039-P2-002): the guard `if app.dump_in_progress.get(&session_id)
+// != Some(&true) { return; }` drops all completions outside the dump window before
+// any parser reset or replay occurs.
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_09_001_scrollback_dump_complete_idempotency_guard
+///
+/// Exercises F-S039-P2-002 (BC-2.09.001 Invariant 5):
+///   A ScrollbackDumpComplete that arrives when dump_in_progress is NOT true
+///   (spurious / duplicate / post-detach) MUST be a no-op:
+///   - The parser's existing content is NOT wiped.
+///   - pty_dump_received is NOT updated for this session.
+///
+/// Setup: create a session whose parser already holds live content
+/// ("LIVE-CONTENT"), with dump_in_progress absent / false (NOT in a dump window).
+/// Drive on_scrollback_dump_complete via handle_server_message (production dispatch).
+///
+/// This test would FAIL against the pre-fix code that unconditionally called
+/// `app.pty_parsers.insert(session_id, vt100::Parser::new(...))` on every
+/// ScrollbackDumpComplete, destroying the live parser's content.
+#[test]
+fn test_BC_2_09_001_scrollback_dump_complete_idempotency_guard() {
+    // Arrange: session with a live parser holding known content.
+    let session_id = "s1-p2-002-idempotent";
+    let mut app = make_app_with_session(session_id);
+
+    // Feed live content to the parser so we can detect if it survives.
+    {
+        let parser = app
+            .pty_parsers
+            .get_mut(session_id)
+            .expect("precondition: parser must exist");
+        parser.process(b"LIVE-CONTENT\r\n");
+    }
+
+    // Verify live content is present before the spurious completion arrives.
+    {
+        let text = screen_text(app.pty_parsers.get(session_id).unwrap());
+        assert!(
+            text.contains("LIVE-CONTENT"),
+            "precondition (F-S039-P2-002): parser must contain 'LIVE-CONTENT' before the \
+             spurious ScrollbackDumpComplete — got: {:?}",
+            text
+        );
+    }
+
+    // Precondition: dump_in_progress is NOT true for this session (outside dump window).
+    // Explicitly ensure it's false/absent — the spurious message should not be processed.
+    // Use insert(false) to match the "exists but false" case (not just "absent").
+    app.dump_in_progress.insert(session_id.to_string(), false);
+
+    // Precondition: session is NOT in pty_dump_received before the spurious completion.
+    assert!(
+        !app.pty_dump_received.contains(session_id),
+        "precondition (F-S039-P2-002): session must not be in pty_dump_received before \
+         spurious ScrollbackDumpComplete"
+    );
+
+    // Act: drive a ScrollbackDumpComplete through the PRODUCTION dispatch path
+    // (handle_server_message → on_scrollback_dump_complete).
+    // This simulates a spurious, duplicate, or post-detach completion arriving
+    // when no dump is in flight.
+    handle_server_message(
+        &mut app,
+        ServerToClient::ScrollbackDumpComplete {
+            session_id: session_id.to_string(),
+            total_chunks: 0,
+            cursor_row: 0,
+            cursor_col: 0,
+            pty_rows: 24,
+            pty_cols: 80,
+        },
+    )
+    .expect("handle_server_message must not panic on spurious ScrollbackDumpComplete");
+
+    // Assert A (F-S039-P2-002): parser content must NOT have been wiped.
+    // The pre-fix unconditional reset would replace the parser with a blank one,
+    // so "LIVE-CONTENT" would be absent. The post-fix guard prevents the reset.
+    let text_after = screen_text(
+        app.pty_parsers
+            .get(session_id)
+            .expect("F-S039-P2-002: parser must still exist after spurious completion"),
+    );
+    assert!(
+        text_after.contains("LIVE-CONTENT"),
+        "F-S039-P2-002 (BC-2.09.001 Invariant 5): parser content must survive a spurious \
+         ScrollbackDumpComplete outside the dump window — 'LIVE-CONTENT' must still be \
+         present. Got: {:?}",
+        text_after
+    );
+
+    // Assert B (F-S039-P2-002): pty_dump_received must NOT have been updated.
+    // The no-op guard must return before the `pty_dump_received.insert` step.
+    assert!(
+        !app.pty_dump_received.contains(session_id),
+        "F-S039-P2-002 (BC-2.09.001 Invariant 5): pty_dump_received must NOT be updated \
+         by a spurious ScrollbackDumpComplete outside the dump window"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-S039-P2-003: Terminated exits EmbeddedTerminal BEFORE GC
+// BC-2.09.001 Invariant 5 / SessionStateChanged::Terminated ordering
+//
+// Regression guard: the pre-fix code called gc_pty_session without first
+// checking whether the TUI was currently in EmbeddedTerminal mode for the
+// terminating session. This left app.mode == EmbeddedTerminal { session_id }
+// while all per-session parser state was removed — the next render would
+// attempt to look up pty_parsers[session_id] and find nothing, causing a
+// missing-parser trap (panic in unwrap or blank screen with no recovery path).
+//
+// Post-fix code (F-S039-P2-003): when SessionStateChanged::Terminated arrives
+// and app.mode is EmbeddedTerminal for that session, exit_embedded_terminal is
+// called FIRST (restores Dashboard mode and removes from pty_dump_received),
+// THEN gc_pty_session removes all 5 per-session maps.
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_09_001_terminated_session_exits_embedded_mode_before_gc
+///
+/// Exercises F-S039-P2-003 (BC-2.09.001 Invariant 5 / Ruling C):
+///   When SessionStateChanged::Terminated arrives while app.mode is
+///   EmbeddedTerminal for the terminating session:
+///   1. app.mode is NOT EmbeddedTerminal after the message (mode exited to Dashboard).
+///   2. pty_parsers does NOT contain the session_id (parser GC'd).
+///
+/// Both assertions must hold after a SINGLE handle_server_message call, and the
+/// function must not panic. The ordering — mode exit BEFORE parser GC — is what
+/// prevents a render trap in the same tick.
+///
+/// This test would FAIL against the pre-fix code that GC'd without exiting mode,
+/// leaving app.mode == EmbeddedTerminal with pty_parsers[session_id] removed —
+/// any subsequent render_frame call would find no parser for the embedded session.
+#[test]
+fn test_BC_2_09_001_terminated_session_exits_embedded_mode_before_gc() {
+    // Arrange: app in EmbeddedTerminal for "s1" with a live parser present.
+    let session_id = "s1-p2-003-terminated";
+    let mut app = make_app_with_session(session_id);
+
+    // Give the parser some content to confirm it gets GC'd (not just empty).
+    {
+        let parser = app.pty_parsers.get_mut(session_id).unwrap();
+        parser.process(b"live-before-terminate\r\n");
+    }
+
+    // Pre-populate all PTY pipeline state for this session.
+    app.pty_dump_received.insert(session_id.to_string());
+    app.dump_in_progress.insert(session_id.to_string(), false);
+
+    // Put app into EmbeddedTerminal mode for the session that will be terminated.
+    app.mode = AppMode::EmbeddedTerminal {
+        session_id: session_id.to_string(),
+        prior: FocusSnapshot::Sessions,
+    };
+
+    // Preconditions
+    assert!(
+        matches!(&app.mode, AppMode::EmbeddedTerminal { session_id: sid, .. } if sid == session_id),
+        "precondition (F-S039-P2-003): mode must be EmbeddedTerminal for the session"
+    );
+    assert!(
+        app.pty_parsers.contains_key(session_id),
+        "precondition (F-S039-P2-003): parser must exist before Terminated"
+    );
+
+    // Act: drive SessionStateChanged::Terminated through the PRODUCTION dispatch path.
+    // Pre-fix: would GC parsers without exiting EmbeddedTerminal mode first — leaving
+    // app.mode == EmbeddedTerminal with no parser, trapping the next render.
+    // Post-fix: must exit EmbeddedTerminal (restoring Dashboard) THEN GC everything.
+    handle_server_message(
+        &mut app,
+        ServerToClient::SessionStateChanged {
+            session_id: session_id.to_string(),
+            new_state: SessionState::Terminated,
+        },
+    )
+    .expect("handle_server_message must not panic on SessionStateChanged::Terminated");
+
+    // Assert A (F-S039-P2-003): app.mode must NOT be EmbeddedTerminal for the terminated session.
+    // Acceptable: Dashboard (the exit_embedded_terminal path restores prior focus).
+    // NOT acceptable: EmbeddedTerminal with session_id — that's the pre-fix trap.
+    assert!(
+        !matches!(&app.mode, AppMode::EmbeddedTerminal { session_id: sid, .. } if sid == session_id),
+        "F-S039-P2-003 (BC-2.09.001 Invariant 5): app.mode must NOT remain EmbeddedTerminal \
+         for the terminated session — mode must exit BEFORE GC"
+    );
+
+    // Assert B (F-S039-P2-003): pty_parsers must NOT contain the session (GC'd).
+    // This verifies GC still ran (the fix must not have accidentally skipped the GC step).
+    assert!(
+        !app.pty_parsers.contains_key(session_id),
+        "F-S039-P2-003 (BC-2.09.001 Invariant 5): pty_parsers must NOT contain the terminated \
+         session after handle_server_message — GC must have run"
+    );
+}
