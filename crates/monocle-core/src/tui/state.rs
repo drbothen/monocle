@@ -3,6 +3,10 @@
 //! `AppMode` is the top-level state; `transition` drives the state machine.
 //! Per AC-013, `AppMode` is NOT `#[non_exhaustive]` — exhaustive matching is
 //! required in the binary crate so the compiler enforces complete mode coverage.
+//!
+//! S-039 adds two new variants:
+//! - `EmbeddedTerminal { session_id, prior }` — full-screen PTY view (BC-2.09.001).
+//! - `SessionCreation { step, prior, launching_session_id }` — new-session wizard.
 
 use std::path::PathBuf;
 use std::time::Instant;
@@ -53,6 +57,41 @@ pub enum AppMode {
         /// The focus state to restore when fullscreen is exited.
         prior: FocusSnapshot,
     },
+
+    // -----------------------------------------------------------------------
+    // S-039: Embedded PTY terminal view (BC-2.09.001)
+    // -----------------------------------------------------------------------
+    /// Full-screen embedded PTY terminal for a running session (BC-2.09.001).
+    ///
+    /// Entered via `App::enter_embedded_terminal(session_id)`.
+    /// Exited via `App::exit_embedded_terminal(session_id)` which restores `prior` focus.
+    ///
+    /// `session_id` is the UUID string (NOT a typed `uuid::Uuid`) per S-039 §Architecture
+    /// Compliance Rules: "session_id is String (UUID as String), not typed uuid::Uuid".
+    EmbeddedTerminal {
+        /// UUID string of the session whose PTY is being displayed.
+        session_id: String,
+        /// Dashboard focus state to restore on exit.
+        prior: FocusSnapshot,
+    },
+
+    // -----------------------------------------------------------------------
+    // S-039 / S-033: New-session creation wizard
+    // -----------------------------------------------------------------------
+    /// Multi-step session creation wizard (AC-005 / BC-2.08.001).
+    ///
+    /// `step` tracks which sub-page of the wizard is active.
+    /// `launching_session_id` is populated after `SpawnAck` is received and carries
+    /// the daemon-assigned UUID so the wizard can transition from `Launching` →
+    /// `EmbeddedTerminal` without an additional lookup.
+    SessionCreation {
+        /// Current wizard sub-step.
+        step: SessionCreationStep,
+        /// Dashboard focus state to restore on cancel.
+        prior: FocusSnapshot,
+        /// Populated after `ServerToClient::SpawnAck` arrives; `None` before that.
+        launching_session_id: Option<String>,
+    },
 }
 
 /// Which panel currently holds keyboard focus in `AppMode::Dashboard`.
@@ -86,6 +125,27 @@ impl FocusSnapshot {
             FocusSnapshot::EventRibbon => PanelId::EventRibbon,
         }
     }
+}
+
+/// Sub-steps of the session-creation wizard (`AppMode::SessionCreation`).
+///
+/// The wizard progresses linearly: `ProfilePicker` → `ProjectPicker` →
+/// `WorktreeConfirm` → `Launching`. The TUI renders a different pane for each step.
+///
+/// `#[non_exhaustive]` — future wizard pages (e.g., environment overrides) can be
+/// added without forcing exhaustive-match breakage in all downstream match sites.
+#[non_exhaustive]
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum SessionCreationStep {
+    /// Step 1: user selects a harness profile for the new session.
+    ProfilePicker,
+    /// Step 2: user selects the project root directory.
+    ProjectPicker,
+    /// Step 3: user confirms or selects a git worktree within the project.
+    WorktreeConfirm,
+    /// Step 4: session spawn is in-flight; spinner displayed.
+    /// Exits to `EmbeddedTerminal` on `SpawnAck` + first `SessionStateChanged { Running }`.
+    Launching,
 }
 
 /// Identifier for a renderable panel in the TUI layout.

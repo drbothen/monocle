@@ -196,6 +196,9 @@ pub fn mode_indicator_text(mode: &AppMode, overlay_stack_depth: usize) -> String
         AppMode::Filtering { .. } => "[FILTERING]".to_string(),
         AppMode::Overlay { .. } => format!("[OVERLAY {}]", overlay_stack_depth),
         AppMode::Fullscreen { .. } => "[FULLSCREEN]".to_string(),
+        // S-039: new modes; status bar indicator strings defined per SS-embedded-pty.md.
+        AppMode::EmbeddedTerminal { .. } => "[PTY]".to_string(),
+        AppMode::SessionCreation { .. } => "[NEW SESSION]".to_string(),
     }
 }
 
@@ -236,6 +239,11 @@ pub fn breadcrumb_text(mode: &AppMode, overlay_stack_depth: usize) -> String {
             PanelId::EventRibbon => "Dashboard > Events > Fullscreen".to_string(),
             _ => "Dashboard > Fullscreen".to_string(),
         },
+        // S-039: new modes breadcrumbs.
+        AppMode::EmbeddedTerminal { session_id, .. } => {
+            format!("PTY > {}", session_id)
+        }
+        AppMode::SessionCreation { .. } => "New Session".to_string(),
     }
 }
 
@@ -261,6 +269,13 @@ pub fn hint_line_text(mode: &AppMode) -> String {
         AppMode::Fullscreen { .. } => {
             // BC-2.06.021 PC-1 canonical: Esc: back  /: filter  q: quit
             "Esc: back  /: filter  q: quit".to_string()
+        }
+        // S-039: new mode hint lines (implementer fills canonical strings per BC-2.06.021).
+        AppMode::EmbeddedTerminal { .. } => {
+            "Ctrl-D: detach  q: quit PTY view".to_string()
+        }
+        AppMode::SessionCreation { .. } => {
+            "Enter: confirm  Esc: cancel".to_string()
         }
     }
 }

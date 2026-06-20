@@ -1768,8 +1768,10 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "tui-term",
  "unicode-width",
  "uuid",
+ "vt100",
 ]
 
 [[package]]
@@ -3450,6 +3452,17 @@ name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
+
+[[package]]
+name = "tui-term"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a338ded85dbe7f9ea2298321d126244f54e531e2b2006b97abdab8e47d6f3c88"
+dependencies = [
+ "ratatui-core",
+ "ratatui-widgets",
+ "vt100",
+]
 
 [[package]]
 name = "typenum"

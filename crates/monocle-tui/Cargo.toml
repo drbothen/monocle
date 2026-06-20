@@ -63,6 +63,14 @@ unicode-width = "0.2"
 # chrono for uptime formatting (started_at → elapsed duration)
 chrono = { workspace = true }
 
+# S-039: PTY output pipeline (BC-2.09.001 / ADR-0011).
+# Exact pins per SS-deps-pin-manifest-v2-delta.md §vt100 / §tui-term.
+# vt100: virtual terminal emulator; drives embedded PTY parser.
+# tui-term: ratatui PseudoTerminal widget renders vt100::Screen into a ratatui Frame.
+# Both are EXACT-pinned (=X.Y.Z) per the v1A delta manifest — ADR-0011 selection.
+vt100 = "=0.16.2"
+tui-term = "=0.3.4"
+
 [dev-dependencies]
 tokio = { workspace = true }
 tempfile = { workspace = true }
