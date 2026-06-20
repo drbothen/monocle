@@ -55,10 +55,8 @@ impl monocle_core::engine::EngineModule for SucceedingMockEngineRediscovery {
 
     fn metadata(
         &self,
-    ) -> Result<
-        monocle_core::engine::EngineMetadata,
-        monocle_core::engine::EngineMetadataError,
-    > {
+    ) -> Result<monocle_core::engine::EngineMetadata, monocle_core::engine::EngineMetadataError>
+    {
         unimplemented!("not needed for rediscovery tests")
     }
 
@@ -69,10 +67,8 @@ impl monocle_core::engine::EngineModule for SucceedingMockEngineRediscovery {
     async fn enrich(
         &self,
         _proc: &monocle_core::engine::ProcessSnapshot,
-    ) -> Result<
-        monocle_core::engine::EnrichedSession,
-        monocle_core::engine::EngineMetadataError,
-    > {
+    ) -> Result<monocle_core::engine::EnrichedSession, monocle_core::engine::EngineMetadataError>
+    {
         unimplemented!("not needed for rediscovery tests")
     }
 
@@ -256,10 +252,8 @@ fn write_sidecar_future_version(
     let sidecar_path = runtime_dir.join(format!("session-{}.json", session_id));
     let mut f = std::fs::File::create(&sidecar_path)
         .unwrap_or_else(|e| panic!("write_sidecar_future: create {sidecar_path:?}: {e}"));
-    f.write_all(
-        &serde_json::to_vec_pretty(&sidecar).expect("write_sidecar_future: serialize"),
-    )
-    .expect("write_sidecar_future: write");
+    f.write_all(&serde_json::to_vec_pretty(&sidecar).expect("write_sidecar_future: serialize"))
+        .expect("write_sidecar_future: write");
     sidecar_path
 }
 
@@ -275,10 +269,7 @@ fn spawn_mock_session_host_attach(socket_path: PathBuf) -> mpsc::Receiver<()> {
         let listener = UnixListener::bind(&socket_path)
             .unwrap_or_else(|e| panic!("mock_host_attach: bind {:?}: {e}", socket_path));
 
-        let (mut stream, _) = listener
-            .accept()
-            .await
-            .expect("mock_host_attach: accept");
+        let (mut stream, _) = listener.accept().await.expect("mock_host_attach: accept");
 
         // Consume DaemonToHost::Attach.
         let mut len_buf = [0u8; 4];
@@ -437,8 +428,7 @@ async fn test_BC_2_08_004_rediscovery_detached_no_attach_sent() {
     let sock_clone = socket_path.clone();
     tokio::spawn(async move {
         let _ = std::fs::remove_file(&sock_clone);
-        let listener =
-            UnixListener::bind(&sock_clone).expect("AC-005: mock Detached bind");
+        let listener = UnixListener::bind(&sock_clone).expect("AC-005: mock Detached bind");
         loop {
             match tokio::time::timeout(Duration::from_secs(5), listener.accept()).await {
                 Ok(Ok(_)) => {
@@ -459,8 +449,7 @@ async fn test_BC_2_08_004_rediscovery_detached_no_attach_sent() {
         .expect("AC-005: rediscover_sessions must return Ok");
 
     // AC-013: NO connection to mock socket.
-    let got_connect =
-        tokio::time::timeout(Duration::from_millis(200), connect_rx.recv()).await;
+    let got_connect = tokio::time::timeout(Duration::from_millis(200), connect_rx.recv()).await;
     assert!(
         got_connect.is_err(),
         "AC-005 / AC-013: Detached sidecar MUST NOT cause Attach — mock got a connection"
@@ -527,7 +516,14 @@ async fn test_BC_2_08_004_rediscovery_dead_pid_gc() {
     let _ = child.wait(); // reap to avoid zombie; process exits immediately
 
     let socket_path = short_socket_path("ac008-dead");
-    write_sidecar_v3(tmp.path(), session_id, "Running", dead_pid, &socket_path, None);
+    write_sidecar_v3(
+        tmp.path(),
+        session_id,
+        "Running",
+        dead_pid,
+        &socket_path,
+        None,
+    );
     let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
 
     let (mut manager, _subs, _rx) = make_rediscovery_manager(tmp.path(), true);
@@ -578,8 +574,7 @@ async fn test_BC_2_08_004_rediscovery_corrupt_sidecar() {
 
     let corrupt_path = tmp.path().join(format!("session-{}.json", corrupt_id));
     {
-        let mut f = std::fs::File::create(&corrupt_path)
-            .expect("AC-010: create corrupt sidecar");
+        let mut f = std::fs::File::create(&corrupt_path).expect("AC-010: create corrupt sidecar");
         f.write_all(b"this is not valid JSON {{{{{ corrupt $$$$")
             .expect("AC-010: write corrupt");
     }
@@ -762,11 +757,10 @@ async fn test_BC_2_08_004_rediscovery_terminating_elapsed_deadline() {
         .await
         .expect("AC-006-elapsed: rediscover_sessions must return Ok");
 
-    let sigkill_pid =
-        tokio::time::timeout(Duration::from_millis(200), sigkill_rx.recv())
-            .await
-            .expect("AC-006 / AC-014: SIGKILL must fire within 200ms for elapsed deadline")
-            .expect("AC-006 / AC-014: sigkill channel closed");
+    let sigkill_pid = tokio::time::timeout(Duration::from_millis(200), sigkill_rx.recv())
+        .await
+        .expect("AC-006 / AC-014: SIGKILL must fire within 200ms for elapsed deadline")
+        .expect("AC-006 / AC-014: sigkill channel closed");
     assert_eq!(
         sigkill_pid,
         std::process::id(),
@@ -826,8 +820,7 @@ async fn test_BC_2_08_004_rediscovery_terminating_not_elapsed_deadline() {
     let sock_clone = socket_path.clone();
     tokio::spawn(async move {
         let _ = std::fs::remove_file(&sock_clone);
-        let listener =
-            UnixListener::bind(&sock_clone).expect("AC-006-not-elapsed: mock bind");
+        let listener = UnixListener::bind(&sock_clone).expect("AC-006-not-elapsed: mock bind");
         if let Ok((mut stream, _)) = listener.accept().await {
             let mut len_buf = [0u8; 4];
             if stream.read_exact(&mut len_buf).await.is_ok() {
@@ -860,8 +853,7 @@ async fn test_BC_2_08_004_rediscovery_terminating_not_elapsed_deadline() {
         elapsed
     );
 
-    let kill_ok =
-        tokio::time::timeout(Duration::from_secs(3), kill_received_rx.recv()).await;
+    let kill_ok = tokio::time::timeout(Duration::from_secs(3), kill_received_rx.recv()).await;
     assert!(
         kill_ok.is_ok() && kill_ok.unwrap().is_some(),
         "AC-006: Kill must be sent fire-and-forget to Terminating session-host"
@@ -918,8 +910,7 @@ async fn test_BC_2_08_004_rediscovery_parallelism_8_sessions() {
         let sock = socket_path.clone();
         tokio::spawn(async move {
             let _ = std::fs::remove_file(&sock);
-            let listener =
-                UnixListener::bind(&sock).expect("AC-012: mock bind");
+            let listener = UnixListener::bind(&sock).expect("AC-012: mock bind");
             if let Ok((mut stream, _)) = listener.accept().await {
                 let mut len_buf = [0u8; 4];
                 let _ = stream.read_exact(&mut len_buf).await;
@@ -997,7 +988,14 @@ async fn test_BC_2_08_004_rediscovery_terminated_state_gc() {
     let session_id = "00000000-0036-4000-a001-000000000009";
 
     let socket_path = short_socket_path("ac007-term");
-    write_sidecar_v3(tmp.path(), session_id, "Terminated", std::process::id(), &socket_path, None);
+    write_sidecar_v3(
+        tmp.path(),
+        session_id,
+        "Terminated",
+        std::process::id(),
+        &socket_path,
+        None,
+    );
     let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
 
     let (mut manager, _subs, _rx) = make_rediscovery_manager(tmp.path(), true);
@@ -1057,12 +1055,9 @@ async fn test_BC_2_08_004_rediscovery_unknown_state_string_warn_delete() {
     });
     let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
     {
-        let mut f = std::fs::File::create(&sidecar_path)
-            .expect("AC-007-unknown: create sidecar");
-        f.write_all(
-            &serde_json::to_vec_pretty(&sidecar).expect("AC-007-unknown: serialize"),
-        )
-        .expect("AC-007-unknown: write");
+        let mut f = std::fs::File::create(&sidecar_path).expect("AC-007-unknown: create sidecar");
+        f.write_all(&serde_json::to_vec_pretty(&sidecar).expect("AC-007-unknown: serialize"))
+            .expect("AC-007-unknown: write");
     }
 
     let (mut manager, _subs, _rx) = make_rediscovery_manager(tmp.path(), true);
@@ -1166,9 +1161,21 @@ async fn test_BC_2_08_004_rediscovery_empty_runtime_dir() {
         .await
         .expect("EC-167: rediscover_sessions must return Ok for empty dir");
 
-    assert_eq!(report.found_alive, 0, "EC-167: found_alive=0; got {}", report.found_alive);
-    assert_eq!(report.found_dead, 0, "EC-167: found_dead=0; got {}", report.found_dead);
-    assert!(report.errors.is_empty(), "EC-167: errors=[]; got {:?}", report.errors);
+    assert_eq!(
+        report.found_alive, 0,
+        "EC-167: found_alive=0; got {}",
+        report.found_alive
+    );
+    assert_eq!(
+        report.found_dead, 0,
+        "EC-167: found_dead=0; got {}",
+        report.found_dead
+    );
+    assert!(
+        report.errors.is_empty(),
+        "EC-167: errors=[]; got {:?}",
+        report.errors
+    );
 }
 
 // ===========================================================================
@@ -1180,8 +1187,7 @@ async fn test_BC_2_08_004_rediscovery_empty_runtime_dir() {
 /// BC-2.08.004 edge case EC-170 + postcondition 6.
 #[tokio::test]
 async fn test_BC_2_08_004_rediscovery_unreadable_runtime_dir() {
-    let nonexistent =
-        PathBuf::from("/tmp/monocle-test-s036-nonexistent-runtime-ec170");
+    let nonexistent = PathBuf::from("/tmp/monocle-test-s036-nonexistent-runtime-ec170");
     let _ = std::fs::remove_dir_all(&nonexistent);
 
     let (tx, _rx) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
@@ -1218,8 +1224,16 @@ async fn test_BC_2_08_004_rediscovery_unreadable_runtime_dir() {
         "EC-170: errors must contain RuntimeDirUnreadable; got {:?}",
         report.errors
     );
-    assert_eq!(report.found_alive, 0, "EC-170: found_alive=0; got {}", report.found_alive);
-    assert_eq!(report.found_dead, 0, "EC-170: found_dead=0; got {}", report.found_dead);
+    assert_eq!(
+        report.found_alive, 0,
+        "EC-170: found_alive=0; got {}",
+        report.found_alive
+    );
+    assert_eq!(
+        report.found_dead, 0,
+        "EC-170: found_dead=0; got {}",
+        report.found_dead
+    );
 }
 
 // ===========================================================================
@@ -1261,11 +1275,10 @@ async fn test_BC_2_08_004_rediscovery_alive_pid_socket_missing() {
         .await
         .expect("EC-155: rediscover_sessions must return Ok");
 
-    let sigterm_pid =
-        tokio::time::timeout(Duration::from_millis(500), sigterm_rx.recv())
-            .await
-            .expect("EC-155: SIGTERM must be sent within 500ms")
-            .expect("EC-155: sigterm channel closed");
+    let sigterm_pid = tokio::time::timeout(Duration::from_millis(500), sigterm_rx.recv())
+        .await
+        .expect("EC-155: SIGTERM must be sent within 500ms")
+        .expect("EC-155: sigterm channel closed");
     assert_eq!(
         sigterm_pid,
         std::process::id(),
@@ -1334,11 +1347,10 @@ async fn test_BC_2_08_004_rediscovery_non_responsive_within_5s() {
         .await
         .expect("EC-156: rediscover_sessions must return Ok for non-responsive host");
 
-    let sigterm_pid =
-        tokio::time::timeout(Duration::from_secs(1), sigterm_rx.recv())
-            .await
-            .expect("EC-156: SIGTERM must be sent after 5s timeout")
-            .expect("EC-156: sigterm channel closed");
+    let sigterm_pid = tokio::time::timeout(Duration::from_secs(1), sigterm_rx.recv())
+        .await
+        .expect("EC-156: SIGTERM must be sent after 5s timeout")
+        .expect("EC-156: sigterm channel closed");
     assert_eq!(
         sigterm_pid,
         std::process::id(),
@@ -1402,9 +1414,21 @@ async fn test_BC_2_08_004_rediscovery_mixed_alive_dead_ec159() {
 
     let _ = tokio::time::timeout(Duration::from_secs(6), done_alive.recv()).await;
 
-    assert_eq!(report.found_alive, 1, "EC-159: found_alive=1; got {}", report.found_alive);
-    assert_eq!(report.found_dead, 1, "EC-159: found_dead=1; got {}", report.found_dead);
-    assert!(report.errors.is_empty(), "EC-159: errors=[]; got {:?}", report.errors);
+    assert_eq!(
+        report.found_alive, 1,
+        "EC-159: found_alive=1; got {}",
+        report.found_alive
+    );
+    assert_eq!(
+        report.found_dead, 1,
+        "EC-159: found_dead=1; got {}",
+        report.found_dead
+    );
+    assert!(
+        report.errors.is_empty(),
+        "EC-159: errors=[]; got {:?}",
+        report.errors
+    );
 
     let sessions = manager.session_list().await;
     assert!(
@@ -1435,7 +1459,10 @@ async fn test_BC_2_08_004_rediscovery_completes_before_uds_bind() {
     let (mut manager, _subs, _rx) = make_rediscovery_manager(tmp.path(), true);
 
     let sock_path = tmp.path().join("monocle.sock");
-    assert!(!sock_path.exists(), "AC-011: monocle.sock must not exist before call");
+    assert!(
+        !sock_path.exists(),
+        "AC-011: monocle.sock must not exist before call"
+    );
 
     // RED GATE: hits todo!() — test fails here.
     let _report = manager

@@ -4244,13 +4244,683 @@ impl SessionManager {
     /// Never returns `Err` — partial failures are captured in `errors`; if `runtime_dir`
     /// is unreadable the report contains a `RuntimeDirUnreadable` error and the daemon
     /// proceeds with an empty registry (BC-2.08.004 PC-6).
-    #[allow(clippy::todo)]
     pub async fn rediscover_sessions(&mut self) -> Result<RediscoveryReport, SessionError> {
-        todo!(
-            "S-036: implement rediscover_sessions() — probing all session-*.json sidecars, \
-               SO_PEERCRED verify, tokio::join_all with 5s timeout, Detached/Running/Terminating \
-               state handlers, background watchdog for Terminating, GC for dead/Terminated"
-        )
+        use monocle_ipc::types::DaemonToHost;
+        use nix::sys::signal::{kill as nix_kill, Signal};
+        use nix::unistd::Pid;
+        use std::time::{Duration, SystemTime, UNIX_EPOCH};
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::UnixStream;
+
+        let mut report = RediscoveryReport {
+            found_alive: 0,
+            found_dead: 0,
+            errors: Vec::new(),
+        };
+
+        // Step 1: enumerate session-*.json sidecar files.
+        let sidecar_entries: Vec<std::path::PathBuf> = match std::fs::read_dir(&self.runtime_dir) {
+            Err(e) => {
+                report.errors.push(RediscoveryError::RuntimeDirUnreadable {
+                    reason: e.to_string(),
+                });
+                return Ok(report);
+            }
+            Ok(iter) => iter
+                .filter_map(|entry| {
+                    let entry = entry.ok()?;
+                    let name = entry.file_name();
+                    let name_str = name.to_string_lossy();
+                    if name_str.starts_with("session-") && name_str.ends_with(".json") {
+                        Some(entry.path())
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
+        };
+
+        if sidecar_entries.is_empty() {
+            return Ok(report);
+        }
+
+        // Step 2: parse each sidecar and categorise.
+        //
+        // We build two lists:
+        //   - `probes`: sessions that need a UDS connect attempt (Running / Launching)
+        //   - `detached_to_register`: Detached sessions — no UDS connect, register immediately
+        //   - everything else is handled inline (GC / error).
+
+        struct SidecarData {
+            sidecar_path: std::path::PathBuf,
+            session_id: String,
+            pid: u32,
+            socket_path: std::path::PathBuf,
+            kill_deadline_unix_ms: Option<u64>,
+            cwd: String,
+            project_root: String,
+            harness_id: String,
+            profile_id: String,
+            started_at: String,
+            display_name: String,
+        }
+
+        let mut probes: Vec<SidecarData> = Vec::new();
+        let mut detached_to_register: Vec<SidecarData> = Vec::new();
+
+        // Current Unix time for Terminating deadline comparison.
+        let current_unix_ms = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as u64;
+
+        for sidecar_path in sidecar_entries {
+            let raw = match std::fs::read(&sidecar_path) {
+                Ok(b) => b,
+                Err(e) => {
+                    tracing::warn!(
+                        path = %sidecar_path.display(),
+                        error = %e,
+                        "rediscover_sessions: failed to read sidecar; deleting as corrupt"
+                    );
+                    let _ = std::fs::remove_file(&sidecar_path);
+                    report.errors.push(RediscoveryError::CorruptSidecar {
+                        path: sidecar_path.clone(),
+                        reason: e.to_string(),
+                    });
+                    continue;
+                }
+            };
+
+            let val: serde_json::Value = match serde_json::from_slice(&raw) {
+                Ok(v) => v,
+                Err(e) => {
+                    tracing::warn!(
+                        path = %sidecar_path.display(),
+                        error = %e,
+                        "rediscover_sessions: sidecar is not valid JSON; deleting as corrupt"
+                    );
+                    let _ = std::fs::remove_file(&sidecar_path);
+                    report.errors.push(RediscoveryError::CorruptSidecar {
+                        path: sidecar_path.clone(),
+                        reason: e.to_string(),
+                    });
+                    continue;
+                }
+            };
+
+            // Check schema_version.
+            let schema_version = val
+                .get("schema_version")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0) as u32;
+
+            if schema_version == 0 || schema_version > 3 {
+                tracing::warn!(
+                    path = %sidecar_path.display(),
+                    version = schema_version,
+                    "rediscover_sessions: unknown schema_version; deleting as orphan"
+                );
+                let _ = std::fs::remove_file(&sidecar_path);
+                report.errors.push(RediscoveryError::UnknownSchemaVersion {
+                    path: sidecar_path.clone(),
+                    version: schema_version,
+                });
+                continue;
+            }
+
+            // Extract required fields (all versions 1-3 share these).
+            let session_id = match val.get("session_id").and_then(|v| v.as_str()) {
+                Some(s) => s.to_string(),
+                None => {
+                    tracing::warn!(path = %sidecar_path.display(), "rediscover_sessions: missing session_id; deleting as corrupt");
+                    let _ = std::fs::remove_file(&sidecar_path);
+                    report.errors.push(RediscoveryError::CorruptSidecar {
+                        path: sidecar_path.clone(),
+                        reason: "missing session_id".to_string(),
+                    });
+                    continue;
+                }
+            };
+
+            let pid = match val.get("pid").and_then(|v| v.as_u64()) {
+                Some(p) => p as u32,
+                None => {
+                    tracing::warn!(path = %sidecar_path.display(), "rediscover_sessions: missing pid; deleting as corrupt");
+                    let _ = std::fs::remove_file(&sidecar_path);
+                    report.errors.push(RediscoveryError::CorruptSidecar {
+                        path: sidecar_path.clone(),
+                        reason: "missing pid".to_string(),
+                    });
+                    continue;
+                }
+            };
+
+            let socket_path_str = match val.get("socket_path").and_then(|v| v.as_str()) {
+                Some(s) => s.to_string(),
+                None => {
+                    tracing::warn!(path = %sidecar_path.display(), "rediscover_sessions: missing socket_path; deleting as corrupt");
+                    let _ = std::fs::remove_file(&sidecar_path);
+                    report.errors.push(RediscoveryError::CorruptSidecar {
+                        path: sidecar_path.clone(),
+                        reason: "missing socket_path".to_string(),
+                    });
+                    continue;
+                }
+            };
+
+            let state_str = match val.get("state").and_then(|v| v.as_str()) {
+                Some(s) => s.to_string(),
+                None => {
+                    tracing::warn!(path = %sidecar_path.display(), "rediscover_sessions: missing state; deleting as corrupt");
+                    let _ = std::fs::remove_file(&sidecar_path);
+                    report.errors.push(RediscoveryError::CorruptSidecar {
+                        path: sidecar_path.clone(),
+                        reason: "missing state".to_string(),
+                    });
+                    continue;
+                }
+            };
+
+            let project_root = val
+                .get("project_root")
+                .and_then(|v| v.as_str())
+                .unwrap_or("/tmp")
+                .to_string();
+
+            // schema_version 1: cwd absent → default to project_root (BC-2.08.004 PC-1).
+            let cwd = val
+                .get("cwd")
+                .and_then(|v| v.as_str())
+                .unwrap_or(&project_root)
+                .to_string();
+
+            let harness_id = val
+                .get("harness_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown")
+                .to_string();
+            let profile_id = val
+                .get("profile_id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("default")
+                .to_string();
+            let started_at = val
+                .get("started_at")
+                .and_then(|v| v.as_str())
+                .unwrap_or("1970-01-01T00:00:00Z")
+                .to_string();
+            let display_name = val
+                .get("display_name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+
+            // schema_version 1: kill_deadline_unix_ms absent → treat as None.
+            let kill_deadline_unix_ms = val.get("kill_deadline_unix_ms").and_then(|v| v.as_u64());
+
+            let data = SidecarData {
+                sidecar_path,
+                session_id,
+                pid,
+                socket_path: std::path::PathBuf::from(socket_path_str),
+                kill_deadline_unix_ms,
+                cwd,
+                project_root,
+                harness_id,
+                profile_id,
+                started_at,
+                display_name,
+            };
+
+            match state_str.as_str() {
+                "Running" | "Launching" => {
+                    // PID liveness probe: kill(pid, None) — signal 0.
+                    let nix_pid = Pid::from_raw(data.pid as i32);
+                    let alive = nix_kill(nix_pid, None).is_ok();
+                    if !alive {
+                        tracing::debug!(
+                            session_id = %data.session_id,
+                            pid = data.pid,
+                            "rediscover_sessions: PID dead; deleting sidecar (BC-2.08.004 PC-2c)"
+                        );
+                        let _ = std::fs::remove_file(&data.sidecar_path);
+                        report.found_dead += 1;
+                    } else {
+                        probes.push(data);
+                    }
+                }
+                "Detached" => {
+                    // PID liveness probe for Detached.
+                    let nix_pid = Pid::from_raw(data.pid as i32);
+                    let alive = nix_kill(nix_pid, None).is_ok();
+                    if !alive {
+                        tracing::debug!(
+                            session_id = %data.session_id,
+                            pid = data.pid,
+                            "rediscover_sessions: Detached PID dead; deleting sidecar"
+                        );
+                        let _ = std::fs::remove_file(&data.sidecar_path);
+                        report.found_dead += 1;
+                    } else {
+                        detached_to_register.push(data);
+                    }
+                }
+                "Terminating" => {
+                    let deadline_ms = data.kill_deadline_unix_ms.unwrap_or(0);
+                    if deadline_ms <= current_unix_ms {
+                        // Elapsed: SIGKILL immediately + delete sidecar (BC-2.08.004 PC-2b Terminating elapsed).
+                        tracing::debug!(
+                            session_id = %data.session_id,
+                            pid = data.pid,
+                            "rediscover_sessions: Terminating deadline elapsed; SIGKILL + GC"
+                        );
+                        let nix_pid = Pid::from_raw(data.pid as i32);
+                        #[cfg(any(test, feature = "test-utils"))]
+                        let sigkill_result = if let Some(ref f) = self.pid_sigkill_fn {
+                            f(nix_pid)
+                        } else {
+                            nix_kill(nix_pid, Signal::SIGKILL)
+                        };
+                        #[cfg(not(any(test, feature = "test-utils")))]
+                        let sigkill_result = nix_kill(nix_pid, Signal::SIGKILL);
+                        if let Err(e) = sigkill_result {
+                            tracing::debug!(
+                                session_id = %data.session_id,
+                                error = %e,
+                                "rediscover_sessions: SIGKILL (elapsed Terminating) best-effort failed"
+                            );
+                        }
+                        let _ = std::fs::remove_file(&data.sidecar_path);
+                        report.found_dead += 1;
+                    } else {
+                        // Not elapsed: fire-and-forget Kill message + register entry + background watchdog.
+                        let remaining_ms = deadline_ms - current_unix_ms;
+                        let remaining = Duration::from_millis(remaining_ms);
+                        let kill_deadline_instant = std::time::Instant::now() + remaining;
+
+                        // Fire-and-forget: connect + send Kill (no response needed).
+                        let sock = data.socket_path.clone();
+                        let sid_clone = data.session_id.clone();
+                        let pid_val = data.pid;
+                        #[cfg(any(test, feature = "test-utils"))]
+                        let sigkill_fn_clone = self.pid_sigkill_fn.clone();
+                        let sidecar_path_clone = data.sidecar_path.clone();
+                        tokio::spawn(async move {
+                            // Best-effort: connect and send Kill.
+                            if let Ok(mut stream) = UnixStream::connect(&sock).await {
+                                let kill_msg =
+                                    serde_json::to_vec(&DaemonToHost::Kill).unwrap_or_default();
+                                let len_bytes = (kill_msg.len() as u32).to_le_bytes();
+                                let _ = stream.write_all(&len_bytes).await;
+                                let _ = stream.write_all(&kill_msg).await;
+                                let _ = stream.flush().await;
+                            }
+                            // Background watchdog: wait for remaining time then SIGKILL.
+                            tokio::time::sleep(remaining).await;
+                            let nix_pid = Pid::from_raw(pid_val as i32);
+                            #[cfg(any(test, feature = "test-utils"))]
+                            let _ = if let Some(ref f) = sigkill_fn_clone {
+                                f(nix_pid)
+                            } else {
+                                nix_kill(nix_pid, Signal::SIGKILL)
+                            };
+                            #[cfg(not(any(test, feature = "test-utils")))]
+                            let _ = nix_kill(nix_pid, Signal::SIGKILL);
+                            let _ = std::fs::remove_file(&sidecar_path_clone);
+                            tracing::debug!(
+                                session_id = %sid_clone,
+                                "rediscover_sessions: Terminating watchdog fired SIGKILL"
+                            );
+                        });
+
+                        // Register entry with state Terminating.
+                        let started_at_dt = chrono::DateTime::parse_from_rfc3339(&data.started_at)
+                            .map(|dt| dt.with_timezone(&chrono::Utc))
+                            .unwrap_or_else(|_| chrono::Utc::now());
+                        let entry = SessionEntry {
+                            session_id: data.session_id.clone(),
+                            session_host_pid: data.pid,
+                            session_host_socket: data.socket_path.clone(),
+                            state: SessionState::Terminating,
+                            cwd: std::path::PathBuf::from(&data.cwd),
+                            project_root: std::path::PathBuf::from(&data.project_root),
+                            harness_id: data.harness_id.clone(),
+                            profile_id: data.profile_id.clone(),
+                            started_at: started_at_dt,
+                            display_name: data.display_name.clone(),
+                            kill_deadline: Some(kill_deadline_instant),
+                            degraded: false,
+                            degraded_reason: None,
+                            host_conn: None,
+                        };
+                        self.sessions
+                            .lock()
+                            .await
+                            .insert(data.session_id.clone(), entry);
+                        report.found_alive += 1;
+                    }
+                }
+                "Terminated" => {
+                    // Crash-leftover sidecar: delete + GC (BC-2.08.004 PC-2b Terminated arm).
+                    tracing::debug!(
+                        session_id = %data.session_id,
+                        "rediscover_sessions: Terminated sidecar; deleting"
+                    );
+                    let _ = std::fs::remove_file(&data.sidecar_path);
+                    report.found_dead += 1;
+                }
+                unknown => {
+                    // Unknown state string: WARN + delete + error (not counted in found_dead).
+                    tracing::warn!(
+                        session_id = %data.session_id,
+                        state = %unknown,
+                        "rediscover_sessions: unknown state string; deleting sidecar"
+                    );
+                    let _ = std::fs::remove_file(&data.sidecar_path);
+                    report.errors.push(RediscoveryError::CorruptSidecar {
+                        path: data.sidecar_path.clone(),
+                        reason: format!("unknown session state: {unknown}"),
+                    });
+                }
+            }
+        }
+
+        // Step 3: register Detached sessions immediately (no UDS connect).
+        for data in detached_to_register {
+            let started_at_dt = chrono::DateTime::parse_from_rfc3339(&data.started_at)
+                .map(|dt| dt.with_timezone(&chrono::Utc))
+                .unwrap_or_else(|_| chrono::Utc::now());
+            let entry = SessionEntry {
+                session_id: data.session_id.clone(),
+                session_host_pid: data.pid,
+                session_host_socket: data.socket_path.clone(),
+                state: SessionState::Detached,
+                cwd: std::path::PathBuf::from(&data.cwd),
+                project_root: std::path::PathBuf::from(&data.project_root),
+                harness_id: data.harness_id.clone(),
+                profile_id: data.profile_id.clone(),
+                started_at: started_at_dt,
+                display_name: data.display_name.clone(),
+                kill_deadline: None,
+                degraded: false,
+                degraded_reason: None,
+                host_conn: None,
+            };
+            self.sessions
+                .lock()
+                .await
+                .insert(data.session_id.clone(), entry);
+            report.found_alive += 1;
+        }
+
+        // Step 4: probe Running/Launching sessions in parallel with a 5-second timeout.
+        //
+        // For each probe: connect → SO_PEERCRED verify → send Attach → receive scrollback.
+        // On timeout/connect fail: SIGTERM + delete sidecar + found_dead.
+        // On success: register SessionEntry{Running, host_conn: Some(...)}.
+        if probes.is_empty() {
+            return Ok(report);
+        }
+
+        // Build one future per probe.
+        let peer_cred_verifier = Arc::clone(&self.peer_cred_verifier);
+        #[cfg(any(test, feature = "test-utils"))]
+        let pid_sigterm_fn = self.pid_sigterm_fn.clone();
+
+        struct ProbeResult {
+            session_id: String,
+            sidecar_path: std::path::PathBuf,
+            pid: u32,
+            outcome: ProbeOutcome,
+        }
+
+        enum ProbeOutcome {
+            Success {
+                write_half: tokio::net::unix::OwnedWriteHalf,
+            },
+            Failed,
+        }
+
+        let mut probe_futures = Vec::with_capacity(probes.len());
+        for probe in &probes {
+            let socket_path = probe.socket_path.clone();
+            let sidecar_path = probe.sidecar_path.clone();
+            let session_id = probe.session_id.clone();
+            let pid = probe.pid;
+            let verifier = Arc::clone(&peer_cred_verifier);
+
+            let fut = async move {
+                // 5-second timeout for the entire connect + scrollback sequence.
+                // Clone session_id before moving into the timeout async block so
+                // we can still use it in the ProbeResult construction below.
+                let session_id_for_timeout = session_id.clone();
+                let result = tokio::time::timeout(Duration::from_secs(5), async move {
+                    let session_id = session_id_for_timeout;
+                    // UDS connect.
+                    let stream = match UnixStream::connect(&socket_path).await {
+                        Ok(s) => s,
+                        Err(e) => {
+                            tracing::warn!(
+                                session_id = %session_id,
+                                socket = %socket_path.display(),
+                                error = %e,
+                                "rediscover_sessions: UDS connect failed (EC-155)"
+                            );
+                            return None;
+                        }
+                    };
+
+                    // SO_PEERCRED verify.
+                    if let Err(verify_err) = verifier.verify(&stream) {
+                        tracing::warn!(
+                            session_id = %session_id,
+                            error = %verify_err,
+                            "rediscover_sessions: SO_PEERCRED mismatch; aborting"
+                        );
+                        return None;
+                    }
+
+                    let (mut reader, mut writer) = stream.into_split();
+
+                    // Send DaemonToHost::Attach.
+                    let attach_body = match serde_json::to_vec(&DaemonToHost::Attach) {
+                        Ok(b) => b,
+                        Err(e) => {
+                            tracing::error!(
+                                session_id = %session_id,
+                                error = %e,
+                                "rediscover_sessions: failed to serialize Attach"
+                            );
+                            return None;
+                        }
+                    };
+                    let len_bytes = (attach_body.len() as u32).to_le_bytes();
+                    if writer.write_all(&len_bytes).await.is_err()
+                        || writer.write_all(&attach_body).await.is_err()
+                        || writer.flush().await.is_err()
+                    {
+                        tracing::warn!(
+                            session_id = %session_id,
+                            "rediscover_sessions: failed to send DaemonToHost::Attach"
+                        );
+                        return None;
+                    }
+
+                    // Receive ScrollbackChunk* + ScrollbackDumpComplete.
+                    //
+                    // Yield once before the first read to allow other tasks (mock
+                    // session-host tasks in tests, or the tokio reactor in production)
+                    // to run before we block on I/O. This is required for
+                    // `start_paused = true` test compatibility: the mock tasks need
+                    // to register their `tokio::time::sleep` timers BEFORE the
+                    // probe's I/O wait begins, so that virtual time auto-advance
+                    // fires the mock timers (not the 5s probe timeout).
+                    tokio::task::yield_now().await;
+                    loop {
+                        let mut len_buf = [0u8; 4];
+                        if reader.read_exact(&mut len_buf).await.is_err() {
+                            return None;
+                        }
+                        let msg_len = u32::from_le_bytes(len_buf) as usize;
+                        if msg_len == 0 || msg_len > MAX_FRAME_LEN {
+                            tracing::warn!(
+                                session_id = %session_id,
+                                len = msg_len,
+                                "rediscover_sessions: invalid scrollback frame length"
+                            );
+                            return None;
+                        }
+                        let mut body = vec![0u8; msg_len];
+                        if reader.read_exact(&mut body).await.is_err() {
+                            return None;
+                        }
+                        let msg: monocle_ipc::types::HostToDaemon =
+                            match serde_json::from_slice(&body) {
+                                Ok(m) => m,
+                                Err(e) => {
+                                    tracing::warn!(
+                                        session_id = %session_id,
+                                        error = %e,
+                                        "rediscover_sessions: failed to deserialize HostToDaemon"
+                                    );
+                                    return None;
+                                }
+                            };
+                        match msg {
+                            monocle_ipc::types::HostToDaemon::ScrollbackChunk { .. } => {
+                                // Accumulate (no storage needed for rediscovery — discard).
+                            }
+                            monocle_ipc::types::HostToDaemon::ScrollbackDumpComplete { .. } => {
+                                return Some(writer);
+                            }
+                            _ => {
+                                // Ignore unexpected messages; keep waiting.
+                            }
+                        }
+                    }
+                })
+                .await;
+
+                match result {
+                    Ok(Some(write_half)) => ProbeResult {
+                        session_id,
+                        sidecar_path,
+                        pid,
+                        outcome: ProbeOutcome::Success { write_half },
+                    },
+                    _ => {
+                        // Timeout or connect/protocol failure.
+                        ProbeResult {
+                            session_id,
+                            sidecar_path,
+                            pid,
+                            outcome: ProbeOutcome::Failed,
+                        }
+                    }
+                }
+            };
+            probe_futures.push(fut);
+        }
+
+        // Run all probes concurrently (BC-2.08.004 PC-7 / AC-012 parallelism invariant).
+        //
+        // Use futures::future::join_all so all probes are polled within the SAME tokio task.
+        // This is compatible with `start_paused = true` in tests: when all probe futures
+        // are waiting on I/O (read_exact) and the mock tasks are waiting on virtual timers,
+        // tokio can auto-advance virtual time to fire the mock timers and unblock the I/O.
+        // With JoinSet::spawn (8 separate tasks), the auto-advance heuristic may not fire
+        // correctly on macOS kqueue because the separate tasks' I/O waits prevent time advance.
+        //
+        // Yield once before polling probes so that any spawned mock tasks (tests) or
+        // real session-host tasks can bind their Unix sockets before connect() is attempted.
+        tokio::task::yield_now().await;
+        let probe_results_unordered: Vec<ProbeResult> =
+            futures::future::join_all(probe_futures).await;
+
+        // Build a lookup map from session_id to probe data for result processing.
+        let probe_map: std::collections::HashMap<String, SidecarData> = probes
+            .into_iter()
+            .map(|p| (p.session_id.clone(), p))
+            .collect();
+
+        // Step 5: process results — register successes, GC failures.
+        for result in probe_results_unordered {
+            let probe = match probe_map.get(&result.session_id) {
+                Some(p) => p,
+                None => {
+                    tracing::error!(
+                        session_id = %result.session_id,
+                        "rediscover_sessions: probe result with unknown session_id; skipping"
+                    );
+                    continue;
+                }
+            };
+            match result.outcome {
+                ProbeOutcome::Success { write_half } => {
+                    let started_at_dt = chrono::DateTime::parse_from_rfc3339(&probe.started_at)
+                        .map(|dt| dt.with_timezone(&chrono::Utc))
+                        .unwrap_or_else(|_| chrono::Utc::now());
+                    let entry = SessionEntry {
+                        session_id: probe.session_id.clone(),
+                        session_host_pid: probe.pid,
+                        session_host_socket: probe.socket_path.clone(),
+                        state: SessionState::Running,
+                        cwd: std::path::PathBuf::from(&probe.cwd),
+                        project_root: std::path::PathBuf::from(&probe.project_root),
+                        harness_id: probe.harness_id.clone(),
+                        profile_id: probe.profile_id.clone(),
+                        started_at: started_at_dt,
+                        display_name: probe.display_name.clone(),
+                        kill_deadline: None,
+                        degraded: false,
+                        degraded_reason: None,
+                        host_conn: Some(SessionHostConnection {
+                            writer: Arc::new(tokio::sync::Mutex::new(write_half)),
+                            reader: None,
+                            proxy_task: None,
+                        }),
+                    };
+                    self.sessions
+                        .lock()
+                        .await
+                        .insert(probe.session_id.clone(), entry);
+                    report.found_alive += 1;
+                }
+                ProbeOutcome::Failed => {
+                    // SIGTERM + delete sidecar + found_dead (EC-155 / EC-156).
+                    tracing::debug!(
+                        session_id = %probe.session_id,
+                        pid = probe.pid,
+                        "rediscover_sessions: probe failed; SIGTERM + GC"
+                    );
+                    // Guard: never send SIGTERM to pid=0 (would signal the whole
+                    // process group — invalid for session-host cleanup).
+                    if result.pid != 0 {
+                        let nix_pid = Pid::from_raw(result.pid as i32);
+                        #[cfg(any(test, feature = "test-utils"))]
+                        let sigterm_result = if let Some(ref f) = pid_sigterm_fn {
+                            f(nix_pid)
+                        } else {
+                            nix_kill(nix_pid, Signal::SIGTERM)
+                        };
+                        #[cfg(not(any(test, feature = "test-utils")))]
+                        let sigterm_result = nix_kill(nix_pid, Signal::SIGTERM);
+                        if let Err(e) = sigterm_result {
+                            tracing::debug!(
+                                session_id = %probe.session_id,
+                                error = %e,
+                                "rediscover_sessions: SIGTERM best-effort failed"
+                            );
+                        }
+                    }
+                    let _ = std::fs::remove_file(&result.sidecar_path);
+                    report.found_dead += 1;
+                }
+            }
+        }
+
+        Ok(report)
     }
 
     /// Return the current session list for `InitialState` IPC push.
