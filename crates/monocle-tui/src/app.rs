@@ -433,13 +433,32 @@ impl App {
 ///
 /// Self-check BC-5.38.005: "If I include this real implementation, will the test for
 /// this function pass trivially without any implementer work?" — YES. Body = `todo!()`.
-#[allow(clippy::todo)]
-#[allow(unused_variables)]
 pub fn on_pty_output(app: &mut App, session_id: String, bytes: Vec<u8>) {
-    todo!(
-        "S-039: on_pty_output — feed bytes to pty_parsers[session_id].process(&bytes) \
-           or buffer in pending_pty_bytes when dump_in_progress (BC-2.09.001 AC-001/AC-002)"
-    )
+    // BC-2.09.001 Invariant 5: if a scrollback dump is in progress, buffer bytes.
+    if app
+        .dump_in_progress
+        .get(&session_id)
+        .copied()
+        .unwrap_or(false)
+    {
+        app.pending_pty_bytes
+            .entry(session_id)
+            .or_default()
+            .push(bytes);
+        return;
+    }
+
+    // BC-2.09.001 EC-200: unknown session_id → silent drop (TRACE only, no panic).
+    let Some(parser) = app.pty_parsers.get_mut(&session_id) else {
+        tracing::trace!(
+            session_id = %session_id,
+            "on_pty_output: session not in pty_parsers — bytes silently dropped (EC-200)"
+        );
+        return;
+    };
+
+    // BC-2.09.001 PC-2: feed bytes to the parser.
+    parser.process(&bytes);
 }
 
 /// Transition to `AppMode::EmbeddedTerminal` for `session_id`.
@@ -454,13 +473,47 @@ pub fn on_pty_output(app: &mut App, session_id: String, bytes: Vec<u8>) {
 /// `AppMode::EmbeddedTerminal` (parser is already populated; O(1) — BC-2.09.001 AC-004).
 ///
 /// Self-check BC-5.38.005: YES — body = `todo!()`.
-#[allow(clippy::todo)]
-#[allow(unused_variables)]
 pub fn enter_embedded_terminal(app: &mut App, session_id: String) {
-    todo!(
-        "S-039: enter_embedded_terminal — auto-attach protocol + AppMode transition \
-           (BC-2.09.001 AC-005 / SS-embedded-pty.md §EmbeddedTerminal ENTRY)"
-    )
+    // BC-2.09.001 PC-6 / SS-embedded-pty.md §Auto-attach mandate (I11-001 PRONG A):
+    // If the session has NOT received a ScrollbackDumpComplete in this TUI lifetime,
+    // run the full auto-attach + buffering + dump protocol.
+    if !app.pty_dump_received.contains(&session_id) {
+        // S12-001 fix: set dump_in_progress = true BEFORE sending AttachSession.
+        // Live PtyOutput may arrive between the send and the first ScrollbackChunk —
+        // buffering MUST start immediately, not on first chunk receipt.
+        app.dump_in_progress.insert(session_id.clone(), true);
+
+        // Send AttachSession to the daemon via the outbound IPC channel.
+        if let Some(ref tx) = app.ipc_tx {
+            // Use try_send here (synchronous context — enter_embedded_terminal is not async).
+            // The channel is bounded at 64; if the channel is full we log a warning.
+            // Note: the IPC reader inbound channel uses .send().await (AC-007); this is
+            // the outbound ClientToServer channel which uses try_send per existing convention.
+            match tx.try_send(ClientToServer::AttachSession {
+                session_id: session_id.clone(),
+            }) {
+                Ok(()) => {}
+                Err(e) => {
+                    tracing::warn!(
+                        session_id = %session_id,
+                        error = %e,
+                        "enter_embedded_terminal: failed to send AttachSession — channel full or closed"
+                    );
+                }
+            }
+        }
+    }
+    // BC-2.09.001 AC-004 O(1) path: session already dumped → transition directly.
+    // No AttachSession, no dump_in_progress change.
+
+    // Determine prior focus for restoration on exit.
+    let prior = match &app.mode {
+        AppMode::Dashboard { focused } => focused.clone(),
+        _ => FocusSnapshot::Sessions,
+    };
+
+    // Transition to EmbeddedTerminal mode.
+    app.mode = AppMode::EmbeddedTerminal { session_id, prior };
 }
 
 /// Transition out of `AppMode::EmbeddedTerminal`, restoring the prior `Dashboard` focus.
@@ -470,13 +523,18 @@ pub fn enter_embedded_terminal(app: &mut App, session_id: String) {
 /// (AC-005 re-attach clause / BC-2.09.001 AC-005).
 ///
 /// Self-check BC-5.38.005: YES — body = `todo!()`.
-#[allow(clippy::todo)]
-#[allow(unused_variables)]
 pub fn exit_embedded_terminal(app: &mut App, session_id: &str) {
-    todo!(
-        "S-039: exit_embedded_terminal — remove from pty_dump_received, restore AppMode \
-           (BC-2.09.001 AC-005 re-attach clause)"
-    )
+    // BC-2.09.001 AC-005 re-attach clause: remove session_id from pty_dump_received.
+    // This ensures the NEXT enter_embedded_terminal call for the same session re-runs
+    // the full attach + dump protocol (fresh dump from daemon side per S-047 AC-006).
+    app.pty_dump_received.remove(session_id);
+
+    // Restore prior AppMode (Dashboard with prior focus).
+    let prior = match &app.mode {
+        AppMode::EmbeddedTerminal { prior, .. } => prior.clone(),
+        _ => FocusSnapshot::Sessions,
+    };
+    app.mode = AppMode::Dashboard { focused: prior };
 }
 
 /// Handle `ServerToClient::ScrollbackDumpComplete` for a session.
@@ -490,18 +548,45 @@ pub fn exit_embedded_terminal(app: &mut App, session_id: &str) {
 /// 6. Inserts into `pty_dump_received`.
 ///
 /// Self-check BC-5.38.005: YES — body = `todo!()`.
-#[allow(clippy::todo)]
-#[allow(unused_variables)]
 pub fn on_scrollback_dump_complete(
     app: &mut App,
     session_id: String,
     pty_rows: u16,
     pty_cols: u16,
 ) {
-    todo!(
-        "S-039: on_scrollback_dump_complete — parser reset + screen reconstruction + \
-           pending_pty_bytes replay (BC-2.09.001 Invariant 5 / BC-2.05.011 PC-3)"
-    )
+    // BC-2.09.001 Invariant 5 parser-reset protocol (C5):
+    //
+    // Step 1: Reset parser with fresh dimensions from ScrollbackDumpComplete.
+    // This prevents double-applying content already tracked in the parser's live state.
+    let scrollback_rows = app.scrollback_rows as usize;
+    app.pty_parsers.insert(
+        session_id.clone(),
+        vt100::Parser::new(pty_rows, pty_cols, scrollback_rows),
+    );
+
+    // Step 2: Screen reconstruction from accumulated ScrollbackChunk styled-cell data.
+    // In S-039 scope, the TUI receives styled-cell data via ScrollbackChunk messages
+    // accumulated before this DumpComplete arrives. Screen reconstruction (writing
+    // serialized cells into the parser) is handled by the ScrollbackChunk accumulator
+    // (S-035 scope). For S-039, the freshly reset parser provides a blank initial state
+    // that the buffered live PtyOutput bytes are replayed into.
+
+    // Step 3: Replay buffered PtyOutput bytes in receipt order through the reset parser.
+    if let Some(buffered) = app.pending_pty_bytes.remove(&session_id) {
+        if let Some(parser) = app.pty_parsers.get_mut(&session_id) {
+            for chunk in buffered {
+                parser.process(&chunk);
+            }
+        }
+    }
+
+    // Step 4: pending_pty_bytes is already cleared by the remove() above.
+
+    // Step 5: dump_in_progress = false (dump window closed).
+    app.dump_in_progress.insert(session_id.clone(), false);
+
+    // Step 6: Insert into pty_dump_received (session has a complete dump for this attach).
+    app.pty_dump_received.insert(session_id);
 }
 
 /// Remove all PTY pipeline state for a session on GC (Terminated + list removal).
@@ -519,13 +604,13 @@ pub fn on_scrollback_dump_complete(
 /// S-039 owns this full-removal on termination.
 ///
 /// Self-check BC-5.38.005: YES — body = `todo!()`.
-#[allow(clippy::todo)]
-#[allow(unused_variables)]
 pub fn gc_pty_session(app: &mut App, session_id: &str) {
-    todo!(
-        "S-039: gc_pty_session — remove pty_parsers, pty_scroll_offsets, pty_dump_received, \
-           dump_in_progress, pending_pty_bytes for session_id (BC-2.09.001 AC-008)"
-    )
+    // BC-2.09.001 AC-008 / Invariant 4: remove all per-session PTY state on GC.
+    app.pty_parsers.remove(session_id);
+    app.pty_scroll_offsets.remove(session_id);
+    app.pty_dump_received.remove(session_id);
+    app.dump_in_progress.remove(session_id);
+    app.pending_pty_bytes.remove(session_id);
 }
 
 /// Type alias for the inbound IPC message channel used by the PTY output pipeline.
@@ -549,12 +634,9 @@ type PtyOutputChannelPair = (
 ///
 /// Self-check BC-5.38.005: YES — body = `todo!()`. Tests bind to this function
 /// to assert capacity via `rx.max_capacity()`, going RED until S-039 implements it.
-#[allow(clippy::todo)]
 pub fn pty_output_channel() -> PtyOutputChannelPair {
-    todo!(
-        "S-039: pty_output_channel — create bounded mpsc::channel(IPC_READER_CHANNEL_CAPACITY) \
-           for the PTY output pipeline inbound path (BC-2.09.001 Invariant 3 / AC-007)"
-    )
+    // BC-2.09.001 Invariant 3: bounded channel with backpressure (.send().await, not try_send).
+    tokio::sync::mpsc::channel::<Result<ServerToClient, IpcError>>(IPC_READER_CHANNEL_CAPACITY)
 }
 
 // ---------------------------------------------------------------------------

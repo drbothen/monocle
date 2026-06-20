@@ -27,12 +27,9 @@ use uuid::Uuid;
 /// wires the config-load path.
 ///
 /// BC-2.09.001 Invariant 4 / AC-008 — owned by S-039.
-#[allow(clippy::todo)]
 pub fn default_scrollback_rows() -> u16 {
-    todo!(
-        "S-039: default_scrollback_rows — return the canonical default (1000) \
-           from the config-load path (BC-2.09.001 Invariant 4 / AC-008)"
-    )
+    // Contractual default from BC-2.09.001 Invariant 4: 1000 rows.
+    1000
 }
 
 /// Clamp a raw `pty_scrollback_rows` config value to the valid range `[1, 10000]`.
@@ -43,13 +40,10 @@ pub fn default_scrollback_rows() -> u16 {
 /// are preserved.
 ///
 /// BC-2.09.001 Invariant 4 / AC-008 — owned by S-039.
-#[allow(clippy::todo)]
-#[allow(unused_variables)]
 pub fn clamp_scrollback_rows(raw: u32) -> u16 {
-    todo!(
-        "S-039: clamp_scrollback_rows — clamp raw to [1, 10000] and cast to u16 \
-           (BC-2.09.001 Invariant 4 / AC-008)"
-    )
+    // BC-2.09.001 Invariant 4: valid range [1, 10000].
+    // Cast through u32 arithmetic to avoid overflow before narrowing.
+    raw.clamp(1, 10000) as u16
 }
 
 /// Top-level application mode for the TUI state machine.
