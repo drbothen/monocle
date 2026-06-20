@@ -5006,8 +5006,21 @@ impl SessionManager {
                         #[cfg(any(test, feature = "test-utils"))]
                         let sigkill_fn_clone = self.pid_sigkill_fn.clone();
                         let sidecar_path_clone = data.sidecar_path.clone();
+                        let socket_path_clone = data.socket_path.clone();
                         let sessions_arc = Arc::clone(&self.sessions);
                         let broker_arc = Arc::clone(&self.broker);
+                        // Pre-compute GC deadline HERE (synchronous context, same as
+                        // spawn_kill_watchdog / MED-005 pattern) so that in paused-clock
+                        // tests `advance(10s)` fires the GC timer reliably regardless of
+                        // when the watchdog task gets scheduled.  Mirrors the comment in
+                        // spawn_gc_task: "computing the deadline BEFORE spawn ensures
+                        // `advance(10s)` fires it reliably — even if the spawned task
+                        // hasn't been polled yet when advance() is called".
+                        // This deadline is captured from the current virtual time
+                        // (rediscover_sessions sync body) and passed into the watchdog,
+                        // bypassing the spawn_gc_task's own Instant::now() call.
+                        let watchdog_gc_deadline =
+                            tokio::time::Instant::now() + std::time::Duration::from_secs(10);
                         tokio::spawn(async move {
                             use monocle_core::engine::{EnrichedSession, SessionStatus};
                             use monocle_ipc::types::HostToDaemon;
@@ -5080,7 +5093,7 @@ impl SessionManager {
                                         break;
                                     }
                                     let len = u32::from_le_bytes(len_buf) as usize;
-                                    if len == 0 || len > 1_048_576 {
+                                    if len == 0 || len > MAX_FRAME_LEN {
                                         break;
                                     }
                                     let mut body = vec![0u8; len];
@@ -5107,7 +5120,96 @@ impl SessionManager {
                                         session_id = %sid_clone,
                                         "rediscover_sessions: watchdog received StateChanged::Terminated"
                                     );
-                                    emit_terminated(sessions_arc, broker_arc, sid_clone, sidecar_path_clone).await;
+                                    emit_terminated(
+                                        Arc::clone(&sessions_arc),
+                                        Arc::clone(&broker_arc),
+                                        sid_clone.clone(),
+                                        sidecar_path_clone.clone(),
+                                    )
+                                    .await;
+                                    // BC-2.08.005: 10-second GC grace period after Terminated transition.
+                                    // HIGH-001 fix: spawn GC task using the pre-computed deadline (captured
+                                    // in the synchronous body of rediscover_sessions, before this watchdog
+                                    // was spawned).  Using the pre-computed `watchdog_gc_deadline` ensures
+                                    // that in paused-clock tests `advance(10s)` fires the GC timer
+                                    // reliably — the same pattern used by spawn_gc_task for its own
+                                    // deadline computation (and by spawn_kill_watchdog / MED-005).
+                                    // Mirrors the live kill_session GC wiring (~mod.rs 2765).
+                                    {
+                                        let sid_gc = sid_clone.clone();
+                                        let sp_gc = sidecar_path_clone.clone();
+                                        let sock_gc = socket_path_clone.clone();
+                                        let sessions_gc = Arc::clone(&sessions_arc);
+                                        let broker_gc = Arc::clone(&broker_arc);
+                                        tokio::spawn(async move {
+                                            tokio::time::sleep_until(watchdog_gc_deadline).await;
+                                            {
+                                                use monocle_core::engine::{
+                                                    EnrichedSession, SessionStatus,
+                                                };
+                                                let mut guard = sessions_gc.lock().await;
+                                                match guard.get(&sid_gc) {
+                                                    Some(entry)
+                                                        if entry.state == SessionState::Terminated =>
+                                                    {
+                                                        guard.remove(&sid_gc);
+                                                    }
+                                                    _ => {
+                                                        tracing::trace!(
+                                                            session_id = %sid_gc,
+                                                            "watchdog gc: entry not Terminated at GC time; skipping"
+                                                        );
+                                                        return;
+                                                    }
+                                                }
+                                                let list_snapshot: Vec<EnrichedSession> = guard
+                                                    .values()
+                                                    .map(|e| {
+                                                        let status = match e.state {
+                                                            SessionState::Launching
+                                                            | SessionState::Running => {
+                                                                SessionStatus::Active
+                                                            }
+                                                            SessionState::Detached => {
+                                                                SessionStatus::Idle
+                                                            }
+                                                            _ => SessionStatus::Stopped,
+                                                        };
+                                                        EnrichedSession::new_with_display_name(
+                                                            e.session_id.clone(),
+                                                            e.harness_id.clone(),
+                                                            None,
+                                                            None,
+                                                            status,
+                                                            None,
+                                                            e.project_root
+                                                                .file_name()
+                                                                .and_then(|n| n.to_str())
+                                                                .map(|s| s.to_string()),
+                                                            Some(e.started_at),
+                                                            0,
+                                                            None,
+                                                            e.display_name.clone(),
+                                                        )
+                                                    })
+                                                    .collect();
+                                                let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
+                                                    sessions: list_snapshot,
+                                                };
+                                                crate::ipc_server::broadcast_to_subscribers(
+                                                    &broker_gc,
+                                                    list_msg,
+                                                )
+                                                .await;
+                                            }
+                                            match std::fs::remove_file(&sp_gc) {
+                                                Ok(()) | Err(_) => {}
+                                            }
+                                            match std::fs::remove_file(&sock_gc) {
+                                                Ok(()) | Err(_) => {}
+                                            }
+                                        });
+                                    }
                                 }
                                 _ = tokio::time::sleep_until(kill_deadline_tokio) => {
                                     // Deadline elapsed: SIGKILL + GC + broker emit (MED-001, HIGH-002).
@@ -5125,7 +5227,90 @@ impl SessionManager {
                                     };
                                     #[cfg(not(any(test, feature = "test-utils")))]
                                     let _ = nix_kill(nix_pid, Signal::SIGKILL);
-                                    emit_terminated(sessions_arc, broker_arc, sid_clone, sidecar_path_clone).await;
+                                    emit_terminated(
+                                        Arc::clone(&sessions_arc),
+                                        Arc::clone(&broker_arc),
+                                        sid_clone.clone(),
+                                        sidecar_path_clone.clone(),
+                                    )
+                                    .await;
+                                    // BC-2.08.005: 10-second GC grace period (SIGKILL arm).
+                                    // HIGH-001 fix: same pre-computed deadline approach as terminated_by_msg arm.
+                                    {
+                                        let sid_gc = sid_clone.clone();
+                                        let sp_gc = sidecar_path_clone.clone();
+                                        let sock_gc = socket_path_clone.clone();
+                                        let sessions_gc = Arc::clone(&sessions_arc);
+                                        let broker_gc = Arc::clone(&broker_arc);
+                                        tokio::spawn(async move {
+                                            tokio::time::sleep_until(watchdog_gc_deadline).await;
+                                            {
+                                                use monocle_core::engine::{
+                                                    EnrichedSession, SessionStatus,
+                                                };
+                                                let mut guard = sessions_gc.lock().await;
+                                                match guard.get(&sid_gc) {
+                                                    Some(entry)
+                                                        if entry.state == SessionState::Terminated =>
+                                                    {
+                                                        guard.remove(&sid_gc);
+                                                    }
+                                                    _ => {
+                                                        tracing::trace!(
+                                                            session_id = %sid_gc,
+                                                            "watchdog gc: entry not Terminated at GC time; skipping"
+                                                        );
+                                                        return;
+                                                    }
+                                                }
+                                                let list_snapshot: Vec<EnrichedSession> = guard
+                                                    .values()
+                                                    .map(|e| {
+                                                        let status = match e.state {
+                                                            SessionState::Launching
+                                                            | SessionState::Running => {
+                                                                SessionStatus::Active
+                                                            }
+                                                            SessionState::Detached => {
+                                                                SessionStatus::Idle
+                                                            }
+                                                            _ => SessionStatus::Stopped,
+                                                        };
+                                                        EnrichedSession::new_with_display_name(
+                                                            e.session_id.clone(),
+                                                            e.harness_id.clone(),
+                                                            None,
+                                                            None,
+                                                            status,
+                                                            None,
+                                                            e.project_root
+                                                                .file_name()
+                                                                .and_then(|n| n.to_str())
+                                                                .map(|s| s.to_string()),
+                                                            Some(e.started_at),
+                                                            0,
+                                                            None,
+                                                            e.display_name.clone(),
+                                                        )
+                                                    })
+                                                    .collect();
+                                                let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
+                                                    sessions: list_snapshot,
+                                                };
+                                                crate::ipc_server::broadcast_to_subscribers(
+                                                    &broker_gc,
+                                                    list_msg,
+                                                )
+                                                .await;
+                                            }
+                                            match std::fs::remove_file(&sp_gc) {
+                                                Ok(()) | Err(_) => {}
+                                            }
+                                            match std::fs::remove_file(&sock_gc) {
+                                                Ok(()) | Err(_) => {}
+                                            }
+                                        });
+                                    }
                                 }
                             }
                         });
