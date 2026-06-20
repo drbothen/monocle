@@ -2312,8 +2312,7 @@ async fn test_BC_2_08_004_rediscovery_terminating_null_deadline_new_window() {
     let sock_clone = socket_path.clone();
     tokio::spawn(async move {
         let _ = std::fs::remove_file(&sock_clone);
-        let listener =
-            UnixListener::bind(&sock_clone).expect("pass2-BLOCKER-001: mock bind");
+        let listener = UnixListener::bind(&sock_clone).expect("pass2-BLOCKER-001: mock bind");
         if let Ok((_stream, _)) = listener.accept().await {
             // Hold open long enough for assertions to run.
             tokio::time::sleep(Duration::from_secs(20)).await;
@@ -2337,8 +2336,7 @@ async fn test_BC_2_08_004_rediscovery_terminating_null_deadline_new_window() {
 
     // Assert 1: SIGKILL must NOT fire during rediscover_sessions() itself.
     // The null deadline must produce a fresh window → NOT-elapsed path.
-    let got_sigkill =
-        tokio::time::timeout(Duration::from_millis(300), sigkill_rx.recv()).await;
+    let got_sigkill = tokio::time::timeout(Duration::from_millis(300), sigkill_rx.recv()).await;
     assert!(
         got_sigkill.is_err() || got_sigkill.unwrap().is_none(),
         "pass2-BLOCKER-001: null kill_deadline_unix_ms MUST take the NOT-elapsed \
@@ -2414,8 +2412,7 @@ async fn test_BC_2_08_004_rediscovery_terminating_watchdog_socket_close_before_t
     let sock_clone = socket_path.clone();
     tokio::spawn(async move {
         let _ = std::fs::remove_file(&sock_clone);
-        let listener =
-            UnixListener::bind(&sock_clone).expect("pass2-BLOCKER-002: mock bind");
+        let listener = UnixListener::bind(&sock_clone).expect("pass2-BLOCKER-002: mock bind");
         if let Ok((mut stream, _)) = listener.accept().await {
             // Read and discard the Kill frame.
             let mut len_buf = [0u8; 4];
@@ -2452,8 +2449,7 @@ async fn test_BC_2_08_004_rediscovery_terminating_watchdog_socket_close_before_t
     // Wait for the deadline to elapse and the watchdog to react (600ms + margin).
     // In the CORRECT impl, SIGKILL fires here.  In the BUGGY impl, the watchdog
     // already exited when the socket closed, so SIGKILL never fires.
-    let got_sigkill =
-        tokio::time::timeout(Duration::from_millis(1200), sigkill_rx.recv()).await;
+    let got_sigkill = tokio::time::timeout(Duration::from_millis(1200), sigkill_rx.recv()).await;
     assert!(
         got_sigkill.is_ok() && got_sigkill.unwrap().is_some(),
         "pass2-BLOCKER-002: watchdog must fire SIGKILL at deadline even when the \
@@ -2538,15 +2534,22 @@ struct FakePeerCredVerifierWithPidMismatch;
 
 impl super::PeerCredVerifier for FakePeerCredVerifierWithPidMismatch {
     fn verify(&self, _stream: &tokio::net::UnixStream) -> Result<(), super::SessionError> {
-        // IMPLEMENTER: this verifier models a peer with MATCHING uid but MISMATCHED pid.
-        // Until the production PeerCredVerifier trait exposes peer_pid comparison,
-        // we return Ok(()) here (uid match) — which means the current implementation
-        // DOES register the session.  The test assertion (session NOT registered) will
-        // FAIL, proving the pid-mismatch check is absent.
-        //
-        // Once the implementer adds pid comparison to verify(), update this verifier
-        // to return Err(super::SessionError::Io(...)) to simulate the mismatch.
+        // UID check passes (matching uid) — the PID mismatch is in verify_with_sidecar_pid.
         Ok(())
+    }
+
+    fn verify_with_sidecar_pid(
+        &self,
+        _stream: &tokio::net::UnixStream,
+        _sidecar_pid: u32,
+    ) -> Result<(), super::SessionError> {
+        // Simulates a peer whose actual pid differs from the sidecar-recorded pid
+        // (matching uid, mismatched pid — stale sidecar / PID-reuse / spoof attempt).
+        // Per SS-session-manager §Per-session UDS security item 2.
+        Err(super::SessionError::Io(std::io::Error::new(
+            std::io::ErrorKind::PermissionDenied,
+            "FakePeerCredVerifierWithPidMismatch: simulated PID mismatch",
+        )))
     }
 }
 
@@ -2587,8 +2590,7 @@ async fn test_BC_2_08_004_rediscovery_peercred_pid_mismatch_rejected() {
         monocle_ipc::server::CLIENT_CHANNEL_CAPACITY,
     );
     let entry = monocle_ipc::server::ClientEntry::new(tx);
-    let subs: monocle_ipc::server::SubscriberList =
-        Arc::new(tokio::sync::Mutex::new(vec![entry]));
+    let subs: monocle_ipc::server::SubscriberList = Arc::new(tokio::sync::Mutex::new(vec![entry]));
     let broker = Arc::new(Arc::clone(&subs));
     let spawner = Arc::new(super::MockSessionHostSpawner {
         spawn_result: None,
@@ -2633,8 +2635,7 @@ async fn test_BC_2_08_004_rediscovery_peercred_pid_mismatch_rejected() {
 
     // Assert 2: SIGTERM sent for the sidecar pid.
     // NOTE: This assertion may not be reached if Assert 1 fires first.
-    let got_sigterm =
-        tokio::time::timeout(Duration::from_millis(500), sigterm_rx.recv()).await;
+    let got_sigterm = tokio::time::timeout(Duration::from_millis(500), sigterm_rx.recv()).await;
     assert!(
         got_sigterm.is_ok() && got_sigterm.unwrap().is_some(),
         "pass2-HIGH-001: pid-mismatch detection must send SIGTERM to the sidecar pid"
@@ -2700,8 +2701,8 @@ async fn test_BC_2_08_004_rediscovery_dead_pid_deletes_orphan_socket() {
     // Linux/macOS via unlink(2), so a regular file suffices here.
     // Use File::create (not std::fs::write) to avoid the disallowed-methods lint.
     {
-        let _ = std::fs::File::create(&socket_path)
-            .expect("pass2-HIGH-002: create orphan socket file");
+        let _ =
+            std::fs::File::create(&socket_path).expect("pass2-HIGH-002: create orphan socket file");
     }
     assert!(
         socket_path.exists(),
@@ -2800,8 +2801,7 @@ async fn test_BC_2_08_004_rediscovery_terminating_elapsed_emits_broker() {
         .expect("pass2-HIGH-003: rediscover_sessions must return Ok");
 
     // Assert A: SIGKILL fired.
-    let got_sigkill =
-        tokio::time::timeout(Duration::from_millis(300), sigkill_rx.recv()).await;
+    let got_sigkill = tokio::time::timeout(Duration::from_millis(300), sigkill_rx.recv()).await;
     assert!(
         got_sigkill.is_ok() && got_sigkill.unwrap().is_some(),
         "pass2-HIGH-003: SIGKILL must fire for elapsed Terminating deadline"

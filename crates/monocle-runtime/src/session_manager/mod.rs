@@ -376,6 +376,23 @@ pub trait PeerCredVerifier: Send + Sync + 'static {
     /// variant) when the peer is rejected — the caller treats any `Err` as a
     /// UID mismatch and terminates the session (EC-163).
     fn verify(&self, stream: &tokio::net::UnixStream) -> Result<(), SessionError>;
+
+    /// Verify BOTH peer UID AND peer PID against the sidecar-recorded `sidecar_pid`.
+    ///
+    /// Used during `rediscover_sessions()` where the sidecar's recorded PID is
+    /// available for a cross-check (SS-session-manager §Per-session UDS security
+    /// item 2 — MANDATORY during rediscovery).
+    ///
+    /// The default implementation delegates to `verify()` (UID-only).
+    /// `RealPeerCredVerifier` overrides to also check peer PID == `sidecar_pid`.
+    /// Test verifiers override to simulate mismatch scenarios.
+    fn verify_with_sidecar_pid(
+        &self,
+        stream: &tokio::net::UnixStream,
+        _sidecar_pid: u32,
+    ) -> Result<(), SessionError> {
+        self.verify(stream)
+    }
 }
 
 /// Production implementation: compares the UDS peer UID against the daemon UID
@@ -398,6 +415,29 @@ impl PeerCredVerifier for RealPeerCredVerifier {
             Err(SessionError::Io(std::io::Error::new(
                 std::io::ErrorKind::PermissionDenied,
                 format!("SO_PEERCRED UID mismatch: peer_uid={peer_uid} daemon_uid={daemon_uid}"),
+            )))
+        }
+    }
+
+    fn verify_with_sidecar_pid(
+        &self,
+        stream: &tokio::net::UnixStream,
+        sidecar_pid: u32,
+    ) -> Result<(), SessionError> {
+        // First do the UID check.
+        self.verify(stream)?;
+        // Then cross-check the peer PID against the sidecar's recorded PID
+        // (SS-session-manager §Per-session UDS security item 2).
+        let peer_pid = stream
+            .peer_cred()
+            .map(|c| c.pid().unwrap_or(0) as u32)
+            .map_err(SessionError::Io)?;
+        if peer_pid == sidecar_pid {
+            Ok(())
+        } else {
+            Err(SessionError::Io(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                format!("SO_PEERCRED PID mismatch: peer_pid={peer_pid} sidecar_pid={sidecar_pid}"),
             )))
         }
     }
@@ -4482,9 +4522,25 @@ impl SessionManager {
                         tracing::debug!(
                             session_id = %data.session_id,
                             pid = data.pid,
-                            "rediscover_sessions: PID dead; deleting sidecar (BC-2.08.004 PC-2c)"
+                            "rediscover_sessions: PID dead; GC sidecar + socket, best-effort SIGTERM (BC-2.08.004 PC-2c + Invariant 5)"
                         );
+                        // Best-effort SIGTERM even on dead PID: captures pid-mismatch scenarios
+                        // where the recorded PID died but an orphan socket remains
+                        // (SS-session-manager §Per-session UDS security item 2).
+                        // nix_kill returns ESRCH for dead pids — silently ignored.
+                        if data.pid != 0 {
+                            let nix_pid = Pid::from_raw(data.pid as i32);
+                            #[cfg(any(test, feature = "test-utils"))]
+                            let _ = if let Some(ref f) = self.pid_sigterm_fn {
+                                f(nix_pid)
+                            } else {
+                                nix_kill(nix_pid, Signal::SIGTERM)
+                            };
+                            #[cfg(not(any(test, feature = "test-utils")))]
+                            let _ = nix_kill(nix_pid, Signal::SIGTERM);
+                        }
                         let _ = std::fs::remove_file(&data.sidecar_path);
+                        let _ = std::fs::remove_file(&data.socket_path);
                         report.found_dead += 1;
                     } else {
                         probes.push(data);
@@ -4498,9 +4554,10 @@ impl SessionManager {
                         tracing::debug!(
                             session_id = %data.session_id,
                             pid = data.pid,
-                            "rediscover_sessions: Detached PID dead; deleting sidecar"
+                            "rediscover_sessions: Detached PID dead; deleting sidecar + socket"
                         );
                         let _ = std::fs::remove_file(&data.sidecar_path);
+                        let _ = std::fs::remove_file(&data.socket_path);
                         report.found_dead += 1;
                     } else {
                         // BC-2.08.004 PC-2b Detached (I3-005 fix, MED-002):
@@ -4526,6 +4583,7 @@ impl SessionManager {
                                 #[cfg(not(any(test, feature = "test-utils")))]
                                 let _ = nix_kill(nix_pid2, Signal::SIGTERM);
                                 let _ = std::fs::remove_file(&data.sidecar_path);
+                                let _ = std::fs::remove_file(&data.socket_path);
                                 report.found_dead += 1;
                                 continue;
                             }
@@ -4548,6 +4606,7 @@ impl SessionManager {
                             #[cfg(not(any(test, feature = "test-utils")))]
                             let _ = nix_kill(nix_pid2, Signal::SIGTERM);
                             let _ = std::fs::remove_file(&data.sidecar_path);
+                            let _ = std::fs::remove_file(&data.socket_path);
                             report.found_dead += 1;
                         } else {
                             // Verified: close stream (no Attach), defer registration.
@@ -4564,13 +4623,30 @@ impl SessionManager {
                         tracing::debug!(
                             session_id = %data.session_id,
                             pid = data.pid,
-                            "rediscover_sessions: Terminating PID dead; GC sidecar (BLOCKER-002)"
+                            "rediscover_sessions: Terminating PID dead; GC sidecar + socket (BC-2.08.004 PC-2c + Invariant 5)"
                         );
                         let _ = std::fs::remove_file(&data.sidecar_path);
+                        let _ = std::fs::remove_file(&data.socket_path);
                         report.found_dead += 1;
                         continue;
                     }
-                    let deadline_ms = data.kill_deadline_unix_ms.unwrap_or(0);
+                    // BC-2.08.004 PC-2b NEW null-deadline clause (AC-006):
+                    // When kill_deadline_unix_ms is None/absent (schema v1/v2 sidecars or
+                    // null in sidecar JSON), do NOT take the immediate-SIGKILL path.
+                    // Instead assign a fresh 12-second window from re-discovery time,
+                    // which is always in the future → NOT-elapsed path is taken.
+                    // Present (non-null) deadlines remain ABSOLUTE (Invariant 7).
+                    let deadline_ms = match data.kill_deadline_unix_ms {
+                        Some(d) => d,
+                        None => {
+                            tracing::debug!(
+                                session_id = %data.session_id,
+                                pid = data.pid,
+                                "rediscover_sessions: Terminating null deadline → fresh 12s window (AC-006 PC-2b)"
+                            );
+                            current_unix_ms + 12_000
+                        }
+                    };
                     if deadline_ms <= current_unix_ms {
                         // Elapsed: SIGKILL immediately + delete sidecar (BC-2.08.004 PC-2b Terminating elapsed).
                         tracing::debug!(
@@ -4595,6 +4671,55 @@ impl SessionManager {
                             );
                         }
                         let _ = std::fs::remove_file(&data.sidecar_path);
+                        let _ = std::fs::remove_file(&data.socket_path);
+                        // EC-173 + SS-daemon-wiring §3b: emit SessionStateChanged{Terminated}
+                        // then SessionListUpdate to broker (Terminated-transition path).
+                        {
+                            use monocle_core::engine::{EnrichedSession, SessionStatus};
+                            let list_snapshot: Vec<EnrichedSession> = {
+                                let guard = self.sessions.lock().await;
+                                guard
+                                    .values()
+                                    .map(|e| {
+                                        let status = match e.state {
+                                            SessionState::Launching | SessionState::Running => {
+                                                SessionStatus::Active
+                                            }
+                                            SessionState::Detached => SessionStatus::Idle,
+                                            _ => SessionStatus::Stopped,
+                                        };
+                                        EnrichedSession::new_with_display_name(
+                                            e.session_id.clone(),
+                                            e.harness_id.clone(),
+                                            None,
+                                            None,
+                                            status,
+                                            None,
+                                            e.project_root
+                                                .file_name()
+                                                .and_then(|n| n.to_str())
+                                                .map(|s| s.to_string()),
+                                            Some(e.started_at),
+                                            0,
+                                            None,
+                                            e.display_name.clone(),
+                                        )
+                                    })
+                                    .collect()
+                            };
+                            let state_msg =
+                                monocle_ipc::types::ServerToClient::SessionStateChanged {
+                                    session_id: data.session_id.clone(),
+                                    new_state: SessionState::Terminated,
+                                };
+                            crate::ipc_server::broadcast_to_subscribers(&self.broker, state_msg)
+                                .await;
+                            let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
+                                sessions: list_snapshot,
+                            };
+                            crate::ipc_server::broadcast_to_subscribers(&self.broker, list_msg)
+                                .await;
+                        }
                         report.found_dead += 1;
                     } else {
                         // Not elapsed: SO_PEERCRED verify + Kill + register entry + background watchdog.
@@ -4626,6 +4751,7 @@ impl SessionManager {
                                 #[cfg(not(any(test, feature = "test-utils")))]
                                 let _ = nix_kill(nix_pid, Signal::SIGTERM);
                                 let _ = std::fs::remove_file(&data.sidecar_path);
+                                let _ = std::fs::remove_file(&data.socket_path);
                                 report.found_dead += 1;
                                 continue;
                             }
@@ -4648,6 +4774,7 @@ impl SessionManager {
                             #[cfg(not(any(test, feature = "test-utils")))]
                             let _ = nix_kill(nix_pid, Signal::SIGTERM);
                             let _ = std::fs::remove_file(&data.sidecar_path);
+                            let _ = std::fs::remove_file(&data.socket_path);
                             report.found_dead += 1;
                             continue;
                         }
@@ -4756,22 +4883,22 @@ impl SessionManager {
                                         ..
                                     }) = serde_json::from_slice::<HostToDaemon>(&body)
                                     {
-                                        return true;
+                                        return;
                                     }
                                 }
-                                false
+                                // Socket closed without Terminated: pend forever so the
+                                // deadline arm (sleep_until) governs terminal disposition.
+                                // BC-2.08.004 PC-2b Terminating step (iv) — BLOCKER-002.
+                                std::future::pending::<()>().await
                             };
 
                             tokio::select! {
-                                got_terminated = terminated_by_msg => {
-                                    if got_terminated {
-                                        tracing::debug!(
-                                            session_id = %sid_clone,
-                                            "rediscover_sessions: watchdog received StateChanged::Terminated"
-                                        );
-                                        emit_terminated(sessions_arc, broker_arc, sid_clone, sidecar_path_clone).await;
-                                    }
-                                    // If stream closed without Terminated, fall through to deadline path.
+                                _ = terminated_by_msg => {
+                                    tracing::debug!(
+                                        session_id = %sid_clone,
+                                        "rediscover_sessions: watchdog received StateChanged::Terminated"
+                                    );
+                                    emit_terminated(sessions_arc, broker_arc, sid_clone, sidecar_path_clone).await;
                                 }
                                 _ = tokio::time::sleep_until(kill_deadline_tokio) => {
                                     // Deadline elapsed: SIGKILL + GC + broker emit (MED-001, HIGH-002).
@@ -4797,7 +4924,15 @@ impl SessionManager {
                         // Register entry with state Terminating (step iii).
                         let started_at_dt = chrono::DateTime::parse_from_rfc3339(&data.started_at)
                             .map(|dt| dt.with_timezone(&chrono::Utc))
-                            .unwrap_or_else(|_| chrono::Utc::now());
+                            .unwrap_or_else(|e| {
+                                tracing::warn!(
+                                    session_id = %data.session_id,
+                                    raw = %data.started_at,
+                                    error = %e,
+                                    "rediscover_sessions: started_at parse failed; substituting Utc::now() (LOW-001)"
+                                );
+                                chrono::Utc::now()
+                            });
                         let entry = SessionEntry {
                             session_id: data.session_id.clone(),
                             session_host_pid: data.pid,
@@ -4850,7 +4985,15 @@ impl SessionManager {
         for data in detached_to_register {
             let started_at_dt = chrono::DateTime::parse_from_rfc3339(&data.started_at)
                 .map(|dt| dt.with_timezone(&chrono::Utc))
-                .unwrap_or_else(|_| chrono::Utc::now());
+                .unwrap_or_else(|e| {
+                    tracing::warn!(
+                        session_id = %data.session_id,
+                        raw = %data.started_at,
+                        error = %e,
+                        "rediscover_sessions: started_at parse failed; substituting Utc::now() (LOW-001)"
+                    );
+                    chrono::Utc::now()
+                });
             let entry = SessionEntry {
                 session_id: data.session_id.clone(),
                 session_host_pid: data.pid,
@@ -4931,12 +5074,13 @@ impl SessionManager {
                         }
                     };
 
-                    // SO_PEERCRED verify.
-                    if let Err(verify_err) = verifier.verify(&stream) {
+                    // SO_PEERCRED verify: UID + PID cross-check (SS-session-manager
+                    // §Per-session UDS security item 2 — MANDATORY during rediscovery).
+                    if let Err(verify_err) = verifier.verify_with_sidecar_pid(&stream, pid) {
                         tracing::warn!(
                             session_id = %session_id,
                             error = %verify_err,
-                            "rediscover_sessions: SO_PEERCRED mismatch; aborting"
+                            "rediscover_sessions: SO_PEERCRED UID/PID mismatch; aborting"
                         );
                         return None;
                     }
@@ -5080,7 +5224,15 @@ impl SessionManager {
                 ProbeOutcome::Success { write_half } => {
                     let started_at_dt = chrono::DateTime::parse_from_rfc3339(&probe.started_at)
                         .map(|dt| dt.with_timezone(&chrono::Utc))
-                        .unwrap_or_else(|_| chrono::Utc::now());
+                        .unwrap_or_else(|e| {
+                            tracing::warn!(
+                                session_id = %probe.session_id,
+                                raw = %probe.started_at,
+                                error = %e,
+                                "rediscover_sessions: started_at parse failed; substituting Utc::now() (LOW-001)"
+                            );
+                            chrono::Utc::now()
+                        });
                     let entry = SessionEntry {
                         session_id: probe.session_id.clone(),
                         session_host_pid: probe.pid,
@@ -5135,6 +5287,7 @@ impl SessionManager {
                         }
                     }
                     let _ = std::fs::remove_file(&result.sidecar_path);
+                    let _ = std::fs::remove_file(&probe.socket_path);
                     report.found_dead += 1;
                 }
             }
