@@ -2658,6 +2658,867 @@ async fn test_BC_2_08_004_rediscovery_peercred_pid_mismatch_rejected() {
     let _ = std::fs::remove_file(&socket_path);
 }
 
+// ===========================================================================
+// ADVERSARIAL PASS 3 CORRECTIONS — RED-GATE TESTS
+//
+// These tests encode security-perimeter gaps surfaced by adversarial-pass-3
+// and must FAIL against the current implementation.  Each comment identifies
+// the finding ID.
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Seam support: FakePeerCredVerifierWithPeerPid
+//
+// This verifier simulates "uid matches, peer pid is distinct from sidecar pid"
+// — i.e., a PID-reuse / spoof scenario where the connecting process belongs to
+// the correct uid but is NOT the sidecar-recorded session-host.
+//
+// IMPLEMENTER CONTRACT:
+//   The `verify_with_sidecar_pid` method must return a rich error type that
+//   exposes the socket peer pid so the call site can SIGTERM both pids.
+//
+//   Exact trait method signature the implementer must provide:
+//
+//     fn verify_with_sidecar_pid(
+//         &self,
+//         stream: &tokio::net::UnixStream,
+//         sidecar_pid: u32,
+//     ) -> Result<(), super::PeerCredMismatch>
+//
+//   where `super::PeerCredMismatch` is defined as:
+//
+//     pub struct PeerCredMismatch {
+//         pub peer_pid: Option<u32>,
+//         pub reason: String,
+//     }
+//     impl std::fmt::Display for PeerCredMismatch { ... }
+//
+//   `RealPeerCredVerifier::verify_with_sidecar_pid` must populate
+//   `PeerCredMismatch::peer_pid` from `stream.peer_cred()?.pid()` so that the
+//   call site can SIGTERM both pids on a mismatch.
+//
+//   The default `verify_with_sidecar_pid` in the trait must NOT silently
+//   delegate to `verify()` ignoring `sidecar_pid` — it must call the full
+//   pid-aware check.  `FakePeerCredVerifier` must override
+//   `verify_with_sidecar_pid` to honour the pid argument:
+//   - `allow == true`:  return Ok(()) regardless of pid (UID+PID both pass).
+//   - `allow == false`: return Err (UID fails, never reaches pid check).
+//
+//   `FakePeerCredVerifierWithPeerPid` below performs the proper cross-check:
+//   UID always passes; pid check compares `injected_peer_pid` vs `sidecar_pid`.
+// ---------------------------------------------------------------------------
+
+/// Test-only verifier: uid always matches; pid check compares an injected
+/// "socket peer pid" against the sidecar's recorded pid.
+///
+/// Used for HIGH-001 (pass-3) and HIGH-002 (pass-3) to exercise the
+/// mandatory per-session PID cross-check without forking a real process
+/// (SS-session-manager §Per-session UDS security item 2).
+#[cfg(any(test, feature = "test-utils"))]
+struct FakePeerCredVerifierWithPeerPid {
+    /// The pid the verifier will claim SO_PEERCRED reports (the "socket peer pid").
+    /// When this does NOT equal `sidecar_pid`, `verify_with_sidecar_pid` must
+    /// return Err carrying `peer_pid = Some(injected_peer_pid)`.
+    pub injected_peer_pid: u32,
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl super::PeerCredVerifier for FakePeerCredVerifierWithPeerPid {
+    fn verify(&self, _stream: &tokio::net::UnixStream) -> Result<(), super::SessionError> {
+        // UID check: always passes (simulates correct uid ownership).
+        Ok(())
+    }
+
+    fn verify_with_sidecar_pid(
+        &self,
+        _stream: &tokio::net::UnixStream,
+        sidecar_pid: u32,
+    ) -> Result<(), super::SessionError> {
+        // PID cross-check: compare injected peer_pid against sidecar_pid.
+        // If they differ → return Err so the call site can SIGTERM both pids.
+        //
+        // IMPLEMENTER NOTE: once `verify_with_sidecar_pid` return type is
+        // changed to `Result<(), PeerCredMismatch>`, update this to return
+        // `PeerCredMismatch { peer_pid: Some(self.injected_peer_pid), reason: ... }`.
+        // Until that change lands, this returns a SessionError::Io — the
+        // call sites on the Detached and Terminating paths currently call
+        // `verify()` (not `verify_with_sidecar_pid`), so they never reach
+        // this Err path; the tests fail because the session IS registered.
+        if self.injected_peer_pid != sidecar_pid {
+            Err(super::SessionError::Io(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                format!(
+                    "FakePeerCredVerifierWithPeerPid: peer_pid={} != sidecar_pid={} \
+                     (PID cross-check mismatch)",
+                    self.injected_peer_pid, sidecar_pid
+                ),
+            )))
+        } else {
+            Ok(())
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// HIGH-001 (pass-3): Detached path MUST use verify_with_sidecar_pid (not uid-only verify)
+// ---------------------------------------------------------------------------
+
+/// HIGH-001 (pass-3): Detached sidecar, alive PID, uid matches but socket PEER pid
+/// != sidecar.pid → daemon MUST NOT register the session; MUST WARN; MUST SIGTERM;
+/// MUST delete sidecar.
+///
+/// Current impl calls `verify()` (uid-only) on the Detached path — it passes
+/// because uid matches, so the session IS registered despite the pid mismatch.
+/// The "NOT registered" assertion will FAIL.
+///
+/// The fix: the Detached connect path must call `verify_with_sidecar_pid(stream, data.pid)`
+/// instead of `verify(stream)`.
+///
+/// SS-session-manager §Per-session UDS security item 2 + BC-2.08.004 AC-004/005.
+#[tokio::test]
+async fn test_BC_2_08_004_rediscovery_detached_pid_mismatch_rejected() {
+    let tmp = tempfile::tempdir().expect("pass3-HIGH-001-detached: tempdir");
+    let session_id = "00000000-0036-4000-a006-000000000001";
+
+    let socket_path = short_socket_path("p3hi001-det");
+    let _ = std::fs::remove_file(&socket_path);
+
+    // PID 9999 is almost certainly dead, but the sidecar state is "Detached"
+    // and the Detached path calls kill(pid, None) for a liveness check.
+    // We need an ALIVE pid for the liveness check to pass so the code reaches
+    // the UDS connect + verify step.  Use pid=0 (a magic value that the
+    // implementation maps to "always alive" for mock tests, as seen in AC-004),
+    // or use our own pid.  Use std::process::id() for the sidecar pid so the
+    // liveness probe passes, but configure the fake verifier to inject a
+    // DIFFERENT peer_pid.
+    let alive_sidecar_pid = std::process::id();
+    write_sidecar_v3(
+        tmp.path(),
+        session_id,
+        "Detached",
+        alive_sidecar_pid,
+        &socket_path,
+        None,
+    );
+    let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+
+    // Peer pid injected by the fake verifier: current process pid + 1 (distinct
+    // from alive_sidecar_pid, creating a mismatch).
+    let injected_peer_pid = alive_sidecar_pid.wrapping_add(1);
+
+    // Mock session-host: just accept and hold open (verifier fires before any msg).
+    let sock_clone = socket_path.clone();
+    tokio::spawn(async move {
+        let _ = std::fs::remove_file(&sock_clone);
+        let listener = UnixListener::bind(&sock_clone).expect("pass3-HIGH-001-detached: mock bind");
+        if let Ok((_stream, _)) = listener.accept().await {
+            tokio::time::sleep(Duration::from_millis(500)).await;
+        }
+    });
+    tokio::time::sleep(Duration::from_millis(20)).await;
+
+    let (sigterm_tx, mut sigterm_rx) = mpsc::channel::<u32>(8);
+    let (tx, _rx_ch) = mpsc::channel::<monocle_ipc::types::ServerToClient>(
+        monocle_ipc::server::CLIENT_CHANNEL_CAPACITY,
+    );
+    let entry = monocle_ipc::server::ClientEntry::new(tx);
+    let subs: monocle_ipc::server::SubscriberList =
+        Arc::new(tokio::sync::Mutex::new(vec![entry]));
+    let broker = Arc::new(Arc::clone(&subs));
+    let spawner = Arc::new(super::MockSessionHostSpawner {
+        spawn_result: None,
+        fake_pid: 0,
+    });
+    let engine: Arc<dyn monocle_core::engine::EngineModule> =
+        Arc::new(SucceedingMockEngineRediscovery);
+    let mut manager = super::SessionManager::new(
+        tmp.path().to_path_buf(),
+        spawner,
+        broker,
+        engine,
+        super::HookEndpointConfig::default(),
+    );
+    manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifierWithPeerPid {
+        injected_peer_pid,
+    }));
+    let sigterm_tx_clone = sigterm_tx.clone();
+    manager.with_pid_sigterm_fn(Arc::new(move |pid: nix::unistd::Pid| {
+        let _ = sigterm_tx_clone.try_send(pid.as_raw() as u32);
+        Ok(())
+    }));
+
+    // RED GATE: current Detached path calls verify() which returns Ok(())
+    // from this verifier (uid matches).  The pid mismatch is never checked.
+    // The session IS registered → "NOT registered" assertion FAILS.
+    let report = manager
+        .rediscover_sessions()
+        .await
+        .expect("pass3-HIGH-001-detached: rediscover_sessions must return Ok");
+
+    // Assert 1: session MUST NOT be registered (pid mismatch → reject).
+    // FAILS NOW: Detached path uses uid-only verify() → session is registered.
+    assert!(
+        !manager
+            .session_list()
+            .await
+            .iter()
+            .any(|s| s.session_id == session_id),
+        "pass3-HIGH-001-detached: Detached session with peer_pid != sidecar.pid \
+         MUST NOT be registered (SS-session-manager §Per-session UDS security \
+         item 2).  Current impl uses uid-only verify() on the Detached path — \
+         pid cross-check is skipped entirely."
+    );
+
+    // Assert 2: SIGTERM sent (non-responsive treatment for pid mismatch).
+    let got_sigterm = tokio::time::timeout(Duration::from_millis(500), sigterm_rx.recv()).await;
+    assert!(
+        got_sigterm.is_ok() && got_sigterm.unwrap().is_some(),
+        "pass3-HIGH-001-detached: pid mismatch on Detached path MUST send SIGTERM \
+         (belt-and-suspenders; SS-session-manager §Per-session UDS security item 2)"
+    );
+
+    // Assert 3: sidecar deleted.
+    assert!(
+        !sidecar_path.exists(),
+        "pass3-HIGH-001-detached: sidecar must be deleted on pid-mismatch; \
+         still at {:?}",
+        sidecar_path
+    );
+
+    // Assert 4: found_dead=1, found_alive=0.
+    assert_eq!(
+        report.found_dead, 1,
+        "pass3-HIGH-001-detached: pid-mismatch Detached → found_dead=1; got {}",
+        report.found_dead
+    );
+    assert_eq!(
+        report.found_alive, 0,
+        "pass3-HIGH-001-detached: found_alive=0; got {}",
+        report.found_alive
+    );
+
+    let _ = std::fs::remove_file(&socket_path);
+}
+
+// ---------------------------------------------------------------------------
+// HIGH-001 (pass-3, Terminating arm): Terminating path MUST use
+//   verify_with_sidecar_pid (not uid-only verify)
+// ---------------------------------------------------------------------------
+
+/// HIGH-001 (pass-3, Terminating): Terminating sidecar, NOT-elapsed deadline,
+/// alive PID, uid matches but socket PEER pid != sidecar.pid → daemon MUST NOT
+/// send Kill, MUST NOT register, MUST NOT spawn watchdog; MUST WARN, SIGTERM,
+/// delete sidecar.
+///
+/// Current impl calls `verify()` (uid-only) on the Terminating not-elapsed path.
+/// This verifier returns Ok for uid → Kill IS sent and the session IS registered.
+/// The assertions below FAIL.
+///
+/// The fix: the Terminating connect path must call
+/// `verify_with_sidecar_pid(stream, data.pid)` instead of `verify(stream)`.
+///
+/// SS-session-manager §Per-session UDS security item 2 + BC-2.08.004 AC-006/008.
+#[tokio::test]
+async fn test_BC_2_08_004_rediscovery_terminating_pid_mismatch_no_kill() {
+    let tmp = tempfile::tempdir().expect("pass3-HIGH-001-terminating: tempdir");
+    let session_id = "00000000-0036-4000-a006-000000000002";
+
+    let future_ms = unix_now_ms() + 10_000;
+    let alive_sidecar_pid = std::process::id();
+    // injected_peer_pid is distinct from alive_sidecar_pid → mismatch.
+    let injected_peer_pid = alive_sidecar_pid.wrapping_add(2);
+
+    let socket_path = short_socket_path("p3hi001-term");
+    write_sidecar_v3(
+        tmp.path(),
+        session_id,
+        "Terminating",
+        alive_sidecar_pid,
+        &socket_path,
+        Some(future_ms),
+    );
+    let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+
+    // Track: Kill message and SIGTERM.
+    let (kill_received_tx, mut kill_received_rx) = mpsc::channel::<()>(4);
+    let sock_clone = socket_path.clone();
+    tokio::spawn(async move {
+        let _ = std::fs::remove_file(&sock_clone);
+        let listener = UnixListener::bind(&sock_clone).expect("pass3-HIGH-001-terminating: mock bind");
+        if let Ok((mut stream, _)) = listener.accept().await {
+            let mut len_buf = [0u8; 4];
+            if stream.read_exact(&mut len_buf).await.is_ok() {
+                let len = u32::from_le_bytes(len_buf) as usize;
+                if len > 0 && len <= 65536 {
+                    let mut body = vec![0u8; len];
+                    if stream.read_exact(&mut body).await.is_ok() {
+                        if let Ok(msg) = serde_json::from_slice::<
+                            monocle_ipc::types::DaemonToHost,
+                        >(&body) {
+                            if matches!(msg, monocle_ipc::types::DaemonToHost::Kill) {
+                                let _ = kill_received_tx.send(()).await;
+                            }
+                        }
+                    }
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(500)).await;
+        }
+    });
+    tokio::time::sleep(Duration::from_millis(20)).await;
+
+    let (sigterm_tx, mut sigterm_rx) = mpsc::channel::<u32>(8);
+    let (tx, _rx_ch) = mpsc::channel::<monocle_ipc::types::ServerToClient>(
+        monocle_ipc::server::CLIENT_CHANNEL_CAPACITY,
+    );
+    let entry = monocle_ipc::server::ClientEntry::new(tx);
+    let subs: monocle_ipc::server::SubscriberList =
+        Arc::new(tokio::sync::Mutex::new(vec![entry]));
+    let broker = Arc::new(Arc::clone(&subs));
+    let spawner = Arc::new(super::MockSessionHostSpawner {
+        spawn_result: None,
+        fake_pid: 0,
+    });
+    let engine: Arc<dyn monocle_core::engine::EngineModule> =
+        Arc::new(SucceedingMockEngineRediscovery);
+    let mut manager = super::SessionManager::new(
+        tmp.path().to_path_buf(),
+        spawner,
+        broker,
+        engine,
+        super::HookEndpointConfig::default(),
+    );
+    manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifierWithPeerPid {
+        injected_peer_pid,
+    }));
+    let sigterm_tx_clone = sigterm_tx.clone();
+    manager.with_pid_sigterm_fn(Arc::new(move |pid: nix::unistd::Pid| {
+        let _ = sigterm_tx_clone.try_send(pid.as_raw() as u32);
+        Ok(())
+    }));
+
+    // RED GATE: current Terminating not-elapsed path calls verify() which
+    // returns Ok(()) from this verifier.  Kill IS sent; session IS registered.
+    // The "no Kill" and "NOT registered" assertions FAIL.
+    let report = manager
+        .rediscover_sessions()
+        .await
+        .expect("pass3-HIGH-001-terminating: rediscover_sessions must return Ok");
+
+    // Assert 1: Kill MUST NOT be sent (pid mismatch → reject before Kill).
+    // FAILS NOW: current impl uses uid-only verify() → Kill IS sent.
+    let got_kill = tokio::time::timeout(Duration::from_millis(400), kill_received_rx.recv()).await;
+    assert!(
+        got_kill.is_err() || got_kill.unwrap().is_none(),
+        "pass3-HIGH-001-terminating: Terminating session with peer_pid != sidecar.pid \
+         MUST NOT send DaemonToHost::Kill (SS-session-manager §Per-session UDS \
+         security item 2).  Current impl uses uid-only verify() → Kill IS sent."
+    );
+
+    // Assert 2: SIGTERM sent (non-responsive treatment).
+    let got_sigterm = tokio::time::timeout(Duration::from_millis(500), sigterm_rx.recv()).await;
+    assert!(
+        got_sigterm.is_ok() && got_sigterm.unwrap().is_some(),
+        "pass3-HIGH-001-terminating: pid mismatch on Terminating path MUST send \
+         SIGTERM (belt-and-suspenders; SS-session-manager §Per-session UDS security item 2)"
+    );
+
+    // Assert 3: sidecar deleted.
+    assert!(
+        !sidecar_path.exists(),
+        "pass3-HIGH-001-terminating: sidecar must be deleted on pid-mismatch; \
+         still at {:?}",
+        sidecar_path
+    );
+
+    // Assert 4: no SessionEntry registered.
+    assert!(
+        !manager
+            .session_list()
+            .await
+            .iter()
+            .any(|s| s.session_id == session_id),
+        "pass3-HIGH-001-terminating: pid-mismatch Terminating MUST NOT appear in \
+         registry; watchdog MUST NOT be spawned"
+    );
+
+    // Assert 5: found_dead=1, found_alive=0 (no watchdog path entered).
+    assert_eq!(
+        report.found_dead, 1,
+        "pass3-HIGH-001-terminating: pid-mismatch Terminating → found_dead=1; got {}",
+        report.found_dead
+    );
+    assert_eq!(
+        report.found_alive, 0,
+        "pass3-HIGH-001-terminating: found_alive=0; got {}",
+        report.found_alive
+    );
+
+    let _ = std::fs::remove_file(&socket_path);
+}
+
+// ---------------------------------------------------------------------------
+// HIGH-002 (pass-3): SIGTERM must target BOTH sidecar pid AND socket peer pid
+// ---------------------------------------------------------------------------
+
+/// HIGH-002 (pass-3): On a PID mismatch (any connect path), the daemon MUST
+/// SIGTERM BOTH the sidecar's recorded pid AND the socket's peer pid.
+///
+/// Per SS-session-manager §Per-session UDS security item 2: "SIGTERM BOTH the
+/// sidecar pid AND the socket peer pid (belt-and-suspenders)".
+///
+/// This test exercises the Running/Launching probe path (which calls
+/// `verify_with_sidecar_pid`) with an injected peer_pid distinct from
+/// sidecar_pid.  It asserts that SIGTERM is sent to BOTH pids.
+///
+/// IMPLEMENTER CONTRACT: `verify_with_sidecar_pid` must return a
+/// `PeerCredMismatch { peer_pid: Some(N), reason: ... }` error so the call
+/// site has the peer pid available to SIGTERM it.  The call site must then
+/// send SIGTERM to BOTH `data.pid` (sidecar) and `mismatch.peer_pid`
+/// (socket peer).
+///
+/// Current impl: `verify_with_sidecar_pid` returns `Result<(), SessionError>`
+/// — the SessionError carries no peer_pid.  The call site SIGTERMs only
+/// `data.pid`.  The "peer pid also receives SIGTERM" assertion FAILS.
+#[tokio::test]
+async fn test_BC_2_08_004_rediscovery_pid_mismatch_sigterms_both_pids() {
+    let tmp = tempfile::tempdir().expect("pass3-HIGH-002: tempdir");
+    let session_id = "00000000-0036-4000-a006-000000000003";
+
+    // Use a sidecar_pid that is alive for the liveness probe (std::process::id())
+    // but give the fake verifier a DIFFERENT injected_peer_pid.
+    let alive_sidecar_pid = std::process::id();
+    // Choose a peer_pid that is distinct and unlikely to be a real running process
+    // so it doesn't interfere with test cleanup.
+    let injected_peer_pid = alive_sidecar_pid.wrapping_add(7777);
+
+    let socket_path = short_socket_path("p3hi002-both");
+    let _ = std::fs::remove_file(&socket_path);
+    write_sidecar_v3(
+        tmp.path(),
+        session_id,
+        "Running",
+        alive_sidecar_pid,
+        &socket_path,
+        None,
+    );
+
+    // Mock session-host: accept and hold open (verifier fires immediately on connect).
+    let sock_clone = socket_path.clone();
+    tokio::spawn(async move {
+        let _ = std::fs::remove_file(&sock_clone);
+        let listener = UnixListener::bind(&sock_clone).expect("pass3-HIGH-002: mock bind");
+        if let Ok((_stream, _)) = listener.accept().await {
+            tokio::time::sleep(Duration::from_millis(500)).await;
+        }
+    });
+    tokio::time::sleep(Duration::from_millis(20)).await;
+
+    // Capture ALL pids that receive SIGTERM (not just one).
+    let sigterm_pids: Arc<tokio::sync::Mutex<Vec<u32>>> =
+        Arc::new(tokio::sync::Mutex::new(Vec::new()));
+    let sigterm_pids_clone = Arc::clone(&sigterm_pids);
+    let (sigterm_done_tx, mut sigterm_done_rx) = mpsc::channel::<()>(8);
+
+    let (tx, _rx_ch) = mpsc::channel::<monocle_ipc::types::ServerToClient>(
+        monocle_ipc::server::CLIENT_CHANNEL_CAPACITY,
+    );
+    let entry = monocle_ipc::server::ClientEntry::new(tx);
+    let subs: monocle_ipc::server::SubscriberList =
+        Arc::new(tokio::sync::Mutex::new(vec![entry]));
+    let broker = Arc::new(Arc::clone(&subs));
+    let spawner = Arc::new(super::MockSessionHostSpawner {
+        spawn_result: None,
+        fake_pid: 0,
+    });
+    let engine: Arc<dyn monocle_core::engine::EngineModule> =
+        Arc::new(SucceedingMockEngineRediscovery);
+    let mut manager = super::SessionManager::new(
+        tmp.path().to_path_buf(),
+        spawner,
+        broker,
+        engine,
+        super::HookEndpointConfig::default(),
+    );
+    manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifierWithPeerPid {
+        injected_peer_pid,
+    }));
+    manager.with_pid_sigterm_fn(Arc::new(move |pid: nix::unistd::Pid| {
+        let pids = Arc::clone(&sigterm_pids_clone);
+        let done_tx = sigterm_done_tx.clone();
+        let pid_raw = pid.as_raw() as u32;
+        // Use try_lock to avoid blocking inside the sync closure.
+        if let Ok(mut guard) = pids.try_lock() {
+            guard.push(pid_raw);
+        }
+        let _ = done_tx.try_send(());
+        Ok(())
+    }));
+
+    // RED GATE: current impl on the Running probe path, when verify_with_sidecar_pid
+    // returns Err, SIGTERMs only data.pid (sidecar pid).  The peer pid is not carried
+    // in the error — there is no second SIGTERM.  The "peer pid SIGTERMed" assertion FAILS.
+    manager
+        .rediscover_sessions()
+        .await
+        .expect("pass3-HIGH-002: rediscover_sessions must return Ok");
+
+    // Wait for at least one SIGTERM to arrive (the sidecar SIGTERM should always fire).
+    let _ = tokio::time::timeout(Duration::from_millis(500), sigterm_done_rx.recv()).await;
+    // Brief settle to catch the second SIGTERM if it fires separately.
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    let captured: Vec<u32> = sigterm_pids.lock().await.clone();
+
+    // Assert A: sidecar pid received SIGTERM.
+    assert!(
+        captured.contains(&alive_sidecar_pid),
+        "pass3-HIGH-002: sidecar pid={} MUST receive SIGTERM on PID mismatch; \
+         captured SIGTERMs: {:?}",
+        alive_sidecar_pid,
+        captured
+    );
+
+    // Assert B: socket peer pid ALSO received SIGTERM (belt-and-suspenders).
+    // FAILS NOW: current impl does not carry peer_pid from the error; only
+    // sidecar pid is SIGTERMed.
+    assert!(
+        captured.contains(&injected_peer_pid),
+        "pass3-HIGH-002: socket peer_pid={} MUST ALSO receive SIGTERM on PID mismatch \
+         (SS-session-manager §Per-session UDS security item 2 belt-and-suspenders). \
+         Current impl: PeerCredMismatch carries no peer_pid → only sidecar pid \
+         is SIGTERMed.  captured SIGTERMs: {:?}",
+        injected_peer_pid,
+        captured
+    );
+
+    let _ = std::fs::remove_file(&socket_path);
+}
+
+// ---------------------------------------------------------------------------
+// MED-002 (pass-3): dead-PID GC during rediscovery MUST emit broker events
+// ---------------------------------------------------------------------------
+
+/// MED-002 (pass-3): A sidecar whose recorded PID is dead (kill(pid, None)
+/// returns ESRCH) must be GC'd AND the daemon must emit
+/// `SessionStateChanged{Terminated}` then `SessionListUpdate` via the broker.
+///
+/// Per SS-daemon-wiring §3b emission table: "Re-discovery GC (dead session)
+/// → any → Terminated → emit SessionStateChanged{Terminated} then
+/// SessionListUpdate."
+///
+/// Current impl in the dead-PID inline path (Running/Launching at line ~4521
+/// and Detached at line ~4553): GC + found_dead only; NO broker emission.
+/// The broker-emission assertions FAIL.
+///
+/// The Terminating elapsed path already has broker emission (added in pass-2
+/// HIGH-003); this test targets the Running/Launching and Detached dead-PID
+/// paths which still lack it.
+#[tokio::test]
+async fn test_BC_2_08_004_rediscovery_dead_pid_emits_terminated() {
+    let tmp = tempfile::tempdir().expect("pass3-MED-002: tempdir");
+    let session_id = "00000000-0036-4000-a006-000000000004";
+
+    // Spawn a real short-lived process and reap it so the PID is definitively dead.
+    let mut child = std::process::Command::new("true")
+        .spawn()
+        .expect("pass3-MED-002: spawn 'true'");
+    let dead_pid = child.id();
+    let _ = child.wait(); // reap to avoid zombie; exits immediately
+
+    let socket_path = short_socket_path("p3med002-dead");
+    write_sidecar_v3(
+        tmp.path(),
+        session_id,
+        "Running",
+        dead_pid,
+        &socket_path,
+        None,
+    );
+
+    // Wire a broker subscriber BEFORE calling rediscover_sessions().
+    let (mut manager, _subs, mut rx) = make_rediscovery_manager(tmp.path(), true);
+
+    // RED GATE: current dead-PID path does GC + found_dead, no broker emission.
+    // The broker-assertion below FAILS.
+    let report = manager
+        .rediscover_sessions()
+        .await
+        .expect("pass3-MED-002: rediscover_sessions must return Ok");
+
+    // Assert A: GC basics (should pass even before the fix).
+    assert_eq!(
+        report.found_dead, 1,
+        "pass3-MED-002: dead PID → found_dead=1; got {}",
+        report.found_dead
+    );
+    assert_eq!(
+        report.found_alive, 0,
+        "pass3-MED-002: found_alive=0; got {}",
+        report.found_alive
+    );
+    assert!(
+        !manager
+            .session_list()
+            .await
+            .iter()
+            .any(|s| s.session_id == session_id),
+        "pass3-MED-002: dead session MUST NOT appear in registry"
+    );
+
+    // Assert B + C: broker MUST emit SessionStateChanged{Terminated} then
+    // SessionListUpdate for dead-PID GC paths.
+    // RED GATE: current impl does not call broadcast_to_subscribers in the
+    // dead-PID path → both assertions FAIL.
+    let drain_deadline = tokio::time::Instant::now() + Duration::from_millis(300);
+    let mut state_changed_terminated = false;
+    let mut list_update_found = false;
+    let mut ordering_violation = false;
+    loop {
+        match tokio::time::timeout_at(drain_deadline, rx.recv()).await {
+            Ok(Some(monocle_ipc::types::ServerToClient::SessionStateChanged {
+                session_id: ref sid,
+                new_state,
+                ..
+            })) if sid == session_id => {
+                if new_state == monocle_ipc::types::SessionState::Terminated {
+                    state_changed_terminated = true;
+                    if list_update_found {
+                        ordering_violation = true;
+                    }
+                }
+            }
+            Ok(Some(monocle_ipc::types::ServerToClient::SessionListUpdate { .. })) => {
+                list_update_found = true;
+            }
+            Ok(Some(_)) => continue,
+            _ => break,
+        }
+    }
+    assert!(
+        state_changed_terminated,
+        "pass3-MED-002: dead-PID GC MUST emit SessionStateChanged{{Terminated}} to \
+         broker (SS-daemon-wiring §3b).  Current impl skips broker emission on \
+         Running/Launching and Detached dead-PID paths."
+    );
+    assert!(
+        list_update_found,
+        "pass3-MED-002: dead-PID GC MUST emit SessionListUpdate to broker \
+         after SessionStateChanged{{Terminated}} (SS-daemon-wiring §3b)"
+    );
+    assert!(
+        !ordering_violation,
+        "pass3-MED-002: SessionStateChanged{{Terminated}} MUST precede \
+         SessionListUpdate (SS-daemon-wiring §3b ordering constraint)"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// MED-001 coverage: verify that FakePeerCredVerifier STILL passes the happy
+//   path on Detached and Terminating with peer pid == sidecar pid
+// ---------------------------------------------------------------------------
+
+/// MED-001 (pass-3, Detached happy path): When `FakePeerCredVerifierWithPeerPid`
+/// injects a peer_pid that MATCHES the sidecar pid, the Detached session MUST
+/// be registered (verify_with_sidecar_pid returns Ok).
+///
+/// This test ensures no false-green: the pid cross-check is genuinely exercised
+/// (not silently bypassed) on the Detached path.  If `verify_with_sidecar_pid`
+/// defaults to `verify()` (ignoring sidecar_pid), this test passes vacuously
+/// — the implementer must call the overriding method, not the default.
+#[tokio::test]
+async fn test_BC_2_08_004_rediscovery_detached_pid_match_registers() {
+    let tmp = tempfile::tempdir().expect("pass3-MED-001-detached-happy: tempdir");
+    let session_id = "00000000-0036-4000-a006-000000000005";
+
+    let alive_sidecar_pid = std::process::id();
+    // injected_peer_pid == sidecar_pid → cross-check PASSES.
+    let injected_peer_pid = alive_sidecar_pid;
+
+    let socket_path = short_socket_path("p3med001-det-ok");
+    let _ = std::fs::remove_file(&socket_path);
+    write_sidecar_v3(
+        tmp.path(),
+        session_id,
+        "Detached",
+        alive_sidecar_pid,
+        &socket_path,
+        None,
+    );
+
+    // Mock session-host: accept and hold open.
+    let sock_clone = socket_path.clone();
+    tokio::spawn(async move {
+        let _ = std::fs::remove_file(&sock_clone);
+        let listener =
+            UnixListener::bind(&sock_clone).expect("pass3-MED-001-detached-happy: mock bind");
+        if let Ok((_stream, _)) = listener.accept().await {
+            tokio::time::sleep(Duration::from_millis(500)).await;
+        }
+    });
+    tokio::time::sleep(Duration::from_millis(20)).await;
+
+    let (tx, _rx_ch) = mpsc::channel::<monocle_ipc::types::ServerToClient>(
+        monocle_ipc::server::CLIENT_CHANNEL_CAPACITY,
+    );
+    let entry = monocle_ipc::server::ClientEntry::new(tx);
+    let subs: monocle_ipc::server::SubscriberList =
+        Arc::new(tokio::sync::Mutex::new(vec![entry]));
+    let broker = Arc::new(Arc::clone(&subs));
+    let spawner = Arc::new(super::MockSessionHostSpawner {
+        spawn_result: None,
+        fake_pid: 0,
+    });
+    let engine: Arc<dyn monocle_core::engine::EngineModule> =
+        Arc::new(SucceedingMockEngineRediscovery);
+    let mut manager = super::SessionManager::new(
+        tmp.path().to_path_buf(),
+        spawner,
+        broker,
+        engine,
+        super::HookEndpointConfig::default(),
+    );
+    manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifierWithPeerPid {
+        injected_peer_pid,
+    }));
+
+    // Once the Detached path calls verify_with_sidecar_pid(stream, alive_sidecar_pid),
+    // the verifier compares injected_peer_pid (== alive_sidecar_pid) → Ok → register.
+    // Until the fix (Detached calls verify instead of verify_with_sidecar_pid), the
+    // session is registered via verify() → Ok.
+    // After the fix, verify_with_sidecar_pid is called → Ok (pids match) → still registers.
+    // Either way this test PASSES — it exists to confirm no regression on the happy path.
+    let report = manager
+        .rediscover_sessions()
+        .await
+        .expect("pass3-MED-001-detached-happy: rediscover_sessions must return Ok");
+
+    assert_eq!(
+        report.found_alive, 1,
+        "pass3-MED-001-detached-happy: Detached + peer_pid==sidecar_pid → \
+         found_alive=1; got {}",
+        report.found_alive
+    );
+    assert!(
+        manager
+            .session_list()
+            .await
+            .iter()
+            .any(|s| s.session_id == session_id),
+        "pass3-MED-001-detached-happy: Detached session with matching pids MUST \
+         be registered"
+    );
+
+    let _ = std::fs::remove_file(&socket_path);
+}
+
+/// MED-001 (pass-3, Terminating happy path): When `FakePeerCredVerifierWithPeerPid`
+/// injects a peer_pid that MATCHES the sidecar pid, the Terminating not-elapsed
+/// session MUST be registered with Kill sent (verify_with_sidecar_pid returns Ok).
+#[tokio::test]
+async fn test_BC_2_08_004_rediscovery_terminating_pid_match_kill_sent() {
+    let tmp = tempfile::tempdir().expect("pass3-MED-001-terminating-happy: tempdir");
+    let session_id = "00000000-0036-4000-a006-000000000006";
+
+    let future_ms = unix_now_ms() + 10_000;
+    let alive_sidecar_pid = std::process::id();
+    // injected_peer_pid == sidecar_pid → cross-check PASSES → Kill sent.
+    let injected_peer_pid = alive_sidecar_pid;
+
+    let socket_path = short_socket_path("p3med001-term-ok");
+    write_sidecar_v3(
+        tmp.path(),
+        session_id,
+        "Terminating",
+        alive_sidecar_pid,
+        &socket_path,
+        Some(future_ms),
+    );
+
+    let (kill_received_tx, mut kill_received_rx) = mpsc::channel::<()>(4);
+    let sock_clone = socket_path.clone();
+    tokio::spawn(async move {
+        let _ = std::fs::remove_file(&sock_clone);
+        let listener = UnixListener::bind(&sock_clone)
+            .expect("pass3-MED-001-terminating-happy: mock bind");
+        if let Ok((mut stream, _)) = listener.accept().await {
+            let mut len_buf = [0u8; 4];
+            if stream.read_exact(&mut len_buf).await.is_ok() {
+                let len = u32::from_le_bytes(len_buf) as usize;
+                if len > 0 && len <= 65536 {
+                    let mut body = vec![0u8; len];
+                    if stream.read_exact(&mut body).await.is_ok() {
+                        if let Ok(msg) = serde_json::from_slice::<
+                            monocle_ipc::types::DaemonToHost,
+                        >(&body) {
+                            if matches!(msg, monocle_ipc::types::DaemonToHost::Kill) {
+                                let _ = kill_received_tx.send(()).await;
+                            }
+                        }
+                    }
+                }
+            }
+            tokio::time::sleep(Duration::from_secs(20)).await;
+        }
+    });
+    tokio::time::sleep(Duration::from_millis(20)).await;
+
+    let (tx, _rx_ch) = mpsc::channel::<monocle_ipc::types::ServerToClient>(
+        monocle_ipc::server::CLIENT_CHANNEL_CAPACITY,
+    );
+    let entry = monocle_ipc::server::ClientEntry::new(tx);
+    let subs: monocle_ipc::server::SubscriberList =
+        Arc::new(tokio::sync::Mutex::new(vec![entry]));
+    let broker = Arc::new(Arc::clone(&subs));
+    let spawner = Arc::new(super::MockSessionHostSpawner {
+        spawn_result: None,
+        fake_pid: 0,
+    });
+    let engine: Arc<dyn monocle_core::engine::EngineModule> =
+        Arc::new(SucceedingMockEngineRediscovery);
+    let mut manager = super::SessionManager::new(
+        tmp.path().to_path_buf(),
+        spawner,
+        broker,
+        engine,
+        super::HookEndpointConfig::default(),
+    );
+    manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifierWithPeerPid {
+        injected_peer_pid,
+    }));
+
+    let report = manager
+        .rediscover_sessions()
+        .await
+        .expect("pass3-MED-001-terminating-happy: rediscover_sessions must return Ok");
+
+    // Kill must be sent (pid match → proceed to Kill path).
+    let got_kill = tokio::time::timeout(Duration::from_millis(500), kill_received_rx.recv()).await;
+    assert!(
+        got_kill.is_ok() && got_kill.unwrap().is_some(),
+        "pass3-MED-001-terminating-happy: Terminating + peer_pid==sidecar_pid \
+         MUST send Kill (pid check passes → normal Terminating path)"
+    );
+
+    assert_eq!(
+        report.found_alive, 1,
+        "pass3-MED-001-terminating-happy: Terminating + future deadline + pid match \
+         → found_alive=1; got {}",
+        report.found_alive
+    );
+    assert!(
+        manager
+            .session_list()
+            .await
+            .iter()
+            .any(|s| s.session_id == session_id),
+        "pass3-MED-001-terminating-happy: Terminating session with matching pids \
+         MUST be registered"
+    );
+
+    let _ = std::fs::remove_file(&socket_path);
+}
+
 // ---------------------------------------------------------------------------
 // HIGH-002 (pass-2) — Dead PID must also delete the orphaned socket file
 // ---------------------------------------------------------------------------
