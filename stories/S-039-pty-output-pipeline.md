@@ -3,10 +3,10 @@ document_type: story
 level: L4
 story_id: S-039
 epic_id: EPIC-09
-version: "1.5"
+version: "1.6"
 status: draft
 producer: vsdd-factory:story-writer
-timestamp: 2026-06-16T00:00:00Z
+timestamp: 2026-06-20T00:00:00Z
 phase: 2
 points: 8
 wave: 9
@@ -20,7 +20,7 @@ behavioral_contracts: [BC-2.09.001]
 verification_properties: []
 estimated_days: 4
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.001.md, version: "1.5.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.001.md, version: "1.7.0"}
   - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.9.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
@@ -112,11 +112,16 @@ backpressure through the IPC pipeline; no `PtyOutput` bytes are dropped.
 ### AC-008 (traces to BC-2.09.001 invariant 4 — SCROLLBACK_ROWS default/max; configurable via config.json)
 
 `vt100::Parser::new(rows, cols, scrollback_rows)` is initialized with `scrollback_rows` sourced
-from `~/.monocle/config.json:pty_scrollback_rows` (default 1000 if absent or invalid; maximum
-10000; values above 10000 are clamped). A new `vt100::Parser` is created for each new session
-received via `SessionListUpdate` or `InitialState`. Parsers are removed on session GC
-(`SessionState::Terminated` + list removal); `pty_dump_received` and `pty_scroll_offsets` entries
-for the session are also removed at that time.
+from `~/.monocle/config.json:pty_scrollback_rows`. Two distinct cases apply:
+- **Absent** (key missing, or config falls back to default → `None`): `scrollback_rows = 1000`.
+- **Present** (key exists with a parseable `u32`): value is clamped to [1, 10000].
+  `0 → 1` (clamped to minimum; per BC-2.09.007 EC-243); values above 10000 → 10000
+  (clamped to maximum; per BC-2.09.007 EC-242). A present out-of-range value is NOT
+  defaulted to 1000 — it is clamped. Only absence yields the 1000 default.
+
+A new `vt100::Parser` is created for each new session received via `SessionListUpdate` or
+`InitialState`. Parsers are removed on session GC (`SessionState::Terminated` + list removal);
+`pty_dump_received` and `pty_scroll_offsets` entries for the session are also removed at that time.
 
 ### AC-011 (traces to SS-embedded-pty.md §Parser initialization — PTY_DEFAULT_ROWS/PTY_DEFAULT_COLS; F-S039-P2-004)
 
@@ -211,7 +216,7 @@ processing normally. The `mpsc::channel(64)` provides 64 slots of burst absorpti
 - `dump_in_progress` and `pty_dump_received` serve DIFFERENT purposes and MUST NOT be conflated (SS-embedded-pty.md §Auto-attach mandate): `dump_in_progress` is the in-flight signal; `pty_dump_received` is the completed signal.
 - `dump_in_progress` MUST be set to `true` BEFORE `AttachSession` is sent — not on first `ScrollbackChunk` receipt. Live `PtyOutput` may arrive before the first chunk.
 - IPC reader channel: `.send().await` (backpressure), never `.try_send()` (drop). Channel capacity 64.
-- `SCROLLBACK_ROWS` default 1000; max 10000; read from `~/.monocle/config.json:pty_scrollback_rows`.
+- `SCROLLBACK_ROWS`: absent key → 1000 default; present value → clamped to [1, 10000] (0→1 per BC-2.09.007 EC-243; >10000→10000 per EC-242). Read from `~/.monocle/config.json:pty_scrollback_rows`.
   **S-039 OWNS this config load** — no other story loads `pty_scrollback_rows`. S-043 (scrollback
   navigation) consumes the already-loaded value via `App::scrollback_rows`; it does NOT re-load it.
   S-042 (resize debounce) OWNS the `pty_scroll_offsets[session_id] = 0` reset in the `ResizePane`
