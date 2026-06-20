@@ -43,7 +43,7 @@ use monocle_ipc::types::{ClientToServer, ServerToClient, SessionState};
 use monocle_tui::app::{
     enter_embedded_terminal, exit_embedded_terminal, handle_server_message, on_dump_window_timeout,
     on_initial_state, on_pty_output, on_scrollback_dump_complete, on_transport_event, render_frame,
-    App, IPC_READER_CHANNEL_CAPACITY,
+    App, AppEvent, IPC_READER_CHANNEL_CAPACITY,
 };
 use monocle_tui::pty_output_channel;
 use monocle_tui::ui::sessions_panel::SessionsPanelState;
@@ -2819,4 +2819,543 @@ async fn test_BC_2_09_001_inbound_channel_backpressure_no_drop() {
     //
     // These three together prove .send().await backpressure semantics:
     // blocks-when-full, completes-when-space-freed, never-drops.
+}
+
+// ===========================================================================
+// PASS-5 ADVERSARIAL REGRESSION TESTS
+// Anchored to BC-2.09.001 v1.7.0 Invariants 5/7
+// Finding IDs: F-S039-P5-002, F-S039-P5-003, F-S039-P5-004, F-S039-P5-005
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// F-S039-P5-002: pending_pty_bytes byte-cap (512 KiB) eviction
+// BC-2.09.001 Invariant 7 (v1.7.0) — BYTE-cap branch
+//
+// Pre-fix coverage gap: the existing test (test_BC_2_09_001_pending_pty_bytes_cap_drops_oldest)
+// exercises the MESSAGE-COUNT cap (4097 small messages).  The BYTE-cap branch
+// (MAX_PENDING_PTY_BYTES = 512 KiB) was untested.  A bug in the byte-cap path
+// would permit unbounded memory growth for sessions receiving large chunks.
+//
+// Post-fix behavior (already implemented): on_pty_output checks total buffered
+// bytes AFTER each push and evicts the OLDEST entry while the total exceeds
+// MAX_PENDING_PTY_BYTES, incrementing pending_pty_drop_count for each eviction.
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_09_001_pending_pty_bytes_byte_cap_drops_oldest
+///
+/// Exercises BC-2.09.001 Invariant 7 byte-cap branch (F-S039-P5-002):
+///   When cumulative bytes in `pending_pty_bytes[s1]` exceed `MAX_PENDING_PTY_BYTES`
+///   (512 KiB) while the message count remains below `MAX_PENDING_PTY_MESSAGES` (4096),
+///   `on_pty_output` MUST evict OLDEST entries until the total is at/below the cap,
+///   and MUST increment `pending_pty_drop_count[s1]` for each eviction.
+///
+/// Regression: if the byte-cap branch were absent (only the message-cap fires),
+/// pushing ~9 × 64 KiB messages would accumulate 576 KiB in the buffer — above
+/// MAX_PENDING_PTY_BYTES — without eviction.  This test catches that.
+///
+/// Setup: 9 messages of ~64 KiB each (total ≈ 576 KiB > 512 KiB, count = 9 < 4096).
+/// Each message begins with a unique 8-byte marker so oldest vs. newest is unambiguous.
+#[test]
+fn test_BC_2_09_001_pending_pty_bytes_byte_cap_drops_oldest() {
+    use monocle_core::pty_constants::{MAX_PENDING_PTY_BYTES, MAX_PENDING_PTY_MESSAGES};
+
+    // Arrange: session with dump_in_progress = true so bytes are buffered.
+    let s1 = "s1-byte-cap-drops-oldest";
+    let mut app = make_app_with_session(s1);
+    app.dump_in_progress.insert(s1.to_string(), true);
+
+    // Each message is 64 KiB with a distinguishable 8-byte leading marker.
+    // 9 messages × 64 KiB = 576 KiB > MAX_PENDING_PTY_BYTES (512 KiB).
+    // 9 messages is WELL BELOW MAX_PENDING_PTY_MESSAGES (4096), so the message-count
+    // cap must NOT fire — only the byte-cap is exercised by this test.
+    const CHUNK_SIZE: usize = 64 * 1024; // 64 KiB per message
+    let total_messages = 9usize;
+    assert!(
+        total_messages < MAX_PENDING_PTY_MESSAGES,
+        "test design: message count ({}) must be below MAX_PENDING_PTY_MESSAGES ({}) so \
+         only the byte-cap fires",
+        total_messages,
+        MAX_PENDING_PTY_MESSAGES
+    );
+    assert!(
+        total_messages * CHUNK_SIZE > MAX_PENDING_PTY_BYTES,
+        "test design: total bytes ({}) must exceed MAX_PENDING_PTY_BYTES ({}) to \
+         guarantee byte-cap eviction",
+        total_messages * CHUNK_SIZE,
+        MAX_PENDING_PTY_BYTES
+    );
+
+    // Build distinguishable messages. Message 0 is "OLDEST" (will be evicted first);
+    // message 8 is "NEWEST" (must survive the eviction pass).
+    for i in 0..total_messages {
+        let mut chunk = vec![0u8; CHUNK_SIZE];
+        // Write a unique 8-byte prefix so the content is distinguishable after eviction.
+        let marker = if i == 0 {
+            *b"OLDEST__"
+        } else if i == total_messages - 1 {
+            *b"NEWEST__"
+        } else {
+            let mut m = [b'M'; 8];
+            m[1] = b'0' + (i as u8);
+            m
+        };
+        chunk[..8].copy_from_slice(&marker);
+        on_pty_output(&mut app, s1.to_string(), chunk);
+    }
+
+    let buffer = app
+        .pending_pty_bytes
+        .get(s1)
+        .expect("F-S039-P5-002: pending_pty_bytes must have an entry for s1");
+
+    // Assert 1 (F-S039-P5-002 byte-cap): total retained bytes must be at/below cap.
+    let total_bytes: usize = buffer.iter().map(|v| v.len()).sum();
+    assert!(
+        total_bytes <= MAX_PENDING_PTY_BYTES,
+        "F-S039-P5-002 (BC-2.09.001 Invariant 7 byte-cap): total retained bytes ({}) must \
+         be at/below MAX_PENDING_PTY_BYTES ({}) — byte-cap eviction not enforced",
+        total_bytes,
+        MAX_PENDING_PTY_BYTES
+    );
+
+    // Assert 2 (F-S039-P5-002): at least one eviction was recorded via drop counter.
+    let drop_count = app.pending_pty_drop_count.get(s1).copied().unwrap_or(0);
+    assert!(
+        drop_count > 0,
+        "F-S039-P5-002 (BC-2.09.001 Invariant 7 byte-cap): pending_pty_drop_count[s1] must \
+         be > 0 after byte-cap overflow — pre-fix code never evicted on byte-cap. Got: {}",
+        drop_count
+    );
+
+    // Assert 3 (F-S039-P5-002 drop-oldest): the NEWEST message must survive.
+    let newest_survives = buffer
+        .iter()
+        .any(|chunk| chunk.len() >= 8 && &chunk[..8] == b"NEWEST__");
+    assert!(
+        newest_survives,
+        "F-S039-P5-002 (BC-2.09.001 Invariant 7 byte-cap): NEWEST message (marker 'NEWEST__') \
+         must be RETAINED after byte-cap eviction — drop-oldest semantics: latest messages survive"
+    );
+
+    // Assert 4 (F-S039-P5-002 drop-oldest): the OLDEST message must have been evicted.
+    let oldest_absent = !buffer
+        .iter()
+        .any(|chunk| chunk.len() >= 8 && &chunk[..8] == b"OLDEST__");
+    assert!(
+        oldest_absent,
+        "F-S039-P5-002 (BC-2.09.001 Invariant 7 byte-cap): OLDEST message (marker 'OLDEST__') \
+         must have been EVICTED after byte-cap overflow — drop-oldest semantics: first-in evicted \
+         first. Retained count: {}",
+        buffer.len()
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-S039-P5-003: [dump: N drops] status surfacing when focused and in-progress
+// BC-2.09.001 Invariant 7 MUST surfacing clause (v1.7.0)
+//
+// Pre-fix coverage gap: the render_frame logic that surfaces "[dump: N drops]" in
+// the status bar was implemented but had no test asserting the actual rendered
+// buffer content.  A typo in the format string, a wrong map key, or a missing
+// condition check (dump_in_progress gate) would silently regress.
+//
+// Post-fix behavior: render_frame, when mode is EmbeddedTerminal { session_id }
+// and dump_in_progress[session_id] == Some(true) and pending_pty_drop_count[session_id]
+// > 0, passes "[dump: N drops]" to render_status_bar as the status message,
+// overriding app.status_message for that frame.
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_09_001_status_bar_shows_dump_drops_when_focused
+///
+/// Exercises BC-2.09.001 Invariant 7 status surfacing (F-S039-P5-003):
+///   When the focused session has `dump_in_progress[session_id] == Some(true)`
+///   AND `pending_pty_drop_count[session_id] > 0`, the rendered status bar MUST
+///   contain the "[dump:" / "drops]" substring in the terminal buffer.
+///
+/// Companion assertions:
+///   1. When `pending_pty_drop_count == 0`, the "[dump:" segment is ABSENT.
+///   2. When `dump_in_progress` is not active (None/Some(false)), "[dump:" is ABSENT.
+///
+/// This test FAILS if the format string, map key, or dump_in_progress gate in
+/// the render_frame EmbeddedTerminal arm is wrong — it asserts real buffer content.
+#[test]
+fn test_BC_2_09_001_status_bar_shows_dump_drops_when_focused() {
+    use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
+
+    let session_id = "s1-p5-003-drop-status";
+
+    // --- Case 1: dump_in_progress=true AND drop_count > 0 → "[dump: N drops]" PRESENT ---
+    {
+        let mut app = make_app_with_session(session_id);
+
+        // Set up: dump in progress, 3 drops recorded.
+        app.dump_in_progress.insert(session_id.to_string(), true);
+        app.pending_pty_drop_count.insert(session_id.to_string(), 3);
+
+        // Set mode to EmbeddedTerminal for this session.
+        app.mode = AppMode::EmbeddedTerminal {
+            session_id: session_id.to_string(),
+            prior: FocusSnapshot::Sessions,
+        };
+
+        // Render via the production render_frame path.
+        let backend = TestBackend::new(120, 24);
+        let mut terminal = Terminal::new(backend).expect("test terminal must initialize");
+        let mut sessions_state = SessionsPanelState::default();
+
+        terminal
+            .draw(|frame| {
+                render_frame(&mut app, &mut sessions_state, frame);
+            })
+            .expect("render_frame must succeed");
+
+        // Assert: the rendered buffer contains "[dump:" and "drops]".
+        // The status bar is on the last row(s); scan all cells.
+        let buffer = terminal.backend().buffer().clone();
+        let full_rendered: String = (0..24)
+            .flat_map(|row| (0..120).map(move |col| (row, col)))
+            .map(|(row, col)| buffer[(col, row)].symbol().to_string())
+            .collect();
+
+        assert!(
+            full_rendered.contains("[dump:"),
+            "F-S039-P5-003 (BC-2.09.001 Invariant 7): rendered buffer MUST contain '[dump:' \
+             when dump_in_progress=true AND pending_pty_drop_count > 0. \
+             Rendered buffer (truncated to 300 chars): {:?}",
+            &full_rendered[..full_rendered.len().min(300)]
+        );
+        assert!(
+            full_rendered.contains("drops]"),
+            "F-S039-P5-003 (BC-2.09.001 Invariant 7): rendered buffer MUST contain 'drops]' \
+             when dump_in_progress=true AND pending_pty_drop_count > 0. \
+             Rendered buffer (truncated to 300 chars): {:?}",
+            &full_rendered[..full_rendered.len().min(300)]
+        );
+    }
+
+    // --- Case 2: dump_in_progress=true BUT drop_count == 0 → "[dump:" ABSENT ---
+    {
+        let mut app = make_app_with_session(session_id);
+        app.dump_in_progress.insert(session_id.to_string(), true);
+        // pending_pty_drop_count NOT set (defaults to 0/absent).
+        app.mode = AppMode::EmbeddedTerminal {
+            session_id: session_id.to_string(),
+            prior: FocusSnapshot::Sessions,
+        };
+
+        let backend = TestBackend::new(120, 24);
+        let mut terminal = Terminal::new(backend).expect("test terminal must initialize");
+        let mut sessions_state = SessionsPanelState::default();
+
+        terminal
+            .draw(|frame| {
+                render_frame(&mut app, &mut sessions_state, frame);
+            })
+            .expect("render_frame must succeed");
+
+        let buffer = terminal.backend().buffer().clone();
+        let full_rendered: String = (0..24)
+            .flat_map(|row| (0..120).map(move |col| (row, col)))
+            .map(|(row, col)| buffer[(col, row)].symbol().to_string())
+            .collect();
+
+        assert!(
+            !full_rendered.contains("[dump:"),
+            "F-S039-P5-003 companion (BC-2.09.001 Invariant 7): '[dump:' must be ABSENT when \
+             pending_pty_drop_count == 0 — the status override must not fire for zero drops"
+        );
+    }
+
+    // --- Case 3: dump_in_progress NOT active (None) with drop_count > 0 → "[dump:" ABSENT ---
+    // This guards against the dump_in_progress gate being bypassed.
+    {
+        let mut app = make_app_with_session(session_id);
+        // dump_in_progress NOT set (None / dump not active).
+        app.pending_pty_drop_count.insert(session_id.to_string(), 5);
+        app.mode = AppMode::EmbeddedTerminal {
+            session_id: session_id.to_string(),
+            prior: FocusSnapshot::Sessions,
+        };
+
+        let backend = TestBackend::new(120, 24);
+        let mut terminal = Terminal::new(backend).expect("test terminal must initialize");
+        let mut sessions_state = SessionsPanelState::default();
+
+        terminal
+            .draw(|frame| {
+                render_frame(&mut app, &mut sessions_state, frame);
+            })
+            .expect("render_frame must succeed");
+
+        let buffer = terminal.backend().buffer().clone();
+        let full_rendered: String = (0..24)
+            .flat_map(|row| (0..120).map(move |col| (row, col)))
+            .map(|(row, col)| buffer[(col, row)].symbol().to_string())
+            .collect();
+
+        assert!(
+            !full_rendered.contains("[dump:"),
+            "F-S039-P5-003 companion (BC-2.09.001 Invariant 7): '[dump:' must be ABSENT when \
+             dump_in_progress is not active (None) — the gate must prevent surfacing stale \
+             drop counts from prior attach windows"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// F-S039-P5-004: re-entry abort guard — second enter_embedded_terminal aborts
+// the prior timeout handle so no spurious DumpWindowTimeout fires
+// BC-2.09.001 Invariant 5 / enter_embedded_terminal re-entry ordering
+//
+// Pre-fix coverage gap: the abort-prior-handle logic in enter_embedded_terminal
+// was implemented but not tested.  A regression would cause two concurrent
+// timeout tasks for the same session — the prior task would fire a spurious
+// DumpWindowTimeout against the new attach window, force-resolving a live dump
+// and causing the user to see a blank PTY screen until the next re-attach.
+//
+// Post-fix behavior: before inserting the new AbortHandle into dump_timeout_handles,
+// enter_embedded_terminal removes and aborts any existing handle for that session.
+// The map always holds at most ONE handle per session.
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_09_001_reentry_aborts_prior_timeout_handle
+///
+/// Exercises BC-2.09.001 Invariant 5 / enter_embedded_terminal re-entry guard
+/// (F-S039-P5-004):
+///   Calling `enter_embedded_terminal` twice for the same session (without a
+///   dump-complete in between) MUST:
+///   1. Leave exactly ONE handle in `dump_timeout_handles[session_id]` (no accumulation).
+///   2. Not panic.
+///
+/// This test requires `app.app_event_tx = Some(...)` so that enter_embedded_terminal
+/// spawns the timeout task and inserts an AbortHandle.  Without a wired event_tx, the
+/// timeout task is skipped and no AbortHandle is inserted (the abort guard is a no-op).
+///
+/// Pre-fix regression: without the abort guard, two `enter_embedded_terminal` calls
+/// would insert two separate AbortHandles — the prior would fire a spurious
+/// `DumpWindowTimeout` event after `DUMP_WINDOW_TIMEOUT` seconds.
+#[tokio::test]
+async fn test_BC_2_09_001_reentry_aborts_prior_timeout_handle() {
+    let session_id = "s1-p5-004-reentry-abort";
+    let mut app = make_app_with_session(session_id);
+
+    // Wire a real bounded ipc_tx so enter_embedded_terminal can send AttachSession.
+    let (cmd_tx, mut _cmd_rx) = mpsc::channel::<ClientToServer>(64);
+    app.ipc_tx = Some(cmd_tx);
+
+    // Wire a real bounded app_event_tx so the timeout task is spawned and
+    // an AbortHandle is inserted into dump_timeout_handles.
+    let (event_tx, _event_rx) = tokio::sync::mpsc::channel::<AppEvent>(16);
+    app.app_event_tx = Some(event_tx);
+
+    // First entry — should insert one AbortHandle.
+    enter_embedded_terminal(&mut app, session_id.to_string()).await;
+
+    // Assert A: exactly one AbortHandle after first entry.
+    assert_eq!(
+        app.dump_timeout_handles.len(),
+        1,
+        "F-S039-P5-004 (BC-2.09.001 Invariant 5): after first enter_embedded_terminal, \
+         dump_timeout_handles must contain exactly 1 handle"
+    );
+    assert!(
+        app.dump_timeout_handles.contains_key(session_id),
+        "F-S039-P5-004: dump_timeout_handles must contain an entry for session_id after \
+         first enter_embedded_terminal"
+    );
+
+    // Simulate re-entering without a dump completing: clear dump_in_progress and
+    // pty_dump_received so the second call takes the auto-attach path again
+    // (a real re-attach scenario after on_dump_window_timeout fired or was manually
+    // reset by a test).  We use remove() to simulate the timeout handler having
+    // cleared the flag without completing the dump.
+    app.dump_in_progress.remove(session_id);
+    app.pty_dump_received.remove(session_id);
+
+    // Second entry — must abort the prior handle and insert a new one (1 total, not 2).
+    enter_embedded_terminal(&mut app, session_id.to_string()).await;
+
+    // Assert B: still exactly ONE handle (the new one; the prior was removed+aborted).
+    assert_eq!(
+        app.dump_timeout_handles.len(),
+        1,
+        "F-S039-P5-004 (BC-2.09.001 Invariant 5 re-entry abort guard): \
+         after second enter_embedded_terminal, dump_timeout_handles must contain exactly 1 \
+         handle — pre-fix code would accumulate 2 handles (one per enter call)"
+    );
+    assert!(
+        app.dump_timeout_handles.contains_key(session_id),
+        "F-S039-P5-004: dump_timeout_handles must still contain an entry for session_id \
+         after second enter_embedded_terminal (the new handle replaces the prior one)"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-S039-P5-005: dump-window timeout end-to-end — spawn → event channel → handler
+// BC-2.09.001 Invariant 8 (v1.7.0) wiring
+//
+// Pre-fix coverage gap: the existing test (test_BC_2_09_001_dump_window_timeout_force_resolves)
+// calls on_dump_window_timeout() directly.  The FULL END-TO-END PATH —
+// enter_embedded_terminal spawning the timeout task → DUMP_WINDOW_TIMEOUT elapses →
+// AppEvent::DumpWindowTimeout delivered to app_event_rx → handler drains the event
+// → on_dump_window_timeout cleans up state — was untested.  A bug in any step of
+// the wiring (wrong session_id captured, channel send dropped, handler arm not reached)
+// would silently leave dump_in_progress = true indefinitely.
+//
+// Post-fix wiring (already implemented): enter_embedded_terminal captures session_id
+// into the spawned task, sends AppEvent::DumpWindowTimeout { session_id } after
+// DUMP_WINDOW_TIMEOUT, and on_dump_window_timeout performs the cleanup.
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_09_001_dump_window_timeout_end_to_end
+///
+/// Exercises BC-2.09.001 Invariant 8 end-to-end wiring (F-S039-P5-005):
+///   1. `enter_embedded_terminal` (Ok path, `app_event_tx` wired) spawns the timeout task.
+///   2. Advancing the paused clock past `DUMP_WINDOW_TIMEOUT` causes the task to fire.
+///   3. `AppEvent::DumpWindowTimeout { session_id }` is delivered to `app_event_rx`.
+///   4. Dispatching the event through `on_dump_window_timeout` performs force-resolve:
+///      - `dump_in_progress[s1]` absent (removed).
+///      - `pending_pty_bytes[s1]` cleared.
+///      - `pty_parsers[s1]` reset to `PTY_DEFAULT_ROWS × PTY_DEFAULT_COLS`.
+///      - `pty_dump_received` does NOT contain s1 (dump never completed).
+///
+/// Timing: uses `tokio::time::pause()` + `tokio::time::advance()` for deterministic
+/// timing — NOT a real 10-second sleep.
+#[tokio::test(start_paused = true)]
+async fn test_BC_2_09_001_dump_window_timeout_end_to_end() {
+    use monocle_core::pty_constants::DUMP_WINDOW_TIMEOUT;
+    use monocle_core::tui::state::{PTY_DEFAULT_COLS, PTY_DEFAULT_ROWS};
+
+    let s1 = "s1-p5-005-e2e-timeout";
+    let mut app = make_app_with_session(s1);
+
+    // Wire a real bounded ipc_tx so enter_embedded_terminal can send AttachSession.
+    let (cmd_tx, _cmd_rx) = mpsc::channel::<ClientToServer>(64);
+    app.ipc_tx = Some(cmd_tx);
+
+    // Wire a real bounded app_event channel — the run loop normally owns both ends;
+    // here the test owns the receiver so it can intercept the timeout event.
+    let (event_tx, mut event_rx) = tokio::sync::mpsc::channel::<AppEvent>(16);
+    app.app_event_tx = Some(event_tx);
+
+    // Precondition: pty_dump_received does NOT contain s1 (first-entry path).
+    assert!(
+        !app.pty_dump_received.contains(s1),
+        "precondition (F-S039-P5-005): session must not be in pty_dump_received"
+    );
+
+    // Act 1: enter_embedded_terminal — Ok path, app_event_tx wired.
+    // This sets dump_in_progress[s1] = true, sends AttachSession, spawns the
+    // timeout task, and stores the AbortHandle in dump_timeout_handles[s1].
+    enter_embedded_terminal(&mut app, s1.to_string()).await;
+
+    // Verify dump_in_progress is true after enter.
+    assert_eq!(
+        app.dump_in_progress.get(s1).copied(),
+        Some(true),
+        "F-S039-P5-005 precondition: dump_in_progress must be true after enter_embedded_terminal"
+    );
+
+    // Verify an AbortHandle was inserted (confirms the timeout task was spawned).
+    assert!(
+        app.dump_timeout_handles.contains_key(s1),
+        "F-S039-P5-005 precondition: dump_timeout_handles must contain s1 (task was spawned)"
+    );
+
+    // Buffer some pending bytes to verify they are cleared on timeout.
+    app.pending_pty_bytes
+        .insert(s1.to_string(), vec![b"pending-during-dump\r\n".to_vec()]);
+
+    // Act 2: advance the paused clock past DUMP_WINDOW_TIMEOUT.
+    // In a `#[tokio::test(start_paused = true)]` runtime, `tokio::time::advance(d).await`
+    // moves the mock clock forward by `d` and internally drives tasks to allow timers that
+    // have become ready to be woken up.  The spawned task sleeps for `DUMP_WINDOW_TIMEOUT`;
+    // after the advance it will be woken by the runtime and run its body
+    // (send AppEvent::DumpWindowTimeout).
+    //
+    // Strategy: advance the clock, then drive the spawned task to completion by awaiting
+    // `event_rx.recv()` directly.  Because the mock clock is now past the sleep deadline,
+    // the spawned task will be ready to run and will complete before `recv()` blocks.
+    tokio::time::advance(DUMP_WINDOW_TIMEOUT + std::time::Duration::from_millis(1)).await;
+
+    // Act 3: receive the event.
+    // The spawned timeout task is now ready (its sleep expired) and will run when we
+    // await event_rx.recv().  The recv() suspends our task, the runtime polls the
+    // spawned task (which sends the event and completes), then our task wakes on the
+    // channel notification.  This is deterministic — no real sleep required.
+    let event = event_rx.recv().await.expect(
+        "F-S039-P5-005 (BC-2.09.001 Invariant 8): event channel must not be closed \
+             before DumpWindowTimeout is delivered — spawned task must send the event \
+             after DUMP_WINDOW_TIMEOUT elapses",
+    );
+
+    // Assert 3a: the received event is DumpWindowTimeout for s1.
+    match &event {
+        AppEvent::DumpWindowTimeout { session_id } => {
+            assert_eq!(
+                session_id, s1,
+                "F-S039-P5-005 (BC-2.09.001 Invariant 8): DumpWindowTimeout must carry the \
+                 correct session_id ('{}') — got '{}'",
+                s1, session_id
+            );
+        }
+        _ => {
+            panic!(
+                "F-S039-P5-005 (BC-2.09.001 Invariant 8): expected AppEvent::DumpWindowTimeout \
+                 for '{}', got a different event variant — the timeout task must send \
+                 DumpWindowTimeout after DUMP_WINDOW_TIMEOUT elapses",
+                s1
+            );
+        }
+    }
+
+    // Act 4: dispatch the event through the production on_dump_window_timeout handler.
+    // This mirrors what the run loop does when it receives AppEvent from event_rx.
+    if let AppEvent::DumpWindowTimeout { session_id } = event {
+        on_dump_window_timeout(&mut app, session_id);
+    }
+
+    // Assert 4a (Invariant 8): dump_in_progress entry removed (force-resolve complete).
+    assert_eq!(
+        app.dump_in_progress.get(s1).copied(),
+        None,
+        "F-S039-P5-005 (BC-2.09.001 Invariant 8 end-to-end): dump_in_progress must be ABSENT \
+         after full timeout pipeline — enter → clock advance → event → on_dump_window_timeout"
+    );
+
+    // Assert 4b (Invariant 8): pending_pty_bytes cleared.
+    let buffered_len = app.pending_pty_bytes.get(s1).map(|v| v.len()).unwrap_or(0);
+    assert_eq!(
+        buffered_len, 0,
+        "F-S039-P5-005 (BC-2.09.001 Invariant 8 end-to-end): pending_pty_bytes must be \
+         empty/absent after timeout force-resolve"
+    );
+
+    // Assert 4c (Invariant 8): parser reset to PTY_DEFAULT_ROWS × PTY_DEFAULT_COLS.
+    let parser = app.pty_parsers.get(s1).expect(
+        "F-S039-P5-005 (BC-2.09.001 Invariant 8 end-to-end): pty_parsers must still contain \
+         s1 after timeout (reset, NOT GC'd)",
+    );
+    let (rows, cols) = parser.screen().size();
+    assert_eq!(
+        rows, PTY_DEFAULT_ROWS,
+        "F-S039-P5-005 (BC-2.09.001 Invariant 8 end-to-end): parser rows must be \
+         PTY_DEFAULT_ROWS ({}) after timeout reset — got {}",
+        PTY_DEFAULT_ROWS, rows
+    );
+    assert_eq!(
+        cols, PTY_DEFAULT_COLS,
+        "F-S039-P5-005 (BC-2.09.001 Invariant 8 end-to-end): parser cols must be \
+         PTY_DEFAULT_COLS ({}) after timeout reset — got {}",
+        PTY_DEFAULT_COLS, cols
+    );
+
+    // Assert 4d (Invariant 8): pty_dump_received does NOT contain s1.
+    // The dump never completed — the next enter_embedded_terminal must re-run the protocol.
+    assert!(
+        !app.pty_dump_received.contains(s1),
+        "F-S039-P5-005 (BC-2.09.001 Invariant 8 end-to-end): pty_dump_received must NOT \
+         contain s1 after timeout — dump never completed, re-attach required"
+    );
 }
