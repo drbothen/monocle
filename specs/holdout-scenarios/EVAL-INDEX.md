@@ -1,7 +1,7 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.26"
+version: "1.27"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-18T00:00:00Z
@@ -22,7 +22,7 @@ inputs:
   - {path: .factory/stories/S-033-session-manager-spawn.md, version: "1.9"}
   - {path: .factory/stories/S-034-session-manager-kill.md, version: "1.3"}
   - {path: .factory/stories/S-035-session-manager-attach-detach.md, version: "1.2.3"}
-  - {path: .factory/stories/S-036-session-manager-rediscovery.md, version: "1.3"}
+  - {path: .factory/stories/S-036-session-manager-rediscovery.md, version: "1.4"}
   - {path: .factory/stories/S-037-session-manager-gc.md, version: "1.0.3"}
   - {path: .factory/stories/S-038-session-manager-hook-injection.md, version: "1.5"}
   - {path: .factory/stories/S-039-pty-output-pipeline.md, version: "1.3"}
@@ -188,6 +188,12 @@ the Wave 8-9 stories (S-033..S-048). The evaluator needs these story ACs as inpu
 scenarios. Their absence from inputs[] (F-GATE-ADV-003) left the evaluator blind to the ACs for all 5
 new holdout scenarios. No holdout scenario IDs, titles, BCs, or behavioral semantics changed.
 **SE-16d PASS:** 2026-06-16 >= 2026-06-16 (same day as v1.18). PASS (same-day sequential patch).
+
+## §Trace v1.27 — POL-11 pin cascade: S-036 input pin v1.3 → v1.4 (2026-06-19)
+
+**Bump:** 1.26 → 1.27.
+**Scope:** `inputs[]` S-036 story pin updated: `"1.3"` → `"1.4"` (Option 1 per ADR-0007 §Decision — EVAL-INDEX is an active INDEX document; its story input pins must track canonical current versions). S-036 was bumped to v1.4 in commit b5e522e (BC-2.08.004 null/absent kill_deadline_unix_ms case added to PC-2b) but EVAL-INDEX was not cascaded at that time. No holdout scenario IDs, BCs, or behavioral semantics changed.
+**SE-16d PASS:** 2026-06-19 >= 2026-06-16 (v1.26 last-recorded bump date). PASS.
 
 ## §Trace v1.18 — F-P20-SUG-001: HS-EXP-013 and HS-EXP-015 wave corrected from 8 → 9 (2026-06-16)
 

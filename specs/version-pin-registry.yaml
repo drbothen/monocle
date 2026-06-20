@@ -228,8 +228,8 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.26"
-  last_bump_commit: "[MED-002 RESOLVED — S-036 input pin v1.2→v1.3; arch-source cascade]" # version-pin-historical
+  current_version: "1.27"
+  last_bump_commit: "[POL-11 pin cascade: S-036 input pin v1.3→v1.4]"
   last_bump_date: "2026-06-19"
 
 sprint-state:
