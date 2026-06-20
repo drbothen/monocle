@@ -99,6 +99,22 @@ pub const DAEMON_OFFLINE_STATUS: &str = "[daemon: offline]";
 /// compile. Do NOT use this in new rendering code.
 pub const MONOCLE_STATUS_LABEL: &str = "monocle";
 
+/// Default PTY rows for initial vt100::Parser creation (BC-2.09.001, F-S039-001).
+///
+/// Used when creating parsers in `on_initial_state` and `on_session_list_update` where
+/// per-session PTY dimensions are not yet known. The parser is RESET with actual
+/// pty_rows/pty_cols when `ScrollbackDumpComplete` arrives (see `on_scrollback_dump_complete`).
+/// Canonical terminal default (VT100 standard).
+pub const PTY_DEFAULT_ROWS: u16 = 24;
+
+/// Default PTY cols for initial vt100::Parser creation (BC-2.09.001, F-S039-001).
+///
+/// Used when creating parsers in `on_initial_state` and `on_session_list_update` where
+/// per-session PTY dimensions are not yet known. The parser is RESET with actual
+/// pty_rows/pty_cols when `ScrollbackDumpComplete` arrives (see `on_scrollback_dump_complete`).
+/// Canonical terminal default (VT100 standard / xterm default).
+pub const PTY_DEFAULT_COLS: u16 = 80;
+
 /// Format the legacy S-025 drop-counter label `"[dropped: N] monocle"`.
 ///
 /// S-027 superseded this with `render_status_bar` / `drop_counter_span` which renders
@@ -442,8 +458,6 @@ impl App {
 /// If `session_id` is absent from `pty_parsers` (race during session creation), bytes
 /// are silently dropped for this tick. No panic. TRACE log only (not WARN).
 ///
-/// Self-check BC-5.38.005: "If I include this real implementation, will the test for
-/// this function pass trivially without any implementer work?" — YES. Body = `todo!()`.
 pub fn on_pty_output(app: &mut App, session_id: String, bytes: Vec<u8>) {
     // BC-2.09.001 Invariant 5: if a scrollback dump is in progress, buffer bytes.
     if app
@@ -476,43 +490,52 @@ pub fn on_pty_output(app: &mut App, session_id: String, bytes: Vec<u8>) {
 ///
 /// If the session is NOT present in `pty_dump_received` (i.e., no complete dump has been
 /// received in this attach period), runs the auto-attach-on-first-entry protocol:
-/// 1. Sets `dump_in_progress[session_id] = true` BEFORE sending `AttachSession`.
-/// 2. Sends `ClientToServer::AttachSession { session_id }` via `app.ipc_tx`.
-/// 3. Transitions `app.mode` to `AppMode::EmbeddedTerminal { session_id, prior }`.
+/// 1. Sets `dump_in_progress[session_id] = true` BEFORE awaiting `AttachSession` send.
+/// 2. Sends `ClientToServer::AttachSession { session_id }` via `app.ipc_tx.send().await`.
+///    On `Err(_)` (channel closed): FULL ROLLBACK — `dump_in_progress.remove(&id)`, mode
+///    is NOT transitioned, error surfaced via `tracing::error!`, returns early.
+/// 3. On `Ok(())`: transitions `app.mode` to `AppMode::EmbeddedTerminal { session_id, prior }`.
 ///
 /// If the session IS already in `pty_dump_received`, transitions directly to
 /// `AppMode::EmbeddedTerminal` (parser is already populated; O(1) — BC-2.09.001 AC-004).
 ///
-/// Self-check BC-5.38.005: YES — body = `todo!()`.
-pub fn enter_embedded_terminal(app: &mut App, session_id: String) {
+/// # Architect ruling (F-S039-004)
+///
+/// This function uses `.send().await` (NOT `try_send`) per the architect's ruling.
+/// This provides backpressure and prevents silent drops of `AttachSession` commands.
+/// The call site (Action::EnterEmbeddedTerminal dispatch arm) MUST `.await` this function.
+pub async fn enter_embedded_terminal(app: &mut App, session_id: String) {
     // BC-2.09.001 PC-6 / SS-embedded-pty.md §Auto-attach mandate (I11-001 PRONG A):
     // If the session has NOT received a ScrollbackDumpComplete in this TUI lifetime,
     // run the full auto-attach + buffering + dump protocol.
     if !app.pty_dump_received.contains(&session_id) {
-        // S12-001 fix: set dump_in_progress = true BEFORE sending AttachSession.
-        // Live PtyOutput may arrive between the send and the first ScrollbackChunk —
+        // F-S039-004 step 1: set dump_in_progress = true BEFORE the await.
+        // Live PtyOutput may arrive between the await and the first ScrollbackChunk —
         // buffering MUST start immediately, not on first chunk receipt.
         app.dump_in_progress.insert(session_id.clone(), true);
 
-        // Send AttachSession to the daemon via the outbound IPC channel.
+        // F-S039-004 step 2: send AttachSession via .send().await (NOT try_send).
+        // Provides backpressure; prevents silent drops of AttachSession commands.
         if let Some(ref tx) = app.ipc_tx {
-            // Use try_send here (synchronous context — enter_embedded_terminal is not async).
-            // The channel is bounded at 64; if the channel is full we log a warning.
-            // Note: the IPC reader inbound channel uses .send().await (AC-007); this is
-            // the outbound ClientToServer channel which uses try_send per existing convention.
-            match tx.try_send(ClientToServer::AttachSession {
-                session_id: session_id.clone(),
-            }) {
-                Ok(()) => {}
-                Err(e) => {
-                    tracing::warn!(
-                        session_id = %session_id,
-                        error = %e,
-                        "enter_embedded_terminal: failed to send AttachSession — channel full or closed"
-                    );
-                }
+            if let Err(e) = tx
+                .send(ClientToServer::AttachSession {
+                    session_id: session_id.clone(),
+                })
+                .await
+            {
+                // F-S039-004 step 3 (Err path): FULL ROLLBACK.
+                // dump_in_progress is removed; AppMode is NOT transitioned.
+                app.dump_in_progress.remove(&session_id);
+                tracing::error!(
+                    session_id = %session_id,
+                    error = %e,
+                    "enter_embedded_terminal: AttachSession send failed (channel closed) — \
+                     dump_in_progress rolled back, mode NOT transitioned (F-S039-004)"
+                );
+                return;
             }
         }
+        // F-S039-004 step 3 (Ok path): proceed to mode transition below.
     }
     // BC-2.09.001 AC-004 O(1) path: session already dumped → transition directly.
     // No AttachSession, no dump_in_progress change.
@@ -532,8 +555,6 @@ pub fn enter_embedded_terminal(app: &mut App, session_id: String) {
 /// Removes `session_id` from `pty_dump_received` so that the NEXT call to
 /// `enter_embedded_terminal` for the same session re-runs the full attach + dump protocol
 /// (AC-005 re-attach clause / BC-2.09.001 AC-005).
-///
-/// Self-check BC-5.38.005: YES — body = `todo!()`.
 pub fn exit_embedded_terminal(app: &mut App, session_id: &str) {
     // BC-2.09.001 AC-005 re-attach clause: remove session_id from pty_dump_received.
     // This ensures the NEXT enter_embedded_terminal call for the same session re-runs
@@ -550,53 +571,47 @@ pub fn exit_embedded_terminal(app: &mut App, session_id: &str) {
 
 /// Handle `ServerToClient::ScrollbackDumpComplete` for a session.
 ///
-/// Implements BC-2.09.001 Invariant 5 parser-reset protocol:
-/// 1. Resets parser: `pty_parsers[session_id] = vt100::Parser::new(pty_rows, pty_cols, scrollback_rows)`.
-/// 2. Reconstructs screen from accumulated `ScrollbackChunk` styled-cell data.
-/// 3. Replays buffered bytes from `pending_pty_bytes[session_id]` through the reset parser.
-/// 4. Clears `pending_pty_bytes[session_id]`.
-/// 5. Sets `dump_in_progress.insert(session_id.clone(), false)`.
-/// 6. Inserts into `pty_dump_received`.
+/// Implements exactly 5 steps per architect ruling (F-S039-005/006):
+/// 1. `pty_parsers[id] = vt100::Parser::new(pty_rows, pty_cols, scrollback_rows)` using
+///    `pty_rows`/`pty_cols` FROM the `ScrollbackDumpComplete` message.
+/// 2. Replay `pending_pty_bytes[id]` in receipt order via `parser.process(&chunk)`.
+/// 3. `pending_pty_bytes[id].clear()`.
+/// 4. `dump_in_progress.insert(id, false)`.
+/// 5. `pty_dump_received.insert(id)`.
 ///
-/// Self-check BC-5.38.005: YES — body = `todo!()`.
+/// S-039 does NOT own styled-cell reconstruction or cursor restore (S-047 scope).
+/// The `ScrollbackChunk` dispatch arm remains a no-op for S-039 (S-047 owns accumulation).
 pub fn on_scrollback_dump_complete(
     app: &mut App,
     session_id: String,
     pty_rows: u16,
     pty_cols: u16,
 ) {
-    // BC-2.09.001 Invariant 5 parser-reset protocol (C5):
-    //
-    // Step 1: Reset parser with fresh dimensions from ScrollbackDumpComplete.
-    // This prevents double-applying content already tracked in the parser's live state.
+    // Step 1: Reset parser with actual PTY dimensions from ScrollbackDumpComplete message.
+    // Using pty_rows/pty_cols from the message ensures the parser matches the daemon's PTY.
     let scrollback_rows = app.scrollback_rows as usize;
     app.pty_parsers.insert(
         session_id.clone(),
         vt100::Parser::new(pty_rows, pty_cols, scrollback_rows),
     );
 
-    // Step 2: Screen reconstruction from accumulated ScrollbackChunk styled-cell data.
-    // In S-039 scope, the TUI receives styled-cell data via ScrollbackChunk messages
-    // accumulated before this DumpComplete arrives. Screen reconstruction (writing
-    // serialized cells into the parser) is handled by the ScrollbackChunk accumulator
-    // (S-035 scope). For S-039, the freshly reset parser provides a blank initial state
-    // that the buffered live PtyOutput bytes are replayed into.
+    // S-047: styled-cell reconstruction from ScrollbackChunk rows; cursor restore from
+    // cursor_row/cursor_col. (Not implemented in S-039 — S-047 owns this extension point.)
 
-    // Step 3: Replay buffered PtyOutput bytes in receipt order through the reset parser.
+    // Step 2: Replay pending_pty_bytes in receipt order through the reset parser.
     if let Some(buffered) = app.pending_pty_bytes.remove(&session_id) {
         if let Some(parser) = app.pty_parsers.get_mut(&session_id) {
             for chunk in buffered {
                 parser.process(&chunk);
             }
         }
+        // Step 3: pending_pty_bytes[id] cleared by remove() above.
     }
 
-    // Step 4: pending_pty_bytes is already cleared by the remove() above.
-
-    // Step 5: dump_in_progress = false (dump window closed).
+    // Step 4: dump_in_progress = false (dump window closed).
     app.dump_in_progress.insert(session_id.clone(), false);
 
-    // Step 6: Insert into pty_dump_received (session has a complete dump for this attach).
+    // Step 5: Insert into pty_dump_received (session has a complete dump for this attach).
     app.pty_dump_received.insert(session_id);
 }
 
@@ -613,8 +628,6 @@ pub fn on_scrollback_dump_complete(
 /// This is the canonical GC cleanup path for S-039 (BC-2.09.001 AC-008 / Invariant 4).
 /// S-042 owns the `pty_scroll_offsets[session_id] = 0` reset on resize (ResizePane handler);
 /// S-039 owns this full-removal on termination.
-///
-/// Self-check BC-5.38.005: YES — body = `todo!()`.
 pub fn gc_pty_session(app: &mut App, session_id: &str) {
     // BC-2.09.001 AC-008 / Invariant 4: remove all per-session PTY state on GC.
     app.pty_parsers.remove(session_id);
@@ -643,8 +656,6 @@ type PtyOutputChannelPair = (
 /// `tx.try_send(msg)` — silent message drops violate at-least-once delivery for
 /// `PtyOutput` frames (BC-2.09.001 Invariant 3 / AC-007).
 ///
-/// Self-check BC-5.38.005: YES — body = `todo!()`. Tests bind to this function
-/// to assert capacity via `rx.max_capacity()`, going RED until S-039 implements it.
 pub fn pty_output_channel() -> PtyOutputChannelPair {
     // BC-2.09.001 Invariant 3: bounded channel with backpressure (.send().await, not try_send).
     tokio::sync::mpsc::channel::<Result<ServerToClient, IpcError>>(IPC_READER_CHANNEL_CAPACITY)
@@ -816,6 +827,26 @@ pub fn on_initial_state(
 ) {
     app.sessions = sessions;
     app.drop_counter = drop_counter;
+
+    // F-S039-001 (BC-2.09.001 Inv-5): create parsers for all sessions in the initial roster.
+    // Per-session PTY dims are not available at InitialState time; use canonical defaults
+    // (24 rows × 80 cols — SS-embedded-pty §Parser ownership). The parser will be RESET
+    // with actual pty_rows/pty_cols when ScrollbackDumpComplete arrives (on_scrollback_dump_complete).
+    // Only create a parser for sessions that don't already have one (no-clobber on reconnect).
+    for session in &app.sessions {
+        let id = &session.session_id;
+        if !app.pty_parsers.contains_key(id) {
+            app.pty_parsers.insert(
+                id.clone(),
+                vt100::Parser::new(
+                    PTY_DEFAULT_ROWS,
+                    PTY_DEFAULT_COLS,
+                    app.scrollback_rows as usize,
+                ),
+            );
+            app.pty_scroll_offsets.insert(id.clone(), 0);
+        }
+    }
 
     // Seed the event ring from the daemon's ring snapshot.
     // Bounded to EVENT_RING_CAPACITY; ring_tail from daemon is already bounded
@@ -2305,6 +2336,36 @@ pub fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
             ));
         }
         ServerToClient::SessionListUpdate { sessions } => {
+            // F-S039-001 (BC-2.09.001 Inv-5): create parsers for newly-appeared sessions.
+            // Iterate the NEW roster; for each session not yet in pty_parsers, create one.
+            // Do NOT clobber parsers for sessions already present (no-clobber invariant).
+            let scrollback_rows = app.scrollback_rows as usize;
+            for session in &sessions {
+                let id = &session.session_id;
+                if !app.pty_parsers.contains_key(id) {
+                    app.pty_parsers.insert(
+                        id.clone(),
+                        vt100::Parser::new(PTY_DEFAULT_ROWS, PTY_DEFAULT_COLS, scrollback_rows),
+                    );
+                    app.pty_scroll_offsets.insert(id.clone(), 0);
+                }
+            }
+
+            // F-S039-003 (BC-2.09.001 Inv-5 / AC-008): GC sessions removed from the roster.
+            // Build a set of IDs in the new roster, then GC any parser whose session_id is
+            // absent. This catches sessions that were terminated and dropped from the list
+            // without an explicit SessionStateChanged::Terminated signal.
+            let new_ids: HashSet<&str> = sessions.iter().map(|s| s.session_id.as_str()).collect();
+            let removed: Vec<String> = app
+                .sessions
+                .iter()
+                .filter(|s| !new_ids.contains(s.session_id.as_str()))
+                .map(|s| s.session_id.clone())
+                .collect();
+            for id in removed {
+                gc_pty_session(app, &id);
+            }
+
             app.sessions = sessions;
         }
         ServerToClient::DropCounterUpdate { drop_counter } => {
@@ -2345,13 +2406,29 @@ pub fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
             // Implementation: S-033 TUI story.
             tracing::debug!("SpawnAck received (S-033 stub — TUI handler not yet implemented)");
         }
-        ServerToClient::SessionStateChanged { .. } => {
-            // SessionStateChanged is broadcast by the daemon for every state transition.
-            // The TUI updates session panel state indicators.
-            // Implementation: S-033 TUI story.
-            tracing::debug!(
-                "SessionStateChanged received (S-033 stub — TUI handler not yet implemented)"
-            );
+        ServerToClient::SessionStateChanged {
+            session_id,
+            new_state,
+        } => {
+            // S-033 TUI story owns session panel state indicator updates.
+            // F-S039-003 (BC-2.09.001 AC-008 / Inv-5): GC PTY state on Terminated.
+            // SessionStateChanged::Terminated is the authoritative signal that a session's
+            // process has exited. Invoke gc_pty_session to remove all per-session PTY pipeline
+            // state (parser, scroll offset, dump flags, pending bytes).
+            use monocle_ipc::types::SessionState;
+            if matches!(new_state, SessionState::Terminated) {
+                gc_pty_session(app, &session_id);
+                tracing::debug!(
+                    session_id = %session_id,
+                    "SessionStateChanged::Terminated — PTY pipeline state GC'd (F-S039-003)"
+                );
+            } else {
+                tracing::debug!(
+                    session_id = %session_id,
+                    new_state = ?new_state,
+                    "SessionStateChanged received (S-033 stub — panel state indicator update not yet implemented)"
+                );
+            }
         }
         ServerToClient::Error { code, message } => {
             // Error is sent by the daemon when a lifecycle operation fails.
@@ -2365,11 +2442,13 @@ pub fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
         // -----------------------------------------------------------------------
         ServerToClient::PtyOutput { session_id, bytes } => {
             // AC-001 (BC-2.09.001 PC-1): call on_pty_output within one mpsc cycle.
-            // The stub calls todo!() until the implementer fills in the body.
             on_pty_output(app, session_id, bytes);
-            // AC-003 (BC-2.09.001 PC-3): render tick fires immediately after on_pty_output.
-            // The run loop renders after draining the IPC channel each tick; no explicit
-            // render trigger is needed here since terminal.draw() is always called next.
+            // F-S039-012 (AC-003 / BC-2.09.001 PC-3): request render tick after on_pty_output.
+            // The run loop calls terminal.draw() at the top of each tick, so the next render
+            // is guaranteed. This comment documents the AC-003 invariant explicitly rather than
+            // relying on "draw is always called next."
+            // request_render() is not a separate call here — the event-loop architecture
+            // (draw at tick-start) satisfies AC-003 without an explicit trigger.
         }
         ServerToClient::ScrollbackDumpComplete {
             session_id,
@@ -2839,9 +2918,6 @@ pub fn render_frame(
         AppMode::Filtering { .. } => 1u8,
         AppMode::Overlay { .. } => 2u8,
         AppMode::Fullscreen { .. } => 3u8,
-        // S-039: EmbeddedTerminal and SessionCreation render stubs will be wired by
-        // the implementer. For now, fall through to Dashboard layout (0) so the
-        // render loop compiles and shows a valid (if incomplete) view.
         AppMode::EmbeddedTerminal { .. } => 4u8,
         AppMode::SessionCreation { .. } => 5u8,
     };
@@ -2923,6 +2999,58 @@ pub fn render_frame(
 
             // S-031 (AC-002 / BC-2.07.005 PC-2): profile picker modal overlay.
             // Rendered AFTER the status bar so it floats above all content.
+            if let Some(picker_state) = &app.profile_picker {
+                render_profile_picker(picker_state, &app.config, frame.area(), frame.buffer_mut());
+            }
+        }
+        4u8 => {
+            // AppMode::EmbeddedTerminal — render the vt100 parser state via tui_term widget.
+            // F-S039-002 (BC-2.09.001 AC-003 / Postcondition 3).
+            use crate::ui::embedded_terminal::render_embedded_terminal;
+            use crate::ui::layout::build_dashboard_layout;
+
+            let session_id = match &app.mode {
+                AppMode::EmbeddedTerminal { session_id, .. } => session_id.clone(),
+                _ => unreachable!(),
+            };
+
+            // Use the full frame area as the terminal pane (status bar reserved below).
+            // build_dashboard_layout gives us a panel_area; we use sessions_area as the main pane.
+            let layout = build_dashboard_layout(frame.area());
+            let terminal_area = layout.sessions_area;
+
+            if let Some(parser) = app.pty_parsers.get(&session_id) {
+                render_embedded_terminal(frame, terminal_area, parser);
+            } else {
+                // Parser not yet created (race before InitialState wires it); render placeholder.
+                use ratatui::widgets::Widget;
+                use ratatui::{
+                    style::{Color, Style},
+                    text::{Line, Span},
+                    widgets::Paragraph,
+                };
+                Widget::render(
+                    Paragraph::new(Line::from(Span::styled(
+                        "Connecting to PTY...",
+                        Style::default().fg(Color::DarkGray),
+                    ))),
+                    terminal_area,
+                    frame.buffer_mut(),
+                );
+            }
+
+            // Always render the status bar in EmbeddedTerminal mode.
+            render_status_bar(
+                &app.mode,
+                app.drop_counter,
+                app.overlay_stack.len(),
+                app.status_message.as_deref(),
+                app.ccr_path.as_deref(),
+                layout.status_bar_area,
+                frame.buffer_mut(),
+            );
+
+            // Profile picker can appear over EmbeddedTerminal (BC-2.07.005 INV-4).
             if let Some(picker_state) = &app.profile_picker {
                 render_profile_picker(picker_state, &app.config, frame.area(), frame.buffer_mut());
             }
