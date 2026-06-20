@@ -624,6 +624,33 @@ pub async fn daemon_start_sequence(
         // On failure, log and proceed with empty (but valid) registry (BC-2.08.004 PC-6).
         match session_manager_8b.rediscover_sessions().await {
             Ok(report) => {
+                // Log per-error structured detail before the summary so operators
+                // can see exactly which sidecars were corrupt/orphaned and why.
+                for err in &report.errors {
+                    use crate::session_manager::RediscoveryError;
+                    match err {
+                        RediscoveryError::CorruptSidecar { path, reason } => {
+                            tracing::warn!(
+                                sidecar_path = %path.display(),
+                                reason = %reason,
+                                "daemon_start_sequence: step 8b corrupt sidecar deleted"
+                            );
+                        }
+                        RediscoveryError::UnknownSchemaVersion { path, version } => {
+                            tracing::warn!(
+                                sidecar_path = %path.display(),
+                                schema_version = version,
+                                "daemon_start_sequence: step 8b unknown-schema sidecar deleted as orphan"
+                            );
+                        }
+                        RediscoveryError::RuntimeDirUnreadable { reason } => {
+                            tracing::warn!(
+                                reason = %reason,
+                                "daemon_start_sequence: step 8b runtime_dir unreadable"
+                            );
+                        }
+                    }
+                }
                 tracing::info!(
                     found_alive = report.found_alive,
                     found_dead = report.found_dead,

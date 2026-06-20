@@ -4266,10 +4266,8 @@ async fn test_BC_2_08_004_rediscovery_missing_project_root_corrupt() {
     let corrupt_path = tmp.path().join(format!("session-{}.json", corrupt_id));
     {
         let mut f = std::fs::File::create(&corrupt_path).expect("O-2a: create corrupt sidecar");
-        f.write_all(
-            &serde_json::to_vec_pretty(&corrupt_sidecar).expect("O-2a: serialize corrupt"),
-        )
-        .expect("O-2a: write corrupt");
+        f.write_all(&serde_json::to_vec_pretty(&corrupt_sidecar).expect("O-2a: serialize corrupt"))
+            .expect("O-2a: write corrupt");
     }
 
     // --- valid co-existing session (Running + alive mock host) ---
@@ -4367,10 +4365,8 @@ async fn test_BC_2_08_004_rediscovery_empty_project_root_corrupt() {
     {
         let mut f =
             std::fs::File::create(&corrupt_path).expect("O-2a-empty: create corrupt sidecar");
-        f.write_all(
-            &serde_json::to_vec_pretty(&corrupt_sidecar).expect("O-2a-empty: serialize"),
-        )
-        .expect("O-2a-empty: write");
+        f.write_all(&serde_json::to_vec_pretty(&corrupt_sidecar).expect("O-2a-empty: serialize"))
+            .expect("O-2a-empty: write");
     }
 
     let (mut manager, _subs, _rx) = make_rediscovery_manager(tmp.path(), true);
@@ -4420,8 +4416,7 @@ async fn test_BC_2_08_004_rediscovery_missing_required_field_corrupt() {
     // Sub-case helper: write a sidecar that omits one field, run rediscover,
     // assert CorruptSidecar + delete + Ok return.
     async fn check_missing_field(field: &'static str, suffix: &str) {
-        let tmp = tempfile::tempdir()
-            .unwrap_or_else(|e| panic!("O-2b ({field}): tempdir: {e}"));
+        let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("O-2b ({field}): tempdir: {e}"));
         let session_id_val = format!("00000000-0036-4000-a00b-0000000000{:02x}", suffix.len());
 
         // Build a base sidecar with all required fields, then remove the target one.
@@ -4447,9 +4442,7 @@ async fn test_BC_2_08_004_rediscovery_missing_required_field_corrupt() {
             .expect("O-2b: sidecar must be object")
             .remove(field);
 
-        let sidecar_path = tmp
-            .path()
-            .join(format!("session-{}.json", &session_id_val));
+        let sidecar_path = tmp.path().join(format!("session-{}.json", &session_id_val));
         {
             let mut f = std::fs::File::create(&sidecar_path)
                 .unwrap_or_else(|e| panic!("O-2b ({field}): create sidecar: {e}"));
