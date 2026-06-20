@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-039
 epic_id: EPIC-09
-version: "1.3"
+version: "1.4"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -20,8 +20,8 @@ behavioral_contracts: [BC-2.09.001]
 verification_properties: []
 estimated_days: 4
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.001.md, version: "1.3.5"}
-  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.7.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.001.md, version: "1.4.0"}
+  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.8.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
@@ -72,12 +72,15 @@ widget renders the current parser state immediately (O(1) — no re-fetch).
 When `App::enter_embedded_terminal(session_id)` is called for a session NOT present in
 `App::pty_dump_received`:
 - `App::dump_in_progress.insert(session_id.clone(), true)` is called BEFORE sending `AttachSession`.
-- `ClientToServer::AttachSession { session_id }` is sent to the daemon.
+- `ClientToServer::AttachSession { session_id }` is sent to the daemon via `.send().await`
+  (backpressure; full rollback — clear `dump_in_progress[session_id]` and abort entry — on send
+  failure per BC-2.09.001 Inv-3 / SS-embedded-pty 1.8.0). `enter_embedded_terminal` is `async`.
 - Any `PtyOutput` messages arriving while `dump_in_progress[session_id] == true` are appended
   to `App::pending_pty_bytes[session_id]` (buffered, not fed to parser).
-- On receipt of `ServerToClient::ScrollbackDumpComplete` for this session:
+- On receipt of `ServerToClient::ScrollbackDumpComplete` for this session, the handler lives in
+  `app.rs::handle_server_message` (NOT `event_loop.rs`):
   1. Parser is reset: `pty_parsers[session_id] = vt100::Parser::new(pty_rows, pty_cols, SCROLLBACK_ROWS)`.
-  2. Screen is reconstructed from the accumulated `ScrollbackChunk` styled-cell data.
+  2. **[S-047 scope — NOT S-039]** Styled-cell reconstruction from `ScrollbackChunk` data is deferred to S-047. S-039 does NOT read `total_chunks`, `cursor_row`, or `cursor_col` from `ScrollbackDumpComplete`. The parser is already reset in step 1; proceeding to step 3 is correct. Add a `// S-047: styled-cell reconstruction from ScrollbackChunk rows; cursor restore from cursor_row/cursor_col` comment at this position in the handler as the S-047 extension point.
   3. Buffered bytes in `pending_pty_bytes[session_id]` are replayed through the reset parser in receipt order.
   4. `pending_pty_bytes[session_id]` is cleared.
   5. `dump_in_progress.insert(session_id.clone(), false)`.
@@ -137,9 +140,9 @@ processing normally. The `mpsc::channel(64)` provides 64 slots of burst absorpti
 - [ ] Add `App::dump_in_progress: HashMap<String, bool>` field to `App` struct.
 - [ ] Add `App::pending_pty_bytes: HashMap<String, Vec<Vec<u8>>>` field to `App` struct.
 - [ ] Implement `App::on_pty_output(&mut self, session_id: String, bytes: Vec<u8>)`: check `dump_in_progress[session_id]` — if true, append to `pending_pty_bytes`; otherwise call `pty_parsers.get_mut(&session_id)?.process(&bytes)`.
-- [ ] Wire `ServerToClient::PtyOutput` arm in the IPC event dispatch loop to call `on_pty_output` then `request_render()`.
-- [ ] Implement `App::enter_embedded_terminal(session_id: String)`: check `pty_dump_received`, set `dump_in_progress = true` before `AttachSession` send if not already dumped, send `AttachSession` IPC, transition `AppMode::EmbeddedTerminal`.
-- [ ] Implement `ScrollbackDumpComplete` handler: reset parser, replay `pending_pty_bytes`, clear buffer, set `dump_in_progress = false`, insert into `pty_dump_received`.
+- [ ] Wire `ServerToClient::PtyOutput` arm in `app.rs::handle_server_message` to call `on_pty_output` then `request_render()`. (IPC server-message dispatch lives in `app.rs::handle_server_message`, NOT in `event_loop.rs`.)
+- [ ] Implement `App::enter_embedded_terminal(session_id: String)` as `async fn`: check `pty_dump_received`, set `dump_in_progress = true` before `AttachSession` send if not already dumped, send `AttachSession` via `.send().await` with rollback on failure (BC-2.09.001 Inv-3), transition `AppMode::EmbeddedTerminal`.
+- [ ] Implement `ScrollbackDumpComplete` handler in `app.rs::handle_server_message`: reset parser (step 1); add `// S-047: styled-cell reconstruction from ScrollbackChunk rows; cursor restore from cursor_row/cursor_col` comment as S-047 extension point (S-039 does NOT read `total_chunks`, `cursor_row`, or `cursor_col`); replay `pending_pty_bytes` (step 3); clear buffer (step 4); set `dump_in_progress = false` (step 5); insert into `pty_dump_received` (step 6).
 - [ ] Implement `render_embedded_terminal(frame, area, parser)` in `crates/monocle-tui/src/ui/embedded_terminal.rs`: creates `PseudoTerminal::new(parser.screen())` and renders into pane `Rect`.
 - [ ] Initialize `vt100::Parser` for each session in `on_session_list_update()` and `on_initial_state()` using configured `scrollback_rows`.
 - [ ] Load `pty_scrollback_rows` from `~/.monocle/config.json` at TUI startup; clamp 1–10000; default 1000.
@@ -202,9 +205,8 @@ Files to MODIFY:
 
 | File | Change |
 |------|--------|
-| `crates/monocle-tui/src/app.rs` | Add five new `App` fields: `pty_parsers`, `pty_scroll_offsets`, `pty_dump_received`, `dump_in_progress`, `pending_pty_bytes`; implement `on_pty_output()`, `enter_embedded_terminal()`, `ScrollbackDumpComplete` handler |
+| `crates/monocle-tui/src/app.rs` | Add five new `App` fields: `pty_parsers`, `pty_scroll_offsets`, `pty_dump_received`, `dump_in_progress`, `pending_pty_bytes`; implement `on_pty_output()`; implement `enter_embedded_terminal()` (async — sends `AttachSession` via `.send().await` with rollback on failure per BC-2.09.001 Inv-3); implement `ScrollbackDumpComplete` handler in `handle_server_message` (IPC server-message dispatch lives here, NOT in `event_loop.rs`); wire `ServerToClient::PtyOutput` arm in `handle_server_message` to call `on_pty_output` then `request_render()` |
 | `crates/monocle-core/src/app_mode.rs` | Add `AppMode::EmbeddedTerminal { session_id: String, prior: FocusSnapshot }` and `AppMode::SessionCreation { step: SessionCreationStep, prior: FocusSnapshot, launching_session_id: Option<String> }` variants; add `SessionCreationStep` enum (ProfilePicker, ProjectPicker, WorktreeConfirm, Launching) |
-| `crates/monocle-tui/src/event_loop.rs` | Wire `ServerToClient::PtyOutput` arm in IPC dispatch; call `on_pty_output` then `request_render()` |
 | `crates/monocle-tui/src/ui/mod.rs` | `pub mod embedded_terminal;` |
 | `crates/monocle-tui/Cargo.toml` | Add `vt100 = "=0.16.2"`, `tui-term = "=0.3.4"` to dependencies |
 | `crates/monocle-ipc/src/lib.rs` | Add `ServerToClient::PtyOutput { session_id: String, bytes: Vec<u8> }`, `ClientToServer::AttachSession { session_id: String }` variants if absent; reference `ServerToClient::ScrollbackDumpComplete` (full 6-field shape: `{ session_id, total_chunks, cursor_row, cursor_col, pty_rows, pty_cols }` — defined/owned by S-047 per SS-ipc; S-039 CONSUMES this variant, do NOT define or add a partial shape here) |

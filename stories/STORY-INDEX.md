@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.51"
+version: "5.52"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-19T01:00:00Z
@@ -498,6 +498,18 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.52
+
+**S-039 adversarial finding remediation — F-S039-004/005/006/011 (2026-06-20):**
+
+- S-039-pty-output-pipeline.md v1.3→v1.4. Input pins refreshed: BC-2.09.001 1.3.5→1.4.0; SS-embedded-pty 1.7.0→1.8.0.
+- F-S039-005/006: AC-005 step 2 replaced — styled-cell reconstruction from ScrollbackChunk deferred to S-047 scope; S-039 does NOT read total_chunks/cursor_row/cursor_col from ScrollbackDumpComplete. S-047 extension-point comment added.
+- F-S039-004: AC-005 notes enter_embedded_terminal is async; AttachSession sent via .send().await with full rollback on failure per BC-2.09.001 Inv-3.
+- F-S039-011: IPC server-message handler call-site corrected throughout S-039 — PtyOutput/ScrollbackDumpComplete arms live in app.rs::handle_server_message, NOT event_loop.rs. File Structure table consolidated; Tasks updated.
+- S-040 and S-041: reviewed; all event_loop.rs references in those stories are for keyboard/mouse crossterm dispatch (genuinely in event_loop.rs) — no corrections required.
+- SE-16d monotonicity: v5.52 timestamp 2026-06-20 >= v5.51 timestamp 2026-06-20. PASS.
+- SE-22 v2 sibling-sweep: version-pin-registry.yaml S-039-pty-output-pipeline 1.3→1.4.
 
 ## §Trace v5.51
 
