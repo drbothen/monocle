@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.8"
+version: "1.4.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -78,22 +78,36 @@ TUI's IPC socket. This timing budget covers: IPC framing decode → `vt100::Pars
    §PTY Widget Pipeline). The IPC reader uses `.send().await` (backpressure), NOT `.try_send()`
    (drop). A slow render loop applies backpressure up to the daemon broker and ultimately
    to the session-host's PTY reader. This is the correct behavior — no PTY bytes are dropped.
+   **F-S039-004 extension:** This `.send().await` requirement extends to the `AttachSession`
+   control message sent in `enter_embedded_terminal()`. `try_send()` on that path is
+   forbidden; see SS-embedded-pty.md §Auto-attach §F-S039-004 RULING for the full rollback
+   contract (if the channel is closed, do NOT set `dump_in_progress`, do NOT enter
+   `EmbeddedTerminal` mode, surface error to status bar).
 4. `SCROLLBACK_ROWS` default is 1000 rows (maximum 10000, configurable).
    `vt100::Parser::new(rows, cols, scrollback_rows)` is initialized with this default unless
    overridden by config. Memory per parser: ~16 bytes/cell × cols × (visible_rows + scrollback_rows).
    Default: 16 × 80 × 1024 ≈ 1.3 MB/session; 8 sessions ≈ 10.4 MB. Cap at 10000 rows
    yields ~12.8 MB/session at 80 cols. See SS-embedded-pty.md §O4 for full bound analysis.
 5. **Chunked scrollback receipt — parser reset protocol (C5):** When the TUI receives
-   `ScrollbackChunk*` + `ServerToClient::ScrollbackDumpComplete` for a session (per
-   BC-2.05.011 §ScrollbackDumpComplete PC-3), the TUI MUST:
+   `ServerToClient::ScrollbackDumpComplete` for a session (per BC-2.05.011 §ScrollbackDumpComplete
+   PC-3), the TUI MUST:
    a. Reset the parser on `ScrollbackDumpComplete` receipt:
       `pty_parsers[session_id] = vt100::Parser::new(pty_rows, pty_cols, SCROLLBACK_ROWS)`.
-   b. Reconstruct the screen from the accumulated `Vec<Vec<SerializedCell>>` styled-cell data
-      WITHOUT re-parsing raw PTY bytes (see SS-session-manager.md §Screen-state transfer).
+      Use `pty_rows` and `pty_cols` from the `ScrollbackDumpComplete` message fields.
+   b. **[S-047 scope — styled-cell reconstruction]** Reconstruct the screen from the
+      accumulated `Vec<Vec<SerializedCell>>` styled-cell data WITHOUT re-parsing raw PTY bytes
+      (see SS-session-manager.md §Screen-state transfer). This step is implemented by S-047
+      (which delivers `ScrollbackChunk` accumulation, `total_chunks` validation, `chunk_seq`
+      contiguity, and cursor restoration from `cursor_row`/`cursor_col`). S-039 does NOT
+      implement this step — the daemon emits empty dumps (`total_chunks: 0`) until S-047
+      delivers the daemon-side chunk broadcast (F-S035-AC005-DAEMON-BROADCAST). See
+      SS-embedded-pty.md §F-S039-005/006 RULING for the full boundary.
    c. Any `PtyOutput` messages received while waiting for `ScrollbackDumpComplete` are
       buffered in `pending_pty_bytes[session_id]` (per BC-2.05.011 Invariant 6). After
-      reconstruction, replay buffered bytes through the reset parser in receipt order, then
-      apply all subsequent `PtyOutput` events to the clean parser.
+      the parser reset (step a), replay buffered bytes through the reset parser in receipt
+      order, then apply all subsequent `PtyOutput` events to the clean parser.
+   d. Set `dump_in_progress[session_id] = false` and insert `session_id` into
+      `pty_dump_received`.
    The retired single-message `ServerToClient::ScrollbackDump` variant MUST NOT be used.
    The old behavior (forwarding raw bytes into an existing live parser) would double-apply
    content already in the parser's screen model — causing visual artifacts.
@@ -132,7 +146,7 @@ TUI's IPC socket. This timing budget covers: IPC framing decode → `vt100::Pars
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — this BC defines the PTY byte pipeline performance contract: IPC → vt100 → tui-term within 100ms, which is the core of CAP-009's embedded PTY widget capability |
 | Architecture Module | monocle-tui (App::on_pty_output, pty_parsers, PseudoTerminal widget) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.7.0 §PTY Widget Pipeline; §Parser ownership in TUI; §O4 memory bound; §I7 per-session scroll offset; §EmbeddedTerminal ENTRY (auto-attach mandate, I11-001 PRONG A); SS-session-manager.md v2.15.1 §Screen-state transfer (C5); ADR-0011 v1.2.1 §Decision |
+| Architecture Source | SS-embedded-pty.md v1.8.0 §PTY Widget Pipeline; §Parser ownership in TUI; §O4 memory bound; §I7 per-session scroll offset; §EmbeddedTerminal ENTRY (auto-attach mandate, I11-001 PRONG A; F-S039-004 rollback ruling; F-S039-005/006 scope boundary); SS-session-manager.md v2.15.1 §Screen-state transfer (C5); ADR-0011 v1.2.1 §Decision |
 | Test Name | test_BC_2_09_001_pty_output_renders_within_100ms |
 
 ## Related BCs
@@ -153,6 +167,26 @@ S-039 — Implement TUI PTY widget (vt100 parser, PseudoTerminal render, PtyOutp
 ## VP Anchors
 
 VP-TBD — PTY output render latency tests (filled after VP creation)
+
+## §Trace v1.4.0
+
+**F-S039-004 + F-S039-005/006 rulings — async auto-attach contract; S-039 vs S-047 scope boundary** (2026-06-20):
+
+- **Invariant 3 extended (F-S039-004):** Added normative note extending the `.send().await`
+  mandate to the `AttachSession` control message sent in `enter_embedded_terminal()`.
+  `try_send()` on that path is explicitly forbidden. Cross-reference to
+  SS-embedded-pty.md §Auto-attach §F-S039-004 RULING for full rollback contract.
+- **Invariant 5 revised (F-S039-005/006):** Styled-cell reconstruction (step b) annotated
+  as [S-047 scope]. S-039 implements steps a (parser reset using `pty_rows`/`pty_cols` from
+  the message), c (replay buffered bytes), and d (flag updates). S-047 implements styled-cell
+  accumulation, `total_chunks` validation, chunk contiguity, and cursor restoration. Rationale:
+  daemon emits empty dumps today (F-S035-AC005-DAEMON-BROADCAST); step b cannot be tested
+  end-to-end until S-047 delivers daemon-side chunk broadcast. Step d (flags) made explicit
+  in the numbered list (was implied only). Architecture Source updated:
+  SS-embedded-pty.md v1.7.0 → v1.8.0.
+- SE-16d monotonicity: v1.4.0 timestamp 2026-06-20 >= v1.3.8 timestamp 2026-06-19. PASS.
+
+## §Trace v1.3.8 (retained — originally a duplicate header; now correctly sequenced)
 
 ## §Trace v1.3.7
 

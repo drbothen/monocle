@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "embedded-pty"
 subsystem: SS-09
-version: "1.7.0"
+version: "1.8.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -306,23 +306,79 @@ When `enter_embedded_terminal(session_id)` is called AND the TUI has not yet rec
 and has never been populated via a scrollback dump), the TUI MUST IMMEDIATELY send
 `ClientToServer::AttachSession { session_id }` to the daemon.
 
+**F-S039-004 RULING — async/sync + rollback for auto-attach send (2026-06-20):**
+
+`enter_embedded_terminal` MUST be an `async fn` that uses `.send().await` (backpressure),
+NOT `try_send()` (drop-on-full). Rationale:
+
+1. BC-2.09.001 Invariant 3 mandates `.send().await` on the IPC channel — no PTY bytes
+   are dropped. This invariant extends to the `AttachSession` send: the control message
+   that gates the entire dump protocol is as critical as any PtyOutput message.
+2. `try_send()` + WARN + proceed is silently unsafe: if `AttachSession` is dropped,
+   `dump_in_progress` is set `true` but the daemon never receives the attach request.
+   No `ScrollbackDumpComplete` will ever arrive. `dump_in_progress` stays `true`
+   forever, buffering all subsequent `PtyOutput` into `pending_pty_bytes` indefinitely
+   (permanently blank terminal — the exact failure mode reported in F-S039-004).
+3. The TUI event loop runs in a tokio task (`spawn` or `spawn_local`). The call to
+   `enter_embedded_terminal()` is dispatched from within an async context (the
+   `Action::EnterEmbeddedTerminal` arm of the event dispatch loop). Awaiting a bounded
+   channel send is legal and correct in this context.
+
+**Failure-path contract (mandatory rollback):** If `.send().await` returns `Err(_)` (channel
+closed — daemon has died), the function MUST NOT set `dump_in_progress = true` and MUST NOT
+transition `AppMode` to `EmbeddedTerminal`. Instead:
+- Leave `AppMode` unchanged (remain in the current mode, typically `Dashboard`).
+- Surface an error to the user via the status bar: e.g.,
+  `"[error] IPC channel closed — cannot enter embedded terminal"`.
+- Log at `tracing::error!` level.
+
+The `dump_in_progress` flag MUST be set to `true` ONLY AFTER a successful `.await` on the
+`AttachSession` send (the send succeeded and the daemon is guaranteed to receive the message).
+
 ```rust
-// Auto-attach mandate: send AttachSession if this parser has never been
-// populated from a scrollback dump in this process lifetime.
-// S12-001 fix: set dump_in_progress = true HERE (not on first ScrollbackChunk receipt)
-// because live PtyOutput may arrive before the first chunk — buffering must start
-// immediately when AttachSession is sent.
+// Auto-attach mandate: async fn — .send().await (backpressure); rollback on error.
+// S12-001 fix: set dump_in_progress = true BEFORE sending AttachSession so any PtyOutput
+// that arrives before the first ScrollbackChunk is captured in pending_pty_bytes.
+// F-S039-004 fix: use .send().await (NOT try_send); rollback app_mode and flags on Err.
 if !app.pty_dump_received.contains(&session_id) {
-    // Mark dump in progress BEFORE sending AttachSession so any PtyOutput that
-    // arrives before the first ScrollbackChunk is captured in pending_pty_bytes.
+    // Mark dump in progress BEFORE the send so any PtyOutput arriving in the
+    // inter-task window (after .await completes but before the daemon responds)
+    // is buffered, not fed to the blank parser.
     // The completed-set (pty_dump_received) is the "done" signal; dump_in_progress
     // is the "in-flight" signal — they serve different purposes and MUST NOT be conflated.
     app.dump_in_progress.insert(session_id.clone(), true);
-    app.ipc_tx.send(ClientToServer::AttachSession {
+
+    if app.ipc_tx.send(ClientToServer::AttachSession {
         session_id: session_id.clone(),
-    }).await.ok();
+    }).await.is_err() {
+        // Channel closed (daemon dead). Full rollback — do NOT enter EmbeddedTerminal.
+        app.dump_in_progress.remove(&session_id);
+        // AppMode transition below is guarded: this function returns before transitioning.
+        tracing::error!("IPC channel closed; cannot enter embedded terminal for {}", session_id);
+        app.set_status_bar_message(
+            format!("[error] IPC channel closed — cannot enter embedded terminal"),
+        );
+        return; // abort; AppMode unchanged
+    }
+    // Send succeeded; proceed to mode transition below.
 }
+// AppMode transition (only reached if the send succeeded or no dump was needed):
+app.app_mode = AppMode::EmbeddedTerminal {
+    session_id: session_id.clone(),
+    prior: app.focus_snapshot(),
+};
 ```
+
+**IPC dispatch call-site note (F-S039-011):** The `enter_embedded_terminal()` function
+is called from `app.rs` action-dispatch (the `Action::EnterEmbeddedTerminal` arm), NOT
+from `event_loop.rs`. The `ScrollbackDumpComplete` handler that clears `dump_in_progress`
+and replays buffered bytes also lives in `app.rs::handle_server_message`. The
+`event_loop.rs` call-site shown in §Dependency Boundary §Call site in event_loop.rs
+refers specifically to the keyboard/mouse event dispatch arm for `AppMode::EmbeddedTerminal`
+— that arm IS in `event_loop.rs` (the crossterm event loop). IPC server-message handling
+(PtyOutput, ScrollbackDumpComplete, ScrollbackChunk) is dispatched through
+`app.rs::handle_server_message`. Implementers MUST NOT place IPC server-message handlers
+in `event_loop.rs`.
 
 `App::pty_dump_received: HashSet<String>` tracks which session IDs have received a
 `ScrollbackDumpComplete` in this TUI process lifetime. On receipt of `ScrollbackDumpComplete`
@@ -333,6 +389,60 @@ plus list removal), remove from `pty_dump_received` so a future re-entry trigger
 `AttachSession` is sent until `ScrollbackDumpComplete` is received and the buffer is replayed.
 While `dump_in_progress[session_id] == true`, all incoming `ServerToClient::PtyOutput` for that
 session MUST be appended to `App::pending_pty_bytes[session_id]` instead of fed to the parser.
+
+**F-S039-005/006 RULING — S-039 vs S-047 ScrollbackDumpComplete handler scope boundary (2026-06-20):**
+
+S-039 and S-047 split ownership of the `ScrollbackDumpComplete` handler as follows:
+
+**S-039 OWNS (must implement NOW):**
+1. Reset the parser: `pty_parsers[session_id] = vt100::Parser::new(pty_rows, pty_cols, SCROLLBACK_ROWS)`.
+   Use `pty_rows` and `pty_cols` from the `ScrollbackDumpComplete` fields.
+2. Replay buffered live bytes: iterate `pending_pty_bytes[session_id]` in receipt order,
+   calling `pty_parsers[session_id].process(&chunk)` for each.
+3. Clear the buffer: `pending_pty_bytes[session_id].clear()`.
+4. Set flag: `dump_in_progress.insert(session_id.clone(), false)`.
+5. Mark done: `pty_dump_received.insert(session_id.clone())`.
+
+**S-047 OWNS (NOT S-039 scope):**
+- Accumulating `ScrollbackChunk { rows: Vec<Vec<SerializedCell>> }` packets in a
+  per-session chunk buffer (e.g., `HashMap<String, Vec<ScrollbackChunk>>`).
+- Contiguity validation of `chunk_seq` (AC-007 in S-047).
+- `total_chunks` count validation against `ScrollbackDumpComplete.total_chunks` (AC-008).
+- Screen-cell reconstruction from styled cells: iterating the accumulated
+  `Vec<Vec<SerializedCell>>` rows and writing cell attributes into the reset parser
+  or a separate surface layer.
+- Cursor restoration from `cursor_row`/`cursor_col`.
+- `PtyReset` handler (clears chunks, re-triggers `AttachSession`).
+
+**Rationale for this boundary:**
+
+1. **Daemon emits EMPTY dumps today (F-S035-AC005-DAEMON-BROADCAST):** The daemon's
+   session-host currently sends `ScrollbackDumpComplete` with `total_chunks: 0` and
+   zero `ScrollbackChunk` messages because styled-cell serialization is deferred to
+   S-039/S-047. S-039's reconstruction algorithm operating on zero chunks is trivially
+   a no-op. Placing styled-cell reconstruction in S-039 now would be building against
+   a mock signal and would be untestable until S-047 delivers the daemon-side chunk
+   broadcast. Therefore styled-cell reconstruction is deferred to S-047, where it will
+   be testable end-to-end.
+2. **`ScrollbackChunk` IPC variant is S-047's deliverable:** `ServerToClient::ScrollbackChunk`
+   is defined and owned by S-047 (see S-047 Task §IPC Protocol). S-039 consumes
+   `ScrollbackDumpComplete` but does NOT accumulate or process `ScrollbackChunk` payloads.
+3. **`total_chunks` and `cursor_row/cursor_col` fields are only meaningful with actual chunks:**
+   S-039 MUST NOT use `total_chunks` as a completeness guard (it will be 0 for every dump
+   until the daemon is updated in S-047). S-039 MUST NOT restore cursor from
+   `cursor_row`/`cursor_col` (there is nothing to restore on an empty dump). Both fields
+   are structurally present in the `ScrollbackDumpComplete` message for S-047 to consume.
+
+**S-039 handler consequence — production-grade for empty-dump reality:**
+
+With `total_chunks: 0` and no preceding chunks, the S-039 `ScrollbackDumpComplete` handler
+correctly produces: reset parser to `pty_rows x pty_cols` (from the message fields), replay
+any live-buffered bytes through the clean parser, and complete. The terminal starts clean
+with live output from the attach point forward. This is production-grade behavior for the
+empty-dump reality: the user will see new output from the session from the moment they enter
+EmbeddedTerminal, without visual artifacts from double-applying prior state. Historical
+screen content requires S-047.
+
 On `ScrollbackDumpComplete`: (1) reset parser, (2) replay `pending_pty_bytes[session_id]` in
 order, (3) clear the buffer, (4) set `dump_in_progress[session_id] = false`, (5) insert into
 `pty_dump_received`. These are the **canonical ADR-0010 types** (`HashMap<String, bool>` and
@@ -1046,6 +1156,46 @@ Mitigation: integration tests use a PTY fixture corpus from `embedded-pty-evalua
 | BC-2.09.008 | SessionCreation wizard: session transitions to Running within 5s of launch confirm | P0 |
 
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
+
+---
+
+## §Trace v1.8.0
+
+**F-S039-004 + F-S039-005/006 + F-S039-011 rulings — async/sync auto-attach send; S-039 vs S-047 scope boundary; IPC dispatch call-site clarification** (2026-06-20):
+
+- **F-S039-004 (HIGH) — async/.await mandatory; rollback on send failure:**
+  `enter_embedded_terminal()` MUST be `async fn` using `.send().await` (backpressure), NOT
+  `try_send()` (drop-on-full). Using `try_send()` + WARN + proceed was identified as a silent
+  data-loss bug: if `AttachSession` is dropped, `dump_in_progress` is set `true` but no
+  `ScrollbackDumpComplete` ever arrives, leaving `pending_pty_bytes` filling indefinitely
+  (permanently blank terminal). The canonical pattern is: (a) set `dump_in_progress = true`
+  BEFORE the `.send().await` call (so any PtyOutput arriving during the await window is
+  buffered); (b) if `.send().await` returns `Err`, perform FULL ROLLBACK: remove the
+  `dump_in_progress` entry, do NOT transition `AppMode`, surface error to status bar,
+  return early. This ruling is now normative in §EmbeddedTerminal ENTRY §Auto-attach.
+
+- **F-S039-005/006 (HIGH/MED) — S-039 vs S-047 ScrollbackDumpComplete scope boundary:**
+  S-039 owns: (1) parser reset using `pty_rows`/`pty_cols` from the `ScrollbackDumpComplete`
+  message, (2) replay of buffered live bytes, (3) buffer clear, (4) flag updates. S-047 owns:
+  styled-cell reconstruction from `Vec<Vec<SerializedCell>>` chunks, `total_chunks` validation,
+  `chunk_seq` contiguity, cursor restoration. Rationale: daemon emits empty dumps today
+  (F-S035-AC005-DAEMON-BROADCAST); `ScrollbackChunk` IPC variant is S-047's deliverable;
+  styled-cell reconstruction cannot be tested end-to-end until S-047 delivers daemon-side
+  broadcast. S-039's handler is production-grade for empty-dump reality: clean parser reset +
+  live buffer replay. Historical screen content requires S-047. BC-2.09.001 Invariant 5 prose
+  references styled-cell reconstruction (step b) — this step is S-047's implementation
+  obligation, not S-039's.
+
+- **F-S039-011 (ARCHITECTURE) — IPC dispatch call-site clarification:**
+  Added a normative note to §EmbeddedTerminal ENTRY §Auto-attach clarifying that
+  `enter_embedded_terminal()` and `handle_server_message` (the `ScrollbackDumpComplete` handler)
+  live in `app.rs`, NOT `event_loop.rs`. The `#### Call site in event_loop.rs` section heading
+  at §Dependency Boundary §Conversion in monocle-tui is CORRECT and UNCHANGED — it documents
+  the crossterm keyboard/mouse event dispatch arm, which genuinely lives in `event_loop.rs`.
+  Only IPC server-message handlers (PtyOutput, ScrollbackDumpComplete) are in `app.rs`.
+
+- Semver: minor (v1.7.0 → v1.8.0) — new normative auto-attach contract with rollback path;
+  new S-039/S-047 scope boundary; call-site clarification note.
 
 ---
 
