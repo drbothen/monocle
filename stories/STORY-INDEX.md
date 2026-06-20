@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.52"
+version: "5.53"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-19T01:00:00Z
@@ -498,6 +498,15 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.53
+
+**S-039 Pass-6 LOW + input-pin freshness (F-S039-P6-LOW-001, 2026-06-20):**
+
+- S-039-pty-output-pipeline.md v1.6→v1.7. Input pins refreshed: BC-2.09.001 1.7.0→1.7.1; SS-embedded-pty 1.9.0→1.10.0.
+- AC-005 step 5: `dump_in_progress.insert(session_id.clone(), false)` corrected to `dump_in_progress.remove(&session_id)` (per BC-2.09.001 Inv-5 step d; removal avoids stale entries). Same fix applied to Tasks list item.
+- SE-16d monotonicity: v5.53 timestamp 2026-06-20 >= v5.52 timestamp 2026-06-20. PASS.
+- SE-22 v2 sibling-sweep: version-pin-registry.yaml S-039-pty-output-pipeline 1.5→1.7; STORY-INDEX 5.52→5.53.
 
 ## §Trace v5.52
 

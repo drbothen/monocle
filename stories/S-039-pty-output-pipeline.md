@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-039
 epic_id: EPIC-09
-version: "1.6"
+version: "1.7"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-20T00:00:00Z
@@ -20,8 +20,8 @@ behavioral_contracts: [BC-2.09.001]
 verification_properties: []
 estimated_days: 4
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.001.md, version: "1.7.0"}
-  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.9.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.001.md, version: "1.7.1"}
+  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.10.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
@@ -83,7 +83,7 @@ When `App::enter_embedded_terminal(session_id)` is called for a session NOT pres
   2. **[S-047 scope — NOT S-039]** Styled-cell reconstruction from `ScrollbackChunk` data is deferred to S-047. S-039 does NOT read `total_chunks`, `cursor_row`, or `cursor_col` from `ScrollbackDumpComplete`. The parser is already reset in step 1; proceeding to step 3 is correct. Add a `// S-047: styled-cell reconstruction from ScrollbackChunk rows; cursor restore from cursor_row/cursor_col` comment at this position in the handler as the S-047 extension point.
   3. Buffered bytes in `pending_pty_bytes[session_id]` are replayed through the reset parser in receipt order.
   4. `pending_pty_bytes[session_id]` is cleared.
-  5. `dump_in_progress.insert(session_id.clone(), false)`.
+  5. `dump_in_progress.remove(&session_id)` (per BC-2.09.001 Inv-5 step d; removal avoids stale entries).
   6. `pty_dump_received.insert(session_id.clone())`.
 - This mandate does NOT apply when entering `EmbeddedTerminal` from `SessionCreation::Launching`
   (new session; no historical state).
@@ -185,7 +185,7 @@ processing normally. The `mpsc::channel(64)` provides 64 slots of burst absorpti
 - [ ] Implement `App::on_pty_output(&mut self, session_id: String, bytes: Vec<u8>)`: check `dump_in_progress[session_id]` — if true, append to `pending_pty_bytes`; otherwise call `pty_parsers.get_mut(&session_id)?.process(&bytes)`.
 - [ ] Wire `ServerToClient::PtyOutput` arm in `app.rs::handle_server_message` to call `on_pty_output` then `request_render()`. (IPC server-message dispatch lives in `app.rs::handle_server_message`, NOT in `event_loop.rs`.)
 - [ ] Implement `App::enter_embedded_terminal(session_id: String)` as `async fn`: check `pty_dump_received`, set `dump_in_progress = true` before `AttachSession` send if not already dumped, send `AttachSession` via `.send().await` with rollback on failure (BC-2.09.001 Inv-3), transition `AppMode::EmbeddedTerminal`.
-- [ ] Implement `ScrollbackDumpComplete` handler in `app.rs::handle_server_message`: reset parser (step 1); add `// S-047: styled-cell reconstruction from ScrollbackChunk rows; cursor restore from cursor_row/cursor_col` comment as S-047 extension point (S-039 does NOT read `total_chunks`, `cursor_row`, or `cursor_col`); replay `pending_pty_bytes` (step 3); clear buffer (step 4); set `dump_in_progress = false` (step 5); insert into `pty_dump_received` (step 6).
+- [ ] Implement `ScrollbackDumpComplete` handler in `app.rs::handle_server_message`: reset parser (step 1); add `// S-047: styled-cell reconstruction from ScrollbackChunk rows; cursor restore from cursor_row/cursor_col` comment as S-047 extension point (S-039 does NOT read `total_chunks`, `cursor_row`, or `cursor_col`); replay `pending_pty_bytes` (step 3); clear buffer (step 4); call `dump_in_progress.remove(&session_id)` (step 5; per BC-2.09.001 Inv-5 step d; removal avoids stale entries); insert into `pty_dump_received` (step 6).
 - [ ] Implement `render_embedded_terminal(frame, area, parser)` in `crates/monocle-tui/src/ui/embedded_terminal.rs`: creates `PseudoTerminal::new(parser.screen())` and renders into pane `Rect`.
 - [ ] Initialize `vt100::Parser` for each session in `on_session_list_update()` and `on_initial_state()` using configured `scrollback_rows`.
 - [ ] Load `pty_scrollback_rows` from `~/.monocle/config.json` at TUI startup; clamp 1–10000; default 1000.
