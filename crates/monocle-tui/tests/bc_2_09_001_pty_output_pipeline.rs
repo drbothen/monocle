@@ -338,11 +338,14 @@ async fn test_BC_2_09_001_auto_attach_on_first_entry_buffering() {
     // Act 3: ScrollbackDumpComplete — triggers parser reset + replay.
     on_scrollback_dump_complete(&mut app, session_id.to_string(), 24, 80);
 
-    // Assert F (BC-2.09.001 Invariant 5 step e): dump_in_progress = false after complete.
+    // Assert F (BC-2.09.001 Invariant 5 step d/e): dump_in_progress entry removed after complete.
+    // F-S039-REV-003: on_scrollback_dump_complete now calls remove() (not insert(false)).
+    // The idempotency guard reads get(&id) == Some(&true); absent (None) is equivalent to
+    // Some(false) for that guard — both are no-ops. Absent is preferred to avoid stale entries.
     assert_eq!(
         app.dump_in_progress.get(session_id).copied(),
-        Some(false),
-        "BC-2.09.001 Invariant 5: dump_in_progress must be false after ScrollbackDumpComplete"
+        None,
+        "BC-2.09.001 Invariant 5: dump_in_progress entry must be removed after ScrollbackDumpComplete (F-S039-REV-003)"
     );
 
     // Assert G (BC-2.09.001 Invariant 5 step f): session inserted into pty_dump_received.
@@ -1097,11 +1100,13 @@ async fn test_BC_2_09_001_first_entry_session_not_preinserted() {
         "F-S039-009: pty_parsers must contain session after ScrollbackDumpComplete"
     );
 
-    // Assert F: dump_in_progress = false.
+    // Assert F: dump_in_progress entry removed after ScrollbackDumpComplete.
+    // F-S039-REV-003: on_scrollback_dump_complete now calls remove() (not insert(false)).
+    // Absent is the correct post-complete state (idempotency guard treats None == Some(false)).
     assert_eq!(
         app.dump_in_progress.get(session_id).copied(),
-        Some(false),
-        "F-S039-009: dump_in_progress must be false after ScrollbackDumpComplete"
+        None,
+        "F-S039-009: dump_in_progress entry must be removed after ScrollbackDumpComplete (F-S039-REV-003)"
     );
 
     // Assert G: pty_dump_received contains the session.
