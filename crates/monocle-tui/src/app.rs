@@ -17,7 +17,7 @@ use monocle_config::{detect_ccr, load_config, write_config, MonocleConfig};
 use monocle_core::engine::EnrichedSession;
 use monocle_core::tui::state::{
     clamp_scrollback_rows, default_scrollback_rows, AppMode, FocusSnapshot, PromptModal,
-    ToolPayload,
+    ToolPayload, PTY_DEFAULT_COLS, PTY_DEFAULT_ROWS,
 };
 use monocle_ipc::error::IpcError;
 use monocle_ipc::framing::read_framed;
@@ -98,22 +98,6 @@ pub const DAEMON_OFFLINE_STATUS: &str = "[daemon: offline]";
 /// ABSENCE of the old format (regression guard), which requires the constant to
 /// compile. Do NOT use this in new rendering code.
 pub const MONOCLE_STATUS_LABEL: &str = "monocle";
-
-/// Default PTY rows for initial vt100::Parser creation (BC-2.09.001, F-S039-001).
-///
-/// Used when creating parsers in `on_initial_state` and `on_session_list_update` where
-/// per-session PTY dimensions are not yet known. The parser is RESET with actual
-/// pty_rows/pty_cols when `ScrollbackDumpComplete` arrives (see `on_scrollback_dump_complete`).
-/// Canonical terminal default (VT100 standard).
-pub const PTY_DEFAULT_ROWS: u16 = 24;
-
-/// Default PTY cols for initial vt100::Parser creation (BC-2.09.001, F-S039-001).
-///
-/// Used when creating parsers in `on_initial_state` and `on_session_list_update` where
-/// per-session PTY dimensions are not yet known. The parser is RESET with actual
-/// pty_rows/pty_cols when `ScrollbackDumpComplete` arrives (see `on_scrollback_dump_complete`).
-/// Canonical terminal default (VT100 standard / xterm default).
-pub const PTY_DEFAULT_COLS: u16 = 80;
 
 /// Format the legacy S-025 drop-counter label `"[dropped: N] monocle"`.
 ///
@@ -830,8 +814,9 @@ pub fn on_initial_state(
 
     // F-S039-001 (BC-2.09.001 Inv-5): create parsers for all sessions in the initial roster.
     // Per-session PTY dims are not available at InitialState time; use canonical defaults
-    // (24 rows × 80 cols — SS-embedded-pty §Parser ownership). The parser will be RESET
-    // with actual pty_rows/pty_cols when ScrollbackDumpComplete arrives (on_scrollback_dump_complete).
+    // (PTY_DEFAULT_ROWS × PTY_DEFAULT_COLS — monocle-core pure-core; SS-embedded-pty §Parser
+    // ownership; F-S039-P2-004). The parser will be RESET with actual pty_rows/pty_cols when
+    // ScrollbackDumpComplete arrives (on_scrollback_dump_complete).
     // Only create a parser for sessions that don't already have one (no-clobber on reconnect).
     for session in &app.sessions {
         let id = &session.session_id;

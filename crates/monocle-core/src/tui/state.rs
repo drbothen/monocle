@@ -46,6 +46,26 @@ pub fn clamp_scrollback_rows(raw: u32) -> u16 {
     raw.clamp(1, 10000) as u16
 }
 
+/// Default PTY rows for initial `vt100::Parser` creation (BC-2.09.001, F-S039-001).
+///
+/// Used when creating parsers in `on_initial_state` and `on_session_list_update`
+/// where per-session PTY dimensions are not yet known. The parser is RESET with
+/// actual `pty_rows`/`pty_cols` when `ScrollbackDumpComplete` arrives.
+/// Canonical terminal default (VT100 standard).
+///
+/// Lives in monocle-core (pure-core; no I/O) per architect ruling F-S039-P2-004.
+pub const PTY_DEFAULT_ROWS: u16 = 24;
+
+/// Default PTY cols for initial `vt100::Parser` creation (BC-2.09.001, F-S039-001).
+///
+/// Used when creating parsers in `on_initial_state` and `on_session_list_update`
+/// where per-session PTY dimensions are not yet known. The parser is RESET with
+/// actual `pty_rows`/`pty_cols` when `ScrollbackDumpComplete` arrives.
+/// Canonical terminal default (VT100 standard / xterm default).
+///
+/// Lives in monocle-core (pure-core; no I/O) per architect ruling F-S039-P2-004.
+pub const PTY_DEFAULT_COLS: u16 = 80;
+
 /// Top-level application mode for the TUI state machine.
 ///
 /// Intentionally NOT `#[non_exhaustive]` (AC-013): the binary crate must
