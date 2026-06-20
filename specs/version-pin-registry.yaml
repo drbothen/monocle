@@ -803,8 +803,8 @@ BC-2.08.008:
 
 BC-2.09.001:
   path: specs/behavioral-contracts/ss-09/BC-2.09.001.md
-  current_version: "1.7.0"
-  last_bump_commit: "[F-S039-P5-001 — Inv-4 clarified: absent→1000 / present-out-of-range→clamped; cross-ref BC-2.09.007 EC-242/EC-243]"
+  current_version: "1.7.1"
+  last_bump_commit: "[F-S039-P6-LOW-001 — Inv-9/EC-206/directive-7: status-bar message softened from exact literal to functional requirement via DAEMON_DISCONNECT_STATUS]"
   last_bump_date: "2026-06-20"
 
 BC-2.09.002:

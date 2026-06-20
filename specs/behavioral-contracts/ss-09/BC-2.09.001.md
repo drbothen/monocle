@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.7.0"
+version: "1.7.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -191,7 +191,10 @@ TUI's IPC socket. This timing budget covers: IPC framing decode → `vt100::Pars
    If `AppMode::EmbeddedTerminal { session_id }` is active at the moment of disconnect, the TUI
    MUST also exit `EmbeddedTerminal` mode (transition to `Dashboard` or `prior` AppMode)
    to ensure the render loop does not attempt to render a stale parser as if the session
-   were live. A status bar message MUST be shown: `"[reconnecting...]"`.
+   were live. A reconnecting indicator MUST be shown in the status bar; the shared
+   `DAEMON_DISCONNECT_STATUS` constant (currently `"[disconnected] reconnecting..."`) satisfies
+   this requirement. The requirement is functional — a reconnect indicator MUST be visible —
+   not a literal string match.
 
 ## Edge Cases
 
@@ -203,7 +206,7 @@ TUI's IPC socket. This timing budget covers: IPC framing decode → `vt100::Pars
 | EC-203 | `PtyOutput` received while `AppMode::Dashboard` is active (session not focused) | Parser updated for the session; no render of the PTY widget (only Dashboard panels rendered); O(1) switch to EmbeddedTerminal shows current parser state immediately |
 | EC-204 | `PtyOutput` arrives during dump window and `pending_pty_bytes` byte cap (`MAX_PENDING_PTY_BYTES = 512 KiB`) is exceeded | Drop oldest entry; increment `pending_pty_drop_count` for this session; if session is focused and in EmbeddedTerminal, status bar shows `[dump: N drops]`; no panic |
 | EC-205 | `ScrollbackDumpComplete` never arrives within `DUMP_WINDOW_TIMEOUT = 10s` | Force-resolve dump window: remove `dump_in_progress` entry, clear `pending_pty_bytes`, reset parser to `PTY_DEFAULT_ROWS × PTY_DEFAULT_COLS`, surface warning, do NOT insert into `pty_dump_received`; subsequent `enter_embedded_terminal` re-triggers full attach protocol |
-| EC-206 | Transport disconnects while `dump_in_progress[session_id] == true` and session is mid-dump | `on_transport_event(Disconnected)` clears `dump_in_progress`, `pending_pty_bytes`, and `pty_dump_received` for ALL sessions; TUI exits EmbeddedTerminal mode if active; `[reconnecting...]` message shown; next `enter_embedded_terminal` after reconnect re-runs full attach protocol |
+| EC-206 | Transport disconnects while `dump_in_progress[session_id] == true` and session is mid-dump | `on_transport_event(Disconnected)` clears `dump_in_progress`, `pending_pty_bytes`, and `pty_dump_received` for ALL sessions; TUI exits EmbeddedTerminal mode if active; reconnecting indicator shown via `DAEMON_DISCONNECT_STATUS` constant; next `enter_embedded_terminal` after reconnect re-runs full attach protocol |
 | EC-207 | Transport reconnects; `InitialState` arrives listing sessions that were mid-dump on the old connection | `dump_in_progress` and `pending_pty_bytes` already cleared at `Disconnected`; `pty_dump_received` already cleared; parsers are preserved with stale content; next `enter_embedded_terminal` call triggers fresh `AttachSession` on the new connection |
 
 ## Canonical Test Vectors
@@ -250,6 +253,26 @@ S-039 — Implement TUI PTY widget (vt100 parser, PseudoTerminal render, PtyOutp
 ## VP Anchors
 
 VP-TBD — PTY output render latency tests (filled after VP creation)
+
+## §Trace v1.7.1
+
+**F-S039-P6-LOW-001 — Invariant 9 / EC-206 / implementer directive #7: status-bar message softened from exact literal to functional requirement** (2026-06-20):
+
+- **Invariant 9 revised (status-bar wording):** The requirement `A status bar message MUST be
+  shown: "[reconnecting...]"` has been replaced with a functional requirement: a reconnecting
+  indicator MUST be visible in the status bar; the shared `DAEMON_DISCONNECT_STATUS` constant
+  (currently `"[disconnected] reconnecting..."`) satisfies this. The prior exact-literal
+  formulation conflicted with the pre-existing cross-story constant `DAEMON_DISCONNECT_STATUS`
+  owned by S-023/S-025 (used on all disconnect-related screens). The richer string
+  `"[disconnected] reconnecting..."` contains the reconnect signal and is acceptable UX.
+  Changing the shared constant to match the old BC literal would have cross-story blast radius.
+- **EC-206 updated:** `[reconnecting...]` literal replaced with `reconnecting indicator shown
+  via DAEMON_DISCONNECT_STATUS constant` for consistency with the revised invariant.
+- **Implementer directive #7 updated:** Hardcoding `"[reconnecting...]"` is now explicitly
+  forbidden; directive reads "display the reconnecting indicator via the shared
+  `DAEMON_DISCONNECT_STATUS` constant."
+- Source finding: F-S039-P6-LOW-001 (S-039 adversarial Pass-6, LOW severity observation).
+- SE-16d monotonicity: v1.7.1 timestamp 2026-06-20 >= v1.7.0 timestamp 2026-06-20. PASS.
 
 ## §Trace v1.7.0
 
@@ -298,7 +321,7 @@ VP-TBD — PTY output render latency tests (filled after VP creation)
      AND `pending_pty_drop_count[focused_session_id] > 0`, render `[dump: N drops]` segment.
   5. In `enter_embedded_terminal` (after successful `AttachSession` send): spawn a `tokio::time::sleep(DUMP_WINDOW_TIMEOUT)` task that, on firing, performs force-resolve if `dump_in_progress[session_id]` is still `Some(&true)`. Cancel the task on `ScrollbackDumpComplete` receipt by storing a `JoinHandle` or `AbortHandle` in a `dump_timeout_handles: HashMap<String, AbortHandle>` map. Abort and remove on `ScrollbackDumpComplete`.
   6. Add `dump_timeout_handles: HashMap<String, AbortHandle>` field to `App` struct (monocle-tui scope; not pure-core since it holds tokio handles).
-  7. In `on_transport_event(Disconnected)`: call `dump_in_progress.clear()`, `pending_pty_bytes.clear()`, `pty_dump_received.clear()`. Abort and clear `dump_timeout_handles`. If `AppMode::EmbeddedTerminal`, call `exit_embedded_terminal()`. Set status bar `"[reconnecting...]"`.
+  7. In `on_transport_event(Disconnected)`: call `dump_in_progress.clear()`, `pending_pty_bytes.clear()`, `pty_dump_received.clear()`. Abort and clear `dump_timeout_handles`. If `AppMode::EmbeddedTerminal`, call `exit_embedded_terminal()`. Display the reconnecting indicator via the shared `DAEMON_DISCONNECT_STATUS` constant (currently `"[disconnected] reconnecting..."`); do NOT hardcode a different string literal.
 - SE-16d monotonicity: v1.6.0 timestamp 2026-06-20 >= v1.5.1 timestamp 2026-06-20. PASS.
 
 ## §Trace v1.5.1
