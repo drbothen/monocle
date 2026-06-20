@@ -1,10 +1,10 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.27"
+version: "1.28"
 status: active
 producer: vsdd-factory:state-manager
-timestamp: 2026-06-18T00:00:00Z
+timestamp: 2026-06-20T00:00:00Z
 phase: 2
 visibility: holdout-evaluator-only
 inputs:
@@ -22,7 +22,7 @@ inputs:
   - {path: .factory/stories/S-033-session-manager-spawn.md, version: "1.9"}
   - {path: .factory/stories/S-034-session-manager-kill.md, version: "1.3"}
   - {path: .factory/stories/S-035-session-manager-attach-detach.md, version: "1.2.3"}
-  - {path: .factory/stories/S-036-session-manager-rediscovery.md, version: "1.4"}
+  - {path: .factory/stories/S-036-session-manager-rediscovery.md, version: "1.5"}
   - {path: .factory/stories/S-037-session-manager-gc.md, version: "1.0.3"}
   - {path: .factory/stories/S-038-session-manager-hook-injection.md, version: "1.5"}
   - {path: .factory/stories/S-039-pty-output-pipeline.md, version: "1.3"}
@@ -188,6 +188,12 @@ the Wave 8-9 stories (S-033..S-048). The evaluator needs these story ACs as inpu
 scenarios. Their absence from inputs[] (F-GATE-ADV-003) left the evaluator blind to the ACs for all 5
 new holdout scenarios. No holdout scenario IDs, titles, BCs, or behavioral semantics changed.
 **SE-16d PASS:** 2026-06-16 >= 2026-06-16 (same day as v1.18). PASS (same-day sequential patch).
+
+## §Trace v1.28 — POL-11 pin cascade: S-036 input pin v1.4 → v1.5 (2026-06-20)
+
+**Bump:** 1.27 → 1.28.
+**Scope:** `inputs[]` S-036 story pin updated: `"1.4"` → `"1.5"` (S-036 v1.5 corrects AC-004 proxy_task over-specification — `proxy_task: Some(handle)` → `proxy_task: None` at re-discovery; spec-text fix only; no behavioral semantics of holdout scenarios HS-EXP-011/HS-EXP-012 changed). No holdout scenario IDs, BCs, or behavioral semantics changed.
+**SE-16d PASS:** 2026-06-20 >= 2026-06-19 (v1.27 last-recorded bump date). PASS.
 
 ## §Trace v1.27 — POL-11 pin cascade: S-036 input pin v1.3 → v1.4 (2026-06-19)
 
