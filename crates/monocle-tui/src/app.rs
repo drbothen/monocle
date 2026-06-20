@@ -669,6 +669,13 @@ pub async fn enter_embedded_terminal(app: &mut App, session_id: String) {
                 }
             });
             let abort_handle = timeout_task.abort_handle();
+            // F-S039-P5-004: abort any in-flight timeout for this session before
+            // inserting the new handle. Dropping an AbortHandle does NOT abort the
+            // task — explicit abort() is required to prevent orphaned sleep tasks that
+            // would fire a spurious DumpWindowTimeout against a newer attach window.
+            if let Some(old_handle) = app.dump_timeout_handles.remove(&session_id) {
+                old_handle.abort();
+            }
             app.dump_timeout_handles
                 .insert(session_id.clone(), abort_handle);
         }

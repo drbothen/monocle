@@ -18,15 +18,16 @@ use uuid::Uuid;
 // in SS-embedded-pty.md — clamp and default are both pure arithmetic.
 // ---------------------------------------------------------------------------
 
-/// The default PTY scrollback row count when config is absent or invalid.
+/// Returns the configured scrollback row count for `vt100::Parser` initialization.
 ///
-/// Applied by the S-039 config-load path in `run()` when
-/// `config.pty_scrollback_rows` is absent, zero, or unparseable.
-/// Tests that assert the default value must call this function, not the
-/// raw struct-initializer literal, so the test goes RED until the implementer
-/// wires the config-load path.
+/// Semantics:
+/// - Key absent from config (or config falls back to default): returns 1000.
+/// - Key present with a valid `u32`: returns the value clamped to [1, 10000].
+///   - `0` → `1` (clamped to minimum; a 0-row scrollback would mean no history).
+///   - Values above `10000` → `10000` (memory cap: ~12.8 MB/session at 80 cols).
 ///
-/// BC-2.09.001 Invariant 4 / AC-008 — owned by S-039.
+/// Note: `0` is NOT a trigger for the 1000 default. Only an absent key yields 1000.
+/// See BC-2.09.007 Invariant 1, EC-242, EC-243.
 pub fn default_scrollback_rows() -> u16 {
     // Contractual default from BC-2.09.001 Invariant 4: 1000 rows.
     1000
