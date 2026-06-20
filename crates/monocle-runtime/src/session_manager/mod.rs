@@ -4491,7 +4491,7 @@ impl SessionManager {
                     }
                 }
                 "Detached" => {
-                    // PID liveness probe for Detached.
+                    // BC-2.08.004 PC-2b step (a): liveness probe.
                     let nix_pid = Pid::from_raw(data.pid as i32);
                     let alive = nix_kill(nix_pid, None).is_ok();
                     if !alive {
@@ -4503,7 +4503,57 @@ impl SessionManager {
                         let _ = std::fs::remove_file(&data.sidecar_path);
                         report.found_dead += 1;
                     } else {
-                        detached_to_register.push(data);
+                        // BC-2.08.004 PC-2b Detached (I3-005 fix, MED-002):
+                        // Connect for SO_PEERCRED verify; close without sending Attach.
+                        // Mismatch → non-responsive treatment: SIGTERM + GC + found_dead.
+                        let stream_opt = UnixStream::connect(&data.socket_path).await.ok();
+                        let stream = match stream_opt {
+                            Some(s) => s,
+                            None => {
+                                // Socket absent/unreachable: non-responsive treatment.
+                                tracing::warn!(
+                                    session_id = %data.session_id,
+                                    socket = %data.socket_path.display(),
+                                    "rediscover_sessions: Detached connect failed; non-responsive treatment"
+                                );
+                                let nix_pid2 = Pid::from_raw(data.pid as i32);
+                                #[cfg(any(test, feature = "test-utils"))]
+                                let _ = if let Some(ref f) = self.pid_sigterm_fn {
+                                    f(nix_pid2)
+                                } else {
+                                    nix_kill(nix_pid2, Signal::SIGTERM)
+                                };
+                                #[cfg(not(any(test, feature = "test-utils")))]
+                                let _ = nix_kill(nix_pid2, Signal::SIGTERM);
+                                let _ = std::fs::remove_file(&data.sidecar_path);
+                                report.found_dead += 1;
+                                continue;
+                            }
+                        };
+
+                        // SO_PEERCRED verify (MED-002 / AC-005).
+                        if let Err(verify_err) = self.peer_cred_verifier.verify(&stream) {
+                            tracing::warn!(
+                                session_id = %data.session_id,
+                                error = %verify_err,
+                                "rediscover_sessions: Detached SO_PEERCRED mismatch; non-responsive treatment"
+                            );
+                            let nix_pid2 = Pid::from_raw(data.pid as i32);
+                            #[cfg(any(test, feature = "test-utils"))]
+                            let _ = if let Some(ref f) = self.pid_sigterm_fn {
+                                f(nix_pid2)
+                            } else {
+                                nix_kill(nix_pid2, Signal::SIGTERM)
+                            };
+                            #[cfg(not(any(test, feature = "test-utils")))]
+                            let _ = nix_kill(nix_pid2, Signal::SIGTERM);
+                            let _ = std::fs::remove_file(&data.sidecar_path);
+                            report.found_dead += 1;
+                        } else {
+                            // Verified: close stream (no Attach), defer registration.
+                            drop(stream);
+                            detached_to_register.push(data);
+                        }
                     }
                 }
                 "Terminating" => {
@@ -4553,12 +4603,10 @@ impl SessionManager {
                         let remaining = Duration::from_millis(remaining_ms);
                         let kill_deadline_instant = std::time::Instant::now() + remaining;
                         // tokio::time::Instant for sleep_until (MED-001: absolute deadline).
-                        let kill_deadline_tokio =
-                            tokio::time::Instant::now() + remaining;
+                        let kill_deadline_tokio = tokio::time::Instant::now() + remaining;
 
                         // Connect to session-host socket for SO_PEERCRED verify and Kill.
-                        let stream_opt =
-                            UnixStream::connect(&data.socket_path).await.ok();
+                        let stream_opt = UnixStream::connect(&data.socket_path).await.ok();
                         let stream = match stream_opt {
                             Some(s) => s,
                             None => {
@@ -4629,56 +4677,62 @@ impl SessionManager {
                             use monocle_ipc::types::HostToDaemon;
 
                             // Helper: update sessions map + emit broker messages.
-                            let emit_terminated = |sessions: Arc<tokio::sync::Mutex<HashMap<String, SessionEntry>>>,
-                                                   broker: Arc<monocle_ipc::server::SubscriberList>,
-                                                   sid: String,
-                                                   sp: std::path::PathBuf| async move {
-                                let mut guard = sessions.lock().await;
-                                if let Some(entry) = guard.get_mut(&sid) {
-                                    entry.state = SessionState::Terminated;
-                                    entry.kill_deadline = None;
-                                }
-                                let list_snapshot: Vec<EnrichedSession> = guard
-                                    .values()
-                                    .map(|e| {
-                                        let status = match e.state {
-                                            SessionState::Launching
-                                            | SessionState::Running => SessionStatus::Active,
-                                            SessionState::Detached => SessionStatus::Idle,
-                                            _ => SessionStatus::Stopped,
+                            let emit_terminated =
+                                |sessions: Arc<
+                                    tokio::sync::Mutex<HashMap<String, SessionEntry>>,
+                                >,
+                                 broker: Arc<monocle_ipc::server::SubscriberList>,
+                                 sid: String,
+                                 sp: std::path::PathBuf| async move {
+                                    let mut guard = sessions.lock().await;
+                                    if let Some(entry) = guard.get_mut(&sid) {
+                                        entry.state = SessionState::Terminated;
+                                        entry.kill_deadline = None;
+                                    }
+                                    let list_snapshot: Vec<EnrichedSession> = guard
+                                        .values()
+                                        .map(|e| {
+                                            let status = match e.state {
+                                                SessionState::Launching | SessionState::Running => {
+                                                    SessionStatus::Active
+                                                }
+                                                SessionState::Detached => SessionStatus::Idle,
+                                                _ => SessionStatus::Stopped,
+                                            };
+                                            EnrichedSession::new_with_display_name(
+                                                e.session_id.clone(),
+                                                e.harness_id.clone(),
+                                                None,
+                                                None,
+                                                status,
+                                                None,
+                                                e.project_root
+                                                    .file_name()
+                                                    .and_then(|n| n.to_str())
+                                                    .map(|s| s.to_string()),
+                                                Some(e.started_at),
+                                                0,
+                                                None,
+                                                e.display_name.clone(),
+                                            )
+                                        })
+                                        .collect();
+                                    drop(guard);
+                                    let _ = std::fs::remove_file(&sp);
+                                    let state_msg =
+                                        monocle_ipc::types::ServerToClient::SessionStateChanged {
+                                            session_id: sid.clone(),
+                                            new_state: SessionState::Terminated,
                                         };
-                                        EnrichedSession::new_with_display_name(
-                                            e.session_id.clone(),
-                                            e.harness_id.clone(),
-                                            None,
-                                            None,
-                                            status,
-                                            None,
-                                            e.project_root
-                                                .file_name()
-                                                .and_then(|n| n.to_str())
-                                                .map(|s| s.to_string()),
-                                            Some(e.started_at),
-                                            0,
-                                            None,
-                                            e.display_name.clone(),
-                                        )
-                                    })
-                                    .collect();
-                                drop(guard);
-                                let _ = std::fs::remove_file(&sp);
-                                let state_msg =
-                                    monocle_ipc::types::ServerToClient::SessionStateChanged {
-                                        session_id: sid.clone(),
-                                        new_state: SessionState::Terminated,
-                                    };
-                                crate::ipc_server::broadcast_to_subscribers(&broker, state_msg).await;
-                                let list_msg =
-                                    monocle_ipc::types::ServerToClient::SessionListUpdate {
-                                        sessions: list_snapshot,
-                                    };
-                                crate::ipc_server::broadcast_to_subscribers(&broker, list_msg).await;
-                            };
+                                    crate::ipc_server::broadcast_to_subscribers(&broker, state_msg)
+                                        .await;
+                                    let list_msg =
+                                        monocle_ipc::types::ServerToClient::SessionListUpdate {
+                                            sessions: list_snapshot,
+                                        };
+                                    crate::ipc_server::broadcast_to_subscribers(&broker, list_msg)
+                                        .await;
+                                };
 
                             // Read HostToDaemon frames from session-host until StateChanged{Terminated}
                             // or the absolute deadline elapses.

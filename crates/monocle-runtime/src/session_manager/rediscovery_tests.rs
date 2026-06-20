@@ -1626,8 +1626,7 @@ async fn test_BC_2_08_004_rediscovery_detached_peercred_verified_no_attach() {
         .expect("MED-002: rediscover_sessions must return Ok");
 
     // Assert 1: a UDS connection WAS accepted (peercred-verify step requires connect).
-    let got_connect =
-        tokio::time::timeout(Duration::from_millis(500), connect_rx.recv()).await;
+    let got_connect = tokio::time::timeout(Duration::from_millis(500), connect_rx.recv()).await;
     assert!(
         got_connect.is_ok() && got_connect.unwrap().is_some(),
         "MED-002: Detached re-discovery MUST connect to session-host socket for \
@@ -1636,8 +1635,7 @@ async fn test_BC_2_08_004_rediscovery_detached_peercred_verified_no_attach() {
     );
 
     // Assert 2: no DaemonToHost::Attach was sent over that connection.
-    let got_attach =
-        tokio::time::timeout(Duration::from_millis(200), attach_rx.recv()).await;
+    let got_attach = tokio::time::timeout(Duration::from_millis(200), attach_rx.recv()).await;
     assert!(
         got_attach.is_err() || got_attach.unwrap().is_none(),
         "MED-002: Detached re-discovery MUST NOT send DaemonToHost::Attach"
@@ -1648,9 +1646,7 @@ async fn test_BC_2_08_004_rediscovery_detached_peercred_verified_no_attach() {
     let snap = sessions
         .iter()
         .find(|s| s.session_id == session_id)
-        .expect(
-            "MED-002: Detached session must be in registry after peercred-verified connect",
-        );
+        .expect("MED-002: Detached session must be in registry after peercred-verified connect");
     assert_eq!(
         snap.state,
         SessionState::Detached,
@@ -1721,8 +1717,7 @@ async fn test_BC_2_08_004_rediscovery_detached_peercred_mismatch_no_entry() {
     let sock_clone = socket_path.clone();
     tokio::spawn(async move {
         let _ = std::fs::remove_file(&sock_clone);
-        let listener =
-            UnixListener::bind(&sock_clone).expect("MED-002-mismatch: mock bind");
+        let listener = UnixListener::bind(&sock_clone).expect("MED-002-mismatch: mock bind");
         if let Ok((_stream, _)) = listener.accept().await {
             tokio::time::sleep(Duration::from_millis(500)).await;
         }
@@ -1745,8 +1740,7 @@ async fn test_BC_2_08_004_rediscovery_detached_peercred_mismatch_no_entry() {
         .expect("MED-002-mismatch: rediscover_sessions must return Ok");
 
     // Assert 1: SIGTERM sent for peercred-mismatched Detached session.
-    let sigterm_pid =
-        tokio::time::timeout(Duration::from_millis(500), sigterm_rx.recv()).await;
+    let sigterm_pid = tokio::time::timeout(Duration::from_millis(500), sigterm_rx.recv()).await;
     assert!(
         sigterm_pid.is_ok() && sigterm_pid.unwrap().is_some(),
         "MED-002-mismatch: peercred mismatch on Detached path MUST send SIGTERM \
@@ -1819,10 +1813,8 @@ async fn test_BC_2_08_004_rediscovery_parallelism_8_sessions_sequential_would_ex
         .collect();
 
     for (i, id) in session_ids.iter().enumerate() {
-        let socket_path = std::path::PathBuf::from(format!(
-            "/tmp/s036-hi1-{}-{}.sock",
-            i, base_nanos
-        ));
+        let socket_path =
+            std::path::PathBuf::from(format!("/tmp/s036-hi1-{}-{}.sock", i, base_nanos));
         let _ = std::fs::remove_file(&socket_path);
         write_sidecar_v3(tmp.path(), id, "Running", 0, &socket_path, None);
         let sock = socket_path.clone();
@@ -1941,8 +1933,7 @@ async fn test_BC_2_08_004_rediscovery_terminating_peercred_mismatch_no_kill() {
     let sock_clone = socket_path.clone();
     tokio::spawn(async move {
         let _ = std::fs::remove_file(&sock_clone);
-        let listener =
-            UnixListener::bind(&sock_clone).expect("BLOCKER-001: mock bind");
+        let listener = UnixListener::bind(&sock_clone).expect("BLOCKER-001: mock bind");
         loop {
             match tokio::time::timeout(Duration::from_secs(5), listener.accept()).await {
                 Ok(Ok((mut stream, _))) => {
@@ -1956,10 +1947,7 @@ async fn test_BC_2_08_004_rediscovery_terminating_peercred_mismatch_no_kill() {
                                     monocle_ipc::types::DaemonToHost,
                                 >(&body)
                                 {
-                                    if matches!(
-                                        msg,
-                                        monocle_ipc::types::DaemonToHost::Kill
-                                    ) {
+                                    if matches!(msg, monocle_ipc::types::DaemonToHost::Kill) {
                                         let _ = kill_received_tx.send(()).await;
                                     }
                                 }
@@ -1990,8 +1978,7 @@ async fn test_BC_2_08_004_rediscovery_terminating_peercred_mismatch_no_kill() {
         .expect("BLOCKER-001: rediscover_sessions must return Ok");
 
     // Assert 1: no DaemonToHost::Kill was sent (peercred mismatch → skip Kill).
-    let got_kill =
-        tokio::time::timeout(Duration::from_millis(500), kill_received_rx.recv()).await;
+    let got_kill = tokio::time::timeout(Duration::from_millis(500), kill_received_rx.recv()).await;
     assert!(
         got_kill.is_err() || got_kill.unwrap().is_none(),
         "BLOCKER-001: peercred mismatch on Terminating path MUST NOT send \
@@ -1999,8 +1986,7 @@ async fn test_BC_2_08_004_rediscovery_terminating_peercred_mismatch_no_kill() {
     );
 
     // Assert 2: SIGTERM sent (non-responsive treatment).
-    let sigterm_pid =
-        tokio::time::timeout(Duration::from_millis(500), sigterm_rx.recv()).await;
+    let sigterm_pid = tokio::time::timeout(Duration::from_millis(500), sigterm_rx.recv()).await;
     assert!(
         sigterm_pid.is_ok() && sigterm_pid.unwrap().is_some(),
         "BLOCKER-001: peercred mismatch on Terminating MUST send SIGTERM \
@@ -2163,8 +2149,7 @@ async fn test_BC_2_08_004_rediscovery_terminating_watchdog_deadline_emits_broker
     let sock_clone = socket_path.clone();
     tokio::spawn(async move {
         let _ = std::fs::remove_file(&sock_clone);
-        let listener =
-            UnixListener::bind(&sock_clone).expect("HIGH-002-deadline: mock bind");
+        let listener = UnixListener::bind(&sock_clone).expect("HIGH-002-deadline: mock bind");
         if let Ok((_stream, _)) = listener.accept().await {
             tokio::time::sleep(Duration::from_secs(60)).await;
         }
@@ -2198,8 +2183,7 @@ async fn test_BC_2_08_004_rediscovery_terminating_watchdog_deadline_emits_broker
     tokio::task::yield_now().await;
 
     // Assert A: SIGKILL was fired by the watchdog.
-    let sigkill_pid =
-        tokio::time::timeout(Duration::from_millis(500), sigkill_rx.recv()).await;
+    let sigkill_pid = tokio::time::timeout(Duration::from_millis(500), sigkill_rx.recv()).await;
     assert!(
         sigkill_pid.is_ok() && sigkill_pid.unwrap().is_some(),
         "HIGH-002-deadline: watchdog must fire SIGKILL after deadline elapses"
@@ -2285,8 +2269,7 @@ async fn test_BC_2_08_004_rediscovery_terminating_watchdog_terminated_msg_emits_
     let sock_clone = socket_path.clone();
     tokio::spawn(async move {
         let _ = std::fs::remove_file(&sock_clone);
-        let listener =
-            UnixListener::bind(&sock_clone).expect("HIGH-002-msg: mock bind");
+        let listener = UnixListener::bind(&sock_clone).expect("HIGH-002-msg: mock bind");
         if let Ok((mut stream, _)) = listener.accept().await {
             // Read and discard the Kill message (fire-and-forget from daemon).
             let mut len_buf = [0u8; 4];
@@ -2302,8 +2285,7 @@ async fn test_BC_2_08_004_rediscovery_terminating_watchdog_terminated_msg_emits_
                 new_state: SessionState::Terminated,
                 degraded_env: None,
             };
-            let bytes =
-                serde_json::to_vec(&terminated_msg).expect("HIGH-002-msg: serialize");
+            let bytes = serde_json::to_vec(&terminated_msg).expect("HIGH-002-msg: serialize");
             let len_bytes = (bytes.len() as u32).to_le_bytes();
             let _ = stream.write_all(&len_bytes).await;
             let _ = stream.write_all(&bytes).await;
