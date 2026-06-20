@@ -2542,14 +2542,14 @@ impl super::PeerCredVerifier for FakePeerCredVerifierWithPidMismatch {
         &self,
         _stream: &tokio::net::UnixStream,
         _sidecar_pid: u32,
-    ) -> Result<(), super::SessionError> {
+    ) -> Result<(), super::PeerCredMismatch> {
         // Simulates a peer whose actual pid differs from the sidecar-recorded pid
         // (matching uid, mismatched pid — stale sidecar / PID-reuse / spoof attempt).
         // Per SS-session-manager §Per-session UDS security item 2.
-        Err(super::SessionError::Io(std::io::Error::new(
-            std::io::ErrorKind::PermissionDenied,
-            "FakePeerCredVerifierWithPidMismatch: simulated PID mismatch",
-        )))
+        Err(super::PeerCredMismatch {
+            peer_pid: None,
+            reason: "FakePeerCredVerifierWithPidMismatch: simulated PID mismatch".into(),
+        })
     }
 }
 
@@ -2733,26 +2733,19 @@ impl super::PeerCredVerifier for FakePeerCredVerifierWithPeerPid {
         &self,
         _stream: &tokio::net::UnixStream,
         sidecar_pid: u32,
-    ) -> Result<(), super::SessionError> {
+    ) -> Result<(), super::PeerCredMismatch> {
         // PID cross-check: compare injected peer_pid against sidecar_pid.
-        // If they differ → return Err so the call site can SIGTERM both pids.
-        //
-        // IMPLEMENTER NOTE: once `verify_with_sidecar_pid` return type is
-        // changed to `Result<(), PeerCredMismatch>`, update this to return
-        // `PeerCredMismatch { peer_pid: Some(self.injected_peer_pid), reason: ... }`.
-        // Until that change lands, this returns a SessionError::Io — the
-        // call sites on the Detached and Terminating paths currently call
-        // `verify()` (not `verify_with_sidecar_pid`), so they never reach
-        // this Err path; the tests fail because the session IS registered.
+        // Return PeerCredMismatch carrying peer_pid so the call site can
+        // SIGTERM BOTH the sidecar pid and the socket peer pid (HIGH-002 fix).
         if self.injected_peer_pid != sidecar_pid {
-            Err(super::SessionError::Io(std::io::Error::new(
-                std::io::ErrorKind::PermissionDenied,
-                format!(
+            Err(super::PeerCredMismatch {
+                peer_pid: Some(self.injected_peer_pid),
+                reason: format!(
                     "FakePeerCredVerifierWithPeerPid: peer_pid={} != sidecar_pid={} \
                      (PID cross-check mismatch)",
                     self.injected_peer_pid, sidecar_pid
                 ),
-            )))
+            })
         } else {
             Ok(())
         }
@@ -2822,8 +2815,7 @@ async fn test_BC_2_08_004_rediscovery_detached_pid_mismatch_rejected() {
         monocle_ipc::server::CLIENT_CHANNEL_CAPACITY,
     );
     let entry = monocle_ipc::server::ClientEntry::new(tx);
-    let subs: monocle_ipc::server::SubscriberList =
-        Arc::new(tokio::sync::Mutex::new(vec![entry]));
+    let subs: monocle_ipc::server::SubscriberList = Arc::new(tokio::sync::Mutex::new(vec![entry]));
     let broker = Arc::new(Arc::clone(&subs));
     let spawner = Arc::new(super::MockSessionHostSpawner {
         spawn_result: None,
@@ -2944,7 +2936,8 @@ async fn test_BC_2_08_004_rediscovery_terminating_pid_mismatch_no_kill() {
     let sock_clone = socket_path.clone();
     tokio::spawn(async move {
         let _ = std::fs::remove_file(&sock_clone);
-        let listener = UnixListener::bind(&sock_clone).expect("pass3-HIGH-001-terminating: mock bind");
+        let listener =
+            UnixListener::bind(&sock_clone).expect("pass3-HIGH-001-terminating: mock bind");
         if let Ok((mut stream, _)) = listener.accept().await {
             let mut len_buf = [0u8; 4];
             if stream.read_exact(&mut len_buf).await.is_ok() {
@@ -2952,9 +2945,9 @@ async fn test_BC_2_08_004_rediscovery_terminating_pid_mismatch_no_kill() {
                 if len > 0 && len <= 65536 {
                     let mut body = vec![0u8; len];
                     if stream.read_exact(&mut body).await.is_ok() {
-                        if let Ok(msg) = serde_json::from_slice::<
-                            monocle_ipc::types::DaemonToHost,
-                        >(&body) {
+                        if let Ok(msg) =
+                            serde_json::from_slice::<monocle_ipc::types::DaemonToHost>(&body)
+                        {
                             if matches!(msg, monocle_ipc::types::DaemonToHost::Kill) {
                                 let _ = kill_received_tx.send(()).await;
                             }
@@ -2972,8 +2965,7 @@ async fn test_BC_2_08_004_rediscovery_terminating_pid_mismatch_no_kill() {
         monocle_ipc::server::CLIENT_CHANNEL_CAPACITY,
     );
     let entry = monocle_ipc::server::ClientEntry::new(tx);
-    let subs: monocle_ipc::server::SubscriberList =
-        Arc::new(tokio::sync::Mutex::new(vec![entry]));
+    let subs: monocle_ipc::server::SubscriberList = Arc::new(tokio::sync::Mutex::new(vec![entry]));
     let broker = Arc::new(Arc::clone(&subs));
     let spawner = Arc::new(super::MockSessionHostSpawner {
         spawn_result: None,
@@ -3124,8 +3116,7 @@ async fn test_BC_2_08_004_rediscovery_pid_mismatch_sigterms_both_pids() {
         monocle_ipc::server::CLIENT_CHANNEL_CAPACITY,
     );
     let entry = monocle_ipc::server::ClientEntry::new(tx);
-    let subs: monocle_ipc::server::SubscriberList =
-        Arc::new(tokio::sync::Mutex::new(vec![entry]));
+    let subs: monocle_ipc::server::SubscriberList = Arc::new(tokio::sync::Mutex::new(vec![entry]));
     let broker = Arc::new(Arc::clone(&subs));
     let spawner = Arc::new(super::MockSessionHostSpawner {
         spawn_result: None,
@@ -3362,8 +3353,7 @@ async fn test_BC_2_08_004_rediscovery_detached_pid_match_registers() {
         monocle_ipc::server::CLIENT_CHANNEL_CAPACITY,
     );
     let entry = monocle_ipc::server::ClientEntry::new(tx);
-    let subs: monocle_ipc::server::SubscriberList =
-        Arc::new(tokio::sync::Mutex::new(vec![entry]));
+    let subs: monocle_ipc::server::SubscriberList = Arc::new(tokio::sync::Mutex::new(vec![entry]));
     let broker = Arc::new(Arc::clone(&subs));
     let spawner = Arc::new(super::MockSessionHostSpawner {
         spawn_result: None,
@@ -3439,8 +3429,8 @@ async fn test_BC_2_08_004_rediscovery_terminating_pid_match_kill_sent() {
     let sock_clone = socket_path.clone();
     tokio::spawn(async move {
         let _ = std::fs::remove_file(&sock_clone);
-        let listener = UnixListener::bind(&sock_clone)
-            .expect("pass3-MED-001-terminating-happy: mock bind");
+        let listener =
+            UnixListener::bind(&sock_clone).expect("pass3-MED-001-terminating-happy: mock bind");
         if let Ok((mut stream, _)) = listener.accept().await {
             let mut len_buf = [0u8; 4];
             if stream.read_exact(&mut len_buf).await.is_ok() {
@@ -3448,9 +3438,9 @@ async fn test_BC_2_08_004_rediscovery_terminating_pid_match_kill_sent() {
                 if len > 0 && len <= 65536 {
                     let mut body = vec![0u8; len];
                     if stream.read_exact(&mut body).await.is_ok() {
-                        if let Ok(msg) = serde_json::from_slice::<
-                            monocle_ipc::types::DaemonToHost,
-                        >(&body) {
+                        if let Ok(msg) =
+                            serde_json::from_slice::<monocle_ipc::types::DaemonToHost>(&body)
+                        {
                             if matches!(msg, monocle_ipc::types::DaemonToHost::Kill) {
                                 let _ = kill_received_tx.send(()).await;
                             }
@@ -3467,8 +3457,7 @@ async fn test_BC_2_08_004_rediscovery_terminating_pid_match_kill_sent() {
         monocle_ipc::server::CLIENT_CHANNEL_CAPACITY,
     );
     let entry = monocle_ipc::server::ClientEntry::new(tx);
-    let subs: monocle_ipc::server::SubscriberList =
-        Arc::new(tokio::sync::Mutex::new(vec![entry]));
+    let subs: monocle_ipc::server::SubscriberList = Arc::new(tokio::sync::Mutex::new(vec![entry]));
     let broker = Arc::new(Arc::clone(&subs));
     let spawner = Arc::new(super::MockSessionHostSpawner {
         spawn_result: None,

@@ -351,11 +351,39 @@ impl SessionHostSpawner for MockSessionHostSpawner {
 // PeerCredVerifier — injectable seam for SO_PEERCRED UID verification (EC-163)
 // ---------------------------------------------------------------------------
 
-/// Verifier for the SO_PEERCRED peer UID check performed by `post_spawn_monitor`.
+/// Rich error type returned by `PeerCredVerifier::verify_with_sidecar_pid`.
+///
+/// Carries the socket peer PID (when obtainable from `stream.peer_cred()`) so
+/// that call sites can SIGTERM BOTH the sidecar's recorded PID and the socket
+/// peer PID (belt-and-suspenders, SS-session-manager §Per-session UDS security
+/// item 2).  `peer_pid` is `None` when `peer_cred()` fails before the PID
+/// check (e.g., UID mismatch short-circuit).
+#[derive(Debug)]
+pub struct PeerCredMismatch {
+    /// The pid reported by SO_PEERCRED for the connecting process, if available.
+    /// `None` when the UID check failed before the PID could be obtained, or when
+    /// the verifier is a test fake that does not expose a peer pid.
+    pub peer_pid: Option<u32>,
+    /// Human-readable reason for the mismatch.
+    pub reason: String,
+}
+
+impl std::fmt::Display for PeerCredMismatch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(ppid) = self.peer_pid {
+            write!(f, "{} (peer_pid={})", self.reason, ppid)
+        } else {
+            write!(f, "{}", self.reason)
+        }
+    }
+}
+
+/// Injectable seam for SO_PEERCRED UID + PID verification.
 ///
 /// The production implementation (`RealPeerCredVerifier`) calls
 /// `UnixStream::peer_cred()` and compares the peer UID against the daemon UID
-/// returned by `nix::unistd::getuid()`.
+/// returned by `nix::unistd::getuid()`, then cross-checks the peer PID against
+/// the sidecar-recorded PID in `verify_with_sidecar_pid`.
 ///
 /// # Platform TOCTOU assumption (SEC-003)
 ///
@@ -383,15 +411,26 @@ pub trait PeerCredVerifier: Send + Sync + 'static {
     /// available for a cross-check (SS-session-manager §Per-session UDS security
     /// item 2 — MANDATORY during rediscovery).
     ///
-    /// The default implementation delegates to `verify()` (UID-only).
-    /// `RealPeerCredVerifier` overrides to also check peer PID == `sidecar_pid`.
-    /// Test verifiers override to simulate mismatch scenarios.
+    /// Returns `Err(PeerCredMismatch)` on any failure.  `PeerCredMismatch.peer_pid`
+    /// is populated with the socket peer PID when obtainable so that call sites can
+    /// SIGTERM BOTH the sidecar pid AND the socket peer pid.
+    ///
+    /// IMPORTANT: The default implementation MUST NOT silently delegate to uid-only
+    /// `verify()` — it performs the full UID + PID check via `RealPeerCredVerifier`
+    /// semantics.  Test verifiers MUST override this method; `FakePeerCredVerifier`
+    /// maps `allow=true` → Ok and `allow=false` → Err(peer_pid=None).
     fn verify_with_sidecar_pid(
         &self,
         stream: &tokio::net::UnixStream,
-        _sidecar_pid: u32,
-    ) -> Result<(), SessionError> {
-        self.verify(stream)
+        sidecar_pid: u32,
+    ) -> Result<(), PeerCredMismatch> {
+        // Default: uid-only check (no real peer_cred access in default impl).
+        // Implementers with SO_PEERCRED access (RealPeerCredVerifier) override
+        // to add the PID cross-check and populate PeerCredMismatch.peer_pid.
+        self.verify(stream).map_err(|e| PeerCredMismatch {
+            peer_pid: None,
+            reason: format!("UID check failed (sidecar_pid={sidecar_pid}): {e}"),
+        })
     }
 }
 
@@ -423,22 +462,31 @@ impl PeerCredVerifier for RealPeerCredVerifier {
         &self,
         stream: &tokio::net::UnixStream,
         sidecar_pid: u32,
-    ) -> Result<(), SessionError> {
+    ) -> Result<(), PeerCredMismatch> {
         // First do the UID check.
-        self.verify(stream)?;
+        self.verify(stream).map_err(|e| PeerCredMismatch {
+            peer_pid: None,
+            reason: format!("SO_PEERCRED UID check failed: {e}"),
+        })?;
         // Then cross-check the peer PID against the sidecar's recorded PID
         // (SS-session-manager §Per-session UDS security item 2).
-        let peer_pid = stream
+        // Populate peer_pid in the error so call sites can SIGTERM both pids.
+        let peer_pid_raw = stream
             .peer_cred()
             .map(|c| c.pid().unwrap_or(0) as u32)
-            .map_err(SessionError::Io)?;
-        if peer_pid == sidecar_pid {
+            .map_err(|e| PeerCredMismatch {
+                peer_pid: None,
+                reason: format!("SO_PEERCRED pid() failed: {e}"),
+            })?;
+        if peer_pid_raw == sidecar_pid {
             Ok(())
         } else {
-            Err(SessionError::Io(std::io::Error::new(
-                std::io::ErrorKind::PermissionDenied,
-                format!("SO_PEERCRED PID mismatch: peer_pid={peer_pid} sidecar_pid={sidecar_pid}"),
-            )))
+            Err(PeerCredMismatch {
+                peer_pid: Some(peer_pid_raw),
+                reason: format!(
+                    "SO_PEERCRED PID mismatch: peer_pid={peer_pid_raw} sidecar_pid={sidecar_pid}"
+                ),
+            })
         }
     }
 }
@@ -466,6 +514,27 @@ impl PeerCredVerifier for FakePeerCredVerifier {
                 std::io::ErrorKind::PermissionDenied,
                 "FakePeerCredVerifier: simulated UID mismatch (EC-163)",
             )))
+        }
+    }
+
+    /// Override `verify_with_sidecar_pid` to honour `allow`:
+    /// - `allow == true`: Ok(()) regardless of pid (UID+PID both pass).
+    /// - `allow == false`: Err (UID fails; peer_pid=None, never reaches PID check).
+    ///
+    /// This prevents the default impl from silently delegating to uid-only
+    /// `verify()` — per MED-001 the default MUST NOT skip the pid argument.
+    fn verify_with_sidecar_pid(
+        &self,
+        _stream: &tokio::net::UnixStream,
+        _sidecar_pid: u32,
+    ) -> Result<(), PeerCredMismatch> {
+        if self.allow {
+            Ok(())
+        } else {
+            Err(PeerCredMismatch {
+                peer_pid: None,
+                reason: "FakePeerCredVerifier: simulated UID mismatch (EC-163)".into(),
+            })
         }
     }
 }
@@ -4541,6 +4610,56 @@ impl SessionManager {
                         }
                         let _ = std::fs::remove_file(&data.sidecar_path);
                         let _ = std::fs::remove_file(&data.socket_path);
+                        // SS-daemon-wiring §3b: emit SessionStateChanged{Terminated}
+                        // then SessionListUpdate (MED-002 fix).  Emitted pre-UDS-bind
+                        // so no subscribers exist yet; harmlessly discarded, but kept
+                        // for §3b uniformity and post-bind watchdog correctness.
+                        {
+                            use monocle_core::engine::{EnrichedSession, SessionStatus};
+                            let list_snapshot: Vec<EnrichedSession> = {
+                                let guard = self.sessions.lock().await;
+                                guard
+                                    .values()
+                                    .map(|e| {
+                                        let status = match e.state {
+                                            SessionState::Launching | SessionState::Running => {
+                                                SessionStatus::Active
+                                            }
+                                            SessionState::Detached => SessionStatus::Idle,
+                                            _ => SessionStatus::Stopped,
+                                        };
+                                        EnrichedSession::new_with_display_name(
+                                            e.session_id.clone(),
+                                            e.harness_id.clone(),
+                                            None,
+                                            None,
+                                            status,
+                                            None,
+                                            e.project_root
+                                                .file_name()
+                                                .and_then(|n| n.to_str())
+                                                .map(|s| s.to_string()),
+                                            Some(e.started_at),
+                                            0,
+                                            None,
+                                            e.display_name.clone(),
+                                        )
+                                    })
+                                    .collect()
+                            };
+                            let state_msg =
+                                monocle_ipc::types::ServerToClient::SessionStateChanged {
+                                    session_id: data.session_id.clone(),
+                                    new_state: SessionState::Terminated,
+                                };
+                            crate::ipc_server::broadcast_to_subscribers(&self.broker, state_msg)
+                                .await;
+                            let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
+                                sessions: list_snapshot,
+                            };
+                            crate::ipc_server::broadcast_to_subscribers(&self.broker, list_msg)
+                                .await;
+                        }
                         report.found_dead += 1;
                     } else {
                         probes.push(data);
@@ -4558,6 +4677,56 @@ impl SessionManager {
                         );
                         let _ = std::fs::remove_file(&data.sidecar_path);
                         let _ = std::fs::remove_file(&data.socket_path);
+                        // SS-daemon-wiring §3b: emit SessionStateChanged{Terminated}
+                        // then SessionListUpdate (MED-002 fix).  Emitted pre-UDS-bind
+                        // so no subscribers exist yet; harmlessly discarded, but kept
+                        // for §3b uniformity and post-bind watchdog correctness.
+                        {
+                            use monocle_core::engine::{EnrichedSession, SessionStatus};
+                            let list_snapshot: Vec<EnrichedSession> = {
+                                let guard = self.sessions.lock().await;
+                                guard
+                                    .values()
+                                    .map(|e| {
+                                        let status = match e.state {
+                                            SessionState::Launching | SessionState::Running => {
+                                                SessionStatus::Active
+                                            }
+                                            SessionState::Detached => SessionStatus::Idle,
+                                            _ => SessionStatus::Stopped,
+                                        };
+                                        EnrichedSession::new_with_display_name(
+                                            e.session_id.clone(),
+                                            e.harness_id.clone(),
+                                            None,
+                                            None,
+                                            status,
+                                            None,
+                                            e.project_root
+                                                .file_name()
+                                                .and_then(|n| n.to_str())
+                                                .map(|s| s.to_string()),
+                                            Some(e.started_at),
+                                            0,
+                                            None,
+                                            e.display_name.clone(),
+                                        )
+                                    })
+                                    .collect()
+                            };
+                            let state_msg =
+                                monocle_ipc::types::ServerToClient::SessionStateChanged {
+                                    session_id: data.session_id.clone(),
+                                    new_state: SessionState::Terminated,
+                                };
+                            crate::ipc_server::broadcast_to_subscribers(&self.broker, state_msg)
+                                .await;
+                            let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
+                                sessions: list_snapshot,
+                            };
+                            crate::ipc_server::broadcast_to_subscribers(&self.broker, list_msg)
+                                .await;
+                        }
                         report.found_dead += 1;
                     } else {
                         // BC-2.08.004 PC-2b Detached (I3-005 fix, MED-002):
@@ -4589,13 +4758,19 @@ impl SessionManager {
                             }
                         };
 
-                        // SO_PEERCRED verify (MED-002 / AC-005).
-                        if let Err(verify_err) = self.peer_cred_verifier.verify(&stream) {
+                        // SO_PEERCRED verify: UID + PID cross-check (HIGH-001 fix).
+                        // Must call verify_with_sidecar_pid (not uid-only verify)
+                        // per SS-session-manager §Per-session UDS security item 2.
+                        if let Err(mismatch) = self
+                            .peer_cred_verifier
+                            .verify_with_sidecar_pid(&stream, data.pid)
+                        {
                             tracing::warn!(
                                 session_id = %data.session_id,
-                                error = %verify_err,
+                                error = %mismatch,
                                 "rediscover_sessions: Detached SO_PEERCRED mismatch; non-responsive treatment"
                             );
+                            // SIGTERM sidecar pid.
                             let nix_pid2 = Pid::from_raw(data.pid as i32);
                             #[cfg(any(test, feature = "test-utils"))]
                             let _ = if let Some(ref f) = self.pid_sigterm_fn {
@@ -4605,6 +4780,20 @@ impl SessionManager {
                             };
                             #[cfg(not(any(test, feature = "test-utils")))]
                             let _ = nix_kill(nix_pid2, Signal::SIGTERM);
+                            // Belt-and-suspenders: SIGTERM socket peer pid too (HIGH-002 fix).
+                            if let Some(ppid) = mismatch.peer_pid {
+                                if ppid != 0 {
+                                    let nix_ppid = Pid::from_raw(ppid as i32);
+                                    #[cfg(any(test, feature = "test-utils"))]
+                                    let _ = if let Some(ref f) = self.pid_sigterm_fn {
+                                        f(nix_ppid)
+                                    } else {
+                                        nix_kill(nix_ppid, Signal::SIGTERM)
+                                    };
+                                    #[cfg(not(any(test, feature = "test-utils")))]
+                                    let _ = nix_kill(nix_ppid, Signal::SIGTERM);
+                                }
+                            }
                             let _ = std::fs::remove_file(&data.sidecar_path);
                             let _ = std::fs::remove_file(&data.socket_path);
                             report.found_dead += 1;
@@ -4757,13 +4946,19 @@ impl SessionManager {
                             }
                         };
 
-                        // SO_PEERCRED verify (BLOCKER-001).
-                        if let Err(verify_err) = self.peer_cred_verifier.verify(&stream) {
+                        // SO_PEERCRED verify: UID + PID cross-check (HIGH-001 fix).
+                        // Must call verify_with_sidecar_pid (not uid-only verify)
+                        // per SS-session-manager §Per-session UDS security item 2.
+                        if let Err(mismatch) = self
+                            .peer_cred_verifier
+                            .verify_with_sidecar_pid(&stream, data.pid)
+                        {
                             tracing::warn!(
                                 session_id = %data.session_id,
-                                error = %verify_err,
-                                "rediscover_sessions: Terminating SO_PEERCRED mismatch; non-responsive treatment (BLOCKER-001)"
+                                error = %mismatch,
+                                "rediscover_sessions: Terminating SO_PEERCRED mismatch; non-responsive treatment (BLOCKER-001/HIGH-001)"
                             );
+                            // SIGTERM sidecar pid.
                             let nix_pid = Pid::from_raw(data.pid as i32);
                             #[cfg(any(test, feature = "test-utils"))]
                             let _ = if let Some(ref f) = self.pid_sigterm_fn {
@@ -4773,6 +4968,20 @@ impl SessionManager {
                             };
                             #[cfg(not(any(test, feature = "test-utils")))]
                             let _ = nix_kill(nix_pid, Signal::SIGTERM);
+                            // Belt-and-suspenders: SIGTERM socket peer pid too (HIGH-002 fix).
+                            if let Some(ppid) = mismatch.peer_pid {
+                                if ppid != 0 {
+                                    let nix_ppid = Pid::from_raw(ppid as i32);
+                                    #[cfg(any(test, feature = "test-utils"))]
+                                    let _ = if let Some(ref f) = self.pid_sigterm_fn {
+                                        f(nix_ppid)
+                                    } else {
+                                        nix_kill(nix_ppid, Signal::SIGTERM)
+                                    };
+                                    #[cfg(not(any(test, feature = "test-utils")))]
+                                    let _ = nix_kill(nix_ppid, Signal::SIGTERM);
+                                }
+                            }
                             let _ = std::fs::remove_file(&data.sidecar_path);
                             let _ = std::fs::remove_file(&data.socket_path);
                             report.found_dead += 1;
@@ -5042,7 +5251,13 @@ impl SessionManager {
             Success {
                 write_half: tokio::net::unix::OwnedWriteHalf,
             },
-            Failed,
+            Failed {
+                /// Socket peer PID from `PeerCredMismatch.peer_pid`, if a PID
+                /// mismatch was detected during SO_PEERCRED verify.  Present
+                /// only for PID-mismatch failures; `None` for connect/timeout/
+                /// protocol failures where no peer_pid was obtained.
+                peer_pid_to_sigterm: Option<u32>,
+            },
         }
 
         let mut probe_futures = Vec::with_capacity(probes.len());
@@ -5057,6 +5272,9 @@ impl SessionManager {
                 // 5-second timeout for the entire connect + scrollback sequence.
                 // Clone session_id before moving into the timeout async block so
                 // we can still use it in the ProbeResult construction below.
+                // Returns: Ok(writer) on success; Err(Some(peer_pid)) on PID
+                // mismatch (so caller can SIGTERM the peer); Err(None) on other
+                // failure (connect error, timeout, protocol error).
                 let session_id_for_timeout = session_id.clone();
                 let result = tokio::time::timeout(Duration::from_secs(5), async move {
                     let session_id = session_id_for_timeout;
@@ -5070,19 +5288,21 @@ impl SessionManager {
                                 error = %e,
                                 "rediscover_sessions: UDS connect failed (EC-155)"
                             );
-                            return None;
+                            return Err(None);
                         }
                     };
 
                     // SO_PEERCRED verify: UID + PID cross-check (SS-session-manager
                     // §Per-session UDS security item 2 — MANDATORY during rediscovery).
-                    if let Err(verify_err) = verifier.verify_with_sidecar_pid(&stream, pid) {
+                    // On mismatch, propagate peer_pid so the caller can SIGTERM
+                    // BOTH the sidecar pid and the socket peer pid (HIGH-002 fix).
+                    if let Err(mismatch) = verifier.verify_with_sidecar_pid(&stream, pid) {
                         tracing::warn!(
                             session_id = %session_id,
-                            error = %verify_err,
+                            error = %mismatch,
                             "rediscover_sessions: SO_PEERCRED UID/PID mismatch; aborting"
                         );
-                        return None;
+                        return Err(mismatch.peer_pid);
                     }
 
                     let (mut reader, mut writer) = stream.into_split();
@@ -5096,7 +5316,7 @@ impl SessionManager {
                                 error = %e,
                                 "rediscover_sessions: failed to serialize Attach"
                             );
-                            return None;
+                            return Err(None);
                         }
                     };
                     let len_bytes = (attach_body.len() as u32).to_le_bytes();
@@ -5108,7 +5328,7 @@ impl SessionManager {
                             session_id = %session_id,
                             "rediscover_sessions: failed to send DaemonToHost::Attach"
                         );
-                        return None;
+                        return Err(None);
                     }
 
                     // Receive ScrollbackChunk* + ScrollbackDumpComplete.
@@ -5124,7 +5344,7 @@ impl SessionManager {
                     loop {
                         let mut len_buf = [0u8; 4];
                         if reader.read_exact(&mut len_buf).await.is_err() {
-                            return None;
+                            return Err(None);
                         }
                         let msg_len = u32::from_le_bytes(len_buf) as usize;
                         if msg_len == 0 || msg_len > MAX_FRAME_LEN {
@@ -5133,11 +5353,11 @@ impl SessionManager {
                                 len = msg_len,
                                 "rediscover_sessions: invalid scrollback frame length"
                             );
-                            return None;
+                            return Err(None);
                         }
                         let mut body = vec![0u8; msg_len];
                         if reader.read_exact(&mut body).await.is_err() {
-                            return None;
+                            return Err(None);
                         }
                         let msg: monocle_ipc::types::HostToDaemon =
                             match serde_json::from_slice(&body) {
@@ -5148,7 +5368,7 @@ impl SessionManager {
                                         error = %e,
                                         "rediscover_sessions: failed to deserialize HostToDaemon"
                                     );
-                                    return None;
+                                    return Err(None);
                                 }
                             };
                         match msg {
@@ -5156,7 +5376,7 @@ impl SessionManager {
                                 // Accumulate (no storage needed for rediscovery — discard).
                             }
                             monocle_ipc::types::HostToDaemon::ScrollbackDumpComplete { .. } => {
-                                return Some(writer);
+                                return Ok(writer);
                             }
                             _ => {
                                 // Ignore unexpected messages; keep waiting.
@@ -5167,19 +5387,32 @@ impl SessionManager {
                 .await;
 
                 match result {
-                    Ok(Some(write_half)) => ProbeResult {
+                    Ok(Ok(write_half)) => ProbeResult {
                         session_id,
                         sidecar_path,
                         pid,
                         outcome: ProbeOutcome::Success { write_half },
                     },
-                    _ => {
+                    Ok(Err(peer_pid)) => {
+                        // SO_PEERCRED PID mismatch: propagate peer_pid for dual SIGTERM.
+                        ProbeResult {
+                            session_id,
+                            sidecar_path,
+                            pid,
+                            outcome: ProbeOutcome::Failed {
+                                peer_pid_to_sigterm: peer_pid,
+                            },
+                        }
+                    }
+                    Err(_timeout) => {
                         // Timeout or connect/protocol failure.
                         ProbeResult {
                             session_id,
                             sidecar_path,
                             pid,
-                            outcome: ProbeOutcome::Failed,
+                            outcome: ProbeOutcome::Failed {
+                                peer_pid_to_sigterm: None,
+                            },
                         }
                     }
                 }
@@ -5259,11 +5492,16 @@ impl SessionManager {
                         .insert(probe.session_id.clone(), entry);
                     report.found_alive += 1;
                 }
-                ProbeOutcome::Failed => {
-                    // SIGTERM + delete sidecar + found_dead (EC-155 / EC-156).
+                ProbeOutcome::Failed {
+                    peer_pid_to_sigterm,
+                } => {
+                    // SIGTERM sidecar pid + (if PID mismatch) socket peer pid.
+                    // EC-155 / EC-156 + SS-session-manager §Per-session UDS
+                    // security item 2 belt-and-suspenders (HIGH-002 fix).
                     tracing::debug!(
                         session_id = %probe.session_id,
                         pid = probe.pid,
+                        peer_pid = ?peer_pid_to_sigterm,
                         "rediscover_sessions: probe failed; SIGTERM + GC"
                     );
                     // Guard: never send SIGTERM to pid=0 (would signal the whole
@@ -5284,6 +5522,21 @@ impl SessionManager {
                                 error = %e,
                                 "rediscover_sessions: SIGTERM best-effort failed"
                             );
+                        }
+                    }
+                    // Belt-and-suspenders: SIGTERM the socket peer pid too if
+                    // a PID mismatch was detected (HIGH-002 fix).
+                    if let Some(ppid) = peer_pid_to_sigterm {
+                        if ppid != 0 {
+                            let nix_ppid = Pid::from_raw(ppid as i32);
+                            #[cfg(any(test, feature = "test-utils"))]
+                            let _ = if let Some(ref f) = pid_sigterm_fn {
+                                f(nix_ppid)
+                            } else {
+                                nix_kill(nix_ppid, Signal::SIGTERM)
+                            };
+                            #[cfg(not(any(test, feature = "test-utils")))]
+                            let _ = nix_kill(nix_ppid, Signal::SIGTERM);
                         }
                     }
                     let _ = std::fs::remove_file(&result.sidecar_path);
