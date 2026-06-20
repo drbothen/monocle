@@ -130,8 +130,8 @@ SS-session-manager:
 
 SS-embedded-pty:
   path: specs/architecture/SS-embedded-pty.md
-  current_version: "1.9.0"
-  last_bump_commit: "[F-S039-P2-004/002/003 rulings — PTY_DEFAULT_ROWS/COLS 24x80 constant; idempotency guard on ScrollbackDumpComplete; terminated-session exit-before-GC ordering]"
+  current_version: "1.10.0"
+  last_bump_commit: "[F-PASS4-MED-001/002 rulings — dump-window buffer cap (512KiB/4096 msgs) + 10s timeout force-resolve; reconnect dump-state reset at Disconnected; new App fields pending_pty_drop_count + dump_timeout_handles; BC-2.09.001 v1.5.1→v1.6.0]"
   last_bump_date: "2026-06-20"
 
 SS-engine-module-v2-delta:
@@ -803,8 +803,8 @@ BC-2.08.008:
 
 BC-2.09.001:
   path: specs/behavioral-contracts/ss-09/BC-2.09.001.md
-  current_version: "1.5.1"
-  last_bump_commit: "[F-S039-REV-003 — Inv-5 step d: remove dump_in_progress entry instead of set-false; stale-entry accumulation avoidance]" # version-pin-historical
+  current_version: "1.6.0"
+  last_bump_commit: "[F-PASS4-MED-001/002 — Inv-7 dump-window buffer cap; Inv-8 dump-window timeout; Inv-9 reconnect dump-state reset; EC-204..EC-207 added; arch-source SS-embedded-pty 1.9.0→1.10.0]"
   last_bump_date: "2026-06-20"
 
 BC-2.09.002:

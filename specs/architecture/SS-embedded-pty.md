@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "embedded-pty"
 subsystem: SS-09
-version: "1.9.0"
+version: "1.10.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -436,6 +436,126 @@ app.app_mode = AppMode::EmbeddedTerminal {
 };
 ```
 
+**F-PASS4-MED-001 RULING — dump-window buffer cap + timeout (2026-06-20):**
+
+The F-S039-004 RULING above closes the `try_send()` / channel-closed failure path. It does NOT
+close the case where `AttachSession` is delivered successfully (`.send().await` returns `Ok`) but
+the daemon never responds with `ScrollbackDumpComplete` (daemon hang, dropped IPC message, S-047
+bug on daemon side). In that scenario, `dump_in_progress[session_id]` stays `true` indefinitely
+and every incoming `PtyOutput` appends to `pending_pty_bytes[session_id]` without bound — the
+exact "buffering indefinitely" failure mode named in the F-S039-004 rationale.
+
+**Two complementary bounds close this gap:**
+
+#### Dump-window buffer cap
+
+```rust
+/// Maximum total bytes across all pending_pty_bytes entries for a single session
+/// while a scrollback dump is in progress.
+/// Chosen as 512 KiB: this is ~400 full-width 80-col terminal lines at 16 bytes/cell,
+/// far more than any scrollback page swap, yet bounded so a stuck dump never exhausts
+/// heap on a workstation. Drop-oldest eviction preserves the most recent output.
+pub const MAX_PENDING_PTY_BYTES: usize = 512 * 1024;
+
+/// Maximum number of PtyOutput entries buffered per session during a dump window.
+/// 4096 messages × (average ~128 bytes each) ≈ 512 KiB — consistent with the byte cap.
+/// Whichever cap triggers first causes eviction.
+pub const MAX_PENDING_PTY_MESSAGES: usize = 4096;
+```
+
+When appending to `pending_pty_bytes[session_id]` in `on_pty_output`:
+
+```rust
+// After appending the new PtyOutput chunk:
+let total_bytes: usize = app.pending_pty_bytes[&session_id]
+    .iter().map(|v| v.len()).sum();
+let total_messages = app.pending_pty_bytes[&session_id].len();
+if total_bytes > MAX_PENDING_PTY_BYTES || total_messages > MAX_PENDING_PTY_MESSAGES {
+    // Drop-OLDEST: remove first entry (oldest arrival).
+    app.pending_pty_bytes.get_mut(&session_id).unwrap().remove(0);
+    // Increment drop counter.
+    *app.pending_pty_drop_count.entry(session_id.clone()).or_insert(0) += 1;
+}
+```
+
+The `pending_pty_drop_count: HashMap<String, u64>` field is added to the `App` struct. When
+`dump_in_progress[focused_session_id] == Some(&true)` and
+`pending_pty_drop_count[focused_session_id] > 0`, the status bar MUST render a
+`[dump: N drops]` badge. The counter is cleared when the dump window completes or force-resolves.
+
+**Rationale for drop-OLDEST:** the most recent PTY output is what the user cares about seeing
+after the dump completes; dropping the oldest (historical buffered content) is the least-surprising
+eviction policy.
+
+#### Dump-window timeout
+
+```rust
+/// Maximum time to wait for ScrollbackDumpComplete after AttachSession is sent.
+/// 10 seconds is 2× the daemon's attach_session internal timeout per BC-2.08.007
+/// and generous enough to cover slow I/O paths, yet short enough that a hung attach
+/// does not leave the terminal permanently blank.
+pub const DUMP_WINDOW_TIMEOUT: Duration = Duration::from_secs(10);
+```
+
+In `enter_embedded_terminal`, after the successful `AttachSession` send, spawn a timeout task:
+
+```rust
+let abort_handle = tokio::spawn(async move {
+    tokio::time::sleep(DUMP_WINDOW_TIMEOUT).await;
+    // Fire only if dump is still in progress (checked inside handler).
+    tx.send(AppEvent::DumpWindowTimeout { session_id }).await.ok();
+}).abort_handle(); // (or JoinHandle that is aborted on ScrollbackDumpComplete)
+app.dump_timeout_handles.insert(session_id.clone(), abort_handle);
+```
+
+`dump_timeout_handles: HashMap<String, AbortHandle>` is added to the `App` struct (monocle-tui
+scope; holds tokio handles — effectful shell, not pure-core).
+
+**Force-resolve handler** (`on_dump_window_timeout(session_id)`):
+
+```rust
+// Force-resolve: only if dump is still in progress (idempotency guard).
+if app.dump_in_progress.get(&session_id) != Some(&true) {
+    return; // Already resolved by ScrollbackDumpComplete.
+}
+// 1. Remove dump-in-progress flag.
+app.dump_in_progress.remove(&session_id);
+// 2. Clear buffered bytes.
+app.pending_pty_bytes.remove(&session_id);
+// 3. Clear drop counter.
+app.pending_pty_drop_count.remove(&session_id);
+// 4. Reset parser to placeholder dims (NOT into pty_dump_received — dump never completed).
+app.pty_parsers.insert(
+    session_id.clone(),
+    vt100::Parser::new(PTY_DEFAULT_ROWS, PTY_DEFAULT_COLS, SCROLLBACK_ROWS),
+);
+// 5. Surface warning.
+tracing::warn!(
+    session_id = %session_id,
+    "Scrollback dump timed out after {}s — force-resolving dump window",
+    DUMP_WINDOW_TIMEOUT.as_secs(),
+);
+app.set_status_bar_message(
+    format!("[warn] scrollback dump timed out for {}", session_id),
+);
+// NOTE: Do NOT insert session_id into pty_dump_received.
+// The next enter_embedded_terminal() call will re-trigger AttachSession
+// (because pty_dump_received does not contain this session_id).
+```
+
+On `ScrollbackDumpComplete` receipt (normal path), abort and remove the timeout handle:
+
+```rust
+if let Some(handle) = app.dump_timeout_handles.remove(&session_id) {
+    handle.abort();
+}
+// ... (proceed with existing idempotency guard + parser reset + replay)
+```
+
+Constants `MAX_PENDING_PTY_BYTES`, `MAX_PENDING_PTY_MESSAGES`, and `DUMP_WINDOW_TIMEOUT` are
+defined in `monocle-core/src/pty_constants.rs` (pure constants). `dump_timeout_handles` lives in
+`monocle-tui` (effectful shell). Module purity table updated accordingly (see §Module Purity).
+
 **IPC dispatch call-site note (F-S039-011):** The `enter_embedded_terminal()` function
 is called from `app.rs` action-dispatch (the `Action::EnterEmbeddedTerminal` arm), NOT
 from `event_loop.rs`. The `ScrollbackDumpComplete` handler that clears `dump_in_progress`
@@ -456,6 +576,66 @@ plus list removal), remove from `pty_dump_received` so a future re-entry trigger
 `AttachSession` is sent until `ScrollbackDumpComplete` is received and the buffer is replayed.
 While `dump_in_progress[session_id] == true`, all incoming `ServerToClient::PtyOutput` for that
 session MUST be appended to `App::pending_pty_bytes[session_id]` instead of fed to the parser.
+
+**F-PASS4-MED-002 RULING — reconnect dump-state reset (2026-06-20):**
+
+A transport disconnect (`TransportEvent::Disconnected`) severs the UDS connection to the daemon.
+Any in-flight `AttachSession` request on the old connection is undelivered. Any pending
+`ScrollbackDumpComplete` on the old connection will never arrive on the new connection.
+Sessions that were mid-dump at disconnect are permanently stuck: `dump_in_progress[session_id]`
+stays `true` and `pending_pty_bytes` continues to accumulate on reconnect unless cleared.
+
+**Mandatory clearing in `on_transport_event(Disconnected)`:**
+
+```rust
+fn on_transport_event_disconnected(app: &mut App) {
+    // 1. Clear all in-flight dump state — old connection's AttachSession/ScrollbackDumpComplete
+    //    will never be delivered on the new connection.
+    app.dump_in_progress.clear();
+    app.pending_pty_bytes.clear();
+    app.pending_pty_drop_count.clear();
+
+    // 2. Clear completed-dump tracking — the new connection is a fresh attach period.
+    //    Every session needs a fresh attach on next enter_embedded_terminal().
+    app.pty_dump_received.clear();
+
+    // 3. Abort and clear all dump timeout handles.
+    for (_, handle) in app.dump_timeout_handles.drain() {
+        handle.abort();
+    }
+
+    // 4. Do NOT clear pty_parsers — no-clobber rule.
+    //    Parsers contain the best-available screen content from before disconnect.
+    //    The user sees stale but non-blank content; parsers are refreshed by the
+    //    next auto-attach on re-entry.
+
+    // 5. If EmbeddedTerminal is active, exit to prior mode.
+    if let AppMode::EmbeddedTerminal { ref prior, .. } = app.app_mode.clone() {
+        app.exit_embedded_terminal_to(*prior);
+    }
+
+    // 6. Surface reconnecting message.
+    app.set_status_bar_message("[reconnecting...]".to_string());
+}
+```
+
+**Why clear at `Disconnected` (not `InitialState`):**
+
+1. `Disconnected` is the earliest detection point. Between `Disconnected` and `InitialState`,
+   the IPC reader task is not running, so no `PtyOutput` can arrive — clearing at `Disconnected`
+   is safe and eliminates a window where stale state could be observed.
+2. Clearing at `InitialState` is too late: if the reconnect is fast, some state machines in
+   monocle-tui already ran during reconnect (e.g., status bar update, session list refresh),
+   and they see stale `dump_in_progress` flags.
+3. `pty_dump_received` MUST be cleared so that every session that was mid-dump (or had a
+   completed dump on the old connection) triggers a fresh `AttachSession` on the next
+   `enter_embedded_terminal`. The new daemon connection has no record of previous attaches.
+
+**Interaction with `AppMode::EmbeddedTerminal` at disconnect:**
+
+The exit from `EmbeddedTerminal` on disconnect must call `exit_embedded_terminal()` (which
+disables SGR mouse mode + `DisableMouseCapture`) to prevent the TUI from being left with
+mouse capture enabled during reconnect. This is the same path as a user pressing Esc.
 
 **F-S039-005/006 RULING — S-039 vs S-047 ScrollbackDumpComplete handler scope boundary (2026-06-20):**
 
@@ -1207,6 +1387,9 @@ If spawn fails (daemon returns `ServerToClient::Error`), the wizard clears `laun
 | `App::dump_in_progress` | Pure core | `HashMap<String, bool>` flag; in-memory state only |
 | `App::pending_pty_bytes` | Pure core | `HashMap<String, Vec<Vec<u8>>>` buffer; in-memory accumulation only |
 | `App::pty_dump_received` | Pure core | `HashSet<String>` completed-set; in-memory only |
+| `App::pending_pty_drop_count` | Pure core | `HashMap<String, u64>` drop counter; in-memory accumulation only |
+| `App::dump_timeout_handles` | Effectful shell | `HashMap<String, AbortHandle>` — holds tokio abort handles; lives in monocle-tui |
+| `MAX_PENDING_PTY_BYTES`, `MAX_PENDING_PTY_MESSAGES`, `DUMP_WINDOW_TIMEOUT` | Pure core | Numeric/Duration constants; defined in `monocle-core/src/pty_constants.rs` |
 | PTY widget render path | Effectful shell | Ratatui render → terminal I/O |
 | Resize detection + IPC send | Effectful shell | UDS write |
 | `crossterm::execute!` keyboard/mouse setup | Effectful shell | Terminal device I/O |
@@ -1255,6 +1438,36 @@ Mitigation: integration tests use a PTY fixture corpus from `embedded-pty-evalua
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.10.0
+
+**F-PASS4-MED-001 + F-PASS4-MED-002 rulings — dump-window buffer cap + timeout; reconnect dump-state reset** (2026-06-20):
+
+- **F-PASS4-MED-001 — dump-window buffer cap + timeout (MEDIUM):**
+  Added §F-PASS4-MED-001 RULING (§Auto-attach section) specifying:
+  - `MAX_PENDING_PTY_BYTES = 512 KiB` and `MAX_PENDING_PTY_MESSAGES = 4096` cap on
+    `pending_pty_bytes[session_id]` while dump is in progress. Drop-oldest eviction on cap
+    exceeded; per-session `pending_pty_drop_count` surfaced in status bar.
+  - `DUMP_WINDOW_TIMEOUT = 10s` timeout: if `ScrollbackDumpComplete` does not arrive within
+    10s after `AttachSession`, force-resolve: remove `dump_in_progress` entry, clear buffer,
+    reset parser to `PTY_DEFAULT_ROWS × PTY_DEFAULT_COLS`, surface warning, do NOT insert into
+    `pty_dump_received`. `dump_timeout_handles: HashMap<String, AbortHandle>` added to `App` struct.
+  - Constants `MAX_PENDING_PTY_BYTES`, `MAX_PENDING_PTY_MESSAGES`, `DUMP_WINDOW_TIMEOUT`
+    defined in `monocle-core/src/pty_constants.rs` (pure).
+  - Module purity table updated with new fields.
+
+- **F-PASS4-MED-002 — reconnect dump-state reset (MEDIUM):**
+  Added §F-PASS4-MED-002 RULING (§Auto-attach section) specifying:
+  - `on_transport_event(Disconnected)` MUST call `dump_in_progress.clear()`,
+    `pending_pty_bytes.clear()`, `pending_pty_drop_count.clear()`, and
+    `pty_dump_received.clear()` for ALL sessions. Abort and drain `dump_timeout_handles`.
+  - `pty_parsers` MUST NOT be cleared (no-clobber; stale-but-non-blank until next attach).
+  - If `AppMode::EmbeddedTerminal` is active at disconnect, exit to prior mode (calls
+    `exit_embedded_terminal()` to also disable SGR mouse mode). Show `"[reconnecting...]"`.
+  - Clearing MUST happen at `Disconnected`, NOT deferred to `InitialState`.
+
+- **BC-2.09.001 Architecture Source:** SS-embedded-pty.md v1.9.0 → v1.10.0.
+- Semver: minor (v1.9.0 → v1.10.0) — new normative sections and App struct fields.
 
 ## §Trace v1.9.0
 
