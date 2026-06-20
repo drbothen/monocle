@@ -571,6 +571,18 @@ pub fn on_scrollback_dump_complete(
     pty_rows: u16,
     pty_cols: u16,
 ) {
+    // F-S039-P2-002 idempotency guard (BC-2.09.001 Inv-5):
+    // Only process ScrollbackDumpComplete when a dump is actually in progress for this session.
+    // Spurious, duplicate, cross-client, or post-detach completions MUST be dropped before any
+    // parser reset/replay so a live populated parser is never destroyed by a stale message.
+    if app.dump_in_progress.get(&session_id) != Some(&true) {
+        tracing::trace!(
+            session_id = %session_id,
+            "ScrollbackDumpComplete outside dump window — no-op (F-S039-P2-002)"
+        );
+        return;
+    }
+
     // Step 1: Reset parser with actual PTY dimensions from ScrollbackDumpComplete message.
     // Using pty_rows/pty_cols from the message ensures the parser matches the daemon's PTY.
     let scrollback_rows = app.scrollback_rows as usize;
