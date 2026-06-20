@@ -538,6 +538,7 @@ stories:
     started_at: null
     completed_at: null
     pr_url: null
+    worktree: ".worktrees/S-039"
     notes: "Wave 9 root for EPIC-09 (Embedded PTY). Blocks S-040, S-042, S-043 (direct edges only; S-041/S-044 are transitive via S-040). Depends on S-021, S-025, S-035. BC: BC-2.09.001."
 
   - id: S-040

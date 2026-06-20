@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "config"
 subsystem: SS-07
-version: "1.3.0"
+version: "1.4.0"
 status: complete
 producer: architect
 phase: phase-1-expansion
-timestamp: 2026-05-26T12:30:00Z
+timestamp: 2026-06-20T00:00:00Z
 inputs:
   - {path: .factory/specs/prd-expansion-scope.md, version: "1.0"}
   - {path: .factory/specs/product-brief.md, version: "1.4.30"}
@@ -99,7 +99,8 @@ as the first key. The full schema for v1:
   "binding_overrides": {},
   "project_profiles": {
     "/absolute/path/to/project": "profile-id"
-  }
+  },
+  "pty_scrollback_rows": 1000
 }
 ```
 
@@ -116,6 +117,7 @@ as the first key. The full schema for v1:
 | `ccr_path` | `Option<String>` | no | `null` | Absolute path to the `ccr` binary. `null` triggers PATH fallback search (see §CCR Detection). |
 | `binding_overrides` | `serde_json::Value` (object) | no | `{}` | Stub for future binding customizations. Stored as an opaque JSON object; not parsed by Phase 1 code beyond round-trip. |
 | `project_profiles` | `HashMap<String, String>` | no | `{}` | Maps project directory absolute paths to profile IDs. Populated by the profile picker on selection. |
+| `pty_scrollback_rows` | `Option<u32>` | no | `null` (→ 1000) | Scrollback buffer row count for `vt100::Parser`. Absent or `null` applies the 1000-row default. Values above 10000 are clamped to 10000; values of 0 or below are clamped to 1. **Schema shape is SS-07's concern; default/clamp semantics are BC-2.09.007's concern; config load wiring is S-039's responsibility; S-043 consumes the already-loaded value via `App::scrollback_rows`.** |
 
 ### Rust Representation
 
@@ -141,6 +143,18 @@ pub struct MonocleConfig {
     pub binding_overrides: serde_json::Value,
     #[serde(default)]
     pub project_profiles: HashMap<String, String>,
+    /// Scrollback buffer row count for `vt100::Parser`.
+    ///
+    /// `None` (absent from JSON) → caller applies the 1000-row default.
+    /// Values above 10000 are clamped to 10000; values of 0 are clamped to 1.
+    /// `#[serde(default)]` on `Option<u32>` deserializes to `None` when the
+    /// field is absent — this is correct because `Option::default()` is `None`.
+    ///
+    /// Default/clamp semantics: BC-2.09.007 (SS-09).
+    /// Config load wiring: S-039 (`App::scrollback_rows` initialization).
+    /// Consumer: S-043 reads `App::scrollback_rows` (already loaded by S-039).
+    #[serde(default)]
+    pub pty_scrollback_rows: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -164,6 +178,7 @@ impl Default for MonocleConfig {
             ccr_path: None,
             binding_overrides: serde_json::Value::Object(serde_json::Map::new()),
             project_profiles: HashMap::new(),
+            pty_scrollback_rows: None,
         }
     }
 }
@@ -397,7 +412,7 @@ Six behavioral contracts govern SS-07, all in the BC-2.07.NNN namespace:
 | BC ID | Title | Priority | Key Invariant |
 |-------|-------|----------|---------------|
 | BC-2.07.001 | Config File Atomic Write via `tempfile::persist` | P0 | All writes use `tempfile::persist`; naked `std::fs::write` to config path is forbidden and semgrep-enforced |
-| BC-2.07.002 | Config Schema Version 1: Harness Profile Fields | P0 | `config.json` carries `schema_version: 1`, `harness_profiles`, `ccr_path`, `binding_overrides`; unknown fields ignored |
+| BC-2.07.002 | Config Schema Version 1: Harness Profile Fields | P0 | `config.json` carries `schema_version: 1`, `harness_profiles`, `ccr_path`, `binding_overrides`, `pty_scrollback_rows`; unknown fields ignored |
 | BC-2.07.003 | Config Missing or Corrupted: Default Applied | P0 | Missing file → `MonocleConfig::default()`; parse failure → `MonocleConfig::default()`; no panic |
 | BC-2.07.004 | Profile Picker: Sticky-Per-Project | P1 | Last-used profile for a directory is pre-selected on next launch; no picker shown if sticky match found |
 | BC-2.07.005 | Profile Picker: `Ctrl-P` Override Shows Picker | P1 | `Ctrl-P` in any AppMode opens picker; selection persists to `config.json` for current directory |
@@ -487,6 +502,30 @@ Unit tests cover the pure-core functions without filesystem setup. Integration t
 cover the effectful-shell functions using `tempfile::TempDir` for isolation.
 
 ---
+
+## §Trace v1.4.0
+
+**Schema extension: `pty_scrollback_rows` field added to MonocleConfig** (2026-06-20):
+- Added `pty_scrollback_rows: Option<u32>` with `#[serde(default)]` to `MonocleConfig`.
+- Added corresponding `"pty_scrollback_rows": 1000` example to §Config Schema v1 JSON example.
+- Added field row to §Field Definitions table.
+- Updated `MonocleConfig::default()` impl to include `pty_scrollback_rows: None`.
+- Updated §Behavioral Contracts table BC-2.07.002 key-invariant column to enumerate `pty_scrollback_rows`.
+- **Backward compatibility:** `Option<u32>` with `#[serde(default)]` is fully backward-compatible.
+  Existing config.json files without `pty_scrollback_rows` parse correctly; `None` deserialization
+  is correct because `Option::default()` is `None`. No `schema_version` bump required.
+  New configs written by Phase 1 code will not emit `pty_scrollback_rows` unless the user sets it;
+  Phase 1 omits `Some(1000)` because `None` is the default (application of default at call-site,
+  not in the persisted file, is the correct approach — avoids polluting configs with redundant fields).
+- **Ownership split:**
+  - Schema shape (field presence, type, serde attributes): SS-07 / this document / BC-2.07.002.
+  - Default value (1000) and clamp bounds (1..=10000): BC-2.09.007 (SS-09, behavioral owner).
+  - Config load wiring (reading `config.pty_scrollback_rows`, applying default, clamping, storing in
+    `App::scrollback_rows`): S-039 AC-008 responsibility.
+  - Consumer: S-043 reads `App::scrollback_rows` (already loaded and clamped by S-039; does NOT
+    re-load from config).
+- Trigger: S-039 implementer could not wire AC-008 because `MonocleConfig` lacked the field.
+  This is the corrective spec update that unblocks the config load wire.
 
 ## §Trace v1.3.0
 

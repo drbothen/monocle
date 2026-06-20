@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.43.9"
+version: "1.44.0"
 status: active
 producer: vsdd-factory:state-manager
-timestamp: 2026-06-19T00:00:00Z
+timestamp: 2026-06-20T00:00:00Z
 phase: 1a
 inputs: [prd.md, architecture/ARCH-INDEX.md]
 input-hash: "cbf13d5"
@@ -1223,6 +1223,27 @@ SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. 
 - BC-INDEX version: 1.40.4 → 1.40.5. No BC ID additions or retirements. No H1 title changes.
 
 SE-16d monotonicity: v1.40.5 timestamp 2026-06-14T20:00:00Z > v1.40.4 timestamp 2026-06-14T19:00:00Z. PASS.
+
+## §Trace v1.44.0
+
+**Schema extension: `pty_scrollback_rows` field added to MonocleConfig; BC-2.07.002 v1.0.3→v1.1.0** (2026-06-20):
+
+BC version bump in this dispatch:
+- BC-2.07.002 v1.0.3 → v1.1.0: `pty_scrollback_rows: Option<u32>` added to `MonocleConfig` schema.
+  Field shape (SS-07 concern): `Option<u32>` with `#[serde(default)]`; absent → `None`; backward-compatible.
+  Default/clamp semantics (BC-2.09.007 concern): default 1000, clamp 1..=10000.
+  Config load wiring (S-039 AC-008 concern): load at TUI startup, apply default+clamp, store in `App::scrollback_rows`.
+  Consumer: S-043 reads `App::scrollback_rows` only (does NOT re-load from config).
+  No `schema_version` bump required: `Option<u32>` with `#[serde(default)]` is fully backward-compatible
+  with all existing Phase 1 config.json files (absent field → `None` via `Option::default()`).
+  Added EC-088/089/090 and two canonical test vectors for `pty_scrollback_rows` absent/present.
+  Architecture Source pin: SS-config.md v1.3.0 → v1.4.0.
+
+Architecture source SS-config.md bumped: v1.3.0 → v1.4.0 (same burst).
+No BC H1 title changes. No BC ID additions or retirements. BC count unchanged: 138 active.
+BC-INDEX version: 1.43.9 → 1.44.0.
+
+SE-16d monotonicity: v1.44.0 timestamp 2026-06-20 > v1.43.9 timestamp 2026-06-19. PASS.
 
 ## §Trace v1.43.9
 

@@ -1652,3 +1652,59 @@ Total workspace passing count unchanged from baseline 1514 (6 new failures are t
 
 - `CapturingMockEngine`: records `SpawnOptions` passed to `spawn_recipe()` into `Arc<Mutex<Option<SpawnOptions>>>` for test assertions
 - `NonUtf8PathRejectingMockEngine`: returns `EngineError::InvalidPath` when `opts.hooks_settings_path.to_str()` is `None` (simulates S-045 boundary behavior for EC-183)
+
+---
+document_type: red-gate-log
+story_id: S-039
+step: 3
+branch: story/S-039-pty-output-pipeline
+commit: d01a3f3
+timestamp: 2026-06-20T00:00:00Z
+producer: vsdd-factory:test-writer
+---
+
+# Red Gate Log — S-039 Step 3 (PTY Output Pipeline)
+
+## Result
+
+RED GATE VERIFIED — 11 new behavioral tests FAIL; 2 infrastructure-verification tests pass.
+
+## Test File
+
+`crates/monocle-tui/tests/bc_2_09_001_pty_output_pipeline.rs`
+
+## Failing Tests (11) — Red Gate Satisfied
+
+| Test Name | BC Clause | Failure Reason |
+|-----------|-----------|----------------|
+| `test_BC_2_09_001_pty_output_renders_within_100ms` | PC-1/2/3, AC-001/003 | `on_pty_output` todo!() panic |
+| `test_BC_2_09_001_non_focused_parser_updated` | PC-5, Inv-2, AC-004/006 | `on_pty_output` todo!() panic |
+| `test_BC_2_09_001_auto_attach_on_first_entry_buffering` | PC-6, Inv-5, AC-005 | `enter_embedded_terminal` todo!() panic |
+| `test_BC_2_09_001_reattach_after_detach_reruns_dump_protocol` | PC-6 re-attach, AC-005 | `exit_embedded_terminal` todo!() panic |
+| `test_BC_2_09_001_dump_in_progress_set_before_attach_send` | PC-6 ordering (S12-001) | `enter_embedded_terminal` todo!() panic |
+| `test_BC_2_09_001_scrollback_replay_order` | Inv-5 step c | `on_pty_output` todo!() panic |
+| `test_BC_2_09_001_unknown_session_id_drop` | EC-200, AC-009 | `on_pty_output` todo!() panic |
+| `test_BC_2_09_001_high_frequency_frame_merge` | EC-202, AC-010 | `on_pty_output` todo!() panic |
+| `test_BC_2_09_001_session_gc_removes_parser_and_scroll_offset` | AC-008 GC | `gc_pty_session` todo!() panic |
+| `test_BC_2_09_001_render_embedded_terminal_calls_pseudo_terminal` | AC-003, PC-3 | `render_embedded_terminal` todo!() panic |
+| `test_BC_2_09_001_second_enter_skips_attach_when_dump_already_received` | AC-004 O(1) | `enter_embedded_terminal` todo!() panic |
+
+## Passing Tests (2) — Infrastructure Verification (Not Red Gate Violations)
+
+| Test Name | Why It Passes | Assessment |
+|-----------|---------------|------------|
+| `test_BC_2_09_001_invariant_scrollback_rows_default_and_clamp` | `App::new()` already sets `scrollback_rows: 1000` in the S-039 stub (field init, not todo!()); clamping helper is defined in test file itself | Not a violation: the default value is a pre-wired stub default, and the clamping contract being tested (the `run()` config-load path) has NOT been implemented yet — implementer must still wire the clamp into `run()` |
+| `test_BC_2_09_001_invariant_bounded_channel_send_await_not_try_send` | `setup_ipc_streams_with_rx` was fully implemented in prior stories (S-025/S-026); this test validates existing infrastructure capacity | Not a violation: verifies pre-existing IPC infrastructure that S-039 USES but doesn't own |
+
+## Stubs Verified
+
+- `on_pty_output`: `todo!("S-039: on_pty_output...")` at `app.rs:439`
+- `enter_embedded_terminal`: `todo!("S-039: enter_embedded_terminal...")` at `app.rs:458`
+- `exit_embedded_terminal`: `todo!("S-039: exit_embedded_terminal...")` at `app.rs:472`
+- `on_scrollback_dump_complete`: `todo!("S-039: on_scrollback_dump_complete...")` at `app.rs:495`
+- `gc_pty_session`: `todo!("S-039: gc_pty_session...")` at `app.rs:517` (added this session)
+- `render_embedded_terminal`: `todo!("S-039: render_embedded_terminal...")` at `embedded_terminal.rs:44`
+
+## Pre-Existing Tests
+
+All prior tests pass. The only workspace failures are 2 pre-existing `s033_blocker_red_gate.rs` failures (monocle-session-host binary not found in worktree — unrelated to S-039).

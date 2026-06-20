@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.3"
+version: "1.1.0"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-05-26T00:00:00Z
+timestamp: 2026-06-20T00:00:00Z
 phase: phase-1-expansion
 inputs:
   - {path: .factory/specs/architecture/SS-config.md, version: "1.0.0"}
@@ -33,11 +33,11 @@ removal_reason: null
 
 The `config.json` file written and read by `monocle-config` uses a versioned JSON schema.
 Schema version 1 carries a mandatory `schema_version` field (integer value `1`) as the
-first key, followed by `harness_profiles`, `ccr_path`, `binding_overrides`, and
-`project_profiles`. The schema is forward-compatible: unknown fields present in a file
-written by a newer version of monocle are silently ignored when read by a Phase 1 binary.
-The schema_version field enables future migrations in Phase 2+ without breaking Phase 1
-readers.
+first key, followed by `harness_profiles`, `ccr_path`, `binding_overrides`,
+`project_profiles`, and `pty_scrollback_rows`. The schema is forward-compatible: unknown
+fields present in a file written by a newer version of monocle are silently ignored when
+read by a Phase 1 binary. The schema_version field enables future migrations in Phase 2+
+without breaking Phase 1 readers.
 
 ## Preconditions
 
@@ -45,9 +45,9 @@ readers.
    `MonocleConfig::default()`).
 2. For deserialization: the file at the config path contains a valid UTF-8 JSON object.
 3. The Rust struct `MonocleConfig` derives both `serde::Serialize` and `serde::Deserialize`.
-   `serde(default)` is applied to `harness_profiles`, `ccr_path`, `binding_overrides`, and
-   `project_profiles` fields. `#[serde(deny_unknown_fields)]` is NOT used on `MonocleConfig`
-   or `HarnessProfile`.
+   `serde(default)` is applied to `harness_profiles`, `ccr_path`, `binding_overrides`,
+   `project_profiles`, and `pty_scrollback_rows` fields. `#[serde(deny_unknown_fields)]`
+   is NOT used on `MonocleConfig` or `HarnessProfile`.
 
 ## Postconditions
 
@@ -63,12 +63,16 @@ readers.
    In Phase 1, the content is treated as opaque (round-tripped as `serde_json::Value`).
 5. `project_profiles` serializes as a JSON object mapping absolute directory path strings
    to profile ID strings. The default value is an empty object `{}`.
+6. `pty_scrollback_rows` serializes as a JSON integer when `Some(n)`, or is omitted (skipped
+   in output) when `None`. The default value is `None` (absent from JSON on default-constructed
+   configs). Callers that need the effective row count MUST apply the 1000-row default and
+   10000-row cap themselves (see BC-2.09.007 for semantics; see S-039 for load wiring).
 
 **Deserialization (read path):**
 6. A JSON file with `schema_version: 1` deserializes into `MonocleConfig` with all fields
    populated from JSON. Fields absent from the JSON but having `#[serde(default)]` receive
    their Rust default values (`Vec::new()`, `None`, empty `serde_json::Value::Object`,
-   `HashMap::new()`).
+   `HashMap::new()`, `None` for `pty_scrollback_rows`).
 7. A JSON file with `schema_version` missing is treated as schema version 1 (pre-versioning
    compatibility). The `schema_version` field has type `u32` without `#[serde(default)]`;
    a missing field causes a `serde_json` parse error, which is handled per BC-2.07.003
@@ -110,18 +114,23 @@ readers.
 | EC-085 | `harness_profiles` contains a profile with `binary_path` set to a path that does not exist on disk | Schema accepts it; monocle-config does not validate binary existence at schema level — validation is at engine spawn time (BC-2.03.004) |
 | EC-086 | `project_profiles` references a profile ID not in `harness_profiles` | Schema accepts it; dangling reference detected by profile picker at runtime (BC-2.07.004 Postcondition 3 handles this case) |
 | EC-087 | `harness_profiles` has two entries with the same `id` | Schema accepts it; deduplication is the caller's responsibility; profile picker selects the first match by iteration order |
+| EC-088 | `pty_scrollback_rows` absent from JSON | Deserializes to `pty_scrollback_rows: None` (via `#[serde(default)]`); caller applies 1000-row default per BC-2.09.007 |
+| EC-089 | `pty_scrollback_rows: null` in JSON | Deserializes to `pty_scrollback_rows: None`; identical behavior to absent field |
+| EC-090 | `pty_scrollback_rows: 0` in JSON | Deserializes to `pty_scrollback_rows: Some(0)`; schema accepts it; caller clamps to 1 per BC-2.09.007 EC-243 |
 
 ## Canonical Test Vectors
 
 | Input | Expected Output | Category |
 |-------|----------------|----------|
-| `MonocleConfig::default()` serialized via `serde_json::to_string_pretty` | `{"schema_version":1,"harness_profiles":[],"ccr_path":null,"binding_overrides":{},"project_profiles":{}}` (pretty-printed) | happy-path |
+| `MonocleConfig::default()` serialized via `serde_json::to_string_pretty` | JSON object with `schema_version: 1`, `harness_profiles: []`, `ccr_path: null`, `binding_overrides: {}`, `project_profiles: {}`, `pty_scrollback_rows: null` (pretty-printed) | happy-path |
 | JSON with one `HarnessProfile`: `{id:"cc", display_name:"Claude Code", binary_path:"/usr/local/bin/claude", config_dir:null}` | Deserializes to `MonocleConfig` with `harness_profiles.len() == 1`; profile fields match | happy-path |
 | JSON with `ccr_path: "/usr/local/bin/ccr"` | Deserializes with `ccr_path: Some("/usr/local/bin/ccr".to_string())` | happy-path |
 | JSON with `binding_overrides: {"ctrl_p": "profile-picker"}` | Deserializes with `binding_overrides` as `serde_json::Value::Object`; unknown key preserved in the Value | happy-path |
 | JSON with extra top-level field `"future_field": true` | Deserializes without error; `future_field` silently ignored | forward-compat |
 | JSON with `schema_version` field absent | `serde_json` parse error triggers BC-2.07.003 default path; no panic | edge-case |
 | Round-trip: serialize `MonocleConfig` → deserialize → compare | Deserialized struct equals original | happy-path |
+| JSON with `pty_scrollback_rows` absent | Deserializes with `pty_scrollback_rows: None` (via `#[serde(default)]`) | edge-case |
+| JSON with `pty_scrollback_rows: 500` | Deserializes with `pty_scrollback_rows: Some(500)` | happy-path |
 
 ## Verification Properties
 
@@ -141,8 +150,8 @@ readers.
 | Capability Anchor Justification | CAP-007 ("Configuration persistence; harness profile management; profile picker; CCR detection") per ARCH-INDEX §Capability Traceability — this BC defines the data schema that is the carrier for harness profile management and config persistence |
 | L2 Domain Invariants | No domain-spec/invariants.md exists for this project; authority is ARCH-INDEX §SS-07 and SS-config.md §Config Schema v1 |
 | Architecture Module | monocle-config (config.json reader/writer, harness profile schema, profile picker logic) per ARCH-INDEX Subsystem Registry SS-07 |
-| Architecture Source | SS-config.md v1.3.0 §Config Schema v1 |
-| Cross-Ref | BC-2.07.001 (write_config serializes this schema atomically); BC-2.07.003 (parse failure path); BC-2.07.004 (project_profiles field consumed by profile picker); BC-2.07.006 (ccr_path field consumed by CCR detection) |
+| Architecture Source | SS-config.md v1.4.0 §Config Schema v1 |
+| Cross-Ref | BC-2.07.001 (write_config serializes this schema atomically); BC-2.07.003 (parse failure path); BC-2.07.004 (project_profiles field consumed by profile picker); BC-2.07.006 (ccr_path field consumed by CCR detection); BC-2.09.007 (behavioral owner of pty_scrollback_rows default/clamp semantics; this BC owns the schema field shape only) |
 | Brief Features | F-53 (config.json schema), F-54 (harness profile schema), F-55 (ccr_path field), F-56 (binding_overrides stub) |
 | Test File | `monocle-config/tests/schema_v1.rs` |
 | Test Name | `test_BC_2_07_002_config_schema_v1_round_trip` |
@@ -154,6 +163,7 @@ readers.
 - [BC-2.07.003] — depends on: parse errors from this schema fall through to default handling
 - [BC-2.07.004] — composes with: project_profiles field from this schema is consumed by the profile picker
 - [BC-2.07.006] — composes with: ccr_path field from this schema is consumed by CCR detection
+- [BC-2.09.007] — composes with: this BC owns the pty_scrollback_rows field shape (Option<u32>, serde default); BC-2.09.007 owns the behavioral semantics (default 1000, clamp 1..=10000, parser initialization); S-039 owns the load wiring
 
 ## Architecture Anchors
 
@@ -167,6 +177,23 @@ S-TBD — Implement monocle-config crate: atomic write, schema v1, default handl
 ## VP Anchors
 
 VP-TBD — config schema v1 unit tests (filled after VP creation)
+
+## §Trace v1.1.0
+
+**Schema extension: `pty_scrollback_rows` field added** (2026-06-20):
+- Description: enumerated `pty_scrollback_rows` in the list of schema fields.
+- PC-3: added `pty_scrollback_rows` to the `serde(default)` enumeration.
+- PC-5 (serialization): added PC-6 documenting `pty_scrollback_rows` serialize-as-integer-or-omit behavior.
+- PC-6 (deserialization): updated default-fields list to include `pty_scrollback_rows: None`.
+- Added EC-088, EC-089, EC-090 for absent/null/zero pty_scrollback_rows.
+- Added two canonical test vectors for absent and present pty_scrollback_rows.
+- Cross-Ref: added BC-2.09.007 cross-reference (behavioral owner of default/clamp semantics).
+- Related BCs: added BC-2.09.007 composition entry.
+- Architecture Source: updated from SS-config.md v1.3.0 to SS-config.md v1.4.0.
+- Backward compatibility: `Option<u32>` with `#[serde(default)]` is backward-compatible with
+  all existing v1 config.json files; no schema_version bump required. `Option::default()` is
+  `None` — correct for this field since absent = use default per BC-2.09.007.
+- SE-16d monotonicity: 2026-06-20 > v1.0.3 date 2026-05-29. PASS.
 
 ## §Trace v1.0.0
 
