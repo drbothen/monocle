@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "embedded-pty"
 subsystem: SS-09
-version: "1.8.0"
+version: "1.9.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -116,6 +116,36 @@ pub enum SessionCreationStep {
 - `SessionCreation::Launching` transitions to `EmbeddedTerminal` automatically when the daemon
   sends `SessionStateChanged { new_state: Running }` for the new session.
 
+**F-S039-P2-003 RULING — session-terminated MUST exit EmbeddedTerminal BEFORE GC (S-039 scope):**
+
+When `ServerToClient::SessionStateChanged { session_id, new_state: Terminated }` is received:
+
+1. **Mode exit FIRST:** If `app.app_mode == AppMode::EmbeddedTerminal { session_id: ref sid, .. }`
+   and `sid == &session_id`, the TUI MUST exit `EmbeddedTerminal` mode (transition to `prior`
+   AppMode) BEFORE performing any GC on the session's parser/state. This prevents the render loop
+   from falling through to the "Connecting to PTY..." placeholder for a GC'd session.
+2. **NO `DetachSession` IPC:** The TUI MUST NOT send `ClientToServer::DetachSession { session_id }`
+   for a terminated session. The session is already gone; the daemon will return an error for any
+   lifecycle operation on a `Terminated` session (BC-2.08.007). Sending a spurious `DetachSession`
+   would log an error and waste IPC bandwidth.
+3. **NO panic:** The handler MUST handle the case where the session is no longer in `pty_parsers`
+   (e.g., if the GC partially ran), by using `remove()` rather than index access.
+4. **GC after exit:** After the mode transition, the standard GC runs:
+   - `pty_parsers.remove(&session_id)`
+   - `pty_scroll_offsets.remove(&session_id)`
+   - `dump_in_progress.remove(&session_id)`
+   - `pending_pty_bytes.remove(&session_id)`
+   - `pty_dump_received.remove(&session_id)` (so a future re-attach of a restarted
+     session triggers a fresh dump)
+
+**Ownership boundary (S-039 vs S-034):**
+- S-034 owns the session-host kill path (daemon delivers `DaemonToHost::Kill` → session-host
+  sends `HostToDaemon::StateChanged { Terminated }` → daemon publishes `SessionStateChanged`).
+- S-039 owns the TUI-side EmbeddedTerminal mode/SS-09 state machine wiring, including the
+  exit-on-terminate ordering contract above. S-039 introduced the GC path and owns it.
+- These are distinct concerns that compose cleanly: S-034 owns WHEN the event fires;
+  S-039 owns WHAT the TUI does when it receives the event while in EmbeddedTerminal mode.
+
 ---
 
 ## PTY Widget Pipeline
@@ -195,10 +225,47 @@ struct App {
 /// - On `StateChanged::Terminated` for a session: `pty_scroll_offsets.remove(session_id)`.
 ```
 
-Parser initialization: when the TUI receives `SessionListUpdate` with a new session, a fresh
-`vt100::Parser::new(rows, cols, SCROLLBACK_ROWS)` is created. `SCROLLBACK_ROWS` is configurable
-via `~/.monocle/config.json`; default 1000 rows. Parsers are removed when the session is GC'd
-from the list.
+**Canonical default dimensions constant (F-S039-P2-004 RULING):**
+
+```rust
+/// Default PTY dimensions used when creating a vt100::Parser for a session that has
+/// not yet been attached (i.e., on SessionListUpdate / InitialState arrival).
+/// These are placeholder dimensions — the parser is reset to real PTY dimensions
+/// (from ScrollbackDumpComplete.pty_rows / pty_cols) on the first attach.
+///
+/// 24×80 is the universal terminal fallback: POSIX default, SSH default, and the
+/// value virtually every VT100/ANSI terminal emulator defaults to. It is never
+/// rendered before the attach-triggered reset, so the observable impact is zero.
+///
+/// Defined in monocle-core/src/pty_defaults.rs (or similar constants module).
+pub const PTY_DEFAULT_ROWS: u16 = 24;
+pub const PTY_DEFAULT_COLS: u16 = 80;
+```
+
+**Why 24×80 is production-grade for pre-attach parsers:**
+
+1. The daemon does NOT send `PtyOutput` to a session until `AttachSession` is processed
+   and the proxy task is started (BC-2.08.007 §attach_session). Non-attached sessions
+   receive no PTY bytes; their parsers remain blank regardless of dimensions.
+2. Non-focused parsers are never rendered — only the focused `EmbeddedTerminal` session's
+   parser is passed to `PseudoTerminal`. A non-focused session's parser could be 1×1 or
+   1000×300 with no observable effect.
+3. When `enter_embedded_terminal(session_id)` is called for the first time, the auto-attach
+   mandate triggers `AttachSession` → `ScrollbackDumpComplete`. The `ScrollbackDumpComplete`
+   handler resets the parser to the real PTY dimensions (`pty_rows`/`pty_cols` from the
+   message fields) BEFORE any live `PtyOutput` is applied (per the buffering-and-replay
+   protocol). The 24×80 placeholder is thus discarded before first use.
+4. Adding `pty_rows`/`pty_cols` to the `EnrichedSession` / `SessionSnapshot` wire types
+   would require a wire-type change affecting all clients and the daemon's session roster
+   broadcast. This cost is not justified when the parser is always reset to real dims on
+   first attach. **Dims-on-wire deferred to S-047 scope if needed.** A wave-gate note is
+   recorded: if S-047's styled-cell reconstruction reveals a scenario where parser dims
+   matter before first attach, the story-writer MUST scope a wire-type addition story.
+
+**Parser initialization:** when the TUI receives `SessionListUpdate` with a new session, a fresh
+`vt100::Parser::new(PTY_DEFAULT_ROWS, PTY_DEFAULT_COLS, SCROLLBACK_ROWS)` is created.
+`SCROLLBACK_ROWS` is configurable via `~/.monocle/config.json`; default 1000 rows. Parsers are
+removed when the session is GC'd from the list.
 
 **Blank-parser state for pre-existing sessions:** When the TUI starts fresh (new process) and
 receives sessions via `InitialState.sessions` (or `SessionListUpdate`), the parsers for those
@@ -395,6 +462,36 @@ session MUST be appended to `App::pending_pty_bytes[session_id]` instead of fed 
 S-039 and S-047 split ownership of the `ScrollbackDumpComplete` handler as follows:
 
 **S-039 OWNS (must implement NOW):**
+
+**F-S039-P2-002 RULING — idempotency guard (mandatory pre-check):**
+
+`on_scrollback_dump_complete(session_id, ...)` MUST begin with an idempotency guard:
+
+```rust
+// F-S039-P2-002: idempotency guard — no-op if no dump is in progress for this session.
+// Protects against spurious/duplicate ScrollbackDumpComplete messages:
+//   - Daemon re-broadcast (multi-TUI-client fan-out, one client already consumed the message)
+//   - Post-detach delivery (message in flight after TUI called DetachSession)
+//   - Cross-client race (another TUI client triggered attach for the same session)
+// Without this guard, a spurious message resets a LIVE populated parser → content loss
+// (BC-2.09.001 Invariant 5 violation — double-apply / data destruction).
+if dump_in_progress.get(&session_id) != Some(&true) {
+    tracing::trace!(
+        session_id = %session_id,
+        "ScrollbackDumpComplete received outside dump window — no-op (idempotency guard)"
+    );
+    return;
+}
+```
+
+This guard is consistent with BC-2.09.001 Invariant 5: the parser-reset protocol is
+normatively part of the attach/dump protocol initiated by `enter_embedded_terminal()`.
+`dump_in_progress[session_id] == true` is the gate condition that defines "we are in a
+dump window for this session." A `ScrollbackDumpComplete` arriving outside that window
+is spurious and MUST be discarded.
+
+After the guard passes, the S-039 handler steps are:
+
 1. Reset the parser: `pty_parsers[session_id] = vt100::Parser::new(pty_rows, pty_cols, SCROLLBACK_ROWS)`.
    Use `pty_rows` and `pty_cols` from the `ScrollbackDumpComplete` fields.
 2. Replay buffered live bytes: iterate `pending_pty_bytes[session_id]` in receipt order,
@@ -1158,6 +1255,47 @@ Mitigation: integration tests use a PTY fixture corpus from `embedded-pty-evalua
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.9.0
+
+**F-S039-P2-004 + F-S039-P2-002 + F-S039-P2-003 rulings — parser default dims; idempotency guard; terminated-session exit-before-GC** (2026-06-20):
+
+- **F-S039-P2-004 (MEDIUM) — parser default dimensions (24×80 accepted):**
+  On `SessionListUpdate` / `InitialState` session arrival, parsers are created with
+  `PTY_DEFAULT_ROWS = 24`, `PTY_DEFAULT_COLS = 80`. This is accepted as production-grade
+  because: (1) the daemon does not send `PtyOutput` to non-attached sessions; (2) non-focused
+  parsers are never rendered; (3) `enter_embedded_terminal` always triggers `AttachSession` →
+  `ScrollbackDumpComplete` which resets the parser to real dims before first use. Constants
+  `PTY_DEFAULT_ROWS`/`PTY_DEFAULT_COLS` (24/80) are now normative in §Parser ownership §Parser
+  initialization. Adding dims to `EnrichedSession`/`SessionSnapshot` wire types is deferred to
+  S-047 scope — wave-gate note added if styled-cell reconstruction reveals a need.
+  **Implementer directive:** Use `PTY_DEFAULT_ROWS`/`PTY_DEFAULT_COLS` constants everywhere
+  a blank parser is created on session arrival. Remove any hardcoded `24` / `80` literals.
+  Define constants in `monocle-core/src/pty_defaults.rs` (or equivalent constants module).
+
+- **F-S039-P2-002 (HIGH) — `on_scrollback_dump_complete` idempotency guard:**
+  Handler MUST guard with `dump_in_progress.get(&session_id) != Some(&true)` at the top.
+  If the guard fails (dump not in progress), the handler MUST no-op with a `tracing::trace!`
+  log and return immediately. This prevents spurious/duplicate/post-detach `ScrollbackDumpComplete`
+  messages from destroying a live populated parser. Normative guard code added to
+  §F-S039-005/006 RULING §S-039 OWNS step list (above the numbered steps).
+  BC-2.09.001 Invariant 5 cross-reference: the guard enforces the invariant that parser-reset
+  fires only within the attach/dump protocol window initiated by `enter_embedded_terminal`.
+
+- **F-S039-P2-003 (HIGH) — session-terminated must exit EmbeddedTerminal BEFORE GC:**
+  `SessionStateChanged { Terminated }` handler MUST: (1) check if current mode is
+  `EmbeddedTerminal { session_id == terminated }` and exit mode (restore `prior`) BEFORE any
+  GC; (2) NOT send `DetachSession` IPC for a terminated session; (3) NOT panic if session is
+  partially GC'd. Mode exit → GC is the mandatory ordering. Normative ordering block added to
+  §state-machine-invariants. S-039 owns this (introduced the GC path); S-034 owns the
+  session-host kill path.
+  **Implementer directive:** In the `Terminated` arm of `on_session_state_changed`: check
+  `app.app_mode` first; if `EmbeddedTerminal` for this session, call `exit_embedded_terminal()`
+  (which also calls `DisableMouseCapture`); then run GC. Use `HashMap::remove()` for all GC
+  operations, never index access.
+
+- Semver: minor (v1.8.0 → v1.9.0) — new normative constants, idempotency guard, and
+  terminated-session exit ordering.
 
 ## §Trace v1.8.0
 

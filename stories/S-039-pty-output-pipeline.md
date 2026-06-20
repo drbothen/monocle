@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-039
 epic_id: EPIC-09
-version: "1.4"
+version: "1.5"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -20,8 +20,8 @@ behavioral_contracts: [BC-2.09.001]
 verification_properties: []
 estimated_days: 4
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.001.md, version: "1.4.0"}
-  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.8.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.001.md, version: "1.5.0"}
+  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.9.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
@@ -118,6 +118,44 @@ received via `SessionListUpdate` or `InitialState`. Parsers are removed on sessi
 (`SessionState::Terminated` + list removal); `pty_dump_received` and `pty_scroll_offsets` entries
 for the session are also removed at that time.
 
+### AC-011 (traces to SS-embedded-pty.md §Parser initialization — PTY_DEFAULT_ROWS/PTY_DEFAULT_COLS; F-S039-P2-004)
+
+When `App::on_session_list_update()` or `App::on_initial_state()` creates a new `vt100::Parser`
+for an arriving session, the `rows` and `cols` arguments MUST use the named constants
+`PTY_DEFAULT_ROWS = 24` and `PTY_DEFAULT_COLS = 80` (defined in `monocle-core`). No hardcoded
+numeric literals `24` or `80` are permitted at parser construction sites for non-attached sessions.
+The scrollback dimensions are separately sourced from `App::scrollback_rows` (configured value).
+
+### AC-012 (traces to BC-2.09.001 Invariant 5 — idempotency guard; F-S039-P2-002)
+
+`App::on_scrollback_dump_complete(session_id, pty_rows, pty_cols, ...)` MUST begin with:
+
+```rust
+if dump_in_progress.get(&session_id) != Some(&true) {
+    tracing::trace!(session_id = %session_id,
+        "ScrollbackDumpComplete outside dump window — no-op");
+    return;
+}
+```
+
+A unit test MUST verify: when `dump_in_progress[session_id]` is `false` (or absent) and
+`ScrollbackDumpComplete` arrives, the parser is NOT reset and the function returns without
+modifying any state.
+
+### AC-013 (traces to SS-embedded-pty.md §state-machine-invariants §F-S039-P2-003 — terminated-session exit-before-GC)
+
+When `ServerToClient::SessionStateChanged { session_id, new_state: Terminated }` is received
+and `app.app_mode == AppMode::EmbeddedTerminal { session_id: ref sid, .. }` where `sid == &session_id`:
+
+- The handler calls `app.exit_embedded_terminal(session_id.clone())` (restores `prior` AppMode,
+  calls `DisableMouseCapture`) BEFORE any GC (`pty_parsers.remove(...)`, etc.).
+- The handler MUST NOT send `ClientToServer::DetachSession { session_id }`.
+- All GC operations use `HashMap::remove()` / `HashSet::remove()` — never index access.
+
+A unit test MUST verify: after receiving `Terminated` for the focused session while in
+`EmbeddedTerminal` mode, `app.app_mode` is NOT `EmbeddedTerminal` and
+`pty_parsers.contains_key(&session_id)` is `false`.
+
 ### AC-009 (traces to BC-2.09.001 edge case EC-200 — PtyOutput for unknown session_id)
 
 When `pty_parsers.get_mut(&session_id)` returns `None` (session not yet in parsers map — race
@@ -154,6 +192,9 @@ processing normally. The `mpsc::channel(64)` provides 64 slots of burst absorpti
 - [ ] Write unit test `test_BC_2_09_001_non_focused_parser_updated`: two sessions; only s2 focused; send `PtyOutput` for s1; assert s1 parser updated, no render of s1 PTY widget.
 - [ ] Write unit test `test_BC_2_09_001_auto_attach_on_first_entry_buffering`: simulate `AttachSession` → `ScrollbackChunk` + `ScrollbackDumpComplete`; assert buffered `PtyOutput` replayed after reset; `pty_dump_received` populated.
 - [ ] Write unit test `test_BC_2_09_001_unknown_session_id_drop`: `PtyOutput` for unknown session_id; assert no panic, no WARN log.
+- [ ] Define `PTY_DEFAULT_ROWS: u16 = 24` and `PTY_DEFAULT_COLS: u16 = 80` constants in `monocle-core` (e.g., `monocle-core/src/pty_defaults.rs` or a constants submodule). Use these constants in `on_session_list_update()` and `on_initial_state()` parser construction. No hardcoded `24` or `80` at parser-creation sites (AC-011).
+- [ ] Add idempotency guard to `on_scrollback_dump_complete`: check `dump_in_progress.get(&session_id) != Some(&true)` and no-op with `tracing::trace!` if false. Write unit test `test_scrollback_dump_complete_idempotency_guard` verifying parser is NOT reset when guard fires (AC-012).
+- [ ] In `on_session_state_changed(Terminated)` handler: if `app.app_mode == EmbeddedTerminal { session_id }`, call `exit_embedded_terminal()` BEFORE all GC operations. MUST NOT send `ClientToServer::DetachSession`. All GC via `remove()`. Write unit test `test_terminated_session_exits_embedded_mode_before_gc` (AC-013).
 
 ## Previous Story Intelligence
 

@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.0"
+version: "1.5.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -88,9 +88,23 @@ TUI's IPC socket. This timing budget covers: IPC framing decode → `vt100::Pars
    overridden by config. Memory per parser: ~16 bytes/cell × cols × (visible_rows + scrollback_rows).
    Default: 16 × 80 × 1024 ≈ 1.3 MB/session; 8 sessions ≈ 10.4 MB. Cap at 10000 rows
    yields ~12.8 MB/session at 80 cols. See SS-embedded-pty.md §O4 for full bound analysis.
+   **Default parser dimensions (F-S039-P2-004):** When parsers are created on `SessionListUpdate`
+   / `InitialState` arrival (before any attach), the canonical placeholder dimensions are
+   `PTY_DEFAULT_ROWS = 24` and `PTY_DEFAULT_COLS = 80` (defined in `monocle-core` per
+   SS-embedded-pty.md §Parser initialization). These are ALWAYS replaced by the real PTY
+   dimensions from `ScrollbackDumpComplete.pty_rows`/`pty_cols` before first render (the parser
+   is reset in the `ScrollbackDumpComplete` handler). No BC content changes — this is an
+   implementation constraint on what to pass to `vt100::Parser::new()` for non-attached sessions.
 5. **Chunked scrollback receipt — parser reset protocol (C5):** When the TUI receives
    `ServerToClient::ScrollbackDumpComplete` for a session (per BC-2.05.011 §ScrollbackDumpComplete
    PC-3), the TUI MUST:
+   **F-S039-P2-002 — idempotency guard (pre-condition for all steps below):**
+   The handler MUST first check `dump_in_progress.get(&session_id) == Some(&true)`. If this
+   check fails (i.e., `dump_in_progress` is `false`, absent, or the session_id is unknown),
+   the handler MUST no-op with a `tracing::trace!` log and return immediately. This guard
+   prevents spurious/duplicate `ScrollbackDumpComplete` messages (e.g., daemon re-broadcast,
+   post-detach delivery) from destroying a live populated parser. Only when the guard passes
+   (a dump window IS active) do the steps below execute.
    a. Reset the parser on `ScrollbackDumpComplete` receipt:
       `pty_parsers[session_id] = vt100::Parser::new(pty_rows, pty_cols, SCROLLBACK_ROWS)`.
       Use `pty_rows` and `pty_cols` from the `ScrollbackDumpComplete` message fields.
@@ -146,7 +160,7 @@ TUI's IPC socket. This timing budget covers: IPC framing decode → `vt100::Pars
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — this BC defines the PTY byte pipeline performance contract: IPC → vt100 → tui-term within 100ms, which is the core of CAP-009's embedded PTY widget capability |
 | Architecture Module | monocle-tui (App::on_pty_output, pty_parsers, PseudoTerminal widget) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.8.0 §PTY Widget Pipeline; §Parser ownership in TUI; §O4 memory bound; §I7 per-session scroll offset; §EmbeddedTerminal ENTRY (auto-attach mandate, I11-001 PRONG A; F-S039-004 rollback ruling; F-S039-005/006 scope boundary); SS-session-manager.md v2.15.1 §Screen-state transfer (C5); ADR-0011 v1.2.1 §Decision |
+| Architecture Source | SS-embedded-pty.md v1.9.0 §PTY Widget Pipeline; §Parser ownership in TUI; §Parser initialization (PTY_DEFAULT_ROWS/COLS, F-S039-P2-004); §O4 memory bound; §I7 per-session scroll offset; §EmbeddedTerminal ENTRY (auto-attach mandate, I11-001 PRONG A; F-S039-004 rollback ruling; F-S039-005/006 scope boundary); §F-S039-005/006 RULING §S-039 OWNS (F-S039-P2-002 idempotency guard); §state-machine-invariants (F-S039-P2-003 terminated-exit-before-GC); SS-session-manager.md v2.15.1 §Screen-state transfer (C5); ADR-0011 v1.2.1 §Decision |
 | Test Name | test_BC_2_09_001_pty_output_renders_within_100ms |
 
 ## Related BCs
@@ -167,6 +181,24 @@ S-039 — Implement TUI PTY widget (vt100 parser, PseudoTerminal render, PtyOutp
 ## VP Anchors
 
 VP-TBD — PTY output render latency tests (filled after VP creation)
+
+## §Trace v1.5.0
+
+**F-S039-P2-004 + F-S039-P2-002 + F-S039-P2-003 rulings — parser default dims; idempotency guard; terminated-session exit ordering** (2026-06-20):
+
+- **Invariant 4 extended (F-S039-P2-004):** Added normative note documenting `PTY_DEFAULT_ROWS = 24`
+  and `PTY_DEFAULT_COLS = 80` as the canonical placeholder dimensions for parsers created on session
+  arrival (before any attach). These are always replaced by real dims from `ScrollbackDumpComplete`
+  on first attach. No behavioral change — implementers now have a named constant to use instead of
+  hardcoded literals.
+- **Invariant 5 revised (F-S039-P2-002):** Added mandatory idempotency guard as a pre-condition
+  for all parser-reset steps. Handler MUST check `dump_in_progress.get(&session_id) == Some(&true)`;
+  if false/absent, no-op with `tracing::trace!` and return. Prevents spurious/duplicate/post-detach
+  `ScrollbackDumpComplete` from destroying live parser state.
+- **Architecture Source updated:** SS-embedded-pty.md v1.8.0 → v1.9.0; added §Parser initialization
+  (F-S039-P2-004), §F-S039-005/006 RULING idempotency guard (F-S039-P2-002), and
+  §state-machine-invariants terminated-exit-before-GC (F-S039-P2-003) as explicit anchor citations.
+- SE-16d monotonicity: v1.5.0 timestamp 2026-06-20 >= v1.4.0 timestamp 2026-06-20. PASS.
 
 ## §Trace v1.4.0
 
