@@ -4634,55 +4634,8 @@ impl SessionManager {
                         let _ = std::fs::remove_file(&data.sidecar_path);
                         let _ = std::fs::remove_file(&data.socket_path);
                         // SS-daemon-wiring §3b: emit SessionStateChanged{Terminated}
-                        // then SessionListUpdate (MED-002 fix).  Emitted pre-UDS-bind
-                        // so no subscribers exist yet; harmlessly discarded, but kept
-                        // for §3b uniformity and post-bind watchdog correctness.
-                        {
-                            use monocle_core::engine::{EnrichedSession, SessionStatus};
-                            let list_snapshot: Vec<EnrichedSession> = {
-                                let guard = self.sessions.lock().await;
-                                guard
-                                    .values()
-                                    .map(|e| {
-                                        let status = match e.state {
-                                            SessionState::Launching | SessionState::Running => {
-                                                SessionStatus::Active
-                                            }
-                                            SessionState::Detached => SessionStatus::Idle,
-                                            _ => SessionStatus::Stopped,
-                                        };
-                                        EnrichedSession::new_with_display_name(
-                                            e.session_id.clone(),
-                                            e.harness_id.clone(),
-                                            None,
-                                            None,
-                                            status,
-                                            None,
-                                            e.project_root
-                                                .file_name()
-                                                .and_then(|n| n.to_str())
-                                                .map(|s| s.to_string()),
-                                            Some(e.started_at),
-                                            0,
-                                            None,
-                                            e.display_name.clone(),
-                                        )
-                                    })
-                                    .collect()
-                            };
-                            let state_msg =
-                                monocle_ipc::types::ServerToClient::SessionStateChanged {
-                                    session_id: data.session_id.clone(),
-                                    new_state: SessionState::Terminated,
-                                };
-                            crate::ipc_server::broadcast_to_subscribers(&self.broker, state_msg)
-                                .await;
-                            let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
-                                sessions: list_snapshot,
-                            };
-                            crate::ipc_server::broadcast_to_subscribers(&self.broker, list_msg)
-                                .await;
-                        }
+                        // then SessionListUpdate (§3b uniformity; see emit_rediscovery_terminated).
+                        self.emit_rediscovery_terminated(&data.session_id).await;
                         report.found_dead += 1;
                     } else {
                         probes.push(data);
@@ -4701,55 +4654,8 @@ impl SessionManager {
                         let _ = std::fs::remove_file(&data.sidecar_path);
                         let _ = std::fs::remove_file(&data.socket_path);
                         // SS-daemon-wiring §3b: emit SessionStateChanged{Terminated}
-                        // then SessionListUpdate (MED-002 fix).  Emitted pre-UDS-bind
-                        // so no subscribers exist yet; harmlessly discarded, but kept
-                        // for §3b uniformity and post-bind watchdog correctness.
-                        {
-                            use monocle_core::engine::{EnrichedSession, SessionStatus};
-                            let list_snapshot: Vec<EnrichedSession> = {
-                                let guard = self.sessions.lock().await;
-                                guard
-                                    .values()
-                                    .map(|e| {
-                                        let status = match e.state {
-                                            SessionState::Launching | SessionState::Running => {
-                                                SessionStatus::Active
-                                            }
-                                            SessionState::Detached => SessionStatus::Idle,
-                                            _ => SessionStatus::Stopped,
-                                        };
-                                        EnrichedSession::new_with_display_name(
-                                            e.session_id.clone(),
-                                            e.harness_id.clone(),
-                                            None,
-                                            None,
-                                            status,
-                                            None,
-                                            e.project_root
-                                                .file_name()
-                                                .and_then(|n| n.to_str())
-                                                .map(|s| s.to_string()),
-                                            Some(e.started_at),
-                                            0,
-                                            None,
-                                            e.display_name.clone(),
-                                        )
-                                    })
-                                    .collect()
-                            };
-                            let state_msg =
-                                monocle_ipc::types::ServerToClient::SessionStateChanged {
-                                    session_id: data.session_id.clone(),
-                                    new_state: SessionState::Terminated,
-                                };
-                            crate::ipc_server::broadcast_to_subscribers(&self.broker, state_msg)
-                                .await;
-                            let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
-                                sessions: list_snapshot,
-                            };
-                            crate::ipc_server::broadcast_to_subscribers(&self.broker, list_msg)
-                                .await;
-                        }
+                        // then SessionListUpdate (§3b uniformity; see emit_rediscovery_terminated).
+                        self.emit_rediscovery_terminated(&data.session_id).await;
                         report.found_dead += 1;
                     } else {
                         // BC-2.08.004 PC-2b Detached (I3-005 fix, MED-002):
@@ -4777,63 +4683,8 @@ impl SessionManager {
                                 let _ = std::fs::remove_file(&data.sidecar_path);
                                 let _ = std::fs::remove_file(&data.socket_path);
                                 // OBS-001: §3b uniformity — emit SessionStateChanged{Terminated}
-                                // then SessionListUpdate on every alive→Terminated GC path.
-                                // Pre-UDS-bind, these broadcasts are harmlessly discarded
-                                // (no subscribers yet); kept for post-bind correctness.
-                                {
-                                    use monocle_core::engine::{EnrichedSession, SessionStatus};
-                                    let list_snapshot: Vec<EnrichedSession> = {
-                                        let guard = self.sessions.lock().await;
-                                        guard
-                                            .values()
-                                            .map(|e| {
-                                                let status = match e.state {
-                                                    SessionState::Launching
-                                                    | SessionState::Running => {
-                                                        SessionStatus::Active
-                                                    }
-                                                    SessionState::Detached => SessionStatus::Idle,
-                                                    _ => SessionStatus::Stopped,
-                                                };
-                                                EnrichedSession::new_with_display_name(
-                                                    e.session_id.clone(),
-                                                    e.harness_id.clone(),
-                                                    None,
-                                                    None,
-                                                    status,
-                                                    None,
-                                                    e.project_root
-                                                        .file_name()
-                                                        .and_then(|n| n.to_str())
-                                                        .map(|s| s.to_string()),
-                                                    Some(e.started_at),
-                                                    0,
-                                                    None,
-                                                    e.display_name.clone(),
-                                                )
-                                            })
-                                            .collect()
-                                    };
-                                    let state_msg =
-                                        monocle_ipc::types::ServerToClient::SessionStateChanged {
-                                            session_id: data.session_id.clone(),
-                                            new_state: SessionState::Terminated,
-                                        };
-                                    crate::ipc_server::broadcast_to_subscribers(
-                                        &self.broker,
-                                        state_msg,
-                                    )
-                                    .await;
-                                    let list_msg =
-                                        monocle_ipc::types::ServerToClient::SessionListUpdate {
-                                            sessions: list_snapshot,
-                                        };
-                                    crate::ipc_server::broadcast_to_subscribers(
-                                        &self.broker,
-                                        list_msg,
-                                    )
-                                    .await;
-                                }
+                                // then SessionListUpdate (see emit_rediscovery_terminated).
+                                self.emit_rediscovery_terminated(&data.session_id).await;
                                 report.found_dead += 1;
                                 continue;
                             }
@@ -4878,58 +4729,8 @@ impl SessionManager {
                             let _ = std::fs::remove_file(&data.sidecar_path);
                             let _ = std::fs::remove_file(&data.socket_path);
                             // OBS-001: §3b uniformity — emit SessionStateChanged{Terminated}
-                            // then SessionListUpdate on every alive→Terminated GC path.
-                            // Pre-UDS-bind, these broadcasts are harmlessly discarded.
-                            {
-                                use monocle_core::engine::{EnrichedSession, SessionStatus};
-                                let list_snapshot: Vec<EnrichedSession> = {
-                                    let guard = self.sessions.lock().await;
-                                    guard
-                                        .values()
-                                        .map(|e| {
-                                            let status = match e.state {
-                                                SessionState::Launching | SessionState::Running => {
-                                                    SessionStatus::Active
-                                                }
-                                                SessionState::Detached => SessionStatus::Idle,
-                                                _ => SessionStatus::Stopped,
-                                            };
-                                            EnrichedSession::new_with_display_name(
-                                                e.session_id.clone(),
-                                                e.harness_id.clone(),
-                                                None,
-                                                None,
-                                                status,
-                                                None,
-                                                e.project_root
-                                                    .file_name()
-                                                    .and_then(|n| n.to_str())
-                                                    .map(|s| s.to_string()),
-                                                Some(e.started_at),
-                                                0,
-                                                None,
-                                                e.display_name.clone(),
-                                            )
-                                        })
-                                        .collect()
-                                };
-                                let state_msg =
-                                    monocle_ipc::types::ServerToClient::SessionStateChanged {
-                                        session_id: data.session_id.clone(),
-                                        new_state: SessionState::Terminated,
-                                    };
-                                crate::ipc_server::broadcast_to_subscribers(
-                                    &self.broker,
-                                    state_msg,
-                                )
-                                .await;
-                                let list_msg =
-                                    monocle_ipc::types::ServerToClient::SessionListUpdate {
-                                        sessions: list_snapshot,
-                                    };
-                                crate::ipc_server::broadcast_to_subscribers(&self.broker, list_msg)
-                                    .await;
-                            }
+                            // then SessionListUpdate (see emit_rediscovery_terminated).
+                            self.emit_rediscovery_terminated(&data.session_id).await;
                             report.found_dead += 1;
                         } else {
                             // Verified: close stream (no Attach), defer registration.
@@ -4950,6 +4751,10 @@ impl SessionManager {
                         );
                         let _ = std::fs::remove_file(&data.sidecar_path);
                         let _ = std::fs::remove_file(&data.socket_path);
+                        // MED-001 fix: SS-daemon-wiring-v2-delta §3b — Terminating dead-PID
+                        // GC path MUST emit SessionStateChanged{Terminated} then
+                        // SessionListUpdate, same as all 8 sibling GC paths.
+                        self.emit_rediscovery_terminated(&data.session_id).await;
                         report.found_dead += 1;
                         continue;
                     }
@@ -4996,53 +4801,8 @@ impl SessionManager {
                         let _ = std::fs::remove_file(&data.sidecar_path);
                         let _ = std::fs::remove_file(&data.socket_path);
                         // EC-173 + SS-daemon-wiring §3b: emit SessionStateChanged{Terminated}
-                        // then SessionListUpdate to broker (Terminated-transition path).
-                        {
-                            use monocle_core::engine::{EnrichedSession, SessionStatus};
-                            let list_snapshot: Vec<EnrichedSession> = {
-                                let guard = self.sessions.lock().await;
-                                guard
-                                    .values()
-                                    .map(|e| {
-                                        let status = match e.state {
-                                            SessionState::Launching | SessionState::Running => {
-                                                SessionStatus::Active
-                                            }
-                                            SessionState::Detached => SessionStatus::Idle,
-                                            _ => SessionStatus::Stopped,
-                                        };
-                                        EnrichedSession::new_with_display_name(
-                                            e.session_id.clone(),
-                                            e.harness_id.clone(),
-                                            None,
-                                            None,
-                                            status,
-                                            None,
-                                            e.project_root
-                                                .file_name()
-                                                .and_then(|n| n.to_str())
-                                                .map(|s| s.to_string()),
-                                            Some(e.started_at),
-                                            0,
-                                            None,
-                                            e.display_name.clone(),
-                                        )
-                                    })
-                                    .collect()
-                            };
-                            let state_msg =
-                                monocle_ipc::types::ServerToClient::SessionStateChanged {
-                                    session_id: data.session_id.clone(),
-                                    new_state: SessionState::Terminated,
-                                };
-                            crate::ipc_server::broadcast_to_subscribers(&self.broker, state_msg)
-                                .await;
-                            let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
-                                sessions: list_snapshot,
-                            };
-                            crate::ipc_server::broadcast_to_subscribers(&self.broker, list_msg)
-                                .await;
-                        }
+                        // then SessionListUpdate (see emit_rediscovery_terminated).
+                        self.emit_rediscovery_terminated(&data.session_id).await;
                         report.found_dead += 1;
                     } else {
                         // Not elapsed: SO_PEERCRED verify + Kill + register entry + background watchdog.
@@ -5076,62 +4836,8 @@ impl SessionManager {
                                 let _ = std::fs::remove_file(&data.sidecar_path);
                                 let _ = std::fs::remove_file(&data.socket_path);
                                 // OBS-001: §3b uniformity — emit SessionStateChanged{Terminated}
-                                // then SessionListUpdate on every alive→Terminated GC path.
-                                // Pre-UDS-bind, these broadcasts are harmlessly discarded.
-                                {
-                                    use monocle_core::engine::{EnrichedSession, SessionStatus};
-                                    let list_snapshot: Vec<EnrichedSession> = {
-                                        let guard = self.sessions.lock().await;
-                                        guard
-                                            .values()
-                                            .map(|e| {
-                                                let status = match e.state {
-                                                    SessionState::Launching
-                                                    | SessionState::Running => {
-                                                        SessionStatus::Active
-                                                    }
-                                                    SessionState::Detached => SessionStatus::Idle,
-                                                    _ => SessionStatus::Stopped,
-                                                };
-                                                EnrichedSession::new_with_display_name(
-                                                    e.session_id.clone(),
-                                                    e.harness_id.clone(),
-                                                    None,
-                                                    None,
-                                                    status,
-                                                    None,
-                                                    e.project_root
-                                                        .file_name()
-                                                        .and_then(|n| n.to_str())
-                                                        .map(|s| s.to_string()),
-                                                    Some(e.started_at),
-                                                    0,
-                                                    None,
-                                                    e.display_name.clone(),
-                                                )
-                                            })
-                                            .collect()
-                                    };
-                                    let state_msg =
-                                        monocle_ipc::types::ServerToClient::SessionStateChanged {
-                                            session_id: data.session_id.clone(),
-                                            new_state: SessionState::Terminated,
-                                        };
-                                    crate::ipc_server::broadcast_to_subscribers(
-                                        &self.broker,
-                                        state_msg,
-                                    )
-                                    .await;
-                                    let list_msg =
-                                        monocle_ipc::types::ServerToClient::SessionListUpdate {
-                                            sessions: list_snapshot,
-                                        };
-                                    crate::ipc_server::broadcast_to_subscribers(
-                                        &self.broker,
-                                        list_msg,
-                                    )
-                                    .await;
-                                }
+                                // then SessionListUpdate (see emit_rediscovery_terminated).
+                                self.emit_rediscovery_terminated(&data.session_id).await;
                                 report.found_dead += 1;
                                 continue;
                             }
@@ -5176,58 +4882,8 @@ impl SessionManager {
                             let _ = std::fs::remove_file(&data.sidecar_path);
                             let _ = std::fs::remove_file(&data.socket_path);
                             // OBS-001: §3b uniformity — emit SessionStateChanged{Terminated}
-                            // then SessionListUpdate on every alive→Terminated GC path.
-                            // Pre-UDS-bind, these broadcasts are harmlessly discarded.
-                            {
-                                use monocle_core::engine::{EnrichedSession, SessionStatus};
-                                let list_snapshot: Vec<EnrichedSession> = {
-                                    let guard = self.sessions.lock().await;
-                                    guard
-                                        .values()
-                                        .map(|e| {
-                                            let status = match e.state {
-                                                SessionState::Launching | SessionState::Running => {
-                                                    SessionStatus::Active
-                                                }
-                                                SessionState::Detached => SessionStatus::Idle,
-                                                _ => SessionStatus::Stopped,
-                                            };
-                                            EnrichedSession::new_with_display_name(
-                                                e.session_id.clone(),
-                                                e.harness_id.clone(),
-                                                None,
-                                                None,
-                                                status,
-                                                None,
-                                                e.project_root
-                                                    .file_name()
-                                                    .and_then(|n| n.to_str())
-                                                    .map(|s| s.to_string()),
-                                                Some(e.started_at),
-                                                0,
-                                                None,
-                                                e.display_name.clone(),
-                                            )
-                                        })
-                                        .collect()
-                                };
-                                let state_msg =
-                                    monocle_ipc::types::ServerToClient::SessionStateChanged {
-                                        session_id: data.session_id.clone(),
-                                        new_state: SessionState::Terminated,
-                                    };
-                                crate::ipc_server::broadcast_to_subscribers(
-                                    &self.broker,
-                                    state_msg,
-                                )
-                                .await;
-                                let list_msg =
-                                    monocle_ipc::types::ServerToClient::SessionListUpdate {
-                                        sessions: list_snapshot,
-                                    };
-                                crate::ipc_server::broadcast_to_subscribers(&self.broker, list_msg)
-                                    .await;
-                            }
+                            // then SessionListUpdate (see emit_rediscovery_terminated).
+                            self.emit_rediscovery_terminated(&data.session_id).await;
                             report.found_dead += 1;
                             continue;
                         }
@@ -5841,57 +5497,64 @@ impl SessionManager {
                     let _ = std::fs::remove_file(&result.sidecar_path);
                     let _ = std::fs::remove_file(&probe.socket_path);
                     // OBS-001: §3b uniformity — emit SessionStateChanged{Terminated}
-                    // then SessionListUpdate on every alive→Terminated GC path.
-                    // Pre-UDS-bind, these broadcasts are harmlessly discarded.
-                    {
-                        use monocle_core::engine::{EnrichedSession, SessionStatus};
-                        let list_snapshot: Vec<EnrichedSession> = {
-                            let guard = self.sessions.lock().await;
-                            guard
-                                .values()
-                                .map(|e| {
-                                    let status = match e.state {
-                                        SessionState::Launching | SessionState::Running => {
-                                            SessionStatus::Active
-                                        }
-                                        SessionState::Detached => SessionStatus::Idle,
-                                        _ => SessionStatus::Stopped,
-                                    };
-                                    EnrichedSession::new_with_display_name(
-                                        e.session_id.clone(),
-                                        e.harness_id.clone(),
-                                        None,
-                                        None,
-                                        status,
-                                        None,
-                                        e.project_root
-                                            .file_name()
-                                            .and_then(|n| n.to_str())
-                                            .map(|s| s.to_string()),
-                                        Some(e.started_at),
-                                        0,
-                                        None,
-                                        e.display_name.clone(),
-                                    )
-                                })
-                                .collect()
-                        };
-                        let state_msg = monocle_ipc::types::ServerToClient::SessionStateChanged {
-                            session_id: probe.session_id.clone(),
-                            new_state: SessionState::Terminated,
-                        };
-                        crate::ipc_server::broadcast_to_subscribers(&self.broker, state_msg).await;
-                        let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
-                            sessions: list_snapshot,
-                        };
-                        crate::ipc_server::broadcast_to_subscribers(&self.broker, list_msg).await;
-                    }
+                    // then SessionListUpdate (see emit_rediscovery_terminated).
+                    self.emit_rediscovery_terminated(&probe.session_id).await;
                     report.found_dead += 1;
                 }
             }
         }
 
         Ok(report)
+    }
+
+    /// Emit `SessionStateChanged{Terminated}` then `SessionListUpdate` to the broker.
+    ///
+    /// Called by every GC branch in `rediscover_sessions` that transitions a session
+    /// to Terminated (SS-daemon-wiring-v2-delta §3b).  The snapshot is built from the
+    /// currently-registered sessions (i.e., the session being GC'd is already removed
+    /// or was never inserted).  Empty-snapshot broadcasts are allowed and harmless
+    /// (pre-UDS-bind there are no subscribers; post-bind they refresh the client list).
+    /// Ordering invariant: `SessionStateChanged` MUST precede `SessionListUpdate`.
+    async fn emit_rediscovery_terminated(&self, session_id: &str) {
+        use monocle_core::engine::{EnrichedSession, SessionStatus};
+        let list_snapshot: Vec<EnrichedSession> = {
+            let guard = self.sessions.lock().await;
+            guard
+                .values()
+                .map(|e| {
+                    let status = match e.state {
+                        SessionState::Launching | SessionState::Running => SessionStatus::Active,
+                        SessionState::Detached => SessionStatus::Idle,
+                        _ => SessionStatus::Stopped,
+                    };
+                    EnrichedSession::new_with_display_name(
+                        e.session_id.clone(),
+                        e.harness_id.clone(),
+                        None,
+                        None,
+                        status,
+                        None,
+                        e.project_root
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .map(|s| s.to_string()),
+                        Some(e.started_at),
+                        0,
+                        None,
+                        e.display_name.clone(),
+                    )
+                })
+                .collect()
+        };
+        let state_msg = monocle_ipc::types::ServerToClient::SessionStateChanged {
+            session_id: session_id.to_string(),
+            new_state: SessionState::Terminated,
+        };
+        crate::ipc_server::broadcast_to_subscribers(&self.broker, state_msg).await;
+        let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
+            sessions: list_snapshot,
+        };
+        crate::ipc_server::broadcast_to_subscribers(&self.broker, list_msg).await;
     }
 
     /// Return the current session list for `InitialState` IPC push.
