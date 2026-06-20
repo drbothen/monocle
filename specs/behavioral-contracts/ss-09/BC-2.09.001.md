@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.0"
+version: "1.5.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -120,8 +120,13 @@ TUI's IPC socket. This timing budget covers: IPC framing decode → `vt100::Pars
       buffered in `pending_pty_bytes[session_id]` (per BC-2.05.011 Invariant 6). After
       the parser reset (step a), replay buffered bytes through the reset parser in receipt
       order, then apply all subsequent `PtyOutput` events to the clean parser.
-   d. Set `dump_in_progress[session_id] = false` and insert `session_id` into
-      `pty_dump_received`.
+   d. **Remove** `session_id` from `dump_in_progress` (i.e., call `dump_in_progress.remove(&session_id)`,
+      NOT `dump_in_progress.insert(session_id, false)`) and insert `session_id` into `pty_dump_received`.
+      **Normative note:** the idempotency guard added for F-S039-P2-002 checks
+      `dump_in_progress.get(&session_id) == Some(&true)`. An absent entry and a `Some(false)` entry
+      are treated identically as "no active dump window" — both cause the guard to no-op. Removing the
+      entry (rather than setting it false) avoids accumulating stale map entries across session reconnects,
+      which would otherwise grow unboundedly over the TUI process lifetime.
    The retired single-message `ServerToClient::ScrollbackDump` variant MUST NOT be used.
    The old behavior (forwarding raw bytes into an existing live parser) would double-apply
    content already in the parser's screen model — causing visual artifacts.
@@ -181,6 +186,18 @@ S-039 — Implement TUI PTY widget (vt100 parser, PseudoTerminal render, PtyOutp
 ## VP Anchors
 
 VP-TBD — PTY output render latency tests (filled after VP creation)
+
+## §Trace v1.5.1
+
+**F-S039-REV-003 — Invariant 5 step d: remove dump_in_progress entry instead of setting false** (2026-06-20):
+
+- **Invariant 5 step d revised:** Changed normative text from `dump_in_progress[session_id] = false`
+  to `dump_in_progress.remove(&session_id)`. Added normative note clarifying that the F-S039-P2-002
+  idempotency guard treats an absent entry and `Some(false)` identically as "no active dump window";
+  removal avoids stale-entry accumulation across session reconnects.
+- **Implementer note:** change `dump_in_progress.insert(id, false)` to `dump_in_progress.remove(&id)`
+  in `on_scrollback_dump_complete`. No other behavioral change.
+- SE-16d monotonicity: v1.5.1 timestamp 2026-06-20 >= v1.5.0 timestamp 2026-06-20. PASS.
 
 ## §Trace v1.5.0
 

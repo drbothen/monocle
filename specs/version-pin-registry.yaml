@@ -803,8 +803,8 @@ BC-2.08.008:
 
 BC-2.09.001:
   path: specs/behavioral-contracts/ss-09/BC-2.09.001.md
-  current_version: "1.5.0"
-  last_bump_commit: "[F-S039-P2-004/002/003 — Inv-4 PTY_DEFAULT_ROWS/COLS note; Inv-5 idempotency guard; arch-source pin SS-embedded-pty 1.8.0→1.9.0]"
+  current_version: "1.5.1"
+  last_bump_commit: "[F-S039-REV-003 — Inv-5 step d: remove dump_in_progress entry instead of set-false; stale-entry accumulation avoidance]" # version-pin-historical
   last_bump_date: "2026-06-20"
 
 BC-2.09.002:
