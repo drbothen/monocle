@@ -544,19 +544,27 @@ pub fn on_pty_output(app: &mut App, session_id: String, bytes: Vec<u8>) {
         // F-PASS4-MED-001: enforce byte-cap and message-cap on the pending buffer.
         // Drop OLDEST (front) entries first until both caps are satisfied.
         // Increment pending_pty_drop_count for each evicted entry.
+        //
+        // When a single PtyOutput entry alone exceeds MAX_PENDING_PTY_BYTES, drop-oldest
+        // removes that sole entry (oldest == only entry) — the oversized message is dropped
+        // and counted; this is the intended behavior per BC-2.09.001 Inv-7.
         let buffer = app.pending_pty_bytes.entry(session_id.clone()).or_default();
+        // Compute total bytes once before the loop (O(n)), then decrement as entries are
+        // evicted rather than re-summing on every iteration (avoids O(n^2) per push).
+        let mut total_bytes: usize = buffer.iter().map(|v| v.len()).sum();
         loop {
             // Check message-count cap.
             let over_msgs = buffer.len() > MAX_PENDING_PTY_MESSAGES;
-            // Check byte-volume cap (sum of all entry lengths).
-            let total_bytes: usize = buffer.iter().map(|v| v.len()).sum();
+            // Check byte-volume cap using the running total.
             let over_bytes = total_bytes > MAX_PENDING_PTY_BYTES;
 
             if !over_msgs && !over_bytes {
                 break;
             }
             // Drop the OLDEST entry (index 0 = first inserted = oldest).
+            let removed_len = buffer[0].len();
             buffer.remove(0);
+            total_bytes = total_bytes.saturating_sub(removed_len);
             *app.pending_pty_drop_count
                 .entry(session_id.clone())
                 .or_default() += 1;
@@ -719,7 +727,7 @@ pub fn exit_embedded_terminal(app: &mut App, session_id: &str) {
 ///    `pty_rows`/`pty_cols` FROM the `ScrollbackDumpComplete` message.
 /// 2. Replay `pending_pty_bytes[id]` in receipt order via `parser.process(&chunk)`.
 /// 3. `pending_pty_bytes[id].clear()`.
-/// 4. `dump_in_progress.insert(id, false)`.
+/// 4. `dump_in_progress.remove(&session_id)` — entry removed entirely (not set false).
 /// 5. `pty_dump_received.insert(id)`.
 ///
 /// S-039 does NOT own styled-cell reconstruction or cursor restore (S-047 scope).
