@@ -803,8 +803,8 @@ BC-2.08.008:
 
 BC-2.09.001:
   path: specs/behavioral-contracts/ss-09/BC-2.09.001.md
-  current_version: "1.6.0"
-  last_bump_commit: "[F-PASS4-MED-001/002 — Inv-7 dump-window buffer cap; Inv-8 dump-window timeout; Inv-9 reconnect dump-state reset; EC-204..EC-207 added; arch-source SS-embedded-pty 1.9.0→1.10.0]"
+  current_version: "1.7.0"
+  last_bump_commit: "[F-S039-P5-001 — Inv-4 clarified: absent→1000 / present-out-of-range→clamped; cross-ref BC-2.09.007 EC-242/EC-243]"
   last_bump_date: "2026-06-20"
 
 BC-2.09.002:
@@ -839,8 +839,8 @@ BC-2.09.006:
 
 BC-2.09.007:
   path: specs/behavioral-contracts/ss-09/BC-2.09.007.md
-  current_version: "1.2.0"
-  last_bump_commit: "[F-S039-P2-004 — Precondition 1 PTY_DEFAULT_ROWS/COLS reference; arch-source pin SS-embedded-pty 1.7.0→1.9.0]"
+  current_version: "1.3.0"
+  last_bump_commit: "[F-S039-P5-001 — Inv-1 rewritten: absent→1000 / present-out-of-range→clamped; eliminates ambiguous 'invalid→1000' phrase contradicting EC-242/EC-243]"
   last_bump_date: "2026-06-20"
 
 BC-2.09.008:

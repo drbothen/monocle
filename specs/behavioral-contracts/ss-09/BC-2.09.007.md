@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.0"
+version: "1.3.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -74,7 +74,16 @@ widget renderer. Scrollback capacity is configurable via
 ## Invariants
 
 1. Default `scrollback_rows = 1000`. The configured value is read from
-   `~/.monocle/config.json:pty_scrollback_rows`; if missing or invalid, 1000 is used.
+   `~/.monocle/config.json:pty_scrollback_rows`. Two distinct cases apply:
+   - **Absent (key missing, or config falls back to default):** `scrollback_rows = 1000`.
+     `pty_scrollback_rows` is typed `Option<u32>`; a `None` deserialize result → 1000 default.
+   - **Present (key exists with a parseable u32 value):** the value is clamped to [1, 10000].
+     Out-of-range values are NOT defaulted to 1000 — they are clamped (see EC-242, EC-243).
+     E.g. `0 → 1` (clamped to minimum; per EC-243); `20000 → 10000` (clamped to maximum;
+     per EC-242). A present non-integer cannot occur — serde would fail the whole config load,
+     resulting in default config (`None`) → 1000.
+   The phrase "missing or invalid → 1000" does NOT apply to out-of-range values; it applies
+   only to absent/unparseable config. See BC-2.09.001 Invariant 4 for the cross-reference.
 2. Maximum `scrollback_rows = 10000`. Values above this cap are silently clamped.
    Memory bound (per SS-embedded-pty.md §O4): the `vt100` crate stores each cell as
    `(char, fg_color, bg_color, attrs_bitmask)` — approximately `1 (char) + 4 (fg color enum) +
@@ -148,6 +157,23 @@ S-043 — Implement scrollback navigation in monocle-tui
 ## VP Anchors
 
 VP-TBD — Scrollback offset unit tests (filled after VP creation)
+
+## §Trace v1.3.0
+
+**F-S039-P5-001 — Invariant 1: clarify absent→1000 vs present-out-of-range→clamped semantics** (2026-06-20):
+
+- **Invariant 1 rewritten:** Replaced the ambiguous "if missing or invalid, 1000 is used" phrase
+  that incorrectly implied out-of-range values (e.g. `0`) would default to 1000. The authoritative
+  behavior is:
+  - ABSENT (`pty_scrollback_rows` key missing / config falls back to default → `None`) → 1000 default.
+  - PRESENT (key exists with a parseable `u32`) → clamped to [1, 10000]; EC-243 (`0 → 1`) and
+    EC-242 (`20000 → 10000`) remain correct and unchanged.
+  - A present non-integer fails the whole config load (serde) → default config (`None`) → 1000.
+  This aligns Invariant 1 prose with the EC-242/EC-243 edge cases, which already specified the
+  correct clamp behavior. The bug was in the invariant wording, not the edge cases.
+- Source finding: F-S039-P5-001 (S-039 adversarial Pass-5 — spec-vs-spec contradiction between
+  Invariant 1 "invalid → 1000" and EC-243 "0 → 1 (clamped)").
+- SE-16d monotonicity: v1.3.0 timestamp 2026-06-20 >= v1.2.0 timestamp 2026-06-20. PASS.
 
 ## §Trace v1.2.0
 

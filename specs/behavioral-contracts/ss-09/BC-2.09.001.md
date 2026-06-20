@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.6.0"
+version: "1.7.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -84,8 +84,15 @@ TUI's IPC socket. This timing budget covers: IPC framing decode → `vt100::Pars
    contract (if the channel is closed, do NOT set `dump_in_progress`, do NOT enter
    `EmbeddedTerminal` mode, surface error to status bar).
 4. `SCROLLBACK_ROWS` default is 1000 rows (maximum 10000, configurable).
-   `vt100::Parser::new(rows, cols, scrollback_rows)` is initialized with this default unless
-   overridden by config. Memory per parser: ~16 bytes/cell × cols × (visible_rows + scrollback_rows).
+   `vt100::Parser::new(rows, cols, scrollback_rows)` is initialized with the scrollback
+   value sourced from `~/.monocle/config.json:pty_scrollback_rows` according to these rules
+   (normative; see BC-2.09.007 Invariant 1 + EC-242/EC-243 for the authoritative definition):
+   - **Absent (key missing / config falls back to default → `None`):** `scrollback_rows = 1000`.
+   - **Present (key exists with a parseable `u32`):** value is clamped to [1, 10000].
+     `0 → 1` (clamped to minimum per BC-2.09.007 EC-243); values above 10000 → 10000
+     (clamped to maximum per BC-2.09.007 EC-242). Present out-of-range values are NOT
+     defaulted to 1000 — they are clamped. Only absence yields the 1000 default.
+   Memory per parser: ~16 bytes/cell × cols × (visible_rows + scrollback_rows).
    Default: 16 × 80 × 1024 ≈ 1.3 MB/session; 8 sessions ≈ 10.4 MB. Cap at 10000 rows
    yields ~12.8 MB/session at 80 cols. See SS-embedded-pty.md §O4 for full bound analysis.
    **Default parser dimensions (F-S039-P2-004):** When parsers are created on `SessionListUpdate`
@@ -243,6 +250,22 @@ S-039 — Implement TUI PTY widget (vt100 parser, PseudoTerminal render, PtyOutp
 ## VP Anchors
 
 VP-TBD — PTY output render latency tests (filled after VP creation)
+
+## §Trace v1.7.0
+
+**F-S039-P5-001 — Invariant 4: explicit absent→1000 / present-out-of-range→clamped semantics** (2026-06-20):
+
+- **Invariant 4 clarified (F-S039-P5-001):** Replaced the vague "initialized with this default
+  unless overridden by config" language with an explicit two-case normative rule:
+  - ABSENT (`pty_scrollback_rows` key missing → `None`) → 1000 default.
+  - PRESENT (key exists with a parseable `u32`) → clamped to [1, 10000]; `0 → 1` (EC-243),
+    `>10000 → 10000` (EC-242). Present out-of-range values are NOT defaulted to 1000.
+  Cross-references to BC-2.09.007 Invariant 1 + EC-242/EC-243 added as normative anchors.
+- Source finding: F-S039-P5-001 (S-039 adversarial Pass-5) — the prior Invariant 4 wording
+  was compatible with the incorrect reading "invalid/0 → 1000 default" used in S-039 AC-008
+  and the `default_scrollback_rows` doc-comment. This fix makes Invariant 4 unambiguous and
+  consistent with BC-2.09.007's edge cases (which were already correct).
+- SE-16d monotonicity: v1.7.0 timestamp 2026-06-20 >= v1.6.0 timestamp 2026-06-20. PASS.
 
 ## §Trace v1.6.0
 
