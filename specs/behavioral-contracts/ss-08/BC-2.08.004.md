@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.5"
+version: "1.4.0"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-03T23:30:00Z
+timestamp: 2026-06-19T00:00:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md, architecture/SS-daemon-wiring-v2-delta.md]
 input-hash: "36aa262"
@@ -71,17 +71,23 @@ seconds for the typical case of up to 8 sessions.
         of an unchanged persisted state is NOT a state-value transition. The first TUI client's
         initial `InitialState` / `SessionListUpdate` conveys the Detached session; nothing is lost.
       - **State `Terminating` (I3-002 fix):** Verify SO_PEERCRED; if uid matches:
-        (i) Check `kill_deadline_unix_ms` from sidecar: if present and already elapsed →
-            immediate SIGKILL to session-host PID; transition to `Terminated`; GC sidecar;
-            do NOT register a `SessionEntry`. If present and not yet elapsed →
+        (i) Check `kill_deadline_unix_ms` from sidecar:
+            - If present and already elapsed → immediate SIGKILL to session-host PID; transition
+              to `Terminated`; GC sidecar; do NOT register a `SessionEntry`. Stop here.
+            - If present and NOT yet elapsed → proceed to (ii).
+            - If null or absent (e.g., schema_version 1 or 2 sidecars, which have no
+              `kill_deadline_unix_ms` field) → proceed to (ii) using a NEW 12-second watchdog
+              window measured from re-discovery time (`kill_deadline = now + 12s`). This is
+              the only case that establishes a fresh deadline; present deadlines remain
+              absolute and are NEVER reset (Invariant 7).
         (ii) Re-send `DaemonToHost::Kill` over the fresh SO_PEERCRED-verified UDS connect
             (fire-and-forget; do NOT wait for `StateChanged::Terminated`).
         (iii) Register `SessionEntry` with `state: Terminating`, `host_conn: None`,
-             `kill_deadline` restored from sidecar's `kill_deadline_unix_ms`.
+             `kill_deadline` set to either the sidecar's `kill_deadline_unix_ms` (if present
+             and not yet elapsed) or the newly computed `now + 12s` deadline (if null/absent).
         (iv) Spawn a BACKGROUND watchdog tokio task: waits for `HostToDaemon::StateChanged::Terminated`
-             up to the absolute deadline from `kill_deadline_unix_ms` (not a new 12s window from
-             restart time). If Terminated received → GC sidecar. If deadline elapses → SIGKILL
-             session-host PID; GC sidecar.
+             up to the absolute deadline computed in (i)/(iii). If Terminated received → GC sidecar.
+             If deadline elapses → SIGKILL session-host PID; GC sidecar.
         (v) Return immediately from this probe. Terminating watchdog is a BACKGROUND task,
             excluded from the 5s `tokio::join_all` budget (see Invariant 2 and PC-7).
       - **State `Terminated`:** Should not appear (GC deletes sidecar on timer). If found:
@@ -196,6 +202,17 @@ S-036 — Implement daemon_start_sequence step 8b: rediscover_sessions()
 
 VP-TBD — Re-discovery integration tests including timing (filled after VP creation)
 
+
+## §Trace v1.4.0
+
+**S-036 adversarial pass-2 fix — PC-2b Terminating: null/absent `kill_deadline_unix_ms` case added (AC-006 alignment)** (2026-06-19):
+- **Finding:** PC-2b Terminating state handling enumerated only "present and elapsed" and "present and not-yet-elapsed" sub-cases for `kill_deadline_unix_ms`. The null/absent case — which arises for schema_version 1 and 2 sidecars that have no `kill_deadline_unix_ms` field at all — was silent. S-036 AC-006 is explicit: if null or absent, proceed to the watchdog path using a NEW 12-second window from re-discovery time.
+- **PC-2b step (i) (normative change):** Now has three sub-cases: (a) present and elapsed → immediate SIGKILL; (b) present and not yet elapsed → proceed to watchdog; (c) null or absent (schema_version 1/2 sidecars) → proceed to watchdog with `kill_deadline = now + 12s`. This is the only case that establishes a fresh deadline; present deadlines remain absolute per Invariant 7.
+- **PC-2b step (iii) (normative change):** `kill_deadline` in the registered `SessionEntry` is now explicitly described as either the sidecar's `kill_deadline_unix_ms` (if present and not elapsed) or the newly computed `now + 12s` (if null/absent).
+- **PC-2b step (iv) (normative change):** Watchdog deadline reference updated to "the absolute deadline computed in (i)/(iii)" to cover both the preserved absolute deadline and the new 12s window.
+- **No contradiction with Invariant 7:** Invariant 7 says present deadlines are absolute and elapsed deadlines trigger immediate SIGKILL. The null/absent case is a missing-field upgrade-path scenario — there is no recorded deadline to preserve, so a new 12s window is correct and consistent with Invariant 7. Invariant 7 is unchanged and unviolated.
+- Version: v1.3.5 (frontmatter-only bump from prior cascade) → v1.4.0 (normative change this burst).
+- SE-16d monotonicity: v1.4.0 timestamp 2026-06-19 >= v1.3.5 timestamp 2026-06-19. PASS.
 
 ## §Trace v1.3.4
 

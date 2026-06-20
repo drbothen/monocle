@@ -773,8 +773,8 @@ BC-2.08.003:
 
 BC-2.08.004:
   path: specs/behavioral-contracts/ss-08/BC-2.08.004.md
-  current_version: "1.3.5"
-  last_bump_commit: "[MED-002 RESOLVED — arch-source pin cascade: SS-session-manager v2.15.0→v2.15.1; no behavioral changes]" # version-pin-historical
+  current_version: "1.4.0"
+  last_bump_commit: "[S-036 adv-pass-2 fix — PC-2b Terminating null/absent kill_deadline_unix_ms case added; AC-006 alignment]"
   last_bump_date: "2026-06-19"
 
 BC-2.08.005:
@@ -1045,8 +1045,8 @@ S-035-session-manager-attach-detach:
 
 S-036-session-manager-rediscovery:
   path: stories/S-036-session-manager-rediscovery.md
-  current_version: "1.3"
-  last_bump_commit: "[MED-002 RESOLVED — SS-session-manager input pin v2.15.0→v2.15.1; no behavioral change to story ACs or tasks]"
+  current_version: "1.4"
+  last_bump_commit: "[S-036 adv-pass-2 fix — BC-2.08.004 input pin 1.3.4→1.4.0 (null/absent kill_deadline_unix_ms case added to PC-2b)]"
   last_bump_date: "2026-06-19"
 
 S-037-session-manager-gc:
