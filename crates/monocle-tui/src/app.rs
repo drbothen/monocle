@@ -500,24 +500,38 @@ pub async fn enter_embedded_terminal(app: &mut App, session_id: String) {
 
         // F-S039-004 step 2: send AttachSession via .send().await (NOT try_send).
         // Provides backpressure; prevents silent drops of AttachSession commands.
-        if let Some(ref tx) = app.ipc_tx {
-            if let Err(e) = tx
-                .send(ClientToServer::AttachSession {
-                    session_id: session_id.clone(),
-                })
-                .await
-            {
-                // F-S039-004 step 3 (Err path): FULL ROLLBACK.
-                // dump_in_progress is removed; AppMode is NOT transitioned.
-                app.dump_in_progress.remove(&session_id);
-                tracing::error!(
-                    session_id = %session_id,
-                    error = %e,
-                    "enter_embedded_terminal: AttachSession send failed (channel closed) — \
-                     dump_in_progress rolled back, mode NOT transitioned (F-S039-004)"
-                );
-                return;
-            }
+        //
+        // F-S039-P2-001: ipc_tx == None (daemon offline / reconnecting) MUST be treated
+        // identically to a send Err — FULL ROLLBACK in both cases. The `let Some` guard
+        // exits early with rollback when the channel is not yet wired or has gone offline,
+        // preventing dump_in_progress from being left true with no AttachSession in flight.
+        let Some(ref tx) = app.ipc_tx else {
+            // None path: IPC channel offline — identical rollback to the Err branch.
+            app.dump_in_progress.remove(&session_id);
+            tracing::error!(
+                session_id = %session_id,
+                "enter_embedded_terminal: AttachSession not sent — IPC channel offline; \
+                 dump_in_progress rolled back, mode NOT transitioned (F-S039-P2-001)"
+            );
+            return;
+        };
+
+        if let Err(e) = tx
+            .send(ClientToServer::AttachSession {
+                session_id: session_id.clone(),
+            })
+            .await
+        {
+            // F-S039-004 step 3 (Err path): FULL ROLLBACK.
+            // dump_in_progress is removed; AppMode is NOT transitioned.
+            app.dump_in_progress.remove(&session_id);
+            tracing::error!(
+                session_id = %session_id,
+                error = %e,
+                "enter_embedded_terminal: AttachSession send failed (channel closed) — \
+                 dump_in_progress rolled back, mode NOT transitioned (F-S039-004)"
+            );
+            return;
         }
         // F-S039-004 step 3 (Ok path): proceed to mode transition below.
     }
