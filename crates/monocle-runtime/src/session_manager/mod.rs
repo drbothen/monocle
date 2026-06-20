@@ -4507,6 +4507,19 @@ impl SessionManager {
                     }
                 }
                 "Terminating" => {
+                    // BC-2.08.004 PC-2b step (a): liveness probe gates ALL state handling.
+                    let nix_pid = Pid::from_raw(data.pid as i32);
+                    let alive = nix_kill(nix_pid, None).is_ok();
+                    if !alive {
+                        tracing::debug!(
+                            session_id = %data.session_id,
+                            pid = data.pid,
+                            "rediscover_sessions: Terminating PID dead; GC sidecar (BLOCKER-002)"
+                        );
+                        let _ = std::fs::remove_file(&data.sidecar_path);
+                        report.found_dead += 1;
+                        continue;
+                    }
                     let deadline_ms = data.kill_deadline_unix_ms.unwrap_or(0);
                     if deadline_ms <= current_unix_ms {
                         // Elapsed: SIGKILL immediately + delete sidecar (BC-2.08.004 PC-2b Terminating elapsed).
