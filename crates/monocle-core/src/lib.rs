@@ -30,6 +30,13 @@ pub mod permissions;
 /// All terminal integration lives in the `monocle` binary crate.
 pub mod tui;
 
+/// Pure-core PTY pipeline constants (S-039 adversarial Pass-4, F-PASS4-MED-001).
+///
+/// Bounds for `pending_pty_bytes` (byte cap + message cap) and the dump-window
+/// timeout. All values are pure arithmetic — no I/O.
+pub mod pty_constants;
+pub use pty_constants::{DUMP_WINDOW_TIMEOUT, MAX_PENDING_PTY_BYTES, MAX_PENDING_PTY_MESSAGES};
+
 // Re-export at crate root per BC-2.02.002 postcondition 2 (S-010 canonical owner;
 // S-003 references via `monocle_core::MONOCLE_ABI_VERSION`).
 pub use abi::MONOCLE_ABI_VERSION;
