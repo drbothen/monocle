@@ -20,21 +20,29 @@
 //!   Scrollback replay order → test_BC_2_09_001_scrollback_replay_order
 //!   GC cleanup → test_BC_2_09_001_session_gc_removes_parser_and_scroll_offset
 //!   Render function wiring → test_BC_2_09_001_render_embedded_terminal_calls_pseudo_terminal
+//!   F-S039-009 first-entry buffering → test_BC_2_09_001_first_entry_session_not_preinserted
+//!   Parser creation via on_initial_state → test_BC_2_09_001_on_initial_state_creates_parsers_no_clobber
+//!   Parser creation via SessionListUpdate → test_BC_2_09_001_session_list_update_creates_and_gcs_parsers
+//!   GC via SessionStateChanged::Terminated → test_BC_2_09_001_session_terminated_gc
+//!   Async attach rollback on send err → test_BC_2_09_001_enter_embedded_rollback_on_send_failure
+//!   Render arm invokes correct parser → test_BC_2_09_001_render_frame_embedded_terminal_uses_focused_parser
 
 // BC-2.09.001: test names use SCREAMING_SNAKE_CASE to embed the BC ID for traceability.
 // This violates the Rust non_snake_case lint but is required by the TDD naming contract.
 #![allow(non_snake_case)]
 
 use monocle_config::MonocleConfig;
+use monocle_core::engine::{EnrichedSession, SessionStatus};
 use monocle_core::tui::state::{
     clamp_scrollback_rows, default_scrollback_rows, AppMode, FocusSnapshot,
 };
-use monocle_ipc::types::ClientToServer;
+use monocle_ipc::types::{ClientToServer, ServerToClient, SessionState};
 use monocle_tui::app::{
-    enter_embedded_terminal, exit_embedded_terminal, on_pty_output, on_scrollback_dump_complete,
-    App, IPC_READER_CHANNEL_CAPACITY,
+    enter_embedded_terminal, exit_embedded_terminal, handle_server_message, on_initial_state,
+    on_pty_output, on_scrollback_dump_complete, render_frame, App, IPC_READER_CHANNEL_CAPACITY,
 };
 use monocle_tui::pty_output_channel;
+use monocle_tui::ui::sessions_panel::SessionsPanelState;
 use tokio::sync::mpsc;
 
 // ---------------------------------------------------------------------------
@@ -63,6 +71,30 @@ fn make_app_with_session(session_id: &str) -> App {
     app
 }
 
+/// Build a minimal `EnrichedSession` for use in integration test fixtures.
+fn make_session(id: &str) -> EnrichedSession {
+    EnrichedSession::new(
+        id.to_string(),
+        "claude-code".to_string(),
+        None,
+        None,
+        SessionStatus::Active,
+        None,
+        None,
+        None,
+        0,
+        None,
+    )
+}
+
+/// Extract the trimmed plain-text content of the vt100 screen as a single string.
+///
+/// Uses `screen.contents()` (plain text without ANSI escapes) and trims trailing
+/// whitespace/newlines so assertions are not sensitive to terminal padding.
+fn screen_text(parser: &vt100::Parser) -> String {
+    parser.screen().contents().trim_end().to_string()
+}
+
 // ---------------------------------------------------------------------------
 // AC-001 / AC-003: on_pty_output → parser.process → render tick within 100ms
 // BC-2.09.001 Postcondition 1 + Postcondition 3
@@ -70,58 +102,51 @@ fn make_app_with_session(session_id: &str) -> App {
 
 /// test_BC_2_09_001_pty_output_renders_within_100ms
 ///
-/// Exercises BC-2.09.001 Postconditions 1, 2, 3 and the 100ms budget:
+/// Exercises BC-2.09.001 Postconditions 1, 2, 3:
 ///   - on_pty_output called within one mpsc cycle (PC-1)
 ///   - parser.process(&bytes) called, updating the screen model (PC-2)
-///   - after process(), the screen reflects the written bytes (PC-3 observable via screen state)
+///   - after process(), the screen reflects the written bytes (PC-3)
 ///
 /// Test vector (from BC canonical table):
 ///   Input:  PtyOutput { session_id: "s1", bytes: b"Hello\r\n" }
-///   Output: "Hello" visible on parser screen; render tick observable
+///   Output: screen text contains "Hello"
 ///
-/// The 100ms timing budget is verified by asserting the entire on_pty_output + screen
-/// read path completes within the budget using tokio::time::pause to control the clock.
+/// F-S039-008 fix: assert the screen CONTAINS "Hello" (real content check), not
+/// just `row0.is_some()` (vacuously true on any fresh vt100 screen). Remove the
+/// paused-clock timing assertion — tokio::time::pause makes elapsed ~0 regardless
+/// of work done, making the timing assertion meaningless. Replace with a content
+/// assertion that can only pass when parser.process() was actually called.
 #[tokio::test]
 async fn test_BC_2_09_001_pty_output_renders_within_100ms() {
     // Arrange
     let session_id = "s1-bc2-09-001-render-100ms";
     let mut app = make_app_with_session(session_id);
 
-    // tokio::time::pause gives us control over the virtual clock (BC-2.09.001 Invariant 1).
-    tokio::time::pause();
-    let before = tokio::time::Instant::now();
-
     // Act: feed "Hello\r\n" (canonical test vector from BC table) to on_pty_output.
-    // This must call parser.process(&bytes) on the parser for session_id.
+    // This MUST call parser.process(&bytes) on the parser for session_id.
     on_pty_output(&mut app, session_id.to_string(), b"Hello\r\n".to_vec());
 
-    let elapsed = before.elapsed();
-
-    // Assert: elapsed < 100ms (BC-2.09.001 Postcondition 4 / Invariant 1).
-    // We use a 100ms ceiling; on_pty_output itself should be synchronous and near-instant.
-    assert!(
-        elapsed.as_millis() < 100,
-        "on_pty_output exceeded the 100ms budget: {:?}",
-        elapsed
-    );
-
-    // Assert: the parser's screen now reflects the written bytes.
-    // "Hello" should be visible on row 0 of the parser screen.
-    // This verifies PC-2 (parser.process called) and PC-3 (screen model updated).
+    // Assert: the parser's screen now contains "Hello".
+    // This is the only assertion that can distinguish "process() was called" from
+    // "process() was not called" — row0.is_some() is always true on a fresh vt100
+    // screen and cannot detect whether bytes were processed (F-S039-008 fix).
     let parser = app
         .pty_parsers
         .get(session_id)
         .expect("BC-2.09.001 PC-2: parser must exist for session after on_pty_output");
-    let screen = parser.screen();
-    // Row 0 of the vt100 screen should have "Hello" at the beginning.
-    // Screen::row_plain() returns the text of a row without attributes.
-    let row0 = screen.rows_formatted(0, 1).next();
-    // If todo!() is in place, we never reach this assertion — the function panics.
-    // If on_pty_output is implemented, this assertion validates screen state.
+
+    let text = screen_text(parser);
     assert!(
-        row0.is_some(),
-        "BC-2.09.001 PC-3: parser screen must have row 0 after processing bytes"
+        text.contains("Hello"),
+        "BC-2.09.001 PC-3: parser screen must contain 'Hello' after processing b\"Hello\\r\\n\" — \
+         got: {:?}",
+        text
     );
+
+    // Assert: the parser byte total reflects the processed input.
+    // A well-formed vt100 parser fed 7 bytes ("Hello\r\n") must have advanced its
+    // internal cursor; the screen content check above is the observable proxy.
+    // (No timing assertion — paused clock makes elapsed assertions vacuous.)
 }
 
 // ---------------------------------------------------------------------------
@@ -139,7 +164,7 @@ async fn test_BC_2_09_001_pty_output_renders_within_100ms() {
 /// Test vector:
 ///   Two sessions: s2 (focused), s1 (non-focused).
 ///   PtyOutput arrives for s1.
-///   Expected: s1's parser is updated; s2's parser is unchanged.
+///   Expected: s1's parser is updated with "NonFocused"; s2's parser is unchanged.
 #[tokio::test]
 async fn test_BC_2_09_001_non_focused_parser_updated() {
     // Arrange: two sessions, s2 is focused (set in app.mode)
@@ -157,35 +182,44 @@ async fn test_BC_2_09_001_non_focused_parser_updated() {
     };
 
     // Record initial screen content for s2 (should be blank).
-    let s2_screen_before = {
+    let s2_text_before = {
         let p = app.pty_parsers.get(s2).unwrap();
-        // Capture a summary: content field of cell 0,0 (should be empty on a blank parser).
-        p.screen().cell(0, 0).map(|c| c.contents().to_string())
+        screen_text(p)
     };
 
     // Act: send PtyOutput to s1 (non-focused)
     on_pty_output(&mut app, s1.to_string(), b"NonFocused\r\n".to_vec());
 
-    // Assert 1 (BC-2.09.001 PC-5 / Invariant 2): s1's parser was updated.
-    // on_pty_output must call process() even for non-focused sessions.
-    // If todo!() is still in place, this test fails with a panic (correct Red Gate behavior).
+    // Assert 1 (BC-2.09.001 PC-5 / Invariant 2): s1's parser was updated with the bytes.
+    // on_pty_output MUST call process() even for non-focused sessions.
     {
         let p1 = app
             .pty_parsers
             .get(s1)
             .expect("s1 parser must exist after on_pty_output");
-        let _ = p1.screen(); // Must not panic
+        let s1_text = screen_text(p1);
+        assert!(
+            s1_text.contains("NonFocused"),
+            "BC-2.09.001 PC-5: s1 parser screen must contain 'NonFocused' after on_pty_output — \
+             got: {:?}",
+            s1_text
+        );
     }
 
     // Assert 2 (BC-2.09.001 Invariant 2 / AC-006): s2's parser is unchanged.
     // PtyOutput for s1 must NOT mutate s2's parser.
-    let s2_screen_after = {
+    let s2_text_after = {
         let p = app.pty_parsers.get(s2).unwrap();
-        p.screen().cell(0, 0).map(|c| c.contents().to_string())
+        screen_text(p)
     };
     assert_eq!(
-        s2_screen_before, s2_screen_after,
+        s2_text_before, s2_text_after,
         "BC-2.09.001 Invariant 2: s2 parser must not be mutated by PtyOutput for s1"
+    );
+    // s2 parser should still be blank (no "NonFocused" text)
+    assert!(
+        !s2_text_after.contains("NonFocused"),
+        "BC-2.09.001 Invariant 2: s2 parser must not contain s1's bytes"
     );
 
     // Assert 3 (BC-2.09.001 AC-006): pty_scroll_offsets for s1 is unaffected.
@@ -288,23 +322,36 @@ async fn test_BC_2_09_001_auto_attach_on_first_entry_buffering() {
         );
     }
 
+    // Assert E (BC-2.09.001 Invariant 5): buffered bytes were NOT yet fed to the parser.
+    // The parser screen must NOT contain "buffered-first" before ScrollbackDumpComplete.
+    {
+        let parser = app.pty_parsers.get(session_id).unwrap();
+        let text_before_dump = screen_text(parser);
+        assert!(
+            !text_before_dump.contains("buffered-first"),
+            "BC-2.09.001 Invariant 5: parser must NOT contain buffered bytes before \
+             ScrollbackDumpComplete — got: {:?}",
+            text_before_dump
+        );
+    }
+
     // Act 3: ScrollbackDumpComplete — triggers parser reset + replay.
     on_scrollback_dump_complete(&mut app, session_id.to_string(), 24, 80);
 
-    // Assert E (BC-2.09.001 Invariant 5 step e): dump_in_progress = false after complete.
+    // Assert F (BC-2.09.001 Invariant 5 step e): dump_in_progress = false after complete.
     assert_eq!(
         app.dump_in_progress.get(session_id).copied(),
         Some(false),
         "BC-2.09.001 Invariant 5: dump_in_progress must be false after ScrollbackDumpComplete"
     );
 
-    // Assert F (BC-2.09.001 Invariant 5 step f): session inserted into pty_dump_received.
+    // Assert G (BC-2.09.001 Invariant 5 step f): session inserted into pty_dump_received.
     assert!(
         app.pty_dump_received.contains(session_id),
         "BC-2.09.001 Invariant 5: session_id must be in pty_dump_received after ScrollbackDumpComplete"
     );
 
-    // Assert G (BC-2.09.001 Invariant 5 step d): pending_pty_bytes cleared.
+    // Assert H (BC-2.09.001 Invariant 5 step d): pending_pty_bytes cleared.
     let pending_after = app
         .pending_pty_bytes
         .get(session_id)
@@ -315,14 +362,26 @@ async fn test_BC_2_09_001_auto_attach_on_first_entry_buffering() {
         "BC-2.09.001 Invariant 5: pending_pty_bytes must be empty after replay"
     );
 
-    // Assert H (BC-2.09.001 Invariant 5 step c): buffered bytes were replayed through parser.
-    // After replay, the parser screen must contain content from the replayed bytes.
-    // We verify the parser exists and has a screen (if it panicked, the test fails differently).
+    // Assert I (BC-2.09.001 Invariant 5 step c): buffered bytes were replayed through parser.
+    // After replay of "buffered-first\r\n" and "buffered-second\r\n", the screen must
+    // contain the replayed content.
     let parser = app
         .pty_parsers
         .get(session_id)
         .expect("BC-2.09.001 Invariant 5: parser must exist after ScrollbackDumpComplete");
-    let _ = parser.screen(); // Must not panic
+    let text_after_replay = screen_text(parser);
+    assert!(
+        text_after_replay.contains("buffered-first"),
+        "BC-2.09.001 Invariant 5: parser screen must contain 'buffered-first' after replay — \
+         got: {:?}",
+        text_after_replay
+    );
+    assert!(
+        text_after_replay.contains("buffered-second"),
+        "BC-2.09.001 Invariant 5: parser screen must contain 'buffered-second' after replay — \
+         got: {:?}",
+        text_after_replay
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -395,15 +454,9 @@ async fn test_BC_2_09_001_reattach_after_detach_reruns_dump_protocol() {
 ///
 /// This test asserts:
 ///   1. `pty_output_channel()` returns a channel whose `rx.max_capacity()` equals
-///      `IPC_READER_CHANNEL_CAPACITY` (64). This call goes RED (todo!() panic) until
-///      S-039 implements `pty_output_channel()`.
+///      `IPC_READER_CHANNEL_CAPACITY` (64).
 ///   2. `IPC_READER_CHANNEL_CAPACITY == 64` — the named constant is the canonical
-///      value from BC-2.09.001 Invariant 3. The constant is asserted here so that
-///      any change to the capacity value is immediately visible as a test failure.
-///
-/// S-039 introduces `pty_output_channel()` as the production channel constructor for
-/// the PTY output inbound path. Tests bind to this named function (not the inline
-/// literal `64`) so the Red Gate is enforced until S-039 wires the real implementation.
+///      value from BC-2.09.001 Invariant 3.
 #[test]
 fn test_BC_2_09_001_invariant_bounded_channel_send_await_not_try_send() {
     // Assert the named constant holds the contractual capacity value.
@@ -414,7 +467,6 @@ fn test_BC_2_09_001_invariant_bounded_channel_send_await_not_try_send() {
     );
 
     // Call the S-039 production channel constructor.
-    // `pty_output_channel()` is `todo!()` → panics here, enforcing Red Gate.
     // Once implemented, `rx.max_capacity()` must equal `IPC_READER_CHANNEL_CAPACITY`.
     let (_tx, rx) = pty_output_channel();
     assert_eq!(
@@ -438,23 +490,9 @@ fn test_BC_2_09_001_invariant_bounded_channel_send_await_not_try_send() {
 ///   - Values above 10000 are clamped to 10000.
 ///   - Values below 1 are clamped to 1.
 ///   - Valid values are used as-is.
-///
-/// This test calls production functions from monocle-core::tui::state:
-///   - `default_scrollback_rows()` — returns the canonical default from the config-load path.
-///   - `clamp_scrollback_rows(raw)` — performs the [1, 10000] clamp used in run().
-///
-/// Both functions are `todo!()` stubs until S-039 implements them. Calling them here
-/// enforces the Red Gate: each assert panics with "not yet implemented" until the
-/// implementer provides the real bodies.
-///
-/// The test does NOT call the test-local helper that existed before S-039 (that helper
-/// was tautological — it tested a copy of the logic, not the production symbol).
 #[test]
 fn test_BC_2_09_001_invariant_scrollback_rows_default_and_clamp() {
     // Test 1: default scrollback_rows comes from the production default helper.
-    // `default_scrollback_rows()` is `todo!()` → panics here until S-039 implements it.
-    // The assert verifies the contractual value (1000) is returned by the config-load path,
-    // not merely the raw struct-initializer literal set in App::new().
     assert_eq!(
         default_scrollback_rows(),
         1000,
@@ -463,9 +501,6 @@ fn test_BC_2_09_001_invariant_scrollback_rows_default_and_clamp() {
     );
 
     // Test 2: vt100::Parser initialized with scrollback_rows.
-    // We verify the parser is created with the correct scrollback size by initializing
-    // a parser ourselves and checking screen state (indirect verification through the API).
-    // This sub-assertion does NOT depend on S-039 stubs — it verifies vt100 behavior.
     let parser = vt100::Parser::new(24, 80, 1000);
     let screen = parser.screen();
     let (rows, cols) = screen.size();
@@ -473,8 +508,6 @@ fn test_BC_2_09_001_invariant_scrollback_rows_default_and_clamp() {
     assert_eq!(cols, 80, "BC-2.09.001 Invariant 4: parser cols must be 80");
 
     // Test 3: clamping boundary — value above 10000 is clamped to 10000.
-    // `clamp_scrollback_rows` is `todo!()` in production → panics here until S-039 implements it.
-    // The test exercises BC-2.09.001 Invariant 4 via the PRODUCTION symbol, not a local copy.
     let clamped = clamp_scrollback_rows(99999);
     assert_eq!(
         clamped, 10000,
@@ -553,44 +586,38 @@ fn test_BC_2_09_001_unknown_session_id_drop() {
 ///   When PTY output arrives faster than the render rate (>100 messages/second),
 ///   the render cycle merges frames: multiple PtyOutputs are processed before
 ///   one draw() call. The mpsc::channel(64) provides 64 slots of burst absorption.
-///   The 100ms first-byte-to-pixel budget is still met for any single message.
 ///
 /// This test verifies that processing 100 sequential PtyOutput messages does not
-/// corrupt the parser state and completes within the 100ms budget.
+/// corrupt the parser state and that the last written line is visible on screen.
 #[tokio::test]
 async fn test_BC_2_09_001_high_frequency_frame_merge() {
     // Arrange
     let session_id = "s1-high-freq";
     let mut app = make_app_with_session(session_id);
 
-    tokio::time::pause();
-    let before = tokio::time::Instant::now();
-
     // Act: send 100 PtyOutput messages in rapid succession (simulates >100 msg/s burst).
+    // The last line written is "line99\r\n" — it must appear on the screen.
     for i in 0u8..100 {
         let bytes = format!("line{}\r\n", i).into_bytes();
         on_pty_output(&mut app, session_id.to_string(), bytes);
     }
 
-    let elapsed = before.elapsed();
-
     // Assert 1 (EC-202): All 100 messages processed without panic.
-    // If todo!() is in place, we never reach here (Red Gate).
 
-    // Assert 2 (BC-2.09.001 Invariant 1): Total processing time < 100ms.
-    // on_pty_output is synchronous; 100 calls should complete well within 100ms.
-    assert!(
-        elapsed.as_millis() < 100,
-        "BC-2.09.001 EC-202: 100 sequential on_pty_output calls exceeded 100ms: {:?}",
-        elapsed
-    );
-
-    // Assert 3 (EC-202): Parser is in a valid state after burst processing.
+    // Assert 2 (EC-202): Parser is in a valid state after burst processing.
+    // The last line sent was "line99" — it must appear on the screen, proving
+    // that all 100 calls actually processed bytes (not a no-op count).
     let parser = app
         .pty_parsers
         .get(session_id)
         .expect("EC-202: parser must exist after burst processing");
-    let _ = parser.screen(); // Must not panic
+    let text = screen_text(parser);
+    assert!(
+        text.contains("line99"),
+        "BC-2.09.001 EC-202: parser screen must contain 'line99' after 100-burst processing — \
+         got: {:?}",
+        text
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -657,6 +684,7 @@ async fn test_BC_2_09_001_dump_in_progress_set_before_attach_send() {
 
 // ---------------------------------------------------------------------------
 // Scrollback replay order (BC-2.09.001 Invariant 5 step c)
+// F-S039-008 fix applied: assert screen reflects bytes IN ORDER; reversed replay FAILS
 // ---------------------------------------------------------------------------
 
 /// test_BC_2_09_001_scrollback_replay_order
@@ -665,9 +693,15 @@ async fn test_BC_2_09_001_dump_in_progress_set_before_attach_send() {
 ///   Buffered bytes in pending_pty_bytes[session_id] are replayed through the
 ///   reset parser in RECEIPT ORDER after ScrollbackDumpComplete.
 ///
-/// This test sends bytes with distinct content and verifies that after replay,
-/// the parser screen reflects the LAST written content (FIFO replay order means
-/// the most recently buffered message's effect is visible at the bottom).
+/// F-S039-008 fix: write distinguishable cursor-positioned byte sequences that land
+/// on different rows. After replay, assert the parser screen shows FIRST on row 0
+/// and SECOND visible on the screen. A reversed replay would show SECOND on the
+/// earlier position and FIRST later, breaking the assertion.
+///
+/// The specific observable invariant: after replaying "ALPHA\r\n" then "BETA\r\n"
+/// in receipt order, the screen text must contain "ALPHA" appearing BEFORE "BETA"
+/// (ALPHA occupies an earlier position in `screen.contents()` because it was
+/// processed first — i.e., it is above BETA in the scrollable content).
 #[tokio::test]
 async fn test_BC_2_09_001_scrollback_replay_order() {
     // Arrange
@@ -678,25 +712,26 @@ async fn test_BC_2_09_001_scrollback_replay_order() {
     app.dump_in_progress.insert(session_id.to_string(), true);
 
     // Buffer two messages (simulating arrival while dump is in progress).
-    // Receipt order: "FIRST\r\n", then "SECOND\r\n".
-    on_pty_output(&mut app, session_id.to_string(), b"FIRST\r\n".to_vec());
-    on_pty_output(&mut app, session_id.to_string(), b"SECOND\r\n".to_vec());
+    // Receipt order: "ALPHA\r\n" (first), then "BETA\r\n" (second).
+    // Using all-caps distinguishable tokens to make ordering unambiguous.
+    on_pty_output(&mut app, session_id.to_string(), b"ALPHA\r\n".to_vec());
+    on_pty_output(&mut app, session_id.to_string(), b"BETA\r\n".to_vec());
 
-    // Verify both are buffered in order.
+    // Verify both are buffered in order before replay.
     {
         let pending = app
             .pending_pty_bytes
             .get(session_id)
             .expect("must be buffered");
         assert_eq!(pending.len(), 2, "must have exactly 2 buffered messages");
-        assert_eq!(pending[0], b"FIRST\r\n", "first message must be FIRST");
-        assert_eq!(pending[1], b"SECOND\r\n", "second message must be SECOND");
+        assert_eq!(pending[0], b"ALPHA\r\n", "first message must be ALPHA");
+        assert_eq!(pending[1], b"BETA\r\n", "second message must be BETA");
     }
 
     // Act: ScrollbackDumpComplete — resets parser and replays buffered bytes in order.
     on_scrollback_dump_complete(&mut app, session_id.to_string(), 24, 80);
 
-    // Assert: buffer is cleared after replay.
+    // Assert 1: buffer is cleared after replay.
     let pending_after = app
         .pending_pty_bytes
         .get(session_id)
@@ -707,17 +742,37 @@ async fn test_BC_2_09_001_scrollback_replay_order() {
         "BC-2.09.001 Invariant 5: pending_pty_bytes must be empty after replay"
     );
 
-    // Assert: parser reflects content from both replayed messages.
-    // After FIRST\r\n and SECOND\r\n, the parser should have content on its screen.
+    // Assert 2: parser screen contains both tokens.
     let parser = app
         .pty_parsers
         .get(session_id)
         .expect("parser must exist after ScrollbackDumpComplete");
-    let screen = parser.screen();
-    // At minimum, the screen must have rows (not panic). The exact content
-    // depends on the parser state after replay; the key invariant is RECEIPT ORDER
-    // (FIRST then SECOND, not reversed). We verify the buffer ordering above.
-    let _ = screen;
+    let text = screen_text(parser);
+    assert!(
+        text.contains("ALPHA"),
+        "BC-2.09.001 Invariant 5 replay: screen must contain 'ALPHA' — got: {:?}",
+        text
+    );
+    assert!(
+        text.contains("BETA"),
+        "BC-2.09.001 Invariant 5 replay: screen must contain 'BETA' — got: {:?}",
+        text
+    );
+
+    // Assert 3 (ORDER): ALPHA must appear BEFORE BETA in the screen text.
+    // In receipt-order replay, "ALPHA\r\n" is processed first (occupies an earlier
+    // screen position / earlier byte offset in `screen.contents()`), so its character
+    // offset must be less than BETA's. A reversed replay would invert this — this
+    // assertion enforces the FIFO receipt-order invariant.
+    let alpha_pos = text.find("ALPHA").expect("ALPHA must be in screen text");
+    let beta_pos = text.find("BETA").expect("BETA must be in screen text");
+    assert!(
+        alpha_pos < beta_pos,
+        "BC-2.09.001 Invariant 5 replay ORDER: 'ALPHA' (pos {}) must appear before 'BETA' (pos {}) \
+         in screen contents — reversed replay would break this (receipt-order violation)",
+        alpha_pos,
+        beta_pos
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -733,12 +788,8 @@ async fn test_BC_2_09_001_scrollback_replay_order() {
 ///   - pty_scroll_offsets[session_id] removed
 ///   - pty_dump_received entry removed
 ///
-/// This test drives the GC path via on_pty_output with a session_id that has
-/// been pre-inserted into all maps, then calls the GC cleanup stub and verifies
-/// all entries are removed.
-///
-/// Note: S-039 owns initialization; S-042 owns the ResizePane reset; S-043 reads
-/// the offsets. The GC cleanup itself is part of S-039's session-lifecycle management.
+/// This test drives the GC path via gc_pty_session and verifies all entries
+/// are removed.
 #[test]
 fn test_BC_2_09_001_session_gc_removes_parser_and_scroll_offset() {
     // Arrange: session with parser, scroll offset, and dump received flag populated.
@@ -763,8 +814,6 @@ fn test_BC_2_09_001_session_gc_removes_parser_and_scroll_offset() {
     );
 
     // Act: call the GC cleanup function.
-    // S-039 implements this as part of the SessionState::Terminated handler.
-    // We call it directly here to test the cleanup behavior.
     gc_session(&mut app, session_id);
 
     // Assert: all per-session state removed.
@@ -783,20 +832,7 @@ fn test_BC_2_09_001_session_gc_removes_parser_and_scroll_offset() {
 }
 
 /// Helper that exercises the S-039 session GC cleanup path.
-///
-/// S-039 must implement this cleanup as part of the Terminated session handler.
-/// This function must be replaced by a call to the real implementation;
-/// calling a non-existent or todo!() function here enforces the Red Gate.
 fn gc_session(app: &mut App, session_id: &str) {
-    // S-039 implementation requirement: on Terminated + list removal, remove:
-    //   app.pty_parsers.remove(session_id)
-    //   app.pty_scroll_offsets.remove(session_id)
-    //   app.pty_dump_received.remove(session_id)
-    //   app.dump_in_progress.remove(session_id)
-    //   app.pending_pty_bytes.remove(session_id)
-    //
-    // This stub always panics to enforce the Red Gate.
-    // The implementer must replace this with the real GC call from app.rs.
     monocle_tui::app::gc_pty_session(app, session_id);
 }
 
@@ -812,8 +848,7 @@ fn gc_session(app: &mut App, session_id: &str) {
 ///   PseudoTerminal::new(parser.screen()) and renders it into the pane Rect.
 ///
 /// This test creates a headless ratatui terminal backend and calls
-/// render_embedded_terminal, verifying the call completes without panic.
-/// The test fails (todo!() panic) until the implementation is provided.
+/// render_embedded_terminal, verifying that "Hello PTY" appears in the buffer.
 #[test]
 fn test_BC_2_09_001_render_embedded_terminal_calls_pseudo_terminal() {
     use monocle_tui::ui::embedded_terminal::render_embedded_terminal;
@@ -830,7 +865,6 @@ fn test_BC_2_09_001_render_embedded_terminal_calls_pseudo_terminal() {
     parser.process(b"Hello PTY\r\n");
 
     // Act: call render_embedded_terminal inside a draw closure.
-    // The todo!() stub in embedded_terminal.rs will panic here → Red Gate.
     terminal
         .draw(|frame| {
             let area = Rect::new(0, 0, 80, 24);
@@ -838,12 +872,9 @@ fn test_BC_2_09_001_render_embedded_terminal_calls_pseudo_terminal() {
         })
         .expect("terminal.draw must succeed");
 
-    // Assert: if we reach here (no panic), the render completed successfully.
-    // The todo!() stub panics inside frame.draw, so this assertion is unreachable
-    // until the implementation is provided.
+    // Assert: the PseudoTerminal widget wrote "Hello PTY" to the buffer.
+    // We check cell (0, 0) for the 'H' character — the first character of the output.
     let buffer = terminal.backend().buffer().clone();
-    // The PseudoTerminal widget should have written "Hello PTY" to the buffer.
-    // We check cell (0, 0) for the 'H' character.
     let cell_0_0 = &buffer[(0, 0)];
     assert_eq!(
         cell_0_0.symbol(),
@@ -924,10 +955,6 @@ async fn test_BC_2_09_001_second_enter_skips_attach_when_dump_already_received()
 ///   - `MonocleConfig { pty_scrollback_rows: Some(0) }` → `App::scrollback_rows == 1` (clamped)
 ///   - `MonocleConfig { pty_scrollback_rows: None }` → `App::scrollback_rows == 1000` (default)
 ///   - `MonocleConfig { pty_scrollback_rows: Some(500) }` → `App::scrollback_rows == 500` (in-range)
-///
-/// This test uses the production `App::new(config)` path — NOT a test-local copy of the
-/// clamp logic. The binding between MonocleConfig::pty_scrollback_rows and App::scrollback_rows
-/// is enforced here so that any regression in the wiring causes this test to fail.
 #[test]
 fn test_BC_2_09_001_config_scrollback_rows_wiring() {
     // Case 1: value above 10000 is clamped to 10000.
@@ -972,5 +999,534 @@ fn test_BC_2_09_001_config_scrollback_rows_wiring() {
     assert_eq!(
         app_valid.scrollback_rows, 500,
         "BC-2.09.001 Invariant 4 (AC-008): pty_scrollback_rows=500 must be preserved (in-range)"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-S039-009: First-entry production sequence — session NOT pre-inserted
+// BC-2.09.001 Invariant 5 / AC-005
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_09_001_first_entry_session_not_preinserted
+///
+/// Exercises F-S039-009: the REAL first-entry production sequence where the session
+/// is NOT pre-inserted into pty_parsers before entering EmbeddedTerminal.
+///
+/// Production flow:
+///   1. Session is absent from pty_parsers (race: PtyOutput arrives before SessionListUpdate).
+///      OR: user presses Enter on EmbeddedTerminal before on_initial_state has run.
+///   2. enter_embedded_terminal sets dump_in_progress = true, sends AttachSession.
+///   3. Live PtyOutput arrives during dump_in_progress — buffered into pending_pty_bytes
+///      (NOT fed to a non-existent parser — EC-200 drop guard is bypassed because
+///       dump_in_progress check runs FIRST in on_pty_output).
+///   4. ScrollbackDumpComplete creates the parser via reset and replays buffered bytes.
+///   5. Post-dump parser screen contains the buffered content in order.
+///
+/// This test confirms that the session NOT being in pty_parsers before enter does NOT
+/// cause data loss: bytes buffered during the dump window are always replayed after the
+/// parser is created by ScrollbackDumpComplete.
+#[tokio::test]
+async fn test_BC_2_09_001_first_entry_session_not_preinserted() {
+    // Arrange: App with NO pre-inserted parser for the session.
+    let session_id = "s1-not-preinserted";
+    let mut app = make_app();
+    // Deliberately do NOT insert into pty_parsers — this is the F-S039-009 scenario.
+    assert!(
+        !app.pty_parsers.contains_key(session_id),
+        "precondition: session must NOT be in pty_parsers for F-S039-009 scenario"
+    );
+
+    // Wire IPC channel so enter_embedded_terminal can send AttachSession.
+    let (cmd_tx, mut cmd_rx) = mpsc::channel::<ClientToServer>(64);
+    app.ipc_tx = Some(cmd_tx);
+
+    // Act 1: enter_embedded_terminal — session NOT in pty_dump_received.
+    // Should set dump_in_progress = true and send AttachSession.
+    enter_embedded_terminal(&mut app, session_id.to_string()).await;
+
+    // Assert A: dump_in_progress is true.
+    assert_eq!(
+        app.dump_in_progress.get(session_id).copied(),
+        Some(true),
+        "F-S039-009: dump_in_progress must be true after enter_embedded_terminal \
+         (session not pre-inserted)"
+    );
+
+    // Assert B: AttachSession was sent.
+    let msg = cmd_rx.try_recv().expect(
+        "F-S039-009: AttachSession must be sent even when session not pre-inserted in pty_parsers",
+    );
+    assert!(
+        matches!(msg, ClientToServer::AttachSession { session_id: ref sid } if sid == session_id),
+        "F-S039-009: IPC message must be ClientToServer::AttachSession"
+    );
+
+    // Act 2: PtyOutput arrives while dump_in_progress — must be BUFFERED.
+    // With dump_in_progress=true, on_pty_output buffers into pending_pty_bytes BEFORE
+    // checking pty_parsers (BC-2.09.001 Invariant 5 / on_pty_output implementation).
+    let buffered_data = b"live-during-dump\r\n".to_vec();
+    on_pty_output(&mut app, session_id.to_string(), buffered_data.clone());
+
+    // Assert C: bytes were buffered (not silently dropped via EC-200 path).
+    {
+        let pending = app
+            .pending_pty_bytes
+            .get(session_id)
+            .expect("F-S039-009: pending_pty_bytes must have entry when dump_in_progress=true");
+        assert_eq!(pending.len(), 1, "F-S039-009: one buffered chunk expected");
+        assert_eq!(
+            pending[0], buffered_data,
+            "F-S039-009: buffered chunk must match sent bytes"
+        );
+    }
+
+    // Assert D: parser does NOT exist yet (session was not pre-inserted).
+    // ScrollbackDumpComplete is the event that CREATES the parser.
+    assert!(
+        !app.pty_parsers.contains_key(session_id),
+        "F-S039-009: pty_parsers must NOT contain session before ScrollbackDumpComplete \
+         (parser created by on_scrollback_dump_complete, not by enter_embedded_terminal)"
+    );
+
+    // Act 3: ScrollbackDumpComplete — creates parser via reset, replays buffered bytes.
+    on_scrollback_dump_complete(&mut app, session_id.to_string(), 24, 80);
+
+    // Assert E: parser now exists (created by ScrollbackDumpComplete).
+    assert!(
+        app.pty_parsers.contains_key(session_id),
+        "F-S039-009: pty_parsers must contain session after ScrollbackDumpComplete"
+    );
+
+    // Assert F: dump_in_progress = false.
+    assert_eq!(
+        app.dump_in_progress.get(session_id).copied(),
+        Some(false),
+        "F-S039-009: dump_in_progress must be false after ScrollbackDumpComplete"
+    );
+
+    // Assert G: pty_dump_received contains the session.
+    assert!(
+        app.pty_dump_received.contains(session_id),
+        "F-S039-009: pty_dump_received must contain session after ScrollbackDumpComplete"
+    );
+
+    // Assert H: pending_pty_bytes cleared.
+    let pending_len = app
+        .pending_pty_bytes
+        .get(session_id)
+        .map(|v| v.len())
+        .unwrap_or(0);
+    assert_eq!(
+        pending_len, 0,
+        "F-S039-009: pending_pty_bytes must be empty after replay"
+    );
+
+    // Assert I: parser screen contains the buffered content (replayed in order).
+    // This is the key assertion — it proves the buffered bytes were NOT lost.
+    let parser = app.pty_parsers.get(session_id).unwrap();
+    let text = screen_text(parser);
+    assert!(
+        text.contains("live-during-dump"),
+        "F-S039-009: parser screen must contain 'live-during-dump' after replay — \
+         buffered bytes must NOT be lost when session was not pre-inserted. Got: {:?}",
+        text
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Integration: Parser creation via on_initial_state (no-clobber invariant)
+// BC-2.09.001 Invariant 5 / AC-001 — F-S039-001
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_09_001_on_initial_state_creates_parsers_no_clobber
+///
+/// Exercises the production dispatch path for parser creation:
+///   - `on_initial_state` creates a parser for each session in the initial roster.
+///   - `pty_scroll_offsets[id] == 0` for each created parser.
+///   - No-clobber: a session already in pty_parsers is NOT replaced on roster refresh.
+///
+/// This drives the PRODUCTION `on_initial_state` code path (not the test-local helper).
+/// The no-clobber invariant ensures reconnect does not destroy parser state for
+/// sessions that survived the reconnect (BC-2.09.001 F-S039-001 no-clobber invariant).
+#[test]
+fn test_BC_2_09_001_on_initial_state_creates_parsers_no_clobber() {
+    let mut app = make_app();
+
+    let s1 = "session-init-001";
+    let s2 = "session-init-002";
+
+    // Act 1: on_initial_state with two sessions.
+    on_initial_state(
+        &mut app,
+        vec![make_session(s1), make_session(s2)],
+        vec![],
+        vec![],
+        0,
+    );
+
+    // Assert A: parsers created for both sessions.
+    assert!(
+        app.pty_parsers.contains_key(s1),
+        "BC-2.09.001 F-S039-001: on_initial_state must create parser for s1"
+    );
+    assert!(
+        app.pty_parsers.contains_key(s2),
+        "BC-2.09.001 F-S039-001: on_initial_state must create parser for s2"
+    );
+
+    // Assert B: scroll offsets initialized to 0.
+    assert_eq!(
+        app.pty_scroll_offsets.get(s1).copied(),
+        Some(0),
+        "BC-2.09.001 F-S039-001: pty_scroll_offsets[s1] must be 0 after on_initial_state"
+    );
+    assert_eq!(
+        app.pty_scroll_offsets.get(s2).copied(),
+        Some(0),
+        "BC-2.09.001 F-S039-001: pty_scroll_offsets[s2] must be 0 after on_initial_state"
+    );
+
+    // Act 2 (no-clobber): feed content into s1's parser, then call on_initial_state again.
+    // The reconnect path calls on_initial_state with the same sessions still present.
+    {
+        let parser = app.pty_parsers.get_mut(s1).unwrap();
+        parser.process(b"existing-content\r\n");
+    }
+
+    // Verify content is present before the second on_initial_state call.
+    {
+        let text = screen_text(app.pty_parsers.get(s1).unwrap());
+        assert!(
+            text.contains("existing-content"),
+            "precondition: s1 parser must have content before second on_initial_state"
+        );
+    }
+
+    // Call on_initial_state again (simulating reconnect with same session roster).
+    on_initial_state(
+        &mut app,
+        vec![make_session(s1), make_session(s2)],
+        vec![],
+        vec![],
+        0,
+    );
+
+    // Assert C (no-clobber): s1's parser content must be preserved.
+    // on_initial_state uses `if !pty_parsers.contains_key(id)` — existing parsers
+    // are NOT replaced. This is the no-clobber invariant (BC-2.09.001 F-S039-001).
+    let text_after = screen_text(app.pty_parsers.get(s1).unwrap());
+    assert!(
+        text_after.contains("existing-content"),
+        "BC-2.09.001 F-S039-001 no-clobber: s1 parser must RETAIN content after second \
+         on_initial_state (reconnect must not clobber existing parsers). Got: {:?}",
+        text_after
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Integration: SessionListUpdate creates parsers for new sessions; GCs removed ones
+// BC-2.09.001 Invariant 5 / AC-008 — F-S039-001 / F-S039-003
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_09_001_session_list_update_creates_and_gcs_parsers
+///
+/// Exercises the production `handle_server_message → SessionListUpdate` dispatch path:
+///   - New sessions in the updated roster get a parser + scroll_offset=0.
+///   - Sessions absent from the updated roster are GC'd via gc_pty_session.
+///   - No-clobber: existing parsers with content are not replaced on roster refresh.
+///
+/// This test drives `handle_server_message` directly (production dispatch path).
+#[test]
+fn test_BC_2_09_001_session_list_update_creates_and_gcs_parsers() {
+    let mut app = make_app();
+
+    let existing = "session-existing-001";
+    let new_session = "session-new-002";
+
+    // Seed with one session via on_initial_state.
+    on_initial_state(&mut app, vec![make_session(existing)], vec![], vec![], 0);
+    assert!(
+        app.pty_parsers.contains_key(existing),
+        "precondition: existing session parser must be created by on_initial_state"
+    );
+
+    // Give the existing session some content to verify no-clobber.
+    {
+        let parser = app.pty_parsers.get_mut(existing).unwrap();
+        parser.process(b"retain-me\r\n");
+    }
+
+    // Act: SessionListUpdate that adds new_session and retains existing.
+    handle_server_message(
+        &mut app,
+        ServerToClient::SessionListUpdate {
+            sessions: vec![make_session(existing), make_session(new_session)],
+        },
+    )
+    .expect("handle_server_message must succeed for SessionListUpdate");
+
+    // Assert A: new session now has a parser.
+    assert!(
+        app.pty_parsers.contains_key(new_session),
+        "BC-2.09.001 F-S039-001: SessionListUpdate must create parser for new_session"
+    );
+
+    // Assert B: new session scroll offset is 0.
+    assert_eq!(
+        app.pty_scroll_offsets.get(new_session).copied(),
+        Some(0),
+        "BC-2.09.001 F-S039-001: pty_scroll_offsets[new_session] must be 0 after SessionListUpdate"
+    );
+
+    // Assert C (no-clobber): existing session parser content is preserved.
+    let text = screen_text(app.pty_parsers.get(existing).unwrap());
+    assert!(
+        text.contains("retain-me"),
+        "BC-2.09.001 F-S039-001 no-clobber: existing session parser must NOT be replaced \
+         on SessionListUpdate. Got: {:?}",
+        text
+    );
+
+    // Act 2: SessionListUpdate that removes existing (only new_session remains).
+    handle_server_message(
+        &mut app,
+        ServerToClient::SessionListUpdate {
+            sessions: vec![make_session(new_session)],
+        },
+    )
+    .expect("handle_server_message must succeed for SessionListUpdate with removal");
+
+    // Assert D: existing session was GC'd from all maps.
+    assert!(
+        !app.pty_parsers.contains_key(existing),
+        "BC-2.09.001 F-S039-003 GC: pty_parsers must remove 'existing' when absent from roster"
+    );
+    assert!(
+        !app.pty_scroll_offsets.contains_key(existing),
+        "BC-2.09.001 F-S039-003 GC: pty_scroll_offsets must remove 'existing' when absent from roster"
+    );
+
+    // Assert E: new_session still present (not accidentally GC'd).
+    assert!(
+        app.pty_parsers.contains_key(new_session),
+        "BC-2.09.001 F-S039-003 GC: new_session must NOT be GC'd (still in roster)"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Integration: SessionStateChanged::Terminated triggers GC
+// BC-2.09.001 AC-008 / F-S039-003
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_09_001_session_terminated_gc
+///
+/// Exercises the production `handle_server_message → SessionStateChanged::Terminated`
+/// dispatch path:
+///   - Receiving Terminated for a session removes it from all PTY pipeline maps.
+///   - pty_parsers, pty_scroll_offsets, pty_dump_received, dump_in_progress,
+///     pending_pty_bytes all cleared for the terminated session.
+///
+/// This drives the PRODUCTION dispatch path (not a direct gc_pty_session call).
+#[test]
+fn test_BC_2_09_001_session_terminated_gc() {
+    let session_id = "session-terminated-001";
+    let mut app = make_app_with_session(session_id);
+
+    // Pre-populate all GC-relevant maps.
+    app.pty_dump_received.insert(session_id.to_string());
+    app.dump_in_progress.insert(session_id.to_string(), false);
+    app.pending_pty_bytes
+        .insert(session_id.to_string(), vec![b"pending".to_vec()]);
+
+    // Give the parser some content so we can verify it's truly removed.
+    {
+        let parser = app.pty_parsers.get_mut(session_id).unwrap();
+        parser.process(b"should-be-gc'd\r\n");
+    }
+
+    // Preconditions
+    assert!(app.pty_parsers.contains_key(session_id));
+    assert!(app.pty_scroll_offsets.contains_key(session_id));
+    assert!(app.pty_dump_received.contains(session_id));
+    assert!(app.dump_in_progress.contains_key(session_id));
+    assert!(app.pending_pty_bytes.contains_key(session_id));
+
+    // Act: send SessionStateChanged::Terminated through production dispatch.
+    handle_server_message(
+        &mut app,
+        ServerToClient::SessionStateChanged {
+            session_id: session_id.to_string(),
+            new_state: SessionState::Terminated,
+        },
+    )
+    .expect("handle_server_message must succeed for SessionStateChanged::Terminated");
+
+    // Assert: all per-session PTY pipeline state removed.
+    assert!(
+        !app.pty_parsers.contains_key(session_id),
+        "BC-2.09.001 F-S039-003 GC: pty_parsers must be removed on Terminated"
+    );
+    assert!(
+        !app.pty_scroll_offsets.contains_key(session_id),
+        "BC-2.09.001 F-S039-003 GC: pty_scroll_offsets must be removed on Terminated"
+    );
+    assert!(
+        !app.pty_dump_received.contains(session_id),
+        "BC-2.09.001 F-S039-003 GC: pty_dump_received must be removed on Terminated"
+    );
+    assert!(
+        !app.dump_in_progress.contains_key(session_id),
+        "BC-2.09.001 F-S039-003 GC: dump_in_progress must be removed on Terminated"
+    );
+    assert!(
+        !app.pending_pty_bytes.contains_key(session_id),
+        "BC-2.09.001 F-S039-003 GC: pending_pty_bytes must be removed on Terminated"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-S039-004: Async attach rollback on send failure
+// BC-2.09.001 AC-005 / enter_embedded_terminal error path
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_09_001_enter_embedded_rollback_on_send_failure
+///
+/// Exercises F-S039-004 (BC-2.09.001 Invariant 5 / AC-005 error path):
+///   When the outbound IPC channel is closed (send returns Err), enter_embedded_terminal
+///   MUST perform FULL ROLLBACK:
+///   - dump_in_progress is NOT set (or is rolled back to absent/false)
+///   - AppMode is NOT transitioned to EmbeddedTerminal
+///
+/// This tests the negative path: a broken IPC channel must not leave the app in a
+/// half-entered EmbeddedTerminal mode where bytes buffer forever without a dump completing.
+#[tokio::test]
+async fn test_BC_2_09_001_enter_embedded_rollback_on_send_failure() {
+    let session_id = "s1-rollback";
+    let mut app = make_app_with_session(session_id);
+
+    // Wire a channel and immediately DROP the receiver to simulate a closed channel.
+    // When enter_embedded_terminal tries to send AttachSession, tx.send().await will
+    // return Err (receiver dropped).
+    let (cmd_tx, cmd_rx) = mpsc::channel::<ClientToServer>(1);
+    drop(cmd_rx); // Close the channel receiver — all sends will fail.
+    app.ipc_tx = Some(cmd_tx);
+
+    // Record whether we were in Dashboard mode before the enter attempt.
+    let was_dashboard_before = matches!(app.mode, AppMode::Dashboard { .. });
+    assert!(
+        was_dashboard_before,
+        "precondition: mode must be Dashboard before enter attempt"
+    );
+
+    // Act: enter_embedded_terminal with a broken channel.
+    enter_embedded_terminal(&mut app, session_id.to_string()).await;
+
+    // Assert A (F-S039-004 rollback): dump_in_progress must NOT be true after send failure.
+    // The correct behavior is: dump_in_progress.remove(&id) (rollback) on Err.
+    let dip = app
+        .dump_in_progress
+        .get(session_id)
+        .copied()
+        .unwrap_or(false);
+    assert!(
+        !dip,
+        "F-S039-004: dump_in_progress must be rolled back (false/absent) when AttachSession \
+         send fails (channel closed). Got: {:?}",
+        app.dump_in_progress.get(session_id)
+    );
+
+    // Assert B (F-S039-004 rollback): AppMode must NOT have transitioned to EmbeddedTerminal.
+    assert!(
+        !matches!(&app.mode, AppMode::EmbeddedTerminal { .. }),
+        "F-S039-004: AppMode must NOT be EmbeddedTerminal after AttachSession send failure."
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Integration: render_frame EmbeddedTerminal arm uses focused parser
+// BC-2.09.001 AC-003 / Postcondition 3 — F-S039-002
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_09_001_render_frame_embedded_terminal_uses_focused_parser
+///
+/// Exercises the production `render_frame` dispatch for AppMode::EmbeddedTerminal:
+///   - When mode is EmbeddedTerminal { session_id }, render_frame calls
+///     render_embedded_terminal with app.pty_parsers[session_id].
+///   - The focused parser's content appears in the rendered terminal buffer.
+///   - Content from a different (non-focused) session does NOT appear.
+///
+/// This test drives the PRODUCTION render_frame path using TestBackend.
+#[test]
+fn test_BC_2_09_001_render_frame_embedded_terminal_uses_focused_parser() {
+    use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
+
+    let focused_id = "session-focused-render";
+    let other_id = "session-other-render";
+
+    let mut app = make_app_with_session(focused_id);
+    // Add a second parser for another session (must NOT appear in the render).
+    let other_parser = vt100::Parser::new(24, 80, 1000);
+    app.pty_parsers.insert(other_id.to_string(), other_parser);
+    app.pty_scroll_offsets.insert(other_id.to_string(), 0);
+
+    // Feed distinguishable content to each parser.
+    {
+        let parser = app.pty_parsers.get_mut(focused_id).unwrap();
+        parser.process(b"FOCUSED_CONTENT\r\n");
+    }
+    {
+        let parser = app.pty_parsers.get_mut(other_id).unwrap();
+        parser.process(b"OTHER_CONTENT\r\n");
+    }
+
+    // Set mode to EmbeddedTerminal for the focused session.
+    app.mode = AppMode::EmbeddedTerminal {
+        session_id: focused_id.to_string(),
+        prior: FocusSnapshot::Sessions,
+    };
+
+    // Build a headless ratatui terminal and run render_frame.
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).expect("test terminal must initialize");
+    let mut sessions_state = SessionsPanelState::default();
+
+    terminal
+        .draw(|frame| {
+            render_frame(&mut app, &mut sessions_state, frame);
+        })
+        .expect("render_frame must succeed in EmbeddedTerminal mode");
+
+    // Assert: the rendered buffer contains "FOCUSED_CONTENT".
+    // The PseudoTerminal widget renders the focused parser's screen into the terminal area.
+    let buffer = terminal.backend().buffer().clone();
+    let rendered: String = (0..80)
+        .map(|col| buffer[(col, 0)].symbol().to_string())
+        .collect();
+    assert!(
+        rendered.contains("FOCUSED_CONTENT") || {
+            // Check all rows for the content (content may not land on row 0 if layout
+            // places the terminal area below a header row).
+            let full_rendered: String = (0..24)
+                .flat_map(|row| (0..80).map(move |col| (row, col)))
+                .map(|(row, col)| buffer[(col, row)].symbol().to_string())
+                .collect();
+            full_rendered.contains("FOCUSED_CONTENT")
+        },
+        "BC-2.09.001 F-S039-002: render_frame in EmbeddedTerminal mode must render the \
+         focused parser's content ('FOCUSED_CONTENT') into the terminal buffer. \
+         Row 0: {:?}",
+        rendered
+    );
+
+    // Assert: "OTHER_CONTENT" must NOT appear in the buffer (wrong parser).
+    let full_buffer: String = (0..24)
+        .flat_map(|row| (0..80).map(move |col| (row, col)))
+        .map(|(row, col)| buffer[(col, row)].symbol().to_string())
+        .collect();
+    assert!(
+        !full_buffer.contains("OTHER_CONTENT"),
+        "BC-2.09.001 F-S039-002: render_frame must NOT render the non-focused parser's \
+         content ('OTHER_CONTENT') — only the focused session_id parser is rendered"
     );
 }
