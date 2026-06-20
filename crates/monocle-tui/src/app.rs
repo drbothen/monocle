@@ -496,6 +496,28 @@ pub fn on_scrollback_dump_complete(
            pending_pty_bytes replay (BC-2.09.001 Invariant 5 / BC-2.05.011 PC-3)")
 }
 
+/// Remove all PTY pipeline state for a session on GC (Terminated + list removal).
+///
+/// Called when a session transitions to `SessionState::Terminated` and is removed from
+/// the session list. Removes all per-session state from:
+/// - `app.pty_parsers`
+/// - `app.pty_scroll_offsets`
+/// - `app.pty_dump_received`
+/// - `app.dump_in_progress`
+/// - `app.pending_pty_bytes`
+///
+/// This is the canonical GC cleanup path for S-039 (BC-2.09.001 AC-008 / Invariant 4).
+/// S-042 owns the `pty_scroll_offsets[session_id] = 0` reset on resize (ResizePane handler);
+/// S-039 owns this full-removal on termination.
+///
+/// Self-check BC-5.38.005: YES — body = `todo!()`.
+#[allow(clippy::todo)]
+#[allow(unused_variables)]
+pub fn gc_pty_session(app: &mut App, session_id: &str) {
+    todo!("S-039: gc_pty_session — remove pty_parsers, pty_scroll_offsets, pty_dump_received, \
+           dump_in_progress, pending_pty_bytes for session_id (BC-2.09.001 AC-008)")
+}
+
 // ---------------------------------------------------------------------------
 // PermissionPromptPayload → PromptModal conversion
 // ---------------------------------------------------------------------------
