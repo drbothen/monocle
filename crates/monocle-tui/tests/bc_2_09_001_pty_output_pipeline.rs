@@ -231,7 +231,7 @@ async fn test_BC_2_09_001_auto_attach_on_first_entry_buffering() {
     );
 
     // Act 1: enter_embedded_terminal — triggers auto-attach protocol.
-    enter_embedded_terminal(&mut app, session_id.to_string());
+    enter_embedded_terminal(&mut app, session_id.to_string()).await;
 
     // Assert A (BC-2.09.001 PC-6 / SS-embedded-pty.md §Auto-attach mandate):
     // dump_in_progress must be true immediately after enter_embedded_terminal.
@@ -370,7 +370,7 @@ async fn test_BC_2_09_001_reattach_after_detach_reruns_dump_protocol() {
     let (cmd_tx, _cmd_rx) = mpsc::channel::<ClientToServer>(64);
     app.ipc_tx = Some(cmd_tx);
 
-    enter_embedded_terminal(&mut app, session_id.to_string());
+    enter_embedded_terminal(&mut app, session_id.to_string()).await;
 
     // After re-entry, dump_in_progress must be true (auto-attach triggered again).
     assert_eq!(
@@ -620,7 +620,7 @@ async fn test_BC_2_09_001_dump_in_progress_set_before_attach_send() {
     app.ipc_tx = Some(cmd_tx);
 
     // Act: enter_embedded_terminal
-    enter_embedded_terminal(&mut app, session_id.to_string());
+    enter_embedded_terminal(&mut app, session_id.to_string()).await;
 
     // Assert: dump_in_progress is true immediately — even before any PtyOutput or
     // ScrollbackChunk arrives. The ordering is:
@@ -882,7 +882,7 @@ async fn test_BC_2_09_001_second_enter_skips_attach_when_dump_already_received()
     );
 
     // Act: enter_embedded_terminal — should take the O(1) path.
-    enter_embedded_terminal(&mut app, session_id.to_string());
+    enter_embedded_terminal(&mut app, session_id.to_string()).await;
 
     // Assert 1 (AC-004 O(1) path): NO AttachSession sent.
     let result = cmd_rx.try_recv();
