@@ -3721,3 +3721,182 @@ async fn test_BC_2_08_004_rediscovery_terminating_elapsed_emits_broker() {
 
     let _ = std::fs::remove_file(&socket_path);
 }
+
+// ===========================================================================
+// ADVERSARIAL PASS 4 CORRECTIONS — RED-GATE TESTS
+//
+// These tests encode spec behaviour surfaced by adversarial-pass-4 and must
+// FAIL against the current implementation.  Each comment identifies the
+// finding ID.
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// HIGH-001 (pass-4) — Registry leak: watchdog Terminated transition MUST call
+//                      spawn_gc_task so stale Terminated entry is evicted
+// ---------------------------------------------------------------------------
+
+/// HIGH-001 (pass-4): Terminating sidecar, NOT-elapsed deadline, alive PID,
+/// SO_PEERCRED OK → `rediscover_sessions()` registers `SessionEntry{Terminating}`
+/// and spawns the background watchdog.  The mock session-host then sends
+/// `HostToDaemon::StateChanged{Terminated}` → watchdog drives the entry to
+/// `Terminated`.  After the 10-second GC grace period (BC-2.08.005 PC-1) the
+/// entry MUST be removed from the registry.
+///
+/// The current watchdog (`emit_terminated` closure, mod.rs ~5016-5071) sets
+/// `entry.state = Terminated` and broadcasts `SessionStateChanged` + `SessionListUpdate`
+/// but NEVER calls `SessionManager::spawn_gc_task`.  The `spawn_gc_task` doc
+/// comment explicitly lists "re-discovery alive-then-dead paths" as a required
+/// call site.  Because the GC task is never spawned the stale `Terminated` entry
+/// lingers in `self.sessions` forever and is visible in every subsequent
+/// `session_list()` call.
+///
+/// This test covers both the `StateChanged::Terminated` watchdog arm AND the
+/// deadline-elapsed SIGKILL arm (sharing the same `emit_terminated` closure).
+/// Two sub-cases:
+///   Sub-case A (StateChanged path): mock session-host sends StateChanged::Terminated.
+///   Sub-case B (deadline path): virtual-time advance fires the deadline arm.
+///
+/// For clarity this test exercises sub-case A (the StateChanged message path)
+/// using real async timing with a paused clock.  Sub-case B is structurally
+/// identical and the same `spawn_gc_task` call site fixes both.
+///
+/// RED GATE:
+/// - After `emit_terminated` + advance(10s) + yield the entry STILL appears in
+///   `session_list()` because `spawn_gc_task` was never called.
+/// - The "MUST NOT appear in registry" assertion FAILS.
+/// - The "sidecar deleted" assertion may also fail if `spawn_gc_task`'s
+///   sidecar-delete is the only removal for this path.
+///
+/// BC reference: BC-2.08.005 (GC after Terminated) + BC-2.08.004 PC-2b
+/// (Terminating watchdog transition).  `spawn_gc_task` doc:
+/// "Called at every Terminated transition point: ... Re-discovery alive-then-dead paths."
+///
+/// Implementer note: call `SessionManager::spawn_gc_task(session_id, sidecar_path,
+/// socket_path, sessions_arc.clone(), broker_arc.clone())` from both the
+/// `terminated_by_msg` arm and the `_ = tokio::time::sleep_until(kill_deadline_tokio)`
+/// arm of the watchdog `tokio::select!`, immediately after `emit_terminated(...)`.
+#[tokio::test(start_paused = true)]
+async fn test_BC_2_08_004_rediscovery_watchdog_terminated_entry_gcd() {
+    let tmp = tempfile::tempdir().expect("pass4-HIGH-001: tempdir");
+    let session_id = "00000000-0036-4000-a007-000000000001";
+
+    // Deadline well in the future (30s): ensures the watchdog stays alive until
+    // the mock session-host sends StateChanged::Terminated (sub-case A).
+    let future_ms = unix_now_ms() + 30_000;
+    let socket_path = short_socket_path("p4hi001-wdog");
+    let _ = std::fs::remove_file(&socket_path);
+    write_sidecar_v3(
+        tmp.path(),
+        session_id,
+        "Terminating",
+        std::process::id(), // alive PID, SO_PEERCRED allow=true
+        &socket_path,
+        Some(future_ms),
+    );
+    let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+
+    // Mock session-host: accept the Kill fire-and-forget connect, read Kill frame,
+    // then after a short delay send StateChanged{Terminated} so the watchdog's
+    // `terminated_by_msg` arm fires.
+    let sock_clone = socket_path.clone();
+    tokio::spawn(async move {
+        let _ = std::fs::remove_file(&sock_clone);
+        let listener =
+            UnixListener::bind(&sock_clone).expect("pass4-HIGH-001: mock session-host bind");
+        if let Ok((mut stream, _)) = listener.accept().await {
+            // Consume the Kill message the daemon sends fire-and-forget.
+            let mut len_buf = [0u8; 4];
+            if stream.read_exact(&mut len_buf).await.is_ok() {
+                let len = u32::from_le_bytes(len_buf) as usize;
+                if len <= 65536 {
+                    let mut body = vec![0u8; len];
+                    let _ = stream.read_exact(&mut body).await;
+                }
+            }
+            // Short pause so the watchdog's select! is parked, then send Terminated.
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            let terminated_msg = HostToDaemon::StateChanged {
+                new_state: monocle_ipc::types::SessionState::Terminated,
+                degraded_env: None,
+            };
+            let bytes =
+                serde_json::to_vec(&terminated_msg).expect("pass4-HIGH-001: serialize terminated");
+            let len_bytes = (bytes.len() as u32).to_le_bytes();
+            let _ = stream.write_all(&len_bytes).await;
+            let _ = stream.write_all(&bytes).await;
+            let _ = stream.flush().await;
+            // Hold stream open so the watchdog has time to process the message.
+            tokio::time::sleep(Duration::from_secs(60)).await;
+        }
+    });
+    // Yield so the mock task has time to bind before rediscover_sessions is called.
+    tokio::time::sleep(Duration::from_millis(10)).await;
+
+    let (mut manager, _subs, _rx) = make_rediscovery_manager(tmp.path(), true);
+
+    // Phase 1: rediscover_sessions registers Terminating entry + spawns watchdog.
+    let report = manager
+        .rediscover_sessions()
+        .await
+        .expect("pass4-HIGH-001: rediscover_sessions must return Ok");
+
+    assert_eq!(
+        report.found_alive, 1,
+        "pass4-HIGH-001: Terminating + future deadline → found_alive=1; got {}",
+        report.found_alive
+    );
+
+    // Verify the entry is present and Terminating immediately after rediscovery.
+    let sessions_before = manager.session_list().await;
+    assert!(
+        sessions_before.iter().any(|s| s.session_id == session_id),
+        "pass4-HIGH-001: Terminating entry MUST be present right after rediscovery"
+    );
+
+    // Phase 2: advance virtual time so the mock's 100ms sleep elapses and the
+    // watchdog receives StateChanged::Terminated.
+    tokio::time::advance(Duration::from_millis(200)).await;
+    // Yield multiple times to let the watchdog task run to completion.
+    for _ in 0..8 {
+        tokio::task::yield_now().await;
+    }
+
+    // Phase 3: advance virtual time past the 10-second GC grace period.
+    // If spawn_gc_task was called, the GC task will fire here and remove the entry.
+    tokio::time::advance(Duration::from_secs(11)).await;
+    // Yield again to let the GC task run.
+    for _ in 0..8 {
+        tokio::task::yield_now().await;
+    }
+
+    // Assert 1: sidecar MUST be deleted.
+    // The watchdog's emit_terminated closure already deletes the sidecar inline
+    // (std::fs::remove_file in the closure), so this assertion exercises whether
+    // the inline deletion ran.
+    assert!(
+        !sidecar_path.exists(),
+        "pass4-HIGH-001: sidecar must be deleted after watchdog Terminated transition; \
+         still at {:?}",
+        sidecar_path
+    );
+
+    // Assert 2 (RED GATE — will FAIL against current impl):
+    // After the 10-second GC window the entry MUST NOT appear in the registry.
+    // Current impl: `emit_terminated` never calls `spawn_gc_task`, so the
+    // entry remains in `self.sessions` as a stale Terminated/Stopped entry.
+    let sessions_after = manager.session_list().await;
+    assert!(
+        !sessions_after.iter().any(|s| s.session_id == session_id),
+        "pass4-HIGH-001: Terminated entry MUST be removed from registry after 10s GC \
+         grace period (BC-2.08.005 PC-1 + spawn_gc_task contract). \
+         Current impl: watchdog `emit_terminated` closure does NOT call \
+         `spawn_gc_task`, so the stale Terminated entry lingers in self.sessions \
+         indefinitely and is visible in every session_list() call. \
+         Implementer fix: call `SessionManager::spawn_gc_task(sid, sidecar_path, \
+         socket_path, sessions_arc.clone(), broker_arc.clone())` from both arms \
+         of the watchdog tokio::select! immediately after `emit_terminated(...)`. \
+         This mirrors the live kill_session GC wiring."
+    );
+
+    let _ = std::fs::remove_file(&socket_path);
+}
