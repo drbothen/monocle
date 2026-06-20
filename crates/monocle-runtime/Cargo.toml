@@ -53,6 +53,7 @@ chrono = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
 async-trait = { workspace = true }
+futures = { workspace = true }
 
 [dev-dependencies]
 # tokio with test-util feature: required for tokio::time::pause()/advance() in

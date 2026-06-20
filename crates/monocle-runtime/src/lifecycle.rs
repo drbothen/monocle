@@ -559,10 +559,15 @@ pub async fn daemon_start_sequence(
         }
     };
 
-    // Step 9: Write hooks-settings.json AFTER lock file (SOQ-2) via the SOLE canonical
-    // writer: session_manager::write_hooks_settings_json (single-writer mandate, S-038).
-    // This guarantees lock.app="monocle" is always present in the production file.
-    // INV-6: on failure, remove lock file before returning.
+    // Step 8b: Session re-discovery (S-036 scope) — AFTER lock file (step 8), BEFORE
+    // hooks-settings.json write (step 9) and BEFORE UDS bind (step 10).
+    //
+    // Ordering invariant (BC-2.08.004 Invariant 1): re-discovery MUST complete before UDS
+    // bind so no TUI client can connect and receive a stale InitialState. Background
+    // Terminating watchdog tasks may still be running after UDS bind — this is intentional.
+    //
+    // hook_cfg and ipc_subscribers are constructed here (hoisted from the DaemonState block)
+    // so SessionManager can be fully wired at step 8b. Both are moved into DaemonState below.
     let wire_token = format!("monocle-v1:{auth_token}");
     let hook_cfg = crate::session_manager::HookEndpointConfig {
         pre_tool_use: format!(
@@ -590,6 +595,86 @@ pub async fn daemon_start_sequence(
             -d @-"
         ),
     };
+    // ipc_subscribers hoisted from DaemonState block so the broker can be wired at step 8b.
+    let ipc_subscribers: monocle_ipc::server::SubscriberList =
+        Arc::new(tokio::sync::Mutex::new(Vec::new()));
+
+    // Step 8b: construct a single SessionManager, call rediscover_sessions(), and keep it
+    // alive until it is moved into DaemonState.session_manager below (BC-2.08.004 AC-002 /
+    // Invariant 1: re-discovery MUST complete before UDS bind; sessions discovered here
+    // MUST appear in DaemonState — the one manager carries them there).
+    let session_manager_for_daemon_state = {
+        use crate::engine::claude_code::ClaudeCodeModule;
+        use crate::session_manager::{RealSessionHostSpawner, SessionManager};
+        let session_host_bin = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|d| d.join("monocle-session-host")))
+            .unwrap_or_else(|| std::path::PathBuf::from("monocle-session-host"));
+        let spawner_8b = Arc::new(RealSessionHostSpawner { session_host_bin });
+        let engine_8b = Arc::new(ClaudeCodeModule::new(String::new()));
+        let broker_8b = Arc::new(Arc::clone(&ipc_subscribers));
+        let mut session_manager_8b = SessionManager::new(
+            runtime_dir.to_path_buf(),
+            spawner_8b,
+            broker_8b,
+            engine_8b,
+            hook_cfg.clone(),
+        );
+        // S-036: Call rediscover_sessions() — MUST complete before step 9 + step 10.
+        // On failure, log and proceed with empty (but valid) registry (BC-2.08.004 PC-6).
+        match session_manager_8b.rediscover_sessions().await {
+            Ok(report) => {
+                // Log per-error structured detail before the summary so operators
+                // can see exactly which sidecars were corrupt/orphaned and why.
+                for err in &report.errors {
+                    use crate::session_manager::RediscoveryError;
+                    match err {
+                        RediscoveryError::CorruptSidecar { path, reason } => {
+                            tracing::warn!(
+                                sidecar_path = %path.display(),
+                                reason = %reason,
+                                "daemon_start_sequence: step 8b corrupt sidecar deleted"
+                            );
+                        }
+                        RediscoveryError::UnknownSchemaVersion { path, version } => {
+                            tracing::warn!(
+                                sidecar_path = %path.display(),
+                                schema_version = version,
+                                "daemon_start_sequence: step 8b unknown-schema sidecar deleted as orphan"
+                            );
+                        }
+                        RediscoveryError::RuntimeDirUnreadable { reason } => {
+                            tracing::warn!(
+                                reason = %reason,
+                                "daemon_start_sequence: step 8b runtime_dir unreadable"
+                            );
+                        }
+                    }
+                }
+                tracing::info!(
+                    found_alive = report.found_alive,
+                    found_dead = report.found_dead,
+                    errors = report.errors.len(),
+                    "daemon_start_sequence: step 8b (rediscover_sessions) complete"
+                );
+            }
+            Err(e) => {
+                tracing::error!(
+                    error = %e,
+                    "daemon_start_sequence: step 8b (rediscover_sessions) failed; \
+                     proceeding with empty registry (BC-2.08.004 PC-6)"
+                );
+            }
+        }
+        // Move session_manager_8b out of this block — it is the definitive SessionManager
+        // instance for DaemonState.  No second construction occurs below.
+        session_manager_8b
+    };
+
+    // Step 9: Write hooks-settings.json AFTER lock file (SOQ-2) via the SOLE canonical
+    // writer: session_manager::write_hooks_settings_json (single-writer mandate, S-038).
+    // This guarantees lock.app="monocle" is always present in the production file.
+    // INV-6: on failure, remove lock file before returning.
     let hooks_settings_path = runtime_dir.join("hooks-settings.json");
     if let Err(e) =
         crate::session_manager::write_hooks_settings_json(&hook_cfg, &hooks_settings_path)
@@ -653,10 +738,8 @@ pub async fn daemon_start_sequence(
     // pending_decisions is initialised here so the PreToolUse Defer path can
     // register prompts without a None-guard failure (BC-2.05.005 PC-1).
     //
-    // ipc_subscribers is constructed before DaemonState so the Arc can be cloned
-    // for the accept-loop spawn without reaching into Option<> after construction.
-    let ipc_subscribers: monocle_ipc::server::SubscriberList =
-        Arc::new(tokio::sync::Mutex::new(Vec::new()));
+    // ipc_subscribers was hoisted to step 8b to wire the broker for rediscover_sessions().
+    // It is reused here (already declared above).
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
     let sock_file_path = runtime_dir
         .join("monocle.sock")
@@ -688,29 +771,11 @@ pub async fn daemon_start_sequence(
         pending_decisions: Some(Arc::new(crate::permissions::PendingDecisionRegistry::new())),
         ipc_subscribers: Some(Arc::clone(&ipc_subscribers)),
         uds_transport: Some(uds_transport),
-        // B-001/B-002: Wire SessionManager with the daemon's REAL ipc_subscribers and runtime_dir.
-        // Uses RealSessionHostSpawner resolved from current_exe parent directory.
-        // ClaudeCodeModule is the Phase-1 engine. The broker is Arc<Arc<...>> (double-Arc per
-        // SessionManager::new() contract: broker: Arc<SubscriberList> where
-        // SubscriberList = Arc<Mutex<Vec<ClientEntry>>>).
-        session_manager: {
-            use crate::engine::claude_code::ClaudeCodeModule;
-            use crate::session_manager::{RealSessionHostSpawner, SessionManager};
-            let session_host_bin = std::env::current_exe()
-                .ok()
-                .and_then(|p| p.parent().map(|d| d.join("monocle-session-host")))
-                .unwrap_or_else(|| std::path::PathBuf::from("monocle-session-host"));
-            let spawner = Arc::new(RealSessionHostSpawner { session_host_bin });
-            let engine = Arc::new(ClaudeCodeModule::new(String::new()));
-            let broker = Arc::new(Arc::clone(&ipc_subscribers));
-            Some(tokio::sync::Mutex::new(SessionManager::new(
-                runtime_dir.to_path_buf(),
-                spawner,
-                broker,
-                engine,
-                hook_cfg.clone(),
-            )))
-        },
+        // S-036: session_manager_for_daemon_state was constructed at step 8b (above), had
+        // rediscover_sessions() called on it, and is moved here.  No second construction.
+        // Re-discovered sessions are live in this SessionManager and will appear in
+        // DaemonState, satisfying AC-015 (sessions visible in InitialState on first TUI connect).
+        session_manager: Some(tokio::sync::Mutex::new(session_manager_for_daemon_state)),
         session_id_gen: std::sync::Arc::new(crate::session_manager::UuidV4Generator),
         hook_decision_override: None,
         hook_delay_ms: None, // Unit-test override only; not set via env var.
