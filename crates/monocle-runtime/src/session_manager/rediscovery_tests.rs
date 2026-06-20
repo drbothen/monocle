@@ -4217,6 +4217,416 @@ async fn test_BC_2_08_004_rediscovery_watchdog_gc_grace_from_transition_msg_arm(
     let _ = std::fs::remove_file(&socket_path);
 }
 
+// ===========================================================================
+// PASS-9 REGRESSION COVERAGE — corrupt-field branch coverage (O-2)
+//                              and schema_version 2 acceptance (O-1)
+//
+// These tests assert ALREADY-IMPLEMENTED behavior; they pass immediately and
+// serve as regression locks.  They were flagged as untested by the pass-9
+// adversarial review.
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// O-2a: missing project_root → CorruptSidecar + delete + continue
+// ---------------------------------------------------------------------------
+
+/// O-2a: sidecar with valid JSON but missing `project_root` field →
+/// `RediscoveryError::CorruptSidecar` recorded; sidecar deleted; function
+/// returns `Ok`; `found_alive`/`found_dead` unaffected; any co-existing
+/// valid session is still processed.
+///
+/// `project_root` is required for all schema versions per BC-2.08.001.
+/// The implementer added this branch (mod.rs ~4542) when extending the
+/// required-field checks; no dedicated test existed before this pass.
+///
+/// Regression lock: this test PASSES against the current implementation.
+#[tokio::test]
+async fn test_BC_2_08_004_rediscovery_missing_project_root_corrupt() {
+    let tmp = tempfile::tempdir().expect("O-2a: tempdir");
+
+    // --- corrupt sidecar: valid JSON, project_root absent ---
+    let corrupt_id = "00000000-0036-4000-a00a-000000000001";
+    let corrupt_sidecar = serde_json::json!({
+        "schema_version": 3u32,
+        "session_id": corrupt_id,
+        "pid": std::process::id(),
+        "socket_path": "/tmp/s036-o2a-corrupt.sock",
+        "child_pid": serde_json::Value::Null,
+        "state": "Running",
+        // "project_root" intentionally omitted
+        "cwd": "/tmp/test-cwd",
+        "harness_id": "claude-code",
+        "profile_id": "default",
+        "started_at": chrono::Utc::now().to_rfc3339(),
+        "display_name": "test",
+        "pty_rows": 24u16,
+        "pty_cols": 80u16,
+        "kill_deadline_unix_ms": serde_json::Value::Null,
+    });
+    let corrupt_path = tmp.path().join(format!("session-{}.json", corrupt_id));
+    {
+        let mut f = std::fs::File::create(&corrupt_path).expect("O-2a: create corrupt sidecar");
+        f.write_all(
+            &serde_json::to_vec_pretty(&corrupt_sidecar).expect("O-2a: serialize corrupt"),
+        )
+        .expect("O-2a: write corrupt");
+    }
+
+    // --- valid co-existing session (Running + alive mock host) ---
+    let valid_id = "00000000-0036-4000-a00a-000000000002";
+    let valid_socket = short_socket_path("o2a-valid");
+    let _ = std::fs::remove_file(&valid_socket);
+    write_sidecar_v3(tmp.path(), valid_id, "Running", 0, &valid_socket, None);
+    let mut done_rx = spawn_mock_session_host_attach(valid_socket.clone());
+
+    let (mut manager, _subs, _rx) = make_rediscovery_manager(tmp.path(), true);
+
+    let report = manager
+        .rediscover_sessions()
+        .await
+        .expect("O-2a: rediscover_sessions must return Ok");
+
+    let _ = tokio::time::timeout(Duration::from_secs(6), done_rx.recv()).await;
+
+    // Assert 1: exactly one CorruptSidecar error for the missing project_root sidecar.
+    assert_eq!(
+        report.errors.len(),
+        1,
+        "O-2a: errors must have 1 CorruptSidecar entry; got {:?}",
+        report.errors
+    );
+    assert!(
+        matches!(&report.errors[0], RediscoveryError::CorruptSidecar { .. }),
+        "O-2a: error must be CorruptSidecar; got {:?}",
+        report.errors[0]
+    );
+
+    // Assert 2: corrupt sidecar deleted.
+    assert!(
+        !corrupt_path.exists(),
+        "O-2a: corrupt sidecar (missing project_root) must be deleted; still at {:?}",
+        corrupt_path
+    );
+
+    // Assert 3: valid session still processed (found_alive incremented).
+    assert_eq!(
+        report.found_alive, 1,
+        "O-2a: valid co-existing session must be found_alive=1; got {}",
+        report.found_alive
+    );
+    assert_eq!(
+        report.found_dead, 0,
+        "O-2a: found_dead=0; got {}",
+        report.found_dead
+    );
+
+    // Assert 4: corrupt session NOT registered; valid session IS registered.
+    let sessions = manager.session_list().await;
+    assert!(
+        !sessions.iter().any(|s| s.session_id == corrupt_id),
+        "O-2a: corrupt session (missing project_root) MUST NOT appear in registry"
+    );
+    assert!(
+        sessions.iter().any(|s| s.session_id == valid_id),
+        "O-2a: valid co-existing session MUST appear in registry"
+    );
+
+    let _ = std::fs::remove_file(&valid_socket);
+}
+
+/// O-2a (empty string): sidecar with valid JSON but `project_root: ""` →
+/// same CorruptSidecar treatment as a fully absent project_root.
+///
+/// The implementation filters empty strings (`filter(|s| !s.is_empty())`) so
+/// an empty-string project_root is indistinguishable from a missing field.
+///
+/// Regression lock: passes against current implementation.
+#[tokio::test]
+async fn test_BC_2_08_004_rediscovery_empty_project_root_corrupt() {
+    let tmp = tempfile::tempdir().expect("O-2a-empty: tempdir");
+
+    let corrupt_id = "00000000-0036-4000-a00a-000000000003";
+    let corrupt_sidecar = serde_json::json!({
+        "schema_version": 3u32,
+        "session_id": corrupt_id,
+        "pid": std::process::id(),
+        "socket_path": "/tmp/s036-o2a-empty.sock",
+        "child_pid": serde_json::Value::Null,
+        "state": "Running",
+        "project_root": "",   // empty string: treated same as absent
+        "cwd": "/tmp/test-cwd",
+        "harness_id": "claude-code",
+        "profile_id": "default",
+        "started_at": chrono::Utc::now().to_rfc3339(),
+        "display_name": "test",
+        "pty_rows": 24u16,
+        "pty_cols": 80u16,
+        "kill_deadline_unix_ms": serde_json::Value::Null,
+    });
+    let corrupt_path = tmp.path().join(format!("session-{}.json", corrupt_id));
+    {
+        let mut f =
+            std::fs::File::create(&corrupt_path).expect("O-2a-empty: create corrupt sidecar");
+        f.write_all(
+            &serde_json::to_vec_pretty(&corrupt_sidecar).expect("O-2a-empty: serialize"),
+        )
+        .expect("O-2a-empty: write");
+    }
+
+    let (mut manager, _subs, _rx) = make_rediscovery_manager(tmp.path(), true);
+
+    let report = manager
+        .rediscover_sessions()
+        .await
+        .expect("O-2a-empty: rediscover_sessions must return Ok");
+
+    assert_eq!(
+        report.errors.len(),
+        1,
+        "O-2a-empty: errors must have 1 CorruptSidecar entry; got {:?}",
+        report.errors
+    );
+    assert!(
+        matches!(&report.errors[0], RediscoveryError::CorruptSidecar { .. }),
+        "O-2a-empty: error must be CorruptSidecar; got {:?}",
+        report.errors[0]
+    );
+    assert!(
+        !corrupt_path.exists(),
+        "O-2a-empty: empty-project_root sidecar must be deleted; still at {:?}",
+        corrupt_path
+    );
+    assert_eq!(
+        report.found_alive, 0,
+        "O-2a-empty: found_alive=0; got {}",
+        report.found_alive
+    );
+}
+
+// ---------------------------------------------------------------------------
+// O-2b: missing required fields (session_id, pid, socket_path, state)
+// ---------------------------------------------------------------------------
+
+/// O-2b: sidecars missing each of the other four required fields — `session_id`,
+/// `pid`, `socket_path`, `state` — each yield `RediscoveryError::CorruptSidecar`,
+/// the sidecar is deleted, and `rediscover_sessions` returns `Ok`.
+///
+/// These branches live at mod.rs ~4487 (session_id), ~4500 (pid), ~4513
+/// (socket_path), ~4526 (state) and were previously un-tested in isolation.
+///
+/// Regression lock: passes against current implementation.
+#[tokio::test]
+async fn test_BC_2_08_004_rediscovery_missing_required_field_corrupt() {
+    // Sub-case helper: write a sidecar that omits one field, run rediscover,
+    // assert CorruptSidecar + delete + Ok return.
+    async fn check_missing_field(field: &'static str, suffix: &str) {
+        let tmp = tempfile::tempdir()
+            .unwrap_or_else(|e| panic!("O-2b ({field}): tempdir: {e}"));
+        let session_id_val = format!("00000000-0036-4000-a00b-0000000000{:02x}", suffix.len());
+
+        // Build a base sidecar with all required fields, then remove the target one.
+        let mut sidecar_map = serde_json::json!({
+            "schema_version": 3u32,
+            "session_id": &session_id_val,
+            "pid": std::process::id(),
+            "socket_path": format!("/tmp/s036-o2b-{}.sock", suffix),
+            "child_pid": serde_json::Value::Null,
+            "state": "Running",
+            "project_root": "/tmp/test-project",
+            "cwd": "/tmp/test-cwd",
+            "harness_id": "claude-code",
+            "profile_id": "default",
+            "started_at": chrono::Utc::now().to_rfc3339(),
+            "display_name": "test",
+            "pty_rows": 24u16,
+            "pty_cols": 80u16,
+            "kill_deadline_unix_ms": serde_json::Value::Null,
+        });
+        sidecar_map
+            .as_object_mut()
+            .expect("O-2b: sidecar must be object")
+            .remove(field);
+
+        let sidecar_path = tmp
+            .path()
+            .join(format!("session-{}.json", &session_id_val));
+        {
+            let mut f = std::fs::File::create(&sidecar_path)
+                .unwrap_or_else(|e| panic!("O-2b ({field}): create sidecar: {e}"));
+            f.write_all(
+                &serde_json::to_vec_pretty(&sidecar_map)
+                    .unwrap_or_else(|e| panic!("O-2b ({field}): serialize: {e}")),
+            )
+            .unwrap_or_else(|e| panic!("O-2b ({field}): write: {e}"));
+        }
+
+        let (tx, _rx_ch) = mpsc::channel::<ServerToClient>(CLIENT_CHANNEL_CAPACITY);
+        let entry = ClientEntry::new(tx);
+        let subs: SubscriberList = Arc::new(Mutex::new(vec![entry]));
+        let broker = Arc::new(Arc::clone(&subs));
+        let spawner = Arc::new(MockSessionHostSpawner {
+            spawn_result: None,
+            fake_pid: 0,
+        });
+        let engine: Arc<dyn monocle_core::engine::EngineModule> =
+            Arc::new(SucceedingMockEngineRediscovery);
+        let mut manager = SessionManager::new(
+            tmp.path().to_path_buf(),
+            spawner,
+            broker,
+            engine,
+            HookEndpointConfig::default(),
+        );
+        manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifier { allow: true }));
+
+        let report = manager
+            .rediscover_sessions()
+            .await
+            .unwrap_or_else(|e| panic!("O-2b ({field}): rediscover_sessions must return Ok: {e}"));
+
+        assert_eq!(
+            report.errors.len(),
+            1,
+            "O-2b ({field}): errors must have 1 CorruptSidecar entry; got {:?}",
+            report.errors
+        );
+        assert!(
+            matches!(&report.errors[0], RediscoveryError::CorruptSidecar { .. }),
+            "O-2b ({field}): error must be CorruptSidecar; got {:?}",
+            report.errors[0]
+        );
+        assert!(
+            !sidecar_path.exists(),
+            "O-2b ({field}): corrupt sidecar must be deleted; still at {:?}",
+            sidecar_path
+        );
+        assert_eq!(
+            report.found_alive, 0,
+            "O-2b ({field}): found_alive must be 0; got {}",
+            report.found_alive
+        );
+        assert_eq!(
+            report.found_dead, 0,
+            "O-2b ({field}): found_dead must be 0; got {}",
+            report.found_dead
+        );
+    }
+
+    check_missing_field("session_id", "sid").await;
+    check_missing_field("pid", "pid").await;
+    check_missing_field("socket_path", "soc").await;
+    check_missing_field("state", "sta").await;
+}
+
+// ---------------------------------------------------------------------------
+// O-1: schema_version 2 accepted (cwd present, kill_deadline_unix_ms absent)
+// ---------------------------------------------------------------------------
+
+/// Write a schema_version 2 sidecar.
+///
+/// Schema_version 2 distinguishing combination: `cwd` present (unlike v1),
+/// `kill_deadline_unix_ms` absent (unlike v3).  All required fields are present.
+fn write_sidecar_v2(
+    runtime_dir: &std::path::Path,
+    session_id: &str,
+    state: &str,
+    pid: u32,
+    socket_path: &std::path::Path,
+) -> std::path::PathBuf {
+    let sidecar = serde_json::json!({
+        "schema_version": 2u32,
+        "session_id": session_id,
+        "pid": pid,
+        "socket_path": socket_path.to_string_lossy(),
+        "child_pid": serde_json::Value::Null,
+        "state": state,
+        "project_root": "/tmp/test-project-v2",
+        "cwd": "/tmp/test-cwd-v2",   // present (distinguishes v2 from v1)
+        // kill_deadline_unix_ms absent (distinguishes v2 from v3)
+        "harness_id": "claude-code",
+        "profile_id": "default",
+        "started_at": chrono::Utc::now().to_rfc3339(),
+        "display_name": "claude-code — test-project-v2",
+        "pty_rows": 24u16,
+        "pty_cols": 80u16,
+    });
+    let sidecar_path = runtime_dir.join(format!("session-{}.json", session_id));
+    let mut f = std::fs::File::create(&sidecar_path)
+        .unwrap_or_else(|e| panic!("write_sidecar_v2: create {sidecar_path:?}: {e}"));
+    f.write_all(&serde_json::to_vec_pretty(&sidecar).expect("write_sidecar_v2: serialize"))
+        .expect("write_sidecar_v2: write");
+    sidecar_path
+}
+
+/// O-1: a schema_version 2 sidecar (`cwd` present, `kill_deadline_unix_ms` absent)
+/// is accepted and processed as a normal re-discovery — the session is found alive
+/// and re-registered as `Running`.
+///
+/// BC-2.08.004 postcondition 1 (schema_version 2 arm).  The pass-9 review noted
+/// that v2's distinguishing combination (`cwd` present, `kill_deadline_unix_ms`
+/// absent) was only indirectly covered via schema_version 3 tests with null
+/// `kill_deadline_unix_ms`.  This test exercises v2 explicitly.
+///
+/// Regression lock: passes against current implementation.
+#[tokio::test]
+async fn test_BC_2_08_004_rediscovery_schema_v2_accepted() {
+    let tmp = tempfile::tempdir().expect("O-1-v2: tempdir");
+    let session_id = "00000000-0036-4000-a00c-000000000001";
+
+    let socket_path = short_socket_path("o1-v2");
+    let _ = std::fs::remove_file(&socket_path);
+    write_sidecar_v2(tmp.path(), session_id, "Running", 0, &socket_path);
+    let mut done_rx = spawn_mock_session_host_attach(socket_path.clone());
+
+    let (mut manager, _subs, _rx) = make_rediscovery_manager(tmp.path(), true);
+
+    let report = manager
+        .rediscover_sessions()
+        .await
+        .expect("O-1-v2: rediscover_sessions must return Ok");
+
+    let _ = tokio::time::timeout(Duration::from_secs(6), done_rx.recv()).await;
+
+    // Assert 1: accepted without error.
+    assert!(
+        report.errors.is_empty(),
+        "O-1-v2: schema_version 2 must be accepted without errors; got {:?}",
+        report.errors
+    );
+
+    // Assert 2: session counted as alive.
+    assert_eq!(
+        report.found_alive, 1,
+        "O-1-v2: schema_version 2 Running session → found_alive=1; got {}",
+        report.found_alive
+    );
+    assert_eq!(
+        report.found_dead, 0,
+        "O-1-v2: found_dead=0; got {}",
+        report.found_dead
+    );
+
+    // Assert 3: session re-registered as Running with the correct cwd from the sidecar.
+    let sessions = manager.session_list().await;
+    let snap = sessions
+        .iter()
+        .find(|s| s.session_id == session_id)
+        .expect("O-1-v2: schema_version 2 session must be in registry after re-discovery");
+    assert_eq!(
+        snap.state,
+        SessionState::Running,
+        "O-1-v2: re-discovered v2 session must be Running; got {:?}",
+        snap.state
+    );
+    assert_eq!(
+        snap.cwd, "/tmp/test-cwd-v2",
+        "O-1-v2: cwd from schema_version 2 sidecar must be preserved; got '{}'",
+        snap.cwd
+    );
+
+    let _ = std::fs::remove_file(&socket_path);
+}
+
 // ---------------------------------------------------------------------------
 // MED-001 (pass-6): Terminating dead-PID GC MUST emit broker events
 // ---------------------------------------------------------------------------
