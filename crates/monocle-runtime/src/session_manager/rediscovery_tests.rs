@@ -2266,3 +2266,608 @@ async fn test_BC_2_08_004_rediscovery_terminating_watchdog_terminated_msg_emits_
 
     let _ = std::fs::remove_file(&socket_path);
 }
+
+// ===========================================================================
+// ADVERSARIAL PASS 2 CORRECTIONS — RED-GATE TESTS
+//
+// These tests encode spec behaviour surfaced by adversarial-pass-2 and must
+// FAIL against the current implementation.  Each comment identifies the
+// finding ID.
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// BLOCKER-001 (pass-2) — Terminating with null kill_deadline_unix_ms must
+//                        take NOT-elapsed path with a NEW 12-second window
+// ---------------------------------------------------------------------------
+
+/// BLOCKER-001 (pass-2): Terminating sidecar with `kill_deadline_unix_ms = null`
+/// (i.e., `None` / absent field) + alive PID + SO_PEERCRED OK.
+///
+/// Per AC-006 and BC-2.08.004 PC-2b: when `kill_deadline_unix_ms` is absent or
+/// null, the daemon MUST assign a fresh 12-second window from `Instant::now()` and
+/// take the NOT-elapsed watchdog path — NOT the immediate-SIGKILL path.
+///
+/// Current impl maps `None → unwrap_or(0)` which collapses to `0 <= current_unix_ms`
+/// → elapsed → immediate SIGKILL.  This test will FAIL because SIGKILL fires and the
+/// session is NOT registered as Terminating.
+#[tokio::test]
+async fn test_BC_2_08_004_rediscovery_terminating_null_deadline_new_window() {
+    let tmp = tempfile::tempdir().expect("pass2-BLOCKER-001: tempdir");
+    let session_id = "00000000-0036-4000-a005-000000000001";
+
+    // Sidecar with kill_deadline_unix_ms = None (null in JSON).
+    let socket_path = short_socket_path("bl001p2-null");
+    write_sidecar_v3(
+        tmp.path(),
+        session_id,
+        "Terminating",
+        std::process::id(), // alive PID
+        &socket_path,
+        None, // <-- key: null deadline
+    );
+
+    // Mock session-host: accept the Kill connect and hold open indefinitely.
+    // Correct impl sends Kill fire-and-forget then spawns watchdog; we just
+    // need a listening socket to let the connect succeed.
+    let sock_clone = socket_path.clone();
+    tokio::spawn(async move {
+        let _ = std::fs::remove_file(&sock_clone);
+        let listener =
+            UnixListener::bind(&sock_clone).expect("pass2-BLOCKER-001: mock bind");
+        if let Ok((_stream, _)) = listener.accept().await {
+            // Hold open long enough for assertions to run.
+            tokio::time::sleep(Duration::from_secs(20)).await;
+        }
+    });
+    tokio::time::sleep(Duration::from_millis(20)).await;
+
+    // Track whether SIGKILL fires.
+    let (sigkill_tx, mut sigkill_rx) = mpsc::channel::<u32>(4);
+    let (mut manager, _subs, _rx) = make_rediscovery_manager(tmp.path(), true);
+    manager.with_pid_sigkill_fn(Arc::new(move |pid: nix::unistd::Pid| {
+        let _ = sigkill_tx.try_send(pid.as_raw() as u32);
+        Ok(())
+    }));
+
+    // RED GATE: current impl unwrap_or(0) → elapsed → SIGKILL fires immediately.
+    let report = manager
+        .rediscover_sessions()
+        .await
+        .expect("pass2-BLOCKER-001: rediscover_sessions must return Ok");
+
+    // Assert 1: SIGKILL must NOT fire during rediscover_sessions() itself.
+    // The null deadline must produce a fresh window → NOT-elapsed path.
+    let got_sigkill =
+        tokio::time::timeout(Duration::from_millis(300), sigkill_rx.recv()).await;
+    assert!(
+        got_sigkill.is_err() || got_sigkill.unwrap().is_none(),
+        "pass2-BLOCKER-001: null kill_deadline_unix_ms MUST take the NOT-elapsed \
+         watchdog path (fresh 12s window); SIGKILL must NOT fire immediately. \
+         Current impl unwrap_or(0) causes immediate SIGKILL. \
+         AC-006 / BC-2.08.004 PC-2b."
+    );
+
+    // Assert 2: session must be registered as Terminating (watchdog path taken).
+    let sessions = manager.session_list().await;
+    assert!(
+        sessions.iter().any(|s| s.session_id == session_id),
+        "pass2-BLOCKER-001: null-deadline Terminating MUST be registered in registry \
+         (watchdog path). Current impl GCs immediately."
+    );
+
+    // Assert 3: found_alive=1 (watchdog path → counted as alive).
+    assert_eq!(
+        report.found_alive, 1,
+        "pass2-BLOCKER-001: null deadline → found_alive=1 (watchdog path); got {}",
+        report.found_alive
+    );
+
+    let _ = std::fs::remove_file(&socket_path);
+}
+
+// ---------------------------------------------------------------------------
+// BLOCKER-002 (pass-2) — Terminating watchdog: socket close without Terminated
+//                        msg before deadline must still fire SIGKILL + GC + broker
+// ---------------------------------------------------------------------------
+
+/// BLOCKER-002 (pass-2): Terminating sidecar, NOT-elapsed deadline, alive PID,
+/// SO_PEERCRED OK → watchdog spawned.  The mock session-host CLOSES the Kill
+/// socket WITHOUT sending `HostToDaemon::StateChanged{Terminated}`, BEFORE the
+/// deadline.  At the deadline, the watchdog must still fire SIGKILL + GC sidecar +
+/// emit `SessionStateChanged{Terminated}` then `SessionListUpdate` via broker.
+///
+/// Per BC-2.08.004 PC-2b Terminating step (iv).
+///
+/// Current impl: when the socket closes, `read_exact` returns Err → loop breaks →
+/// `terminated_by_msg` future completes with `false` → the `got_terminated` select!
+/// arm resolves with `got_terminated == false` → the arm does nothing and exits
+/// ("fall through to deadline path" comment but no code follows) — SIGKILL and
+/// broker emissions are skipped entirely.
+///
+/// This test uses real wall-clock time with a short 300ms deadline to make the
+/// socket-close race deterministic: the mock drops the stream immediately after
+/// consuming the Kill frame (no sleep), so `terminated_by_msg` resolves with
+/// `false` before the deadline timer fires.  After the deadline elapses, the
+/// watchdog must STILL fire SIGKILL + broker.
+#[tokio::test]
+async fn test_BC_2_08_004_rediscovery_terminating_watchdog_socket_close_before_terminated() {
+    let tmp = tempfile::tempdir().expect("pass2-BLOCKER-002: tempdir");
+    let session_id = "00000000-0036-4000-a005-000000000002";
+
+    // Short future deadline: 600ms from now (real wall-clock).
+    let future_ms = unix_now_ms() + 600;
+    let socket_path = short_socket_path("bl002p2-close");
+    write_sidecar_v3(
+        tmp.path(),
+        session_id,
+        "Terminating",
+        std::process::id(), // alive PID
+        &socket_path,
+        Some(future_ms),
+    );
+    let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+
+    // Mock session-host: accept, read Kill frame, then DROP the stream IMMEDIATELY
+    // (no sleep) — ensures the socket-close resolves before the 600ms deadline.
+    // The watchdog's `terminated_by_msg` future will complete with `false` early,
+    // and the `got_terminated` select! arm fires.  The bug: nothing happens after.
+    let sock_clone = socket_path.clone();
+    tokio::spawn(async move {
+        let _ = std::fs::remove_file(&sock_clone);
+        let listener =
+            UnixListener::bind(&sock_clone).expect("pass2-BLOCKER-002: mock bind");
+        if let Ok((mut stream, _)) = listener.accept().await {
+            // Read and discard the Kill frame.
+            let mut len_buf = [0u8; 4];
+            if stream.read_exact(&mut len_buf).await.is_ok() {
+                let len = u32::from_le_bytes(len_buf) as usize;
+                let mut body = vec![0u8; len];
+                let _ = stream.read_exact(&mut body).await;
+            }
+            // Drop immediately — socket closed, NO Terminated sent.
+            // stream goes out of scope here.
+        }
+    });
+    tokio::time::sleep(Duration::from_millis(20)).await;
+
+    let (sigkill_tx, mut sigkill_rx) = mpsc::channel::<u32>(4);
+    let (mut manager, _subs, mut rx) = make_rediscovery_manager(tmp.path(), true);
+    manager.with_pid_sigkill_fn(Arc::new(move |pid: nix::unistd::Pid| {
+        let _ = sigkill_tx.try_send(pid.as_raw() as u32);
+        Ok(())
+    }));
+
+    // Run rediscover_sessions — watchdog spawned, returns immediately (found_alive=1).
+    let report = manager
+        .rediscover_sessions()
+        .await
+        .expect("pass2-BLOCKER-002: rediscover_sessions must return Ok");
+
+    assert_eq!(
+        report.found_alive, 1,
+        "pass2-BLOCKER-002: Terminating + future deadline → found_alive=1; got {}",
+        report.found_alive
+    );
+
+    // Wait for the deadline to elapse and the watchdog to react (600ms + margin).
+    // In the CORRECT impl, SIGKILL fires here.  In the BUGGY impl, the watchdog
+    // already exited when the socket closed, so SIGKILL never fires.
+    let got_sigkill =
+        tokio::time::timeout(Duration::from_millis(1200), sigkill_rx.recv()).await;
+    assert!(
+        got_sigkill.is_ok() && got_sigkill.unwrap().is_some(),
+        "pass2-BLOCKER-002: watchdog must fire SIGKILL at deadline even when the \
+         session-host socket closes before sending Terminated. \
+         Current impl: when socket closes early, terminated_by_msg completes with \
+         false → got_terminated arm exits without scheduling deadline SIGKILL. \
+         BC-2.08.004 PC-2b Terminating step (iv)."
+    );
+
+    tokio::task::yield_now().await;
+    tokio::task::yield_now().await;
+
+    // Assert B: sidecar GC'd.
+    assert!(
+        !sidecar_path.exists(),
+        "pass2-BLOCKER-002: watchdog must delete sidecar on SIGKILL; still at {:?}",
+        sidecar_path
+    );
+
+    // Assert C + D: broker emissions — SessionStateChanged{Terminated} then
+    // SessionListUpdate.  RED GATE: current impl never reaches this code.
+    let drain_deadline = tokio::time::Instant::now() + Duration::from_millis(300);
+    let mut state_changed_terminated = false;
+    let mut list_update_found = false;
+    loop {
+        match tokio::time::timeout_at(drain_deadline, rx.recv()).await {
+            Ok(Some(monocle_ipc::types::ServerToClient::SessionStateChanged {
+                session_id: ref sid,
+                new_state,
+                ..
+            })) if sid == session_id => {
+                if new_state == monocle_ipc::types::SessionState::Terminated {
+                    state_changed_terminated = true;
+                }
+            }
+            Ok(Some(monocle_ipc::types::ServerToClient::SessionListUpdate { .. })) => {
+                list_update_found = true;
+            }
+            Ok(Some(_)) => continue,
+            _ => break,
+        }
+    }
+    assert!(
+        state_changed_terminated,
+        "pass2-BLOCKER-002: watchdog must emit SessionStateChanged{{Terminated}} to \
+         broker when deadline fires after socket-close-without-Terminated. \
+         BC-2.08.004 PC-2b + SS-daemon-wiring §3b."
+    );
+    assert!(
+        list_update_found,
+        "pass2-BLOCKER-002: watchdog must emit SessionListUpdate to broker after \
+         SIGKILL at deadline. SS-daemon-wiring §3b."
+    );
+
+    let _ = std::fs::remove_file(&socket_path);
+}
+
+// ---------------------------------------------------------------------------
+// HIGH-001 (pass-2) — SO_PEERCRED pid mismatch (same uid, different pid) rejected
+// ---------------------------------------------------------------------------
+
+/// HIGH-001 (pass-2): A session-host socket whose PEER pid does NOT match the
+/// sidecar's recorded pid (same uid, different pid — stale sidecar / PID-reuse /
+/// spoof attempt).  Daemon MUST reject: log WARN, NOT register the session,
+/// SIGTERM the sidecar pid, delete the sidecar.
+///
+/// Per SS-session-manager.md §Per-session UDS security item 2.
+///
+/// IMPLEMENTER NOTE: The current `FakePeerCredVerifier` only accepts a boolean
+/// `allow` flag and cannot express "same uid, different pid".  This test uses a
+/// `FakePeerCredVerifierWithPidMismatch` struct defined in this module (test-only).
+/// For this test to be COMPLETE, the implementer must:
+///   1. Add a `peer_pid` field to the peer-cred result in `PeerCredVerifier::verify()`.
+///   2. Expose the sidecar's recorded pid to the verifier call site.
+///   3. Compare peer_pid against sidecar pid and reject on mismatch.
+///
+/// Until that seam exists, `FakePeerCredVerifierWithPidMismatch::verify()` returns
+/// `Ok(())` (uid matches) so the current implementation DOES register the session.
+/// The "session NOT registered" assertion will FAIL, proving the pid-mismatch
+/// check is absent.
+struct FakePeerCredVerifierWithPidMismatch;
+
+impl super::PeerCredVerifier for FakePeerCredVerifierWithPidMismatch {
+    fn verify(&self, _stream: &tokio::net::UnixStream) -> Result<(), super::SessionError> {
+        // IMPLEMENTER: this verifier models a peer with MATCHING uid but MISMATCHED pid.
+        // Until the production PeerCredVerifier trait exposes peer_pid comparison,
+        // we return Ok(()) here (uid match) — which means the current implementation
+        // DOES register the session.  The test assertion (session NOT registered) will
+        // FAIL, proving the pid-mismatch check is absent.
+        //
+        // Once the implementer adds pid comparison to verify(), update this verifier
+        // to return Err(super::SessionError::Io(...)) to simulate the mismatch.
+        Ok(())
+    }
+}
+
+#[tokio::test]
+async fn test_BC_2_08_004_rediscovery_peercred_pid_mismatch_rejected() {
+    let tmp = tempfile::tempdir().expect("pass2-HIGH-001: tempdir");
+    let session_id = "00000000-0036-4000-a005-000000000003";
+
+    // Sidecar records pid = 100 (almost certainly not a real running process).
+    let sidecar_pid: u32 = 100;
+    let socket_path = short_socket_path("hi001p2-pidmism");
+    write_sidecar_v3(
+        tmp.path(),
+        session_id,
+        "Running",
+        sidecar_pid,
+        &socket_path,
+        None,
+    );
+    let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+
+    // Spawn a mock session-host whose actual peer pid is std::process::id(),
+    // which differs from sidecar_pid=100 on any realistic system.
+    let sock_clone = socket_path.clone();
+    tokio::spawn(async move {
+        let _ = std::fs::remove_file(&sock_clone);
+        let listener = UnixListener::bind(&sock_clone).expect("pass2-HIGH-001: mock bind");
+        if let Ok((_stream, _)) = listener.accept().await {
+            tokio::time::sleep(Duration::from_millis(500)).await;
+        }
+    });
+    tokio::time::sleep(Duration::from_millis(20)).await;
+
+    let (sigterm_tx, mut sigterm_rx) = mpsc::channel::<u32>(4);
+
+    // Build manager manually to inject FakePeerCredVerifierWithPidMismatch.
+    let (tx, _rx_ch) = mpsc::channel::<monocle_ipc::types::ServerToClient>(
+        monocle_ipc::server::CLIENT_CHANNEL_CAPACITY,
+    );
+    let entry = monocle_ipc::server::ClientEntry::new(tx);
+    let subs: monocle_ipc::server::SubscriberList =
+        Arc::new(tokio::sync::Mutex::new(vec![entry]));
+    let broker = Arc::new(Arc::clone(&subs));
+    let spawner = Arc::new(super::MockSessionHostSpawner {
+        spawn_result: None,
+        fake_pid: 0,
+    });
+    let engine: Arc<dyn monocle_core::engine::EngineModule> =
+        Arc::new(SucceedingMockEngineRediscovery);
+    let mut manager = super::SessionManager::new(
+        tmp.path().to_path_buf(),
+        spawner,
+        broker,
+        engine,
+        super::HookEndpointConfig::default(),
+    );
+    // IMPLEMENTER: extend PeerCredVerifier to expose peer_pid; update
+    // FakePeerCredVerifierWithPidMismatch to return Err on pid mismatch.
+    manager.with_peer_cred_verifier(Arc::new(FakePeerCredVerifierWithPidMismatch));
+    manager.with_pid_sigterm_fn(Arc::new(move |pid: nix::unistd::Pid| {
+        let _ = sigterm_tx.try_send(pid.as_raw() as u32);
+        Ok(())
+    }));
+
+    // RED GATE: current impl has no pid-mismatch check — session will be registered.
+    let report = manager
+        .rediscover_sessions()
+        .await
+        .expect("pass2-HIGH-001: rediscover_sessions must return Ok");
+
+    // Assert 1: session must NOT be registered (pid mismatch → reject).
+    // FAILS NOW: current impl registers it because pid is not checked.
+    assert!(
+        !manager
+            .session_list()
+            .await
+            .iter()
+            .any(|s| s.session_id == session_id),
+        "pass2-HIGH-001: session-host with PEER pid != sidecar pid MUST NOT be \
+         registered (SS-session-manager.md §Per-session UDS security item 2). \
+         Current impl has no pid-mismatch check — session is registered via \
+         uid-only check (FakePeerCredVerifierWithPidMismatch returns Ok)."
+    );
+
+    // Assert 2: SIGTERM sent for the sidecar pid.
+    // NOTE: This assertion may not be reached if Assert 1 fires first.
+    let got_sigterm =
+        tokio::time::timeout(Duration::from_millis(500), sigterm_rx.recv()).await;
+    assert!(
+        got_sigterm.is_ok() && got_sigterm.unwrap().is_some(),
+        "pass2-HIGH-001: pid-mismatch detection must send SIGTERM to the sidecar pid"
+    );
+
+    // Assert 3: sidecar deleted.
+    assert!(
+        !sidecar_path.exists(),
+        "pass2-HIGH-001: sidecar must be deleted on pid-mismatch; still at {:?}",
+        sidecar_path
+    );
+
+    // Assert 4: found_dead=1 (mismatch → non-responsive treatment).
+    assert_eq!(
+        report.found_dead, 1,
+        "pass2-HIGH-001: pid-mismatch → found_dead=1; got {}",
+        report.found_dead
+    );
+
+    let _ = std::fs::remove_file(&socket_path);
+}
+
+// ---------------------------------------------------------------------------
+// HIGH-002 (pass-2) — Dead PID must also delete the orphaned socket file
+// ---------------------------------------------------------------------------
+
+/// HIGH-002 (pass-2): Dead-PID sidecar WITH an orphaned socket file present in
+/// the runtime_dir → re-discovery must delete BOTH the sidecar JSON AND the
+/// orphaned socket file.
+///
+/// Per BC-2.08.004 PC-2c and Invariant 5: "On dead-PID GC, delete both sidecar
+/// and orphaned socket file."
+///
+/// Current impl deletes only the sidecar JSON in the dead-PID path; it does NOT
+/// delete the orphaned socket file.  The socket-file assertion below will FAIL.
+#[tokio::test]
+async fn test_BC_2_08_004_rediscovery_dead_pid_deletes_orphan_socket() {
+    let tmp = tempfile::tempdir().expect("pass2-HIGH-002: tempdir");
+    let session_id = "00000000-0036-4000-a005-000000000004";
+
+    // Spawn a real short-lived process and reap it so the PID is definitively dead.
+    let mut child = std::process::Command::new("true")
+        .spawn()
+        .expect("pass2-HIGH-002: spawn 'true'");
+    let dead_pid = child.id();
+    let _ = child.wait(); // reap to avoid zombie; process exits immediately
+
+    // Create the sidecar JSON with a socket path that we will also create as a
+    // regular file to simulate an orphaned socket inode.
+    let socket_path = short_socket_path("hi002p2-orphsock");
+    write_sidecar_v3(
+        tmp.path(),
+        session_id,
+        "Running",
+        dead_pid,
+        &socket_path,
+        None,
+    );
+    let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+
+    // Create an orphaned socket file at the path recorded in the sidecar.
+    // std::fs::remove_file handles both regular files and socket files on
+    // Linux/macOS via unlink(2), so a regular file suffices here.
+    // Use File::create (not std::fs::write) to avoid the disallowed-methods lint.
+    {
+        let _ = std::fs::File::create(&socket_path)
+            .expect("pass2-HIGH-002: create orphan socket file");
+    }
+    assert!(
+        socket_path.exists(),
+        "pass2-HIGH-002: orphaned socket file must exist before rediscovery"
+    );
+
+    let (mut manager, _subs, _rx) = make_rediscovery_manager(tmp.path(), true);
+
+    // RED GATE: current dead-PID path removes sidecar but not the socket file.
+    let report = manager
+        .rediscover_sessions()
+        .await
+        .expect("pass2-HIGH-002: rediscovery must return Ok");
+
+    // Assert 1: sidecar JSON deleted.
+    assert!(
+        !sidecar_path.exists(),
+        "pass2-HIGH-002: sidecar JSON must be deleted for dead PID; \
+         still at {:?}",
+        sidecar_path
+    );
+
+    // Assert 2: orphaned socket file also deleted.
+    // FAILS NOW: current impl only removes the sidecar, not the socket file.
+    assert!(
+        !socket_path.exists(),
+        "pass2-HIGH-002: orphaned socket file must be deleted for dead PID \
+         (BC-2.08.004 PC-2c + Invariant 5); still at {:?}. \
+         Current impl removes only the sidecar JSON.",
+        socket_path
+    );
+
+    // Assert 3: session NOT in registry.
+    assert!(
+        !manager
+            .session_list()
+            .await
+            .iter()
+            .any(|s| s.session_id == session_id),
+        "pass2-HIGH-002: dead session MUST NOT appear in registry"
+    );
+
+    // Assert 4: found_dead=1.
+    assert_eq!(
+        report.found_dead, 1,
+        "pass2-HIGH-002: dead PID → found_dead=1; got {}",
+        report.found_dead
+    );
+}
+
+// ---------------------------------------------------------------------------
+// HIGH-003 (pass-2) — Elapsed Terminating path must emit broker events
+// ---------------------------------------------------------------------------
+
+/// HIGH-003 (pass-2): Terminating sidecar with ELAPSED absolute `kill_deadline_unix_ms`
+/// (deadline is in the past) + alive PID → immediate SIGKILL + GC + MUST emit
+/// `SessionStateChanged{Terminated}` then `SessionListUpdate` via broker.
+/// Ordering: `SessionStateChanged` MUST precede `SessionListUpdate`.
+///
+/// Per BC-2.08.004 EC-173 and SS-daemon-wiring §3b emission table.
+///
+/// Current impl in the elapsed inline path: SIGKILL + sidecar delete +
+/// `report.found_dead += 1`, but does NOT call `broadcast_to_subscribers` for
+/// either message.  The broker-emission assertions below will FAIL.
+#[tokio::test]
+async fn test_BC_2_08_004_rediscovery_terminating_elapsed_emits_broker() {
+    let tmp = tempfile::tempdir().expect("pass2-HIGH-003: tempdir");
+    let session_id = "00000000-0036-4000-a005-000000000005";
+
+    // Elapsed deadline: well in the past (1 minute ago).
+    let elapsed_ms = unix_now_ms().saturating_sub(60_000);
+    let socket_path = short_socket_path("hi003p2-elapsed");
+    write_sidecar_v3(
+        tmp.path(),
+        session_id,
+        "Terminating",
+        std::process::id(), // alive PID so SIGKILL path fires
+        &socket_path,
+        Some(elapsed_ms),
+    );
+    let sidecar_path = tmp.path().join(format!("session-{}.json", session_id));
+
+    let (sigkill_tx, mut sigkill_rx) = mpsc::channel::<u32>(4);
+    // Subscribe to broker BEFORE calling rediscover_sessions().
+    // make_rediscovery_manager wires one subscriber into the broker.
+    let (mut manager, _subs, mut rx) = make_rediscovery_manager(tmp.path(), true);
+    manager.with_pid_sigkill_fn(Arc::new(move |pid: nix::unistd::Pid| {
+        let _ = sigkill_tx.try_send(pid.as_raw() as u32);
+        Ok(())
+    }));
+
+    // RED GATE: current elapsed inline path does not emit broker messages.
+    let report = manager
+        .rediscover_sessions()
+        .await
+        .expect("pass2-HIGH-003: rediscover_sessions must return Ok");
+
+    // Assert A: SIGKILL fired.
+    let got_sigkill =
+        tokio::time::timeout(Duration::from_millis(300), sigkill_rx.recv()).await;
+    assert!(
+        got_sigkill.is_ok() && got_sigkill.unwrap().is_some(),
+        "pass2-HIGH-003: SIGKILL must fire for elapsed Terminating deadline"
+    );
+
+    // Assert B: sidecar deleted.
+    assert!(
+        !sidecar_path.exists(),
+        "pass2-HIGH-003: sidecar must be deleted on elapsed SIGKILL path; \
+         still at {:?}",
+        sidecar_path
+    );
+
+    // Assert C: found_dead=1.
+    assert_eq!(
+        report.found_dead, 1,
+        "pass2-HIGH-003: elapsed Terminating → found_dead=1; got {}",
+        report.found_dead
+    );
+
+    // Assert D + E: broker must emit SessionStateChanged{Terminated} then
+    // SessionListUpdate in that order.
+    // RED GATE: current impl does not call broadcast_to_subscribers here → FAIL.
+    let drain_deadline = tokio::time::Instant::now() + Duration::from_millis(300);
+    let mut state_changed_terminated = false;
+    let mut list_update_found = false;
+    let mut ordering_violation = false;
+    loop {
+        match tokio::time::timeout_at(drain_deadline, rx.recv()).await {
+            Ok(Some(monocle_ipc::types::ServerToClient::SessionStateChanged {
+                session_id: ref sid,
+                new_state,
+                ..
+            })) if sid == session_id => {
+                if new_state == monocle_ipc::types::SessionState::Terminated {
+                    state_changed_terminated = true;
+                    if list_update_found {
+                        // SessionListUpdate arrived before SessionStateChanged — ordering violation.
+                        ordering_violation = true;
+                    }
+                }
+            }
+            Ok(Some(monocle_ipc::types::ServerToClient::SessionListUpdate { .. })) => {
+                list_update_found = true;
+            }
+            Ok(Some(_)) => continue,
+            _ => break,
+        }
+    }
+    assert!(
+        state_changed_terminated,
+        "pass2-HIGH-003: elapsed-deadline SIGKILL path MUST emit \
+         SessionStateChanged{{Terminated}} to broker \
+         (BC-2.08.004 EC-173 + SS-daemon-wiring §3b). \
+         Current impl skips broker emission in the elapsed inline path."
+    );
+    assert!(
+        list_update_found,
+        "pass2-HIGH-003: elapsed-deadline SIGKILL path MUST emit SessionListUpdate \
+         to broker (SS-daemon-wiring §3b)"
+    );
+    assert!(
+        !ordering_violation,
+        "pass2-HIGH-003: SessionStateChanged{{Terminated}} MUST precede SessionListUpdate \
+         (BC-2.08.008 Invariant 4)"
+    );
+
+    let _ = std::fs::remove_file(&socket_path);
+}
