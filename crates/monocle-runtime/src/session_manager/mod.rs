@@ -4536,11 +4536,29 @@ impl SessionManager {
                 }
             };
 
-            let project_root = val
+            // project_root is REQUIRED for all schema versions per BC-2.08.001.
+            // A missing or empty project_root is a corrupt sidecar (same severity
+            // as missing session_id/pid/socket_path/state).
+            let project_root_str = match val
                 .get("project_root")
                 .and_then(|v| v.as_str())
-                .unwrap_or("/tmp")
-                .to_string();
+                .filter(|s| !s.is_empty())
+            {
+                Some(s) => s.to_string(),
+                None => {
+                    tracing::warn!(
+                        path = %sidecar_path.display(),
+                        "rediscover_sessions: missing or empty project_root; deleting as corrupt (BC-2.08.001)"
+                    );
+                    let _ = std::fs::remove_file(&sidecar_path);
+                    report.errors.push(RediscoveryError::CorruptSidecar {
+                        path: sidecar_path.clone(),
+                        reason: "missing or empty project_root".to_string(),
+                    });
+                    continue;
+                }
+            };
+            let project_root = project_root_str;
 
             // schema_version 1: cwd absent → default to project_root (BC-2.08.004 PC-1).
             let cwd = val
@@ -5225,6 +5243,60 @@ impl SessionManager {
                             let _ = writer.write_all(&kill_msg).await;
                             let _ = writer.flush().await;
                         }
+                        // Yield multiple times after fire-and-forget Kill to allow the
+                        // session-host to fully process the Kill frame and register its
+                        // response timer before the watchdog is spawned.
+                        //
+                        // In paused-clock tests (start_paused = true), I/O events require
+                        // at least two reactor polls to propagate:
+                        //   pass 1 — reactor wakes accept()/read() tasks (I/O unblocked)
+                        //   pass 2 — session-host task runs: reads Kill, calls sleep(Xms)
+                        //             registering its response timer at the current virtual T
+                        //   pass 3/4 — buffer for any chained I/O (read body bytes, etc.)
+                        //
+                        // Without these yields the session-host's timer registers at the
+                        // post-advance() virtual time, causing the watchdog GC grace to be
+                        // anchored too far in the future (MED-001 root cause).  4 yields
+                        // ensures the timer registers at the correct T0 baseline.
+                        for _ in 0..4 {
+                            tokio::task::yield_now().await;
+                        }
+
+                        // OBS-002: Register the SessionEntry BEFORE spawning the watchdog
+                        // to close the window where the watchdog's Terminated arm could run
+                        // (and call spawn_gc_task) before the entry exists in the sessions map,
+                        // which would strand a Terminating entry with no active GC task.
+                        let started_at_dt = chrono::DateTime::parse_from_rfc3339(&data.started_at)
+                            .map(|dt| dt.with_timezone(&chrono::Utc))
+                            .unwrap_or_else(|e| {
+                                tracing::warn!(
+                                    session_id = %data.session_id,
+                                    raw = %data.started_at,
+                                    error = %e,
+                                    "rediscover_sessions: started_at parse failed; substituting Utc::now() (LOW-001)"
+                                );
+                                chrono::Utc::now()
+                            });
+                        let entry = SessionEntry {
+                            session_id: data.session_id.clone(),
+                            session_host_pid: data.pid,
+                            session_host_socket: data.socket_path.clone(),
+                            state: SessionState::Terminating,
+                            cwd: std::path::PathBuf::from(&data.cwd),
+                            project_root: std::path::PathBuf::from(&data.project_root),
+                            harness_id: data.harness_id.clone(),
+                            profile_id: data.profile_id.clone(),
+                            started_at: started_at_dt,
+                            display_name: data.display_name.clone(),
+                            kill_deadline: Some(kill_deadline_instant),
+                            degraded: false,
+                            degraded_reason: None,
+                            host_conn: None,
+                        };
+                        self.sessions
+                            .lock()
+                            .await
+                            .insert(data.session_id.clone(), entry);
 
                         // Spawn background watchdog (excluded from 5s join_all budget per BC-2.08.004 Invariant 2).
                         let sid_clone = data.session_id.clone();
@@ -5235,23 +5307,10 @@ impl SessionManager {
                         let socket_path_clone = data.socket_path.clone();
                         let sessions_arc = Arc::clone(&self.sessions);
                         let broker_arc = Arc::clone(&self.broker);
-                        // Pre-compute GC deadline HERE (synchronous context, same as
-                        // spawn_kill_watchdog / MED-005 pattern) so that in paused-clock
-                        // tests `advance(10s)` fires the GC timer reliably regardless of
-                        // when the watchdog task gets scheduled.  Mirrors the comment in
-                        // spawn_gc_task: "computing the deadline BEFORE spawn ensures
-                        // `advance(10s)` fires it reliably — even if the spawned task
-                        // hasn't been polled yet when advance() is called".
-                        // This deadline is captured from the current virtual time
-                        // (rediscover_sessions sync body) and passed into the watchdog,
-                        // bypassing the spawn_gc_task's own Instant::now() call.
-                        let watchdog_gc_deadline =
-                            tokio::time::Instant::now() + std::time::Duration::from_secs(10);
                         tokio::spawn(async move {
-                            use monocle_core::engine::{EnrichedSession, SessionStatus};
                             use monocle_ipc::types::HostToDaemon;
 
-                            // Helper: update sessions map + emit broker messages.
+                            // Helper: update sessions map + emit broker messages for Terminated transition.
                             let emit_terminated =
                                 |sessions: Arc<
                                     tokio::sync::Mutex<HashMap<String, SessionEntry>>,
@@ -5259,6 +5318,7 @@ impl SessionManager {
                                  broker: Arc<monocle_ipc::server::SubscriberList>,
                                  sid: String,
                                  sp: std::path::PathBuf| async move {
+                                    use monocle_core::engine::{EnrichedSession, SessionStatus};
                                     let mut guard = sessions.lock().await;
                                     if let Some(entry) = guard.get_mut(&sid) {
                                         entry.state = SessionState::Terminated;
@@ -5353,92 +5413,20 @@ impl SessionManager {
                                         sidecar_path_clone.clone(),
                                     )
                                     .await;
-                                    // BC-2.08.005: 10-second GC grace period after Terminated transition.
-                                    // HIGH-001 fix: spawn GC task using the pre-computed deadline (captured
-                                    // in the synchronous body of rediscover_sessions, before this watchdog
-                                    // was spawned).  Using the pre-computed `watchdog_gc_deadline` ensures
-                                    // that in paused-clock tests `advance(10s)` fires the GC timer
-                                    // reliably — the same pattern used by spawn_gc_task for its own
-                                    // deadline computation (and by spawn_kill_watchdog / MED-005).
-                                    // Mirrors the live kill_session GC wiring (~mod.rs 2765).
-                                    {
-                                        let sid_gc = sid_clone.clone();
-                                        let sp_gc = sidecar_path_clone.clone();
-                                        let sock_gc = socket_path_clone.clone();
-                                        let sessions_gc = Arc::clone(&sessions_arc);
-                                        let broker_gc = Arc::clone(&broker_arc);
-                                        tokio::spawn(async move {
-                                            tokio::time::sleep_until(watchdog_gc_deadline).await;
-                                            {
-                                                use monocle_core::engine::{
-                                                    EnrichedSession, SessionStatus,
-                                                };
-                                                let mut guard = sessions_gc.lock().await;
-                                                match guard.get(&sid_gc) {
-                                                    Some(entry)
-                                                        if entry.state == SessionState::Terminated =>
-                                                    {
-                                                        guard.remove(&sid_gc);
-                                                    }
-                                                    _ => {
-                                                        tracing::trace!(
-                                                            session_id = %sid_gc,
-                                                            "watchdog gc: entry not Terminated at GC time; skipping"
-                                                        );
-                                                        return;
-                                                    }
-                                                }
-                                                let list_snapshot: Vec<EnrichedSession> = guard
-                                                    .values()
-                                                    .map(|e| {
-                                                        let status = match e.state {
-                                                            SessionState::Launching
-                                                            | SessionState::Running => {
-                                                                SessionStatus::Active
-                                                            }
-                                                            SessionState::Detached => {
-                                                                SessionStatus::Idle
-                                                            }
-                                                            _ => SessionStatus::Stopped,
-                                                        };
-                                                        EnrichedSession::new_with_display_name(
-                                                            e.session_id.clone(),
-                                                            e.harness_id.clone(),
-                                                            None,
-                                                            None,
-                                                            status,
-                                                            None,
-                                                            e.project_root
-                                                                .file_name()
-                                                                .and_then(|n| n.to_str())
-                                                                .map(|s| s.to_string()),
-                                                            Some(e.started_at),
-                                                            0,
-                                                            None,
-                                                            e.display_name.clone(),
-                                                        )
-                                                    })
-                                                    .collect();
-                                                let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
-                                                    sessions: list_snapshot,
-                                                };
-                                                crate::ipc_server::broadcast_to_subscribers(
-                                                    &broker_gc,
-                                                    list_msg,
-                                                )
-                                                .await;
-                                            }
-                                            match std::fs::remove_file(&sp_gc) {
-                                                Ok(()) | Err(_) => {}
-                                            }
-                                            match std::fs::remove_file(&sock_gc) {
-                                                Ok(()) | Err(_) => {}
-                                            }
-                                        });
-                                    }
+                                    // MED-001 fix: spawn_gc_task computes gc_deadline=Instant::now()+10s
+                                    // at call time (= transition time), giving the full 10s grace from
+                                    // the Terminated transition (BC-2.08.005 PC-1).  Mirrors kill_session
+                                    // wiring (~mod.rs 2770).
+                                    SessionManager::spawn_gc_task(
+                                        sid_clone.clone(),
+                                        sidecar_path_clone.clone(),
+                                        socket_path_clone.clone(),
+                                        Arc::clone(&sessions_arc),
+                                        Arc::clone(&broker_arc),
+                                    );
                                 }
                                 _ = tokio::time::sleep_until(kill_deadline_tokio) => {
-                                    // Deadline elapsed: SIGKILL + GC + broker emit (MED-001, HIGH-002).
+                                    // Deadline elapsed: SIGKILL + GC + broker emit.
                                     tracing::warn!(
                                         session_id = %sid_clone,
                                         pid = pid_val,
@@ -5460,119 +5448,19 @@ impl SessionManager {
                                         sidecar_path_clone.clone(),
                                     )
                                     .await;
-                                    // BC-2.08.005: 10-second GC grace period (SIGKILL arm).
-                                    // HIGH-001 fix: same pre-computed deadline approach as terminated_by_msg arm.
-                                    {
-                                        let sid_gc = sid_clone.clone();
-                                        let sp_gc = sidecar_path_clone.clone();
-                                        let sock_gc = socket_path_clone.clone();
-                                        let sessions_gc = Arc::clone(&sessions_arc);
-                                        let broker_gc = Arc::clone(&broker_arc);
-                                        tokio::spawn(async move {
-                                            tokio::time::sleep_until(watchdog_gc_deadline).await;
-                                            {
-                                                use monocle_core::engine::{
-                                                    EnrichedSession, SessionStatus,
-                                                };
-                                                let mut guard = sessions_gc.lock().await;
-                                                match guard.get(&sid_gc) {
-                                                    Some(entry)
-                                                        if entry.state == SessionState::Terminated =>
-                                                    {
-                                                        guard.remove(&sid_gc);
-                                                    }
-                                                    _ => {
-                                                        tracing::trace!(
-                                                            session_id = %sid_gc,
-                                                            "watchdog gc: entry not Terminated at GC time; skipping"
-                                                        );
-                                                        return;
-                                                    }
-                                                }
-                                                let list_snapshot: Vec<EnrichedSession> = guard
-                                                    .values()
-                                                    .map(|e| {
-                                                        let status = match e.state {
-                                                            SessionState::Launching
-                                                            | SessionState::Running => {
-                                                                SessionStatus::Active
-                                                            }
-                                                            SessionState::Detached => {
-                                                                SessionStatus::Idle
-                                                            }
-                                                            _ => SessionStatus::Stopped,
-                                                        };
-                                                        EnrichedSession::new_with_display_name(
-                                                            e.session_id.clone(),
-                                                            e.harness_id.clone(),
-                                                            None,
-                                                            None,
-                                                            status,
-                                                            None,
-                                                            e.project_root
-                                                                .file_name()
-                                                                .and_then(|n| n.to_str())
-                                                                .map(|s| s.to_string()),
-                                                            Some(e.started_at),
-                                                            0,
-                                                            None,
-                                                            e.display_name.clone(),
-                                                        )
-                                                    })
-                                                    .collect();
-                                                let list_msg = monocle_ipc::types::ServerToClient::SessionListUpdate {
-                                                    sessions: list_snapshot,
-                                                };
-                                                crate::ipc_server::broadcast_to_subscribers(
-                                                    &broker_gc,
-                                                    list_msg,
-                                                )
-                                                .await;
-                                            }
-                                            match std::fs::remove_file(&sp_gc) {
-                                                Ok(()) | Err(_) => {}
-                                            }
-                                            match std::fs::remove_file(&sock_gc) {
-                                                Ok(()) | Err(_) => {}
-                                            }
-                                        });
-                                    }
+                                    // MED-001 fix: same spawn_gc_task approach as msg arm.
+                                    // gc_deadline computed at transition time = now + 10s.
+                                    SessionManager::spawn_gc_task(
+                                        sid_clone.clone(),
+                                        sidecar_path_clone.clone(),
+                                        socket_path_clone.clone(),
+                                        Arc::clone(&sessions_arc),
+                                        Arc::clone(&broker_arc),
+                                    );
                                 }
                             }
                         });
 
-                        // Register entry with state Terminating (step iii).
-                        let started_at_dt = chrono::DateTime::parse_from_rfc3339(&data.started_at)
-                            .map(|dt| dt.with_timezone(&chrono::Utc))
-                            .unwrap_or_else(|e| {
-                                tracing::warn!(
-                                    session_id = %data.session_id,
-                                    raw = %data.started_at,
-                                    error = %e,
-                                    "rediscover_sessions: started_at parse failed; substituting Utc::now() (LOW-001)"
-                                );
-                                chrono::Utc::now()
-                            });
-                        let entry = SessionEntry {
-                            session_id: data.session_id.clone(),
-                            session_host_pid: data.pid,
-                            session_host_socket: data.socket_path.clone(),
-                            state: SessionState::Terminating,
-                            cwd: std::path::PathBuf::from(&data.cwd),
-                            project_root: std::path::PathBuf::from(&data.project_root),
-                            harness_id: data.harness_id.clone(),
-                            profile_id: data.profile_id.clone(),
-                            started_at: started_at_dt,
-                            display_name: data.display_name.clone(),
-                            kill_deadline: Some(kill_deadline_instant),
-                            degraded: false,
-                            degraded_reason: None,
-                            host_conn: None,
-                        };
-                        self.sessions
-                            .lock()
-                            .await
-                            .insert(data.session_id.clone(), entry);
                         report.found_alive += 1;
                     }
                 }

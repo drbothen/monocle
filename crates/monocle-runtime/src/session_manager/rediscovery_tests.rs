@@ -3964,8 +3964,8 @@ async fn test_BC_2_08_004_rediscovery_watchdog_gc_grace_from_transition_deadline
     let sock_clone = socket_path.clone();
     tokio::spawn(async move {
         let _ = std::fs::remove_file(&sock_clone);
-        let listener = UnixListener::bind(&sock_clone)
-            .expect("MED-001-deadline: mock session-host bind");
+        let listener =
+            UnixListener::bind(&sock_clone).expect("MED-001-deadline: mock session-host bind");
         if let Ok((_stream, _)) = listener.accept().await {
             // Hold open for longer than the test lasts; deadline arm will fire.
             tokio::time::sleep(Duration::from_secs(120)).await;
@@ -4010,8 +4010,7 @@ async fn test_BC_2_08_004_rediscovery_watchdog_gc_grace_from_transition_deadline
     }
 
     // Confirm SIGKILL was fired (the Terminated transition happened).
-    let got_sigkill =
-        tokio::time::timeout(Duration::from_millis(200), sigkill_rx.recv()).await;
+    let got_sigkill = tokio::time::timeout(Duration::from_millis(200), sigkill_rx.recv()).await;
     assert!(
         got_sigkill.is_ok() && got_sigkill.unwrap().is_some(),
         "MED-001-deadline: watchdog MUST fire SIGKILL at the 12s deadline"
@@ -4109,8 +4108,8 @@ async fn test_BC_2_08_004_rediscovery_watchdog_gc_grace_from_transition_msg_arm(
     let sock_clone = socket_path.clone();
     tokio::spawn(async move {
         let _ = std::fs::remove_file(&sock_clone);
-        let listener = UnixListener::bind(&sock_clone)
-            .expect("MED-001-msg: mock session-host bind");
+        let listener =
+            UnixListener::bind(&sock_clone).expect("MED-001-msg: mock session-host bind");
         if let Ok((mut stream, _)) = listener.accept().await {
             // Consume the Kill frame the daemon sends fire-and-forget.
             let mut len_buf = [0u8; 4];
