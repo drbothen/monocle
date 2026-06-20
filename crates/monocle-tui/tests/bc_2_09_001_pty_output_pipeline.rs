@@ -1726,6 +1726,400 @@ fn test_BC_2_09_001_scrollback_dump_complete_idempotency_guard() {
 }
 
 // ---------------------------------------------------------------------------
+// F-S039-REV-001: roster-diff GC must exit EmbeddedTerminal for the removed focused session
+// BC-2.09.001 Invariant 5 / SessionListUpdate roster-diff ordering
+//
+// Regression guard: the pre-fix roster-diff loop called gc_pty_session (not
+// gc_session_with_mode_exit) on sessions absent from the new roster. If the TUI
+// was currently in EmbeddedTerminal for the removed session, the parser was
+// destroyed while app.mode remained EmbeddedTerminal — the next render_frame
+// would attempt pty_parsers[session_id] and find None (permanent blank-screen
+// or panic trap).
+//
+// Post-fix code (F-S039-REV-001): the roster-diff loop calls
+// gc_session_with_mode_exit, which checks the matches! guard and calls
+// exit_embedded_terminal BEFORE gc_pty_session for the focused session only.
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_09_001_roster_diff_gc_exits_embedded_mode_when_focused
+///
+/// Exercises F-S039-REV-001 (BC-2.09.001 Invariant 5):
+///   When `SessionListUpdate` carries a roster that NO LONGER contains the session
+///   currently open in `EmbeddedTerminal` mode, the handler MUST:
+///   1. Exit `EmbeddedTerminal` mode (app.mode is NOT EmbeddedTerminal for s1 after the call).
+///   2. GC s1's parser (pty_parsers does NOT contain s1).
+///
+/// Companion assertion: when a DIFFERENT session s2 is removed from the roster
+/// while the TUI is viewing s1, s1's mode is UNCHANGED and s1's parser is RETAINED
+/// (the matches! guard in gc_session_with_mode_exit must not over-fire).
+///
+/// This test FAILS against pre-fix code where the roster-diff loop called
+/// gc_pty_session without exit-before-GC, leaving app.mode == EmbeddedTerminal
+/// with a destroyed parser.
+#[test]
+fn test_BC_2_09_001_roster_diff_gc_exits_embedded_mode_when_focused() {
+    // Arrange: two sessions s1 and s2.
+    // s1 is currently in EmbeddedTerminal mode (the user is viewing s1's PTY).
+    // s2 exists but is not focused.
+    let s1 = "s1-roster-diff-rev001";
+    let s2 = "s2-roster-diff-rev001";
+
+    let mut app = make_app();
+
+    // Seed both sessions into the roster via on_initial_state so the roster-diff
+    // logic in handle_server_message (which diffs app.sessions vs the new roster)
+    // can detect s1 as "removed" when we send the shrunk update.
+    on_initial_state(
+        &mut app,
+        vec![make_session(s1), make_session(s2)],
+        vec![],
+        vec![],
+        0,
+    );
+
+    // Both parsers must be present after on_initial_state.
+    assert!(
+        app.pty_parsers.contains_key(s1),
+        "precondition (F-S039-REV-001): s1 parser must exist after on_initial_state"
+    );
+    assert!(
+        app.pty_parsers.contains_key(s2),
+        "precondition (F-S039-REV-001): s2 parser must exist after on_initial_state"
+    );
+
+    // Feed distinguishable content to both parsers so we can assert on presence.
+    {
+        let p1 = app.pty_parsers.get_mut(s1).unwrap();
+        p1.process(b"s1-live-content\r\n");
+    }
+    {
+        let p2 = app.pty_parsers.get_mut(s2).unwrap();
+        p2.process(b"s2-live-content\r\n");
+    }
+
+    // Put the TUI into EmbeddedTerminal mode for s1 (the session that will be removed).
+    app.mode = AppMode::EmbeddedTerminal {
+        session_id: s1.to_string(),
+        prior: FocusSnapshot::Sessions,
+    };
+
+    // Precondition: mode is EmbeddedTerminal for s1.
+    assert!(
+        matches!(&app.mode, AppMode::EmbeddedTerminal { session_id: sid, .. } if sid == s1),
+        "precondition (F-S039-REV-001): mode must be EmbeddedTerminal for s1 before roster update"
+    );
+
+    // Act: SessionListUpdate with a NEW roster that contains only s2 (s1 removed).
+    // Pre-fix: would call gc_pty_session(s1) WITHOUT exiting EmbeddedTerminal first,
+    //          leaving app.mode == EmbeddedTerminal { s1 } with pty_parsers[s1] = None.
+    // Post-fix: calls gc_session_with_mode_exit(s1), which exits EmbeddedTerminal FIRST.
+    handle_server_message(
+        &mut app,
+        ServerToClient::SessionListUpdate {
+            sessions: vec![make_session(s2)],
+        },
+    )
+    .expect("handle_server_message must succeed for roster-diff SessionListUpdate");
+
+    // Assert A (F-S039-REV-001): app.mode must NOT be EmbeddedTerminal for s1.
+    // The mode must have been exited before the GC ran.
+    assert!(
+        !matches!(&app.mode, AppMode::EmbeddedTerminal { session_id: sid, .. } if sid == s1),
+        "F-S039-REV-001 (BC-2.09.001 Invariant 5): app.mode must NOT be EmbeddedTerminal \
+         for s1 after roster-diff removes s1 — gc_session_with_mode_exit must exit mode first. \
+         Pre-fix code would leave mode == EmbeddedTerminal with destroyed parser."
+    );
+
+    // Assert B (F-S039-REV-001): s1's parser must be GC'd.
+    // Verifies GC still ran (mode exit must not have accidentally skipped the GC step).
+    assert!(
+        !app.pty_parsers.contains_key(s1),
+        "F-S039-REV-001 (BC-2.09.001 Invariant 5): pty_parsers must NOT contain s1 after \
+         roster-diff removes s1 — gc_pty_session must have run after mode exit"
+    );
+
+    // Companion assertion: s2 is STILL PRESENT (not accidentally GC'd).
+    assert!(
+        app.pty_parsers.contains_key(s2),
+        "F-S039-REV-001 companion: s2 parser must be RETAINED after roster update \
+         (s2 is still in the new roster — must not be GC'd)"
+    );
+
+    // Companion assertion (matches! guard non-over-fire):
+    // Reset and verify that when s1 is in the roster and s2 is removed while
+    // the TUI is viewing s1, s1's mode is UNCHANGED and s1's parser is RETAINED.
+    // This guards against the matches! guard being too broad.
+    let mut app2 = make_app();
+    on_initial_state(
+        &mut app2,
+        vec![make_session(s1), make_session(s2)],
+        vec![],
+        vec![],
+        0,
+    );
+    {
+        let p = app2.pty_parsers.get_mut(s1).unwrap();
+        p.process(b"s1-guard-content\r\n");
+    }
+    // Set mode to EmbeddedTerminal for s1 (s1 is still in the new roster).
+    app2.mode = AppMode::EmbeddedTerminal {
+        session_id: s1.to_string(),
+        prior: FocusSnapshot::Sessions,
+    };
+
+    // Update: new roster contains s1 but NOT s2.
+    handle_server_message(
+        &mut app2,
+        ServerToClient::SessionListUpdate {
+            sessions: vec![make_session(s1)],
+        },
+    )
+    .expect("handle_server_message must succeed for companion assertion");
+
+    // mode must REMAIN EmbeddedTerminal for s1 (the viewed session was NOT removed).
+    assert!(
+        matches!(&app2.mode, AppMode::EmbeddedTerminal { session_id: sid, .. } if sid == s1),
+        "F-S039-REV-001 companion: app.mode must REMAIN EmbeddedTerminal for s1 when \
+         a DIFFERENT session (s2) is removed — matches! guard must not over-fire"
+    );
+
+    // s1's parser must still be present and still contain the pre-update content.
+    assert!(
+        app2.pty_parsers.contains_key(s1),
+        "F-S039-REV-001 companion: s1 parser must be RETAINED when s1 remains in the roster"
+    );
+    let s1_text = screen_text(app2.pty_parsers.get(s1).unwrap());
+    assert!(
+        s1_text.contains("s1-guard-content"),
+        "F-S039-REV-001 companion: s1 parser content must be preserved when s1 remains \
+         in the roster — got: {:?}",
+        s1_text
+    );
+
+    // s2 must be GC'd from the second app.
+    assert!(
+        !app2.pty_parsers.contains_key(s2),
+        "F-S039-REV-001 companion: s2 parser must be GC'd when s2 is absent from the \
+         new roster — GC must still fire for the removed session"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-S039-REV-002: on_initial_state GCs stale parsers for sessions absent from
+// a reconnect roster
+// BC-2.09.001 Invariant 5 / on_initial_state stale-session GC
+//
+// Regression guard: the pre-fix on_initial_state never GC'd sessions that
+// existed in app.sessions but were absent from the incoming InitialState
+// roster. After a disconnect+reconnect, sessions that terminated while the TUI
+// was offline would retain their parsers indefinitely — unbounded memory growth
+// and stale render state.
+//
+// Post-fix code (F-S039-REV-002): on_initial_state computes the diff between
+// the old app.sessions and the incoming roster and calls
+// gc_session_with_mode_exit for each stale session before assigning the new
+// roster. Surviving sessions are NOT clobbered (no-clobber invariant).
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_09_001_on_initial_state_gcs_stale_sessions_on_reconnect
+///
+/// Exercises F-S039-REV-002 (BC-2.09.001 Invariant 5):
+///   After two calls to `on_initial_state` (simulating a reconnect):
+///   - First call: roster contains s1 and s2 → both parsers created.
+///   - Second call (reconnect): roster contains only s2 (s1 was terminated while
+///     the TUI was disconnected) → s1's parser must be GC'd, s2's must be RETAINED.
+///
+///   If s2 had content before the second on_initial_state, that content must survive
+///   (no-clobber: existing parsers for surviving sessions are not replaced).
+///
+/// This test FAILS against pre-fix code that never GC'd stale sessions in
+/// on_initial_state (stale parser for s1 would remain in pty_parsers after the
+/// second call, and s2's content would be clobbered if the no-clobber guard
+/// was also absent).
+#[test]
+fn test_BC_2_09_001_on_initial_state_gcs_stale_sessions_on_reconnect() {
+    let s1 = "s1-stale-reconnect-rev002";
+    let s2 = "s2-surviving-reconnect-rev002";
+
+    let mut app = make_app();
+
+    // Act 1: first on_initial_state — roster contains both s1 and s2.
+    on_initial_state(
+        &mut app,
+        vec![make_session(s1), make_session(s2)],
+        vec![],
+        vec![],
+        0,
+    );
+
+    // Assert A: both parsers created after first on_initial_state.
+    assert!(
+        app.pty_parsers.contains_key(s1),
+        "F-S039-REV-002 precondition: s1 parser must exist after first on_initial_state"
+    );
+    assert!(
+        app.pty_parsers.contains_key(s2),
+        "F-S039-REV-002 precondition: s2 parser must exist after first on_initial_state"
+    );
+
+    // Feed distinguishable content into s2's parser (simulates live PTY output
+    // received before the disconnect). We want to verify this content is PRESERVED
+    // after the reconnect (no-clobber invariant for surviving sessions).
+    {
+        let p2 = app.pty_parsers.get_mut(s2).unwrap();
+        p2.process(b"s2-pre-reconnect-data\r\n");
+    }
+
+    // Verify s2 content before reconnect.
+    {
+        let text = screen_text(app.pty_parsers.get(s2).unwrap());
+        assert!(
+            text.contains("s2-pre-reconnect-data"),
+            "F-S039-REV-002 precondition: s2 parser must contain pre-reconnect data. \
+             Got: {:?}",
+            text
+        );
+    }
+
+    // Act 2: RECONNECT — second on_initial_state with a shrunk roster (s1 gone).
+    // This simulates a session (s1) that terminated while the TUI was disconnected
+    // and no longer appears in the daemon's InitialState roster.
+    // Pre-fix: would NOT GC s1 — its parser would remain in pty_parsers after the call.
+    // Post-fix: computes the stale diff and calls gc_session_with_mode_exit(s1).
+    on_initial_state(&mut app, vec![make_session(s2)], vec![], vec![], 0);
+
+    // Assert B (F-S039-REV-002): s1's parser must be GC'd after the reconnect call.
+    // Pre-fix would leave s1 in pty_parsers (stale leak). Post-fix removes it.
+    assert!(
+        !app.pty_parsers.contains_key(s1),
+        "F-S039-REV-002 (BC-2.09.001 Invariant 5): pty_parsers must NOT contain s1 after \
+         reconnect with a roster that excludes s1 — on_initial_state must GC stale sessions. \
+         Pre-fix code would leave s1's parser in memory indefinitely."
+    );
+
+    // Assert C (F-S039-REV-002): s1's scroll offset must also be GC'd.
+    assert!(
+        !app.pty_scroll_offsets.contains_key(s1),
+        "F-S039-REV-002: pty_scroll_offsets must NOT contain s1 after reconnect GC"
+    );
+
+    // Assert D (no-clobber): s2's parser must still be present.
+    assert!(
+        app.pty_parsers.contains_key(s2),
+        "F-S039-REV-002 no-clobber: s2 parser must be RETAINED after reconnect \
+         (s2 is still in the new roster)"
+    );
+
+    // Assert E (no-clobber content preserved): s2's content from before the reconnect
+    // must still be present. The no-clobber invariant ensures on_initial_state does NOT
+    // replace parsers for sessions that survive the reconnect.
+    let s2_text = screen_text(app.pty_parsers.get(s2).unwrap());
+    assert!(
+        s2_text.contains("s2-pre-reconnect-data"),
+        "F-S039-REV-002 no-clobber: s2 parser content must be PRESERVED across reconnect \
+         (on_initial_state no-clobber: existing parsers for surviving sessions not replaced). \
+         Got: {:?}",
+        s2_text
+    );
+}
+
+// ---------------------------------------------------------------------------
+// F-S039-REV-003 confirmation: dump_in_progress removed after ScrollbackDumpComplete
+// BC-2.09.001 Invariant 5 / on_scrollback_dump_complete cleanup
+//
+// Regression guard: the pre-fix on_scrollback_dump_complete called
+// dump_in_progress.insert(session_id, false) after completing the dump. This
+// left a stale Some(false) entry in the map rather than removing it. The
+// idempotency guard in on_scrollback_dump_complete reads
+// `dump_in_progress.get(&id) != Some(&true)` — both None and Some(false)
+// correctly pass that guard, so functional behavior was preserved. However,
+// the stale entry is a memory leak: sessions that are GC'd without a
+// subsequent enter_embedded_terminal would never have their dump_in_progress
+// entry removed, leaving an orphaned entry that grows with session churn.
+//
+// Post-fix code (F-S039-REV-003): on_scrollback_dump_complete calls
+// dump_in_progress.remove(&session_id) instead of insert(id, false), so the
+// map entry is removed entirely when the dump completes.
+//
+// NOTE: F-S039-REV-003 is also asserted inline in:
+//   - test_BC_2_09_001_auto_attach_on_first_entry_buffering (direct function call)
+//   - test_BC_2_09_001_first_entry_session_not_preinserted (direct function call)
+//
+// This standalone test exercises the PRODUCTION dispatch path via
+// handle_server_message → on_scrollback_dump_complete to confirm the entry is
+// absent (None, not Some(false)) after the completion message is processed.
+// It is NOT a duplicate of the inline assertions above — it exercises a different
+// code path (handle_server_message dispatch vs. direct call) and is the only test
+// that verifies None vs Some(false) via the handle_server_message route.
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_09_001_dump_complete_removes_dump_in_progress_entry
+///
+/// Exercises F-S039-REV-003 (BC-2.09.001 Invariant 5) via the production
+/// `handle_server_message` dispatch path:
+///   After a `ScrollbackDumpComplete` message is processed by
+///   `handle_server_message → on_scrollback_dump_complete`, the
+///   `dump_in_progress` map must NOT contain an entry for the session at all
+///   (entry removed, not left as `Some(false)`).
+///
+/// This test fails against pre-fix code that called `dump_in_progress.insert(id, false)`
+/// instead of `dump_in_progress.remove(&id)` — the post-complete map would contain
+/// `Some(false)` rather than `None`, leaking an entry per completed dump cycle.
+#[test]
+fn test_BC_2_09_001_dump_complete_removes_dump_in_progress_entry() {
+    // Arrange: session with an in-progress dump.
+    let session_id = "s1-rev003-dump-complete";
+    let mut app = make_app_with_session(session_id);
+
+    // Manually set dump_in_progress = true to simulate an active dump window.
+    app.dump_in_progress.insert(session_id.to_string(), true);
+
+    // Precondition: entry is Some(true).
+    assert_eq!(
+        app.dump_in_progress.get(session_id).copied(),
+        Some(true),
+        "precondition (F-S039-REV-003): dump_in_progress must be Some(true) before completion"
+    );
+
+    // Act: drive ScrollbackDumpComplete through the PRODUCTION dispatch path.
+    // This is a different code path than the direct on_scrollback_dump_complete calls
+    // in the inline REV-003 assertions above.
+    handle_server_message(
+        &mut app,
+        ServerToClient::ScrollbackDumpComplete {
+            session_id: session_id.to_string(),
+            total_chunks: 0,
+            cursor_row: 0,
+            cursor_col: 0,
+            pty_rows: 24,
+            pty_cols: 80,
+        },
+    )
+    .expect("handle_server_message must not fail on ScrollbackDumpComplete");
+
+    // Assert (F-S039-REV-003): dump_in_progress entry must be ABSENT (removed).
+    // NOT acceptable: Some(false) — that is the pre-fix stale entry.
+    // NOT acceptable: Some(true) — that would mean completion was not processed.
+    // ONLY acceptable: None (entry removed by dump_in_progress.remove()).
+    assert_eq!(
+        app.dump_in_progress.get(session_id).copied(),
+        None,
+        "F-S039-REV-003 (BC-2.09.001 Invariant 5): dump_in_progress must be ABSENT (None) \
+         after ScrollbackDumpComplete — pre-fix code left Some(false) (stale leak). \
+         Post-fix must call remove(), not insert(id, false). \
+         Got: {:?}",
+        app.dump_in_progress.get(session_id)
+    );
+
+    // Corollary: pty_dump_received must now contain the session (dump successfully recorded).
+    assert!(
+        app.pty_dump_received.contains(session_id),
+        "F-S039-REV-003 corollary: pty_dump_received must contain session after \
+         ScrollbackDumpComplete (dump successfully recorded)"
+    );
+}
+
+// ---------------------------------------------------------------------------
 // F-S039-P2-003: Terminated exits EmbeddedTerminal BEFORE GC
 // BC-2.09.001 Invariant 5 / SessionStateChanged::Terminated ordering
 //
