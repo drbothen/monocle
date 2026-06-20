@@ -21,7 +21,7 @@ Read this file first, then CLAUDE.md, then `.factory/STATE.md`.
 | Story | Pts | PR | SHA | Decision | Notes |
 |-------|-----|----|-----|----------|-------|
 | **S-037** GC + rename_session | 3 | #42 | a7e4081 | D-335 | SEC-001 CWE-20 + SEC-002 CWE-706 fixed in-scope (b2d65db). 7-pass adversarial (3 CLEAN). |
-| **S-035** attach/detach + Ruling L | 8 | #43 | 270b7d4 | D-336 | SS-session-manager → v2.14.0 (Ruling L + EC-188 4-disposition matrix). BC-2.08.007 v1.5.5 / BC-2.08.008 v1.3.7 at S-035 delivery time. 9-pass adversarial (3 CLEAN). |
+| **S-035** attach/detach + Ruling L | 8 | #43 | 270b7d4 | D-336 | SS-session-manager → v2.14.0 (Ruling L + EC-188 4-disposition matrix). BC-2.08.007 / BC-2.08.008 (at S-035 delivery). 9-pass adversarial (3 CLEAN). |
 | **S-038** hook auto-injection, single-writer | 3 | #44 | 8d649ea | D-338 | BC-2.08.006 → v1.5.0; BC-2.04.010 → v1.4.0; SS-session-manager → v2.15.0; BC-2.08.007 → v1.5.6. SEC-001 CWE-732 + SEC-002 CWE-532 fixed in-scope (daeb4f2). 6-pass adversarial (3 CLEAN). |
 | **chore** BC-2.08.007 comment pin | — | #45 | 7f005af | — | Preserved human commit 4638006 via proper PR, not admin push. |
 
@@ -109,7 +109,7 @@ PROCESS-GAP-BRANCH-PROTECTION-CHECK-NAME-MISMATCH is RESOLVED (D-335). PRs merge
 - **D-335**: S-037 MERGED PR #42 @ a7e4081. GC + rename_session. SEC-001/002 fixed in-scope. BRANCH-PROTECTION RESOLVED.
 - **D-336**: S-035 MERGED PR #43 @ 270b7d4. attach/detach. Ruling L (proxy_task kill-reader for attached sessions). S-036 UNBLOCKED.
 - **D-337**: PROCESS-GAP-FACTORY-ARTIFACTS-NOT-PUSHED codified (c8ceee1). Always push factory-artifacts after spec-bumping agents.
-- **D-338**: S-038 MERGED PR #44 @ 8d649ea + chore PR #45 @ 7f005af. WAVE-8 TIER-2 COMPLETE. Single-writer mandate (BC-2.08.006 v1.5.0 at S-038 delivery time; lock.app mandatory). SEC-001 CWE-732 + SEC-002 CWE-532 fixed in-scope (daeb4f2).
+- **D-338**: S-038 MERGED PR #44 @ 8d649ea + chore PR #45 @ 7f005af. WAVE-8 TIER-2 COMPLETE. Single-writer mandate (BC-2.08.006 at S-038 delivery; lock.app mandatory). SEC-001 CWE-732 + SEC-002 CWE-532 fixed in-scope (daeb4f2).
 - **Spawn-path Model A**: SpawnOptions on wire; SpawnRecipe daemon-internal
 - **IPC taxonomy**: 12-code wire taxonomy; 9-variant SessionError; schema_version 3
 - **PTY (ADR-0011)**: portable-pty 0.9.0 + vt100 0.16.2 + tui-term =0.3.4; MSRV 1.88
