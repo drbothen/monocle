@@ -489,7 +489,13 @@ pub fn fn_key_bytes(n: u8) -> Vec<u8> {
 // ---------------------------------------------------------------------------
 // Tests — pure monocle-core tests; NO crossterm types allowed here.
 // All test names follow test_BC_S_SS_NNN_xxx() pattern (TDD naming convention).
-// These tests MUST FAIL until the implementer fills in the todo!() stubs.
+// These tests MUST FAIL until the implementer updates the production signatures.
+//
+// RED GATE: All calls to key_event_to_pty_bytes and is_kitty_enhanced_key use
+// the NEW 2-arg / 3-arg signatures. The production code still has the OLD
+// 1-arg / 2-arg signatures. This causes a compile error in monocle-core's
+// test target — that compile error IS the Red Gate for the new-signature tests.
+// The implementer must update the production signatures to make these compile.
 // ---------------------------------------------------------------------------
 #[cfg(test)]
 #[allow(non_snake_case)]
@@ -503,6 +509,7 @@ mod tests {
     /// BC-2.09.002 PC-1/PC-2 — printable ASCII character 'a' → [0x61]
     ///
     /// Canonical test vector from BC-2.09.002 §Canonical Test Vectors.
+    /// kitty_active=false (non-Kitty terminal; plain printable chars are VT-invariant).
     #[test]
     fn test_BC_2_09_002_keyboard_forwarding_printable() {
         let event = PtyKeyEvent {
@@ -510,12 +517,13 @@ mod tests {
             modifiers: PtyKeyModifiers::NONE,
             kind: PtyKeyEventKind::Press,
         };
-        assert_eq!(key_event_to_pty_bytes(event), Some(vec![0x61]));
+        assert_eq!(key_event_to_pty_bytes(event, false), Some(vec![0x61]));
     }
 
     /// BC-2.09.002 PC-2 — Ctrl+C → [0x03] (ETX)
     ///
     /// Canonical test vector from BC-2.09.002 §Canonical Test Vectors.
+    /// kitty_active=false (Ctrl+letter is a named VT arm; kitty_active is irrelevant).
     #[test]
     fn test_BC_2_09_002_keyboard_forwarding_ctrl() {
         let event = PtyKeyEvent {
@@ -523,7 +531,7 @@ mod tests {
             modifiers: PtyKeyModifiers::CONTROL,
             kind: PtyKeyEventKind::Press,
         };
-        assert_eq!(key_event_to_pty_bytes(event), Some(vec![0x03]));
+        assert_eq!(key_event_to_pty_bytes(event, false), Some(vec![0x03]));
     }
 
     /// BC-2.09.002 PC-2 — all four arrow keys produce correct VT sequences
@@ -532,6 +540,8 @@ mod tests {
     /// Arrow Down → ESC [ B  (\x1b\x5b\x42)
     /// Arrow Right→ ESC [ C  (\x1b\x5b\x43)
     /// Arrow Left → ESC [ D  (\x1b\x5b\x44)
+    ///
+    /// kitty_active=false; unmodified arrow keys are VT-invariant.
     #[test]
     fn test_BC_2_09_002_keyboard_forwarding_arrows() {
         let cases = [
@@ -546,7 +556,7 @@ mod tests {
                 modifiers: PtyKeyModifiers::NONE,
                 kind: PtyKeyEventKind::Press,
             };
-            assert_eq!(key_event_to_pty_bytes(event), Some(expected));
+            assert_eq!(key_event_to_pty_bytes(event, false), Some(expected));
         }
     }
 
@@ -554,6 +564,8 @@ mod tests {
     ///
     /// F1 → \x1bOP, F2 → \x1bOQ, F3 → \x1bOR, F4 → \x1bOS
     /// F5 → \x1b[15~
+    ///
+    /// kitty_active=false; function key sequences are VT-invariant.
     #[test]
     fn test_BC_2_09_002_keyboard_forwarding_fn_keys() {
         let cases = [
@@ -570,7 +582,7 @@ mod tests {
                 kind: PtyKeyEventKind::Press,
             };
             assert_eq!(
-                key_event_to_pty_bytes(event),
+                key_event_to_pty_bytes(event, false),
                 Some(expected),
                 "F{n} key bytes mismatch"
             );
@@ -580,6 +592,7 @@ mod tests {
     /// BC-2.09.002 PC-3 — Release events return None; nothing forwarded to PTY
     ///
     /// Canonical test vector from BC-2.09.002 §Canonical Test Vectors.
+    /// kitty_active=false; Release-discard is unconditional.
     #[test]
     fn test_BC_2_09_002_keyboard_forwarding_release_discarded() {
         let event = PtyKeyEvent {
@@ -587,12 +600,13 @@ mod tests {
             modifiers: PtyKeyModifiers::NONE,
             kind: PtyKeyEventKind::Release,
         };
-        assert_eq!(key_event_to_pty_bytes(event), None);
+        assert_eq!(key_event_to_pty_bytes(event, false), None);
     }
 
     /// BC-2.09.002 Invariant 3 — Ctrl+D → [0x04] (ASCII EOT); session termination signal
     ///
     /// Canonical test vector from BC-2.09.002 §Canonical Test Vectors.
+    /// kitty_active=false; Ctrl+letter is a named VT arm.
     #[test]
     fn test_BC_2_09_002_keyboard_forwarding_ctrl_d_eot() {
         let event = PtyKeyEvent {
@@ -600,12 +614,13 @@ mod tests {
             modifiers: PtyKeyModifiers::CONTROL,
             kind: PtyKeyEventKind::Press,
         };
-        assert_eq!(key_event_to_pty_bytes(event), Some(vec![0x04]));
+        assert_eq!(key_event_to_pty_bytes(event, false), Some(vec![0x04]));
     }
 
     /// BC-2.09.002 PC-2 — full Ctrl+[A-Z] translation table
     ///
     /// Ctrl+A → \x01 through Ctrl+Z → \x1a (control characters 1–26).
+    /// kitty_active=false; Ctrl+letter VT arm is kitty_active-independent.
     #[test]
     fn test_BC_2_09_002_ctrl_az_full_translation_table() {
         for (i, ch) in ('a'..='z').enumerate() {
@@ -616,7 +631,7 @@ mod tests {
                 kind: PtyKeyEventKind::Press,
             };
             assert_eq!(
-                key_event_to_pty_bytes(event),
+                key_event_to_pty_bytes(event, false),
                 Some(vec![expected_byte]),
                 "Ctrl+{} should produce \\x{:02x}",
                 ch,
@@ -626,6 +641,8 @@ mod tests {
     }
 
     /// BC-2.09.002 PC-2 — Enter → \r (carriage return)
+    ///
+    /// kitty_active=false; Enter → \r is VT-invariant (named arm matches before Kitty).
     #[test]
     fn test_BC_2_09_002_enter_maps_to_carriage_return() {
         let event = PtyKeyEvent {
@@ -633,10 +650,12 @@ mod tests {
             modifiers: PtyKeyModifiers::NONE,
             kind: PtyKeyEventKind::Press,
         };
-        assert_eq!(key_event_to_pty_bytes(event), Some(vec![0x0d]));
+        assert_eq!(key_event_to_pty_bytes(event, false), Some(vec![0x0d]));
     }
 
     /// BC-2.09.002 PC-2 — Backspace → \x7f (DEL)
+    ///
+    /// kitty_active=false; Backspace → DEL is VT-invariant.
     #[test]
     fn test_BC_2_09_002_backspace_maps_to_del() {
         let event = PtyKeyEvent {
@@ -644,10 +663,12 @@ mod tests {
             modifiers: PtyKeyModifiers::NONE,
             kind: PtyKeyEventKind::Press,
         };
-        assert_eq!(key_event_to_pty_bytes(event), Some(vec![0x7f]));
+        assert_eq!(key_event_to_pty_bytes(event, false), Some(vec![0x7f]));
     }
 
     /// BC-2.09.002 PC-2 — Tab → \t
+    ///
+    /// kitty_active=false; Tab → HT is VT-invariant.
     #[test]
     fn test_BC_2_09_002_tab_maps_to_horizontal_tab() {
         let event = PtyKeyEvent {
@@ -655,12 +676,13 @@ mod tests {
             modifiers: PtyKeyModifiers::NONE,
             kind: PtyKeyEventKind::Press,
         };
-        assert_eq!(key_event_to_pty_bytes(event), Some(vec![0x09]));
+        assert_eq!(key_event_to_pty_bytes(event, false), Some(vec![0x09]));
     }
 
     /// BC-2.09.002 PC-2 — navigation keys (Home/End/PgUp/PgDn/Ins/Del)
     ///
     /// Sequence table from BC-2.09.002 PC-2.
+    /// kitty_active=false; navigation keys are VT-invariant (named arms match first).
     #[test]
     fn test_BC_2_09_002_navigation_keys_full_table() {
         let cases = [
@@ -677,13 +699,14 @@ mod tests {
                 modifiers: PtyKeyModifiers::NONE,
                 kind: PtyKeyEventKind::Press,
             };
-            assert_eq!(key_event_to_pty_bytes(event), Some(expected));
+            assert_eq!(key_event_to_pty_bytes(event, false), Some(expected));
         }
     }
 
     /// BC-2.09.002 PC-2 — Alt+char → ESC-prefix (ESC + UTF-8 bytes of char)
     ///
     /// Alt+a → \x1b a (\x1b\x61)
+    /// kitty_active=false: Alt+printable ESC-prefix arm fires (Kitty arm is skipped).
     #[test]
     fn test_BC_2_09_002_alt_char_produces_esc_prefix() {
         let event = PtyKeyEvent {
@@ -691,10 +714,12 @@ mod tests {
             modifiers: PtyKeyModifiers::ALT,
             kind: PtyKeyEventKind::Press,
         };
-        assert_eq!(key_event_to_pty_bytes(event), Some(vec![0x1b, 0x61]));
+        assert_eq!(key_event_to_pty_bytes(event, false), Some(vec![0x1b, 0x61]));
     }
 
     /// BC-2.09.002 PC-2 — Shift+Tab (BackTab) → \x1b[Z
+    ///
+    /// kitty_active=false; BackTab VT arm fires (Kitty arm is skipped).
     #[test]
     fn test_BC_2_09_002_shift_tab_maps_to_csi_z() {
         let event = PtyKeyEvent {
@@ -702,13 +727,18 @@ mod tests {
             modifiers: PtyKeyModifiers::NONE,
             kind: PtyKeyEventKind::Press,
         };
-        assert_eq!(key_event_to_pty_bytes(event), Some(vec![0x1b, b'[', b'Z']));
+        assert_eq!(
+            key_event_to_pty_bytes(event, false),
+            Some(vec![0x1b, b'[', b'Z'])
+        );
     }
 
     /// BC-2.09.002 PC-2 — F6–F12 tilde sequences (full table)
     ///
     /// F6→\x1b[17~, F7→\x1b[18~, F8→\x1b[19~, F9→\x1b[20~,
     /// F10→\x1b[21~, F11→\x1b[23~, F12→\x1b[24~
+    ///
+    /// kitty_active=false; function key sequences are VT-invariant.
     #[test]
     fn test_BC_2_09_002_fn_keys_f6_through_f12() {
         let cases = [
@@ -733,7 +763,7 @@ mod tests {
                 kind: PtyKeyEventKind::Press,
             };
             assert_eq!(
-                key_event_to_pty_bytes(event),
+                key_event_to_pty_bytes(event, false),
                 Some(expected),
                 "F{n} key bytes mismatch"
             );
@@ -743,6 +773,7 @@ mod tests {
     /// BC-2.09.002 PC-3/PC-4 — Release events for Release kind return None
     ///
     /// Additional coverage: Release on any key (not just 'a') returns None.
+    /// kitty_active=false; Release-discard is unconditional.
     #[test]
     fn test_BC_2_09_002_release_events_all_keys_return_none() {
         let keys = [
@@ -757,13 +788,14 @@ mod tests {
                 modifiers: PtyKeyModifiers::NONE,
                 kind: PtyKeyEventKind::Release,
             };
-            assert_eq!(key_event_to_pty_bytes(event), None);
+            assert_eq!(key_event_to_pty_bytes(event, false), None);
         }
     }
 
     /// BC-2.09.002 PC-1/PC-2 — Repeat kind is forwarded (same as Press)
     ///
     /// key_event_to_pty_bytes treats Press and Repeat identically.
+    /// kitty_active=false; Repeat-forwarding is unconditional.
     #[test]
     fn test_BC_2_09_002_repeat_kind_forwarded_same_as_press() {
         let event = PtyKeyEvent {
@@ -771,7 +803,86 @@ mod tests {
             modifiers: PtyKeyModifiers::NONE,
             kind: PtyKeyEventKind::Repeat,
         };
-        assert_eq!(key_event_to_pty_bytes(event), Some(vec![0x61]));
+        assert_eq!(key_event_to_pty_bytes(event, false), Some(vec![0x61]));
+    }
+
+    // -----------------------------------------------------------------------
+    // BC-2.09.002 EC-217 — TRACE+None boundary: modifier combo with no VT
+    // encoding on non-Kitty terminal returns None (observable drop, not silent).
+    // -----------------------------------------------------------------------
+
+    /// BC-2.09.002 EC-217 — Alt+Up on non-Kitty terminal → None
+    ///
+    /// Alt+Up has no VT encoding in the standard table. On a non-Kitty terminal
+    /// (kitty_active=false), the `_ if !mods.is_empty()` TRACE+None arm fires.
+    /// The drop is NOT silent — a TRACE log is emitted (observable at TRACE level).
+    /// Per BC-2.09.002 PC-1: no keyboard class is silently dropped; TRACE+None
+    /// satisfies the "no silent drop" invariant.
+    ///
+    /// Source: BC-2.09.002 EC-217; SS-embedded-pty.md §Translation function HIGH-001.
+    #[test]
+    fn test_BC_2_09_002_modifier_combo_no_vt_trace_none() {
+        let event = PtyKeyEvent {
+            code: PtyKeyCode::Up,
+            modifiers: PtyKeyModifiers::ALT,
+            kind: PtyKeyEventKind::Press,
+        };
+        // Alt+Up: no VT encoding arm; TRACE log emitted; None returned.
+        // This test verifies the observable-drop boundary per EC-217.
+        assert_eq!(
+            key_event_to_pty_bytes(event, false),
+            None,
+            "Alt+Up on non-Kitty terminal must return None (EC-217 TRACE+None boundary)"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // BC-2.09.002 PC-2 — Coverage-gap: Ctrl+@ and Ctrl+[ (special Ctrl rows)
+    // -----------------------------------------------------------------------
+
+    /// BC-2.09.002 PC-2 — Ctrl+@ → [0x00] (NUL)
+    ///
+    /// Ctrl+@ is the standard xterm encoding for NUL.
+    /// '@' ASCII is 0x40; 0x40 - 0x40 = 0x00.
+    /// Source: BC-2.09.002 PC-2 key table row "Ctrl+@ | \x00 (NUL)".
+    #[test]
+    fn test_BC_2_09_002_ctrl_at_nul() {
+        let event = PtyKeyEvent {
+            code: PtyKeyCode::Char('@'),
+            modifiers: PtyKeyModifiers::CONTROL,
+            kind: PtyKeyEventKind::Press,
+        };
+        assert_eq!(
+            key_event_to_pty_bytes(event, false),
+            Some(vec![0x00]),
+            "Ctrl+@ must produce NUL (BC-2.09.002 PC-2)"
+        );
+    }
+
+    /// BC-2.09.002 PC-2 — Ctrl+[ → [0x1b] (ESC byte)
+    ///
+    /// Ctrl+[ is the standard xterm encoding for ESC as a byte.
+    /// '[' ASCII is 0x5b; 0x5b - 0x40 = 0x1b.
+    ///
+    /// Note: this is the PURE FUNCTION result. The Esc-EXIT interception
+    /// (BC-2.09.002 Invariant 2) lives in the dispatch layer (monocle-tui),
+    /// not in key_event_to_pty_bytes. Ctrl+[ is a distinct keycode path
+    /// from bare Esc; the dispatch layer intercepts bare Esc (PtyKeyCode::Esc),
+    /// not Ctrl+[.
+    ///
+    /// Source: BC-2.09.002 PC-2 key table row "Ctrl+[ | \x1b (Esc)".
+    #[test]
+    fn test_BC_2_09_002_ctrl_bracket_esc() {
+        let event = PtyKeyEvent {
+            code: PtyKeyCode::Char('['),
+            modifiers: PtyKeyModifiers::CONTROL,
+            kind: PtyKeyEventKind::Press,
+        };
+        assert_eq!(
+            key_event_to_pty_bytes(event, false),
+            Some(vec![0x1b]),
+            "Ctrl+[ must produce ESC byte 0x1b (BC-2.09.002 PC-2)"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -809,10 +920,66 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // BC-2.09.004: Kitty Keyboard Protocol
+    // BC-2.09.004: Kitty Keyboard Protocol — kitty_active bool parameter
     // -----------------------------------------------------------------------
 
-    /// BC-2.09.004 PC-2 — Ctrl+Shift+Enter → \x1b[13;6u
+    /// BC-2.09.004 PC-1 — is_kitty_enhanced_key returns true when kitty_active=true
+    /// and modifier combo is non-empty.
+    ///
+    /// kitty_active=true: Up+CONTROL is a modifier combo; returns true.
+    /// This is the Kitty-active path that routes to CSI-u encoding.
+    ///
+    /// Source: BC-2.09.004 PC-1; SS-embedded-pty.md §Translation function.
+    #[test]
+    fn test_BC_2_09_004_kitty_active_true_modifier_combo() {
+        assert!(
+            is_kitty_enhanced_key(&PtyKeyCode::Up, PtyKeyModifiers::CONTROL, true),
+            "is_kitty_enhanced_key must return true for Up+CONTROL when kitty_active=true (BC-2.09.004 PC-1)"
+        );
+    }
+
+    /// BC-2.09.004 PC-4 / EC-216 — is_kitty_enhanced_key returns false when kitty_active=false
+    ///
+    /// kitty_active=false: early-return guard fires unconditionally.
+    /// Even a modifier-carrying combo (Up+CONTROL) returns false on non-Kitty terminals.
+    /// The standard VT table is used as fallback.
+    ///
+    /// Source: BC-2.09.004 PC-4; EC-216; SS-embedded-pty.md §Translation function.
+    #[test]
+    fn test_BC_2_09_004_kitty_active_false_returns_false() {
+        assert!(
+            !is_kitty_enhanced_key(&PtyKeyCode::Up, PtyKeyModifiers::CONTROL, false),
+            "is_kitty_enhanced_key must return false when kitty_active=false (BC-2.09.004 PC-4)"
+        );
+    }
+
+    /// BC-2.09.004 PC-2 — Ctrl+Shift+Enter → \x1b[13;6u via key_event_to_pty_bytes
+    ///
+    /// End-to-end integration: when kitty_active=true and the event is Ctrl+Shift+Enter,
+    /// key_event_to_pty_bytes reaches the Kitty catch-all arm (is_kitty_enhanced_key
+    /// returns true), calls encode_kitty_key, and produces the CSI-u sequence.
+    ///
+    /// This test confirms the kitty_active catch-all arm is live (not dead code).
+    ///
+    /// Expected bytes: ESC [ 1 3 ; 6 u
+    /// Derivation: Enter codepoint=13; modifier = 1 + shift(1) + ctrl(4) = 6.
+    /// Source: BC-2.09.004 §Canonical Test Vectors.
+    #[test]
+    fn test_BC_2_09_004_kitty_active_true_csi_u_via_key_event_to_pty_bytes() {
+        let event = PtyKeyEvent {
+            code: PtyKeyCode::Enter,
+            modifiers: PtyKeyModifiers::CONTROL | PtyKeyModifiers::SHIFT,
+            kind: PtyKeyEventKind::Press,
+        };
+        // kitty_active=true: Kitty catch-all arm fires; encode_kitty_key produces CSI-u.
+        assert_eq!(
+            key_event_to_pty_bytes(event, true),
+            Some(b"\x1b[13;6u".to_vec()),
+            "Ctrl+Shift+Enter with kitty_active=true must produce \\x1b[13;6u (BC-2.09.004)"
+        );
+    }
+
+    /// BC-2.09.004 PC-2 — Ctrl+Shift+Enter → \x1b[13;6u (direct encode_kitty_key call)
     ///
     /// Canonical test vector from BC-2.09.004 §Canonical Test Vectors.
     /// Enter codepoint = 13; modifier = 1 + shift(1) + ctrl(4) = 6.
@@ -831,16 +998,17 @@ mod tests {
     /// Standard VT sequences from BC-2.09.002 table are used. No panic.
     #[test]
     fn test_BC_2_09_004_kitty_unsupported_fallback() {
-        // On non-Kitty terminals, plain keys don't trigger Kitty encoding.
+        // kitty_active=false: early-return guard fires; returns false regardless of mods.
         assert!(!is_kitty_enhanced_key(
             &PtyKeyCode::Enter,
-            PtyKeyModifiers::NONE
+            PtyKeyModifiers::NONE,
+            false
         ));
-        // Even with modifiers, a non-enhanced event (standard terminal) returns false.
-        // The standard table handles Enter → \r regardless.
+        // Even with modifiers, kitty_active=false short-circuits; returns false.
         assert!(!is_kitty_enhanced_key(
             &PtyKeyCode::Enter,
-            PtyKeyModifiers::CONTROL
+            PtyKeyModifiers::CONTROL,
+            false
         ));
     }
 

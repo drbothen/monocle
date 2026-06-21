@@ -281,3 +281,101 @@ async fn test_BC_2_09_002_key_input_carries_correct_session_id() {
         other => panic!("expected ClientToServer::KeyInput, got {:?}", other),
     }
 }
+
+// ---------------------------------------------------------------------------
+// BC-2.09.005: Paste edge cases — EC-230 and EC-231
+// These tests exercise the dispatch helper directly (signatures unchanged from
+// the current worktree; they compile against the existing dispatch_embedded_terminal_paste stub).
+// They should FAIL at assertion (todo!() panic) until the implementer fills the stub.
+// ---------------------------------------------------------------------------
+
+/// BC-2.09.005 EC-230 — paste text containing ESC characters is forwarded verbatim
+///
+/// When the pasted text contains raw ESC bytes (e.g. ANSI color codes like
+/// "\x1b[31mred\x1b[0m"), the ESC bytes are included verbatim inside the bracket
+/// sequences. No sanitization occurs. The PTY receives them as data.
+///
+/// Expected: \x1b[200~\x1b[31mred\x1b[0m\x1b[201~
+/// (outer bracket + raw ESC-containing text + outer bracket — all contiguous)
+///
+/// Source: BC-2.09.005 EC-230.
+#[tokio::test]
+async fn test_BC_2_09_005_paste_with_esc_verbatim() {
+    let (tx, mut rx) = mpsc::channel::<ClientToServer>(4);
+
+    // Text contains raw ESC bytes — ANSI color sequence.
+    let ansi_text = "\x1b[31mred\x1b[0m";
+    dispatch_embedded_terminal_paste(ansi_text, "session-esc-paste", &tx).await;
+
+    let sent = drain_channel(&mut rx);
+    assert_eq!(
+        sent.len(),
+        1,
+        "paste with ESC chars must send exactly one KeyInput"
+    );
+    match &sent[0] {
+        ClientToServer::KeyInput { bytes, session_id } => {
+            // The expected bytes are:
+            //   \x1b[200~  — bracketed paste open sequence (6 bytes)
+            //   \x1b[31mred\x1b[0m  — verbatim text including ESC bytes
+            //   \x1b[201~  — bracketed paste close sequence (6 bytes)
+            // No sanitization of inner ESC bytes.
+            let mut expected = b"\x1b[200~".to_vec();
+            expected.extend_from_slice(ansi_text.as_bytes());
+            expected.extend_from_slice(b"\x1b[201~");
+
+            assert_eq!(
+                bytes.as_slice(),
+                expected.as_slice(),
+                "paste with ESC chars must be forwarded verbatim inside brackets (EC-230)"
+            );
+            assert_eq!(session_id, "session-esc-paste");
+        }
+        other => panic!("expected ClientToServer::KeyInput, got {:?}", other),
+    }
+}
+
+/// BC-2.09.005 EC-231 — paste text containing embedded \x1b[200~ sequence forwarded verbatim
+///
+/// When the pasted text itself contains the literal string "\x1b[200~" (attacker
+/// input or nested bracket sequence), it is forwarded verbatim inside the outer
+/// bracket sequences. monocle does NOT sanitize or strip embedded bracket sequences.
+/// The PTY receives the outer brackets plus the verbatim inner text.
+///
+/// Expected: \x1b[200~<inner text with embedded \x1b[200~>\x1b[201~
+///
+/// Source: BC-2.09.005 EC-231.
+#[tokio::test]
+async fn test_BC_2_09_005_paste_embedded_bracket_verbatim() {
+    let (tx, mut rx) = mpsc::channel::<ClientToServer>(4);
+
+    // The paste text itself contains the opening bracket sequence.
+    let inner_text = "before\x1b[200~after";
+    dispatch_embedded_terminal_paste(inner_text, "session-bracket-embed", &tx).await;
+
+    let sent = drain_channel(&mut rx);
+    assert_eq!(
+        sent.len(),
+        1,
+        "paste with embedded bracket must send exactly one KeyInput"
+    );
+    match &sent[0] {
+        ClientToServer::KeyInput { bytes, session_id } => {
+            // Expected bytes:
+            //   \x1b[200~  — outer bracket open (6 bytes)
+            //   before\x1b[200~after  — verbatim inner text (not stripped/sanitized)
+            //   \x1b[201~  — outer bracket close (6 bytes)
+            let mut expected = b"\x1b[200~".to_vec();
+            expected.extend_from_slice(inner_text.as_bytes());
+            expected.extend_from_slice(b"\x1b[201~");
+
+            assert_eq!(
+                bytes.as_slice(),
+                expected.as_slice(),
+                "paste with embedded bracket sequence must be forwarded verbatim (EC-231)"
+            );
+            assert_eq!(session_id, "session-bracket-embed");
+        }
+        other => panic!("expected ClientToServer::KeyInput, got {:?}", other),
+    }
+}
