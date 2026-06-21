@@ -973,9 +973,9 @@ S-038-session-manager-hook-injection:
 
 S-040-keyboard-forwarding:
   path: stories/S-040-keyboard-forwarding.md
-  current_version: "1.1"
-  last_bump_commit: "[F-P21-SUG-001 — AC-001 citation-scope correction: co-cite BC-2.09.002 PC-2 and SS-embedded-pty.md §Translation function]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.2"
+  last_bump_commit: "[S-040 AC-008 dependency-reality cascade — three-flag Kitty set; input pins synced to BC-2.09.004 v1.0.6, SS-embedded-pty v1.11.0]"
+  last_bump_date: "2026-06-21"
 
 S-046-pty-output-fan-out:
   path: stories/S-046-pty-output-fan-out.md

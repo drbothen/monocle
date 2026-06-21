@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-040
 epic_id: EPIC-09
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -20,10 +20,10 @@ behavioral_contracts: [BC-2.09.002, BC-2.09.004, BC-2.09.005]
 verification_properties: []
 estimated_days: 4
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.002.md, version: "1.1.4"}
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.004.md, version: "1.0.4"}
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.005.md, version: "1.0.3"}
-  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.7.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.002.md, version: "1.1.6"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.004.md, version: "1.0.6"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.005.md, version: "1.0.5"}
+  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.11.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
@@ -100,11 +100,12 @@ used instead. No panic. No silent key loss.
 
 ### AC-008 (traces to BC-2.09.004 invariant 1 — Kitty flags enabled globally at TUI startup)
 
-`crossterm::event::PushKeyboardEnhancementFlags` with all four flags
-(`DISAMBIGUATE_ESCAPE_CODES | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_EVENT_TYPES | REPORT_ASSOCIATED_TEXT`)
-is called in TUI startup (global, not gated on `EmbeddedTerminal` entry). On TUI exit,
-`PopKeyboardEnhancementFlags` is called. TUI startup also enables `EnableBracketedPaste`
-(globally); TUI exit calls `DisableBracketedPaste`.
+Three Kitty enhancement flags are enabled at TUI startup: `DISAMBIGUATE_ESCAPE_CODES |
+REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_EVENT_TYPES`. `REPORT_ASSOCIATED_TEXT` is not
+used (unavailable in crossterm-0.29). `REPORT_ALTERNATE_KEYS` is not used (no v1A
+requirement). On TUI exit, `PopKeyboardEnhancementFlags` is called. TUI startup also
+enables `EnableBracketedPaste` (globally); TUI exit calls `DisableBracketedPaste`.
+Compilation succeeds on crossterm-0.29.
 
 ### AC-009 (traces to BC-2.09.005 postcondition 1–4 — bracketed paste wrapped and forwarded)
 
@@ -151,7 +152,7 @@ standard VT. The VT fallback is used; no panic; no silent loss.
 - [ ] Add `EmbeddedTerminal` keyboard dispatch arm in `crates/monocle-tui/src/event_loop.rs`:
   - Match `Event::Key(event)`: check for Esc (→ `Action::ExitEmbeddedTerminal`); else call `keyboard_conv::crossterm_key_to_pty(event)` to get `PtyKeyEvent`, then call `key_event_to_pty_bytes(pty_event)`; if `Some(bytes)`, send `ClientToServer::KeyInput { session_id, bytes }`. Crossterm type is converted at this dispatch boundary via `keyboard_conv`; `monocle-core` functions see only `PtyKeyEvent`.
   - Match `Event::Paste(text)`: wrap as `\x1b[200~` + text + `\x1b[201~`; send `ClientToServer::KeyInput`.
-- [ ] Add global TUI startup keyboard setup in `crates/monocle-tui/src/event_loop.rs`: `PushKeyboardEnhancementFlags` (4 flags) + `EnableBracketedPaste`. Detect Kitty support via `CSI ? u` query; log TRACE if unsupported and skip flags.
+- [ ] Add global TUI startup keyboard setup in `crates/monocle-tui/src/event_loop.rs`: `PushKeyboardEnhancementFlags` (3 flags: `DISAMBIGUATE_ESCAPE_CODES | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_EVENT_TYPES`) + `EnableBracketedPaste`. Detect Kitty support via `CSI ? u` query; log TRACE if unsupported and skip flags.
 - [ ] Add global TUI exit cleanup: `PopKeyboardEnhancementFlags` + `DisableBracketedPaste`.
 - [ ] Write unit test `test_BC_2_09_002_keyboard_forwarding_printable`: `PtyKeyEvent { code: PtyKeyCode::Char('a'), modifiers: PtyKeyModifiers::NONE, kind: PtyKeyEventKind::Press }` → `key_event_to_pty_bytes(event) == Some(vec![0x61])`. Tests the pure `monocle-core` function directly — no crossterm types in the test.
 - [ ] Write unit test `test_BC_2_09_002_keyboard_forwarding_ctrl`: `PtyKeyEvent { code: PtyKeyCode::Char('c'), modifiers: PtyKeyModifiers::CONTROL, kind: Press }` → `Some(vec![0x03])`.
@@ -269,5 +270,6 @@ Within the 30% context window bound. No split required.
 
 | Version | Change | Pass |
 |---------|--------|------|
+| v1.2 | AC-008 dependency-reality cascade: architect (SS-embedded-pty v1.11.0) and product-owner (BC-2.09.004 v1.0.6) ruled that `REPORT_ASSOCIATED_TEXT` is unavailable in crossterm-0.29. AC-008 flag enumeration corrected from four flags to three (`DISAMBIGUATE_ESCAPE_CODES | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_EVENT_TYPES`); `REPORT_ALTERNATE_KEYS` explicitly excluded (no v1A requirement). Tasks startup line updated to match. Input pins updated to current authoritative versions: BC-2.09.002 v1.1.6, BC-2.09.004 v1.0.6, BC-2.09.005 v1.0.5, SS-embedded-pty v1.11.0. No behavior change to other ACs. | dependency-reality cascade |
 | v1.1 | F-P21-SUG-001: AC-001 citation-scope correction — "BC-2.09.002 PC-2 table" was imprecise as the literal VT sequence table lives in SS-embedded-pty.md §Translation function; AC-001 now co-cites both (BC-2.09.002 PC-2 for behavioral fidelity; SS-embedded-pty.md §Translation function for the exact sequence mapping). No AC behavior change. | post-convergence |
 | v1.0 | Initial decomposition. | Phase-2 |
