@@ -185,9 +185,15 @@ pub async fn dispatch_embedded_terminal_key(
     kitty_active: bool,
     ipc_tx: &Sender<ClientToServer>,
 ) -> bool {
-    // BC-2.09.002 Invariant 2: Intercept bare Esc (no modifiers) as ExitEmbeddedTerminal
-    // BEFORE calling key_event_to_pty_bytes(). This ordering is non-negotiable.
-    if event.code == KeyCode::Esc && event.modifiers == KeyModifiers::NONE {
+    // BC-2.09.002 Invariant 2: Intercept bare Esc (no modifiers, Press only) as
+    // ExitEmbeddedTerminal BEFORE calling key_event_to_pty_bytes(). This ordering is
+    // non-negotiable. The `kind == Press` guard is required because Kitty keyboard
+    // protocol emits both Press and Release events; a bare-Esc Release MUST NOT trigger
+    // exit (PC-3 — Release events are discarded, not intercepted).
+    if event.code == KeyCode::Esc
+        && event.modifiers == KeyModifiers::NONE
+        && event.kind == crossterm::event::KeyEventKind::Press
+    {
         // Signal caller to dispatch Action::ExitEmbeddedTerminal.
         // Nothing is sent to the PTY for this Esc.
         return true;
