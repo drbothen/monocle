@@ -228,9 +228,9 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.30"
-  last_bump_commit: "[S-039 POL-11 cascade — S-039 input pin v1.3→v1.8]"
-  last_bump_date: "2026-06-20"
+  current_version: "1.31"
+  last_bump_commit: "[S-040 POL-11 cascade — S-040 input pin v1.1→v1.2]"
+  last_bump_date: "2026-06-21"
 
 sprint-state:
   path: stories/sprint-state.yaml
