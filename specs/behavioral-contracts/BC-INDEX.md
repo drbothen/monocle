@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.44.4"
+version: "1.44.5"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-20T00:00:00Z
@@ -1223,6 +1223,28 @@ SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. 
 - BC-INDEX version: 1.40.4 → 1.40.5. No BC ID additions or retirements. No H1 title changes.
 
 SE-16d monotonicity: v1.40.5 timestamp 2026-06-14T20:00:00Z > v1.40.4 timestamp 2026-06-14T19:00:00Z. PASS.
+
+## §Trace v1.44.5
+
+**S-040 pass-6 PO cascade — BC-2.09.002 Invariant 2 Press-only guard; BC-2.09.004 EC-234 detection mechanism** (2026-06-21):
+
+BC version bumps in this dispatch:
+- BC-2.09.002 v1.2.1 → v1.2.2: Invariant 2 amended with Press-only kind guard per architect
+  ruling (ADV-MED-001). The Esc-intercept fires ONLY on `KeyEventKind::Press`. Release events
+  matching Esc+no-modifiers are discarded per PC-3; Repeat events fall through to
+  `key_event_to_pty_bytes()` and produce `\x1b` bytes. Consistent with EC-210 (Press path),
+  EC-215 (Release discarded), EC-218 (Esc+modifier falls through).
+- BC-2.09.004 v1.0.10 → v1.0.11: EC-234 trigger description corrected per ADV-MED-001
+  architect ruling. Old: "CSI ?u query times out at startup (terminal does not respond within
+  100ms)". New: "terminal does not respond to Kitty keyboard enhancement probe
+  (`supports_keyboard_enhancement()` returns `Err(_)` or `Ok(false)`)". 100ms hand-rolled-probe
+  language removed entirely. PC-2, PC-1 prose (crossterm NOTE), and Invariant 2 also updated
+  to name `crossterm::terminal::supports_keyboard_enhancement()` consistently.
+
+No BC H1 title changes. No BC ID additions or retirements. BC count unchanged: 138 active.
+BC-INDEX version: 1.44.4 → 1.44.5.
+
+SE-16d monotonicity: v1.44.5 timestamp 2026-06-21 >= v1.44.4 timestamp 2026-06-21. PASS.
 
 ## §Trace v1.44.4
 

@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.10"
+version: "1.0.11"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -46,8 +46,9 @@ the enhancement flags silently no-op and standard VT sequences are used as fallb
    REPORT_ASSOCIATED_TEXT is unavailable in crossterm-0.29 (commented-out symbol);
    REPORT_ALTERNATE_KEYS is intentionally omitted — no v1A BC depends on layout-alternate
    data. See SS-embedded-pty.md §Crossterm setup S-040 delivery ruling.
-2. The terminal supports Kitty keyboard enhancement (detected via `CSI ? u` query; if not
-   supported, flags were silently no-op'd and standard sequences remain active).
+2. The terminal supports Kitty keyboard enhancement (detected via
+   `crossterm::terminal::supports_keyboard_enhancement()`; if not supported — function returns
+   `Err(_)` or `Ok(false)` — flags were NOT pushed and standard sequences remain active).
 3. `AppMode::EmbeddedTerminal` is active.
 
 ## Postconditions
@@ -65,8 +66,9 @@ the enhancement flags silently no-op and standard VT sequences are used as fallb
    events are reported (more modifier combos become visible; release events appear; modifier-only
    keys surface) and populate `KeyEventState`, but do NOT produce new `KeyCode` variants.
    Consequently, `is_kitty_enhanced_key` CANNOT determine Kitty mode from `(code, mods)` alone —
-   the `kitty_active: bool` parameter threads the runtime detection result (from the `CSI ? u`
-   query at TUI startup, stored in `App::kitty_active`) into the pure encoder.
+   the `kitty_active: bool` parameter threads the runtime detection result (from
+   `crossterm::terminal::supports_keyboard_enhancement()` at TUI startup, stored in
+   `App::kitty_active`) into the pure encoder.
 
 2. `encode_kitty_key(event.code, mods, event.kind)` produces a CSI u sequence:
    `ESC [ <unicode_codepoint> ; <modifier_value> u`
@@ -86,10 +88,10 @@ the enhancement flags silently no-op and standard VT sequences are used as fallb
 1. Kitty enhancement flags are enabled GLOBALLY on TUI startup (not gated on EmbeddedTerminal
    entry). This ensures enhanced key events are available immediately when the user enters
    embedded terminal mode without a terminal state transition.
-2. If the terminal does not support Kitty protocol: `PushKeyboardEnhancementFlags` writes
-   the CSI sequence; the terminal ignores it (no response to query or non-OK response); monocle
-   detects this and skips the flags. The standard VT key table from BC-2.09.002 handles all
-   key classes on non-Kitty terminals.
+2. If `crossterm::terminal::supports_keyboard_enhancement()` returns `Err(_)` or `Ok(false)`:
+   `PushKeyboardEnhancementFlags` is NOT called; `kitty_active = false`; `App::kitty_active`
+   is set to false at startup and never mutated. The standard VT key table from BC-2.09.002
+   handles all key classes on non-Kitty terminals.
 3. `encode_kitty_key()` and `is_kitty_enhanced_key(code, mods, kitty_active)` are PURE functions —
    no I/O, no state mutation, deterministic given their inputs. Purity is preserved for
    `is_kitty_enhanced_key` because `kitty_active` is a plain input parameter (a `bool` threaded
@@ -104,7 +106,7 @@ the enhancement flags silently no-op and standard VT sequences are used as fallb
 | EC-227 | `Alt+F3` on Kitty-capable terminal | CSI u sequence; harness receives alt+F3 correctly |
 | EC-228 | `Ctrl+Shift+Enter` on non-Kitty terminal | `is_kitty_enhanced_key(code, mods, false)` returns false (kitty_active=false short-circuits); falls through to standard key table (Enter → `\r`; Ctrl+Shift modifier not distinguishable); best-effort |
 | EC-229 | TUI exits without `PopKeyboardEnhancementFlags` (panic/crash) | Terminal left in Kitty-enhanced mode; user sees raw Kitty sequences in their shell; next TUI launch will `Pop` on clean exit; acceptable for crash recovery |
-| EC-234 | CSI ?u query times out at startup (terminal does not respond within 100ms) | `kitty_active = false`; `PushKeyboardEnhancementFlags` is NOT called; TRACE log emitted; standard VT sequences used throughout session. No enhanced key encoding occurs. |
+| EC-234 | Terminal does not respond to Kitty keyboard enhancement probe (`supports_keyboard_enhancement()` returns `Err(_)` or `Ok(false)`) | `kitty_active = false`; `PushKeyboardEnhancementFlags` is NOT called; TRACE log emitted; standard VT sequences used throughout session. No enhanced key encoding occurs. |
 
 ## Canonical Test Vectors
 
@@ -146,6 +148,27 @@ S-040 — Same story as BC-2.09.002 (keyboard encoding includes Kitty branch)
 ## VP Anchors
 
 VP-TBD — Kitty encoding unit tests (filled after VP creation)
+
+## §Trace v1.0.11
+
+**Behavioral content — EC-234 detection mechanism corrected; 100ms/CSI-?u probe language removed** (2026-06-21):
+- **EC-234 trigger rewritten:** Old trigger "CSI ?u query times out at startup (terminal does
+  not respond within 100ms)" removed entirely. New trigger: "Terminal does not respond to Kitty
+  keyboard enhancement probe (`supports_keyboard_enhancement()` returns `Err(_)` or `Ok(false)`)".
+  The outcome is unchanged (`kitty_active = false`; flags not pushed; TRACE; standard VT used).
+- **PC-2 (Precondition 2) updated:** Detection reference changed from "detected via `CSI ? u` query"
+  to `crossterm::terminal::supports_keyboard_enhancement()` naming both `Err(_)` and `Ok(false)`
+  return paths.
+- **PC-1 prose (crossterm-0.29 NOTE) updated:** "from the `CSI ? u` query at TUI startup" →
+  "from `crossterm::terminal::supports_keyboard_enhancement()` at TUI startup".
+- **Invariant 2 updated:** Old "no response to query or non-OK response" replaced with the
+  correct conditional: `supports_keyboard_enhancement()` returns `Err(_)` or `Ok(false)`;
+  `PushKeyboardEnhancementFlags` is NOT called; `kitty_active = false`.
+- Rationale: the mechanism is crossterm's `supports_keyboard_enhancement()` function, which
+  uses crossterm's internal timeout (not a hand-rolled 100ms probe). The 100ms value was
+  inaccurate and has been removed entirely per architect ruling (SS-embedded-pty.md v1.14.0
+  §Risk Mitigations ADV-MED-001 PO directive).
+- SE-16d monotonicity: v1.0.11 timestamp 2026-06-21 >= v1.0.10 timestamp 2026-06-21. PASS.
 
 ## §Trace v1.0.10
 

@@ -809,8 +809,8 @@ BC-2.09.001:
 
 BC-2.09.002:
   path: specs/behavioral-contracts/ss-09/BC-2.09.002.md
-  current_version: "1.2.1"
-  last_bump_commit: "[S-040 pass-6 ADV-MED-001 — arch-source pin SS-embedded-pty cascade; PO directive: Invariant 2 kind guard]"
+  current_version: "1.2.2"
+  last_bump_commit: "[S-040 pass-6 PO cascade — Invariant 2 Press-only kind guard (ADV-MED-001 architect ruling)]"
   last_bump_date: "2026-06-21"
 
 BC-2.09.003:
@@ -821,8 +821,8 @@ BC-2.09.003:
 
 BC-2.09.004:
   path: specs/behavioral-contracts/ss-09/BC-2.09.004.md
-  current_version: "1.0.10"
-  last_bump_commit: "[S-040 pass-6 ADV-MED-001 — arch-source pin SS-embedded-pty cascade; PO directive: EC-234 100ms→supports_keyboard_enhancement]"
+  current_version: "1.0.11"
+  last_bump_commit: "[S-040 pass-6 PO cascade — EC-234 detection mechanism corrected: 100ms/CSI-?u probe removed; supports_keyboard_enhancement() named]"
   last_bump_date: "2026-06-21"
 
 BC-2.09.005:

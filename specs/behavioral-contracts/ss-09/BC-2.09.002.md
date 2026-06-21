@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.1"
+version: "1.2.2"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -104,6 +104,10 @@ mouse events in SGR encoding, and bracketed paste. No keyboard class is deferred
 2. The Action dispatch layer MUST intercept `KeyCode::Esc` (no modifiers) as
    `Action::ExitEmbeddedTerminal` BEFORE `key_event_to_pty_bytes()` is called. Esc exits
    embedded terminal mode; a second Esc (after re-entering) would be forwarded as `\x1b`.
+   The intercept MUST fire ONLY on `KeyEventKind::Press`. Release and Repeat events matching
+   the Esc+no-modifiers pattern MUST NOT trigger `Action::ExitEmbeddedTerminal`: Release
+   events are discarded per PC-3; Repeat events fall through to `key_event_to_pty_bytes()`
+   and produce `\x1b` bytes.
 3. `Ctrl-D` (`KeyCode::Char('d')` + `KeyModifiers::CONTROL`) is translated to `\x04` (EOT)
    and forwarded to the PTY. Claude Code interprets this as "end session."
 4. Kitty keyboard enhancement flags are enabled globally on TUI startup. If the terminal
@@ -180,6 +184,20 @@ S-040 — Implement key_event_to_pty_bytes() and KeyInput IPC send in monocle-tu
 ## VP Anchors
 
 VP-TBD — Keyboard translation unit tests (filled after VP creation)
+
+## §Trace v1.2.2
+
+**Behavioral content — Invariant 2 kind guard: Press-only Esc intercept** (2026-06-21):
+- **Invariant 2 amended:** Appended Press-only kind guard to the normative Esc-intercept
+  statement per architect ruling (SS-embedded-pty.md v1.14.0 §Call site in event_loop.rs
+  ADV-MED-001 kind-guard ruling). The intercept fires ONLY on `KeyEventKind::Press`. Release
+  events matching Esc+no-modifiers are discarded per PC-3; Repeat events fall through to
+  `key_event_to_pty_bytes()` and produce `\x1b` bytes.
+- **Consistency check:** EC-210 ("Esc pressed in EmbeddedTerminal") describes the Press path
+  and remains accurate. EC-215 (Release discarded for any key) covers the Release path. EC-218
+  (Esc+modifier) covers modified Esc. No new EC added — the kind guard is normatively stated
+  in Invariant 2, which is the correct home for a systemic guard rule.
+- SE-16d monotonicity: v1.2.2 timestamp 2026-06-21 >= v1.2.1 timestamp 2026-06-21. PASS.
 
 ## §Trace v1.2.1
 
