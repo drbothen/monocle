@@ -255,6 +255,53 @@ async fn test_BC_2_09_005_paste_newlines_preserved_verbatim() {
 }
 
 // ---------------------------------------------------------------------------
+// ADV-MED-001 — Esc Release must NOT trigger ExitEmbeddedTerminal
+// ---------------------------------------------------------------------------
+
+/// BC-2.09.002 Invariant 2 / PC-3 — bare Esc KeyEventKind::Release must not exit
+///
+/// When Kitty keyboard protocol is active (kitty_active=true), crossterm emits
+/// both Press and Release events for every key. The ExitEmbeddedTerminal intercept
+/// MUST fire ONLY on KeyEventKind::Press. A bare-Esc Release event (code Esc,
+/// modifiers NONE, kind Release) MUST be discarded: dispatch returns false and
+/// zero bytes are sent to the IPC channel.
+///
+/// This is the ADV-MED-001 Red Gate test. The current guard at event_loop.rs
+/// checks `code == Esc && modifiers == NONE` without inspecting `event.kind`,
+/// so a Release event currently returns true (wrongly signalling exit). This test
+/// MUST FAIL against the un-fixed implementation and PASS only after the fix.
+///
+/// Contrast with test_BC_2_09_002_esc_not_forwarded_directly, which uses
+/// KeyEventKind::Press and expects true (exit signalled).
+#[tokio::test]
+async fn test_BC_2_09_002_esc_release_does_not_exit() {
+    let (tx, mut rx) = mpsc::channel::<ClientToServer>(16);
+    // Release events only occur when Kitty keyboard enhancement is active.
+    let event = make_key_event(
+        crossterm::event::KeyCode::Esc,
+        crossterm::event::KeyModifiers::NONE,
+        crossterm::event::KeyEventKind::Release,
+    );
+
+    let exited = dispatch_embedded_terminal_key(event, "session-esc-release", true, &tx).await;
+
+    // Release MUST NOT signal exit — ADV-MED-001 / BC-2.09.002 Invariant 2 / PC-3
+    assert!(
+        !exited,
+        "dispatch_embedded_terminal_key must return false for bare Esc Release \
+         (BC-2.09.002 INV-2 / PC-3 — Release must be discarded, not intercepted as exit)"
+    );
+
+    // Release events are discarded; zero bytes must be sent to the IPC channel.
+    let sent = drain_channel(&mut rx);
+    assert!(
+        sent.is_empty(),
+        "Esc Release must send 0 bytes to PTY; got {} message(s) (ADV-MED-001)",
+        sent.len()
+    );
+}
+
+// ---------------------------------------------------------------------------
 // BC-2.09.002 / BC-2.09.004 — session_id is threaded correctly
 // ---------------------------------------------------------------------------
 
