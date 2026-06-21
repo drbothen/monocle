@@ -145,6 +145,10 @@ async fn test_f_s026_adv5_crit001_decision_message_traverses_wire_to_daemon() {
         ClientToServer::DetachSession { .. } => {
             panic!("unexpected DetachSession in this test context");
         }
+        // S-040 stub: KeyInput is not expected in this PermissionDecision test context.
+        ClientToServer::KeyInput { .. } => {
+            panic!("unexpected KeyInput in this test context");
+        }
     }
 
     reader_handle.abort();
@@ -232,6 +236,10 @@ async fn test_f_s026_adv5_crit001_reconnect_rewires_ipc_tx_to_new_channel() {
         // S-035 stub: DetachSession is not expected in this PermissionDecision test context.
         ClientToServer::DetachSession { .. } => {
             panic!("unexpected DetachSession in this test context");
+        }
+        // S-040 stub: KeyInput is not expected in this PermissionDecision test context.
+        ClientToServer::KeyInput { .. } => {
+            panic!("unexpected KeyInput in this test context");
         }
     }
 

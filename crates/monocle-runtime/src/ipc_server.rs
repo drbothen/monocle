@@ -186,6 +186,10 @@ async fn spawn_client_task(
                     Ok(ClientToServer::DetachSession { session_id }) => {
                         handle_detach_session(session_id, &tx, &state).await;
                     }
+                    // S-040: KeyInput handler (BC-2.09.002 — keyboard/paste forwarding)
+                    // Stub: implementer wires this to SessionManager::send_key_input().
+                    #[allow(clippy::todo)]
+                    Ok(ClientToServer::KeyInput { .. }) => todo!("S-040: implement KeyInput daemon dispatch → SessionManager::send_key_input()"),
                     Err(IpcError::Disconnected) => {
                         tracing::debug!("TUI client disconnected (EOF)");
                         break;

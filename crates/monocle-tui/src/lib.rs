@@ -16,6 +16,20 @@
 pub mod app;
 pub mod ui;
 
+/// Crossterm-to-PtyKey type conversions — the ONLY place in the workspace where
+/// crossterm and ratatui types touch the `monocle-core` purity boundary (S-040).
+///
+/// Contains `crossterm_key_to_pty()` for converting `crossterm::event::KeyEvent`
+/// to `monocle_core::keyboard::PtyKeyEvent`. S-041 extends this file with
+/// `crossterm_mouse_to_pty()` and `ratatui_rect_to_pty()`.
+pub mod keyboard_conv;
+
+/// Keyboard and paste dispatch stubs for `AppMode::EmbeddedTerminal` (S-040).
+///
+/// Contains `setup_keyboard_enhancement()`, `teardown_keyboard_enhancement()`,
+/// `dispatch_embedded_terminal_key()`, and `dispatch_embedded_terminal_paste()`.
+pub mod event_loop;
+
 // Re-exports for integration tests and downstream consumers.
 pub use app::apply_permission_prompt_queued;
 pub use app::format_drop_counter;

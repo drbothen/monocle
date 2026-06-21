@@ -279,6 +279,10 @@ fn test_BC_2_05_008_client_to_server_permission_decision_allow_serde_roundtrip()
         ClientToServer::DetachSession { .. } => {
             panic!("unexpected DetachSession in this test context");
         }
+        // S-040 stub: KeyInput is not expected in this test context.
+        ClientToServer::KeyInput { .. } => {
+            panic!("unexpected KeyInput in this test context");
+        }
     }
 }
 
@@ -318,6 +322,10 @@ fn test_BC_2_05_008_client_to_server_permission_decision_deny_serde_roundtrip() 
         // S-035 stub: DetachSession is not expected in this test context.
         ClientToServer::DetachSession { .. } => {
             panic!("unexpected DetachSession in this test context");
+        }
+        // S-040 stub: KeyInput is not expected in this test context.
+        ClientToServer::KeyInput { .. } => {
+            panic!("unexpected KeyInput in this test context");
         }
     }
 }
