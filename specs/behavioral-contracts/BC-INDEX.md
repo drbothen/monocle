@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.44.2"
+version: "1.44.3"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-20T00:00:00Z
@@ -1223,6 +1223,28 @@ SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. 
 - BC-INDEX version: 1.40.4 → 1.40.5. No BC ID additions or retirements. No H1 title changes.
 
 SE-16d monotonicity: v1.40.5 timestamp 2026-06-14T20:00:00Z > v1.40.4 timestamp 2026-06-14T19:00:00Z. PASS.
+
+## §Trace v1.44.3
+
+**S-040 pass-3 behavioral content — BC-2.09.002 EC-218 Esc+modifier; BC-2.09.005 Invariant-3 paste ceiling** (2026-06-21):
+
+BC version bumps in this dispatch:
+- BC-2.09.002 v1.1.9 → v1.2.0: EC-218 added (ADV-HIGH-003, architect-specified). Esc with any
+  non-empty modifier set does NOT trigger `Action::ExitEmbeddedTerminal`. Esc-intercept guard
+  is `code == KeyCode::Esc && mods.is_empty()`; a non-empty modifier set falls through to
+  `key_event_to_pty_bytes()`. When `kitty_active=true`: CSI-u encoded per Kitty protocol.
+  When `kitty_active=false`: TRACE+None arm (no standard VT encoding for modified Esc; TRACE
+  emitted; None returned). Consistent with Invariant 2 (bare Esc only) and PC-1 (observable
+  TRACE, not silent drop).
+- BC-2.09.005 v1.0.5 → v1.0.6: Invariant-3 paste ceiling corrected (O-3). "supports up to
+  256 KiB" replaced with precise ~255.9 KiB ceiling (`MAX_MESSAGE_BYTES` 262144 bytes minus
+  `KeyInput` JSON envelope + bracket framing overhead of ~100 bytes). Current test vectors
+  (AC-012, 500-byte paste) are unaffected.
+
+No BC H1 title changes. No BC ID additions or retirements. BC count unchanged: 138 active.
+BC-INDEX version: 1.44.2 → 1.44.3.
+
+SE-16d monotonicity: v1.44.3 timestamp 2026-06-21 >= v1.44.2 timestamp 2026-06-21. PASS.
 
 ## §Trace v1.44.2
 

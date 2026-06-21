@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.5"
+version: "1.0.6"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -63,7 +63,11 @@ from typed keystrokes and disable auto-indentation/escaping during paste.
    for `Event::Paste` as a separate branch.
 3. Large paste operations (>64 KiB) MUST be handled without timeout. The `KeyInput` IPC
    message carries the full bracketed payload as a single `Vec<u8>`. No chunking is required
-   for v1A (the IPC framing supports up to 256 KiB).
+   for v1A. The effective paste size ceiling is ~255.9 KiB: the IPC JSON payload limit
+   (`MAX_MESSAGE_BYTES` = 262144 bytes) minus the `KeyInput` JSON envelope and bracket
+   framing overhead of approximately 100 bytes (`{"KeyInput":{"session_id":"...","bytes":[...]}}` +
+   `\x1b[200~` + `\x1b[201~`). Current test vectors use 500-byte pastes (AC-012) and are
+   not affected by this ceiling.
 4. `EnableBracketedPaste` is disabled at TUI exit via `DisableBracketedPaste`.
 
 ## Edge Cases
@@ -115,6 +119,19 @@ S-040 — Same story as BC-2.09.002 (paste handling in EmbeddedTerminal event di
 ## VP Anchors
 
 VP-TBD — Bracketed paste unit tests (filled after VP creation)
+
+## §Trace v1.0.6
+
+**O-3 — Invariant-3 paste-size ceiling corrected to ~255.9 KiB** (2026-06-21):
+
+- **Invariant 3 patched:** "supports up to 256 KiB" replaced with the precise ceiling:
+  ~255.9 KiB (`MAX_MESSAGE_BYTES` 262144 bytes minus the `KeyInput` JSON envelope and bracket
+  framing overhead of ~100 bytes). The prior claim was off by ~100 bytes relative to the actual
+  IPC framing constraint. Current test vectors (AC-012, 500-byte paste) are well under this
+  ceiling and are not affected.
+- No edge cases, postconditions, test vectors, or other content changed.
+- Version bump: v1.0.5 → v1.0.6 (patch: invariant precision corrected).
+- SE-16d monotonicity: v1.0.6 timestamp 2026-06-21 >= v1.0.5 timestamp 2026-06-20. PASS.
 
 ## §Trace v1.0.5
 

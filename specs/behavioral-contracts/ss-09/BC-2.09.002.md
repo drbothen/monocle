@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.9"
+version: "1.2.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -129,6 +129,7 @@ mouse events in SGR encoding, and bracketed paste. No keyboard class is deferred
 | EC-215 | `KeyEventKind::Release` for any key | `None` returned; NOT forwarded; 0 bytes sent |
 | EC-216 | Kitty protocol unsupported by terminal (flags silently ignored) | `is_kitty_enhanced_key(code, mods, false)` returns false for modifier combos (`kitty_active=false` short-circuits); standard VT sequences used for regular keys; no panic; no silent key loss |
 | EC-217 | Modifier combo with no VT encoding on non-Kitty terminal (e.g., Alt+Up, Ctrl+Alt+Left) | `key_event_to_pty_bytes` emits a TRACE log (`"key_event_to_pty_bytes: no VT encoding for modifier combo on non-Kitty terminal; dropping"`) and returns `None`; the key is NOT forwarded to the PTY. This is the best-effort boundary for unencoded combos on non-Kitty terminals. The drop is NOT silent — it is observable at TRACE level, satisfying PC-1 "no keyboard class silently dropped." On Kitty terminals this arm is unreachable because `is_kitty_enhanced_key` returns true for all remaining modifier combos when `kitty_active=true`. |
+| EC-218 | Esc with any modifier combination (e.g., Shift+Esc, Alt+Esc, Ctrl+Alt+Esc) | NOT intercepted as `Action::ExitEmbeddedTerminal`. The Esc-intercept guard in the Action dispatch layer is `code == KeyCode::Esc && mods.is_empty()`; any non-empty modifier set causes the guard to fail and the event falls through to `key_event_to_pty_bytes()`. Within that function: when `kitty_active=true`, `is_kitty_enhanced_key(KeyCode::Esc, mods, true)` returns true (mods non-empty, code != Null) and the modified Esc is CSI-u encoded per Kitty keyboard protocol. When `kitty_active=false`, `is_kitty_enhanced_key` returns false and the event reaches the `_ if !mods.is_empty()` TRACE+None arm — a TRACE log is emitted and `None` returned (no PTY bytes sent). In neither path does a modified Esc exit EmbeddedTerminal mode. Consistent with Invariant 2 (only bare Esc, no modifiers, is intercepted) and PC-1 (the kitty_active=false drop is observable at TRACE level, not silent). |
 
 ## Canonical Test Vectors
 
@@ -179,6 +180,22 @@ S-040 — Implement key_event_to_pty_bytes() and KeyInput IPC send in monocle-tu
 ## VP Anchors
 
 VP-TBD — Keyboard translation unit tests (filled after VP creation)
+
+## §Trace v1.2.0
+
+**ADV-HIGH-003 — EC-218 Esc+modifier edge case; architect-specified behavior** (2026-06-21):
+
+- **EC-218 added:** Esc with any non-empty modifier combination (e.g., Shift+Esc, Alt+Esc,
+  Ctrl+Alt+Esc) does NOT trigger `Action::ExitEmbeddedTerminal`. The dispatch guard is
+  `code == KeyCode::Esc && mods.is_empty()`; a non-empty modifier set bypasses the intercept
+  and the event enters `key_event_to_pty_bytes()`. When `kitty_active=true`, the modified Esc
+  is CSI-u encoded (Kitty keyboard protocol). When `kitty_active=false`, the event reaches the
+  TRACE+None arm (no standard VT encoding for modified Esc; TRACE emitted; None returned).
+- Consistency verified: EC-218 is consistent with PC-1 (TRACE+None is observable, not
+  silent) and Invariant 2 (only bare Esc, `mods.is_empty()`, is intercepted as exit action).
+- Architect-specified text (ADV-HIGH-003 ruling, S-040 adversarial pass 3).
+- Version bump: v1.1.9 → v1.2.0 (minor: new edge case added).
+- SE-16d monotonicity: v1.2.0 timestamp 2026-06-21 >= v1.1.9 timestamp 2026-06-21. PASS.
 
 ## §Trace v1.1.9
 

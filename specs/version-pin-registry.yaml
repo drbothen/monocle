@@ -809,8 +809,8 @@ BC-2.09.001:
 
 BC-2.09.002:
   path: specs/behavioral-contracts/ss-09/BC-2.09.002.md
-  current_version: "1.1.9"
-  last_bump_commit: "[S-040 pass-3 arch-source pin (Ctrl-arm guard; Tab+SHIFT confirmed; Kitty VT precedence; supports_keyboard_enhancement mandate)]" # version-pin-historical
+  current_version: "1.2.0"
+  last_bump_commit: "[S-040 pass-3 ADV-HIGH-003 — EC-218 Esc+modifier edge case (architect-specified: guard mods.is_empty(); Kitty CSI-u vs TRACE+None)]" # version-pin-historical
   last_bump_date: "2026-06-21"
 
 BC-2.09.003:
@@ -827,9 +827,9 @@ BC-2.09.004:
 
 BC-2.09.005:
   path: specs/behavioral-contracts/ss-09/BC-2.09.005.md
-  current_version: "1.0.5"
-  last_bump_commit: "[S-040 POL-11 cascade — arch-source pin SS-embedded-pty v1.10.0→v1.11.0]" # version-pin-historical
-  last_bump_date: "2026-06-20"
+  current_version: "1.0.6"
+  last_bump_commit: "[S-040 pass-3 O-3 — Invariant-3 paste ceiling corrected to ~255.9 KiB (MAX_MESSAGE_BYTES minus ~100 bytes envelope overhead)]" # version-pin-historical
+  last_bump_date: "2026-06-21"
 
 BC-2.09.006:
   path: specs/behavioral-contracts/ss-09/BC-2.09.006.md
