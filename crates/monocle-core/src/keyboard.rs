@@ -1097,4 +1097,257 @@ mod tests {
         // Expected: ESC [ 1 3 ; 1 u
         assert_eq!(result, b"\x1b[13;1u".to_vec());
     }
+
+    // -----------------------------------------------------------------------
+    // PASS-3 DIRECTIVES — all tests below are new Red Gate additions
+    // per S-040 pass-3 design directives (SS-embedded-pty.md §Trace v1.13.0).
+    // Each test MUST FAIL until the implementer applies the corresponding fix.
+    // -----------------------------------------------------------------------
+
+    // -----------------------------------------------------------------------
+    // O-1: Real Kitty functional-key codepoints
+    //
+    // Current production pty_key_codepoint() uses WRONG values for nav/arrow keys
+    // (e.g., Up=65='A', Home=72='H'). The correct Kitty functional-key codepoints per
+    // https://sw.kovidgoyal.net/kitty/keyboard-protocol/#functional-key-definitions are:
+    //   Up=57352, Down=57353, Left=57351, Right=57354
+    //   Home=57360, End=57361, PageUp=57362, PageDown=57363
+    //   Insert=57348, Delete=57349
+    //   F1=57364..F12=57375
+    // These tests will FAIL (assertion error) until pty_key_codepoint() is corrected.
+    // -----------------------------------------------------------------------
+
+    /// O-1 / BC-2.09.004 — Ctrl+Up → \x1b[57352;5u (Kitty functional-key codepoint)
+    ///
+    /// Up codepoint = 57352 (Kitty spec); modifier = 1 + ctrl(4) = 5.
+    /// Current production has Up=65 ('A') → \x1b[65;5u — WRONG (data corruption).
+    ///
+    /// Source: SS-embedded-pty.md §Trace v1.13.0 O-1; BC-2.09.004 EC-225.
+    #[test]
+    fn test_BC_2_09_004_kitty_ctrl_up() {
+        let mods = PtyKeyModifiers::CONTROL;
+        // Direct encode_kitty_key call.
+        let result = encode_kitty_key(&PtyKeyCode::Up, mods, PtyKeyEventKind::Press);
+        // Expected: ESC [ 5 7 3 5 2 ; 5 u
+        assert_eq!(
+            result,
+            b"\x1b[57352;5u".to_vec(),
+            "Ctrl+Up Kitty codepoint must be 57352 (not 65='A'); \
+             source: SS-embedded-pty.md §Trace v1.13.0 O-1"
+        );
+
+        // End-to-end via key_event_to_pty_bytes (kitty_active=true → Kitty catch-all arm).
+        let event = PtyKeyEvent {
+            code: PtyKeyCode::Up,
+            modifiers: PtyKeyModifiers::CONTROL,
+            kind: PtyKeyEventKind::Press,
+        };
+        assert_eq!(
+            key_event_to_pty_bytes(event, true),
+            Some(b"\x1b[57352;5u".to_vec()),
+            "key_event_to_pty_bytes(Ctrl+Up, kitty_active=true) must produce \\x1b[57352;5u"
+        );
+    }
+
+    /// O-1 / BC-2.09.004 — Shift+Home → \x1b[57360;2u (Kitty functional-key codepoint)
+    ///
+    /// Home codepoint = 57360 (Kitty spec); modifier = 1 + shift(1) = 2.
+    /// Current production has Home=72 ('H') → \x1b[72;2u — WRONG.
+    ///
+    /// Source: SS-embedded-pty.md §Trace v1.13.0 O-1.
+    #[test]
+    fn test_BC_2_09_004_kitty_home_shift_csi_u() {
+        let mods = PtyKeyModifiers::SHIFT;
+        let result = encode_kitty_key(&PtyKeyCode::Home, mods, PtyKeyEventKind::Press);
+        // Expected: ESC [ 5 7 3 6 0 ; 2 u
+        assert_eq!(
+            result,
+            b"\x1b[57360;2u".to_vec(),
+            "Shift+Home Kitty codepoint must be 57360 (not 72='H'); \
+             source: SS-embedded-pty.md §Trace v1.13.0 O-1"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // MED-001: Tab+SHIFT arm (non-Kitty path)
+    //
+    // When a terminal reports Shift+Tab as KeyCode::Tab + SHIFT modifier (rather than
+    // KeyCode::BackTab), key_event_to_pty_bytes MUST still produce \x1b[Z on non-Kitty
+    // terminals. The arm `PtyKeyCode::Tab if mods.contains(PtyKeyModifiers::SHIFT)` is
+    // REQUIRED. Without it, Tab+SHIFT falls to arm 7 (TRACE+None) on non-Kitty terminals.
+    //
+    // Source: SS-embedded-pty.md §Trace v1.13.0 ADV-MED-001.
+    // -----------------------------------------------------------------------
+
+    /// MED-001 / BC-2.09.002 — Tab+SHIFT → \x1b[Z on non-Kitty terminal
+    ///
+    /// Some terminals report Shift+Tab as PtyKeyCode::Tab + PtyKeyModifiers::SHIFT
+    /// rather than PtyKeyCode::BackTab. Both must produce \x1b[Z (CSI Z).
+    /// kitty_active=false: Tab+SHIFT arm must fire BEFORE the TRACE+None arm.
+    ///
+    /// Source: SS-embedded-pty.md §Trace v1.13.0 ADV-MED-001; BC-2.09.002 AC-001.
+    #[test]
+    fn test_BC_2_09_002_tab_shift_csi_z() {
+        let event = PtyKeyEvent {
+            code: PtyKeyCode::Tab,
+            modifiers: PtyKeyModifiers::SHIFT,
+            kind: PtyKeyEventKind::Press,
+        };
+        assert_eq!(
+            key_event_to_pty_bytes(event, false),
+            Some(b"\x1b[Z".to_vec()),
+            "Tab+SHIFT on non-Kitty terminal must produce \\x1b[Z (MED-001); \
+             source: SS-embedded-pty.md §Trace v1.13.0"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // MED-002: Ctrl+Shift+letter → control byte (canonical Ctrl-arm guard)
+    //
+    // The canonical Ctrl guard is `mods.contains(CONTROL) && !mods.contains(ALT)`.
+    // Ctrl+Shift+letter must produce the same control byte as Ctrl+letter alone
+    // (standard terminal convention: Shift does not affect the control-byte mapping).
+    // This arm fires on non-Kitty terminals (kitty_active=false) for Ctrl+Shift+letter.
+    //
+    // The OLD guard `mods == CONTROL` (equality) excluded Ctrl+Shift+letter, dropping
+    // it to TRACE+None — unexpected and incorrect. The `contains` form is canonical.
+    //
+    // Source: SS-embedded-pty.md §Trace v1.13.0 ADV-MED-002.
+    // -----------------------------------------------------------------------
+
+    /// MED-002 / BC-2.09.002 — Ctrl+Shift+C → [0x03] (control byte; Shift ignored)
+    ///
+    /// On a non-Kitty terminal, Ctrl+Shift+letter produces the same control byte
+    /// as Ctrl+letter alone. The canonical guard `mods.contains(CONTROL) && !mods.contains(ALT)`
+    /// matches Ctrl+Shift combos (SHIFT bit does not affect control-byte generation).
+    ///
+    /// Derivation: 'C' → uppercase 'C' (0x43) → 0x43 - 0x40 = 0x03 (ETX).
+    ///
+    /// Source: SS-embedded-pty.md §Trace v1.13.0 ADV-MED-002; BC-2.09.002 AC-001.
+    #[test]
+    fn test_BC_2_09_002_ctrl_shift_letter_control_byte() {
+        let event = PtyKeyEvent {
+            code: PtyKeyCode::Char('c'),
+            modifiers: PtyKeyModifiers::CONTROL | PtyKeyModifiers::SHIFT,
+            kind: PtyKeyEventKind::Press,
+        };
+        // kitty_active=false: Ctrl-arm guard `contains(CONTROL) && !contains(ALT)` fires.
+        // SHIFT bit does not affect the control-byte result.
+        assert_eq!(
+            key_event_to_pty_bytes(event, false),
+            Some(vec![0x03]),
+            "Ctrl+Shift+C on non-Kitty terminal must produce [0x03] (ETX); \
+             source: SS-embedded-pty.md §Trace v1.13.0 ADV-MED-002"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // MED-003: PtyKeyModifiers::contains all-bits semantics
+    //
+    // The current implementation uses `self.0 & other.0 != 0` (any-bit test).
+    // The CORRECT semantics for `contains` is all-bits: `self.0 & other.0 == other.0`.
+    // The any-bit form causes false positives: CONTROL.contains(CONTROL | ALT) returns
+    // true because `CONTROL.0 & (CONTROL | ALT).0 != 0` — but ALT bit is NOT set in
+    // CONTROL, so `contains(CONTROL|ALT)` should return false.
+    //
+    // Source: SS-embedded-pty.md §Core-Owned Mirror Types.
+    // -----------------------------------------------------------------------
+
+    /// MED-003 — PtyKeyModifiers::contains must use all-bits semantics
+    ///
+    /// `contains(other)` returns true IFF ALL bits of `other` are set in `self`.
+    ///
+    /// Current production: `self.0 & other.0 != 0` (any-bit) — WRONG.
+    /// Correct:            `self.0 & other.0 == other.0` (all-bits).
+    ///
+    /// The second and third assertions below FAIL on the current implementation
+    /// because the any-bit form returns true when only a partial bit overlap exists.
+    ///
+    /// Source: SS-embedded-pty.md §Core-Owned Mirror Types; standard bitflags convention.
+    #[test]
+    fn test_pty_modifiers_contains_all_bits() {
+        // (CONTROL | SHIFT).contains(CONTROL) — CONTROL bit is fully set → true (both impls agree).
+        assert!(
+            (PtyKeyModifiers::CONTROL | PtyKeyModifiers::SHIFT).contains(PtyKeyModifiers::CONTROL),
+            "(CONTROL|SHIFT).contains(CONTROL) must be true — CONTROL bit is fully set"
+        );
+
+        // (CONTROL | SHIFT).contains(CONTROL | ALT) — ALT bit is NOT set → false.
+        // any-bit impl returns true (CONTROL overlaps) — WRONG. all-bits returns false.
+        assert!(
+            !(PtyKeyModifiers::CONTROL | PtyKeyModifiers::SHIFT)
+                .contains(PtyKeyModifiers::CONTROL | PtyKeyModifiers::ALT),
+            "(CONTROL|SHIFT).contains(CONTROL|ALT) must be false — ALT bit is not set; \
+             source: SS-embedded-pty.md §Core-Owned Mirror Types (all-bits semantics)"
+        );
+
+        // CONTROL.contains(CONTROL | SHIFT) — SHIFT bit is NOT set → false.
+        // any-bit impl returns true (CONTROL overlaps) — WRONG. all-bits returns false.
+        assert!(
+            !PtyKeyModifiers::CONTROL
+                .contains(PtyKeyModifiers::CONTROL | PtyKeyModifiers::SHIFT),
+            "CONTROL.contains(CONTROL|SHIFT) must be false — SHIFT bit is not set in CONTROL; \
+             source: SS-embedded-pty.md §Core-Owned Mirror Types (all-bits semantics)"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // EC-218: Esc+modifier — NOT intercepted as ExitEmbeddedTerminal
+    //
+    // Bare Esc (mods.is_empty()) is intercepted by the dispatch layer.
+    // Esc+ANY-modifier is NOT intercepted as ExitEmbeddedTerminal; it reaches
+    // key_event_to_pty_bytes. Routing depends on kitty_active:
+    //   kitty_active=false: no VT encoding for Esc+ALT → TRACE+None → None.
+    //   kitty_active=true: is_kitty_enhanced_key returns true → encode_kitty_key
+    //                      → \x1b[27;3u (Esc codepoint=27; modifier=1+alt(2)=3).
+    //
+    // Source: BC-2.09.002 EC-218; S-040 AC-015; SS-embedded-pty.md §Esc key handling.
+    // -----------------------------------------------------------------------
+
+    /// EC-218 / BC-2.09.002 AC-015 — Esc+ALT on non-Kitty terminal → None (TRACE+None)
+    ///
+    /// Esc with ANY non-empty modifier set is NOT the bare-Esc ExitEmbeddedTerminal
+    /// intercept (that intercept is only for mods.is_empty()). On non-Kitty terminal,
+    /// the `_ if !mods.is_empty()` TRACE+None arm fires → None.
+    ///
+    /// Source: BC-2.09.002 EC-218; S-040 AC-015.
+    #[test]
+    fn test_BC_2_09_002_esc_with_modifier_non_kitty_returns_none() {
+        let event = PtyKeyEvent {
+            code: PtyKeyCode::Esc,
+            modifiers: PtyKeyModifiers::ALT,
+            kind: PtyKeyEventKind::Press,
+        };
+        // kitty_active=false: no VT encoding for Esc+ALT; TRACE+None arm fires.
+        assert_eq!(
+            key_event_to_pty_bytes(event, false),
+            None,
+            "Esc+ALT on non-Kitty terminal must return None (TRACE+None; EC-218)"
+        );
+    }
+
+    /// EC-218 / BC-2.09.002 AC-015 — Esc+ALT on Kitty terminal → \x1b[27;3u (CSI-u)
+    ///
+    /// On Kitty terminal (kitty_active=true), Esc+ALT is NOT intercepted as exit;
+    /// is_kitty_enhanced_key returns true (mods non-empty, code != Null, kitty_active=true)
+    /// → encode_kitty_key → \x1b[27;3u.
+    ///
+    /// Derivation: Esc codepoint = 27; modifier = 1 + alt(2) = 3.
+    ///
+    /// Source: BC-2.09.002 EC-218; S-040 AC-015.
+    #[test]
+    fn test_BC_2_09_002_esc_with_modifier_kitty_produces_csi_u() {
+        let event = PtyKeyEvent {
+            code: PtyKeyCode::Esc,
+            modifiers: PtyKeyModifiers::ALT,
+            kind: PtyKeyEventKind::Press,
+        };
+        // kitty_active=true: Kitty arm fires; Esc codepoint=27; ALT modifier bit.
+        // modifier_value = 1 + alt(2) = 3.
+        assert_eq!(
+            key_event_to_pty_bytes(event, true),
+            Some(b"\x1b[27;3u".to_vec()),
+            "Esc+ALT on Kitty terminal must produce \\x1b[27;3u (EC-218)"
+        );
+    }
 }

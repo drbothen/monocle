@@ -61,7 +61,7 @@ async fn test_BC_2_09_002_esc_not_forwarded_directly() {
         crossterm::event::KeyEventKind::Press,
     );
 
-    let exited = dispatch_embedded_terminal_key(event, "session-abc", &tx).await;
+    let exited = dispatch_embedded_terminal_key(event, "session-abc", false, &tx).await;
 
     // Must return true (Esc was intercepted as ExitEmbeddedTerminal)
     assert!(
@@ -90,7 +90,7 @@ async fn test_BC_2_09_002_non_esc_key_does_not_exit() {
         crossterm::event::KeyEventKind::Press,
     );
 
-    let exited = dispatch_embedded_terminal_key(event, "session-abc", &tx).await;
+    let exited = dispatch_embedded_terminal_key(event, "session-abc", false, &tx).await;
 
     assert!(
         !exited,
@@ -122,7 +122,7 @@ async fn test_BC_2_09_002_release_events_not_forwarded() {
         crossterm::event::KeyEventKind::Release,
     );
 
-    let exited = dispatch_embedded_terminal_key(event, "session-abc", &tx).await;
+    let exited = dispatch_embedded_terminal_key(event, "session-abc", false, &tx).await;
 
     assert!(
         !exited,
@@ -270,7 +270,7 @@ async fn test_BC_2_09_002_key_input_carries_correct_session_id() {
         crossterm::event::KeyEventKind::Press,
     );
 
-    dispatch_embedded_terminal_key(event, "my-session-id-001", &tx).await;
+    dispatch_embedded_terminal_key(event, "my-session-id-001", false, &tx).await;
 
     let sent = drain_channel(&mut rx);
     assert_eq!(sent.len(), 1);

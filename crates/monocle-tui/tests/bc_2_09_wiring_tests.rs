@@ -298,6 +298,131 @@ async fn test_paste_ignored_outside_embedded_terminal() {
     );
 }
 
+// ---------------------------------------------------------------------------
+// HIGH-001: handle_crossterm_event reads app.kitty_active (SSOT regression guard)
+//
+// These tests verify that handle_crossterm_event correctly threads app.kitty_active
+// into key_event_to_pty_bytes. A regression that hardcodes kitty_active=false in the
+// production path (e.g., by ignoring app.kitty_active and always calling
+// dispatch_embedded_terminal_key with false) must fail these tests.
+//
+// Source: S-040 pass-3 directive HIGH-001; SS-embedded-pty.md §Translation function
+// S2-002 / ADV-BLOCKER-001; BC-2.09.004 PC-1.
+// ---------------------------------------------------------------------------
+
+/// HIGH-001 / BC-2.09.004 PC-1 — Ctrl+Shift+Enter with kitty_active=true sends \x1b[13;6u
+///
+/// When app.kitty_active=true and the event is Ctrl+Shift+Enter, handle_crossterm_event
+/// must route through the Kitty CSI-u path and send \x1b[13;6u as the KeyInput bytes.
+///
+/// Enter codepoint = 13; modifier = 1 + shift(1) + ctrl(4) = 6.
+///
+/// If the production code ignores app.kitty_active (hardcodes false), no KeyInput is
+/// sent for Ctrl+Shift+Enter (Enter has mods.is_empty() guard; Ctrl+Enter has no
+/// Ctrl+printable arm; the TRACE+None arm fires → None → no send). This test catches
+/// that regression.
+///
+/// Source: S-040 pass-3 directive HIGH-001; BC-2.09.004 PC-1.
+#[tokio::test]
+async fn test_BC_2_09_004_handle_crossterm_event_kitty_active_true_ctrl_shift_enter() {
+    let (mut app, mut rx) = make_app_embedded("session-kitty");
+    // Set kitty_active=true — this is the production path for Kitty-capable terminals.
+    app.kitty_active = true;
+    let layers = empty_binding_layers();
+    let mut sessions_state = Default::default();
+
+    let key_event = make_key_event(
+        KeyCode::Enter,
+        KeyModifiers::CONTROL | KeyModifiers::SHIFT,
+        KeyEventKind::Press,
+    );
+    let result = handle_crossterm_event(
+        &mut app,
+        Event::Key(key_event),
+        &layers,
+        &mut sessions_state,
+    )
+    .await;
+
+    assert!(result.is_ok(), "handle_crossterm_event must not error for Ctrl+Shift+Enter");
+
+    let msgs = drain_channel(&mut rx);
+    assert_eq!(
+        msgs.len(),
+        1,
+        "Ctrl+Shift+Enter with kitty_active=true must send exactly one KeyInput \
+         (Kitty CSI-u path); got {} messages. \
+         If 0: production code is ignoring app.kitty_active (HIGH-001 SSOT regression).",
+        msgs.len()
+    );
+    match &msgs[0] {
+        ClientToServer::KeyInput { bytes, session_id } => {
+            // Enter codepoint=13; modifier=1+shift(1)+ctrl(4)=6 → \x1b[13;6u
+            assert_eq!(
+                bytes.as_slice(),
+                b"\x1b[13;6u",
+                "Ctrl+Shift+Enter with kitty_active=true must produce \\x1b[13;6u (BC-2.09.004 PC-1)"
+            );
+            assert_eq!(session_id, "session-kitty");
+        }
+        other => panic!("expected ClientToServer::KeyInput, got {:?}", other),
+    }
+    // Mode must remain EmbeddedTerminal (Enter is not Esc).
+    assert!(
+        matches!(app.mode, AppMode::EmbeddedTerminal { .. }),
+        "EmbeddedTerminal mode must be preserved after Ctrl+Shift+Enter"
+    );
+}
+
+/// HIGH-001 / BC-2.09.002 EC-228 — Ctrl+Shift+Enter with kitty_active=false sends nothing
+///
+/// When app.kitty_active=false (non-Kitty terminal), Ctrl+Shift+Enter has no VT encoding:
+/// - Enter arm has `mods.is_empty()` guard → skipped (mods are CONTROL|SHIFT).
+/// - Ctrl+printable arm requires PtyKeyCode::Char — PtyKeyCode::Enter does not match.
+/// - Kitty catch-all: is_kitty_enhanced_key returns false (kitty_active=false).
+/// - TRACE+None arm fires → None → no KeyInput sent.
+///
+/// This test proves kitty_active=false is the non-Kitty fallback boundary (EC-228),
+/// and is the counterpart to the kitty_active=true test above (HIGH-001 SSOT pair).
+///
+/// Source: S-040 pass-3 directive HIGH-001; BC-2.09.002 EC-228.
+#[tokio::test]
+async fn test_BC_2_09_002_handle_crossterm_event_kitty_active_false_ctrl_shift_enter_no_send() {
+    let (mut app, mut rx) = make_app_embedded("session-non-kitty");
+    // kitty_active remains false (default) — non-Kitty terminal.
+    // app.kitty_active is false by default from App::new().
+    let layers = empty_binding_layers();
+    let mut sessions_state = Default::default();
+
+    let key_event = make_key_event(
+        KeyCode::Enter,
+        KeyModifiers::CONTROL | KeyModifiers::SHIFT,
+        KeyEventKind::Press,
+    );
+    let result = handle_crossterm_event(
+        &mut app,
+        Event::Key(key_event),
+        &layers,
+        &mut sessions_state,
+    )
+    .await;
+
+    assert!(
+        result.is_ok(),
+        "handle_crossterm_event must not error for Ctrl+Shift+Enter on non-Kitty terminal"
+    );
+
+    let msgs = drain_channel(&mut rx);
+    // No VT encoding exists for Ctrl+Shift+Enter on non-Kitty → TRACE+None → 0 bytes sent.
+    assert!(
+        msgs.is_empty(),
+        "Ctrl+Shift+Enter with kitty_active=false must send 0 KeyInput messages \
+         (TRACE+None path; EC-228); got {}. \
+         If non-zero: production code is ignoring kitty_active=false guard.",
+        msgs.len()
+    );
+}
+
 /// Verify 'q' in Dashboard mode still produces Err (quit signal) via binding chain
 #[tokio::test]
 async fn test_quit_key_in_dashboard_returns_err() {
