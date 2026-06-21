@@ -131,7 +131,7 @@ SS-session-manager:
 SS-embedded-pty:
   path: specs/architecture/SS-embedded-pty.md
   current_version: "1.10.0"
-  last_bump_commit: "[F-PASS4-MED-001/002 rulings — dump-window buffer cap (512KiB/4096 msgs) + 10s timeout force-resolve; reconnect dump-state reset at Disconnected; new App fields pending_pty_drop_count + dump_timeout_handles; BC-2.09.001 v1.5.1→v1.6.0]"
+  last_bump_commit: "[F-PASS4-MED-001/002 rulings — dump-window buffer cap (512KiB/4096 msgs) + 10s timeout force-resolve; reconnect dump-state reset at Disconnected; new App fields pending_pty_drop_count + dump_timeout_handles; BC-2.09.001 v1.5.1→v1.6.0]" # version-pin-historical
   last_bump_date: "2026-06-20"
 
 SS-engine-module-v2-delta:
@@ -199,7 +199,7 @@ ADR-0011:
 ARCH-INDEX:
   path: specs/architecture/ARCH-INDEX.md
   current_version: "1.0.30"
-  last_bump_commit: "[Phase-2 Pass-2 fix burst — §Trace v1.0.30: SS-embedded-pty v1.7.0 F-P2-I06 + SS-deps-pin-manifest-v2-delta v1.0.2 Story Pin Rule; all 16 v1A stories inputs reconciled]"
+  last_bump_commit: "[Phase-2 Pass-2 fix burst — §Trace v1.0.30: SS-embedded-pty v1.7.0 F-P2-I06 + SS-deps-pin-manifest-v2-delta v1.0.2 Story Pin Rule; all 16 v1A stories inputs reconciled]" # version-pin-historical
   last_bump_date: "2026-06-16"
 
 BC-INDEX:
@@ -228,8 +228,8 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.29"
-  last_bump_commit: "[POL-11 pin cascade: BC-INDEX input pin v1.43.8→v1.44.0 (pty_scrollback_rows schema extension burst)]" # version-pin-historical
+  current_version: "1.30"
+  last_bump_commit: "[S-039 POL-11 cascade — S-039 input pin v1.3→v1.8]"
   last_bump_date: "2026-06-20"
 
 sprint-state:
@@ -749,9 +749,9 @@ BC-2.05.011:
 
 BC-2.06.025:
   path: specs/behavioral-contracts/ss-06/BC-2.06.025.md
-  current_version: "1.5.7"
-  last_bump_commit: "[MED-002 RESOLVED — arch-source pin cascade: SS-session-manager v2.15.0→v2.15.1; no behavioral changes]" # version-pin-historical
-  last_bump_date: "2026-06-19"
+  current_version: "1.5.8"
+  last_bump_commit: "[S-039 POL-11 cascade — arch-source pin SS-embedded-pty v1.7.0→v1.10.0]" # version-pin-historical
+  last_bump_date: "2026-06-20"
 
 BC-2.08.001:
   path: specs/behavioral-contracts/ss-08/BC-2.08.001.md
@@ -797,9 +797,9 @@ BC-2.08.007:
 
 BC-2.08.008:
   path: specs/behavioral-contracts/ss-08/BC-2.08.008.md
-  current_version: "1.3.9"
-  last_bump_commit: "[MED-002 RESOLVED — arch-source pin cascade: SS-session-manager v2.15.0→v2.15.1; no behavioral changes]" # version-pin-historical
-  last_bump_date: "2026-06-19"
+  current_version: "1.4.0"
+  last_bump_commit: "[S-039 POL-11 cascade — arch-source pin SS-embedded-pty v1.7.0→v1.10.0]" # version-pin-historical
+  last_bump_date: "2026-06-20"
 
 BC-2.09.001:
   path: specs/behavioral-contracts/ss-09/BC-2.09.001.md
@@ -809,51 +809,51 @@ BC-2.09.001:
 
 BC-2.09.002:
   path: specs/behavioral-contracts/ss-09/BC-2.09.002.md
-  current_version: "1.1.4"
-  last_bump_commit: "[Phase-2 Pass-2 fix burst — SS-embedded-pty arch-source pin 1.6.0→1.7.0]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.1.5"
+  last_bump_commit: "[S-039 POL-11 cascade — arch-source pin SS-embedded-pty v1.7.0→v1.10.0]" # version-pin-historical
+  last_bump_date: "2026-06-20"
 
 BC-2.09.003:
   path: specs/behavioral-contracts/ss-09/BC-2.09.003.md
-  current_version: "1.5.2"
-  last_bump_commit: "[Phase-2 Pass-2 fix burst — SS-embedded-pty arch-source pin 1.6.0→1.7.0; §Trace v1.4.0 v1.6.0 annotated version-pin-historical]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.5.3"
+  last_bump_commit: "[S-039 POL-11 cascade — arch-source pin SS-embedded-pty v1.7.0→v1.10.0]" # version-pin-historical
+  last_bump_date: "2026-06-20"
 
 BC-2.09.004:
   path: specs/behavioral-contracts/ss-09/BC-2.09.004.md
-  current_version: "1.0.4"
-  last_bump_commit: "[Phase-2 Pass-2 fix burst — SS-embedded-pty arch-source pin 1.6.0→1.7.0]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.0.5"
+  last_bump_commit: "[S-039 POL-11 cascade — arch-source pin SS-embedded-pty v1.7.0→v1.10.0]" # version-pin-historical
+  last_bump_date: "2026-06-20"
 
 BC-2.09.005:
   path: specs/behavioral-contracts/ss-09/BC-2.09.005.md
-  current_version: "1.0.3"
-  last_bump_commit: "[Phase-2 Pass-2 fix burst — SS-embedded-pty arch-source pin 1.6.0→1.7.0]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.0.4"
+  last_bump_commit: "[S-039 POL-11 cascade — arch-source pin SS-embedded-pty v1.7.0→v1.10.0]" # version-pin-historical
+  last_bump_date: "2026-06-20"
 
 BC-2.09.006:
   path: specs/behavioral-contracts/ss-09/BC-2.09.006.md
-  current_version: "1.1.3"
-  last_bump_commit: "[Phase-2 Pass-2 fix burst — SS-embedded-pty arch-source pin 1.6.0→1.7.0]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.1.4"
+  last_bump_commit: "[S-039 POL-11 cascade — arch-source pin SS-embedded-pty v1.7.0→v1.10.0]" # version-pin-historical
+  last_bump_date: "2026-06-20"
 
 BC-2.09.007:
   path: specs/behavioral-contracts/ss-09/BC-2.09.007.md
-  current_version: "1.3.0"
-  last_bump_commit: "[F-S039-P5-001 — Inv-1 rewritten: absent→1000 / present-out-of-range→clamped; eliminates ambiguous 'invalid→1000' phrase contradicting EC-242/EC-243]"
+  current_version: "1.3.1"
+  last_bump_commit: "[S-039 POL-11 cascade — arch-source pin SS-embedded-pty v1.9.0→v1.10.0]" # version-pin-historical
   last_bump_date: "2026-06-20"
 
 BC-2.09.008:
   path: specs/behavioral-contracts/ss-09/BC-2.09.008.md
-  current_version: "1.3.5"
-  last_bump_commit: "[Phase-2 Pass-2 fix burst — SS-embedded-pty arch-source pin 1.6.0→1.7.0; §Trace v1.3.0/v1.3.1 v1.6.0 references annotated version-pin-historical]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.3.6"
+  last_bump_commit: "[S-039 POL-11 cascade — arch-source pin SS-embedded-pty v1.7.0→v1.10.0]" # version-pin-historical
+  last_bump_date: "2026-06-20"
 
 BC-2.09.009:
   path: specs/behavioral-contracts/ss-09/BC-2.09.009.md
-  current_version: "1.1.4"
-  last_bump_commit: "[Phase-2 Pass-2 fix burst — SS-embedded-pty arch-source pin 1.6.0→1.7.0]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.1.5"
+  last_bump_commit: "[S-039 POL-11 cascade — arch-source pin SS-embedded-pty v1.7.0→v1.10.0]" # version-pin-historical
+  last_bump_date: "2026-06-20"
 
 BC-HOOK-039:
   path: specs/behavioral-contracts/ss-dtu/BC-HOOK-039.md

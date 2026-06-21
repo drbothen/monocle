@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.5"
+version: "1.3.6"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-16T00:00:00Z
@@ -151,7 +151,7 @@ AppMode. A `Ctrl-D` or session termination also exits `EmbeddedTerminal` automat
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — session creation wizard and EmbeddedTerminal AppMode are both explicitly named in CAP-009; this BC covers the enter/exit transitions and the wizard auto-transition to EmbeddedTerminal |
 | Architecture Module | monocle-core (AppMode::EmbeddedTerminal, AppMode::SessionCreation variants, SessionCreationStep enum); monocle-tui (transition logic, wizard UI) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.7.0 §TUI AppMode Extensions (EmbeddedTerminal, SessionCreation with `launching_session_id: Option<String>`, SessionCreationStep — F-P41-IMP-001); §Session Creation Wizard (SpawnAck receipt + launching_session_id storage + auto-advance match logic); §State machine invariants; SS-ipc.md v1.24.0 §ServerToClient::SpawnAck (point-to-point delivery to requesting client; wizard storage and filtering obligation) |
+| Architecture Source | SS-embedded-pty.md v1.10.0 §TUI AppMode Extensions (EmbeddedTerminal, SessionCreation with `launching_session_id: Option<String>`, SessionCreationStep — F-P41-IMP-001); §Session Creation Wizard (SpawnAck receipt + launching_session_id storage + auto-advance match logic); §State machine invariants; SS-ipc.md v1.24.0 §ServerToClient::SpawnAck (point-to-point delivery to requesting client; wizard storage and filtering obligation) |
 | Test Name | test_BC_2_09_008_embedded_terminal_transitions |
 
 ## Related BCs
@@ -173,6 +173,13 @@ S-044 — Implement EmbeddedTerminal/SessionCreation AppMode transitions in mono
 ## VP Anchors
 
 VP-TBD — AppMode transition tests (filled after VP creation)
+
+## §Trace v1.3.4
+
+**Arch-source pin: SS-embedded-pty.md v1.7.0 → v1.10.0** (2026-06-20):
+- S-039 adversarial convergence bumped SS-embedded-pty to v1.10.0. This BC's Architecture Source
+  row is updated to reflect the current version. No behavioral content changed.
+- SE-16d monotonicity: v1.3.4 timestamp >= v1.3.3. PASS.
 
 ## §Trace v1.3.3
 

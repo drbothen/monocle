@@ -15,7 +15,7 @@ inputs:
   - {path: .factory/stories/STORY-INDEX.md, version: "5.51"}
   - {path: .factory/plans/phase-2-expansion-story-plan.md, version: "1.0"}
 input-hash: "[live-state]"
-traces_to: .factory/stories/STORY-INDEX.md v5.51
+traces_to: .factory/stories/STORY-INDEX.md v5.51 # version-pin-historical: STORY-INDEX was at v5.51 at dependency-graph-expansion.md authoring time
 ---
 
 # Dependency Graph: monocle Phase 2 Expansion (Waves 4-9)

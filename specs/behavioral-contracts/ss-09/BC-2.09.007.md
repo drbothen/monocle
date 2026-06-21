@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.0"
+version: "1.3.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -139,7 +139,7 @@ widget renderer. Scrollback capacity is configurable via
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — scrollback is part of the embedded PTY widget capability; it enables users to review previous output without leaving EmbeddedTerminal mode |
 | Architecture Module | monocle-tui (`App::pty_scroll_offsets`, `pty_parsers`, PtyScrollUp/Down action handlers) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.9.0 §Scrollback navigation; §Parser ownership in TUI; §Parser initialization (PTY_DEFAULT_ROWS/COLS, F-S039-P2-004) |
+| Architecture Source | SS-embedded-pty.md v1.10.0 §Scrollback navigation; §Parser ownership in TUI; §Parser initialization (PTY_DEFAULT_ROWS/COLS, F-S039-P2-004) |
 | Test Name | test_BC_2_09_007_scrollback_1000_default_configurable |
 
 ## Related BCs
@@ -157,6 +157,13 @@ S-043 — Implement scrollback navigation in monocle-tui
 ## VP Anchors
 
 VP-TBD — Scrollback offset unit tests (filled after VP creation)
+
+## §Trace v1.3.1
+
+**Arch-source pin: SS-embedded-pty.md v1.9.0 → v1.10.0** (2026-06-20):
+- S-039 adversarial convergence bumped SS-embedded-pty to v1.10.0. This BC's Architecture Source
+  row is updated to reflect the current version. No behavioral content changed.
+- SE-16d monotonicity: v1.3.1 timestamp >= v1.3.0. PASS.
 
 ## §Trace v1.3.0
 

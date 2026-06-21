@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.3"
+version: "1.1.4"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -106,7 +106,7 @@ the parser must reflect the new size within 2 render ticks of the first dimensio
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — resize propagation is a core PTY widget capability that ensures the harness child renders at the correct dimensions in the embedded terminal pane |
 | Architecture Module | monocle-tui (resize detection, debounce, ResizePane send); monocle-runtime (SessionManager resize_session); monocle-session-host (PTY resize) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.7.0 §Pane area and resize (detection logic, debounce, SIGWINCH) |
+| Architecture Source | SS-embedded-pty.md v1.10.0 §Pane area and resize (detection logic, debounce, SIGWINCH) |
 | Test Name | test_BC_2_09_006_pty_and_parser_resized_within_2_render_ticks |
 
 ## Related BCs
@@ -125,6 +125,13 @@ S-042 — Implement resize detection, debounce, ResizePane IPC in monocle-tui
 ## VP Anchors
 
 VP-TBD — Resize debounce timing tests (filled after VP creation)
+
+## §Trace v1.1.3
+
+**Arch-source pin: SS-embedded-pty.md v1.7.0 → v1.10.0** (2026-06-20):
+- S-039 adversarial convergence bumped SS-embedded-pty to v1.10.0. This BC's Architecture Source
+  row is updated to reflect the current version. No behavioral content changed.
+- SE-16d monotonicity: v1.1.3 timestamp >= v1.1.2. PASS.
 
 ## §Trace v1.1.2
 

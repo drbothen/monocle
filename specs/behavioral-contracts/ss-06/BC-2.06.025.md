@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.7"
+version: "1.5.8"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-14T01:00:00Z
@@ -229,7 +229,7 @@ pane.
 | L2 Capability | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability traceability §SS-06 |
 | Capability Anchor Justification | CAP-006 ("User-facing TUI; AppMode state machine; keybinding dispatch; sessions panel; event ribbon; permission overlay stack; Ctrl-\ popup integration") per ARCH-INDEX §Capability traceability — this BC extends the sessions panel capability in CAP-006 with multi-session, multi-project grouping, and lifecycle actions |
 | Architecture Module | monocle-tui (sessions panel renderer, session list grouping logic, lifecycle keybindings) per ARCH-INDEX Subsystem Registry SS-06 |
-| Architecture Source | SS-ipc.md v1.24.0 §SessionSnapshot (wire boundary type; `degraded` and `degraded_reason` fields; `spawned_by_monocle: Option<bool>` field); SS-session-manager.md v2.15.1 §SessionManager §Public API (session_list() returns Vec<SessionSnapshot>); SS-session-manager.md v2.15.1 §Terminated-in-grace defensive action×state matrix (F-P52-001); SS-embedded-pty.md v1.7.0 §Fast switching; SS-daemon-wiring-v2-delta.md v1.12.0 |
+| Architecture Source | SS-ipc.md v1.24.0 §SessionSnapshot (wire boundary type; `degraded` and `degraded_reason` fields; `spawned_by_monocle: Option<bool>` field); SS-session-manager.md v2.15.1 §SessionManager §Public API (session_list() returns Vec<SessionSnapshot>); SS-session-manager.md v2.15.1 §Terminated-in-grace defensive action×state matrix (F-P52-001); SS-embedded-pty.md v1.10.0 §Fast switching; SS-daemon-wiring-v2-delta.md v1.12.0 |
 | Cross-Ref | BC-2.05.010 §DetachSession PC-4 (session_not_ready is defensive/untrusted-client-only; official TUI never sends DetachSession during Launching — this BC's Invariant 5 is the normative target); BC-2.08.003 Invariant 2 (kill on Terminated is idempotent at daemon; TUI guard in Invariant 6 prevents dispatch); BC-2.08.003 Invariant 3 (kill on Launching is explicitly allowed; kill path uses host_conn.writer or PID fallback); BC-2.08.005 Invariant 4 (rename on Terminated → Err(InvalidSessionName{"session terminated"}) → "rename_failed"; GC task not cancellable — Invariant 6 of this BC is the TUI-side guard); BC-2.08.007 §Preconditions (detach) defensive note (TUI guard enforced here prevents session_not_ready on official TUI path); SS-session-manager.md v2.15.1 §Terminated-in-grace defensive action×state matrix (F-P52-001) (daemon-side dispositions: rename → Err/rename_failed; detach → idempotent Ok(()); kill → idempotent Ok(); resize → WARN-drop); BC-2.09.008 (SessionCreation wizard and EmbeddedTerminal enter) |
 | Test Name | test_BC_2_06_025_multi_session_grouped_by_project |
 
@@ -251,6 +251,13 @@ S-048 — Implement multi-session grouped sessions panel with lifecycle actions
 
 VP-TBD — Sessions panel multi-session render tests (filled after VP creation)
 
+
+## §Trace v1.5.8
+
+**Arch-source pin: SS-embedded-pty.md v1.7.0 → v1.10.0** (2026-06-20):
+- S-039 adversarial convergence bumped SS-embedded-pty to v1.10.0. This BC's Architecture Source
+  row is updated to reflect the current version. No behavioral content changed.
+- SE-16d monotonicity: v1.5.8 timestamp >= v1.5.7. PASS.
 
 ## §Trace v1.5.5
 
