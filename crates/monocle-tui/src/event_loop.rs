@@ -38,9 +38,9 @@ use crate::keyboard_conv::crossterm_key_to_pty;
 /// BC-2.09.004 Invariant 1 and BC-2.09.005 Invariant 1.
 ///
 /// Installs:
-/// - `crossterm::event::PushKeyboardEnhancementFlags` with all four flags:
+/// - `crossterm::event::PushKeyboardEnhancementFlags` with three flags:
 ///   `DISAMBIGUATE_ESCAPE_CODES | REPORT_ALL_KEYS_AS_ESCAPE_CODES |
-///    REPORT_EVENT_TYPES | REPORT_ASSOCIATED_TEXT`
+///    REPORT_EVENT_TYPES`
 /// - `crossterm::event::EnableBracketedPaste`
 ///
 /// If the terminal does not support Kitty keyboard protocol, `PushKeyboardEnhancementFlags`
