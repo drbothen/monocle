@@ -1315,8 +1315,7 @@ mod tests {
         // CONTROL.contains(CONTROL | SHIFT) — SHIFT bit is NOT set → false.
         // any-bit impl returns true (CONTROL overlaps) — WRONG. all-bits returns false.
         assert!(
-            !PtyKeyModifiers::CONTROL
-                .contains(PtyKeyModifiers::CONTROL | PtyKeyModifiers::SHIFT),
+            !PtyKeyModifiers::CONTROL.contains(PtyKeyModifiers::CONTROL | PtyKeyModifiers::SHIFT),
             "CONTROL.contains(CONTROL|SHIFT) must be false — SHIFT bit is not set in CONTROL; \
              source: SS-embedded-pty.md §Core-Owned Mirror Types (all-bits semantics)"
         );
@@ -1379,6 +1378,142 @@ mod tests {
             key_event_to_pty_bytes(event, true),
             Some(b"\x1b[27;3u".to_vec()),
             "Esc+ALT on Kitty terminal must produce \\x1b[27;3u (EC-218)"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // PASS-4 HIGH-001: modified-arrow VT-fallback arms must use EXACT-EQUALITY
+    // guards (mods == CONTROL, not mods.contains(CONTROL)).
+    //
+    // The VT-fallback arms for modified arrows (SS-embedded-pty.md §Translation
+    // function lines 1291-1298) are specified with exact-equality guards:
+    //   KeyCode::Up if mods == PtyKeyModifiers::CONTROL => ...
+    //
+    // Production code at arm 6 currently uses `mods.contains(CONTROL)` (contains
+    // semantics). This causes `Ctrl+Alt+Up` (mods = CONTROL|ALT = 0x0C) and
+    // `Ctrl+Shift+Up` (mods = CONTROL|SHIFT = 0x05) to match the CONTROL arm and
+    // return \x1b[1;5A — WRONG. Per EC-217 the correct behavior for multi-modifier
+    // combos with no exact VT arm is TRACE+None (observable drop).
+    //
+    // These tests FAIL on the current production code (returns \x1b[1;5A instead
+    // of None). The implementer must tighten arm 6 to exact-equality guards.
+    //
+    // Source: BC-2.09.002 EC-217; SS-embedded-pty.md §Translation function;
+    //         S-040 pass-4 ADV-HIGH-001.
+    // -----------------------------------------------------------------------
+
+    /// ADV-HIGH-001 / BC-2.09.002 EC-217 — Ctrl+Alt+Up on non-Kitty terminal → None
+    ///
+    /// Ctrl+Alt+Up (mods = CONTROL|ALT) has no exact VT arm in the spec table.
+    /// The VT-fallback arm `Up if mods == CONTROL` requires exact equality and must NOT
+    /// match CONTROL|ALT. On a non-Kitty terminal (kitty_active=false), this combo falls
+    /// through all named arms and reaches the `_ if !mods.is_empty()` TRACE+None arm.
+    ///
+    /// Expected: None (TRACE log emitted; drop is observable, not silent per BC-2.09.002 PC-1).
+    ///
+    /// Current production bug: `mods.contains(CONTROL)` matches CONTROL|ALT → returns
+    /// \x1b[1;5A (fabricated bytes). This is a protocol data corruption bug: the upstream
+    /// program (Claude Code) receives Ctrl+Up when Ctrl+Alt+Up was pressed.
+    ///
+    /// Source: BC-2.09.002 EC-217; SS-embedded-pty.md §Translation function; ADV-HIGH-001.
+    #[test]
+    fn test_BC_2_09_002_ctrl_alt_up_trace_none() {
+        let event = PtyKeyEvent {
+            code: PtyKeyCode::Up,
+            modifiers: PtyKeyModifiers::CONTROL | PtyKeyModifiers::ALT,
+            kind: PtyKeyEventKind::Press,
+        };
+        // kitty_active=false: Ctrl+Alt+Up has no exact VT arm → TRACE+None.
+        // The VT-fallback arm `Up if mods == CONTROL` requires exact equality;
+        // CONTROL|ALT (0x0C) != CONTROL (0x04) → arm does not fire.
+        // is_kitty_enhanced_key returns false (kitty_active=false) → Kitty arm skipped.
+        // _ if !mods.is_empty() → TRACE+None → None.
+        assert_eq!(
+            key_event_to_pty_bytes(event, false),
+            None,
+            "Ctrl+Alt+Up on non-Kitty terminal must return None (EC-217 TRACE+None); \
+             current production bug: returns \\x1b[1;5A via contains() guard — \
+             source: BC-2.09.002 EC-217; ADV-HIGH-001"
+        );
+    }
+
+    /// ADV-HIGH-001 / BC-2.09.002 EC-217 — Ctrl+Shift+Up on non-Kitty terminal → None
+    ///
+    /// Ctrl+Shift+Up (mods = CONTROL|SHIFT) has no exact VT arm in the spec table.
+    /// The VT-fallback arms are specified with exact equality:
+    ///   `Up if mods == CONTROL` and `Up if mods == SHIFT`
+    /// Neither matches CONTROL|SHIFT (0x05). On a non-Kitty terminal, the TRACE+None
+    /// arm fires and None is returned.
+    ///
+    /// Note: on a Kitty terminal (kitty_active=true), the Kitty catch-all arm fires
+    /// first, producing a CSI-u sequence. This test is kitty_active=false only.
+    ///
+    /// Source: BC-2.09.002 EC-217; SS-embedded-pty.md §Translation function; ADV-HIGH-001.
+    #[test]
+    fn test_BC_2_09_002_ctrl_shift_up_trace_none() {
+        let event = PtyKeyEvent {
+            code: PtyKeyCode::Up,
+            modifiers: PtyKeyModifiers::CONTROL | PtyKeyModifiers::SHIFT,
+            kind: PtyKeyEventKind::Press,
+        };
+        // kitty_active=false: Ctrl+Shift+Up has no exact VT arm.
+        // `Up if mods == CONTROL` does not match CONTROL|SHIFT (0x05 != 0x04).
+        // `Up if mods == SHIFT`   does not match CONTROL|SHIFT (0x05 != 0x01).
+        // is_kitty_enhanced_key returns false (kitty_active=false) → Kitty arm skipped.
+        // _ if !mods.is_empty() → TRACE+None → None.
+        assert_eq!(
+            key_event_to_pty_bytes(event, false),
+            None,
+            "Ctrl+Shift+Up on non-Kitty terminal must return None (EC-217 TRACE+None); \
+             current production bug: returns \\x1b[1;5A via contains() guard — \
+             source: BC-2.09.002 EC-217; ADV-HIGH-001"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // ADV-HIGH-001 regression guards — single-modifier arrows MUST still work
+    //
+    // These tests verify that tightening arm 6 to exact-equality does NOT break
+    // the primary VT-fallback cases for Ctrl+Arrow and Shift+Arrow.
+    // They are expected to PASS both before and after the fix (they guard regression).
+    // -----------------------------------------------------------------------
+
+    /// ADV-HIGH-001 regression guard — Ctrl+Up → \x1b[1;5A (exact CONTROL arm, kitty_active=false)
+    ///
+    /// This is the happy-path single-modifier case. After the fix, the exact equality
+    /// arm `Up if mods == CONTROL` still fires for CONTROL alone (no ALT, no SHIFT bit).
+    ///
+    /// Source: BC-2.09.002 PC-2 table; SS-embedded-pty.md §Translation function arm 6.
+    #[test]
+    fn test_BC_2_09_002_ctrl_up_vt_fallback_regression_guard() {
+        let event = PtyKeyEvent {
+            code: PtyKeyCode::Up,
+            modifiers: PtyKeyModifiers::CONTROL,
+            kind: PtyKeyEventKind::Press,
+        };
+        assert_eq!(
+            key_event_to_pty_bytes(event, false),
+            Some(b"\x1b[1;5A".to_vec()),
+            "Ctrl+Up on non-Kitty terminal must still produce \\x1b[1;5A after fix \
+             (exact-equality arm for CONTROL alone; ADV-HIGH-001 regression guard)"
+        );
+    }
+
+    /// ADV-HIGH-001 regression guard — Shift+Up → \x1b[1;2A (exact SHIFT arm, kitty_active=false)
+    ///
+    /// Source: BC-2.09.002 PC-2 table; SS-embedded-pty.md §Translation function arm 6.
+    #[test]
+    fn test_BC_2_09_002_shift_up_vt_fallback_regression_guard() {
+        let event = PtyKeyEvent {
+            code: PtyKeyCode::Up,
+            modifiers: PtyKeyModifiers::SHIFT,
+            kind: PtyKeyEventKind::Press,
+        };
+        assert_eq!(
+            key_event_to_pty_bytes(event, false),
+            Some(b"\x1b[1;2A".to_vec()),
+            "Shift+Up on non-Kitty terminal must still produce \\x1b[1;2A after fix \
+             (exact-equality arm for SHIFT alone; ADV-HIGH-001 regression guard)"
         );
     }
 }

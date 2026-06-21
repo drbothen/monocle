@@ -344,7 +344,10 @@ async fn test_BC_2_09_004_handle_crossterm_event_kitty_active_true_ctrl_shift_en
     )
     .await;
 
-    assert!(result.is_ok(), "handle_crossterm_event must not error for Ctrl+Shift+Enter");
+    assert!(
+        result.is_ok(),
+        "handle_crossterm_event must not error for Ctrl+Shift+Enter"
+    );
 
     let msgs = drain_channel(&mut rx);
     assert_eq!(
@@ -421,6 +424,132 @@ async fn test_BC_2_09_002_handle_crossterm_event_kitty_active_false_ctrl_shift_e
          If non-zero: production code is ignoring kitty_active=false guard.",
         msgs.len()
     );
+}
+
+// ---------------------------------------------------------------------------
+// PASS-4 ADV-HIGH-002: oversized-paste guard (BC-2.09.005 EC-245)
+//
+// dispatch_embedded_terminal_paste MUST check whether the bracketed IPC payload
+// would exceed MAX_MESSAGE_BYTES (262144) before enqueueing. If it would, the paste
+// is DROPPED (WARN log, no send) and the IPC writer task remains alive.
+//
+// Rationale (BC-2.09.005 EC-245): the no-fragmentation rule precludes splitting a
+// single paste across multiple KeyInput messages. An over-ceiling paste without this
+// guard would enqueue a frame that write_framed rejects with MessageTooLarge, which
+// terminates the IPC writer task and silently drops ALL subsequent keystrokes.
+//
+// These tests will FAIL on the current production code (dispatch_embedded_terminal_paste
+// has no size guard and always enqueues the payload).
+// ---------------------------------------------------------------------------
+
+/// ADV-HIGH-002 / BC-2.09.005 EC-245 — oversized paste is dropped, writer task survives
+///
+/// Constructs a paste text of 262200 bytes so that
+///   `\x1b[200~` (6) + 262200 + `\x1b[201~` (6) = 262212 bytes of raw payload.
+/// The KeyInput JSON envelope adds at minimum:
+///   `{"KeyInput":{"session_id":"s","bytes":[` + `, digits, ]}}` ~ 50+ bytes.
+/// The total serialized JSON therefore exceeds MAX_MESSAGE_BYTES (262144 bytes).
+///
+/// The guard in dispatch_embedded_terminal_paste MUST detect this before sending.
+/// After the guard fires: the mpsc channel receives ZERO messages, the sender is
+/// NOT closed, and subsequent small pastes still succeed (writer task alive).
+///
+/// Source: BC-2.09.005 EC-245; ADV-HIGH-002.
+#[tokio::test]
+async fn test_BC_2_09_005_oversized_paste_guard() {
+    use monocle_tui::event_loop::dispatch_embedded_terminal_paste;
+    use tokio::sync::mpsc;
+    use monocle_ipc::types::ClientToServer;
+
+    // A paste text of 262200 bytes:
+    //   bracketed frame: 6 + 262200 + 6 = 262212 raw bytes
+    //   JSON bytes-array encoding: each byte becomes up to 4 chars ("255,"),
+    //   so the array alone is >>262144 bytes — clearly over the 262144 ceiling.
+    let oversized_text = "x".repeat(262_200);
+    let (tx, mut rx) = mpsc::channel::<ClientToServer>(16);
+
+    dispatch_embedded_terminal_paste(&oversized_text, "session-oversized", &tx).await;
+
+    // MUST receive ZERO messages — the guard dropped the oversized paste.
+    let msgs: Vec<_> = {
+        let mut v = Vec::new();
+        while let Ok(m) = rx.try_recv() {
+            v.push(m);
+        }
+        v
+    };
+    assert!(
+        msgs.is_empty(),
+        "oversized paste must be dropped by guard (0 KeyInput messages expected); \
+         got {}. Current production bug: no size guard → oversized frame enqueued. \
+         Source: BC-2.09.005 EC-245; ADV-HIGH-002",
+        msgs.len()
+    );
+
+    // The sender MUST still be alive (writer task not killed).
+    // Verify: a small follow-up paste succeeds (channel still open).
+    dispatch_embedded_terminal_paste("hello", "session-oversized", &tx).await;
+    let follow_up: Vec<_> = {
+        let mut v = Vec::new();
+        while let Ok(m) = rx.try_recv() {
+            v.push(m);
+        }
+        v
+    };
+    assert_eq!(
+        follow_up.len(),
+        1,
+        "IPC channel must remain open after oversized paste drop; \
+         follow-up 'hello' paste must produce exactly 1 KeyInput"
+    );
+    match &follow_up[0] {
+        ClientToServer::KeyInput { bytes, .. } => {
+            assert_eq!(
+                bytes.as_slice(),
+                b"\x1b[200~hello\x1b[201~",
+                "follow-up paste after oversized drop must produce correct bracketed sequence \
+                 (regression guard: EC-232/AC-009 happy path not broken)"
+            );
+        }
+        other => panic!("expected KeyInput for follow-up paste, got {:?}", other),
+    }
+}
+
+/// ADV-HIGH-002 regression guard / BC-2.09.005 AC-009 — normal small paste still works
+///
+/// Verifies that after the oversized-paste guard is implemented, a small paste
+/// (e.g., "hello") still produces exactly one KeyInput with correct bracketed framing.
+/// This is the happy-path regression guard confirming the guard only fires at the ceiling.
+///
+/// Source: BC-2.09.005 EC-232; AC-009; ADV-HIGH-002 regression guard.
+#[tokio::test]
+async fn test_BC_2_09_005_oversized_paste_guard_does_not_affect_small_paste() {
+    use monocle_tui::event_loop::dispatch_embedded_terminal_paste;
+    use tokio::sync::mpsc;
+    use monocle_ipc::types::ClientToServer;
+
+    let (tx, mut rx) = mpsc::channel::<ClientToServer>(4);
+    dispatch_embedded_terminal_paste("hello", "session-small", &tx).await;
+
+    let msgs: Vec<_> = {
+        let mut v = Vec::new();
+        while let Ok(m) = rx.try_recv() {
+            v.push(m);
+        }
+        v
+    };
+    assert_eq!(
+        msgs.len(),
+        1,
+        "small paste must produce exactly 1 KeyInput (not affected by oversized guard)"
+    );
+    match &msgs[0] {
+        ClientToServer::KeyInput { bytes, session_id } => {
+            assert_eq!(bytes.as_slice(), b"\x1b[200~hello\x1b[201~");
+            assert_eq!(session_id, "session-small");
+        }
+        other => panic!("expected KeyInput, got {:?}", other),
+    }
 }
 
 /// Verify 'q' in Dashboard mode still produces Err (quit signal) via binding chain
