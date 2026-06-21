@@ -2,14 +2,20 @@ name: DTU Fidelity
 
 on:
   pull_request:
-    paths:
-      # Note: crates/monocle-ipc is reserved for Phase 1+; add "crates/monocle-ipc/**" here when it lands.
-      - "crates/monocle-runtime/**"
-      - "crates/monocle-test-harness/**"
-      - "xtask/**"
-      - "tests/fixtures/dtu/**"
-      - "scripts/audit-table.md"
-      - ".github/workflows/dtu-fidelity.yml"
+    # No paths: filter — workflow runs on EVERY PR to develop so the required
+    # status check "DTU fidelity oracle (cargo xtask dtu-fidelity)" always
+    # reports a result.  Internal change-detection (see "Detect DTU-relevant
+    # changes" step below) short-circuits the expensive oracle when no
+    # DTU-relevant paths changed, so cost is negligible on TUI-only PRs.
+    #
+    # IMPORTANT: do NOT re-add a top-level paths: filter here.  Doing so
+    # creates a branch-protection deadlock: PRs that touch none of the listed
+    # paths never trigger the workflow, so the required context never reports,
+    # and the PR is permanently blocked.  See PROCESS-GAP-DTU-FIDELITY-PATH-
+    # FILTER-DEADLOCK for the full history.
+    #
+    # Note: crates/monocle-ipc is reserved for Phase 1+; add it to the
+    # DTU_PATHS array in the change-detection step below when it lands.
   schedule:
     # Runs every Sunday at 00:00 UTC.
     - cron: "0 0 * * 0"
@@ -34,20 +40,88 @@ jobs:
       - name: Checkout
         # actions/checkout@v4 — pinned to SHA (supply-chain security; SS-conventions §R-001)
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          # Fetch enough history to resolve the merge-base for change detection.
+          fetch-depth: 0
+
+      - name: Detect DTU-relevant changes
+        id: dtu_changes
+        # Pure-bash change detection — no third-party action, no additional
+        # supply-chain surface (SS-conventions §R-001).
+        #
+        # Strategy: fetch the base branch tip and diff merge-base..HEAD.  If
+        # any changed path matches a DTU-relevant prefix, set dtu_changed=true
+        # and run the oracle; otherwise short-circuit to success.
+        #
+        # DTU_PATHS must stay in sync with the set that was formerly in the
+        # top-level paths: filter (minus the removed filter).  Update this
+        # array when adding new DTU-relevant crates or directories.
+        #
+        # On schedule / workflow_dispatch runs github.base_ref is empty; skip
+        # change detection and always run the oracle.
+        run: |
+          set -euo pipefail
+
+          DTU_PATHS=(
+            "crates/monocle-runtime/"
+            "crates/monocle-test-harness/"
+            "xtask/"
+            "tests/fixtures/dtu/"
+            "scripts/audit-table.md"
+            ".github/workflows/dtu-fidelity.yml"
+          )
+
+          BASE_REF="${{ github.base_ref }}"
+
+          if [[ -z "$BASE_REF" ]]; then
+            # Scheduled or manual run — always execute the oracle.
+            echo "Triggered by schedule or workflow_dispatch; running oracle unconditionally."
+            echo "dtu_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            git fetch --no-tags --depth=1 origin "$BASE_REF"
+            MERGE_BASE=$(git merge-base HEAD "origin/$BASE_REF")
+            CHANGED_FILES=$(git diff --name-only "$MERGE_BASE"...HEAD)
+
+            echo "Changed files in this PR:"
+            echo "$CHANGED_FILES"
+
+            DTU_CHANGED=false
+            for path_prefix in "${DTU_PATHS[@]}"; do
+              if echo "$CHANGED_FILES" | grep -q "^${path_prefix}"; then
+                DTU_CHANGED=true
+                echo "DTU-relevant change detected: matched prefix '${path_prefix}'"
+                break
+              fi
+            done
+
+            echo "dtu_changed=$DTU_CHANGED" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip — no DTU-relevant paths changed
+        if: steps.dtu_changes.outputs.dtu_changed == 'false'
+        run: |
+          set -euo pipefail
+          echo "No DTU-relevant paths changed in this PR; DTU fidelity oracle not applicable — reporting success."
+          echo "Paths that trigger the full oracle:"
+          echo "  crates/monocle-runtime/**, crates/monocle-test-harness/**, xtask/**,"
+          echo "  tests/fixtures/dtu/**, scripts/audit-table.md, .github/workflows/dtu-fidelity.yml"
 
       - name: Install Rust toolchain
+        if: steps.dtu_changes.outputs.dtu_changed == 'true'
         # dtolnay/rust-toolchain@v1 — pinned to SHA (supply-chain security; SS-conventions §R-001)
         uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
         with:
           toolchain: "1.88"
 
       - name: Cache cargo
+        if: steps.dtu_changes.outputs.dtu_changed == 'true'
         # Swatinem/rust-cache@v2 — pinned to SHA (supply-chain security; SS-conventions §R-001)
         uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32
         with:
           shared-key: dtu-fidelity
 
       - name: Run dtu-fidelity oracle
+        if: steps.dtu_changes.outputs.dtu_changed == 'true'
         # Exits 0 iff mean fidelity score ≥ 0.95 across the 25-fixture corpus.
         # Exits 1 if any fixture drops below threshold or the filter invariant
         # (BC-HOOK-034) is violated.
@@ -59,7 +133,9 @@ jobs:
         # Preserve scores as a CI artifact for post-merge analysis.
         # Uploads even when the previous step fails (always: true) so regression
         # detail is available when the gate is red.
-        if: always()
+        # Guard: only meaningful when the oracle actually ran (dtu_changed=true);
+        # skip on the short-circuit path to avoid a spurious "file not found" error.
+        if: steps.dtu_changes.outputs.dtu_changed == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: dtu-fidelity-scores
