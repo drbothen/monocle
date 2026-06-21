@@ -636,15 +636,63 @@ async fn handle_detach_session(
 /// - `SessionNotFound` / `SessionNotReady`: logged at WARN; `ServerToClient::Error` sent
 ///   to the requesting client. The session may have terminated mid-resize — benign race.
 /// - Write errors to the session-host: logged at WARN; propagated as `ServerToClient::Error`.
-#[allow(clippy::todo)]
 async fn handle_resize_pane(
-    _session_id: String,
-    _rows: u16,
-    _cols: u16,
-    _client_tx: &tokio::sync::mpsc::Sender<ServerToClient>,
-    _state: &DaemonState,
+    session_id: String,
+    rows: u16,
+    cols: u16,
+    client_tx: &tokio::sync::mpsc::Sender<ServerToClient>,
+    state: &DaemonState,
 ) {
-    todo!("S-042: implement handle_resize_pane — call SessionManager::resize_session(session_id, rows, cols)")
+    use crate::session_manager::{session_error_to_code, IpcOp};
+
+    let sm = match state.session_manager.as_ref() {
+        Some(sm) => sm,
+        None => {
+            tracing::error!(
+                session_id = %session_id,
+                "handle_resize_pane: session_manager is None (daemon wiring bug)"
+            );
+            let _ = client_tx
+                .send(ServerToClient::Error {
+                    code: "invalid_request".to_string(),
+                    message: "session_manager not initialized".to_string(),
+                })
+                .await;
+            return;
+        }
+    };
+
+    let result = sm
+        .lock()
+        .await
+        .resize_session(&session_id, rows, cols)
+        .await;
+    match result {
+        Ok(()) => {
+            // Resize forwarded successfully; no response needed (fire-and-continue).
+            tracing::trace!(
+                session_id = %session_id,
+                rows,
+                cols,
+                "handle_resize_pane: resize_session forwarded to session-host"
+            );
+        }
+        Err(e) => {
+            tracing::warn!(
+                session_id = %session_id,
+                rows,
+                cols,
+                error = %e,
+                "handle_resize_pane: resize_session failed (EC-238)"
+            );
+            let _ = client_tx
+                .send(ServerToClient::Error {
+                    code: session_error_to_code(IpcOp::Resize, &e).to_string(),
+                    message: e.to_string(),
+                })
+                .await;
+        }
+    }
 }
 
 /// Handle a `ClientToServer::KeyInput` message from a TUI client.

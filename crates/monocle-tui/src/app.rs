@@ -1071,58 +1071,171 @@ pub fn pty_output_channel() -> PtyOutputChannelPair {
 ///    `pty_parsers[session_id].set_size(area.rows, area.cols)` and resets
 ///    `pty_scroll_offsets[session_id] = 0` (SS-embedded-pty.md §Scrollback offset invariants).
 ///
-/// 2. **Debounce timer arm** (BC-2.09.006 Invariant 1): if no `resize_debounce_deadline`
-///    is set, sets `resize_debounce_deadline = Some(Instant::now() + 50ms)`.
+/// 2. **Debounce timer arm/reset** (BC-2.09.006 Invariant 1 / EC-235): sets
+///    `resize_debounce_deadline = Some(Instant::now() + 50ms)` on every call where a
+///    size change is detected. Each mid-window resize RESETS the deadline to `now + 50ms`,
+///    ensuring only the final stable size is sent per debounce window.
 ///
 /// Zero-dimension guard (BC-2.09.006 edge case EC-239): if `area.rows == 0` or
-/// `area.cols == 0`, the function is a no-op (no parser resize, no debounce arm).
+/// `area.cols == 0`, the function is a complete no-op (no parser resize, no debounce arm).
 ///
-/// Does NOT send `ResizePane` IPC — use `check_resize_debounce` for that.
-#[allow(clippy::todo)]
-pub fn on_resize_detected(
-    _app: &mut App,
-    _session_id: &str,
-    _area_rows: u16,
-    _area_cols: u16,
-) {
-    todo!("S-042: implement on_resize_detected — immediate parser set_size + scroll reset + debounce arm")
+/// Does NOT send `ResizePane` IPC — use [`check_resize_debounce`] for that.
+pub fn on_resize_detected(app: &mut App, session_id: &str, area_rows: u16, area_cols: u16) {
+    // EC-239 (BC-2.09.006): degenerate pane area — complete no-op.
+    // Neither the local parser nor the debounce state are touched.
+    if area_rows == 0 || area_cols == 0 {
+        tracing::trace!(
+            session_id = %session_id,
+            area_rows,
+            area_cols,
+            "on_resize_detected: degenerate pane area (EC-239) — no-op"
+        );
+        return;
+    }
+
+    // Look up the parser for this session; absent means a race during session creation.
+    let Some(parser) = app.pty_parsers.get_mut(session_id) else {
+        tracing::trace!(
+            session_id = %session_id,
+            "on_resize_detected: session not in pty_parsers — no-op"
+        );
+        return;
+    };
+
+    let (parser_rows, parser_cols) = parser.screen().size();
+
+    // Postcondition 1 (AC-001): if area == parser size, no change detected — no-op.
+    if area_rows == parser_rows && area_cols == parser_cols {
+        return;
+    }
+
+    // BC-2.09.006 postcondition 3 / Invariant 4: resize the local vt100 parser IMMEDIATELY.
+    // This is NOT debounced — the render loop reads the parser size on the very next tick
+    // and must see the correct dimensions even before the IPC ResizePane is sent.
+    // `set_size` lives on `vt100::Screen`, accessed via `parser.screen_mut()`.
+    parser.screen_mut().set_size(area_rows, area_cols);
+
+    // SS-embedded-pty.md §Scrollback offset invariants: "resize reflows content; old offset
+    // is meaningless". Reset pty_scroll_offsets[session_id] to 0 on every genuine resize.
+    app.pty_scroll_offsets.insert(session_id.to_string(), 0);
+
+    // BC-2.09.006 Invariant 1 / EC-235: RESET the debounce deadline to now + 50ms on EVERY
+    // detected size change. Each intermediate resize within a drag restarts the 50ms countdown,
+    // ensuring only the final stable size is sent. This is the "mid-window reset" behavior
+    // required by EC-235 (test_BC_2_09_006_mid_window_resize_resets_deadline).
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+    app.resize_debounce_deadline = Some(deadline);
+
+    tracing::trace!(
+        session_id = %session_id,
+        area_rows,
+        area_cols,
+        "on_resize_detected: parser resized immediately; debounce deadline reset to now+50ms"
+    );
 }
 
 /// Check whether the 50ms debounce window has elapsed and send `ResizePane` IPC if so.
 ///
 /// Called from the event loop on each tick while `AppMode::EmbeddedTerminal` is active.
 /// Checks `resize_debounce_deadline.map_or(false, |d| Instant::now() >= d)`. When the
-/// deadline has passed:
+/// deadline has passed AND `current_rows/cols` differ from `last_sent_size`:
 ///
-/// 1. Reads the current pane area (from `app.last_pty_pane_area` per S-041, or from
-///    last-rendered `Rect`).
-/// 2. If the pending `(rows, cols)` differ from `app.last_sent_size` (BC-2.09.006
-///    Invariant 2), sends `ClientToServer::ResizePane { session_id, rows, cols }`
-///    via `app.ipc_tx.try_send()`.
-/// 3. Updates `app.last_sent_size` to the sent dimensions.
-/// 4. Clears `app.resize_debounce_deadline`.
+/// 1. Sends `ClientToServer::ResizePane { session_id, rows: current_rows, cols: current_cols }`
+///    via `app.ipc_tx.try_send()` (non-blocking; bounded channel per BC-2.04.011).
+/// 2. Updates `app.last_sent_size = Some((current_rows, current_cols))`.
+/// 3. Clears `app.resize_debounce_deadline = None`.
 ///
-/// If `ipc_tx` is `None` (channel offline), the debounce is cleared without sending
-/// (benign race — the session will be resized on reconnect via enter_embedded_terminal).
-#[allow(clippy::todo)]
+/// No-op cases (BC-2.09.006 Invariant 2 / AC-006):
+/// - Deadline not yet set (`None`): no pending resize — no-op.
+/// - Deadline set but not yet elapsed: window still open — no-op; deadline preserved.
+/// - `current_size == last_sent_size`: size returned to previously sent value — no-op.
+///
+/// If `ipc_tx` is `None` (channel offline), the deadline is cleared without sending
+/// (benign race — the session will be resized on the next `enter_embedded_terminal`).
 pub fn check_resize_debounce(
-    _app: &mut App,
-    _session_id: &str,
-    _current_rows: u16,
-    _current_cols: u16,
+    app: &mut App,
+    session_id: &str,
+    current_rows: u16,
+    current_cols: u16,
 ) {
-    todo!("S-042: implement check_resize_debounce — send ResizePane when deadline elapsed and size changed")
+    // No pending debounce — no-op.
+    let Some(deadline) = app.resize_debounce_deadline else {
+        return;
+    };
+
+    // Debounce window not yet elapsed — no-op; preserve deadline.
+    if tokio::time::Instant::now() < deadline {
+        return;
+    }
+
+    // Deadline elapsed: clear it unconditionally (window is done regardless of send outcome).
+    app.resize_debounce_deadline = None;
+
+    // BC-2.09.006 Invariant 2 (AC-006): do not send if the size has not changed from the
+    // last-sent value. This prevents spurious IPC messages when the size returns to the
+    // previously-sent dimensions within the debounce window.
+    if app.last_sent_size == Some((current_rows, current_cols)) {
+        tracing::trace!(
+            session_id = %session_id,
+            current_rows,
+            current_cols,
+            "check_resize_debounce: pending size == last_sent_size — no ResizePane (Invariant 2)"
+        );
+        return;
+    }
+
+    // Send ResizePane over the outbound IPC channel (try_send: non-blocking, bounded).
+    let msg = ClientToServer::ResizePane {
+        session_id: session_id.to_string(),
+        rows: current_rows,
+        cols: current_cols,
+    };
+
+    match app.ipc_tx.as_ref() {
+        None => {
+            // IPC channel offline — clear debounce without sending (benign race).
+            tracing::warn!(
+                session_id = %session_id,
+                current_rows,
+                current_cols,
+                "check_resize_debounce: ipc_tx is None — ResizePane not sent (channel offline)"
+            );
+        }
+        Some(tx) => match tx.try_send(msg) {
+            Ok(()) => {
+                // ResizePane sent; update last_sent_size (Invariant 2).
+                app.last_sent_size = Some((current_rows, current_cols));
+                tracing::trace!(
+                    session_id = %session_id,
+                    current_rows,
+                    current_cols,
+                    "check_resize_debounce: ResizePane sent after 50ms debounce"
+                );
+            }
+            Err(e) => {
+                // Channel full or closed — log and skip (the IPC reader will reconnect).
+                tracing::warn!(
+                    session_id = %session_id,
+                    current_rows,
+                    current_cols,
+                    error = %e,
+                    "check_resize_debounce: try_send ResizePane failed"
+                );
+            }
+        },
+    }
 }
 
 /// Clear resize debounce state when exiting `AppMode::EmbeddedTerminal`.
 ///
 /// Resets both `app.resize_debounce_deadline` and `app.last_sent_size` to `None`
 /// so that the next entry into `EmbeddedTerminal` mode starts with a clean slate.
-/// Called from `exit_embedded_terminal` (or its callers) when the mode transitions
-/// away from `EmbeddedTerminal` (BC-2.09.006 Tasks — "cleared on AppMode exit").
-#[allow(clippy::todo)]
-pub fn clear_resize_debounce_state(_app: &mut App) {
-    todo!("S-042: implement clear_resize_debounce_state — reset last_sent_size and resize_debounce_deadline to None")
+/// Called from the mode-exit path whenever `AppMode::EmbeddedTerminal` transitions away
+/// (BC-2.09.006 Tasks — "cleared on AppMode exit from EmbeddedTerminal").
+pub fn clear_resize_debounce_state(app: &mut App) {
+    app.resize_debounce_deadline = None;
+    app.last_sent_size = None;
+    tracing::trace!("clear_resize_debounce_state: resize debounce state cleared");
 }
 
 // ---------------------------------------------------------------------------

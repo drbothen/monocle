@@ -221,19 +221,13 @@ async fn test_BC_2_09_006_resize_sends_resizepane_after_50ms() {
                 session_id, SESSION_A,
                 "BC-2.09.006 AC-002: ResizePane session_id must match"
             );
-            assert_eq!(
-                *rows, 30,
-                "BC-2.09.006 AC-002: ResizePane rows must be 30"
-            );
+            assert_eq!(*rows, 30, "BC-2.09.006 AC-002: ResizePane rows must be 30");
             assert_eq!(
                 *cols, 100,
                 "BC-2.09.006 AC-002: ResizePane cols must be 100"
             );
         }
-        other => panic!(
-            "BC-2.09.006 AC-002: expected ResizePane, got {:?}",
-            other
-        ),
+        other => panic!("BC-2.09.006 AC-002: expected ResizePane, got {:?}", other),
     }
 
     // Step 4: deadline must be cleared after send.
@@ -459,8 +453,7 @@ async fn test_BC_2_09_006_resize_to_same_size_no_op() {
     // Also cover: even if debounce deadline is somehow set, check_resize_debounce must
     // not send when pending_size == last_sent_size.
     // Manually arm the deadline (artificially) to verify the guard in check_resize_debounce.
-    app.resize_debounce_deadline =
-        Some(tokio::time::Instant::now() - Duration::from_millis(1)); // already elapsed
+    app.resize_debounce_deadline = Some(tokio::time::Instant::now() - Duration::from_millis(1)); // already elapsed
 
     check_resize_debounce(&mut app, SESSION_A, 24, 80);
     let msgs2 = drain(&mut rx);
@@ -601,12 +594,7 @@ async fn test_BC_2_09_006_zero_dimensions_no_op() {
             app.resize_debounce_deadline.is_none(),
             "BC-2.09.006 EC-239: no debounce deadline when rows == 0"
         );
-        let (rows, cols) = app
-            .pty_parsers
-            .get(SESSION_A)
-            .unwrap()
-            .screen()
-            .size();
+        let (rows, cols) = app.pty_parsers.get(SESSION_A).unwrap().screen().size();
         assert_eq!(
             (rows, cols),
             (24, 80),
@@ -628,12 +616,7 @@ async fn test_BC_2_09_006_zero_dimensions_no_op() {
             app.resize_debounce_deadline.is_none(),
             "BC-2.09.006 EC-239: no debounce deadline when cols == 0"
         );
-        let (rows, cols) = app
-            .pty_parsers
-            .get(SESSION_A)
-            .unwrap()
-            .screen()
-            .size();
+        let (rows, cols) = app.pty_parsers.get(SESSION_A).unwrap().screen().size();
         assert_eq!(
             (rows, cols),
             (24, 80),
@@ -718,9 +701,7 @@ async fn test_BC_2_09_006_clear_debounce_state_on_exit() {
 
     // Pre-populate both fields to non-None to verify they are cleared.
     app.last_sent_size = Some((30, 100));
-    app.resize_debounce_deadline = Some(
-        tokio::time::Instant::now() + Duration::from_millis(50),
-    );
+    app.resize_debounce_deadline = Some(tokio::time::Instant::now() + Duration::from_millis(50));
 
     // Act: clear on EmbeddedTerminal exit.
     clear_resize_debounce_state(&mut app);
@@ -758,12 +739,7 @@ async fn test_BC_2_09_006_canonical_vector_24x80_to_30x100() {
     on_resize_detected(&mut app, SESSION_A, 30, 100);
 
     // Parser must be updated immediately.
-    let (rows, cols) = app
-        .pty_parsers
-        .get(SESSION_A)
-        .unwrap()
-        .screen()
-        .size();
+    let (rows, cols) = app.pty_parsers.get(SESSION_A).unwrap().screen().size();
     assert_eq!(
         (rows, cols),
         (30, 100),
