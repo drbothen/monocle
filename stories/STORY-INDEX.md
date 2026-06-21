@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.58"
+version: "5.59"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-20T00:00:00Z
@@ -498,6 +498,16 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.59
+
+**S-040 pass-6 adversarial fixes — ADV-MED-001 Esc Press-only guard + ADV-LOW-001/002 doc-comment corrections (2026-06-21):**
+
+- S-040 story bumped v1.7→v1.8. Input pins updated: BC-2.09.002 v1.2.0→v1.2.2 (Invariant 2 Press-only kind guard), BC-2.09.004 v1.0.9→v1.0.11 (EC-234 detection mechanism corrected — supports_keyboard_enhancement() named), SS-embedded-pty v1.13.0→v1.14.0. BC-2.09.005 v1.0.7 unchanged.
+- ADV-MED-001 task added: `dispatch_embedded_terminal_key` Esc-intercept guard must include `matches!(event.kind, PtyKeyEventKind::Press)` — Esc Release must not trigger exit; `test_BC_2_09_002_esc_release_does_not_exit` unit test task added.
+- ADV-LOW-001+LOW-002 task added: stale doc-comments referencing retired 100ms CSI ?u probe corrected to `crossterm::terminal::supports_keyboard_enhancement()` (~8 sites); "4 flags" corrected to canonical 3-flag set.
+- EVAL-INDEX bumped v1.37→v1.38 (S-040 pin v1.7→v1.8).
+- SE-16d monotonicity: v5.59 timestamp 2026-06-21 >= v5.58 timestamp 2026-06-21. PASS.
 
 ## §Trace v5.58
 

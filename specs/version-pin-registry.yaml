@@ -210,8 +210,8 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.58"
-  last_bump_commit: "[S-040 pass-4 adversarial fixes — ADV-HIGH-001/002 tasks + BC-2.09.005 v1.0.7 pin; §Trace v5.58 added]"
+  current_version: "5.59"
+  last_bump_commit: "[S-040 pass-6 adversarial fixes — ADV-MED-001 Esc Press-only guard + ADV-LOW-001/002 doc-comment corrections; §Trace v5.59 added]"
   last_bump_date: "2026-06-21"
 
 VP-INDEX:
@@ -228,8 +228,8 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.37"
-  last_bump_commit: "[S-040 pass-4 adversarial fixes cascade — S-040 v1.6→v1.7; §Trace v1.37 added]" # version-pin-historical
+  current_version: "1.38"
+  last_bump_commit: "[S-040 pass-6 adversarial fixes cascade — S-040 v1.7→v1.8; §Trace v1.38 added]"
   last_bump_date: "2026-06-21"
 
 sprint-state:
@@ -973,8 +973,8 @@ S-038-session-manager-hook-injection:
 
 S-040-keyboard-forwarding:
   path: stories/S-040-keyboard-forwarding.md
-  current_version: "1.7"
-  last_bump_commit: "[S-040 pass-4 adversarial fixes — BC-2.09.005 v1.0.7 pin; ADV-HIGH-002 paste-ceiling + ADV-HIGH-001 modified-arrow tasks added]" # version-pin-historical
+  current_version: "1.8"
+  last_bump_commit: "[S-040 pass-6 adversarial fixes — ADV-MED-001 Esc Press-only guard + ADV-LOW-001/002 doc-comment corrections; BC-2.09.002 v1.2.2, BC-2.09.004 v1.0.11, SS-embedded-pty v1.14.0 pins]"
   last_bump_date: "2026-06-21"
 
 S-046-pty-output-fan-out:

@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-040
 epic_id: EPIC-09
-version: "1.7"
+version: "1.8"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -20,10 +20,10 @@ behavioral_contracts: [BC-2.09.002, BC-2.09.004, BC-2.09.005]
 verification_properties: []
 estimated_days: 4
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.002.md, version: "1.2.0"}
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.004.md, version: "1.0.9"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.002.md, version: "1.2.2"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.004.md, version: "1.0.11"}
   - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.005.md, version: "1.0.7"}
-  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.13.0"}
+  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.14.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
@@ -204,6 +204,9 @@ In both cases no panic occurs and no silent drop (all drops are TRACE-observable
 - [ ] Write unit test `test_BC_2_09_005_oversized_paste_guard`: a paste whose framed bracketed payload exceeds `MAX_MESSAGE_BYTES` is NOT enqueued (0 `KeyInput` messages sent / guard returns), WARN logged (traces to BC-2.09.005 EC-245).
 - [ ] **ADV-HIGH-001 (modified-arrow VT-fallback arm guards — SS-embedded-pty §Translation function):** Modified-arrow VT-fallback arms MUST use EXACT modifier equality per SS-embedded-pty §Translation function: `PtyKeyCode::Up if mods == CONTROL => \x1b[1;5A`; `if mods == SHIFT => \x1b[1;2A`; etc. — NOT `contains()`. Ctrl+Alt+Up and other multi-modifier arrow combos with no exact VT arm fall to the `_ if !mods.is_empty()` TRACE+None arm (EC-217), not a fabricated single-modifier sequence. **DISTINCTION:** The Ctrl+printable arm guard remains `contains(CONTROL) && !contains(ALT)` per the prior architect ruling (pass-3); only the ARROW VT-fallback arms use exact equality. This distinction must be explicit in the implementation to prevent regression of the Char arm.
 - [ ] Write unit test `test_BC_2_09_002_ctrl_alt_up_trace_none`: `key_event_to_pty_bytes(PtyKeyEvent { code: PtyKeyCode::Up, modifiers: PtyKeyModifiers::CONTROL | PtyKeyModifiers::ALT, kind: PtyKeyEventKind::Press }, false)` → `None` (EC-217: multi-modifier arrow combo with no exact VT arm; TRACE logged; no fabricated sequence).
+- [ ] **ADV-MED-001 (Esc Press-only intercept guard — BC-2.09.002 Invariant 2):** The bare-Esc → `Action::ExitEmbeddedTerminal` intercept in `dispatch_embedded_terminal_key` MUST fire ONLY on `KeyEventKind::Press`. Add `&& matches!(event.kind, PtyKeyEventKind::Press)` to the Esc-intercept guard so the full condition is: `KeyCode::Esc` with `mods.is_empty() && matches!(event.kind, PtyKeyEventKind::Press)`. Esc Release events MUST NOT trigger exit (they are discarded per BC-2.09.002 PC-3 — Release events return `None`); Esc Repeat falls through to `key_event_to_pty_bytes` → `\x1b`. Per BC-2.09.002 Invariant 2.
+- [ ] Write unit test `test_BC_2_09_002_esc_release_does_not_exit`: a bare-Esc `KeyEventKind::Release` event routed through `dispatch_embedded_terminal_key` does NOT return the exit signal / does NOT trigger `Action::ExitEmbeddedTerminal` (per BC-2.09.002 PC-3: Release events are discarded, never forwarded and never trigger exit).
+- [ ] **ADV-LOW-001 + ADV-LOW-002 (stale doc-comment corrections):** Correct stale doc-comments in `app.rs`, `main.rs`, `keyboard.rs`, and `event_loop.rs` that describe the retired "100ms CSI ?u probe" — replace with descriptions of `crossterm::terminal::supports_keyboard_enhancement()`. Correct the `setup_keyboard_enhancement` doc-comment that says "spec calls for 4 flags" to reflect the canonical 3-flag set (`DISAMBIGUATE_ESCAPE_CODES | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_EVENT_TYPES`). Approximately 8 sites total across those files. Do NOT embed version literals in doc-comments (POL-11).
 
 ## Previous Story Intelligence
 
@@ -314,6 +317,7 @@ Within the 30% context window bound. No split required.
 
 | Version | Change | Pass |
 |---------|--------|------|
+| v1.8 | Input pins updated: BC-2.09.002 v1.2.0→v1.2.2 (Invariant 2 Press-only kind guard — ADV-MED-001 architect ruling), BC-2.09.004 v1.0.9→v1.0.11 (EC-234 detection mechanism corrected — supports_keyboard_enhancement() named), SS-embedded-pty v1.13.0→v1.14.0. BC-2.09.005 v1.0.7 unchanged. ADV-MED-001 task added: bare-Esc intercept guard must include `matches!(event.kind, PtyKeyEventKind::Press)` to prevent Esc Release from triggering exit; `test_BC_2_09_002_esc_release_does_not_exit` test task added. ADV-LOW-001+ADV-LOW-002 task added: stale doc-comments citing retired 100ms CSI ?u probe (~8 sites) corrected to `supports_keyboard_enhancement()`; "4 flags" corrected to canonical 3-flag set. Refs: BC-2.09.002, BC-2.09.004, SS-embedded-pty. | story-writer |
 | v1.7 | BC-2.09.005 input pin bumped v1.0.6→v1.0.7 (EC-245 over-ceiling paste guard added by PO). Two ADV-HIGH tasks added: ADV-HIGH-002 paste-ceiling guard in `dispatch_embedded_terminal_paste` (DROP + WARN if framed payload exceeds `MAX_MESSAGE_BYTES` 262144) + `test_BC_2_09_005_oversized_paste_guard`; ADV-HIGH-001 modified-arrow VT-fallback arm exact-equality guard (`mods == CONTROL` not `contains()` — distinct from Ctrl+printable arm which retains `contains(CONTROL) && !contains(ALT)`) + `test_BC_2_09_002_ctrl_alt_up_trace_none`. Wave-gate follow-up section added (IPC writer-task error taxonomy, cross-cutting, Wave-9 gate; F-S026 origin). | story-writer |
 | v1.6 | Input pins finalized: BC-2.09.002 bumped to v1.2.0 (EC-218 Esc+modifier edge case — PO patch), BC-2.09.005 bumped to v1.0.6 (Invariant-3 paste ceiling corrected — PO patch). AC-015 added (EC-218 Esc+modifier: bare-Esc-only intercept; kitty_active=true → CSI-u; kitty_active=false → TRACE+None). EC-218 row added to Edge Cases table. BC table version literals de-versioned (pins live in inputs[] only). | story-writer |
 | v1.5 | supports_keyboard_enhancement (crossterm::terminal API) replaces CSI-probe design; SSOT dispatch rule (ADV-HIGH-002) added to Tasks; test_BC_2_09_004_kitty_ctrl_up Kitty codepoint test vector (Up=57352; modifier=5) added per SS-embedded-pty O-1 ruling. Input pins updated (implemented against BC-2.09.002 at v1.1.9 and BC-2.09.005 at v1.0.5 at S-040 v1.5 authoring time). | architect pass-3 |
