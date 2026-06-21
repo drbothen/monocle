@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.4"
+version: "1.0.5"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -97,7 +97,7 @@ from typed keystrokes and disable auto-indentation/escaping during paste.
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — full-fidelity keyboard forwarding in CAP-009 includes paste operations; bracketed paste is a standard terminal feature required for accurate paste handling in embedded terminal mode |
 | Architecture Module | monocle-tui (EmbeddedTerminal event dispatch, paste handling) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.10.0 §Bracketed paste |
+| Architecture Source | SS-embedded-pty.md v1.11.0 §Bracketed paste |
 | Test Name | test_BC_2_09_005_bracketed_paste_wrapped_in_bracket_sequences |
 
 ## Related BCs
@@ -115,6 +115,13 @@ S-040 — Same story as BC-2.09.002 (paste handling in EmbeddedTerminal event di
 ## VP Anchors
 
 VP-TBD — Bracketed paste unit tests (filled after VP creation)
+
+## §Trace v1.0.5
+
+**Arch-source pin: SS-embedded-pty.md v1.10.0 → v1.11.0** (2026-06-20):
+- S-040 delivery flag-set correction bumped SS-embedded-pty to v1.11.0. Architecture Source
+  row updated. No behavioral content changed.
+- SE-16d monotonicity: v1.0.5 timestamp >= v1.0.4. PASS.
 
 ## §Trace v1.0.3
 

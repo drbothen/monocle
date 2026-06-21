@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "embedded-pty"
 subsystem: SS-09
-version: "1.10.0"
+version: "1.11.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -328,19 +328,65 @@ Keyboard enhancement (Kitty) flags are enabled GLOBALLY at TUI startup. `EnableM
 is NOT global — it is scoped to `EmbeddedTerminal` entry/exit (per BC-2.09.002 Invariant-5)
 precisely to avoid stealing mouse selection/copy from monocle's own panels.
 
+**S-040 delivery ruling — crossterm-0.29 flag set (2026-06-20):**
+
+The locked dependency `crossterm = "0.29"` exposes four `KeyboardEnhancementFlags` bitflags:
+`DISAMBIGUATE_ESCAPE_CODES`, `REPORT_EVENT_TYPES`, `REPORT_ALTERNATE_KEYS`, and
+`REPORT_ALL_KEYS_AS_ESCAPE_CODES`. The fifth flag, `REPORT_ASSOCIATED_TEXT`, is commented
+out in crossterm-0.29 source (`// const REPORT_ASSOCIATED_TEXT = 0b0001_0000`) and is NOT
+a usable symbol in this version.
+
+**Rationale for the three-flag set (excludes `REPORT_ASSOCIATED_TEXT` and `REPORT_ALTERNATE_KEYS`):**
+
+- **DISAMBIGUATE_ESCAPE_CODES** — Required. Distinguishes bare `Esc` from the ESC prefix
+  of terminal escape sequences. Without it, bare `Esc` cannot be distinguished from the
+  start of any CSI/SS3 sequence in the Kitty protocol path. BC-2.09.002 Invariant 2 and
+  BC-2.09.004 both depend on this flag.
+- **REPORT_EVENT_TYPES** — Required. Enables `KeyEventKind::Press` / `Repeat` / `Release`
+  discrimination. BC-2.09.002 Postcondition 3 mandates that Release events are discarded;
+  without this flag `Release` events are not reported and the discard logic cannot execute
+  correctly. BC-2.09.004 Invariant 3 implicitly requires event-type resolution for Kitty CSI u
+  sequences.
+- **REPORT_ALL_KEYS_AS_ESCAPE_CODES** — Required. Reports normally-silent keys (standalone
+  modifier keys, unrecognized keys) as escape codes rather than silently dropping them.
+  Required for BC-2.09.002 Invariant 4 (pure modifier key events return `None` from
+  `key_event_to_pty_bytes` — they must be REPORTED first before the translation function can
+  discard them; a flag that suppresses reporting entirely silently loses these events before
+  the discard path runs).
+- **REPORT_ALTERNATE_KEYS** — Omitted. This flag instructs the terminal to include
+  alternate key-layout information (e.g., the shifted or AltGr variant of a key). No BC in
+  v1A scope (BC-2.09.002, BC-2.09.004, BC-2.09.005) requires layout-alternate information;
+  none of their ACs depend on it. Enabling it would increase Kitty CSI u sequence length
+  for no observable behavioral difference in v1A. It is NOT required for CSI u disambiguation,
+  event-type reporting, or the full-fidelity key class table in BC-2.09.002 PC-2.
+- **REPORT_ASSOCIATED_TEXT** — Unavailable in crossterm-0.29. This flag would instruct
+  the terminal to append the Unicode text "associated with" the key press (i.e., the text the
+  key would produce if typed into a text field, accounting for dead keys and compose sequences).
+  No BC in v1A scope depends on this capability. The full-fidelity key class table in
+  BC-2.09.002 PC-2 covers all required key classes without it. The three-flag set preserves
+  full v1A behavioral fidelity.
+  **Upgrade path:** when the dependency is upgraded to a crossterm version that exposes
+  `REPORT_ASSOCIATED_TEXT` as a stable symbol (≥ 0.30 when/if it stabilizes), add it to
+  the flag set here and bump SS-embedded-pty. No story or BC change is required since the
+  behavioral surface does not change — only the terminal-side encoding richness increases.
+
 ```rust
 // TUI STARTUP — global keyboard enhancement only; NO global mouse capture.
 // Kitty enhancement flags give enhanced key events. Mouse capture is NOT enabled globally
 // because it would intercept mouse selection and copy operations in monocle's own panels
 // (sessions panel, event ribbon, etc.), stealing them from the terminal emulator's native
 // text selection capability. Mouse capture is deferred to EmbeddedTerminal entry.
+//
+// Flag set rationale (crossterm-0.29): three flags are the achievable and correct set.
+// REPORT_ASSOCIATED_TEXT is NOT available in crossterm-0.29 (commented-out symbol).
+// REPORT_ALTERNATE_KEYS is intentionally omitted — no v1A BC depends on layout-alternate
+// information. See SS-embedded-pty.md §Crossterm setup S-040 delivery ruling for full rationale.
 crossterm::execute!(
     stdout(),
     crossterm::event::PushKeyboardEnhancementFlags(
         KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES |
         KeyboardEnhancementFlags::REPORT_ALL_KEYS_AS_ESCAPE_CODES |
-        KeyboardEnhancementFlags::REPORT_EVENT_TYPES |
-        KeyboardEnhancementFlags::REPORT_ASSOCIATED_TEXT,
+        KeyboardEnhancementFlags::REPORT_EVENT_TYPES,
     ),
     crossterm::event::EnableBracketedPaste,
 )?;
@@ -1438,6 +1484,31 @@ Mitigation: integration tests use a PTY fixture corpus from `embedded-pty-evalua
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.11.0
+
+**S-040 delivery — crossterm-0.29 Kitty flag set corrected; REPORT_ASSOCIATED_TEXT unavailable** (2026-06-20):
+
+- **Dependency-reality correction:** `REPORT_ASSOCIATED_TEXT` is commented out in
+  crossterm-0.29 source (`// const REPORT_ASSOCIATED_TEXT = 0b0001_0000`) and is not a
+  usable symbol in the locked dependency. The spec previously listed four flags including
+  `REPORT_ASSOCIATED_TEXT`; this was a forward-looking assumption that does not match the
+  available API.
+- **Corrected three-flag set:** `DISAMBIGUATE_ESCAPE_CODES | REPORT_ALL_KEYS_AS_ESCAPE_CODES |
+  REPORT_EVENT_TYPES`. These three flags are all available in crossterm-0.29 and are the
+  complete correct set for v1A scope.
+- **REPORT_ALTERNATE_KEYS omitted by design:** Available in crossterm-0.29 but not required.
+  No v1A BC (BC-2.09.002, BC-2.09.004, BC-2.09.005) depends on alternate key layout
+  information. Enabling it would increase CSI u sequence length for no v1A behavioral gain.
+- **BC-2.09.002/004/005 fidelity preserved:** The three-flag set fully satisfies all
+  v1A behavioral contracts. `REPORT_ASSOCIATED_TEXT` absence has no effect on the key
+  class table in BC-2.09.002 PC-2, the Kitty CSI u encoding in BC-2.09.004, or bracketed
+  paste in BC-2.09.005. Product-owner must update BC-2.09.004 Precondition 1 to reflect
+  the three-flag set; story-writer must update S-040 AC-008 accordingly.
+- **Upgrade path documented inline:** when crossterm exposes `REPORT_ASSOCIATED_TEXT` as a
+  stable symbol, add it to the flag set and bump this section without BC or story changes.
+- Semver: minor (v1.10.0 → v1.11.0) — §Crossterm setup subsection rewritten with normative
+  rationale and corrected flag set.
 
 ## §Trace v1.10.0
 

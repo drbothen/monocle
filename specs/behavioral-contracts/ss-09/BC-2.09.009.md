@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.5"
+version: "1.1.6"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -119,7 +119,7 @@ sign-off.
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — this BC governs the behavior of the embedded terminal mode when permission prompts arrive; it is an invariant of the EmbeddedTerminal AppMode, which is defined in CAP-009; the "never silently queue" guarantee is core to the embedded terminal UX |
 | L2 Domain Invariants | (none — DI-NNN catalog not produced; permission prompt visibility is captured as an SS-embedded-pty invariant) |
 | Architecture Module | monocle-tui (status bar badge renderer, bell emit, overlay_stack integration); monocle-core (AppMode transition logic) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.10.0 §State machine invariants (permission prompts while in EmbeddedTerminal; SUG-3 fix); §BC requirement flag (v1B pre-emption deferred) |
+| Architecture Source | SS-embedded-pty.md v1.11.0 §State machine invariants (permission prompts while in EmbeddedTerminal; SUG-3 fix); §BC requirement flag (v1B pre-emption deferred) |
 | Cross-Ref | BC-2.06.008 (Permission Overlay: VecDeque Stack Push on PermissionPromptQueued — overlay_stack populated regardless of AppMode); BC-2.09.008 (Esc exit from EmbeddedTerminal restores prior; with pending overlay → Overlay AppMode) |
 | Test Name | test_BC_2_09_009_permission_badge_bell_in_embedded_terminal |
 
@@ -139,6 +139,13 @@ S-044 — Implement permission badge + bell in EmbeddedTerminal status bar
 ## VP Anchors
 
 VP-TBD — Badge + bell unit tests (filled after VP creation)
+
+## §Trace v1.1.6
+
+**Arch-source pin: SS-embedded-pty.md v1.10.0 → v1.11.0** (2026-06-20):
+- S-040 delivery flag-set correction bumped SS-embedded-pty to v1.11.0. Architecture Source
+  row updated. No behavioral content changed.
+- SE-16d monotonicity: v1.1.6 timestamp >= v1.1.5. PASS.
 
 ## §Trace v1.1.4
 
