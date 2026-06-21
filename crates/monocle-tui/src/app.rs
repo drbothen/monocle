@@ -2790,33 +2790,24 @@ pub async fn handle_crossterm_event(
                         return Ok(());
                     };
 
-                    // BC-2.09.002 Invariant 2: Esc interception happens BEFORE key_event_to_pty_bytes.
-                    // This call uses app.kitty_active (threaded from App) to correctly route
-                    // Kitty-enhanced modifier combos when the terminal supports Kitty protocol.
-                    // dispatch_embedded_terminal_key defaults kitty_active=false for standalone
-                    // unit tests; the full App path uses app.kitty_active here for production fidelity.
-                    use crate::keyboard_conv::crossterm_key_to_pty;
-                    use crossterm::event::{KeyCode, KeyModifiers};
-                    use monocle_core::keyboard::key_event_to_pty_bytes;
-
-                    if ct_key.code == KeyCode::Esc && ct_key.modifiers == KeyModifiers::NONE {
+                    // ADV-HIGH-002 (SSOT dispatch): ALL key dispatch logic lives in
+                    // dispatch_embedded_terminal_key — including Esc intercept, conversion,
+                    // key_event_to_pty_bytes call, and KeyInput send. There is NO inline
+                    // duplicate logic here (previous inline duplicate has been removed).
+                    //
+                    // BC-2.09.002 Invariant 2: Esc interception is inside the helper,
+                    // BEFORE key_event_to_pty_bytes (ordering is non-negotiable).
+                    // app.kitty_active is threaded into the helper so Kitty-enhanced modifier
+                    // combos route to CSI-u encoding when the terminal supports the protocol.
+                    let exited = crate::event_loop::dispatch_embedded_terminal_key(
+                        ct_key,
+                        &session_id,
+                        app.kitty_active,
+                        &ipc_tx,
+                    )
+                    .await;
+                    if exited {
                         exit_embedded_terminal(app, &session_id);
-                    } else {
-                        let pty_event = crossterm_key_to_pty(ct_key);
-                        let kitty_active = app.kitty_active;
-                        if let Some(bytes) = key_event_to_pty_bytes(pty_event, kitty_active) {
-                            if let Err(e) = ipc_tx
-                                .send(ClientToServer::KeyInput {
-                                    session_id: session_id.clone(),
-                                    bytes,
-                                })
-                                .await
-                            {
-                                tracing::warn!(
-                                    "handle_crossterm_event: EmbeddedTerminal KeyInput send failed: {e}"
-                                );
-                            }
-                        }
                     }
                 }
                 Event::Paste(text) => {

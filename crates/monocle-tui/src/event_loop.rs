@@ -37,91 +37,51 @@ use crate::keyboard_conv::crossterm_key_to_pty;
 /// main event loop. These flags are global (not gated on `EmbeddedTerminal` entry) per
 /// BC-2.09.004 Invariant 1 and BC-2.09.005 Invariant 1.
 ///
-/// # Detection sequence (CSI ? u query)
+/// # Detection (ADV-BLOCKER-001 / SS-embedded-pty.md §Risk Mitigations v1.13.0)
 ///
-/// Before installing `PushKeyboardEnhancementFlags`, this function probes the terminal
-/// for Kitty keyboard protocol support (SS-embedded-pty §"Risk Mitigations"):
+/// Uses `crossterm::terminal::supports_keyboard_enhancement()` to detect Kitty
+/// keyboard protocol support. This is the correct crossterm API — the previous
+/// hand-rolled CSI?u probe (detached stdin reader thread + 100ms recv_timeout)
+/// violated the architectural rule against threads reading stdin outside the
+/// crossterm event loop.
 ///
-/// 1. Write `\x1b[?u` (raw CSI ? u query) to stdout and flush.
-/// 2. Spawn a reader thread that reads raw stdin bytes into a buffer.
-/// 3. Wait up to 100 ms for the thread to return a response.
-/// 4. If the response matches `\x1b[?<N>u` (any single decimal integer N), set
-///    `kitty_active = true` and call `PushKeyboardEnhancementFlags`.
-/// 5. Otherwise set `kitty_active = false`, emit TRACE log, skip `PushKeyboardEnhancementFlags`.
-/// 6. `EnableBracketedPaste` is sent unconditionally (widely supported, low risk).
+/// EC-234: `Err(_)` from `supports_keyboard_enhancement` → treated as `false`;
+/// TRACE log emitted, no panic. Kitty flags are NOT pushed on Err.
 ///
-/// The function returns the `kitty_active` bool. Callers store this in an
-/// `Arc<AtomicBool>` so all TUI exit paths (normal and panic) call
-/// `teardown_keyboard_enhancement(kitty_active)` symmetrically.
+/// `EnableBracketedPaste` and `DisableBracketedPaste` remain unconditional —
+/// they are widely supported and low risk independent of Kitty protocol.
+///
+/// # Returns
+///
+/// The `kitty_active: bool`. Callers store this in an `Arc<AtomicBool>` so all
+/// TUI exit paths (normal and panic) call `teardown_keyboard_enhancement(kitty_active)`
+/// symmetrically.
 ///
 /// # Errors
 ///
-/// Returns `Err` if any stdout write (CSI query or `execute!`) fails.
+/// Returns `Err` if any stdout `execute!` call (PushKeyboardEnhancementFlags or
+/// EnableBracketedPaste) fails.
 pub fn setup_keyboard_enhancement() -> Result<bool> {
     use crossterm::event::{
         EnableBracketedPaste, KeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
     };
-    use std::io::{self, Read, Write};
-    use std::sync::mpsc as std_mpsc;
-    use std::time::Duration;
+    use std::io;
 
-    tracing::trace!("setup_keyboard_enhancement: probing for Kitty keyboard protocol (CSI ?u)");
-
-    // Step 1: Write the CSI ? u capability query to stdout and flush.
-    // The terminal responds with `\x1b[?<N>u` (flags bitmask) if Kitty protocol is supported,
-    // or produces no response within the timeout.
-    {
-        let mut out = io::stdout();
-        out.write_all(b"\x1b[?u")?;
-        out.flush()?;
-    }
-
-    // Step 2: Spawn a reader thread to read raw stdin bytes into a buffer.
-    // We use a dedicated thread because `std::io::stdin().read()` blocks without timeout.
-    // The main thread waits at most 100ms; if the thread hasn't returned by then,
-    // kitty_active = false (no response = not supported).
+    // ADV-BLOCKER-001 / SS-embedded-pty.md §Risk Mitigations v1.13.0:
+    // Use crossterm::terminal::supports_keyboard_enhancement() — the canonical detection
+    // API. FORBIDDEN: hand-rolled CSI?u probe with a detached stdin reader thread.
     //
-    // Note: the terminal is already in raw mode at this point (called from setup_terminal
-    // after enable_raw_mode), so read() returns bytes without waiting for newline.
-    let (tx, rx) = std_mpsc::channel::<Vec<u8>>();
-    std::thread::spawn(move || {
-        let mut buf = [0u8; 32];
-        let stdin = io::stdin();
-        let mut lock = stdin.lock();
-        // Read up to 32 bytes — the CSI ?u response is short (e.g., `\x1b[?0u` = 6 bytes).
-        // If read() blocks with no data and the parent times out, the thread is abandoned
-        // (leaks until process exit, acceptable — this is a one-shot startup probe).
-        match lock.read(&mut buf) {
-            Ok(n) if n > 0 => {
-                let _ = tx.send(buf[..n].to_vec());
-            }
-            _ => {
-                // No data or read error — send empty vec so channel is never empty.
-                let _ = tx.send(Vec::new());
-            }
-        }
+    // EC-234: Err → false (kitty_active=false), TRACE log, flags skipped, no panic.
+    let kitty = crossterm::terminal::supports_keyboard_enhancement().unwrap_or_else(|e| {
+        tracing::trace!(
+            error = %e,
+            "setup_keyboard_enhancement: supports_keyboard_enhancement() returned Err; \
+             treating as false (EC-234) — Kitty flags skipped, bracketed paste still enabled"
+        );
+        false
     });
 
-    // Step 3: Wait up to 100ms for the response.
-    let kitty_active = match rx.recv_timeout(Duration::from_millis(100)) {
-        Ok(response) => {
-            // Step 4: Validate the response matches `\x1b[?<N>u`.
-            // The response is `ESC [ ? <decimal-digits> u`.
-            // We check prefix `\x1b[?` and suffix `u` with at least one digit between them.
-            detect_kitty_response(&response)
-        }
-        Err(_) => {
-            // Timeout or channel closed — no response within 100ms; Kitty not supported.
-            tracing::trace!(
-                "setup_keyboard_enhancement: no CSI ?u response within 100ms; Kitty not supported"
-            );
-            false
-        }
-    };
-
-    // Step 5: Conditionally install PushKeyboardEnhancementFlags.
-    // Only push when kitty_active; on exit, only PopKeyboardEnhancementFlags when kitty_active.
-    if kitty_active {
+    if kitty {
         tracing::trace!(
             "setup_keyboard_enhancement: Kitty protocol detected; installing enhancement flags"
         );
@@ -143,39 +103,11 @@ pub fn setup_keyboard_enhancement() -> Result<bool> {
         );
     }
 
-    // Step 6: EnableBracketedPaste unconditionally — widely supported, low risk.
+    // EnableBracketedPaste unconditionally — widely supported, low risk.
+    // BC-2.09.005 Invariant 1: paste support is independent of Kitty protocol.
     crossterm::execute!(io::stdout(), EnableBracketedPaste)?;
 
-    Ok(kitty_active)
-}
-
-/// Detect whether `response` contains a valid CSI ? u capability response.
-///
-/// Scans `response` for the pattern `\x1b[?<N>u` where `<N>` is one or more
-/// ASCII decimal digits. Extra bytes before or after the pattern are tolerated
-/// (the user may have typed input that was buffered alongside the terminal response).
-///
-/// Returns `true` on match (Kitty supported), `false` otherwise.
-fn detect_kitty_response(response: &[u8]) -> bool {
-    // Minimum response containing `\x1b[?0u` is 6 bytes.
-    if response.len() < 6 {
-        return false;
-    }
-    // Scan for the prefix `\x1b[?` starting from index 0.
-    // In practice the response should be at the start, but tolerate leading bytes
-    // in case the terminal sends capability info in a different order.
-    let prefix = b"\x1b[?";
-    let Some(start) = response.windows(prefix.len()).position(|w| w == prefix) else {
-        return false;
-    };
-    // After `\x1b[?`, scan for ASCII decimal digits followed by `u`.
-    let after_prefix = &response[start + prefix.len()..];
-    let digits_end = after_prefix
-        .iter()
-        .take_while(|b| b.is_ascii_digit())
-        .count();
-    // Must have at least one digit and be immediately followed by `u`.
-    digits_end > 0 && after_prefix.get(digits_end) == Some(&b'u')
+    Ok(kitty)
 }
 
 /// Remove keyboard enhancement flags and disable bracketed paste at TUI exit.
@@ -214,10 +146,16 @@ pub fn teardown_keyboard_enhancement(kitty_active: bool) {
 
 /// Dispatch a crossterm `KeyEvent` while `AppMode::EmbeddedTerminal` is active.
 ///
+/// This is the SINGLE code path from crossterm `Event::Key` to `KeyInput` send
+/// (ADV-HIGH-002 / SS-embedded-pty.md §SSOT dispatch ruling). `handle_crossterm_event`
+/// in `app.rs` calls this helper passing `app.kitty_active` — there MUST NOT be an
+/// inline duplicate dispatch path in `handle_crossterm_event`.
+///
 /// Implements the keyboard forwarding path per BC-2.09.002:
-/// 1. Intercepts bare `KeyCode::Esc` (no modifiers) → sends `Action::ExitEmbeddedTerminal`
-///    (BEFORE any conversion — BC-2.09.002 Invariant 2).
-/// 2. All other Press/Repeat events → `crossterm_key_to_pty(event)` → `key_event_to_pty_bytes(pty_event)`.
+/// 1. Intercepts bare `KeyCode::Esc` (no modifiers) → returns `true` as the exit signal
+///    (caller calls `exit_embedded_terminal`). BEFORE any conversion — BC-2.09.002 Invariant 2.
+/// 2. All other Press/Repeat events → `crossterm_key_to_pty(event)` →
+///    `key_event_to_pty_bytes(pty_event, kitty_active)`.
 /// 3. If `key_event_to_pty_bytes` returns `Some(bytes)` → sends
 ///    `ClientToServer::KeyInput { session_id, bytes }` via `ipc_tx`.
 /// 4. Release events → `key_event_to_pty_bytes` returns `None` → nothing sent (BC-2.09.002 PC-3).
@@ -229,6 +167,10 @@ pub fn teardown_keyboard_enhancement(kitty_active: bool) {
 ///
 /// - `event`: The raw crossterm `KeyEvent` from the event loop.
 /// - `session_id`: UUID string of the currently-embedded session.
+/// - `kitty_active`: Whether Kitty keyboard protocol was negotiated at startup.
+///   `true` → modifier combos route to Kitty CSI-u encoding via `encode_kitty_key`.
+///   `false` → standard VT encoding (non-Kitty fallback table).
+///   Set from `app.kitty_active` in production; `false` in standalone unit tests.
 /// - `ipc_tx`: The outbound IPC channel sender. `.send().await` is used (backpressure,
 ///   per F-S039-004 ruling — `try_send()` is forbidden for keyboard bytes).
 ///
@@ -239,6 +181,7 @@ pub fn teardown_keyboard_enhancement(kitty_active: bool) {
 pub async fn dispatch_embedded_terminal_key(
     event: KeyEvent,
     session_id: &str,
+    kitty_active: bool,
     ipc_tx: &Sender<ClientToServer>,
 ) -> bool {
     // BC-2.09.002 Invariant 2: Intercept bare Esc (no modifiers) as ExitEmbeddedTerminal
@@ -253,10 +196,9 @@ pub async fn dispatch_embedded_terminal_key(
     let pty_event = crossterm_key_to_pty(event);
 
     // Translate to PTY bytes. Returns None for Release events and unrecognized keys.
-    // `kitty_active` is threaded through the App struct when called from app.rs
-    // (handle_crossterm_event). This dispatch helper defaults to false for standalone
-    // unit tests that call it directly without App context — tests exercise non-Kitty paths.
-    if let Some(bytes) = key_event_to_pty_bytes(pty_event, false) {
+    // `kitty_active` routes modifier combos to Kitty CSI-u encoding when true;
+    // otherwise uses standard VT fallback table.
+    if let Some(bytes) = key_event_to_pty_bytes(pty_event, kitty_active) {
         // Send with backpressure (.send().await) per F-S039-004 ruling.
         // If the channel is closed (daemon dead), log and continue — the TUI
         // will detect the disconnect via transport events.
