@@ -26,6 +26,7 @@
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use monocle_core::keyboard::key_event_to_pty_bytes;
+use monocle_ipc::framing::MAX_MESSAGE_BYTES;
 use monocle_ipc::types::ClientToServer;
 use tokio::sync::mpsc::Sender;
 
@@ -238,9 +239,31 @@ pub async fn dispatch_embedded_terminal_paste(
     session_id: &str,
     ipc_tx: &Sender<ClientToServer>,
 ) {
+    // BC-2.09.005 EC-245: oversized-paste guard.
+    //
+    // The bracketed payload is `\x1b[200~` (6 bytes) + text + `\x1b[201~` (6 bytes).
+    // write_framed serializes ClientToServer::KeyInput to JSON; the bytes field encodes
+    // as a JSON array of decimal integers, adding significant overhead per byte.
+    // We therefore use the raw bracketed frame size as a conservative upper-bound check:
+    // if the raw frame already exceeds MAX_MESSAGE_BYTES, the JSON-serialized envelope
+    // will exceed it by an even larger margin.  Drop and WARN — do NOT enqueue a frame
+    // that write_framed would reject with MessageTooLarge (which kills the IPC writer task
+    // and silently drops ALL subsequent keystrokes).  Per BC-2.09.005 Invariant 3,
+    // fragmentation is forbidden — this drop is the correct response.
+    let bracketed_len = b"\x1b[200~".len() + text.len() + b"\x1b[201~".len();
+    if bracketed_len > MAX_MESSAGE_BYTES {
+        tracing::warn!(
+            paste_bytes = bracketed_len,
+            ceiling = MAX_MESSAGE_BYTES,
+            "dispatch_embedded_terminal_paste: paste exceeds IPC framing ceiling; dropping \
+             (BC-2.09.005 EC-245 — fragmentation forbidden, oversized paste discarded)"
+        );
+        return;
+    }
+
     // BC-2.09.005 PC-2/PC-3: wrap paste text in bracketed paste sequences.
     // Full payload in a single KeyInput — no chunking (BC-2.09.005 Invariant 3).
-    let mut bytes = Vec::with_capacity(b"\x1b[200~".len() + text.len() + b"\x1b[201~".len());
+    let mut bytes = Vec::with_capacity(bracketed_len);
     bytes.extend_from_slice(b"\x1b[200~");
     bytes.extend_from_slice(text.as_bytes());
     bytes.extend_from_slice(b"\x1b[201~");
