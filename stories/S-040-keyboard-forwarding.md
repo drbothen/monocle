@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-040
 epic_id: EPIC-09
-version: "1.6"
+version: "1.7"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -22,7 +22,7 @@ estimated_days: 4
 inputs:
   - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.002.md, version: "1.2.0"}
   - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.004.md, version: "1.0.9"}
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.005.md, version: "1.0.6"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.005.md, version: "1.0.7"}
   - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.13.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
@@ -200,6 +200,10 @@ In both cases no panic occurs and no silent drop (all drops are TRACE-observable
 - [ ] Write unit test `test_BC_2_09_002_ctrl_bracket_esc`: `key_event_to_pty_bytes(PtyKeyEvent { code: PtyKeyCode::Char('['), modifiers: PtyKeyModifiers::CONTROL, kind: Press }, false)` → `Some(vec![0x1b])` (Ctrl+[ → `\x1b` ESC).
 - [ ] Write unit test `test_BC_2_09_005_paste_with_esc_verbatim` (EC-230): paste text containing ESC characters (e.g., `"\x1b[31mred\x1b[0m"`) is forwarded verbatim inside brackets — `\x1b[200~\x1b[31mred\x1b[0m\x1b[201~`.
 - [ ] Write unit test `test_BC_2_09_005_paste_embedded_bracket_verbatim` (EC-231): paste text containing `"\x1b[200~"` is forwarded verbatim inside the outer brackets without sanitization.
+- [ ] **ADV-HIGH-002 (in-scope mitigation — BC-2.09.005 EC-245):** Add a size guard in `dispatch_embedded_terminal_paste`: if the framed bracketed payload (`\x1b[200~` + text + `\x1b[201~` in the `KeyInput` JSON envelope) would exceed `monocle_ipc` framing `MAX_MESSAGE_BYTES` (262144), emit a WARN and DROP the paste without enqueuing (prevents killing the IPC writer task). Pastes at/below the ceiling forward normally (BC-2.09.005 Invariant-3).
+- [ ] Write unit test `test_BC_2_09_005_oversized_paste_guard`: a paste whose framed bracketed payload exceeds `MAX_MESSAGE_BYTES` is NOT enqueued (0 `KeyInput` messages sent / guard returns), WARN logged (traces to BC-2.09.005 EC-245).
+- [ ] **ADV-HIGH-001 (modified-arrow VT-fallback arm guards — SS-embedded-pty §Translation function):** Modified-arrow VT-fallback arms MUST use EXACT modifier equality per SS-embedded-pty §Translation function: `PtyKeyCode::Up if mods == CONTROL => \x1b[1;5A`; `if mods == SHIFT => \x1b[1;2A`; etc. — NOT `contains()`. Ctrl+Alt+Up and other multi-modifier arrow combos with no exact VT arm fall to the `_ if !mods.is_empty()` TRACE+None arm (EC-217), not a fabricated single-modifier sequence. **DISTINCTION:** The Ctrl+printable arm guard remains `contains(CONTROL) && !contains(ALT)` per the prior architect ruling (pass-3); only the ARROW VT-fallback arms use exact equality. This distinction must be explicit in the implementation to prevent regression of the Char arm.
+- [ ] Write unit test `test_BC_2_09_002_ctrl_alt_up_trace_none`: `key_event_to_pty_bytes(PtyKeyEvent { code: PtyKeyCode::Up, modifiers: PtyKeyModifiers::CONTROL | PtyKeyModifiers::ALT, kind: PtyKeyEventKind::Press }, false)` → `None` (EC-217: multi-modifier arrow combo with no exact VT arm; TRACE logged; no fabricated sequence).
 
 ## Previous Story Intelligence
 
@@ -293,6 +297,10 @@ Within the 30% context window bound. No split required.
 | EC-218 | Esc+modifier (e.g., Alt+Esc, Ctrl+Esc) | NOT intercepted as ExitEmbeddedTerminal (bare-Esc-only intercept); `kitty_active=true` → CSI-u sequence forwarded; `kitty_active=false` → TRACE+None (EC-217 boundary) |
 | EC-228 | `Ctrl+Shift+Enter` on non-Kitty terminal | Best-effort VT fallback; `Enter` → `\r` |
 
+## Wave-Gate Follow-Ups (non-blocking — do NOT implement in this story)
+
+> **[wave-gate]** IPC writer-task error taxonomy (`spawn_ipc_writer`) should distinguish `MessageTooLarge` (drop-and-continue) from `IoError`/`Disconnected` (exit+reconnect) — this is a cross-cutting concern tracked at the Wave-9 integration gate. Origin: F-S026. Do NOT add this to S-040's scope.
+
 ## Subsystem Anchor Justifications
 
 **SS-09 owns this story's scope** because `key_event_to_pty_bytes()` and the keyboard forwarding dispatch are defined in SS-embedded-pty.md §Full-Fidelity Keyboard Encoding, which is the authoritative SS-09 spec for this functionality.
@@ -306,6 +314,7 @@ Within the 30% context window bound. No split required.
 
 | Version | Change | Pass |
 |---------|--------|------|
+| v1.7 | BC-2.09.005 input pin bumped v1.0.6→v1.0.7 (EC-245 over-ceiling paste guard added by PO). Two ADV-HIGH tasks added: ADV-HIGH-002 paste-ceiling guard in `dispatch_embedded_terminal_paste` (DROP + WARN if framed payload exceeds `MAX_MESSAGE_BYTES` 262144) + `test_BC_2_09_005_oversized_paste_guard`; ADV-HIGH-001 modified-arrow VT-fallback arm exact-equality guard (`mods == CONTROL` not `contains()` — distinct from Ctrl+printable arm which retains `contains(CONTROL) && !contains(ALT)`) + `test_BC_2_09_002_ctrl_alt_up_trace_none`. Wave-gate follow-up section added (IPC writer-task error taxonomy, cross-cutting, Wave-9 gate; F-S026 origin). | story-writer |
 | v1.6 | Input pins finalized: BC-2.09.002 bumped to v1.2.0 (EC-218 Esc+modifier edge case — PO patch), BC-2.09.005 bumped to v1.0.6 (Invariant-3 paste ceiling corrected — PO patch). AC-015 added (EC-218 Esc+modifier: bare-Esc-only intercept; kitty_active=true → CSI-u; kitty_active=false → TRACE+None). EC-218 row added to Edge Cases table. BC table version literals de-versioned (pins live in inputs[] only). | story-writer |
 | v1.5 | supports_keyboard_enhancement (crossterm::terminal API) replaces CSI-probe design; SSOT dispatch rule (ADV-HIGH-002) added to Tasks; test_BC_2_09_004_kitty_ctrl_up Kitty codepoint test vector (Up=57352; modifier=5) added per SS-embedded-pty O-1 ruling. Input pins updated (implemented against BC-2.09.002 at v1.1.9 and BC-2.09.005 at v1.0.5 at S-040 v1.5 authoring time). | architect pass-3 |
 | v1.4 | Implementation Tasks added per architect-specified Kitty CSI-u redesign. Input pins updated: BC-2.09.002 (implemented against v1.1.7 at S-040 v1.3 authoring time, now at v1.1.8), BC-2.09.004 (implemented against v1.0.7 at S-040 v1.3 authoring time, now at v1.0.8). Tasks updated to reflect corrected signatures (`kitty_active: bool` param on `key_event_to_pty_bytes` and `is_kitty_enhanced_key`); startup task expanded with `CSI ?u` query sequence, 100ms timeout, conditional flag push/pop; Architecture Mapping table updated; nine new unit tests added (EC-217 TRACE+None, kitty_active true/false, Ctrl+@ NUL, Ctrl+[ ESC, EC-230/EC-231 paste verbatim). | story-writer |

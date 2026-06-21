@@ -1,7 +1,7 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.36"
+version: "1.37"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-20T00:00:00Z
@@ -26,7 +26,7 @@ inputs:
   - {path: .factory/stories/S-037-session-manager-gc.md, version: "1.0.3"}
   - {path: .factory/stories/S-038-session-manager-hook-injection.md, version: "1.5"}
   - {path: .factory/stories/S-039-pty-output-pipeline.md, version: "1.8"}
-  - {path: .factory/stories/S-040-keyboard-forwarding.md, version: "1.6"}
+  - {path: .factory/stories/S-040-keyboard-forwarding.md, version: "1.7"}
   - {path: .factory/stories/S-041-mouse-forwarding-sgr.md, version: "1.0"}
   - {path: .factory/stories/S-042-resize-debounce-resizepane.md, version: "1.2"}
   - {path: .factory/stories/S-043-scrollback-navigation.md, version: "1.1"}
@@ -188,6 +188,12 @@ the Wave 8-9 stories (S-033..S-048). The evaluator needs these story ACs as inpu
 scenarios. Their absence from inputs[] (F-GATE-ADV-003) left the evaluator blind to the ACs for all 5
 new holdout scenarios. No holdout scenario IDs, titles, BCs, or behavioral semantics changed.
 **SE-16d PASS:** 2026-06-16 >= 2026-06-16 (same day as v1.18). PASS (same-day sequential patch).
+
+## §Trace v1.37 — POL-11 pin cascade: S-040 input pin v1.6 → v1.7 (2026-06-21)
+
+**Bump:** 1.36 → 1.37.
+**Scope:** `inputs[]` S-040 story pin updated: `"1.6"` → `"1.7"` (S-040 bumped to v1.7: BC-2.09.005 input pin v1.0.6→v1.0.7 (EC-245 over-ceiling paste guard); ADV-HIGH-002 paste-ceiling task + ADV-HIGH-001 modified-arrow exact-equality task added). No holdout scenario IDs, BCs, or behavioral semantics changed.
+**SE-16d PASS:** 2026-06-21 >= 2026-06-21 (v1.36 last bump date). PASS (same-day sequential patch).
 
 ## §Trace v1.36 — POL-11 pin cascade: BC-INDEX input pin v1.44.2 → v1.44.4 (2026-06-21)
 

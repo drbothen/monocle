@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.57"
+version: "5.58"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-20T00:00:00Z
@@ -498,6 +498,16 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.58
+
+**S-040 pass-4 adversarial fixes — paste-ceiling guard (ADV-HIGH-002) + modified-arrow exact equality (ADV-HIGH-001) (2026-06-21):**
+
+- S-040 story bumped v1.6→v1.7. BC-2.09.005 input pin updated v1.0.6→v1.0.7 (EC-245 over-ceiling paste guard added by PO).
+- ADV-HIGH-002 task added: `dispatch_embedded_terminal_paste` size guard — DROP + WARN if framed bracketed payload exceeds `MAX_MESSAGE_BYTES` (262144); `test_BC_2_09_005_oversized_paste_guard` unit test task added.
+- ADV-HIGH-001 task added: modified-arrow VT-fallback arms use exact modifier equality (`mods == CONTROL`, not `contains()`); Ctrl+Alt+Up falls to TRACE+None (EC-217); Ctrl+printable arm retains `contains(CONTROL) && !contains(ALT)` per pass-3 ruling (no regression); `test_BC_2_09_002_ctrl_alt_up_trace_none` unit test task added.
+- Wave-gate follow-up section added (IPC writer-task error taxonomy cross-cutting concern, Wave-9 gate; F-S026 origin; non-blocking for S-040).
+- SE-16d monotonicity: v5.58 timestamp 2026-06-21 >= v5.57 timestamp 2026-06-21. PASS.
 
 ## §Trace v5.57
 
