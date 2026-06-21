@@ -26,8 +26,7 @@ use monocle_config::MonocleConfig;
 use monocle_core::tui::state::{AppMode, FocusSnapshot};
 use monocle_ipc::types::ClientToServer;
 use monocle_tui::app::{
-    build_builtin_binding_layers, check_resize_debounce, exit_embedded_terminal,
-    on_resize_detected,
+    build_builtin_binding_layers, check_resize_debounce, exit_embedded_terminal, on_resize_detected,
 };
 use monocle_tui::ui::sessions_panel::SessionsPanelState;
 use monocle_tui::App;
@@ -164,14 +163,9 @@ async fn test_BC_2_09_006_run_loop_resize_sends_resizepane_after_debounce() {
 
     // Act 1: dispatch resize event via the real handle_crossterm_event.
     let resize_event = Event::Resize(100, 30); // (cols=100, rows=30)
-    monocle_tui::app::handle_crossterm_event(
-        &mut app,
-        resize_event,
-        &layers,
-        &mut sessions_state,
-    )
-    .await
-    .ok();
+    monocle_tui::app::handle_crossterm_event(&mut app, resize_event, &layers, &mut sessions_state)
+        .await
+        .ok();
 
     // Advance time past the 50ms debounce window.
     tokio::time::advance(Duration::from_millis(55)).await;

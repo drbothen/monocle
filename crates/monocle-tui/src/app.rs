@@ -798,6 +798,12 @@ pub fn exit_embedded_terminal(app: &mut App, session_id: &str) {
     // the full attach + dump protocol (fresh dump from daemon side per S-047 AC-006).
     app.pty_dump_received.remove(session_id);
 
+    // HIGH-001 / BC-2.09.006 S-042: clear resize debounce state on exit from EmbeddedTerminal
+    // so that the next enter_embedded_terminal starts with clean resize state.
+    // Any pending debounce deadline or last_sent_size from the exiting session must be cleared;
+    // leaving stale state would cause the next session to skip its first resize (Invariant 1).
+    clear_resize_debounce_state(app);
+
     // Restore prior AppMode (Dashboard with prior focus).
     let prior = match &app.mode {
         AppMode::EmbeddedTerminal { prior, .. } => prior.clone(),
@@ -3071,7 +3077,17 @@ pub async fn handle_crossterm_event(
                     )
                     .await;
                 }
-                // Other events (resize, focus, mouse) — ignore in EmbeddedTerminal for now.
+                // BLOCKER-001 / BC-2.09.006 PC-1/2: terminal resize event wiring (S-042).
+                // crossterm::event::Event::Resize(cols, rows) — note crossterm's parameter order
+                // is (width=cols, height=rows), but the spec and BC-2.09.006 use (rows, cols).
+                Event::Resize(cols, rows) => {
+                    // EC-236 / Invariant 3: mode guard is implicit here — this arm is only
+                    // reachable in AppMode::EmbeddedTerminal (outer match arm above).
+                    on_resize_detected(app, &session_id, rows, cols);
+                    // check_resize_debounce is called by the run loop tick separately; it is
+                    // also exercised in tests directly (bc_2_09_006_run_loop_wiring.rs).
+                }
+                // Other events (focus, mouse): silently ignored in EmbeddedTerminal mode.
                 _ => {}
             }
         }

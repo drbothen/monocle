@@ -203,13 +203,10 @@ async fn test_BC_2_09_006_daemon_zero_dim_clamp_rows_forwarded() {
         make_manager_with_running_session(tmp.path()).await;
 
     // RED GATE: todo!() panics here.
-    manager
-        .resize_session(&session_id, 1, 80)
-        .await
-        .expect(
-            "BC-2.09.006 AC-014 EC-239: resize_session(1, 80) must return Ok(()) — \
+    manager.resize_session(&session_id, 1, 80).await.expect(
+        "BC-2.09.006 AC-014 EC-239: resize_session(1, 80) must return Ok(()) — \
              rows=1 is the clamped value from rows=0",
-        );
+    );
 
     let msg = tokio::time::timeout(
         std::time::Duration::from_millis(200),
@@ -255,13 +252,10 @@ async fn test_BC_2_09_006_daemon_zero_dim_clamp_cols_forwarded() {
         make_manager_with_running_session(tmp.path()).await;
 
     // RED GATE: todo!() panics here.
-    manager
-        .resize_session(&session_id, 30, 1)
-        .await
-        .expect(
-            "BC-2.09.006 AC-014 EC-239: resize_session(30, 1) must return Ok(()) — \
+    manager.resize_session(&session_id, 30, 1).await.expect(
+        "BC-2.09.006 AC-014 EC-239: resize_session(30, 1) must return Ok(()) — \
              cols=1 is the clamped value from cols=0",
-        );
+    );
 
     let msg = tokio::time::timeout(
         std::time::Duration::from_millis(200),
@@ -317,13 +311,10 @@ async fn test_BC_2_09_006_resize_session_forwards_daemon_to_host_resize() {
         make_manager_with_running_session(tmp.path()).await;
 
     // RED GATE: todo!() panics here; after implementation the Resize frame arrives.
-    manager
-        .resize_session(&session_id, 30, 100)
-        .await
-        .expect(
-            "BC-2.09.006 AC-015 PC-5: resize_session() must return Ok(()) for a Running \
+    manager.resize_session(&session_id, 30, 100).await.expect(
+        "BC-2.09.006 AC-015 PC-5: resize_session() must return Ok(()) for a Running \
              session with an established host_conn",
-        );
+    );
 
     // Assert DaemonToHost::Resize { rows: 30, cols: 100 } received on host stream.
     let msg = tokio::time::timeout(
@@ -380,8 +371,8 @@ async fn test_BC_2_09_006_ec238_session_host_dead_warn_drop() {
     let tmp = isolated_runtime_dir();
 
     // Create a stream pair, then drop the host side to simulate a dead connection.
-    let (daemon_stream, host_stream) = tokio::net::UnixStream::pair()
-        .expect("test setup EC-238: create UDS pair");
+    let (daemon_stream, host_stream) =
+        tokio::net::UnixStream::pair().expect("test setup EC-238: create UDS pair");
     let (_, write_half) = daemon_stream.into_split();
     drop(host_stream); // host side closed — writes will get BrokenPipe/EOF
 
@@ -389,9 +380,8 @@ async fn test_BC_2_09_006_ec238_session_host_dead_warn_drop() {
     tokio::task::yield_now().await;
 
     use monocle_ipc::server::{ClientEntry, CLIENT_CHANNEL_CAPACITY};
-    let (tx, _rx) = tokio::sync::mpsc::channel::<monocle_ipc::types::ServerToClient>(
-        CLIENT_CHANNEL_CAPACITY,
-    );
+    let (tx, _rx) =
+        tokio::sync::mpsc::channel::<monocle_ipc::types::ServerToClient>(CLIENT_CHANNEL_CAPACITY);
     let subscriber_list: monocle_ipc::server::SubscriberList =
         Arc::new(Mutex::new(vec![ClientEntry::new(tx)]));
     let broker = Arc::new(Arc::clone(&subscriber_list));
