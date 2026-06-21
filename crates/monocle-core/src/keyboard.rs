@@ -21,6 +21,10 @@
 ///
 /// Variants cover the v1A scope (BC-2.09.002 table). Add variants as BCs expand.
 /// `Null` maps unrecognized crossterm keycodes to a no-op result from `key_event_to_pty_bytes`.
+///
+/// `#[non_exhaustive]` per BC-2.02.003 — v1A scope is explicitly limited; future
+/// BCs (e.g., S-041 mouse variants) will extend this enum.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PtyKeyCode {
     /// A printable Unicode character.
@@ -104,6 +108,11 @@ impl std::ops::BitAnd for PtyKeyModifiers {
 }
 
 /// Mirror of `crossterm::event::KeyEventKind`.
+///
+/// `#[non_exhaustive]` per BC-2.02.003 — crossterm may add new event kinds in
+/// future versions; new variants would be mapped to `PtyKeyEventKind::Release` as
+/// a safe default until a BC update formalizes handling.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PtyKeyEventKind {
     /// Key press (initial down event).
@@ -129,6 +138,10 @@ pub struct PtyKeyEvent {
 }
 
 /// Mirror of `crossterm::event::MouseButton`.
+///
+/// `#[non_exhaustive]` per BC-2.02.003 — future mouse devices may report additional
+/// button types beyond left/middle/right.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PtyMouseButton {
     /// Primary (left) mouse button.
@@ -140,6 +153,10 @@ pub enum PtyMouseButton {
 }
 
 /// Mirror of `crossterm::event::MouseEventKind` (v1A Ps table scope).
+///
+/// `#[non_exhaustive]` per BC-2.02.003 — v1A scope is limited to the 8 variants below;
+/// future BCs may extend the SGR encoding table with additional event kinds.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PtyMouseEventKind {
     /// A mouse button was pressed.
