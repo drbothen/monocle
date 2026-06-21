@@ -2,18 +2,18 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "8.05"
+version: "8.06"
 status: active
 producer: state-manager
-timestamp: 2026-06-20T00:00:00Z
+timestamp: 2026-06-20T12:00:00Z
 phase: phase-3-v1A-wave-9
-current_step: "D-340 (2026-06-20): S-039 MERGED to develop via PR #47 @ a7ad00e (admin squash-merge). PTY output pipeline, 8 pts, EPIC-09, Wave 9, BC-2.09.001 v1.7.2. 10-pass adversarial (3 CLEAN: passes 8/9/10). 35 behavioral tests green. Security review PASS_WITH_NOTES (2 LOW fixed in-scope). BC-2.09.007 v1.3.1; SS-embedded-pty v1.10.0; SS-config v1.4.0; BC-2.07.002 v1.1.0; S-039 v1.8; STORY-INDEX v5.54. Admin bypass: PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK recorded (in-progress fix). Wave 9: 1/6 done (8/42 pts). 39/51 stories done (238/311 pts). develop HEAD: a7ad00e."
-prior_step: "D-339 (2026-06-20): S-036 MERGED to develop via PR #46 @ d924183. Sixth Wave-8 story (TIER-3). rediscover_sessions, 8 pts, BC-2.08.002+BC-2.08.004 v1.4.0. 12-pass adversarial (3 CLEAN: passes 10/11/12). SEC-001/002/003-S036 all RESOLVED in-scope. SS-session-manager v2.15.1; EVAL-INDEX v1.28; S-036 v1.5. Wave 8: 6/12 done (38/74 pts). 38/51 stories done (230/311 pts). develop HEAD: d924183."
+current_step: "D-341 (2026-06-20): PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK RESOLVED. PR #48 @ 3eba172 merged CLEAN to develop (no admin bypass — fix touched dtu-fidelity.yml so oracle ran real path and passed). dtu-fidelity.yml: removed top-level paths-filter; added internal pure-bash change-detection gate; skip path exits 0 (always-report); oracle runs when DTU-relevant paths changed; job name byte-identical. Future TUI-only PRs (S-040/S-042/S-043) now merge without admin bypass. develop HEAD: 3eba172. STATE v8.05→v8.06."
+prior_step: "D-340 (2026-06-20): S-039 MERGED to develop via PR #47 @ a7ad00e (admin squash-merge). PTY output pipeline, 8 pts, EPIC-09, Wave 9, BC-2.09.001 v1.7.2. 10-pass adversarial (3 CLEAN: passes 8/9/10). 35 behavioral tests green. Security review PASS_WITH_NOTES (2 LOW fixed in-scope). Admin bypass: PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK recorded (in-progress). Wave 9: 1/6 done (8/42 pts). 39/51 stories done (238/311 pts). develop HEAD: a7ad00e."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "D-001..D-241 at cycles/cycle-001/decisions-archive.md. D-242..D-338 appended at cycles/cycle-001/decisions-archive.md §Phase-1d+Phase-2+Phase-3. Full durable_task_register YAML (127+ entries) at cycles/cycle-001/task-register-full.yaml."
-awaiting: "S-039 MERGED (D-340). Next: S-040 (keyboard-forwarding, Wave 9, UNBLOCKED by S-039); S-042/S-043 also unblocked. PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK fix in-progress (devops). SEC-006-CCR-URL-VALIDATION MUST be fixed before S-045. S-046 waits on S-032; S-047 waits on S-033+S-034+S-035+S-046; S-048 waits on S-022+S-033+S-047. F-W8INT-001/002/003 parked for Wave-8 integration gate. WG-S036-001/002 parked for Wave-8 integration gate."
+awaiting: "S-039 MERGED (D-340). DTU deadlock RESOLVED (D-341 PR #48 @ 3eba172). Next: S-040 (keyboard-forwarding, Wave 9, UNBLOCKED — no DTU deadlock risk); S-042/S-043 also unblocked. SEC-006-CCR-URL-VALIDATION MUST be fixed before S-045. S-046 waits on S-032; S-047 waits on S-033+S-034+S-035+S-046; S-048 waits on S-022+S-033+S-047. F-W8INT-001/002/003 parked for Wave-8 integration gate. WG-S036-001/002 parked for Wave-8 integration gate."
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: 2026-06-03
@@ -21,12 +21,12 @@ dtu_services: [hook-endpoints-x5]
 current_cycle: cycle-001
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v8.05 — 2026-06-20
+  ZERO-CONTEXT RESUME CHECKPOINT v8.06 — 2026-06-20
   PHASE-3 v1A ACTIVE — WAVE 9 STARTED (S-039 DONE) — NEXT: S-040
   ============================================================================
   POSITION: Phase-3 TDD implementation, v1A control-center scope, Wave 9.
-  STATUS: S-039 MERGED PR #47 @ a7ad00e (admin squash-merge D-340).
-  develop @ a7ad00e. S-039 worktree cleaned up. 10 workspace crates.
+  STATUS: S-039 MERGED PR #47 @ a7ad00e (D-340). DTU deadlock RESOLVED (D-341).
+  develop @ 3eba172. S-039 worktree cleaned up. 10 workspace crates.
   39/51 stories done (238/311 pts). Wave 9: 1/6 done (8/42 pts).
 
   THIS SESSION DELIVERED:
@@ -39,19 +39,15 @@ next_session_resume_protocol: |
     Spec artifacts: BC-2.09.001 v1.7.2 (Inv-3/4/5/7/8/9, EC-200..208);
     BC-2.09.007 v1.3.1; SS-embedded-pty v1.10.0; SS-config v1.4.0;
     BC-2.07.002 v1.1.0 (pty_scrollback_rows); S-039 v1.8; STORY-INDEX v5.54.
-    Admin bypass: DTU path-filter deadlock — dtu-fidelity.yml path-filtered to
-    monocle-runtime/test-harness/xtask/fixtures/audit-table.md; TUI-only PRs
-    never trigger workflow → required context never reports → PR permanently
-    BLOCKED. PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK recorded (in-progress
-    fix this session). PR #47 one-time admin bypass (enforce_admins=false;
-    required_approving_review_count=0 — no review bypass occurred).
+    Admin bypass required (DTU path-filter deadlock); PROCESS-GAP recorded.
     F-S039-P9-OBS-001: EmbeddedTerminal placeholder pane sizing deferred to
     S-042/BC-2.09.006 scope (non-blocking; surface at Wave-9 gate).
-
-  CRITICAL — MUST FIX BEFORE NEXT STORY DELIVERY:
-  PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK: S-040/S-042/S-043 are also
-  TUI-only and will hit the same admin-bypass deadlock. Devops must add a
-  companion always-report 'skip' job to dtu-fidelity.yml before next PR.
+  - PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK RESOLVED (D-341).
+    PR #48 @ 3eba172 merged CLEAN (no admin bypass — fix touched dtu-fidelity.yml
+    so oracle ran the real path and passed green). dtu-fidelity.yml now uses
+    internal pure-bash change-detection; skip path exits 0; oracle runs only when
+    DTU-relevant paths changed; job name byte-identical to branch protection.
+    S-040/S-042/S-043 (TUI-only) now merge without admin bypass.
 
   HUMAN DIRECTIVE: CONTINUE AUTONOMOUSLY into subsequent ready stories until told
   to stop. Per-story flow + 3-consecutive-CLEAN adversarial convergence + clean
@@ -80,17 +76,15 @@ next_session_resume_protocol: |
   (Pull the rest from .factory/specs/version-pin-registry.yaml)
 
   NEXT-ACTION QUEUE:
-  1. FIX FIRST: PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK — devops adds
-     companion 'skip' job to dtu-fidelity.yml so non-DTU-path PRs auto-pass.
-  2. S-040 (keyboard-forwarding, Wave 9) — UNBLOCKED by S-039. BCs: BC-2.09.002,
-     BC-2.09.004, BC-2.09.005.
-  3. S-042 (resize+debounce, Wave 9) + S-043 (scrollback, Wave 9) — both
+  1. S-040 (keyboard-forwarding, Wave 9) — UNBLOCKED by S-039; no DTU deadlock
+     risk (RESOLVED D-341). BCs: BC-2.09.002, BC-2.09.004, BC-2.09.005.
+  2. S-042 (resize+debounce, Wave 9) + S-043 (scrollback, Wave 9) — both
      UNBLOCKED by S-039. S-043 also depends on S-042.
-  4. PREREQUISITE GATE: SEC-006-CCR-URL-VALIDATION (CWE-20/93) MUST be fixed
+  3. PREREQUISITE GATE: SEC-006-CCR-URL-VALIDATION (CWE-20/93) MUST be fixed
      before S-045 (ClaudeCodeModule::spawn_recipe CCR URL injection).
-  5. S-046 waits on S-032; S-047 needs S-033+S-034+S-035+S-046;
+  4. S-046 waits on S-032; S-047 needs S-033+S-034+S-035+S-046;
      S-048 needs S-022+S-033+S-047.
-  6. F-W8INT-001/002/003 parked for Wave-8 integration gate; do NOT re-raise
+  5. F-W8INT-001/002/003 parked for Wave-8 integration gate; do NOT re-raise
      as in-scope findings during per-story delivery.
 
   PER-STORY FLOW (verbatim — follow exactly):
@@ -132,16 +126,17 @@ next_session_resume_protocol: |
   - D-332..D-339: S-033..S-036 MERGED; Wave-8 Tier-1/2/3 complete; all decisions archived
   - D-340: S-039 MERGED PR #47 @ a7ad00e. PTY output pipeline. BC-2.09.001 v1.7.2.
            10-pass adversarial (3 CLEAN: 8/9/10). Admin bypass (DTU deadlock).
-           PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK recorded (in-progress).
+  - D-341: PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK RESOLVED. PR #48 @
+           3eba172 merged CLEAN. dtu-fidelity.yml always-report pattern; TUI-only
+           PRs now merge without admin bypass. develop HEAD: 3eba172.
   - Spawn-path Model A: SpawnOptions on wire; SpawnRecipe daemon-internal
   - IPC: 12-code wire taxonomy; 9-variant SessionError; schema_version 3
   - PTY (ADR-0011): portable-pty 0.9.0 + vt100 0.16.2 + tui-term =0.3.4; MSRV 1.88
   - SessionState: 5 variants (Launching/Running/Detached/Terminating/Terminated)
-  - Full history: cycles/cycle-001/decisions-archive.md (D-001..D-340)
+  - Full history: cycles/cycle-001/decisions-archive.md (D-001..D-341)
 
   OPEN NON-BLOCKING DURABLE FOLLOW-UPS (pointer — full register in STATE.md
   durable_task_register + cycles/cycle-001/task-register-full.yaml):
-  PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK (in-progress — CRITICAL);
   F-S039-P9-OBS-001 (Wave-9 gate/S-042);
   SEC-006-CCR-URL-VALIDATION (before S-045); F-S038-EXIT72-ENFORCEMENT;
   F-S038-INV6-PROD-CANON-TEST; F-S038-TRACING-TEST-DOC-DEVERSION;
@@ -154,7 +149,7 @@ next_session_resume_protocol: |
   wit-bindgen unmatched-skip, PATH isolation flake.
 
   factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'`
-  develop HEAD: a7ad00e (S-039 PR #47; admin squash-merge D-340)
+  develop HEAD: 3eba172 (CI fix PR #48 D-341; S-039 @ a7ad00e last STORY commit)
   ============================================================================
 ---
 
@@ -305,12 +300,12 @@ None. All durable task register items are non-blocking.
 | F-S035-AC005-DAEMON-BROADCAST | pending | story-writer (S-039/S-047) | n | daemon-side ServerToClient::ScrollbackChunk* forwarding (AC-005) deferred — session-host emits empty scrollback dump; screen-content source = S-039 (PTY output pipeline) / S-047 (live parser). TODO(S-039/S-047) tracker in session_manager/mod.rs attach Step 7. Non-blocking. |
 | F-S035-LAUNCHING-CONN-DETACH-MATRIX | pending | architect | n | action×state matrix Detached/Launching cell ambiguity — detach on Launching-WITH-established-host_conn: matrix says Err(SessionNotReady) if host_conn not yet active but impl LaunchingWithConn path transitions to Detached. Official TUI never reaches this path. Architect to clarify matrix wording. Non-blocking. |
 | PROCESS-GAP-FACTORY-ARTIFACTS-NOT-PUSHED | codified 2026-06-19 | devops/orchestrator | n | [process-gap] S-038 cycle: spec-bumping agents (architect/story-writer/product-owner) committed 4 commits to factory-artifacts but never pushed — origin was 4 commits stale (f8f0b38→485cfbb). CI POL-11 checks out origin/factory-artifacts at PR-open time; stale origin caused PR #44 to pass spuriously-consistent and PR #45 to fail stale-forward. Fixed by pushing 4 commits 2026-06-19. CODIFY: orchestrator MUST verify `git -C .factory log origin/factory-artifacts..HEAD` is empty after every spec-bumping dispatch; add to burst checklist. Lesson: cycles/cycle-001/lessons.md §PROCESS-GAP-FACTORY-ARTIFACTS-NOT-PUSHED. |
-| PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK | in-progress | devops | n | [process-gap] develop branch protection requires 'DTU fidelity oracle (cargo xtask dtu-fidelity)' status check (strict=true), but dtu-fidelity.yml is path-filtered to crates/monocle-runtime / monocle-test-harness / xtask / tests/fixtures/dtu / scripts/audit-table.md. PRs touching NONE of those paths (first occurrence: S-039, TUI-only — monocle-tui/core/config/ipc) never trigger the workflow, so the required context never reports and the PR is permanently BLOCKED. PR #47 required human-authorized admin squash-merge (enforce_admins=false) to unblock. DURABLE FIX IN PROGRESS this session: devops to add companion always-report 'skip' job so DTU context reports success on non-DTU PRs. Future TUI-only/non-DTU-path stories (S-040/S-042/S-043) will hit same deadlock until fixed. AUDIT: PR #47 merged via one-time admin bypass (enforce_admins=false); develop required_approving_review_count=0 (no review bypass — earlier pr-manager self-approve attempt was a misdiagnosis rejected by GitHub; no approval was actually required). |
+| PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK | RESOLVED D-341 | devops | n | [process-gap] RESOLVED: PR #48 @ 3eba172 merged CLEAN to develop (no admin bypass). dtu-fidelity.yml: removed top-level paths-filter; added internal pure-bash change-detection gate; skip path exits 0 (always-report); oracle runs when DTU-relevant paths changed; job name byte-identical. S-040/S-042/S-043 now merge without admin bypass. Original: develop branch protection required 'DTU fidelity oracle' but paths-filter caused TUI-only PRs to never trigger workflow (PR #47/S-039 required admin bypass). |
 | F-S039-P9-OBS-001 | pending | wave-gate/S-042 | n | [wave-gate] S-039 EmbeddedTerminal render arm renders the focused PTY parser into the sessions-pane Rect (placeholder pane) while the parser is sized PTY_DEFAULT 24x80; embedded-terminal pane sizing + resize→parser reconciliation is S-042/BC-2.09.006 scope. Surface at Wave-9 integration gate. NON-BLOCKING. |
 
 ## Resolved/Closed Tasks (archived)
 
-50 entries. Full detail at `cycles/cycle-001/task-register-full.yaml`:
+51 entries. Full detail at `cycles/cycle-001/task-register-full.yaml`:
 POL-14-PARENTHETICAL-ANCHOR-PIN, POL-11-MIRROR-TABLE-BLIND-SPOT, TD-MULTI-CLIENT-ATTACH-STORM-001,
 DTU-CLONE-STORY, ADV-W5GATE-HIGH-001, F-DW-HIGH-001, BC-HOOK-034-typo, S-005-main-wiring,
 ADV-W3GATE-MED-002, ADV-W3GATE-MED-004, ADV-W4GATE-MED-002, S-029-PROCESS-GAP-PC-LABEL-DRIFT,
@@ -332,13 +327,15 @@ BURST-GAP-001-S038-HOOK-SCHEMA (RESOLVED D-338 2026-06-19 — AC-004 schema fix 
 SEC-001-S036 (RESOLVED D-339 2026-06-20 — CWE-284 pid=0 guards; fixed in-scope PR #46 security review).
 SEC-002-S036 (RESOLVED D-339 2026-06-20 — CWE-284 SO_PEERCRED pid=None bypass; fixed in-scope PR #46 security review).
 SEC-003-S036 (RESOLVED D-339 2026-06-20 — CWE-22 socket_path traversal; fixed in-scope PR #46 security review).
+PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK (RESOLVED D-341 2026-06-20 — PR #48 @ 3eba172 merged CLEAN; dtu-fidelity.yml always-report pattern with internal pure-bash change-detection; TUI-only PRs now merge without admin bypass).
 
 ## Decision History
 
 Full decisions archive: `cycles/cycle-001/decisions-archive.md`
-D-001..D-241: early phases; D-242..D-340: Phase-1d + Phase-2 + Phase-3 (appended 2026-06-16/17/18/19/20)
+D-001..D-241: early phases; D-242..D-341: Phase-1d + Phase-2 + Phase-3 (appended 2026-06-16/17/18/19/20)
 
 Key decisions last session:
+- D-341 (2026-06-20): PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK RESOLVED. PR #48 @ 3eba172 merged CLEAN to develop (no admin bypass — fix touched dtu-fidelity.yml so oracle ran real path and passed). dtu-fidelity.yml: removed top-level paths-filter; added internal pure-bash change-detection gate; skip path exits 0 (always-report); oracle gate runs when DTU-relevant paths changed; job name byte-identical. Future TUI-only PRs (S-040/S-042/S-043) now merge without admin bypass. develop HEAD: 3eba172. STATE v8.05→v8.06.
 - D-340 (2026-06-20): S-039 MERGED to develop via PR #47 @ a7ad00e (admin squash-merge). PTY output pipeline, 8 pts, EPIC-09, Wave 9, BC-2.09.001. 10-pass adversarial convergence (3 consecutive CLEAN: passes 8/9/10). Trajectory P1(3 BLOCKER)→P2(3 HIGH)→P3(1 HIGH)→P4(2 MED)→P5(3 MED)→P6 CLEAN→P7(1 MED)→P8/9/10 CLEAN. 35 behavioral tests green. Security review PASS_WITH_NOTES (2 LOW fixed in-scope). pr-reviewer APPROVE. Spec artifacts evolved: BC-2.09.001 v1.7.2 (Inv-3/4/5/7/8/9, EC-200..208); BC-2.09.007 v1.3.1; SS-embedded-pty v1.10.0; SS-config v1.4.0; BC-2.07.002 v1.1.0 (pty_scrollback_rows); S-039 v1.8; STORY-INDEX v5.54. Admin bypass required: PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK (dtu-fidelity.yml path-filter deadlock on TUI-only PRs; enforce_admins=false; required_approving_review_count=0; no review bypass). Durable fix in-progress (devops). F-S039-P9-OBS-001 recorded (EmbeddedTerminal placeholder sizing; surface at Wave-9 gate). Wave 9: 1/6 done (8/42 pts). 39/51 stories done (238/311 pts). develop HEAD: a7ad00e. STATE v8.04→v8.05.
 - D-339 (2026-06-20): S-036 MERGED to develop via PR #46 @ d924183 (squash). Sixth Wave-8 story (TIER-3). rediscover_sessions, 8 pts, EPIC-08. BC-2.08.002 (session-host survives graceful restart via setsid) + BC-2.08.004 v1.4.0 (all alive sessions visible after restart within 5s; UDS bind blocked). 12-pass adversarial convergence (3 consecutive CLEAN: passes 10/11/12). BLOCKER-001 SO_PEERCRED on Terminating Kill connect + BLOCKER-002 watchdog select! early-close leak fixed in-scope. HIGH (PID cross-check/dual-pid SIGTERM/watchdog registry leak/frame-cap MAX_FRAME_LEN/§3b emission gaps) fixed in-scope. MED (null-deadline 12s-window/GC-grace anchored at Terminated/§3b emission helper) fixed in-scope. SEC-001 CWE-284 pid=0 guards + SEC-002 CWE-284 SO_PEERCRED pid=None bypass + SEC-003 CWE-22 socket_path traversal — all RESOLVED IN-SCOPE during PR #46 security review. AC-004 spec-text drift (proxy_task: Some→None) corrected. MED-002 RESOLVED for S-036 scope (no SessionEntry.generation guard; three-layer safety argument extends to re-discovery). SS-session-manager v2.15.0→v2.15.1; BC-2.08.004 v1.3.5→v1.4.0; EVAL-INDEX v1.26→v1.28; S-036 v1.3→v1.5. PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP recurred (architect commit 772cb68 to develop; caught by orchestrator; develop reset; folded into worktree PR). POSITIVE: PROCESS-GAP-FACTORY-ARTIFACTS-NOT-PUSHED held. Wave 8: 6/12 done (38/74 pts). 38/51 stories done (230/311 pts). develop HEAD: d924183. STATE v8.03→v8.04.
 - D-338 (2026-06-19): S-038 MERGED to develop via PR #44 @ 8d649ea (squash) + chore PR #45 @ 7f005af. Fifth Wave-8 story; WAVE-8 TIER-2 COMPLETE. 6-pass adversarial convergence (3 consecutive CLEAN: passes 4/5/6). Single-writer mandate: lifecycle step 9 is sole canonical write_hooks_settings_json; lifecycle::write_hooks_settings + HooksSettings/HooksMap/HookEntry/HookCommand removed. lock.app='monocle' mandatory. BC-2.08.006→v1.5.0; BC-2.04.010→v1.4.0 (PC-3 lock.app). SS-session-manager→v2.15.0; BC-2.08.007→v1.5.6 (arch-source cascade). SEC-001 (CWE-732 perms-before-persist) + SEC-002 (CWE-532 redacting Debug) fixed in-scope (daeb4f2). security-reviewer re-verify PASS; adversary re-verify CLEAN. 10 BC-2.08.006 tests. 11/11 CI. develop HEAD: 7f005af. sprint-state v1.50→v1.51; STORY-INDEX v5.49→v5.50. STATE v8.01→v8.02.
