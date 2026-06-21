@@ -87,3 +87,12 @@ pub use app::handle_crossterm_event;
 // a real BindingLayers without re-implementing the full layer stack.
 #[doc(hidden)]
 pub use app::build_builtin_binding_layers;
+
+// S-042: resize detection + debounce functions — exposed for BC-2.09.006 TDD tests.
+// These are test seams; not part of the stable public API.
+#[doc(hidden)]
+pub use app::check_resize_debounce;
+#[doc(hidden)]
+pub use app::clear_resize_debounce_state;
+#[doc(hidden)]
+pub use app::on_resize_detected;
