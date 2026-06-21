@@ -1,9 +1,9 @@
 ---
 document_type: sprint-state
-version: "1.53"
+version: "1.54"
 status: active
 producer: vsdd-factory:state-manager
-timestamp: 2026-06-20T00:00:00Z
+timestamp: 2026-06-21T00:00:00Z
 phase: 2
 target_implementation_phase: 3
 traces_to: STORY-INDEX.md
@@ -545,12 +545,12 @@ stories:
     epic: EPIC-09
     wave: 9
     points: 8
-    status: draft
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 9. Depends on S-039. Blocks S-041, S-044. BCs: BC-2.09.002, BC-2.09.004, BC-2.09.005."
+    completed_at: "2026-06-21"
+    pr_url: "https://github.com/jmagady/monocle/pull/50"
+    notes: "Wave 9. PR #50 @ d230a26 (squash-merge 2026-06-21). 17-pass adversarial convergence (3 consecutive CLEAN: passes 15/16/17). Trajectory: P1 BLOCKER (unwired dispatch) → P2 BLOCKER (Kitty dead-code/design wrong for crossterm 0.29) → P3 BLOCKER (CSI?u stdin-probe keystroke-theft) → P4 2×HIGH → P5 BLOCKER → P6 MED → P7-P14 polish → P15/16/17 CLEAN. 65 behavioral tests green (41 monocle-core + 24 monocle-tui). Security review PASS_WITH_NOTES (0 crit/high, 2 LOW non-blocking). pr-reviewer APPROVE. 11/11 CI green, NO admin bypass (DTU deadlock RESOLVED D-341). Demo: 2 WEBM+.tape docs/demo-evidence/S-040/. Spec: SS-embedded-pty v1.14.0, BC-2.09.002 v1.2.2, BC-2.09.004 v1.0.11, BC-2.09.005 v1.0.7, S-040 v1.8. D-342. Depends on S-039. Blocks S-041, S-044. BCs: BC-2.09.002, BC-2.09.004, BC-2.09.005."
 
   - id: S-041
     title: "Mouse Forwarding — mouse_event_to_pty_bytes, SGR 1006 Scoped Entry/Exit, Out-of-Pane Clip"
@@ -653,12 +653,12 @@ summary:
   not_started: 0
   in_progress: 0
   review: 0
-  done: 39
+  done: 40
   ready: 0
   blocked: 1
-  draft: 11
+  draft: 10
   total_points: 311
-  points_complete: 238
+  points_complete: 246
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
@@ -688,6 +688,15 @@ summary:
   # total_stories note: 51 = 33 Phase-3 stories (including S-PHASE-3-PREP and S-DTU-001) + 2 Wave-8
   #   pre-existing (S-032, S-DAEMON-WIRE-FIX-001) + 16 new v1A (S-033..S-048). Blocked count (1) is
   #   S-PHASE-3-PREP (blocked on vsdd-factory spec-kit-mcp rc.19+).
+  # v1.54 updates (2026-06-21):
+  # - D-342: S-040 MERGED to develop via PR #50 @ d230a26 (squash-merge 2026-06-21).
+  #   S-040 status: draft → done. completed_at: "2026-06-21". pr_url set.
+  #   done: 39 → 40; draft: 11 → 10; points_complete: 238 → 246.
+  #   Full-Fidelity Keyboard Forwarding. 17-pass adversarial (3 CLEAN: passes 15/16/17).
+  #   65 behavioral tests green. Security review PASS_WITH_NOTES (0 crit/high, 2 LOW).
+  #   pr-reviewer APPROVE. 11/11 CI green, NO admin bypass.
+  #   Spec: SS-embedded-pty v1.14.0, BC-2.09.002 v1.2.2, BC-2.09.004 v1.0.11, BC-2.09.005 v1.0.7.
+  #   Wave 9: 2/6 done (16/42 pts). develop HEAD: d230a26.
   # v1.53 updates (2026-06-20):
   # - D-340: S-039 MERGED to develop via PR #47 @ a7ad00e (admin squash-merge 2026-06-20).
   #   S-039 status: draft → done. completed_at: "2026-06-20". pr_url set.

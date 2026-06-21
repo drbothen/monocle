@@ -1,10 +1,10 @@
 ---
 document_type: story-index
 level: L4
-version: "5.59"
+version: "5.60"
 status: active
 producer: vsdd-factory:state-manager
-timestamp: 2026-06-20T00:00:00Z
+timestamp: 2026-06-21T00:00:00Z
 phase: 2
 inputs:
   - .factory/specs/prd.md
@@ -90,7 +90,7 @@ traces_to: .factory/specs/prd.md
 | S-037 | SessionManager GC Task — Terminated Sessions Removed After 10s Grace Period | EPIC-08 | 3 | 8 | done | — |
 | S-038 | SessionManager Hook Auto-Injection — hooks-settings.json Writer + SpawnOptions.hooks_settings_path Population | EPIC-08 | 3 | 8 | done | — |
 | S-039 | PTY Output Pipeline — vt100::Parser, PseudoTerminal Render, PtyOutput IPC Handler, Auto-Attach on First Entry | EPIC-09 | 8 | 9 | done | S-040, S-042, S-043 |
-| S-040 | Full-Fidelity Keyboard Forwarding — key_event_to_pty_bytes, Kitty Protocol CSI u, and Bracketed Paste | EPIC-09 | 8 | 9 | draft | S-041, S-044 |
+| S-040 | Full-Fidelity Keyboard Forwarding — key_event_to_pty_bytes, Kitty Protocol CSI u, and Bracketed Paste | EPIC-09 | 8 | 9 | done | S-041, S-044 |
 | S-041 | Mouse Forwarding — mouse_event_to_pty_bytes, SGR 1006 Scoped Entry/Exit, Out-of-Pane Clip | EPIC-09 | 5 | 9 | draft | S-044 |
 | S-042 | PTY Resize Detection, 50ms Debounce, and ResizePane IPC | EPIC-09 | 5 | 9 | draft | S-043 |
 | S-043 | Scrollback Navigation — PtyScrollUp/Down, Per-Session Offsets, Configurable Capacity | EPIC-09 | 3 | 9 | draft | — |
@@ -498,6 +498,20 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.60
+
+**S-040 MERGED — Wave-9 second delivery (D-342, 2026-06-21):**
+
+- S-040 Story Registry row: `draft` → `done`. PR #50 @ d230a26 (squash-merge 2026-06-21).
+- 17-pass Step-4.5 fresh-context adversarial convergence (3 consecutive CLEAN: passes 15/16/17). Security review PASS_WITH_NOTES (0 crit/high, 2 LOW non-blocking). pr-reviewer APPROVE. 11/11 CI green, NO admin bypass.
+- Trajectory: P1 BLOCKER (unwired dispatch) → P2 BLOCKER (Kitty dead-code/design model wrong for crossterm 0.29) → P3 BLOCKER (CSI?u stdin-probe keystroke-theft) → P4 2×HIGH (arrow exact-equality silent-drop; oversized-paste writer-kill) → P5 BLOCKER (paste guard raw-vs-JSON size) → P6 MED (Esc-Release intercept) → P7-P14 progressive doc/trace/traceability polish → P15/16/17 CLEAN.
+- 65 behavioral tests green (41 monocle-core keyboard + 24 monocle-tui dispatch/wiring). Demo evidence (2 WEBM+.tape) at docs/demo-evidence/S-040/.
+- Key rulings folded in: kitty_active threading (supports_keyboard_enhancement, no stdin thread), 3-flag set (REPORT_ASSOCIATED_TEXT unavailable in crossterm 0.29), exact-equality modified-arrow arms + EC-217 TRACE+None, real Kitty functional-key codepoints (Up=57352..F12=57375), EC-245 serialized-frame paste guard, Esc Press-only intercept (EC-218), EC-234 detection-mechanism.
+- Spec artifacts evolved (committed/pushed on factory-artifacts): SS-embedded-pty v1.14.0, BC-2.09.002 v1.2.2, BC-2.09.004 v1.0.11, BC-2.09.005 v1.0.7, S-040 v1.8, BC-INDEX v1.44.5, EVAL-INDEX v1.38.
+- New durable follow-ups: SEC-001-S040-LOG-BEFORE-VALIDATE (CWE-20 LOW), SEC-003-S040-OVERSIZE-PASTE-UX (CWE-400 LOW), F-S040-KEYINPUT-DOC-EMPTYBYTES (LOW nit). PROCESS-GAP-STUB-PHASE-DOCCOMMENTS added (cycles/cycle-001/lessons.md).
+- Wave 9: 2/6 stories done (16/42 pts). 40/51 stories done (246/311 pts). develop HEAD: d230a26.
+- SE-16d monotonicity: v5.60 timestamp 2026-06-21 >= v5.59 timestamp 2026-06-21. PASS.
 
 ## §Trace v5.59
 

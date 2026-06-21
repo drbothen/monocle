@@ -3,9 +3,9 @@ document_type: lessons-learned
 level: ops
 project: monocle
 cycle: cycle-001
-version: "1.6"
+version: "1.7"
 producer: state-manager
-timestamp: 2026-06-19T01:00:00Z
+timestamp: 2026-06-21T00:00:00Z
 input-hash: "[live-state]"
 ---
 
@@ -13,6 +13,40 @@ input-hash: "[live-state]"
 
 Per S-7.02 cycle-closing checklist. [codified] entries indicate defense layers that were
 formally written into spec artifacts (SS-conventions-anti-patterns.md or similar).
+
+---
+
+## PROCESS-GAP-STUB-PHASE-DOCCOMMENTS (S-040 cycle, 2026-06-21)
+
+### [process-gap] Stub-Phase Doc-Comments Not Refreshed by Implementer
+
+**Pattern:** stub-architect emits module and test doc-comments containing stub-phase language:
+"stubs", "All function bodies are todo!()", "Tests MUST fail (Red Gate)", "placeholder".
+When the implementer fills in the bodies and the tests go green, these doc-comments are
+NOT automatically refreshed — they linger as false statements in the production source.
+
+**Observed cost:** Fresh-context adversarial passes 10, 12, 13, 14, and 17 of S-040 each
+caught a *different* stale stub-phase doc-comment. Approximately 5 extra convergence passes
+were required to close what were individually trivial LOW/nit findings — costing meaningful
+convergence budget on a 17-pass story.
+
+**Root cause:** Neither the stub-architect's output template nor the implementer's self-audit
+checklist explicitly requires refreshing module/test doc-comments after implementation
+replaces stub bodies.
+
+**Fix options (two candidates; codification pending):**
+1. (a) stub-architect writes neutral/forward-looking module docs that describe INTENT, not
+   implementation phase ("Keyboard forwarding dispatcher" not "Stub: will forward keyboard events").
+   Lower risk of stale statements; doc-comments remain valid after implementation.
+2. (b) Implementer self-audit step (final act before declaring TDD green) must sweep all
+   module/test doc-comments for stub-phase language and refresh them.
+
+**Recommended approach:** Option (a) as primary; option (b) as defensive backstop.
+Both options should be codified in the implementer and stub-architect agent prompts upstream.
+
+**Attachment:** PROCESS-GAP-STUB-PHASE-DOCCOMMENTS in durable_task_register, routed to
+devops/session-reviewer for upstream codification. Anchor: self-improvement epic or justified
+deferral with explicit future-story reference.
 
 ---
 
