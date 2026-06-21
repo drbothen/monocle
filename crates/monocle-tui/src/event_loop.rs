@@ -239,42 +239,66 @@ pub async fn dispatch_embedded_terminal_paste(
     session_id: &str,
     ipc_tx: &Sender<ClientToServer>,
 ) {
-    // BC-2.09.005 EC-245: oversized-paste guard.
+    // BC-2.09.005 EC-245: oversized-paste guard — checks SERIALIZED frame size.
     //
-    // The bracketed payload is `\x1b[200~` (6 bytes) + text + `\x1b[201~` (6 bytes).
-    // write_framed serializes ClientToServer::KeyInput to JSON; the bytes field encodes
-    // as a JSON array of decimal integers, adding significant overhead per byte.
-    // We therefore use the raw bracketed frame size as a conservative upper-bound check:
-    // if the raw frame already exceeds MAX_MESSAGE_BYTES, the JSON-serialized envelope
-    // will exceed it by an even larger margin.  Drop and WARN — do NOT enqueue a frame
-    // that write_framed would reject with MessageTooLarge (which kills the IPC writer task
-    // and silently drops ALL subsequent keystrokes).  Per BC-2.09.005 Invariant 3,
-    // fragmentation is forbidden — this drop is the correct response.
-    let bracketed_len = b"\x1b[200~".len() + text.len() + b"\x1b[201~".len();
-    if bracketed_len > MAX_MESSAGE_BYTES {
-        tracing::warn!(
-            paste_bytes = bracketed_len,
-            ceiling = MAX_MESSAGE_BYTES,
-            "dispatch_embedded_terminal_paste: paste exceeds IPC framing ceiling; dropping \
-             (BC-2.09.005 EC-245 — fragmentation forbidden, oversized paste discarded)"
-        );
-        return;
-    }
+    // write_framed encodes ClientToServer::KeyInput as JSON via serde_json::to_vec.
+    // Vec<u8> bytes serialize as a JSON integer array (e.g., [120,27,91,...]), where
+    // each 3-digit decimal value expands to ~4 chars.  This produces roughly 3-4x
+    // expansion from raw byte count to JSON frame size.
+    //
+    // The guard MUST compare the actual serialized frame size (exactly what write_framed
+    // checks) — not the raw bracketed byte count.  Comparing raw length would pass a
+    // paste of ~80_000 bytes (raw 80_012 < 262_144) even though its JSON frame is
+    // ~320_100 bytes > 262_144, causing write_framed to reject with MessageTooLarge,
+    // which KILLS the IPC writer task and silently drops ALL subsequent keystrokes.
+    //
+    // Approach: build the exact ClientToServer::KeyInput message that would be sent,
+    // serialize it with serde_json::to_vec, and measure the result.  This guarantees
+    // parity with write_framed — no false negatives, no false positives.
+    //
+    // Per BC-2.09.005 Invariant 3, fragmentation is forbidden.  Drop is the correct
+    // response when the serialized frame exceeds the ceiling.
 
     // BC-2.09.005 PC-2/PC-3: wrap paste text in bracketed paste sequences.
     // Full payload in a single KeyInput — no chunking (BC-2.09.005 Invariant 3).
+    let bracketed_len = b"\x1b[200~".len() + text.len() + b"\x1b[201~".len();
     let mut bytes = Vec::with_capacity(bracketed_len);
     bytes.extend_from_slice(b"\x1b[200~");
     bytes.extend_from_slice(text.as_bytes());
     bytes.extend_from_slice(b"\x1b[201~");
 
-    if let Err(e) = ipc_tx
-        .send(ClientToServer::KeyInput {
-            session_id: session_id.to_owned(),
-            bytes,
-        })
-        .await
-    {
+    // Build the exact message to measure its serialized size before enqueuing.
+    let msg = ClientToServer::KeyInput {
+        session_id: session_id.to_owned(),
+        bytes,
+    };
+
+    // Serialize to measure the frame size exactly as write_framed would.
+    // serde_json::to_vec failure on a KeyInput is not realistically possible
+    // (no non-serializable fields), but guard defensively.
+    let serialized = match serde_json::to_vec(&msg) {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::warn!(
+                "dispatch_embedded_terminal_paste: failed to serialize KeyInput for size check; \
+                 dropping paste (BC-2.09.005 EC-245): {e}"
+            );
+            return;
+        }
+    };
+
+    if serialized.len() > MAX_MESSAGE_BYTES {
+        tracing::warn!(
+            paste_bytes = bracketed_len,
+            serialized_bytes = serialized.len(),
+            ceiling = MAX_MESSAGE_BYTES,
+            "dispatch_embedded_terminal_paste: serialized paste frame exceeds IPC ceiling; \
+             dropping (BC-2.09.005 EC-245 — fragmentation forbidden, oversized paste discarded)"
+        );
+        return;
+    }
+
+    if let Err(e) = ipc_tx.send(msg).await {
         tracing::warn!("dispatch_embedded_terminal_paste: IPC send failed (channel closed?): {e}");
     }
 }
