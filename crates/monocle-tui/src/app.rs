@@ -373,7 +373,7 @@ pub struct App {
     /// Keyed by session UUID string. Each inner `Vec<u8>` is one `PtyOutput` message's bytes.
     /// The outer `Vec` preserves receipt order. After `ScrollbackDumpComplete`, all buffered
     /// bytes are replayed through the reset parser in receipt order, then the buffer is cleared.
-    pub pending_pty_bytes: HashMap<String, Vec<Vec<u8>>>,
+    pub pending_pty_bytes: HashMap<String, VecDeque<Vec<u8>>>,
 
     /// Configured PTY scrollback row count (pure core — loaded from config at startup).
     ///
@@ -529,6 +529,17 @@ impl App {
 /// are silently dropped for this tick. No panic. TRACE log only (not WARN).
 ///
 pub fn on_pty_output(app: &mut App, session_id: String, bytes: Vec<u8>) {
+    // BC-2.09.001 EC-200a: malformed session_id → silent drop (TRACE only, no panic).
+    // SEC-004: validate session_id is a well-formed UUID at the IPC boundary before
+    // using it as a HashMap key or taking any further action.
+    if Uuid::parse_str(&session_id).is_err() {
+        tracing::trace!(
+            session_id = %session_id,
+            "on_pty_output: malformed session_id (not a UUID) — bytes silently dropped"
+        );
+        return;
+    }
+
     // BC-2.09.001 Invariant 5: if a scrollback dump is in progress, buffer bytes.
     if app
         .dump_in_progress
@@ -539,7 +550,7 @@ pub fn on_pty_output(app: &mut App, session_id: String, bytes: Vec<u8>) {
         app.pending_pty_bytes
             .entry(session_id.clone())
             .or_default()
-            .push(bytes);
+            .push_back(bytes);
 
         // F-PASS4-MED-001: enforce byte-cap and message-cap on the pending buffer.
         // Drop OLDEST (front) entries first until both caps are satisfied.
@@ -561,13 +572,16 @@ pub fn on_pty_output(app: &mut App, session_id: String, bytes: Vec<u8>) {
             if !over_msgs && !over_bytes {
                 break;
             }
-            // Drop the OLDEST entry (index 0 = first inserted = oldest).
-            let removed_len = buffer[0].len();
-            buffer.remove(0);
-            total_bytes = total_bytes.saturating_sub(removed_len);
-            *app.pending_pty_drop_count
-                .entry(session_id.clone())
-                .or_default() += 1;
+            // Drop the OLDEST entry (front = first inserted = oldest) using O(1) pop_front.
+            // SEC-002: VecDeque::pop_front() is O(1); Vec::remove(0) was O(n).
+            if let Some(removed) = buffer.pop_front() {
+                total_bytes = total_bytes.saturating_sub(removed.len());
+                *app.pending_pty_drop_count
+                    .entry(session_id.clone())
+                    .or_default() += 1;
+            } else {
+                break;
+            }
         }
 
         return;
@@ -738,6 +752,16 @@ pub fn on_scrollback_dump_complete(
     pty_rows: u16,
     pty_cols: u16,
 ) {
+    // SEC-004: validate session_id is a well-formed UUID at the IPC boundary.
+    // Malformed session_id → silent drop (TRACE only, no panic).
+    if Uuid::parse_str(&session_id).is_err() {
+        tracing::trace!(
+            session_id = %session_id,
+            "on_scrollback_dump_complete: malformed session_id (not a UUID) — message silently dropped"
+        );
+        return;
+    }
+
     // F-S039-P2-002 idempotency guard (BC-2.09.001 Inv-5):
     // Only process ScrollbackDumpComplete when a dump is actually in progress for this session.
     // Spurious, duplicate, cross-client, or post-detach completions MUST be dropped before any

@@ -47,6 +47,7 @@ use monocle_tui::app::{
 };
 use monocle_tui::pty_output_channel;
 use monocle_tui::ui::sessions_panel::SessionsPanelState;
+use std::collections::VecDeque;
 use tokio::sync::mpsc;
 
 // ---------------------------------------------------------------------------
@@ -123,7 +124,7 @@ fn screen_text(parser: &vt100::Parser) -> String {
 #[tokio::test]
 async fn test_BC_2_09_001_pty_output_renders_within_100ms() {
     // Arrange
-    let session_id = "s1-bc2-09-001-render-100ms";
+    let session_id = "00000001-0000-4000-8001-000000000001";
     let mut app = make_app_with_session(session_id);
 
     // Act: feed "Hello\r\n" (canonical test vector from BC table) to on_pty_output.
@@ -172,8 +173,8 @@ async fn test_BC_2_09_001_pty_output_renders_within_100ms() {
 #[tokio::test]
 async fn test_BC_2_09_001_non_focused_parser_updated() {
     // Arrange: two sessions, s2 is focused (set in app.mode)
-    let s1 = "s1-non-focused";
-    let s2 = "s2-focused";
+    let s1 = "00000001-0000-4000-8001-000000000002";
+    let s2 = "00000002-0000-4000-8002-000000000002";
     let mut app = make_app_with_session(s1);
     let p2 = vt100::Parser::new(24, 80, app.scrollback_rows as usize);
     app.pty_parsers.insert(s2.to_string(), p2);
@@ -255,7 +256,7 @@ async fn test_BC_2_09_001_non_focused_parser_updated() {
 #[tokio::test]
 async fn test_BC_2_09_001_auto_attach_on_first_entry_buffering() {
     // Arrange
-    let session_id = "s1-auto-attach";
+    let session_id = "00000001-0000-4000-8001-000000000003";
     let mut app = make_app_with_session(session_id);
 
     // Wire a real bounded mpsc channel so enter_embedded_terminal can send AttachSession.
@@ -406,7 +407,7 @@ async fn test_BC_2_09_001_auto_attach_on_first_entry_buffering() {
 #[tokio::test]
 async fn test_BC_2_09_001_reattach_after_detach_reruns_dump_protocol() {
     // Arrange: simulate a session that has completed a dump (pty_dump_received contains it).
-    let session_id = "s1-reattach";
+    let session_id = "00000001-0000-4000-8001-000000000004";
     let mut app = make_app_with_session(session_id);
     app.pty_dump_received.insert(session_id.to_string());
     app.mode = AppMode::EmbeddedTerminal {
@@ -548,7 +549,7 @@ fn test_BC_2_09_001_invariant_scrollback_rows_default_and_clamp() {
 ///   the bytes are silently dropped for this tick. No panic. No WARN+ log.
 ///
 /// Test vector:
-///   PtyOutput for "unknown-session-id" when pty_parsers map is empty.
+///   PtyOutput for "99999999-9999-4999-8999-999999999999" when pty_parsers map is empty.
 ///   Expected: function returns without panicking; pty_parsers unchanged.
 #[test]
 fn test_BC_2_09_001_unknown_session_id_drop() {
@@ -563,7 +564,7 @@ fn test_BC_2_09_001_unknown_session_id_drop() {
     // Must NOT panic (BC-2.09.001 EC-200: "no panic").
     on_pty_output(
         &mut app,
-        "unknown-session-id".to_string(),
+        "99999999-9999-4999-8999-999999999999".to_string(),
         b"some bytes".to_vec(),
     );
 
@@ -599,7 +600,7 @@ fn test_BC_2_09_001_unknown_session_id_drop() {
 #[tokio::test]
 async fn test_BC_2_09_001_high_frequency_frame_merge() {
     // Arrange
-    let session_id = "s1-high-freq";
+    let session_id = "00000001-0000-4000-8001-000000000006";
     let mut app = make_app_with_session(session_id);
 
     // Act: send 100 PtyOutput messages in rapid succession (simulates >100 msg/s burst).
@@ -647,7 +648,7 @@ async fn test_BC_2_09_001_high_frequency_frame_merge() {
 #[tokio::test]
 async fn test_BC_2_09_001_dump_in_progress_set_before_attach_send() {
     // Arrange
-    let session_id = "s1-ordering";
+    let session_id = "00000001-0000-4000-8001-000000000007";
     let mut app = make_app_with_session(session_id);
 
     let (cmd_tx, _cmd_rx) = mpsc::channel::<ClientToServer>(64);
@@ -712,7 +713,7 @@ async fn test_BC_2_09_001_dump_in_progress_set_before_attach_send() {
 #[tokio::test]
 async fn test_BC_2_09_001_scrollback_replay_order() {
     // Arrange
-    let session_id = "s1-replay-order";
+    let session_id = "00000001-0000-4000-8001-000000000008";
     let mut app = make_app_with_session(session_id);
 
     // Manually set dump_in_progress to simulate an in-progress dump.
@@ -800,11 +801,12 @@ async fn test_BC_2_09_001_scrollback_replay_order() {
 #[test]
 fn test_BC_2_09_001_session_gc_removes_parser_and_scroll_offset() {
     // Arrange: session with parser, scroll offset, and dump received flag populated.
-    let session_id = "s1-gc";
+    let session_id = "00000001-0000-4000-8001-000000000009";
     let mut app = make_app_with_session(session_id);
     app.pty_dump_received.insert(session_id.to_string());
     app.dump_in_progress.insert(session_id.to_string(), false);
-    app.pending_pty_bytes.insert(session_id.to_string(), vec![]);
+    app.pending_pty_bytes
+        .insert(session_id.to_string(), VecDeque::new());
 
     // Preconditions
     assert!(
@@ -906,7 +908,7 @@ fn test_BC_2_09_001_render_embedded_terminal_calls_pseudo_terminal() {
 #[tokio::test]
 async fn test_BC_2_09_001_second_enter_skips_attach_when_dump_already_received() {
     // Arrange: session already has a complete dump recorded.
-    let session_id = "s1-second-enter";
+    let session_id = "00000001-0000-4000-8001-000000000010";
     let mut app = make_app_with_session(session_id);
     app.pty_dump_received.insert(session_id.to_string());
 
@@ -1035,7 +1037,7 @@ fn test_BC_2_09_001_config_scrollback_rows_wiring() {
 #[tokio::test]
 async fn test_BC_2_09_001_first_entry_session_not_preinserted() {
     // Arrange: App with NO pre-inserted parser for the session.
-    let session_id = "s1-not-preinserted";
+    let session_id = "00000001-0000-4000-8001-000000000011";
     let mut app = make_app();
     // Deliberately do NOT insert into pty_parsers — this is the F-S039-009 scenario.
     assert!(
@@ -1338,14 +1340,14 @@ fn test_BC_2_09_001_session_list_update_creates_and_gcs_parsers() {
 /// This drives the PRODUCTION dispatch path (not a direct gc_pty_session call).
 #[test]
 fn test_BC_2_09_001_session_terminated_gc() {
-    let session_id = "session-terminated-001";
+    let session_id = "00000001-0000-4000-8001-000000000012";
     let mut app = make_app_with_session(session_id);
 
     // Pre-populate all GC-relevant maps.
     app.pty_dump_received.insert(session_id.to_string());
     app.dump_in_progress.insert(session_id.to_string(), false);
     app.pending_pty_bytes
-        .insert(session_id.to_string(), vec![b"pending".to_vec()]);
+        .insert(session_id.to_string(), vec![b"pending".to_vec()].into());
 
     // Give the parser some content so we can verify it's truly removed.
     {
@@ -1410,7 +1412,7 @@ fn test_BC_2_09_001_session_terminated_gc() {
 /// half-entered EmbeddedTerminal mode where bytes buffer forever without a dump completing.
 #[tokio::test]
 async fn test_BC_2_09_001_enter_embedded_rollback_on_send_failure() {
-    let session_id = "s1-rollback";
+    let session_id = "00000001-0000-4000-8001-000000000013";
     let mut app = make_app_with_session(session_id);
 
     // Wire a channel and immediately DROP the receiver to simulate a closed channel.
@@ -1568,7 +1570,7 @@ fn test_BC_2_09_001_render_frame_embedded_terminal_uses_focused_parser() {
 #[tokio::test]
 async fn test_BC_2_09_001_enter_embedded_rollback_when_ipc_offline() {
     // Arrange: App with NO ipc_tx (daemon offline state).
-    let session_id = "s1-p2-001-offline";
+    let session_id = "00000001-0000-4000-8001-000000000014";
     let mut app = make_app_with_session(session_id);
 
     // Ensure ipc_tx is None — daemon offline, channel not wired.
@@ -1652,7 +1654,7 @@ async fn test_BC_2_09_001_enter_embedded_rollback_when_ipc_offline() {
 #[test]
 fn test_BC_2_09_001_scrollback_dump_complete_idempotency_guard() {
     // Arrange: session with a live parser holding known content.
-    let session_id = "s1-p2-002-idempotent";
+    let session_id = "00000001-0000-4000-8001-000000000015";
     let mut app = make_app_with_session(session_id);
 
     // Feed live content to the parser so we can detect if it survives.
@@ -1765,8 +1767,8 @@ fn test_BC_2_09_001_roster_diff_gc_exits_embedded_mode_when_focused() {
     // Arrange: two sessions s1 and s2.
     // s1 is currently in EmbeddedTerminal mode (the user is viewing s1's PTY).
     // s2 exists but is not focused.
-    let s1 = "s1-roster-diff-rev001";
-    let s2 = "s2-roster-diff-rev001";
+    let s1 = "00000001-0000-4000-8001-000000000016";
+    let s2 = "00000002-0000-4000-8002-000000000016";
 
     let mut app = make_app();
 
@@ -1942,8 +1944,8 @@ fn test_BC_2_09_001_roster_diff_gc_exits_embedded_mode_when_focused() {
 /// was also absent).
 #[test]
 fn test_BC_2_09_001_on_initial_state_gcs_stale_sessions_on_reconnect() {
-    let s1 = "s1-stale-reconnect-rev002";
-    let s2 = "s2-surviving-reconnect-rev002";
+    let s1 = "00000001-0000-4000-8001-000000000017";
+    let s2 = "00000002-0000-4000-8002-000000000017";
 
     let mut app = make_app();
 
@@ -2072,7 +2074,7 @@ fn test_BC_2_09_001_on_initial_state_gcs_stale_sessions_on_reconnect() {
 #[test]
 fn test_BC_2_09_001_dump_complete_removes_dump_in_progress_entry() {
     // Arrange: session with an in-progress dump.
-    let session_id = "s1-rev003-dump-complete";
+    let session_id = "00000001-0000-4000-8001-000000000018";
     let mut app = make_app_with_session(session_id);
 
     // Manually set dump_in_progress = true to simulate an active dump window.
@@ -2158,7 +2160,7 @@ fn test_BC_2_09_001_dump_complete_removes_dump_in_progress_entry() {
 #[test]
 fn test_BC_2_09_001_terminated_session_exits_embedded_mode_before_gc() {
     // Arrange: app in EmbeddedTerminal for "s1" with a live parser present.
-    let session_id = "s1-p2-003-terminated";
+    let session_id = "00000001-0000-4000-8001-000000000019";
     let mut app = make_app_with_session(session_id);
 
     // Give the parser some content to confirm it gets GC'd (not just empty).
@@ -2258,7 +2260,7 @@ fn test_BC_2_09_001_terminated_session_exits_embedded_mode_before_gc() {
 #[test]
 fn test_BC_2_09_001_pending_pty_bytes_cap_drops_oldest() {
     // Arrange: session with dump_in_progress = true so bytes are buffered.
-    let s1 = "s1-cap-drops-oldest";
+    let s1 = "00000001-0000-4000-8001-000000000020";
     let mut app = make_app_with_session(s1);
     app.dump_in_progress.insert(s1.to_string(), true);
 
@@ -2357,11 +2359,13 @@ fn test_BC_2_09_001_pending_pty_bytes_cap_drops_oldest() {
 #[test]
 fn test_BC_2_09_001_dump_window_timeout_force_resolves() {
     // Arrange: session with dump_in_progress = true and some buffered bytes.
-    let s1 = "s1-timeout-force-resolve";
+    let s1 = "00000001-0000-4000-8001-000000000021";
     let mut app = make_app_with_session(s1);
     app.dump_in_progress.insert(s1.to_string(), true);
-    app.pending_pty_bytes
-        .insert(s1.to_string(), vec![b"buffered-during-dump\r\n".to_vec()]);
+    app.pending_pty_bytes.insert(
+        s1.to_string(),
+        vec![b"buffered-during-dump\r\n".to_vec()].into(),
+    );
     app.pending_pty_drop_count.insert(s1.to_string(), 3);
 
     // Preconditions
@@ -2500,7 +2504,7 @@ fn test_BC_2_09_001_dump_window_timeout_force_resolves() {
 #[test]
 fn test_BC_2_09_001_disconnect_clears_dump_state_retains_parsers() {
     // Arrange: session with all dump state populated.
-    let s1 = "s1-disconnect-retains-parser";
+    let s1 = "00000001-0000-4000-8001-000000000022";
     let mut app = make_app_with_session(s1);
 
     // Feed "SURVIVOR" content into the parser — this must survive after disconnect.
@@ -2521,7 +2525,7 @@ fn test_BC_2_09_001_disconnect_clears_dump_state_retains_parsers() {
     // Populate all four dump maps to test that they are cleared.
     app.dump_in_progress.insert(s1.to_string(), true);
     app.pending_pty_bytes
-        .insert(s1.to_string(), vec![b"stale-buffered\r\n".to_vec()]);
+        .insert(s1.to_string(), vec![b"stale-buffered\r\n".to_vec()].into());
     app.pending_pty_drop_count.insert(s1.to_string(), 7);
     app.pty_dump_received.insert(s1.to_string());
 
@@ -2860,7 +2864,7 @@ fn test_BC_2_09_001_pending_pty_bytes_byte_cap_drops_oldest() {
     use monocle_core::pty_constants::{MAX_PENDING_PTY_BYTES, MAX_PENDING_PTY_MESSAGES};
 
     // Arrange: session with dump_in_progress = true so bytes are buffered.
-    let s1 = "s1-byte-cap-drops-oldest";
+    let s1 = "00000001-0000-4000-8001-000000000023";
     let mut app = make_app_with_session(s1);
     app.dump_in_progress.insert(s1.to_string(), true);
 
@@ -2983,7 +2987,7 @@ fn test_BC_2_09_001_status_bar_shows_dump_drops_when_focused() {
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
 
-    let session_id = "s1-p5-003-drop-status";
+    let session_id = "00000001-0000-4000-8001-000000000024";
 
     // --- Case 1: dump_in_progress=true AND drop_count > 0 → "[dump: N drops]" PRESENT ---
     {
@@ -3137,7 +3141,7 @@ fn test_BC_2_09_001_status_bar_shows_dump_drops_when_focused() {
 /// `DumpWindowTimeout` event after `DUMP_WINDOW_TIMEOUT` seconds.
 #[tokio::test]
 async fn test_BC_2_09_001_reentry_aborts_prior_timeout_handle() {
-    let session_id = "s1-p5-004-reentry-abort";
+    let session_id = "00000001-0000-4000-8001-000000000025";
     let mut app = make_app_with_session(session_id);
 
     // Wire a real bounded ipc_tx so enter_embedded_terminal can send AttachSession.
@@ -3227,7 +3231,7 @@ async fn test_BC_2_09_001_dump_window_timeout_end_to_end() {
     use monocle_core::pty_constants::DUMP_WINDOW_TIMEOUT;
     use monocle_core::tui::state::{PTY_DEFAULT_COLS, PTY_DEFAULT_ROWS};
 
-    let s1 = "s1-p5-005-e2e-timeout";
+    let s1 = "00000001-0000-4000-8001-000000000026";
     let mut app = make_app_with_session(s1);
 
     // Wire a real bounded ipc_tx so enter_embedded_terminal can send AttachSession.
@@ -3264,8 +3268,10 @@ async fn test_BC_2_09_001_dump_window_timeout_end_to_end() {
     );
 
     // Buffer some pending bytes to verify they are cleared on timeout.
-    app.pending_pty_bytes
-        .insert(s1.to_string(), vec![b"pending-during-dump\r\n".to_vec()]);
+    app.pending_pty_bytes.insert(
+        s1.to_string(),
+        vec![b"pending-during-dump\r\n".to_vec()].into(),
+    );
 
     // Act 2: advance the paused clock past DUMP_WINDOW_TIMEOUT.
     // In a `#[tokio::test(start_paused = true)]` runtime, `tokio::time::advance(d).await`
