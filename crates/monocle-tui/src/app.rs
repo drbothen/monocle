@@ -1071,10 +1071,12 @@ pub fn pty_output_channel() -> PtyOutputChannelPair {
 ///    `pty_parsers[session_id].set_size(area.rows, area.cols)` and resets
 ///    `pty_scroll_offsets[session_id] = 0` (SS-embedded-pty.md §Scrollback offset invariants).
 ///
-/// 2. **Debounce timer arm/reset** (BC-2.09.006 Invariant 1 / EC-235): sets
-///    `resize_debounce_deadline = Some(Instant::now() + 50ms)` on every call where a
-///    size change is detected. Each mid-window resize RESETS the deadline to `now + 50ms`,
-///    ensuring only the final stable size is sent per debounce window.
+/// 2. **Debounce timer arm** (BC-2.09.006 Postcondition 1 / Invariant 1 / EC-235): sets
+///    `resize_debounce_deadline = Some(Instant::now() + 50ms)` ONLY when the deadline is
+///    currently `None` (first detected change in a window). Mid-window resizes update the
+///    local parser immediately but do NOT reset the deadline — the window is anchored at
+///    the FIRST detected change. Intermediate sizes are coalesced: only the latest pending
+///    size (passed to `check_resize_debounce` by the caller) is sent at expiry.
 ///
 /// Zero-dimension guard (BC-2.09.006 edge case EC-239): if `area.rows == 0` or
 /// `area.cols == 0`, the function is a complete no-op (no parser resize, no debounce arm).
@@ -1119,19 +1121,29 @@ pub fn on_resize_detected(app: &mut App, session_id: &str, area_rows: u16, area_
     // is meaningless". Reset pty_scroll_offsets[session_id] to 0 on every genuine resize.
     app.pty_scroll_offsets.insert(session_id.to_string(), 0);
 
-    // BC-2.09.006 Invariant 1 / EC-235: RESET the debounce deadline to now + 50ms on EVERY
-    // detected size change. Each intermediate resize within a drag restarts the 50ms countdown,
-    // ensuring only the final stable size is sent. This is the "mid-window reset" behavior
-    // required by EC-235 (test_BC_2_09_006_mid_window_resize_resets_deadline).
-    let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
-    app.resize_debounce_deadline = Some(deadline);
-
-    tracing::trace!(
-        session_id = %session_id,
-        area_rows,
-        area_cols,
-        "on_resize_detected: parser resized immediately; debounce deadline reset to now+50ms"
-    );
+    // BC-2.09.006 Postcondition 1 / Invariant 1 / EC-235 (orchestrator ruling — no-reset
+    // semantics): the debounce deadline is anchored at the FIRST detected change in a window.
+    // ARM only when the deadline is currently None; mid-window resizes leave the deadline
+    // unchanged so only one ResizePane is sent per 50ms window (one message per window,
+    // intermediate sizes coalesced — the caller passes the latest size to check_resize_debounce).
+    if app.resize_debounce_deadline.is_none() {
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+        app.resize_debounce_deadline = Some(deadline);
+        tracing::trace!(
+            session_id = %session_id,
+            area_rows,
+            area_cols,
+            "on_resize_detected: parser resized immediately; debounce deadline armed at now+50ms"
+        );
+    } else {
+        tracing::trace!(
+            session_id = %session_id,
+            area_rows,
+            area_cols,
+            "on_resize_detected: mid-window resize — parser resized immediately; \
+             debounce deadline unchanged (anchored at first detection)"
+        );
+    }
 }
 
 /// Check whether the 50ms debounce window has elapsed and send `ResizePane` IPC if so.
