@@ -1263,6 +1263,38 @@ pub fn clear_resize_debounce_state(app: &mut App) {
     tracing::trace!("clear_resize_debounce_state: resize debounce state cleared");
 }
 
+/// Compute the run-loop poll timeout, shrunk to the resize debounce deadline when one is armed.
+///
+/// # Contract (BC-2.09.006 PC-8 / F-S042-MED-001)
+///
+/// The run loop must wake no later than the resize debounce deadline so that
+/// `tick_resize_debounce` can fire the `ResizePane` IPC within the ≤100ms latency budget.
+/// Without this helper, `event::poll(tick_rate)` blocks for the full 100ms tick even when
+/// a 50ms debounce deadline is imminent, causing worst-case latency of 101ms (PC-8 violation).
+///
+/// # Arguments
+///
+/// - `deadline`: the current `App::resize_debounce_deadline` (None → no resize pending).
+/// - `tick_rate`: the run-loop tick ceiling (normally 100ms; also the overlay-timer granularity
+///   per BC-2.06.020 AC-009 — the return value MUST NOT exceed `tick_rate`).
+/// - `now`: the caller's wall-clock snapshot (`tokio::time::Instant::now()`).
+///
+/// # Returns
+///
+/// - `tick_rate` when no deadline is armed (idle path — unchanged behaviour).
+/// - `min(deadline.saturating_duration_since(now), tick_rate)` when a deadline is armed.
+///   `saturating_duration_since` produces `Duration::ZERO` for an already-elapsed deadline,
+///   which causes the run loop to wake immediately and call `tick_resize_debounce`.
+pub fn resize_aware_poll_timeout(
+    deadline: Option<tokio::time::Instant>,
+    tick_rate: std::time::Duration,
+    now: tokio::time::Instant,
+) -> std::time::Duration {
+    deadline.map_or(tick_rate, |d| {
+        d.saturating_duration_since(now).min(tick_rate)
+    })
+}
+
 /// Post-render seam: detect layout-change resizes and fire the debounce on expiry.
 ///
 /// This function is called by `App::run()` after every `terminal.draw()` call. It is the
@@ -2779,7 +2811,15 @@ pub async fn run(kitty_active: bool) -> Result<()> {
         // 2. Poll keyboard (non-blocking, bounded by tick_rate — BLOCKER-002: full binding
         //    dispatch via resolve_binding). The 16ms ceiling is unchanged from the original
         //    implementation; the 1ms was only in the removed timeout wrapper.
-        if event::poll(tick_rate)? {
+        // F-S042-MED-001 / BC-2.09.006 PC-8: shrink poll timeout to the resize debounce
+        // deadline when one is armed so the run loop wakes in time for tick_resize_debounce.
+        // When no deadline is pending this equals tick_rate (idle path unchanged).
+        let poll_timeout = resize_aware_poll_timeout(
+            app.resize_debounce_deadline,
+            tick_rate,
+            tokio::time::Instant::now(),
+        );
+        if event::poll(poll_timeout)? {
             let raw_event = event::read()?;
             if handle_crossterm_event(&mut app, raw_event, &binding_layers, &mut sessions_state)
                 .await

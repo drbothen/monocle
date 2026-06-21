@@ -98,3 +98,6 @@ pub use app::clear_resize_debounce_state;
 pub use app::exit_embedded_terminal;
 #[doc(hidden)]
 pub use app::on_resize_detected;
+// S-042 / F-S042-MED-001: pure poll-timeout helper — test seam for BC-2.09.006 PC-8.
+#[doc(hidden)]
+pub use app::resize_aware_poll_timeout;
