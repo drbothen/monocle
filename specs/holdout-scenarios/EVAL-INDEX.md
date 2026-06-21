@@ -1,7 +1,7 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.33"
+version: "1.34"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-20T00:00:00Z
@@ -26,7 +26,7 @@ inputs:
   - {path: .factory/stories/S-037-session-manager-gc.md, version: "1.0.3"}
   - {path: .factory/stories/S-038-session-manager-hook-injection.md, version: "1.5"}
   - {path: .factory/stories/S-039-pty-output-pipeline.md, version: "1.8"}
-  - {path: .factory/stories/S-040-keyboard-forwarding.md, version: "1.4"}
+  - {path: .factory/stories/S-040-keyboard-forwarding.md, version: "1.5"}
   - {path: .factory/stories/S-041-mouse-forwarding-sgr.md, version: "1.0"}
   - {path: .factory/stories/S-042-resize-debounce-resizepane.md, version: "1.2"}
   - {path: .factory/stories/S-043-scrollback-navigation.md, version: "1.1"}
@@ -188,6 +188,12 @@ the Wave 8-9 stories (S-033..S-048). The evaluator needs these story ACs as inpu
 scenarios. Their absence from inputs[] (F-GATE-ADV-003) left the evaluator blind to the ACs for all 5
 new holdout scenarios. No holdout scenario IDs, titles, BCs, or behavioral semantics changed.
 **SE-16d PASS:** 2026-06-16 >= 2026-06-16 (same day as v1.18). PASS (same-day sequential patch).
+
+## §Trace v1.34 — POL-11 pin cascade: S-040 input pin v1.4 → v1.5 (2026-06-21)
+
+**Bump:** 1.33 → 1.34.
+**Scope:** `inputs[]` S-040 story pin updated: `"1.4"` → `"1.5"` (S-040 bumped to v1.5 for pass-3 adversarial ruling: supports_keyboard_enhancement mandate, ADV-HIGH-002 SSOT dispatch rule, Kitty functional-key codepoint test vector, Ctrl-arm guard canonical form). No holdout scenario IDs, BCs, or behavioral semantics changed.
+**SE-16d PASS:** 2026-06-21 >= 2026-06-21 (v1.33 last bump date). PASS (same-day sequential patch).
 
 ## §Trace v1.33 — POL-11 pin cascade: S-040 input pin v1.3 → v1.4 (2026-06-21)
 

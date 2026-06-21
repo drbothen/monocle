@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.8"
+version: "1.0.9"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -127,7 +127,7 @@ the enhancement flags silently no-op and standard VT sequences are used as fallb
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — Kitty keyboard protocol is explicitly named in CAP-009; this BC defines the CSI u encoding for Kitty-enhanced key events |
 | Architecture Module | monocle-core (`encode_kitty_key()`, `is_kitty_enhanced_key()` pure functions); monocle-tui (PushKeyboardEnhancementFlags setup, PopKeyboardEnhancementFlags cleanup) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.12.0 §Crossterm setup (keyboard enhancement flags; S-040 delivery ruling — three-flag set); §Translation function (Kitty branch; kitty_active threading; corrected is_kitty_enhanced_key signature) |
+| Architecture Source | SS-embedded-pty.md v1.13.0 §Crossterm setup (keyboard enhancement flags; three-flag set; supports_keyboard_enhancement detection); §Translation function (Kitty catch-all precedence; O-1 functional-key codepoints in v1A scope; kitty_active threading; is_kitty_enhanced_key signature); §Risk Mitigations (supports_keyboard_enhancement mandate) |
 | Test Name | test_BC_2_09_004_kitty_protocol_csi_u_sequences |
 
 ## Related BCs
@@ -146,6 +146,21 @@ S-040 — Same story as BC-2.09.002 (keyboard encoding includes Kitty branch)
 ## VP Anchors
 
 VP-TBD — Kitty encoding unit tests (filled after VP creation)
+
+## §Trace v1.0.9
+
+**Arch-source pin: SS-embedded-pty.md v1.12.0 → v1.13.0; Kitty codepoint scope clarification** (2026-06-21):
+- S-040 adversarial pass-3 architect ruling: O-1 full Kitty functional-key codepoint fidelity
+  is IN v1A scope (not deferred). `encode_kitty_key` MUST use correct Kitty protocol codepoints
+  for non-Unicode keys (Up=57352, Down=57353, Left=57351, Right=57354, F1=57364, etc.). Using
+  placeholder codepoints (e.g., 65='A' for Up) is a data corruption bug. See SS-embedded-pty.md
+  §Trace v1.13.0 O-1 ruling for full codepoint table.
+- Architecture Source row updated to v1.13.0.
+- No postcondition, invariant, or edge-case behavioral content changed in this BC.
+  The codepoint fidelity is already implicit in PC-2 ("CSI u sequence per Kitty keyboard
+  protocol specification") — this trace records that the specification means the CORRECT
+  codepoints, not placeholder values.
+- SE-16d monotonicity: v1.0.9 timestamp >= v1.0.8 timestamp. PASS (same-day sequential patch).
 
 ## §Trace v1.0.8
 

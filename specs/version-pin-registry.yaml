@@ -130,8 +130,8 @@ SS-session-manager:
 
 SS-embedded-pty:
   path: specs/architecture/SS-embedded-pty.md
-  current_version: "1.12.0"
-  last_bump_commit: "[S-040 pass-2 adversarial ruling — Kitty design corrected: kitty_active threading, is_kitty_enhanced_key/key_event_to_pty_bytes signatures, HIGH-001 TRACE+None policy]"
+  current_version: "1.13.0"
+  last_bump_commit: "[S-040 pass-3 adversarial ruling — supports_keyboard_enhancement mandate+FORBIDDEN thread; Ctrl-arm contains guard; Tab+SHIFT confirmed; O-1 Kitty codepoints in scope; O-3 MAX_FRAME_LEN verified]"
   last_bump_date: "2026-06-21"
 
 SS-engine-module-v2-delta:
@@ -228,8 +228,8 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.33"
-  last_bump_commit: "[S-040 implementation Tasks cascade — S-040 input pin v1.3→v1.4; §Trace v1.33 added]"
+  current_version: "1.34"
+  last_bump_commit: "[S-040 pass-3 cascade — S-040 input pin v1.4→v1.5; §Trace v1.34 added]" # version-pin-historical
   last_bump_date: "2026-06-21"
 
 sprint-state:
@@ -809,8 +809,8 @@ BC-2.09.001:
 
 BC-2.09.002:
   path: specs/behavioral-contracts/ss-09/BC-2.09.002.md
-  current_version: "1.1.8"
-  last_bump_commit: "[S-040 pass-2 BC behavioral content — EC-217 TRACE+None non-Kitty modifier boundary; PC-1 kitty_active sig; no-silent-drop clarification]"
+  current_version: "1.1.9"
+  last_bump_commit: "[S-040 pass-3 arch-source pin (Ctrl-arm guard; Tab+SHIFT confirmed; Kitty VT precedence; supports_keyboard_enhancement mandate)]" # version-pin-historical
   last_bump_date: "2026-06-21"
 
 BC-2.09.003:
@@ -821,8 +821,8 @@ BC-2.09.003:
 
 BC-2.09.004:
   path: specs/behavioral-contracts/ss-09/BC-2.09.004.md
-  current_version: "1.0.8"
-  last_bump_commit: "[S-040 pass-2 BC behavioral content — kitty_active threading; corrected crossterm model; purity invariant; EC-234 timeout]"
+  current_version: "1.0.9"
+  last_bump_commit: "[S-040 pass-3 arch-source pin; O-1 Kitty functional-key codepoints in v1A scope; supports_keyboard_enhancement detection mandate]" # version-pin-historical
   last_bump_date: "2026-06-21"
 
 BC-2.09.005:
@@ -973,8 +973,8 @@ S-038-session-manager-hook-injection:
 
 S-040-keyboard-forwarding:
   path: stories/S-040-keyboard-forwarding.md
-  current_version: "1.4"
-  last_bump_commit: "[S-040 implementation Tasks — Kitty CSI-u redesign; kitty_active field + CSI?u query; corrected signatures + match precedence; EC-217 TRACE+None arm; 9 new unit tests; input pins BC-2.09.002 v1.1.8, BC-2.09.004 v1.0.8]"
+  current_version: "1.5"
+  last_bump_commit: "[S-040 pass-3 story update — supports_keyboard_enhancement task; ADV-HIGH-002 SSOT dispatch rule; Kitty codepoint test vector; input pins bumped]" # version-pin-historical
   last_bump_date: "2026-06-21"
 
 S-046-pty-output-fan-out:

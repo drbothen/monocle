@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-040
 epic_id: EPIC-09
-version: "1.4"
+version: "1.5"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -20,10 +20,10 @@ behavioral_contracts: [BC-2.09.002, BC-2.09.004, BC-2.09.005]
 verification_properties: []
 estimated_days: 4
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.002.md, version: "1.1.8"}
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.004.md, version: "1.0.8"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.002.md, version: "1.1.9"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.004.md, version: "1.0.9"}
   - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.005.md, version: "1.0.5"}
-  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.12.0"}
+  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.13.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
@@ -163,8 +163,9 @@ standard VT. The VT fallback is used; no panic; no silent loss.
 - [ ] Add `EmbeddedTerminal` keyboard dispatch arm in `crates/monocle-tui/src/event_loop.rs`:
   - Match `Event::Key(event)`: check for Esc (→ `Action::ExitEmbeddedTerminal`); else call `keyboard_conv::crossterm_key_to_pty(event)` to get `PtyKeyEvent`, then call `key_event_to_pty_bytes(pty_event, app.kitty_active)`; if `Some(bytes)`, send `ClientToServer::KeyInput { session_id, bytes }`. Crossterm type is converted at this dispatch boundary via `keyboard_conv`; `monocle-core` functions see only `PtyKeyEvent`.
   - Match `Event::Paste(text)`: wrap as `\x1b[200~` + text + `\x1b[201~`; send `ClientToServer::KeyInput`.
+  - SSOT DISPATCH RULE (ADV-HIGH-002 ruling): if a `dispatch_embedded_terminal_key` helper exists anywhere in the codebase (e.g., in `event_loop.rs`), `handle_crossterm_event` (app.rs) MUST call that helper — it MUST NOT inline duplicate key dispatch logic. There must be exactly ONE code path from crossterm event to KeyInput IPC send. If the helper exists and has a hardcoded `kitty_active=false`, add the `kitty_active: bool` parameter and route `app.kitty_active` through it. Delete any inline duplicate. Both production code and tests must use the same code path.
 - [ ] Add `kitty_active: bool` field to the `App` struct (in the appropriate `App` struct definition in the codebase — monocle-core or monocle-tui per project conventions; the implementer places it). Initialize to `false`.
-- [ ] At TUI startup: write `\x1b[?u` (CSI ?u query) to stdout, read response with a 100ms timeout; set `app.kitty_active = true` if the response matches `\x1b[?<n>u`, else set `false` and TRACE-log. Call `PushKeyboardEnhancementFlags` (3 flags: `DISAMBIGUATE_ESCAPE_CODES | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_EVENT_TYPES`) ONLY when `kitty_active == true`. Call `EnableBracketedPaste` unconditionally. On TUI exit, call `PopKeyboardEnhancementFlags` only if `kitty_active == true`; call `DisableBracketedPaste` unconditionally.
+- [ ] At TUI startup: detect Kitty support using `crossterm::terminal::supports_keyboard_enhancement() -> io::Result<bool>` (available in crossterm-0.29 at `crossterm::terminal`; uses crossterm's internal event pipeline — NOT a raw stdin reader). Set `app.kitty_active = supports_keyboard_enhancement().unwrap_or(false)`. TRACE-log when `false`. Call `PushKeyboardEnhancementFlags` (3 flags: `DISAMBIGUATE_ESCAPE_CODES | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_EVENT_TYPES`) ONLY when `kitty_active == true`. Call `EnableBracketedPaste` unconditionally. On TUI exit, call `PopKeyboardEnhancementFlags` only if `kitty_active == true`; call `DisableBracketedPaste` unconditionally. FORBIDDEN: spawning any thread (detached or otherwise) calling `std::io::stdin().lock().read()` or any blocking raw stdin read — this steals keystrokes from crossterm's event pipeline and is a data-loss bug (SS-embedded-pty.md §Risk Mitigations ADV-BLOCKER-001+O-2).
 - [ ] Update `key_event_to_pty_bytes` to signature `(event: PtyKeyEvent, kitty_active: bool) -> Option<Vec<u8>>` and `is_kitty_enhanced_key` to `(code: &PtyKeyCode, mods: PtyKeyModifiers, kitty_active: bool) -> bool`; update all callers in `event_loop.rs`/`app.rs` to pass `app.kitty_active`.
 - [ ] Implement the corrected match precedence per SS-embedded-pty §Translation function inside `key_event_to_pty_bytes`: (1) unmodified specific keys, (2) Ctrl+printable, (3) kitty_active-gated catch-all (`is_kitty_enhanced_key`), (4) Alt+printable ESC-prefix, (5) BackTab, (6) VT-fallback modified arrows, (7) `_ if !mods.is_empty()` TRACE+None arm, (8) `_ => None`.
 - [ ] Add `_ if !mods.is_empty()` arm in `key_event_to_pty_bytes`: TRACE-log the `(code, mods)` pair with message `"key_event_to_pty_bytes: no VT encoding for modifier combo on non-Kitty terminal; dropping"` and return `None` (BC-2.09.002 EC-217 — no silent drop).
@@ -177,6 +178,7 @@ standard VT. The VT fallback is used; no panic; no silent loss.
 - [ ] Write unit test `test_BC_2_09_002_keyboard_forwarding_ctrl_d_eot`: `PtyKeyCode::Char('d') + PtyKeyModifiers::CONTROL + Press` → `Some(vec![0x04])`.
 - [ ] Write unit test `test_BC_2_09_002_esc_not_forwarded_directly`: separate dispatch test; Esc intercepted as `ExitEmbeddedTerminal` before `key_event_to_pty_bytes`.
 - [ ] Write unit test `test_BC_2_09_004_kitty_ctrl_shift_enter`: `encode_kitty_key(&PtyKeyCode::Enter, PtyKeyModifiers::CONTROL | PtyKeyModifiers::SHIFT, PtyKeyEventKind::Press)` → `\x1b[13;6u`.
+- [ ] Write unit test `test_BC_2_09_004_kitty_ctrl_up`: `encode_kitty_key(&PtyKeyCode::Up, PtyKeyModifiers::CONTROL, PtyKeyEventKind::Press)` → `\x1b[57352;5u` (Kitty functional-key codepoint for Up = 57352; modifier = 1 + ctrl(4) = 5). This test vector is REQUIRED to verify correct Kitty codepoints — placeholder codepoints like 65='A' produce wrong output (SS-embedded-pty.md §Trace v1.13.0 O-1 ruling).
 - [ ] Write unit test `test_BC_2_09_004_kitty_unsupported_fallback`: `is_kitty_enhanced_key(&PtyKeyCode::Enter, PtyKeyModifiers::NONE, false)` returns `false`; standard table used; no panic.
 - [ ] Write unit test `test_BC_2_09_005_bracketed_paste_wrapped`: `Event::Paste("hello world")` → `\x1b[200~hello world\x1b[201~`.
 - [ ] Write unit test `test_BC_2_09_005_bracketed_paste_empty`: `Event::Paste("")` → `\x1b[200~\x1b[201~`.
@@ -228,7 +230,7 @@ Files to MODIFY:
 |------|--------|
 | `crates/monocle-core/src/lib.rs` | `pub mod keyboard;` |
 | `crates/monocle-tui/src/lib.rs` (or mod declaration file) | `pub mod keyboard_conv;` |
-| `crates/monocle-tui/src/event_loop.rs` | Add global Kitty+paste setup on TUI startup (CSI ?u query, conditional flag push); add `EmbeddedTerminal` event dispatch arm (Key → `keyboard_conv::crossterm_key_to_pty(event)` → `key_event_to_pty_bytes(pty_event, app.kitty_active)` → KeyInput send; Paste → bracket-wrap → KeyInput send; Esc intercept) |
+| `crates/monocle-tui/src/event_loop.rs` | Add global Kitty+paste setup on TUI startup (`supports_keyboard_enhancement()` → conditional flag push; `EnableBracketedPaste`); add `EmbeddedTerminal` event dispatch arm (Key → `keyboard_conv::crossterm_key_to_pty(event)` → `key_event_to_pty_bytes(pty_event, app.kitty_active)` → KeyInput send; Paste → bracket-wrap → KeyInput send; Esc intercept). SSOT: if `dispatch_embedded_terminal_key` helper exists, route through it (ADV-HIGH-002). |
 | `crates/monocle-ipc/src/lib.rs` | Ensure `ClientToServer::KeyInput { session_id: String, bytes: Vec<u8> }` exists; add if absent |
 
 ## Token Budget Estimate
@@ -293,7 +295,7 @@ Within the 30% context window bound. No split required.
 | Version | Change | Pass |
 |---------|--------|------|
 | v1.4 | Implementation Tasks added per architect-specified Kitty CSI-u redesign. Input pins updated: BC-2.09.002 (implemented against v1.1.7 at S-040 v1.3 authoring time, now at v1.1.8), BC-2.09.004 (implemented against v1.0.7 at S-040 v1.3 authoring time, now at v1.0.8). Tasks updated to reflect corrected signatures (`kitty_active: bool` param on `key_event_to_pty_bytes` and `is_kitty_enhanced_key`); startup task expanded with `CSI ?u` query sequence, 100ms timeout, conditional flag push/pop; Architecture Mapping table updated; nine new unit tests added (EC-217 TRACE+None, kitty_active true/false, Ctrl+@ NUL, Ctrl+[ ESC, EC-230/EC-231 paste verbatim). | story-writer |
-| v1.3 | S-040 adversarial pass-2 architect ruling (SS-embedded-pty v1.12.0). Three compounding design gaps corrected: (1) F-S040-BLOCKER-001: `is_kitty_enhanced_key` was hardcoded `false`; Kitty arm was dead code. (2) F-S040-HIGH-003: crossterm-0.29 has no "enhanced" KeyCode variants; a pure `(code, mods)` function cannot detect Kitty-active. (3) F-S040-HIGH-001: unmatched modifier combos silently dropped on non-Kitty terminals. Correct design: `is_kitty_enhanced_key(code, mods, kitty_active: bool)` + `key_event_to_pty_bytes(event, kitty_active: bool)`; `App::kitty_active` set from `CSI ? u` query at startup; `_ if !mods.is_empty()` TRACE+None arm for HIGH-001. AC-006 and AC-007 updated to reflect correct design. Input pin updated: SS-embedded-pty v1.12.0. | architect ruling |
+| v1.3 | S-040 adversarial pass-2 architect ruling (implemented against SS-embedded-pty at v1.12.0 at S-040 v1.3 authoring time). Three compounding design gaps corrected: (1) F-S040-BLOCKER-001: `is_kitty_enhanced_key` was hardcoded `false`; Kitty arm was dead code. (2) F-S040-HIGH-003: crossterm-0.29 has no "enhanced" KeyCode variants; a pure `(code, mods)` function cannot detect Kitty-active. (3) F-S040-HIGH-001: unmatched modifier combos silently dropped on non-Kitty terminals. Correct design: `is_kitty_enhanced_key(code, mods, kitty_active: bool)` + `key_event_to_pty_bytes(event, kitty_active: bool)`; `App::kitty_active` set from `CSI ? u` query at startup; `_ if !mods.is_empty()` TRACE+None arm for HIGH-001. AC-006 and AC-007 updated to reflect correct design. | architect ruling |
 | v1.2 | AC-008 dependency-reality cascade: architect (SS-embedded-pty §Crossterm setup) and product-owner (BC-2.09.004) ruled that `REPORT_ASSOCIATED_TEXT` is unavailable in crossterm-0.29. AC-008 flag enumeration corrected from four flags to three (`DISAMBIGUATE_ESCAPE_CODES | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_EVENT_TYPES`); `REPORT_ALTERNATE_KEYS` explicitly excluded (no v1A requirement). Tasks startup line updated to match. Input pins updated to authoritative versions at that time. <!-- version-pin-historical: authored against SS-embedded-pty v1.11.0 at S-040 v1.2 authoring time --> No behavior change to other ACs. | dependency-reality cascade |
 | v1.1 | F-P21-SUG-001: AC-001 citation-scope correction — "BC-2.09.002 PC-2 table" was imprecise as the literal VT sequence table lives in SS-embedded-pty.md §Translation function; AC-001 now co-cites both (BC-2.09.002 PC-2 for behavioral fidelity; SS-embedded-pty.md §Translation function for the exact sequence mapping). No AC behavior change. | post-convergence |
 | v1.0 | Initial decomposition. | Phase-2 |
