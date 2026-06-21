@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.55"
+version: "5.56"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-20T00:00:00Z
@@ -498,6 +498,15 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.56
+
+**S-040 implementation Tasks added — Kitty CSI-u redesign cascade (2026-06-21):**
+
+- S-040 story file bumped v1.3→v1.4. Input pins updated: BC-2.09.002 v1.1.7→v1.1.8, BC-2.09.004 v1.0.7→v1.0.8.
+- Tasks section expanded with `kitty_active: bool` field init, CSI ?u startup query (100ms timeout), corrected `key_event_to_pty_bytes`/`is_kitty_enhanced_key` signatures, corrected match precedence, `_ if !mods.is_empty()` TRACE+None arm (BC-2.09.002 EC-217), and nine new unit tests (EC-217, EC-230, EC-231, kitty_active true/false, Ctrl+@ NUL, Ctrl+[ ESC).
+- Architecture Mapping updated to corrected function signatures.
+- SE-16d monotonicity: v5.56 timestamp 2026-06-21 >= v5.55 timestamp 2026-06-20. PASS.
 
 ## §Trace v5.55
 

@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-040
 epic_id: EPIC-09
-version: "1.3"
+version: "1.4"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -20,8 +20,8 @@ behavioral_contracts: [BC-2.09.002, BC-2.09.004, BC-2.09.005]
 verification_properties: []
 estimated_days: 4
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.002.md, version: "1.1.7"}
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.004.md, version: "1.0.7"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.002.md, version: "1.1.8"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.004.md, version: "1.0.8"}
   - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.005.md, version: "1.0.5"}
   - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.12.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
@@ -65,9 +65,11 @@ sent to the PTY. Zero bytes are forwarded for Release events.
 
 ### AC-003 (traces to BC-2.09.002 invariant 1 — key_event_to_pty_bytes is pure)
 
-`key_event_to_pty_bytes(event: KeyEvent) -> Option<Vec<u8>>` is a pure function with no I/O
-and no state mutation. It is deterministic: the same `KeyEvent` input always produces the same
-output. It lives in `monocle-core` (pure core crate), not `monocle-tui`.
+`key_event_to_pty_bytes(event: PtyKeyEvent, kitty_active: bool) -> Option<Vec<u8>>` is a pure
+function with no I/O and no state mutation. It is deterministic: the same `(event, kitty_active)`
+input always produces the same output. It lives in `monocle-core` (pure core crate), not
+`monocle-tui`. `kitty_active` is a plain `bool` input parameter — no I/O is performed inside
+the function to determine it.
 
 ### AC-004 (traces to BC-2.09.002 invariant 2 — Esc intercepted before key_event_to_pty_bytes)
 
@@ -153,16 +155,20 @@ standard VT. The VT fallback is used; no panic; no silent loss.
 ## Tasks
 
 - [ ] Define core-owned mirror types in `crates/monocle-core/src/keyboard.rs` per SS-embedded-pty.md §Core-Owned Mirror Types: `PtyKeyCode`, `PtyKeyModifiers`, `PtyKeyEventKind`, `PtyKeyEvent`, `PtyMouseButton`, `PtyMouseEventKind`, `PtyMouseEvent`, `PtyRect`. These types carry NO crossterm/ratatui dependency.
-- [ ] Implement `key_event_to_pty_bytes(event: PtyKeyEvent) -> Option<Vec<u8>>` in `crates/monocle-core/src/keyboard.rs` per the full BC-2.09.002 PC-2 key translation table. Uses `PtyKeyEvent` (core-owned), NOT `crossterm::event::KeyEvent`.
-- [ ] Implement `is_kitty_enhanced_key(code: &PtyKeyCode, mods: PtyKeyModifiers) -> bool` in `crates/monocle-core/src/keyboard.rs`. Uses core-owned types only.
+- [ ] Implement `key_event_to_pty_bytes(event: PtyKeyEvent, kitty_active: bool) -> Option<Vec<u8>>` in `crates/monocle-core/src/keyboard.rs` per the full BC-2.09.002 PC-2 key translation table and the corrected match precedence from SS-embedded-pty.md §Translation function. Uses `PtyKeyEvent` (core-owned), NOT `crossterm::event::KeyEvent`.
+- [ ] Implement `is_kitty_enhanced_key(code: &PtyKeyCode, mods: PtyKeyModifiers, kitty_active: bool) -> bool` in `crates/monocle-core/src/keyboard.rs`. Returns `false` immediately when `!kitty_active || mods.is_empty()`. Uses core-owned types only.
 - [ ] Implement `encode_kitty_key(code: &PtyKeyCode, mods: PtyKeyModifiers, kind: PtyKeyEventKind) -> Vec<u8>` in `crates/monocle-core/src/keyboard.rs` using CSI u encoding: `ESC [ <codepoint> ; <1 + modifier_bits> u`. Uses core-owned types only.
 - [ ] Create `crates/monocle-tui/src/keyboard_conv.rs` (NEW file — this story's scope): implement `crossterm_key_to_pty(e: crossterm::event::KeyEvent) -> PtyKeyEvent` conversion. This is the ONLY place crossterm types touch monocle-core's keyboard path. See SS-embedded-pty.md §Conversion in monocle-tui for the full conversion template.
 - [ ] Implement `fn_key_bytes(n: u8) -> Vec<u8>` helper for F1–F12 per BC-2.09.002 table.
 - [ ] Add `EmbeddedTerminal` keyboard dispatch arm in `crates/monocle-tui/src/event_loop.rs`:
-  - Match `Event::Key(event)`: check for Esc (→ `Action::ExitEmbeddedTerminal`); else call `keyboard_conv::crossterm_key_to_pty(event)` to get `PtyKeyEvent`, then call `key_event_to_pty_bytes(pty_event)`; if `Some(bytes)`, send `ClientToServer::KeyInput { session_id, bytes }`. Crossterm type is converted at this dispatch boundary via `keyboard_conv`; `monocle-core` functions see only `PtyKeyEvent`.
+  - Match `Event::Key(event)`: check for Esc (→ `Action::ExitEmbeddedTerminal`); else call `keyboard_conv::crossterm_key_to_pty(event)` to get `PtyKeyEvent`, then call `key_event_to_pty_bytes(pty_event, app.kitty_active)`; if `Some(bytes)`, send `ClientToServer::KeyInput { session_id, bytes }`. Crossterm type is converted at this dispatch boundary via `keyboard_conv`; `monocle-core` functions see only `PtyKeyEvent`.
   - Match `Event::Paste(text)`: wrap as `\x1b[200~` + text + `\x1b[201~`; send `ClientToServer::KeyInput`.
-- [ ] Add global TUI startup keyboard setup in `crates/monocle-tui/src/event_loop.rs`: `PushKeyboardEnhancementFlags` (3 flags: `DISAMBIGUATE_ESCAPE_CODES | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_EVENT_TYPES`) + `EnableBracketedPaste`. Detect Kitty support via `CSI ? u` query; log TRACE if unsupported and skip flags.
-- [ ] Add global TUI exit cleanup: `PopKeyboardEnhancementFlags` + `DisableBracketedPaste`.
+- [ ] Add `kitty_active: bool` field to the `App` struct (in the appropriate `App` struct definition in the codebase — monocle-core or monocle-tui per project conventions; the implementer places it). Initialize to `false`.
+- [ ] At TUI startup: write `\x1b[?u` (CSI ?u query) to stdout, read response with a 100ms timeout; set `app.kitty_active = true` if the response matches `\x1b[?<n>u`, else set `false` and TRACE-log. Call `PushKeyboardEnhancementFlags` (3 flags: `DISAMBIGUATE_ESCAPE_CODES | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_EVENT_TYPES`) ONLY when `kitty_active == true`. Call `EnableBracketedPaste` unconditionally. On TUI exit, call `PopKeyboardEnhancementFlags` only if `kitty_active == true`; call `DisableBracketedPaste` unconditionally.
+- [ ] Update `key_event_to_pty_bytes` to signature `(event: PtyKeyEvent, kitty_active: bool) -> Option<Vec<u8>>` and `is_kitty_enhanced_key` to `(code: &PtyKeyCode, mods: PtyKeyModifiers, kitty_active: bool) -> bool`; update all callers in `event_loop.rs`/`app.rs` to pass `app.kitty_active`.
+- [ ] Implement the corrected match precedence per SS-embedded-pty §Translation function inside `key_event_to_pty_bytes`: (1) unmodified specific keys, (2) Ctrl+printable, (3) kitty_active-gated catch-all (`is_kitty_enhanced_key`), (4) Alt+printable ESC-prefix, (5) BackTab, (6) VT-fallback modified arrows, (7) `_ if !mods.is_empty()` TRACE+None arm, (8) `_ => None`.
+- [ ] Add `_ if !mods.is_empty()` arm in `key_event_to_pty_bytes`: TRACE-log the `(code, mods)` pair with message `"key_event_to_pty_bytes: no VT encoding for modifier combo on non-Kitty terminal; dropping"` and return `None` (BC-2.09.002 EC-217 — no silent drop).
+- [ ] Add global TUI exit cleanup (if not already added in the startup task above): `PopKeyboardEnhancementFlags` (gated on `kitty_active`) + `DisableBracketedPaste`.
 - [ ] Write unit test `test_BC_2_09_002_keyboard_forwarding_printable`: `PtyKeyEvent { code: PtyKeyCode::Char('a'), modifiers: PtyKeyModifiers::NONE, kind: PtyKeyEventKind::Press }` → `key_event_to_pty_bytes(event) == Some(vec![0x61])`. Tests the pure `monocle-core` function directly — no crossterm types in the test.
 - [ ] Write unit test `test_BC_2_09_002_keyboard_forwarding_ctrl`: `PtyKeyEvent { code: PtyKeyCode::Char('c'), modifiers: PtyKeyModifiers::CONTROL, kind: Press }` → `Some(vec![0x03])`.
 - [ ] Write unit test `test_BC_2_09_002_keyboard_forwarding_arrows`: all four `PtyKeyCode::Up/Down/Left/Right` → `\x1b[A`–`\x1b[D`.
@@ -171,9 +177,16 @@ standard VT. The VT fallback is used; no panic; no silent loss.
 - [ ] Write unit test `test_BC_2_09_002_keyboard_forwarding_ctrl_d_eot`: `PtyKeyCode::Char('d') + PtyKeyModifiers::CONTROL + Press` → `Some(vec![0x04])`.
 - [ ] Write unit test `test_BC_2_09_002_esc_not_forwarded_directly`: separate dispatch test; Esc intercepted as `ExitEmbeddedTerminal` before `key_event_to_pty_bytes`.
 - [ ] Write unit test `test_BC_2_09_004_kitty_ctrl_shift_enter`: `encode_kitty_key(&PtyKeyCode::Enter, PtyKeyModifiers::CONTROL | PtyKeyModifiers::SHIFT, PtyKeyEventKind::Press)` → `\x1b[13;6u`.
-- [ ] Write unit test `test_BC_2_09_004_kitty_unsupported_fallback`: `is_kitty_enhanced_key(&PtyKeyCode::Enter, PtyKeyModifiers::NONE)` returns false; standard table used; no panic.
+- [ ] Write unit test `test_BC_2_09_004_kitty_unsupported_fallback`: `is_kitty_enhanced_key(&PtyKeyCode::Enter, PtyKeyModifiers::NONE, false)` returns `false`; standard table used; no panic.
 - [ ] Write unit test `test_BC_2_09_005_bracketed_paste_wrapped`: `Event::Paste("hello world")` → `\x1b[200~hello world\x1b[201~`.
 - [ ] Write unit test `test_BC_2_09_005_bracketed_paste_empty`: `Event::Paste("")` → `\x1b[200~\x1b[201~`.
+- [ ] Write unit test `test_BC_2_09_002_modifier_combo_no_vt_trace_none`: `key_event_to_pty_bytes(PtyKeyEvent { code: PtyKeyCode::Up, modifiers: PtyKeyModifiers::ALT, kind: PtyKeyEventKind::Press }, false)` → `None` (non-Kitty terminal; TRACE log emitted; no silent drop per EC-217).
+- [ ] Write unit test `test_BC_2_09_004_kitty_active_true_modifier_combo`: `is_kitty_enhanced_key(&PtyKeyCode::Up, PtyKeyModifiers::CONTROL, true)` → `true` (kitty_active=true; modifier-carrying combo; returns true for Kitty CSI-u path).
+- [ ] Write unit test `test_BC_2_09_004_kitty_active_false_returns_false`: `is_kitty_enhanced_key(&PtyKeyCode::Up, PtyKeyModifiers::CONTROL, false)` → `false` (kitty_active=false; function returns false unconditionally per early-return guard).
+- [ ] Write unit test `test_BC_2_09_002_ctrl_at_nul`: `key_event_to_pty_bytes(PtyKeyEvent { code: PtyKeyCode::Char('@'), modifiers: PtyKeyModifiers::CONTROL, kind: Press }, false)` → `Some(vec![0x00])` (Ctrl+@ → `\x00` NUL).
+- [ ] Write unit test `test_BC_2_09_002_ctrl_bracket_esc`: `key_event_to_pty_bytes(PtyKeyEvent { code: PtyKeyCode::Char('['), modifiers: PtyKeyModifiers::CONTROL, kind: Press }, false)` → `Some(vec![0x1b])` (Ctrl+[ → `\x1b` ESC).
+- [ ] Write unit test `test_BC_2_09_005_paste_with_esc_verbatim` (EC-230): paste text containing ESC characters (e.g., `"\x1b[31mred\x1b[0m"`) is forwarded verbatim inside brackets — `\x1b[200~\x1b[31mred\x1b[0m\x1b[201~`.
+- [ ] Write unit test `test_BC_2_09_005_paste_embedded_bracket_verbatim` (EC-231): paste text containing `"\x1b[200~"` is forwarded verbatim inside the outer brackets without sanitization.
 
 ## Previous Story Intelligence
 
@@ -215,7 +228,7 @@ Files to MODIFY:
 |------|--------|
 | `crates/monocle-core/src/lib.rs` | `pub mod keyboard;` |
 | `crates/monocle-tui/src/lib.rs` (or mod declaration file) | `pub mod keyboard_conv;` |
-| `crates/monocle-tui/src/event_loop.rs` | Add global Kitty+paste setup on TUI startup; add `EmbeddedTerminal` event dispatch arm (Key → `keyboard_conv::crossterm_key_to_pty(event)` → `key_event_to_pty_bytes(pty_event)` → KeyInput send; Paste → bracket-wrap → KeyInput send; Esc intercept) |
+| `crates/monocle-tui/src/event_loop.rs` | Add global Kitty+paste setup on TUI startup (CSI ?u query, conditional flag push); add `EmbeddedTerminal` event dispatch arm (Key → `keyboard_conv::crossterm_key_to_pty(event)` → `key_event_to_pty_bytes(pty_event, app.kitty_active)` → KeyInput send; Paste → bracket-wrap → KeyInput send; Esc intercept) |
 | `crates/monocle-ipc/src/lib.rs` | Ensure `ClientToServer::KeyInput { session_id: String, bytes: Vec<u8> }` exists; add if absent |
 
 ## Token Budget Estimate
@@ -238,8 +251,8 @@ Within the 30% context window bound. No split required.
 
 | BC | Title | Version |
 |----|-------|---------|
-| BC-2.09.002 | Full-Fidelity Keyboard Forwarding — All v1A Input Classes Reach PTY stdin | v1.1.7 |
-| BC-2.09.004 | Kitty Keyboard Protocol — Enhanced Key Events Forwarded as CSI u Sequences | v1.0.7 |
+| BC-2.09.002 | Full-Fidelity Keyboard Forwarding — All v1A Input Classes Reach PTY stdin | v1.1.8 |
+| BC-2.09.004 | Kitty Keyboard Protocol — Enhanced Key Events Forwarded as CSI u Sequences | v1.0.8 |
 | BC-2.09.005 | Bracketed Paste — Paste Events Wrapped in Bracket Sequences Before Forwarding | (see inputs: frontmatter) |
 
 ## Architecture Mapping
@@ -247,8 +260,8 @@ Within the 30% context window bound. No split required.
 | Component | Module/File | Pure/Effectful |
 |-----------|------------|----------------|
 | `PtyKeyEvent`, `PtyKeyCode`, `PtyKeyModifiers`, `PtyKeyEventKind` (mirror types) | `monocle-core/src/keyboard.rs` | Pure core (data types; no crossterm/ratatui dep) |
-| `key_event_to_pty_bytes(event: PtyKeyEvent) -> Option<Vec<u8>>` | `monocle-core/src/keyboard.rs` | Pure core (no I/O; deterministic; uses Pty* types only) |
-| `is_kitty_enhanced_key(code: &PtyKeyCode, mods: PtyKeyModifiers) -> bool` | `monocle-core/src/keyboard.rs` | Pure core (no I/O) |
+| `key_event_to_pty_bytes(event: PtyKeyEvent, kitty_active: bool) -> Option<Vec<u8>>` | `monocle-core/src/keyboard.rs` | Pure core (no I/O; deterministic; uses Pty* types only) |
+| `is_kitty_enhanced_key(code: &PtyKeyCode, mods: PtyKeyModifiers, kitty_active: bool) -> bool` | `monocle-core/src/keyboard.rs` | Pure core (no I/O) |
 | `encode_kitty_key(code: &PtyKeyCode, mods: PtyKeyModifiers, kind: PtyKeyEventKind) -> Vec<u8>` | `monocle-core/src/keyboard.rs` | Pure core (no I/O) |
 | `crossterm_key_to_pty(e: KeyEvent) -> PtyKeyEvent` | `monocle-tui/src/keyboard_conv.rs` (NEW) | Effectful shell boundary (infallible field-by-field crossterm → Pty* conversion; the ONLY place crossterm types touch the core purity boundary) |
 | EmbeddedTerminal key dispatch arm | `monocle-tui/src/event_loop.rs` | Effectful shell (IPC send) |
@@ -279,6 +292,7 @@ Within the 30% context window bound. No split required.
 
 | Version | Change | Pass |
 |---------|--------|------|
+| v1.4 | Implementation Tasks added per architect-specified Kitty CSI-u redesign. Input pins updated: BC-2.09.002 (implemented against v1.1.7 at S-040 v1.3 authoring time, now at v1.1.8), BC-2.09.004 (implemented against v1.0.7 at S-040 v1.3 authoring time, now at v1.0.8). Tasks updated to reflect corrected signatures (`kitty_active: bool` param on `key_event_to_pty_bytes` and `is_kitty_enhanced_key`); startup task expanded with `CSI ?u` query sequence, 100ms timeout, conditional flag push/pop; Architecture Mapping table updated; nine new unit tests added (EC-217 TRACE+None, kitty_active true/false, Ctrl+@ NUL, Ctrl+[ ESC, EC-230/EC-231 paste verbatim). | story-writer |
 | v1.3 | S-040 adversarial pass-2 architect ruling (SS-embedded-pty v1.12.0). Three compounding design gaps corrected: (1) F-S040-BLOCKER-001: `is_kitty_enhanced_key` was hardcoded `false`; Kitty arm was dead code. (2) F-S040-HIGH-003: crossterm-0.29 has no "enhanced" KeyCode variants; a pure `(code, mods)` function cannot detect Kitty-active. (3) F-S040-HIGH-001: unmatched modifier combos silently dropped on non-Kitty terminals. Correct design: `is_kitty_enhanced_key(code, mods, kitty_active: bool)` + `key_event_to_pty_bytes(event, kitty_active: bool)`; `App::kitty_active` set from `CSI ? u` query at startup; `_ if !mods.is_empty()` TRACE+None arm for HIGH-001. AC-006 and AC-007 updated to reflect correct design. Input pin updated: SS-embedded-pty v1.12.0. | architect ruling |
 | v1.2 | AC-008 dependency-reality cascade: architect (SS-embedded-pty §Crossterm setup) and product-owner (BC-2.09.004) ruled that `REPORT_ASSOCIATED_TEXT` is unavailable in crossterm-0.29. AC-008 flag enumeration corrected from four flags to three (`DISAMBIGUATE_ESCAPE_CODES | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_EVENT_TYPES`); `REPORT_ALTERNATE_KEYS` explicitly excluded (no v1A requirement). Tasks startup line updated to match. Input pins updated to authoritative versions at that time. <!-- version-pin-historical: authored against SS-embedded-pty v1.11.0 at S-040 v1.2 authoring time --> No behavior change to other ACs. | dependency-reality cascade |
 | v1.1 | F-P21-SUG-001: AC-001 citation-scope correction — "BC-2.09.002 PC-2 table" was imprecise as the literal VT sequence table lives in SS-embedded-pty.md §Translation function; AC-001 now co-cites both (BC-2.09.002 PC-2 for behavioral fidelity; SS-embedded-pty.md §Translation function for the exact sequence mapping). No AC behavior change. | post-convergence |

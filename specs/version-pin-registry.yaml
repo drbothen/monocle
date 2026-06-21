@@ -210,9 +210,9 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.55"
-  last_bump_commit: "[D-340 — S-039 status draft→done; Wave-9 first delivery (8/42 pts); §Trace v5.55 added; 39/51 stories done (238/311 pts)]"
-  last_bump_date: "2026-06-20"
+  current_version: "5.56"
+  last_bump_commit: "[S-040 implementation Tasks cascade — S-040 v1.3→v1.4; §Trace v5.56 added]"
+  last_bump_date: "2026-06-21"
 
 VP-INDEX:
   path: specs/verification-properties/VP-INDEX.md
@@ -228,8 +228,8 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.32"
-  last_bump_commit: "[S-040 pass-2 ruling cascade — S-040 input pin v1.2→v1.3]"
+  current_version: "1.33"
+  last_bump_commit: "[S-040 implementation Tasks cascade — S-040 input pin v1.3→v1.4; §Trace v1.33 added]"
   last_bump_date: "2026-06-21"
 
 sprint-state:
@@ -973,8 +973,8 @@ S-038-session-manager-hook-injection:
 
 S-040-keyboard-forwarding:
   path: stories/S-040-keyboard-forwarding.md
-  current_version: "1.3"
-  last_bump_commit: "[S-040 pass-2 adversarial ruling — kitty_active threading, corrected signatures, HIGH-001 TRACE+None, SS-embedded-pty v1.12.0]"
+  current_version: "1.4"
+  last_bump_commit: "[S-040 implementation Tasks — Kitty CSI-u redesign; kitty_active field + CSI?u query; corrected signatures + match precedence; EC-217 TRACE+None arm; 9 new unit tests; input pins BC-2.09.002 v1.1.8, BC-2.09.004 v1.0.8]"
   last_bump_date: "2026-06-21"
 
 S-046-pty-output-fan-out:
