@@ -7,11 +7,14 @@
 //!
 //! # Integration contract
 //!
-//! `setup_keyboard_enhancement()` is called from `app::run()` at TUI startup (after
-//! `enable_raw_mode()`), and `teardown_keyboard_enhancement()` is called on TUI exit.
+//! `setup_keyboard_enhancement()` is called from `main::setup_terminal()` at TUI startup
+//! (after `enable_raw_mode()`). `teardown_keyboard_enhancement()` is called from
+//! `main::restore_terminal()` on normal/error exit and from `main::install_panic_hook()`'s
+//! closure on panic. `app::run()` only RECEIVES the `kitty_active: bool` returned by
+//! `setup_keyboard_enhancement()` — it does not call either setup/teardown function directly.
 //!
 //! `dispatch_embedded_terminal_key()` and `dispatch_embedded_terminal_paste()` are called
-//! from `app::run()`'s main event loop inside the `AppMode::EmbeddedTerminal` arm.
+//! from `app::handle_crossterm_event()`'s `AppMode::EmbeddedTerminal` arm.
 //!
 //! # Esc intercept ordering (BC-2.09.002 Invariant 2)
 //!

@@ -435,16 +435,20 @@ pub struct App {
     // -----------------------------------------------------------------------
     /// Whether the terminal negotiated Kitty keyboard protocol at startup.
     ///
-    /// Set by `event_loop::setup_keyboard_enhancement()` via
-    /// `crossterm::terminal::supports_keyboard_enhancement()`. `true` when
-    /// the crossterm API confirms Kitty protocol is supported; `false`
+    /// Determined by `event_loop::setup_keyboard_enhancement()` (which calls
+    /// `crossterm::terminal::supports_keyboard_enhancement()`), called from
+    /// `main::setup_terminal()`. The bool is returned to `main::main()`, passed as
+    /// the `kitty_active` argument to `app::run()`, and stored here via
+    /// `app.kitty_active = kitty_active` early in `run()`.
+    ///
+    /// `true` when the crossterm API confirms Kitty protocol is supported; `false`
     /// otherwise (unsupported or API error — see EC-234).
     ///
     /// Used by `handle_crossterm_event` to thread `kitty_active` into
     /// `key_event_to_pty_bytes(event, app.kitty_active)`. `PushKeyboardEnhancementFlags`
     /// is only called when this is `true` (BC-2.09.004 Invariant 2).
     ///
-    /// Initialized to `false`; updated at TUI startup by `setup_keyboard_enhancement`.
+    /// Initialized to `false` in `App::new()`; set to the detected value by `app::run()`.
     pub kitty_active: bool,
 }
 
@@ -527,8 +531,9 @@ impl App {
             app_event_tx: None,
 
             // S-040: Kitty keyboard protocol support (BC-2.09.004 Invariant 2).
-            // Initialized false; set true by setup_keyboard_enhancement() at TUI startup
-            // if crossterm::terminal::supports_keyboard_enhancement() returns Ok(true).
+            // Initialized false; overwritten by app::run() via `app.kitty_active = kitty_active`
+            // where kitty_active is the bool returned by event_loop::setup_keyboard_enhancement()
+            // (called from main::setup_terminal()) at TUI startup.
             kitty_active: false,
         }
     }

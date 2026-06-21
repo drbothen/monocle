@@ -22,10 +22,11 @@ use std::sync::Arc;
 /// Without this hook, a panic in raw-mode leaves the terminal corrupted,
 /// requiring the user to run `reset` or close the terminal emulator.
 ///
-/// `kitty_active` is an `Arc<AtomicBool>` set by `setup_terminal()` after calling
-/// `crossterm::terminal::supports_keyboard_enhancement()`. The panic hook captures it so `teardown_keyboard_enhancement`
-/// correctly conditionalises `PopKeyboardEnhancementFlags` even when called from
-/// a panic context.
+/// `kitty_active` is an `Arc<AtomicBool>` set by `main()` via `kitty_active_arc.store()`
+/// immediately after `setup_terminal()` returns (which internally calls
+/// `setup_keyboard_enhancement()` → `crossterm::terminal::supports_keyboard_enhancement()`).
+/// The panic hook captures the Arc so `teardown_keyboard_enhancement` correctly
+/// conditionalises `PopKeyboardEnhancementFlags` even when called from a panic context.
 fn install_panic_hook(kitty_active: Arc<AtomicBool>) {
     let original_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |panic_info| {
@@ -76,12 +77,14 @@ fn restore_terminal(kitty_active: bool) {
     }
 }
 
-/// Initialise the terminal: enable raw mode, enter the alternate screen, probe for Kitty
-/// keyboard protocol support via `crossterm::terminal::supports_keyboard_enhancement()`, and install global keyboard enhancement flags +
-/// bracketed paste.
+/// Initialise the terminal: enable raw mode, enter the alternate screen, and call
+/// `event_loop::setup_keyboard_enhancement()` to probe Kitty keyboard protocol support
+/// (via `crossterm::terminal::supports_keyboard_enhancement()`) and install global
+/// keyboard enhancement flags + bracketed paste.
 ///
-/// Returns the `kitty_active` bool from `supports_keyboard_enhancement()`. Callers must store this and
-/// pass it to every `teardown_keyboard_enhancement` call (normal and panic paths).
+/// Returns the `kitty_active: bool` from `setup_keyboard_enhancement()`. Callers must
+/// store this and pass it to every `teardown_keyboard_enhancement` call (normal and
+/// panic paths).
 ///
 /// # Errors
 ///
@@ -100,8 +103,10 @@ fn setup_terminal() -> Result<bool> {
         let _ = disable_raw_mode();
         return Err(e.into());
     }
-    // Detect Kitty protocol via supports_keyboard_enhancement() and conditionally install enhancement flags +
-    // bracketed paste. Returns kitty_active bool (BC-2.09.004 Invariant 1 /
+    // Detect Kitty protocol via setup_keyboard_enhancement() (which internally calls
+    // crossterm::terminal::supports_keyboard_enhancement()) and conditionally install
+    // enhancement flags + bracketed paste.
+    // Returns kitty_active bool (BC-2.09.004 Invariant 1 /
     // BC-2.09.005 Invariant 1: global, not gated on mode).
     match setup_keyboard_enhancement() {
         Ok(kitty_active) => Ok(kitty_active),

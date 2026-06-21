@@ -244,10 +244,13 @@ pub struct PtyRect {
 /// - `event`: A `PtyKeyEvent` (core-owned type). `monocle-tui` converts
 ///   `crossterm::event::KeyEvent` → `PtyKeyEvent` via `keyboard_conv::crossterm_key_to_pty()`
 ///   before calling this function. See SS-embedded-pty.md §Dependency Boundary (F-P2-I06).
-/// - `kitty_active`: `true` if the terminal negotiated Kitty keyboard protocol at startup
-///   (set by `crossterm::terminal::supports_keyboard_enhancement()` in `event_loop::setup_keyboard_enhancement`). When `true`,
-///   modifier combos not otherwise matched route to `encode_kitty_key` via the Kitty
-///   catch-all arm. When `false`, the VT-fallback table is used.
+/// - `kitty_active`: `true` if the terminal negotiated Kitty keyboard protocol at startup.
+///   Determined by `crossterm::terminal::supports_keyboard_enhancement()` called inside
+///   `event_loop::setup_keyboard_enhancement()` (via `main::setup_terminal()`), returned to
+///   `main::main()`, passed as a parameter to `app::run()`, and stored in `app.kitty_active`.
+///   `handle_crossterm_event` threads `app.kitty_active` into this parameter.
+///   When `true`, modifier combos not otherwise matched route to `encode_kitty_key` via the
+///   Kitty catch-all arm. When `false`, the VT-fallback table is used.
 pub fn key_event_to_pty_bytes(event: PtyKeyEvent, kitty_active: bool) -> Option<Vec<u8>> {
     // BC-2.09.002 PC-3: Release events are discarded — not forwarded to PTY.
     if event.kind == PtyKeyEventKind::Release {
