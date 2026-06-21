@@ -82,9 +82,16 @@ impl PtyKeyModifiers {
     /// Alt/Meta modifier.
     pub const ALT: Self = PtyKeyModifiers(0b0000_1000);
 
-    /// Returns `true` if all bits in `other` are set in `self`.
+    /// Returns `true` if ALL bits in `other` are set in `self`.
+    ///
+    /// Uses all-bits semantics: `(self.0 & other.0) == other.0`.
+    /// This matches the standard `bitflags` convention and crossterm's own `contains`
+    /// method. The previous any-bit form (`!= 0`) caused false positives when `other`
+    /// combined multiple flags and `self` only had a subset of them set.
+    ///
+    /// Source: SS-embedded-pty.md §Core-Owned Mirror Types; ADV-MED-003.
     pub fn contains(self, other: Self) -> bool {
-        self.0 & other.0 != 0
+        (self.0 & other.0) == other.0
     }
 
     /// Returns `true` if no modifier bits are set.
@@ -307,7 +314,22 @@ pub fn key_event_to_pty_bytes(event: PtyKeyEvent, kitty_active: bool) -> Option<
         PtyKeyCode::F(n) if mods.is_empty() => Some(fn_key_bytes(n)),
 
         // -----------------------------------------------------------------------
-        // Arm 3: Kitty catch-all — fires for modifier-carrying combos when
+        // Arm 3a: Tab+SHIFT → \x1b[Z on NON-KITTY terminals (VT fallback).
+        //
+        // Some terminals report Shift+Tab as PtyKeyCode::Tab + PtyKeyModifiers::SHIFT
+        // rather than PtyKeyCode::BackTab. Both representations MUST produce \x1b[Z.
+        // This arm is placed BEFORE the Kitty catch-all (arm 3b) so that on non-Kitty
+        // terminals (is_kitty_enhanced_key returns false) this arm fires; on Kitty
+        // terminals the catch-all fires first (producing \x1b[9;2u via Kitty CSI u).
+        //
+        // Source: SS-embedded-pty.md §Trace v1.13.0 ADV-MED-001; BC-2.09.002 AC-001.
+        // -----------------------------------------------------------------------
+        PtyKeyCode::Tab if mods.contains(PtyKeyModifiers::SHIFT) && !kitty_active => {
+            Some(b"\x1b[Z".to_vec())
+        }
+
+        // -----------------------------------------------------------------------
+        // Arm 3b: Kitty catch-all — fires for modifier-carrying combos when
         // kitty_active=true. `is_kitty_enhanced_key` returns true when
         // kitty_active=true AND mods is non-empty AND code is not Null.
         // This arm is placed AFTER all named VT arms so that unmodified keys and
@@ -453,6 +475,13 @@ pub fn encode_kitty_key(
 }
 
 /// Return the Unicode codepoint for a `PtyKeyCode` (used in Kitty CSI u encoding).
+///
+/// Functional-key codepoints are the KITTY PROTOCOL values from
+/// https://sw.kovidgoyal.net/kitty/keyboard-protocol/#functional-key-definitions
+/// NOT the ASCII/VT character codes. The VT arms use ASCII; the Kitty arms use these
+/// purpose-defined codepoints that are outside the Unicode BMP assignment range.
+///
+/// Source: SS-embedded-pty.md §Trace v1.13.0 O-1; BC-2.09.004 EC-225.
 fn pty_key_codepoint(code: &PtyKeyCode) -> u32 {
     match code {
         PtyKeyCode::Char(c) => *c as u32,
@@ -461,31 +490,33 @@ fn pty_key_codepoint(code: &PtyKeyCode) -> u32 {
         PtyKeyCode::BackTab => 9,     // same codepoint as Tab; Shift bit distinguishes
         PtyKeyCode::Backspace => 127, // DEL
         PtyKeyCode::Esc => 27,
-        PtyKeyCode::Up => 65,       // 'A'
-        PtyKeyCode::Down => 66,     // 'B'
-        PtyKeyCode::Right => 67,    // 'C'
-        PtyKeyCode::Left => 68,     // 'D'
-        PtyKeyCode::Home => 72,     // 'H'
-        PtyKeyCode::End => 70,      // 'F'
-        PtyKeyCode::PageUp => 53,   // '5' (tilde sequences use numeric codes)
-        PtyKeyCode::PageDown => 54, // '6'
-        PtyKeyCode::Insert => 50,   // '2'
-        PtyKeyCode::Delete => 51,   // '3'
-        // Function keys: standard VT codepoints for CSI u.
-        // These are the standard decimal codepoints used by Kitty for F-keys.
+        // Kitty functional-key codepoints (NOT ASCII — these are Kitty protocol values).
+        // Source: https://sw.kovidgoyal.net/kitty/keyboard-protocol/#functional-key-definitions
+        PtyKeyCode::Up => 57352,
+        PtyKeyCode::Down => 57353,
+        PtyKeyCode::Left => 57351,
+        PtyKeyCode::Right => 57354,
+        PtyKeyCode::Home => 57360,
+        PtyKeyCode::End => 57361,
+        PtyKeyCode::PageUp => 57362,
+        PtyKeyCode::PageDown => 57363,
+        PtyKeyCode::Insert => 57348,
+        PtyKeyCode::Delete => 57349,
+        // Function keys F1–F12: Kitty protocol functional-key codepoints.
+        // Source: https://sw.kovidgoyal.net/kitty/keyboard-protocol/#functional-key-definitions
         PtyKeyCode::F(n) => match n {
-            1 => 57344,
-            2 => 57345,
-            3 => 57346,
-            4 => 57347,
-            5 => 57348,
-            6 => 57349,
-            7 => 57350,
-            8 => 57351,
-            9 => 57352,
-            10 => 57353,
-            11 => 57354,
-            12 => 57355,
+            1 => 57364,
+            2 => 57365,
+            3 => 57366,
+            4 => 57367,
+            5 => 57368,
+            6 => 57369,
+            7 => 57370,
+            8 => 57371,
+            9 => 57372,
+            10 => 57373,
+            11 => 57374,
+            12 => 57375,
             _ => 0,
         },
         PtyKeyCode::Null => 0,
