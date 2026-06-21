@@ -695,6 +695,26 @@ async fn handle_resize_pane(
     }
 }
 
+/// Test seam: public wrapper around [`handle_resize_pane`] for external integration tests.
+///
+/// Exposes `handle_resize_pane` to tests in `crates/monocle-runtime/tests/` that must
+/// call the real IPC handler path (with zero-dim clamping, `session_manager` look-up,
+/// and `ServerToClient::Error` / WARN-drop behavior) rather than calling `resize_session`
+/// directly. Mirrors the `handle_spawn_session_pub` pattern.
+///
+/// AC-013 / AC-014 / AC-016 (BC-2.09.006): the WARN-drop policy is implemented in
+/// `handle_resize_pane`, not in `resize_session`. Tests that want to verify zero-dim
+/// clamping or WARN-drop semantics at the handler boundary MUST go through this seam.
+pub async fn handle_resize_pane_pub(
+    session_id: String,
+    rows: u16,
+    cols: u16,
+    client_tx: &tokio::sync::mpsc::Sender<ServerToClient>,
+    state: &DaemonState,
+) {
+    handle_resize_pane(session_id, rows, cols, client_tx, state).await
+}
+
 /// Handle a `ClientToServer::KeyInput` message from a TUI client.
 ///
 /// Forwards the keyboard bytes to the session-host via `SessionManager::send_key_input()`,
