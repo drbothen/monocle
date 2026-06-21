@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-040
 epic_id: EPIC-09
-version: "1.5"
+version: "1.6"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -20,9 +20,9 @@ behavioral_contracts: [BC-2.09.002, BC-2.09.004, BC-2.09.005]
 verification_properties: []
 estimated_days: 4
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.002.md, version: "1.1.9"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.002.md, version: "1.2.0"}
   - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.004.md, version: "1.0.9"}
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.005.md, version: "1.0.5"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.005.md, version: "1.0.6"}
   - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.13.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
@@ -152,6 +152,17 @@ On a non-Kitty terminal, `is_kitty_enhanced_key()` returns `false`; the key fall
 the standard VT table. `Enter` maps to `\r`; Ctrl+Shift modifier is not distinguishable in
 standard VT. The VT fallback is used; no panic; no silent loss.
 
+### AC-015 (traces to BC-2.09.002 edge case EC-218 — Esc+modifier not intercepted; routed by kitty_active)
+
+`KeyCode::Esc` with ANY non-empty modifier set (e.g., Alt+Esc, Ctrl+Esc, Shift+Esc) is NOT
+intercepted as `Action::ExitEmbeddedTerminal`. The `Action::ExitEmbeddedTerminal` intercept
+applies ONLY to bare Esc (`mods.is_empty() == true`). For Esc+modifier combos:
+- When `kitty_active = true`: `encode_kitty_key` produces a CSI u sequence (e.g., Alt+Esc →
+  `ESC [ 27 ; 3 u`); the sequence is forwarded to the PTY as `ClientToServer::KeyInput`.
+- When `kitty_active = false`: the `_ if !mods.is_empty()` TRACE+None arm fires; a TRACE log
+  is emitted and `None` is returned; 0 bytes forwarded (best-effort boundary per EC-217).
+In both cases no panic occurs and no silent drop (all drops are TRACE-observable).
+
 ## Tasks
 
 - [ ] Define core-owned mirror types in `crates/monocle-core/src/keyboard.rs` per SS-embedded-pty.md §Core-Owned Mirror Types: `PtyKeyCode`, `PtyKeyModifiers`, `PtyKeyEventKind`, `PtyKeyEvent`, `PtyMouseButton`, `PtyMouseEventKind`, `PtyMouseEvent`, `PtyRect`. These types carry NO crossterm/ratatui dependency.
@@ -253,8 +264,8 @@ Within the 30% context window bound. No split required.
 
 | BC | Title | Version |
 |----|-------|---------|
-| BC-2.09.002 | Full-Fidelity Keyboard Forwarding — All v1A Input Classes Reach PTY stdin | v1.1.8 |
-| BC-2.09.004 | Kitty Keyboard Protocol — Enhanced Key Events Forwarded as CSI u Sequences | v1.0.8 |
+| BC-2.09.002 | Full-Fidelity Keyboard Forwarding — All v1A Input Classes Reach PTY stdin | (see inputs: frontmatter) |
+| BC-2.09.004 | Kitty Keyboard Protocol — Enhanced Key Events Forwarded as CSI u Sequences | (see inputs: frontmatter) |
 | BC-2.09.005 | Bracketed Paste — Paste Events Wrapped in Bracket Sequences Before Forwarding | (see inputs: frontmatter) |
 
 ## Architecture Mapping
@@ -279,6 +290,7 @@ Within the 30% context window bound. No split required.
 | EC-214 | 500-byte bracketed paste | Single `KeyInput` message with full bracketed payload |
 | EC-215 | `KeyEventKind::Release` for any key | `None` returned; 0 bytes sent |
 | EC-216 | Kitty protocol unsupported | Standard VT sequences used; no panic |
+| EC-218 | Esc+modifier (e.g., Alt+Esc, Ctrl+Esc) | NOT intercepted as ExitEmbeddedTerminal (bare-Esc-only intercept); `kitty_active=true` → CSI-u sequence forwarded; `kitty_active=false` → TRACE+None (EC-217 boundary) |
 | EC-228 | `Ctrl+Shift+Enter` on non-Kitty terminal | Best-effort VT fallback; `Enter` → `\r` |
 
 ## Subsystem Anchor Justifications
@@ -294,6 +306,8 @@ Within the 30% context window bound. No split required.
 
 | Version | Change | Pass |
 |---------|--------|------|
+| v1.6 | Input pins finalized: BC-2.09.002 bumped to v1.2.0 (EC-218 Esc+modifier edge case — PO patch), BC-2.09.005 bumped to v1.0.6 (Invariant-3 paste ceiling corrected — PO patch). AC-015 added (EC-218 Esc+modifier: bare-Esc-only intercept; kitty_active=true → CSI-u; kitty_active=false → TRACE+None). EC-218 row added to Edge Cases table. BC table version literals de-versioned (pins live in inputs[] only). | story-writer |
+| v1.5 | supports_keyboard_enhancement (crossterm::terminal API) replaces CSI-probe design; SSOT dispatch rule (ADV-HIGH-002) added to Tasks; test_BC_2_09_004_kitty_ctrl_up Kitty codepoint test vector (Up=57352; modifier=5) added per SS-embedded-pty O-1 ruling. Input pins updated (implemented against BC-2.09.002 at v1.1.9 and BC-2.09.005 at v1.0.5 at S-040 v1.5 authoring time). | architect pass-3 |
 | v1.4 | Implementation Tasks added per architect-specified Kitty CSI-u redesign. Input pins updated: BC-2.09.002 (implemented against v1.1.7 at S-040 v1.3 authoring time, now at v1.1.8), BC-2.09.004 (implemented against v1.0.7 at S-040 v1.3 authoring time, now at v1.0.8). Tasks updated to reflect corrected signatures (`kitty_active: bool` param on `key_event_to_pty_bytes` and `is_kitty_enhanced_key`); startup task expanded with `CSI ?u` query sequence, 100ms timeout, conditional flag push/pop; Architecture Mapping table updated; nine new unit tests added (EC-217 TRACE+None, kitty_active true/false, Ctrl+@ NUL, Ctrl+[ ESC, EC-230/EC-231 paste verbatim). | story-writer |
 | v1.3 | S-040 adversarial pass-2 architect ruling (implemented against SS-embedded-pty at v1.12.0 at S-040 v1.3 authoring time). Three compounding design gaps corrected: (1) F-S040-BLOCKER-001: `is_kitty_enhanced_key` was hardcoded `false`; Kitty arm was dead code. (2) F-S040-HIGH-003: crossterm-0.29 has no "enhanced" KeyCode variants; a pure `(code, mods)` function cannot detect Kitty-active. (3) F-S040-HIGH-001: unmatched modifier combos silently dropped on non-Kitty terminals. Correct design: `is_kitty_enhanced_key(code, mods, kitty_active: bool)` + `key_event_to_pty_bytes(event, kitty_active: bool)`; `App::kitty_active` set from `CSI ? u` query at startup; `_ if !mods.is_empty()` TRACE+None arm for HIGH-001. AC-006 and AC-007 updated to reflect correct design. | architect ruling |
 | v1.2 | AC-008 dependency-reality cascade: architect (SS-embedded-pty §Crossterm setup) and product-owner (BC-2.09.004) ruled that `REPORT_ASSOCIATED_TEXT` is unavailable in crossterm-0.29. AC-008 flag enumeration corrected from four flags to three (`DISAMBIGUATE_ESCAPE_CODES | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_EVENT_TYPES`); `REPORT_ALTERNATE_KEYS` explicitly excluded (no v1A requirement). Tasks startup line updated to match. Input pins updated to authoritative versions at that time. <!-- version-pin-historical: authored against SS-embedded-pty v1.11.0 at S-040 v1.2 authoring time --> No behavior change to other ACs. | dependency-reality cascade |

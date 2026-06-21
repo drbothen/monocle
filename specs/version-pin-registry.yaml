@@ -210,8 +210,8 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.56"
-  last_bump_commit: "[S-040 implementation Tasks cascade — S-040 v1.3→v1.4; §Trace v5.56 added]"
+  current_version: "5.57"
+  last_bump_commit: "[S-040 final pin reconciliation cascade — S-040 v1.5→v1.6; §Trace v5.57 added]"
   last_bump_date: "2026-06-21"
 
 VP-INDEX:
@@ -228,8 +228,8 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.34"
-  last_bump_commit: "[S-040 pass-3 cascade — S-040 input pin v1.4→v1.5; §Trace v1.34 added]" # version-pin-historical
+  current_version: "1.35"
+  last_bump_commit: "[S-040 final pin reconciliation cascade — S-040 input pin v1.5→v1.6; §Trace v1.35 added]"
   last_bump_date: "2026-06-21"
 
 sprint-state:
@@ -973,8 +973,8 @@ S-038-session-manager-hook-injection:
 
 S-040-keyboard-forwarding:
   path: stories/S-040-keyboard-forwarding.md
-  current_version: "1.5"
-  last_bump_commit: "[S-040 pass-3 story update — supports_keyboard_enhancement task; ADV-HIGH-002 SSOT dispatch rule; Kitty codepoint test vector; input pins bumped]" # version-pin-historical
+  current_version: "1.6"
+  last_bump_commit: "[S-040 final pin reconciliation — BC-2.09.002 v1.2.0, BC-2.09.005 v1.0.6; AC-015/EC-218 Esc+modifier coverage added]"
   last_bump_date: "2026-06-21"
 
 S-046-pty-output-fan-out:
