@@ -1075,9 +1075,9 @@ S-041-mouse-forwarding-sgr:
 
 S-042-resize-debounce-resizepane:
   path: stories/S-042-resize-debounce-resizepane.md
-  current_version: "1.2"
-  last_bump_commit: "[Wave-9 story authoring — ResizePane debounce + PTY resize propagation, BC-2.05.010]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.3"
+  last_bump_commit: "[S-042 input re-pin: BC-2.09.006 v1.1.3→v1.1.5, SS-embedded-pty v1.7.0→v1.14.0]"
+  last_bump_date: "2026-06-21"
 
 S-043-scrollback-navigation:
   path: stories/S-043-scrollback-navigation.md

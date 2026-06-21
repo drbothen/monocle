@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-042
 epic_id: EPIC-09
-version: "1.2"
+version: "1.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -20,8 +20,8 @@ behavioral_contracts: [BC-2.09.006]
 verification_properties: []
 estimated_days: 3
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.006.md, version: "1.1.3"}
-  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.7.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.006.md, version: "1.1.5"}
+  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.14.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
@@ -213,3 +213,12 @@ Within the 30% context window bound. No split required.
 **Dependency Anchors:**
 - S-042 depends on S-039 because S-039 adds `pty_parsers`, `AppMode::EmbeddedTerminal`, and the render loop infrastructure that resize detection hooks into.
 - S-042 BLOCKS S-043 (listed in frontmatter `blocks: [S-043]`). S-042 owns the `pty_scroll_offsets[session_id]=0` reset in the ResizePane handler (Tasks checklist item: "Also reset `pty_scroll_offsets[session_id]` to 0"). S-043 verifies that reset is present (S-043 AC-009 / invariant 3a) and explicitly states "This reset is OWNED BY S-042". S-043 must not be dispatched until S-042 is complete. S-042 may land in parallel with S-040, S-041, and S-044 after S-039.
+
+## Trace
+
+| Version | Change | Pass |
+|---------|--------|------|
+| v1.3 | Input pins updated <!-- version-pin-historical: prior versions BC-2.09.006 v1.1.3, SS-embedded-pty v1.7.0 at S-042 v1.2 authoring time -->: BC-2.09.006 bumped v1.1.3→v1.1.5 (multiple BC revisions since initial authoring), SS-embedded-pty bumped v1.7.0→v1.14.0 (major arch evolution through S-040 delivery cycle). SS-deps-pin-manifest v1.2.1 and SS-deps-pin-manifest-v2-delta v1.0.2 unchanged. No AC or task changes. | story-writer |
+| v1.2 | Phase-2 Pass-5 fix burst: S-042→S-043 dep edge added (`blocks: [S-043]`); S-043 AC-009 requires the `ResizePane` handler scroll-offset reset owned by S-042. | story-writer |
+| v1.1 | AC ranges and dependency corrections from Phase-2 Pass-5 housekeeping (BC-2.09.006 `AC-001..AC-012` coverage; STORY-INDEX dep column corrected). | story-writer |
+| v1.0 | Initial decomposition. | Phase-2 |
