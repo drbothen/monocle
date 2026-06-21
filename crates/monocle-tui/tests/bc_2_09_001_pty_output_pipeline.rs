@@ -2222,7 +2222,7 @@ fn test_BC_2_09_001_terminated_session_exits_embedded_mode_before_gc() {
 
 // ===========================================================================
 // PASS-4 ADVERSARIAL REGRESSION TESTS
-// Anchored to BC-2.09.001 v1.6.0 Invariants 7/8/9
+// Anchored to BC-2.09.001 v1.6.0 at Pass-4 authoring time Invariants 7/8/9
 // Finding IDs: F-PASS4-MED-001, F-PASS4-MED-002, F-PASS4-LOW-001, F-PASS4-LOW-002
 // ===========================================================================
 
@@ -2827,7 +2827,7 @@ async fn test_BC_2_09_001_inbound_channel_backpressure_no_drop() {
 
 // ===========================================================================
 // PASS-5 ADVERSARIAL REGRESSION TESTS
-// Anchored to BC-2.09.001 v1.7.0 Invariants 5/7
+// Anchored to BC-2.09.001 v1.7.0 at Pass-5 authoring time Invariants 5/7
 // Finding IDs: F-S039-P5-002, F-S039-P5-003, F-S039-P5-004, F-S039-P5-005
 // ===========================================================================
 
