@@ -709,6 +709,30 @@ pub enum ClientToServer {
         /// Raw bytes to write to the PTY stdin.
         bytes: Vec<u8>,
     },
+
+    // -----------------------------------------------------------------------
+    // S-042 variant (BC-2.09.006 — PTY resize with 50ms debounce)
+    // -----------------------------------------------------------------------
+    /// Request the daemon to resize the PTY for a session after the 50ms debounce window.
+    ///
+    /// Sent by the TUI from `AppMode::EmbeddedTerminal` when the pane area changes and
+    /// the 50ms debounce timer expires. The daemon forwards this to the session-host as
+    /// `DaemonToHost::Resize { rows, cols }`, which calls `pty.resize()` and
+    /// `parser.set_size()`, causing the harness child to receive `SIGWINCH`.
+    ///
+    /// The TUI's local `vt100::Parser` is resized immediately on area change (not debounced),
+    /// so rendering is correct during the debounce window. The IPC message is sent only once
+    /// per 50ms window encoding the final stable dimensions at timer expiry.
+    ///
+    /// (BC-2.09.006)
+    ResizePane {
+        /// The UUID string of the session to resize.
+        session_id: String,
+        /// New row count for the PTY.
+        rows: u16,
+        /// New column count for the PTY.
+        cols: u16,
+    },
 }
 
 /// The kind of permission decision the user made.

@@ -191,6 +191,11 @@ async fn spawn_client_task(
                     Ok(ClientToServer::KeyInput { session_id, bytes }) => {
                         handle_key_input(session_id, bytes, &tx, &state).await;
                     }
+                    // S-042: ResizePane handler (BC-2.09.006 — PTY resize after 50ms debounce)
+                    // Forward resize to the session-host via SessionManager::resize_session().
+                    Ok(ClientToServer::ResizePane { session_id, rows, cols }) => {
+                        handle_resize_pane(session_id, rows, cols, &tx, &state).await;
+                    }
                     Err(IpcError::Disconnected) => {
                         tracing::debug!("TUI client disconnected (EOF)");
                         break;
@@ -615,6 +620,31 @@ async fn handle_detach_session(
                 .await;
         }
     }
+}
+
+/// Handle a `ClientToServer::ResizePane` message from a TUI client.
+///
+/// Routes the resize request to `SessionManager::resize_session()`, which forwards
+/// `DaemonToHost::Resize { rows, cols }` to the session-host. The session-host calls
+/// `pty.resize()` and `parser.set_size()`, causing the harness child to receive `SIGWINCH`.
+///
+/// Mirrors the `handle_key_input` dispatch pattern (S-040). Called after the TUI's 50ms
+/// debounce window expires (BC-2.09.006 postcondition 2).
+///
+/// # Error behaviour (BC-2.09.006 edge case EC-238)
+///
+/// - `SessionNotFound` / `SessionNotReady`: logged at WARN; `ServerToClient::Error` sent
+///   to the requesting client. The session may have terminated mid-resize — benign race.
+/// - Write errors to the session-host: logged at WARN; propagated as `ServerToClient::Error`.
+#[allow(clippy::todo)]
+async fn handle_resize_pane(
+    _session_id: String,
+    _rows: u16,
+    _cols: u16,
+    _client_tx: &tokio::sync::mpsc::Sender<ServerToClient>,
+    _state: &DaemonState,
+) {
+    todo!("S-042: implement handle_resize_pane — call SessionManager::resize_session(session_id, rows, cols)")
 }
 
 /// Handle a `ClientToServer::KeyInput` message from a TUI client.

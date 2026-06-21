@@ -167,6 +167,10 @@ fn test_BC_2_06_011_accept_once_y_sends_allow_ipc_modal_stays_in_stack() {
         ClientToServer::KeyInput { .. } => {
             panic!("unexpected KeyInput in this test context");
         }
+        // S-042 stub: ResizePane is not expected in this PermissionDecision test context.
+        ClientToServer::ResizePane { .. } => {
+            panic!("unexpected ResizePane in this test context");
+        }
     }
 }
 
@@ -228,6 +232,10 @@ fn test_BC_2_06_011_accept_once_enter_sends_allow_ipc_modal_stays() {
         // S-040 stub: KeyInput is not expected in this PermissionDecision test context.
         ClientToServer::KeyInput { .. } => {
             panic!("unexpected KeyInput in this test context");
+        }
+        // S-042 stub: ResizePane is not expected in this PermissionDecision test context.
+        ClientToServer::ResizePane { .. } => {
+            panic!("unexpected ResizePane in this test context");
         }
     }
 }
@@ -323,6 +331,10 @@ fn test_BC_2_06_012_accept_always_uppercase_a_sends_accept_always_modal_stays() 
         ClientToServer::KeyInput { .. } => {
             panic!("unexpected KeyInput in this test context");
         }
+        // S-042 stub: ResizePane is not expected in this PermissionDecision test context.
+        ClientToServer::ResizePane { .. } => {
+            panic!("unexpected ResizePane in this test context");
+        }
     }
 }
 
@@ -411,6 +423,10 @@ fn test_BC_2_06_013_reject_n_sends_deny_modal_stays_in_stack() {
         ClientToServer::KeyInput { .. } => {
             panic!("unexpected KeyInput in this test context");
         }
+        // S-042 stub: ResizePane is not expected in this PermissionDecision test context.
+        ClientToServer::ResizePane { .. } => {
+            panic!("unexpected ResizePane in this test context");
+        }
     }
 }
 
@@ -477,6 +493,10 @@ fn test_BC_2_06_013_reject_r_sends_deny_modal_stays_in_stack() {
         // S-040 stub: KeyInput is not expected in this PermissionDecision test context.
         ClientToServer::KeyInput { .. } => {
             panic!("unexpected KeyInput in this test context");
+        }
+        // S-042 stub: ResizePane is not expected in this PermissionDecision test context.
+        ClientToServer::ResizePane { .. } => {
+            panic!("unexpected ResizePane in this test context");
         }
     }
 }
@@ -550,6 +570,10 @@ fn test_BC_2_06_011_accept_once_uses_front_prompt_id_in_multi_stack() {
         // S-040 stub: KeyInput is not expected in this PermissionDecision test context.
         ClientToServer::KeyInput { .. } => {
             panic!("unexpected KeyInput in this test context");
+        }
+        // S-042 stub: ResizePane is not expected in this PermissionDecision test context.
+        ClientToServer::ResizePane { .. } => {
+            panic!("unexpected ResizePane in this test context");
         }
     }
 }

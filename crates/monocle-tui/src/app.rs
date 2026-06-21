@@ -450,6 +450,42 @@ pub struct App {
     ///
     /// Initialized to `false` in `App::new()`; set to the detected value by `app::run()`.
     pub kitty_active: bool,
+
+    // -----------------------------------------------------------------------
+    // S-042: PTY resize debounce fields (BC-2.09.006)
+    // -----------------------------------------------------------------------
+    /// Last PTY dimensions sent to the daemon via `ClientToServer::ResizePane`.
+    ///
+    /// Tracks `(rows, cols)` of the most recently sent `ResizePane` message.
+    /// A new `ResizePane` is sent only when the pending dimensions differ from this
+    /// value AND the 50ms debounce window has elapsed (BC-2.09.006 Invariant 2).
+    /// `None` means no `ResizePane` has been sent in this TUI session.
+    ///
+    /// Reset to `None` on exit from `AppMode::EmbeddedTerminal` so that the next
+    /// entry will always check and send the current dimensions if needed.
+    pub last_sent_size: Option<(u16, u16)>,
+
+    /// Deadline for the current 50ms resize debounce window.
+    ///
+    /// Set to `Some(tokio::time::Instant::now() + 50ms)` on the first pane area change
+    /// detected in a debounce window. Cleared after `ResizePane` is sent or on exit from
+    /// `AppMode::EmbeddedTerminal`. `None` means no pending resize is in the debounce queue.
+    ///
+    /// The debounce check in the event loop fires `ResizePane` when
+    /// `Instant::now() >= deadline` AND `pending_size != last_sent_size`
+    /// (BC-2.09.006 Invariant 1).
+    pub resize_debounce_deadline: Option<tokio::time::Instant>,
+
+    /// The pane `Rect` used in the most recent `EmbeddedTerminal` render cycle.
+    ///
+    /// Captured by `render_frame` each time `AppMode::EmbeddedTerminal` is active and
+    /// the terminal widget is rendered. Read by `on_resize_detected` and
+    /// `check_resize_debounce` to determine the current pane dimensions without
+    /// re-entering the render closure.
+    ///
+    /// `None` on construction and when not in `EmbeddedTerminal` mode. The resize
+    /// detection path reads this to compare against the parser's current size.
+    pub last_pty_pane_area: Option<ratatui::layout::Rect>,
 }
 
 impl App {
@@ -535,6 +571,15 @@ impl App {
             // where kitty_active is the bool returned by event_loop::setup_keyboard_enhancement()
             // (called from main::setup_terminal()) at TUI startup.
             kitty_active: false,
+
+            // S-042: PTY resize debounce fields (BC-2.09.006).
+            // Both start as None — no resize has been sent and no debounce is pending.
+            // Set during the resize detection path in the render/event loop.
+            last_sent_size: None,
+            resize_debounce_deadline: None,
+            // S-042: last rendered PTY pane area — None until the first EmbeddedTerminal render.
+            // Captured by render_frame on each EmbeddedTerminal tick; read by resize detection.
+            last_pty_pane_area: None,
         }
     }
 }
@@ -1009,6 +1054,75 @@ type PtyOutputChannelPair = (
 pub fn pty_output_channel() -> PtyOutputChannelPair {
     // BC-2.09.001 Invariant 3: bounded channel with backpressure (.send().await, not try_send).
     tokio::sync::mpsc::channel::<Result<ServerToClient, IpcError>>(IPC_READER_CHANNEL_CAPACITY)
+}
+
+// ---------------------------------------------------------------------------
+// S-042: PTY resize detection and 50ms debounce (BC-2.09.006)
+// ---------------------------------------------------------------------------
+
+/// Handle pane area change detection during a render cycle in `AppMode::EmbeddedTerminal`.
+///
+/// Called once per render cycle when `AppMode::EmbeddedTerminal` is active and the
+/// rendered pane `Rect` is known. Performs two independent operations:
+///
+/// 1. **Immediate local parser resize** (not debounced, BC-2.09.006 postcondition 3 /
+///    Invariant 4): if `area.rows != parser_rows || area.cols != parser_cols` AND
+///    `area.rows > 0 && area.cols > 0`, calls
+///    `pty_parsers[session_id].set_size(area.rows, area.cols)` and resets
+///    `pty_scroll_offsets[session_id] = 0` (SS-embedded-pty.md §Scrollback offset invariants).
+///
+/// 2. **Debounce timer arm** (BC-2.09.006 Invariant 1): if no `resize_debounce_deadline`
+///    is set, sets `resize_debounce_deadline = Some(Instant::now() + 50ms)`.
+///
+/// Zero-dimension guard (BC-2.09.006 edge case EC-239): if `area.rows == 0` or
+/// `area.cols == 0`, the function is a no-op (no parser resize, no debounce arm).
+///
+/// Does NOT send `ResizePane` IPC — use `check_resize_debounce` for that.
+#[allow(clippy::todo)]
+pub fn on_resize_detected(
+    _app: &mut App,
+    _session_id: &str,
+    _area_rows: u16,
+    _area_cols: u16,
+) {
+    todo!("S-042: implement on_resize_detected — immediate parser set_size + scroll reset + debounce arm")
+}
+
+/// Check whether the 50ms debounce window has elapsed and send `ResizePane` IPC if so.
+///
+/// Called from the event loop on each tick while `AppMode::EmbeddedTerminal` is active.
+/// Checks `resize_debounce_deadline.map_or(false, |d| Instant::now() >= d)`. When the
+/// deadline has passed:
+///
+/// 1. Reads the current pane area (from `app.last_pty_pane_area` per S-041, or from
+///    last-rendered `Rect`).
+/// 2. If the pending `(rows, cols)` differ from `app.last_sent_size` (BC-2.09.006
+///    Invariant 2), sends `ClientToServer::ResizePane { session_id, rows, cols }`
+///    via `app.ipc_tx.try_send()`.
+/// 3. Updates `app.last_sent_size` to the sent dimensions.
+/// 4. Clears `app.resize_debounce_deadline`.
+///
+/// If `ipc_tx` is `None` (channel offline), the debounce is cleared without sending
+/// (benign race — the session will be resized on reconnect via enter_embedded_terminal).
+#[allow(clippy::todo)]
+pub fn check_resize_debounce(
+    _app: &mut App,
+    _session_id: &str,
+    _current_rows: u16,
+    _current_cols: u16,
+) {
+    todo!("S-042: implement check_resize_debounce — send ResizePane when deadline elapsed and size changed")
+}
+
+/// Clear resize debounce state when exiting `AppMode::EmbeddedTerminal`.
+///
+/// Resets both `app.resize_debounce_deadline` and `app.last_sent_size` to `None`
+/// so that the next entry into `EmbeddedTerminal` mode starts with a clean slate.
+/// Called from `exit_embedded_terminal` (or its callers) when the mode transitions
+/// away from `EmbeddedTerminal` (BC-2.09.006 Tasks — "cleared on AppMode exit").
+#[allow(clippy::todo)]
+pub fn clear_resize_debounce_state(_app: &mut App) {
+    todo!("S-042: implement clear_resize_debounce_state — reset last_sent_size and resize_debounce_deadline to None")
 }
 
 // ---------------------------------------------------------------------------
@@ -3584,6 +3698,10 @@ pub fn render_frame(
             // build_dashboard_layout gives us a panel_area; we use sessions_area as the main pane.
             let layout = build_dashboard_layout(frame.area());
             let terminal_area = layout.sessions_area;
+
+            // S-042: capture the rendered pane area so resize detection can read it without
+            // re-entering the render closure (BC-2.09.006 §Architecture Compliance Rules).
+            app.last_pty_pane_area = Some(terminal_area);
 
             if let Some(parser) = app.pty_parsers.get(&session_id) {
                 render_embedded_terminal(frame, terminal_area, parser);
