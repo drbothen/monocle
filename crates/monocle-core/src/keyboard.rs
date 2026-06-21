@@ -259,13 +259,6 @@ pub fn key_event_to_pty_bytes(event: PtyKeyEvent) -> Option<Vec<u8>> {
             }
         }
 
-        // Alt/Meta + printable char: ESC prefix (standard xterm Alt encoding).
-        PtyKeyCode::Char(c) if mods.contains(PtyKeyModifiers::ALT) => {
-            let mut bytes = vec![b'\x1b'];
-            bytes.extend_from_slice(c.to_string().as_bytes());
-            Some(bytes)
-        }
-
         // Special keys (BC-2.09.002 PC-2 table).
         PtyKeyCode::Enter => Some(b"\r".to_vec()),
         PtyKeyCode::Backspace => Some(b"\x7f".to_vec()),
@@ -294,16 +287,29 @@ pub fn key_event_to_pty_bytes(event: PtyKeyEvent) -> Option<Vec<u8>> {
         // Function keys F1–F12 (BC-2.09.002 PC-2 table).
         PtyKeyCode::F(n) => Some(fn_key_bytes(n)),
 
-        // Shift+Tab as a distinct BackTab keycode.
-        PtyKeyCode::BackTab => Some(b"\x1b[Z".to_vec()),
-
         // Kitty-enhanced keys: modifier combos not expressible in standard VT.
-        // Checked AFTER specific modifier-free arms above, BEFORE VT-fallback modifier arms.
+        // Checked BEFORE Alt+char and BackTab per SS-embedded-pty.md §Translation function
+        // S2-002 precedence note (lines ~1143-1160): on a Kitty terminal, Alt+char arrives
+        // as a CSI-u encoded event (distinct crossterm type), so is_kitty_enhanced_key
+        // returns true and this arm fires before the Alt+char ESC-prefix arm.
         // On non-Kitty terminals is_kitty_enhanced_key returns false (no enhanced events
-        // are generated), so VT-fallback arms below are used instead (BC-2.09.004 PC-4).
+        // are generated), so the Alt+char and BackTab VT arms below are used instead
+        // (BC-2.09.004 PC-4).
         ref code if is_kitty_enhanced_key(code, mods) => {
             Some(encode_kitty_key(code, mods, event.kind))
         }
+
+        // Alt/Meta + printable char: ESC prefix (standard xterm Alt encoding).
+        // Only reached on non-Kitty terminals (Kitty arm above fires first when active).
+        PtyKeyCode::Char(c) if mods.contains(PtyKeyModifiers::ALT) => {
+            let mut bytes = vec![b'\x1b'];
+            bytes.extend_from_slice(c.to_string().as_bytes());
+            Some(bytes)
+        }
+
+        // Shift+Tab as a distinct BackTab keycode.
+        // Only reached on non-Kitty terminals (Kitty arm above fires first when active).
+        PtyKeyCode::BackTab => Some(b"\x1b[Z".to_vec()),
 
         // VT-fallback modified arrows for non-Kitty terminals.
         // Standard xterm modifier encoding: CSI 1;<mod+1><arrow>.
