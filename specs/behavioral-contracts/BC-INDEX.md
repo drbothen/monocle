@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.44.1"
+version: "1.44.2"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-20T00:00:00Z
@@ -1223,6 +1223,29 @@ SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. 
 - BC-INDEX version: 1.40.4 → 1.40.5. No BC ID additions or retirements. No H1 title changes.
 
 SE-16d monotonicity: v1.40.5 timestamp 2026-06-14T20:00:00Z > v1.40.4 timestamp 2026-06-14T19:00:00Z. PASS.
+
+## §Trace v1.44.2
+
+**S-040 pass-2 behavioral content — BC-2.09.004 kitty_active threading + crossterm model; BC-2.09.002 TRACE+None boundary** (2026-06-21):
+
+BC version bumps in this dispatch:
+- BC-2.09.004 v1.0.7 → v1.0.8: kitty_active threading corrected. PC-1: `is_kitty_enhanced_key` now
+  takes `kitty_active: bool`; returns true only when kitty_active==true AND mods non-empty AND
+  code!=Null. Signature `key_event_to_pty_bytes(event, kitty_active: bool)` reflected throughout.
+  Incorrect crossterm-0.29 "distinct enhanced KeyEvent variants" claim removed; replaced with
+  correct model (same KeyCode variants regardless of Kitty flags; `kitty_active` threads
+  runtime detection from App::kitty_active). Invariant 3 extended: `is_kitty_enhanced_key`
+  is also pure (kitty_active is a plain input param, not I/O). EC-228 updated with kitty_active
+  param. EC-234 added: CSI ?u timeout → kitty_active=false; flags not pushed; TRACE emitted.
+- BC-2.09.002 v1.1.7 → v1.1.8: EC-217 added: modifier combo with no VT encoding on non-Kitty
+  terminal emits TRACE+None (not silently dropped; satisfies PC-1). PC-1 updated with
+  `kitty_active: bool` signature and forward reference to EC-217 as the "no silent drop"
+  mechanism. EC-216 updated to use `kitty_active=false` parameter form.
+
+No BC H1 title changes. No BC ID additions or retirements. BC count unchanged: 138 active.
+BC-INDEX version: 1.44.1 → 1.44.2.
+
+SE-16d monotonicity: v1.44.2 timestamp 2026-06-21 >= v1.44.1 timestamp 2026-06-20. PASS.
 
 ## §Trace v1.44.1
 

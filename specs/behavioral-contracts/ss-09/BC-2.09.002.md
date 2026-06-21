@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.7"
+version: "1.1.8"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -47,7 +47,11 @@ mouse events in SGR encoding, and bracketed paste. No keyboard class is deferred
 ## Postconditions
 
 1. For each crossterm `KeyEvent` with `kind == KeyEventKind::Press` or `KeyEventKind::Repeat`:
-   a. `key_event_to_pty_bytes(event)` returns `Some(bytes)` for all key classes below.
+   a. `key_event_to_pty_bytes(event, kitty_active: bool)` returns `Some(bytes)` for all key
+      classes in the table below. No keyboard class is silently dropped: modifier combos with
+      no standard VT encoding on non-Kitty terminals emit a TRACE log and return `None` (see
+      EC-217); this TRACE+None pattern satisfies the "no silent drop" invariant because the
+      drop is observable at TRACE level.
    b. `ClientToServer::KeyInput { session_id, bytes }` is sent over the IPC channel.
    c. The daemon forwards via `SessionManager::send_key_input()` → `DaemonToHost::KeyInput` →
       session-host writes `bytes` to PTY stdin.
@@ -123,7 +127,8 @@ mouse events in SGR encoding, and bracketed paste. No keyboard class is deferred
 | EC-213 | Mouse click at crossterm (row=5, col=10) in EmbeddedTerminal (pane at terminal origin, pane_area.x=0, pane_area.y=0) | SGR sequence `\x1b[<0;11;6M` (button 0, Px=col+1=11, Py=row+1=6, press) sent as `KeyInput` bytes. Matches HS-EXP-015 step 15-16. |
 | EC-214 | Paste of 500-byte text via bracketed paste | `\x1b[200~` + 500 bytes + `\x1b[201~` forwarded as single `KeyInput` message |
 | EC-215 | `KeyEventKind::Release` for any key | `None` returned; NOT forwarded; 0 bytes sent |
-| EC-216 | Kitty protocol unsupported by terminal (flags silently ignored) | `is_kitty_enhanced_key()` returns false for modifier combos; standard VT sequences used for regular keys; no panic; no silent key loss |
+| EC-216 | Kitty protocol unsupported by terminal (flags silently ignored) | `is_kitty_enhanced_key(code, mods, false)` returns false for modifier combos (`kitty_active=false` short-circuits); standard VT sequences used for regular keys; no panic; no silent key loss |
+| EC-217 | Modifier combo with no VT encoding on non-Kitty terminal (e.g., Alt+Up, Ctrl+Alt+Left) | `key_event_to_pty_bytes` emits a TRACE log (`"key_event_to_pty_bytes: no VT encoding for modifier combo on non-Kitty terminal; dropping"`) and returns `None`; the key is NOT forwarded to the PTY. This is the best-effort boundary for unencoded combos on non-Kitty terminals. The drop is NOT silent — it is observable at TRACE level, satisfying PC-1 "no keyboard class silently dropped." On Kitty terminals this arm is unreachable because `is_kitty_enhanced_key` returns true for all remaining modifier combos when `kitty_active=true`. |
 
 ## Canonical Test Vectors
 
@@ -174,6 +179,24 @@ S-040 — Implement key_event_to_pty_bytes() and KeyInput IPC send in monocle-tu
 ## VP Anchors
 
 VP-TBD — Keyboard translation unit tests (filled after VP creation)
+
+## §Trace v1.1.8
+
+**Behavioral content — EC-217 TRACE+None boundary; PC-1 kitty_active signature; no-silent-drop clarification** (2026-06-21):
+
+- **EC-217 added:** Modifier combo with no VT encoding on non-Kitty terminal (e.g., Alt+Up,
+  Ctrl+Alt+Left) emits a TRACE log and returns `None`; key is NOT forwarded. This is the
+  best-effort boundary for unencoded combos. The drop is observable at TRACE level —
+  satisfying PC-1 "no keyboard class silently dropped." On Kitty terminals this arm is
+  unreachable because `is_kitty_enhanced_key` returns true for all remaining modifier combos
+  when `kitty_active=true`.
+- **PC-1 clarified:** `key_event_to_pty_bytes(event, kitty_active: bool)` signature added.
+  PC-1 explicitly notes that the TRACE+None pattern satisfies the "no silent drop" invariant,
+  with a forward reference to EC-217. This makes the no-silent-drop claim consistent with the
+  new boundary established by EC-217.
+- **EC-216 updated:** Old bare `is_kitty_enhanced_key()` call updated to include the
+  `kitty_active=false` parameter context.
+- SE-16d monotonicity: v1.1.8 timestamp >= v1.1.7 timestamp. PASS (same-day sequential patch).
 
 ## §Trace v1.1.7
 

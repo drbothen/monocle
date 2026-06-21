@@ -204,9 +204,9 @@ ARCH-INDEX:
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.44.0"
-  last_bump_commit: "[pty_scrollback_rows schema extension: BC-2.07.002 v1.0.3→v1.1.0; SS-config.md v1.3.0→v1.4.0; BC count unchanged 138]" # version-pin-historical
-  last_bump_date: "2026-06-20"
+  current_version: "1.44.2"
+  last_bump_commit: "[S-040 pass-2 BC behavioral content — BC-2.09.004 v1.0.7→v1.0.8; BC-2.09.002 v1.1.7→v1.1.8; kitty_active threading; EC-217; EC-234]"
+  last_bump_date: "2026-06-21"
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
@@ -809,8 +809,8 @@ BC-2.09.001:
 
 BC-2.09.002:
   path: specs/behavioral-contracts/ss-09/BC-2.09.002.md
-  current_version: "1.1.7"
-  last_bump_commit: "[S-040 pass-2 ruling — arch-source pin SS-embedded-pty §Translation; kitty_active threading noted]"
+  current_version: "1.1.8"
+  last_bump_commit: "[S-040 pass-2 BC behavioral content — EC-217 TRACE+None non-Kitty modifier boundary; PC-1 kitty_active sig; no-silent-drop clarification]"
   last_bump_date: "2026-06-21"
 
 BC-2.09.003:
@@ -821,8 +821,8 @@ BC-2.09.003:
 
 BC-2.09.004:
   path: specs/behavioral-contracts/ss-09/BC-2.09.004.md
-  current_version: "1.0.7"
-  last_bump_commit: "[S-040 pass-2 ruling — arch-source pin SS-embedded-pty §Translation; kitty_active threading; corrected is_kitty_enhanced_key signature]"
+  current_version: "1.0.8"
+  last_bump_commit: "[S-040 pass-2 BC behavioral content — kitty_active threading; corrected crossterm model; purity invariant; EC-234 timeout]"
   last_bump_date: "2026-06-21"
 
 BC-2.09.005:

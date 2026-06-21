@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.7"
+version: "1.0.8"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -52,18 +52,34 @@ the enhancement flags silently no-op and standard VT sequences are used as fallb
 
 ## Postconditions
 
-1. For key events that require Kitty protocol encoding (modifier combinations not expressible
-   in standard VT sequences), `is_kitty_enhanced_key(event.code, mods)` returns `true`.
+1. When `key_event_to_pty_bytes(event, kitty_active: bool)` is called with `kitty_active = true`,
+   `is_kitty_enhanced_key(event.code, mods, kitty_active: bool)` returns `true` for any key where:
+   - `kitty_active == true`, AND
+   - `mods` is non-empty (at least one modifier bit set), AND
+   - `code != PtyKeyCode::Null` (i.e., the key is a recognized key code).
+   These keys are CSI-u encoded per the Kitty keyboard protocol specification.
+
+   NOTE — crossterm-0.29 reality: crossterm does NOT introduce distinct enhanced `KeyCode`
+   variants when Kitty flags are active. `KeyCode::Enter`, `KeyCode::Up`, `KeyCode::Char(c)`,
+   etc. are the same enum variants regardless of Kitty mode. Enhancement flags change WHICH
+   events are reported (more modifier combos become visible; release events appear; modifier-only
+   keys surface) and populate `KeyEventState`, but do NOT produce new `KeyCode` variants.
+   Consequently, `is_kitty_enhanced_key` CANNOT determine Kitty mode from `(code, mods)` alone —
+   the `kitty_active: bool` parameter threads the runtime detection result (from the `CSI ? u`
+   query at TUI startup, stored in `App::kitty_active`) into the pure encoder.
+
 2. `encode_kitty_key(event.code, mods, event.kind)` produces a CSI u sequence:
    `ESC [ <unicode_codepoint> ; <modifier_value> u`
    - `<unicode_codepoint>`: decimal codepoint of the key
    - `<modifier_value>`: computed from modifier bits + 1 (Kitty spec: shift=1, alt=2, ctrl=4, etc.)
 3. The CSI u bytes are sent as `ClientToServer::KeyInput`.
-4. On terminals without Kitty support: `is_kitty_enhanced_key()` returns false for all keys
-   (because Kitty-enhanced events are never generated); standard VT sequences from
-   BC-2.09.002 table are used instead. No Kitty-specific code path is reached. No panic.
+4. On terminals without Kitty support (`kitty_active = false`): `is_kitty_enhanced_key()` returns
+   false for all keys (because `kitty_active == false` short-circuits the check); standard VT
+   sequences from BC-2.09.002 table are used instead. No Kitty-specific code path is reached.
+   No panic.
 5. TUI exit sends `crossterm::execute!(stdout(), PopKeyboardEnhancementFlags)` to restore
-   terminal state.
+   terminal state — only if `kitty_active = true` (flags were never pushed on non-Kitty
+   terminals, so there is nothing to pop).
 
 ## Invariants
 
@@ -74,7 +90,10 @@ the enhancement flags silently no-op and standard VT sequences are used as fallb
    the CSI sequence; the terminal ignores it (no response to query or non-OK response); monocle
    detects this and skips the flags. The standard VT key table from BC-2.09.002 handles all
    key classes on non-Kitty terminals.
-3. `encode_kitty_key()` is a PURE function — no I/O or state mutation.
+3. `encode_kitty_key()` and `is_kitty_enhanced_key(code, mods, kitty_active)` are PURE functions —
+   no I/O, no state mutation, deterministic given their inputs. Purity is preserved for
+   `is_kitty_enhanced_key` because `kitty_active` is a plain input parameter (a `bool` threaded
+   from the call site), not a runtime I/O read or global state access.
 
 ## Edge Cases
 
@@ -83,8 +102,9 @@ the enhancement flags silently no-op and standard VT sequences are used as fallb
 | EC-225 | `Ctrl+Shift+Enter` on Kitty-capable terminal | CSI u sequence; harness receives enhanced encoding |
 | EC-226 | `Shift+Tab` on Kitty-capable terminal | CSI u sequence `\x1b[9;2u` (tab codepoint=9; Kitty modifier = 1 + shift(1) = 2) |
 | EC-227 | `Alt+F3` on Kitty-capable terminal | CSI u sequence; harness receives alt+F3 correctly |
-| EC-228 | `Ctrl+Shift+Enter` on non-Kitty terminal | `is_kitty_enhanced_key()` returns false; falls through to standard key table (Enter → `\r`; Ctrl+Shift modifier not distinguishable); best-effort |
+| EC-228 | `Ctrl+Shift+Enter` on non-Kitty terminal | `is_kitty_enhanced_key(code, mods, false)` returns false (kitty_active=false short-circuits); falls through to standard key table (Enter → `\r`; Ctrl+Shift modifier not distinguishable); best-effort |
 | EC-229 | TUI exits without `PopKeyboardEnhancementFlags` (panic/crash) | Terminal left in Kitty-enhanced mode; user sees raw Kitty sequences in their shell; next TUI launch will `Pop` on clean exit; acceptable for crash recovery |
+| EC-234 | CSI ?u query times out at startup (terminal does not respond within 100ms) | `kitty_active = false`; `PushKeyboardEnhancementFlags` is NOT called; TRACE log emitted; standard VT sequences used throughout session. No enhanced key encoding occurs. |
 
 ## Canonical Test Vectors
 
@@ -126,6 +146,30 @@ S-040 — Same story as BC-2.09.002 (keyboard encoding includes Kitty branch)
 ## VP Anchors
 
 VP-TBD — Kitty encoding unit tests (filled after VP creation)
+
+## §Trace v1.0.8
+
+**Behavioral content — kitty_active threading; corrected crossterm model; purity invariant; EC-234** (2026-06-21):
+
+- **PC-1 corrected:** `is_kitty_enhanced_key` now takes `kitty_active: bool` parameter; returns
+  true ONLY when `kitty_active == true AND mods is non-empty AND code != Null`. The function
+  signature is `is_kitty_enhanced_key(code, mods, kitty_active: bool)`.
+- **PC-1 prose corrected:** Replaced incorrect claim that crossterm generates "distinct enhanced
+  KeyEvent variants / distinct enhanced event types" for Kitty mode. Correct model: crossterm-0.29
+  delivers the same `KeyCode` variants regardless of Kitty flag state; enhancement changes WHICH
+  events are reported and populates `KeyEventState`, but does NOT introduce new `KeyCode` variants.
+  The `kitty_active: bool` parameter threads the runtime detection result from the `CSI ? u` query.
+- **`key_event_to_pty_bytes` signature corrected:** `key_event_to_pty_bytes(event, kitty_active: bool)`.
+- **PC-4 corrected:** On non-Kitty terminals, `is_kitty_enhanced_key()` returns false because
+  `kitty_active == false` short-circuits — not because "Kitty-enhanced events are never generated"
+  (that was the wrong model). PopKeyboardEnhancementFlags is only called if `kitty_active = true`.
+- **Invariant 3 extended:** `is_kitty_enhanced_key(code, mods, kitty_active)` is also pure;
+  purity is preserved because `kitty_active` is a plain input parameter, not runtime I/O.
+- **EC-228 corrected:** Updated old `is_kitty_enhanced_key()` call to include `kitty_active` param.
+- **EC-234 added:** CSI ?u query timeout at startup → `kitty_active = false`; flags not pushed;
+  TRACE emitted; standard VT sequences used. Next free EC id in this BC's sequence (EC-234,
+  after EC-233 in BC-2.09.005; EC-230 is already taken in BC-2.09.005).
+- SE-16d monotonicity: v1.0.8 timestamp >= v1.0.7 timestamp. PASS (same-day sequential patch).
 
 ## §Trace v1.0.7
 
