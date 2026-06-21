@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.5"
+version: "1.0.6"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -29,7 +29,7 @@ removal_reason: null
 ## Description
 
 When the user's terminal supports the Kitty keyboard enhancement protocol, monocle enables
-four enhancement flags at TUI startup. In `AppMode::EmbeddedTerminal`, enhanced key events
+three enhancement flags at TUI startup. In `AppMode::EmbeddedTerminal`, enhanced key events
 (e.g., modifier combinations like `Ctrl+Shift+Enter`, `Alt+F3`, `Shift+Tab`) are translated
 to CSI u sequences and forwarded to the PTY. On terminals that do NOT support Kitty protocol,
 the enhancement flags silently no-op and standard VT sequences are used as fallback.
@@ -40,9 +40,12 @@ the enhancement flags silently no-op and standard VT sequences are used as fallb
    ```
    crossterm::execute!(stdout(), PushKeyboardEnhancementFlags(
        DISAMBIGUATE_ESCAPE_CODES | REPORT_ALL_KEYS_AS_ESCAPE_CODES |
-       REPORT_EVENT_TYPES | REPORT_ASSOCIATED_TEXT
+       REPORT_EVENT_TYPES
    ))
    ```
+   REPORT_ASSOCIATED_TEXT is unavailable in crossterm-0.29 (commented-out symbol);
+   REPORT_ALTERNATE_KEYS is intentionally omitted — no v1A BC depends on layout-alternate
+   data. See SS-embedded-pty.md §Crossterm setup S-040 delivery ruling.
 2. The terminal supports Kitty keyboard enhancement (detected via `CSI ? u` query; if not
    supported, flags were silently no-op'd and standard sequences remain active).
 3. `AppMode::EmbeddedTerminal` is active.
@@ -104,7 +107,7 @@ the enhancement flags silently no-op and standard VT sequences are used as fallb
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — Kitty keyboard protocol is explicitly named in CAP-009; this BC defines the CSI u encoding for Kitty-enhanced key events |
 | Architecture Module | monocle-core (`encode_kitty_key()`, `is_kitty_enhanced_key()` pure functions); monocle-tui (PushKeyboardEnhancementFlags setup, PopKeyboardEnhancementFlags cleanup) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.10.0 §Crossterm setup (keyboard enhancement flags); §Translation function (Kitty branch) <!-- version-pin-historical: SS-embedded-pty v1.10.0 was canonical at S-040 task dispatch time; product-owner will cascade Precondition 1 + Architecture Source to v1.11.0 per S-040 delivery flag-set ruling --> |
+| Architecture Source | SS-embedded-pty.md v1.11.0 §Crossterm setup (keyboard enhancement flags; S-040 delivery ruling — three-flag set); §Translation function (Kitty branch) |
 | Test Name | test_BC_2_09_004_kitty_protocol_csi_u_sequences |
 
 ## Related BCs
@@ -113,7 +116,7 @@ the enhancement flags silently no-op and standard VT sequences are used as fallb
 
 ## Architecture Anchors
 
-- `architecture/SS-embedded-pty.md#crossterm-setup` — PushKeyboardEnhancementFlags with 4 flags
+- `architecture/SS-embedded-pty.md#crossterm-setup` — PushKeyboardEnhancementFlags with 3 flags (DISAMBIGUATE_ESCAPE_CODES | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_EVENT_TYPES)
 - `architecture/SS-embedded-pty.md#translation-function` — Kitty branch in key_event_to_pty_bytes
 
 ## Story Anchor
@@ -124,12 +127,32 @@ S-040 — Same story as BC-2.09.002 (keyboard encoding includes Kitty branch)
 
 VP-TBD — Kitty encoding unit tests (filled after VP creation)
 
-## §Trace v1.0.4
+## §Trace v1.0.6
+
+**S-040 delivery — dependency-reality correction: four-flag set → three-flag set** (2026-06-20):
+- **Behavioral correction:** Precondition 1 flag enumeration updated from four flags
+  (`DISAMBIGUATE_ESCAPE_CODES | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_EVENT_TYPES | REPORT_ASSOCIATED_TEXT`)
+  to three flags (`DISAMBIGUATE_ESCAPE_CODES | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_EVENT_TYPES`).
+- **Reason:** `REPORT_ASSOCIATED_TEXT` is a commented-out symbol in crossterm-0.29
+  (`// const REPORT_ASSOCIATED_TEXT = 0b0001_0000`) and is not available as a usable constant.
+  `REPORT_ALTERNATE_KEYS` is intentionally omitted — no v1A BC depends on layout-alternate data.
+  Architect ruling per SS-embedded-pty.md §Crossterm setup S-040 delivery ruling (v1.11.0).
+- **Architecture Source row updated:** SS-embedded-pty.md v1.10.0 → v1.11.0. Temporary
+  `version-pin-historical` anchor removed; row is now a live pin.
+- **Description updated:** "four enhancement flags" → "three enhancement flags".
+- **Architecture Anchors updated:** "with 4 flags" → "with 3 flags (DISAMBIGUATE_ESCAPE_CODES |
+  REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_EVENT_TYPES)".
+- All other behavioral content (postconditions, invariants, edge cases, test vectors, traceability)
+  remains correct — the three-flag set fully satisfies all v1A behavioral contracts per
+  SS-embedded-pty.md §Crossterm setup S-040 delivery ruling.
+- SE-16d monotonicity: v1.0.6 timestamp 2026-06-20 >= v1.0.5 timestamp 2026-06-20. PASS (same-day sequential patch).
+
+## §Trace v1.0.5
 
 **Arch-source pin: SS-embedded-pty.md v1.7.0 → v1.10.0** (2026-06-20):
 - S-039 adversarial convergence bumped SS-embedded-pty to v1.10.0. This BC's Architecture Source
   row is updated to reflect the current version. No behavioral content changed.
-- SE-16d monotonicity: v1.0.4 timestamp >= v1.0.3. PASS.
+- SE-16d monotonicity: v1.0.5 timestamp 2026-06-20 >= v1.0.4 timestamp 2026-06-20. PASS (same-day sequential patch).
 
 ## §Trace v1.0.3
 

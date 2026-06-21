@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.44.0"
+version: "1.44.1"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-20T00:00:00Z
@@ -1223,6 +1223,25 @@ SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. 
 - BC-INDEX version: 1.40.4 → 1.40.5. No BC ID additions or retirements. No H1 title changes.
 
 SE-16d monotonicity: v1.40.5 timestamp 2026-06-14T20:00:00Z > v1.40.4 timestamp 2026-06-14T19:00:00Z. PASS.
+
+## §Trace v1.44.1
+
+**S-040 dependency-reality correction — BC-2.09.004 three-flag Kitty set; arch-source pin SS-embedded-pty v1.10.0→v1.11.0** (2026-06-20):
+
+BC version bump in this dispatch:
+- BC-2.09.004 v1.0.5 → v1.0.6: Precondition 1 flag enumeration corrected from four flags to three flags
+  (`DISAMBIGUATE_ESCAPE_CODES | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_EVENT_TYPES`).
+  `REPORT_ASSOCIATED_TEXT` removed — unavailable in crossterm-0.29 (commented-out symbol).
+  `REPORT_ALTERNATE_KEYS` confirmed intentionally omitted — no v1A BC depends on layout-alternate data.
+  Description updated ("four enhancement flags" → "three enhancement flags").
+  Architecture Anchors updated ("with 4 flags" → "with 3 flags (DISAMBIGUATE_ESCAPE_CODES | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_EVENT_TYPES)").
+  Architecture Source pin: SS-embedded-pty.md v1.10.0 → v1.11.0. Temporary `version-pin-historical` anchor removed.
+  Architect ruling per SS-embedded-pty.md §Crossterm setup S-040 delivery ruling.
+
+No BC H1 title changes. No BC ID additions or retirements. BC count unchanged: 138 active.
+BC-INDEX version: 1.44.0 → 1.44.1.
+
+SE-16d monotonicity: v1.44.1 timestamp 2026-06-20 = v1.44.0 timestamp 2026-06-20. PASS (same-day sequential patch).
 
 ## §Trace v1.44.0
 

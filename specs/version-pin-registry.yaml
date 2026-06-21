@@ -821,8 +821,8 @@ BC-2.09.003:
 
 BC-2.09.004:
   path: specs/behavioral-contracts/ss-09/BC-2.09.004.md
-  current_version: "1.0.5"
-  last_bump_commit: "[S-039 POL-11 cascade — arch-source pin SS-embedded-pty v1.7.0→v1.10.0]" # version-pin-historical
+  current_version: "1.0.6"
+  last_bump_commit: "[S-040 dependency-reality correction — three-flag Kitty set; arch-source pin SS-embedded-pty v1.10.0→v1.11.0]"
   last_bump_date: "2026-06-20"
 
 BC-2.09.005:
