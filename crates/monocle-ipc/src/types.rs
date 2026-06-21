@@ -689,6 +689,26 @@ pub enum ClientToServer {
         /// The UUID string of the session to detach from.
         session_id: String,
     },
+
+    // -----------------------------------------------------------------------
+    // S-040 variant (BC-2.09.002 — keyboard/paste forwarding to PTY stdin)
+    // -----------------------------------------------------------------------
+    /// Forward keyboard bytes or bracketed paste payload to the session's PTY stdin.
+    ///
+    /// Sent by the TUI when `AppMode::EmbeddedTerminal` is active:
+    /// - For key events: the encoded terminal byte sequence from `key_event_to_pty_bytes()`.
+    /// - For paste events: the bracketed paste payload `\x1b[200~<text>\x1b[201~`.
+    ///
+    /// The daemon proxies these bytes to the session-host as `DaemonToHost::KeyInput`,
+    /// which writes them to the session's PTY stdin.
+    ///
+    /// (BC-2.09.002, BC-2.09.005)
+    KeyInput {
+        /// The UUID string of the target session.
+        session_id: String,
+        /// Raw bytes to write to the PTY stdin.
+        bytes: Vec<u8>,
+    },
 }
 
 /// The kind of permission decision the user made.

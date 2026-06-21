@@ -35,6 +35,15 @@ pub mod tui;
 /// Bounds for `pending_pty_bytes` (byte cap + message cap) and the dump-window
 /// timeout. All values are pure arithmetic — no I/O.
 pub mod pty_constants;
+
+/// Core-owned mirror types and pure keyboard encoding functions for the embedded PTY (S-040).
+///
+/// Contains `PtyKeyCode`, `PtyKeyModifiers`, `PtyKeyEventKind`, `PtyKeyEvent`,
+/// `PtyMouseButton`, `PtyMouseEventKind`, `PtyMouseEvent`, `PtyRect` (mirror types) and
+/// pure functions `key_event_to_pty_bytes`, `is_kitty_enhanced_key`, `encode_kitty_key`,
+/// `fn_key_bytes`. NO crossterm/ratatui dependency — see SS-embedded-pty.md §Dependency
+/// Boundary (F-P2-I06 ruling).
+pub mod keyboard;
 pub use pty_constants::{DUMP_WINDOW_TIMEOUT, MAX_PENDING_PTY_BYTES, MAX_PENDING_PTY_MESSAGES};
 
 // Re-export at crate root per BC-2.02.002 postcondition 2 (S-010 canonical owner;

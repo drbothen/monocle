@@ -632,6 +632,10 @@ fn test_bc_2_06_004_inv1_ac010_no_client_disconnect_message() {
         ClientToServer::DetachSession { .. } => {
             panic!("unexpected DetachSession in PermissionDecision round-trip test");
         }
+        // S-040 stub: KeyInput is not expected in this PermissionDecision round-trip test.
+        ClientToServer::KeyInput { .. } => {
+            panic!("unexpected KeyInput in PermissionDecision round-trip test");
+        }
     }
 }
 

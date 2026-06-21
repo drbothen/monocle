@@ -16,6 +16,20 @@
 pub mod app;
 pub mod ui;
 
+/// Crossterm-to-PtyKey type conversions — the ONLY place in the workspace where
+/// crossterm and ratatui types touch the `monocle-core` purity boundary (S-040).
+///
+/// Contains `crossterm_key_to_pty()` for converting `crossterm::event::KeyEvent`
+/// to `monocle_core::keyboard::PtyKeyEvent`. S-041 extends this file with
+/// `crossterm_mouse_to_pty()` and `ratatui_rect_to_pty()`.
+pub mod keyboard_conv;
+
+/// Keyboard enhancement setup/teardown and `AppMode::EmbeddedTerminal` key/paste dispatch (S-040).
+///
+/// Contains `setup_keyboard_enhancement()`, `teardown_keyboard_enhancement()`,
+/// `dispatch_embedded_terminal_key()`, and `dispatch_embedded_terminal_paste()`.
+pub mod event_loop;
+
 // Re-exports for integration tests and downstream consumers.
 pub use app::apply_permission_prompt_queued;
 pub use app::format_drop_counter;
@@ -62,3 +76,14 @@ pub use app::setup_ipc_streams_with_rx;
 pub use app::pty_output_channel;
 #[doc(hidden)]
 pub use app::IPC_READER_CHANNEL_CAPACITY;
+
+// S-040: crossterm event routing seam — exposed for wiring integration tests.
+// handle_crossterm_event encapsulates the per-event dispatch (Key → embedded dispatch
+// or binding chain; Paste → bracketed paste) so tests can drive it without a real
+// terminal event loop.
+#[doc(hidden)]
+pub use app::handle_crossterm_event;
+// S-040: builtin binding layers constructor — exposed so integration tests can build
+// a real BindingLayers without re-implementing the full layer stack.
+#[doc(hidden)]
+pub use app::build_builtin_binding_layers;

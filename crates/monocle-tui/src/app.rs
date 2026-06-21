@@ -33,7 +33,7 @@ use monocle_ipc::types::{
 // effectful monocle-tui crate, NOT in pure monocle-core.
 // PermissionDecisionKind: re-exported from lib.rs for integration tests and for S-026
 // decision handler implementations. The re-export here ensures the type is visible at
-// the app module level when todo!() stubs are replaced with real code.
+// the app module level for all callers that import from `monocle_tui::app`.
 pub use monocle_ipc::types::PermissionDecisionKind;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::PathBuf;
@@ -429,6 +429,27 @@ pub struct App {
     /// timeout task — if `None` (e.g., unit tests that do not run the full event loop),
     /// no timeout is spawned and no abort handle is stored.
     pub app_event_tx: Option<tokio::sync::mpsc::Sender<AppEvent>>,
+
+    // -----------------------------------------------------------------------
+    // S-040: Kitty keyboard protocol detection (BC-2.09.004 Invariant 2)
+    // -----------------------------------------------------------------------
+    /// Whether the terminal negotiated Kitty keyboard protocol at startup.
+    ///
+    /// Determined by `event_loop::setup_keyboard_enhancement()` (which calls
+    /// `crossterm::terminal::supports_keyboard_enhancement()`), called from
+    /// `main::setup_terminal()`. The bool is returned to `main::main()`, passed as
+    /// the `kitty_active` argument to `app::run()`, and stored here via
+    /// `app.kitty_active = kitty_active` early in `run()`.
+    ///
+    /// `true` when the crossterm API confirms Kitty protocol is supported; `false`
+    /// otherwise (unsupported or API error — see EC-234).
+    ///
+    /// Used by `handle_crossterm_event` to thread `kitty_active` into
+    /// `key_event_to_pty_bytes(event, app.kitty_active)`. `PushKeyboardEnhancementFlags`
+    /// is only called when this is `true` (BC-2.09.004 Invariant 2).
+    ///
+    /// Initialized to `false` in `App::new()`; set to the detected value by `app::run()`.
+    pub kitty_active: bool,
 }
 
 impl App {
@@ -508,6 +529,12 @@ impl App {
             // Unit tests that do not run the full event loop leave this as None, which
             // prevents timeout tasks from being spawned (no-op guard in enter_embedded_terminal).
             app_event_tx: None,
+
+            // S-040: Kitty keyboard protocol support (BC-2.09.004 Invariant 2).
+            // Initialized false; overwritten by app::run() via `app.kitty_active = kitty_active`
+            // where kitty_active is the bool returned by event_loop::setup_keyboard_enhancement()
+            // (called from main::setup_terminal()) at TUI startup.
+            kitty_active: false,
         }
     }
 }
@@ -2263,6 +2290,10 @@ pub fn picker_select_prev(app: &mut App) {
 /// Called by `main()` after terminal setup. Connects to the monocle daemon
 /// UDS, loads config, and drives the render+event loop until exit.
 ///
+/// `kitty_active` is the result of `crossterm::terminal::supports_keyboard_enhancement()`
+/// called by `setup_keyboard_enhancement()` in `main.rs`. It is stored in `app.kitty_active`
+/// so that `handle_crossterm_event` can thread it into `key_event_to_pty_bytes`.
+///
 /// # Exit paths
 ///
 /// - `q` from `Dashboard` mode → clean exit (status 0); `Esc` is context-sensitive
@@ -2271,7 +2302,7 @@ pub fn picker_select_prev(app: &mut App) {
 ///   any key press (AC-002).
 /// - `TransportEvent::Disconnected` → transitions to reconnect mode (AC-003).
 ///   Does NOT exit.
-pub async fn run() -> Result<()> {
+pub async fn run(kitty_active: bool) -> Result<()> {
     use crossterm::event::{self, Event};
     use ratatui::{backend::CrosstermBackend, Terminal};
     use std::io;
@@ -2326,6 +2357,11 @@ pub async fn run() -> Result<()> {
     };
 
     let mut app = App::new(config);
+    // Set kitty_active from the supports_keyboard_enhancement() result (performed by
+    // setup_keyboard_enhancement before the event loop starts). This threads the detection
+    // result into key_event_to_pty_bytes via handle_crossterm_event without any I/O in the
+    // pure-core path.
+    app.kitty_active = kitty_active;
 
     // F-PASS4-MED-001: create the app event channel for internal task → event-loop delivery.
     // Bounded at 64 to match IPC_READER_CHANNEL_CAPACITY; dump-window timeout events are
@@ -2416,18 +2452,12 @@ pub async fn run() -> Result<()> {
         //    dispatch via resolve_binding). The 16ms ceiling is unchanged from the original
         //    implementation; the 1ms was only in the removed timeout wrapper.
         if event::poll(tick_rate)? {
-            if let Event::Key(ct_key) = event::read()? {
-                // Convert crossterm KeyEvent → monocle-core KeyEvent (pure-core type).
-                let core_key = crossterm_key_to_core(&ct_key);
-
-                // Dispatch through the full binding chain (F-S025-ADV4-MED-004:
-                // extracted to `dispatch_key_event` for testability — tests call
-                // the same function rather than duplicating the gate logic).
-                if dispatch_key_event(&mut app, &core_key, &binding_layers, &mut sessions_state)
-                    == KeyOutcome::Quit
-                {
-                    break;
-                }
+            let raw_event = event::read()?;
+            if handle_crossterm_event(&mut app, raw_event, &binding_layers, &mut sessions_state)
+                .await
+                .is_err()
+            {
+                break;
             }
         }
 
@@ -2710,6 +2740,124 @@ pub async fn run() -> Result<()> {
     // leak background tasks between test runs or on graceful shutdown.
     reader_handle.abort();
     writer_handle.abort();
+
+    Ok(())
+}
+
+/// Route a single crossterm `Event` through the correct dispatch path.
+///
+/// This function is the per-event handler factored out of `run()`'s event loop
+/// for testability (BC-2.09.002 / F-S040-BLOCKER-001). The event loop calls it
+/// for every event returned by `crossterm::event::read()`.
+///
+/// # Dispatch routing
+///
+/// When `app.mode` is `AppMode::EmbeddedTerminal { session_id, .. }`:
+/// - `Event::Key(key)` → `dispatch_embedded_terminal_key()`:
+///   - Bare Esc (no modifiers) → call `exit_embedded_terminal` and return `Ok(())`.
+///   - All other keys → forward to PTY via `ClientToServer::KeyInput`.
+/// - `Event::Paste(text)` → `dispatch_embedded_terminal_paste()` → bracketed paste to PTY.
+///
+/// When `app.mode` is NOT `AppMode::EmbeddedTerminal`:
+/// - `Event::Key(key)` → `dispatch_key_event()` (binding chain).
+///   Returns `Err(())` if `KeyOutcome::Quit`.
+/// - `Event::Paste(_)` → silently ignored (paste only meaningful in EmbeddedTerminal).
+/// - All other events → silently ignored.
+///
+/// # Returns
+///
+/// - `Ok(())` → continue the event loop.
+/// - `Err(())` → break the event loop (quit signal from key dispatch).
+#[allow(clippy::result_unit_err)]
+pub async fn handle_crossterm_event(
+    app: &mut App,
+    event: crossterm::event::Event,
+    binding_layers: &monocle_core::tui::binding::BindingLayers,
+    sessions_state: &mut crate::ui::sessions_panel::SessionsPanelState,
+) -> Result<(), ()> {
+    use crossterm::event::Event;
+
+    match &app.mode {
+        // ---------------------------------------------------------------------------
+        // EmbeddedTerminal mode: keyboard forwarding path (BC-2.09.002 / BC-2.09.005)
+        // ---------------------------------------------------------------------------
+        AppMode::EmbeddedTerminal { session_id, .. } => {
+            let session_id = session_id.clone();
+            match event {
+                Event::Key(ct_key) => {
+                    // Gate: IPC channel must be wired before dispatching.
+                    // If the channel is offline (daemon disconnected), log and ignore —
+                    // the reconnect loop will re-wire app.ipc_tx.
+                    let Some(ipc_tx) = app.ipc_tx.clone() else {
+                        tracing::warn!(
+                            "handle_crossterm_event: EmbeddedTerminal Key — IPC channel offline; \
+                             key dropped (session: {session_id})"
+                        );
+                        return Ok(());
+                    };
+
+                    // ADV-HIGH-002 (SSOT dispatch): ALL key dispatch logic lives in
+                    // dispatch_embedded_terminal_key — including Esc intercept, conversion,
+                    // key_event_to_pty_bytes call, and KeyInput send. There is NO inline
+                    // duplicate logic here (previous inline duplicate has been removed).
+                    //
+                    // BC-2.09.002 Invariant 2: Esc interception is inside the helper,
+                    // BEFORE key_event_to_pty_bytes (ordering is non-negotiable).
+                    // app.kitty_active is threaded into the helper so Kitty-enhanced modifier
+                    // combos route to CSI-u encoding when the terminal supports the protocol.
+                    let exited = crate::event_loop::dispatch_embedded_terminal_key(
+                        ct_key,
+                        &session_id,
+                        app.kitty_active,
+                        &ipc_tx,
+                    )
+                    .await;
+                    if exited {
+                        exit_embedded_terminal(app, &session_id);
+                    }
+                }
+                Event::Paste(text) => {
+                    // BC-2.09.005: bracketed paste — wrap in \x1b[200~...\x1b[201~ and send.
+                    let Some(ipc_tx) = app.ipc_tx.clone() else {
+                        tracing::warn!(
+                            "handle_crossterm_event: EmbeddedTerminal Paste — IPC channel offline; \
+                             paste dropped (session: {session_id})"
+                        );
+                        return Ok(());
+                    };
+                    crate::event_loop::dispatch_embedded_terminal_paste(
+                        &text,
+                        &session_id,
+                        &ipc_tx,
+                    )
+                    .await;
+                }
+                // Other events (resize, focus, mouse) — ignore in EmbeddedTerminal for now.
+                _ => {}
+            }
+        }
+
+        // ---------------------------------------------------------------------------
+        // Non-EmbeddedTerminal modes: existing binding chain dispatch
+        // ---------------------------------------------------------------------------
+        _ => {
+            if let Event::Key(ct_key) = event {
+                // Convert crossterm KeyEvent → monocle-core KeyEvent (pure-core type).
+                let core_key = crossterm_key_to_core(&ct_key);
+
+                // Dispatch through the full binding chain (F-S025-ADV4-MED-004:
+                // extracted to `dispatch_key_event` for testability — tests call
+                // the same function rather than duplicating the gate logic).
+                if dispatch_key_event(app, &core_key, binding_layers, sessions_state)
+                    == KeyOutcome::Quit
+                {
+                    return Err(());
+                }
+            }
+            // Event::Paste in non-EmbeddedTerminal modes: silently ignored.
+            // Other events (resize, focus, mouse): silently ignored.
+        }
+    }
 
     Ok(())
 }
