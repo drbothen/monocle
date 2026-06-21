@@ -3,10 +3,69 @@
 //! `AppMode` is the top-level state; `transition` drives the state machine.
 //! Per AC-013, `AppMode` is NOT `#[non_exhaustive]` — exhaustive matching is
 //! required in the binary crate so the compiler enforces complete mode coverage.
+//!
+//! S-039 adds two new variants:
+//! - `EmbeddedTerminal { session_id, prior }` — full-screen PTY view (BC-2.09.001).
+//! - `SessionCreation { step, prior, launching_session_id }` — new-session wizard.
 
 use std::path::PathBuf;
 use std::time::Instant;
 use uuid::Uuid;
+
+// ---------------------------------------------------------------------------
+// S-039: PTY scrollback helpers (BC-2.09.001 Invariant 4 / AC-008)
+// Pure-core: no I/O dependencies. Lives in monocle-core per Module Purity table
+// in SS-embedded-pty.md — clamp and default are both pure arithmetic.
+// ---------------------------------------------------------------------------
+
+/// Returns the configured scrollback row count for `vt100::Parser` initialization.
+///
+/// Semantics:
+/// - Key absent from config (or config falls back to default): returns 1000.
+/// - Key present with a valid `u32`: returns the value clamped to [1, 10000].
+///   - `0` → `1` (clamped to minimum; a 0-row scrollback would mean no history).
+///   - Values above `10000` → `10000` (memory cap: ~12.8 MB/session at 80 cols).
+///
+/// Note: `0` is NOT a trigger for the 1000 default. Only an absent key yields 1000.
+/// See BC-2.09.007 Invariant 1, EC-242, EC-243.
+pub fn default_scrollback_rows() -> u16 {
+    // Contractual default from BC-2.09.001 Invariant 4: 1000 rows.
+    1000
+}
+
+/// Clamp a raw `pty_scrollback_rows` config value to the valid range `[1, 10000]`.
+///
+/// Applied by the S-039 config-load path in `run()` after reading
+/// `config.pty_scrollback_rows`. Values above 10000 are clamped to 10000;
+/// values below 1 (including 0) are clamped to 1; values in `[1, 10000]`
+/// are preserved.
+///
+/// BC-2.09.001 Invariant 4 / AC-008 — owned by S-039.
+pub fn clamp_scrollback_rows(raw: u32) -> u16 {
+    // BC-2.09.001 Invariant 4: valid range [1, 10000].
+    // Cast through u32 arithmetic to avoid overflow before narrowing.
+    raw.clamp(1, 10000) as u16
+}
+
+/// Default PTY rows for initial `vt100::Parser` creation (BC-2.09.001, F-S039-001).
+///
+/// Used when creating parsers in `on_initial_state` and `on_session_list_update`
+/// where per-session PTY dimensions are not yet known. The parser is RESET with
+/// actual `pty_rows`/`pty_cols` when `ScrollbackDumpComplete` arrives.
+/// Canonical terminal default (VT100 standard).
+///
+/// Lives in monocle-core (pure-core; no I/O) per architect ruling F-S039-P2-004.
+pub const PTY_DEFAULT_ROWS: u16 = 24;
+
+/// Default PTY cols for initial `vt100::Parser` creation (BC-2.09.001, F-S039-001).
+///
+/// Used when creating parsers in `on_initial_state` and `on_session_list_update`
+/// where per-session PTY dimensions are not yet known. The parser is RESET with
+/// actual `pty_rows`/`pty_cols` when `ScrollbackDumpComplete` arrives.
+/// Canonical terminal default (VT100 standard / xterm default).
+///
+/// Lives in monocle-core (pure-core; no I/O) per architect ruling F-S039-P2-004.
+pub const PTY_DEFAULT_COLS: u16 = 80;
 
 /// Top-level application mode for the TUI state machine.
 ///
@@ -53,6 +112,41 @@ pub enum AppMode {
         /// The focus state to restore when fullscreen is exited.
         prior: FocusSnapshot,
     },
+
+    // -----------------------------------------------------------------------
+    // S-039: Embedded PTY terminal view (BC-2.09.001)
+    // -----------------------------------------------------------------------
+    /// Full-screen embedded PTY terminal for a running session (BC-2.09.001).
+    ///
+    /// Entered via `App::enter_embedded_terminal(session_id)`.
+    /// Exited via `App::exit_embedded_terminal(session_id)` which restores `prior` focus.
+    ///
+    /// `session_id` is the UUID string (NOT a typed `uuid::Uuid`) per S-039 §Architecture
+    /// Compliance Rules: "session_id is String (UUID as String), not typed uuid::Uuid".
+    EmbeddedTerminal {
+        /// UUID string of the session whose PTY is being displayed.
+        session_id: String,
+        /// Dashboard focus state to restore on exit.
+        prior: FocusSnapshot,
+    },
+
+    // -----------------------------------------------------------------------
+    // S-039 / S-033: New-session creation wizard
+    // -----------------------------------------------------------------------
+    /// Multi-step session creation wizard (AC-005 / BC-2.08.001).
+    ///
+    /// `step` tracks which sub-page of the wizard is active.
+    /// `launching_session_id` is populated after `SpawnAck` is received and carries
+    /// the daemon-assigned UUID so the wizard can transition from `Launching` →
+    /// `EmbeddedTerminal` without an additional lookup.
+    SessionCreation {
+        /// Current wizard sub-step.
+        step: SessionCreationStep,
+        /// Dashboard focus state to restore on cancel.
+        prior: FocusSnapshot,
+        /// Populated after `ServerToClient::SpawnAck` arrives; `None` before that.
+        launching_session_id: Option<String>,
+    },
 }
 
 /// Which panel currently holds keyboard focus in `AppMode::Dashboard`.
@@ -86,6 +180,27 @@ impl FocusSnapshot {
             FocusSnapshot::EventRibbon => PanelId::EventRibbon,
         }
     }
+}
+
+/// Sub-steps of the session-creation wizard (`AppMode::SessionCreation`).
+///
+/// The wizard progresses linearly: `ProfilePicker` → `ProjectPicker` →
+/// `WorktreeConfirm` → `Launching`. The TUI renders a different pane for each step.
+///
+/// `#[non_exhaustive]` — future wizard pages (e.g., environment overrides) can be
+/// added without forcing exhaustive-match breakage in all downstream match sites.
+#[non_exhaustive]
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum SessionCreationStep {
+    /// Step 1: user selects a harness profile for the new session.
+    ProfilePicker,
+    /// Step 2: user selects the project root directory.
+    ProjectPicker,
+    /// Step 3: user confirms or selects a git worktree within the project.
+    WorktreeConfirm,
+    /// Step 4: session spawn is in-flight; spinner displayed.
+    /// Exits to `EmbeddedTerminal` on `SpawnAck` + first `SessionStateChanged { Running }`.
+    Launching,
 }
 
 /// Identifier for a renderable panel in the TUI layout.

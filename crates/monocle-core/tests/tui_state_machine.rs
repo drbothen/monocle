@@ -150,11 +150,15 @@ fn test_BC_2_06_001_appmode_exhaustive_match_compiles_without_wildcard() {
     };
     // Exhaustive match — no `_` arm. This MUST compile.
     // If AppMode were #[non_exhaustive], the compiler would reject this.
+    // S-039: EmbeddedTerminal and SessionCreation added; this match is updated to
+    // remain exhaustive per the AC-013 / INV-1 invariant.
     let _variant_name = match mode {
         AppMode::Dashboard { .. } => "Dashboard",
         AppMode::Filtering { .. } => "Filtering",
         AppMode::Overlay { .. } => "Overlay",
         AppMode::Fullscreen { .. } => "Fullscreen",
+        AppMode::EmbeddedTerminal { .. } => "EmbeddedTerminal",
+        AppMode::SessionCreation { .. } => "SessionCreation",
     };
     // This assertion will fail once transition() is implemented but this particular
     // match compiles — so this test verifies the compile-time property, not runtime.

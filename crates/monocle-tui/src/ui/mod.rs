@@ -8,7 +8,9 @@
 //! - `profile_picker_widget`: Profile picker modal widget (S-031, BC-2.07.004/005).
 //! - `status_bar`: Always-visible status bar widget (S-027, BC-2.06.019/020/021).
 //! - `event_ribbon`: Event Ribbon rolling log panel (S-028, BC-2.06.018).
+//! - `embedded_terminal`: PTY widget rendering via vt100::Parser + tui-term (S-039, BC-2.09.001).
 
+pub mod embedded_terminal;
 pub mod event_ribbon;
 pub mod layout;
 pub mod overlay;

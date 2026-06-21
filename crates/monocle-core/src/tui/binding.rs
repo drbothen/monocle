@@ -52,6 +52,10 @@ pub enum AppModeTag {
     Overlay,
     /// `AppMode::Fullscreen` variant.
     Fullscreen,
+    /// `AppMode::EmbeddedTerminal` variant (S-039, BC-2.09.001).
+    EmbeddedTerminal,
+    /// `AppMode::SessionCreation` variant (S-039 / S-033).
+    SessionCreation,
 }
 
 impl AppModeTag {
@@ -62,6 +66,9 @@ impl AppModeTag {
             AppMode::Filtering { .. } => AppModeTag::Filtering,
             AppMode::Overlay { .. } => AppModeTag::Overlay,
             AppMode::Fullscreen { .. } => AppModeTag::Fullscreen,
+            // S-039: new modes
+            AppMode::EmbeddedTerminal { .. } => AppModeTag::EmbeddedTerminal,
+            AppMode::SessionCreation { .. } => AppModeTag::SessionCreation,
         }
     }
 }

@@ -63,8 +63,20 @@ unicode-width = "0.2"
 # chrono for uptime formatting (started_at → elapsed duration)
 chrono = { workspace = true }
 
+# S-039: PTY output pipeline (BC-2.09.001 / ADR-0011).
+# Exact pins per SS-deps-pin-manifest-v2-delta.md §vt100 / §tui-term.
+# vt100: virtual terminal emulator; drives embedded PTY parser.
+# tui-term: ratatui PseudoTerminal widget renders vt100::Screen into a ratatui Frame.
+# Both are EXACT-pinned (=X.Y.Z) per the v1A delta manifest — ADR-0011 selection.
+vt100 = "=0.16.2"
+tui-term = "=0.3.4"
+
 [dev-dependencies]
-tokio = { workspace = true }
+# test-util adds tokio::time::pause()/advance() for deterministic timing assertions
+# in PTY output pipeline tests (BC-2.09.001 Invariant 1 / AC-001 / AC-010).
+# test-util is NOT in the workspace "full" feature set — must be explicitly added
+# here (same pattern as monocle-runtime and monocle-session-host dev-deps).
+tokio = { workspace = true, features = ["test-util"] }
 tempfile = { workspace = true }
 serde_json = { workspace = true }
 # unicode-width is now a normal [dependencies] entry (promoted for production use in

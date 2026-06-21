@@ -552,6 +552,71 @@ pub enum ServerToClient {
         /// Human-readable error message (from `SessionError::to_string()`).
         message: String,
     },
+
+    // -----------------------------------------------------------------------
+    // S-039: PTY output pipeline (BC-2.09.001)
+    // -----------------------------------------------------------------------
+    /// Raw PTY output bytes from a session's harness child, forwarded by the daemon.
+    ///
+    /// Sent by the daemon's session proxy task for every `HostToDaemon::PtyBytes`
+    /// message received from the session-host. The TUI feeds these bytes to the
+    /// corresponding `vt100::Parser` instance via `App::on_pty_output`.
+    ///
+    /// # Delivery
+    ///
+    /// The daemon broker fans this out to ALL connected TUI clients (AC-004 /
+    /// BC-2.09.001 postcondition 5): all sessions' parsers are updated, enabling
+    /// O(1) focus switching with no re-fetch.
+    PtyOutput {
+        /// The UUID string identifying which session emitted these bytes.
+        session_id: String,
+        /// Raw PTY output bytes from the harness child's PTY stdout.
+        bytes: Vec<u8>,
+    },
+
+    // -----------------------------------------------------------------------
+    // S-047: Scrollback dump complete (BC-2.05.011)
+    // Variant defined/owned by S-047. S-039 CONSUMES this variant.
+    // Shape is the full 6-field form per SS-ipc §ScrollbackDumpComplete.
+    // -----------------------------------------------------------------------
+    /// Sentinel terminating the TUI-facing scrollback dump stream.
+    ///
+    /// Sent by the daemon after forwarding all `ScrollbackChunk` messages to the TUI.
+    /// The TUI resets its `vt100::Parser` and replays any buffered `pending_pty_bytes`
+    /// after receiving this message (BC-2.09.001 Invariant 5 / BC-2.05.011 PC-3).
+    ScrollbackDumpComplete {
+        /// Session this dump belongs to.
+        session_id: String,
+        /// Total number of `ScrollbackChunk` messages sent.
+        total_chunks: u32,
+        /// Cursor row at time of dump snapshot.
+        cursor_row: u16,
+        /// Cursor column at time of dump snapshot.
+        cursor_col: u16,
+        /// PTY rows at time of dump snapshot.
+        pty_rows: u16,
+        /// PTY columns at time of dump snapshot.
+        pty_cols: u16,
+    },
+
+    // -----------------------------------------------------------------------
+    // S-047: Scrollback chunk (BC-2.05.011)
+    // Companion to ScrollbackDumpComplete. Defined here as a stub for S-039
+    // consumers to compile against; implementation owned by S-047.
+    // -----------------------------------------------------------------------
+    /// One chunk of the TUI-facing scrollback dump stream.
+    ///
+    /// Sent by the daemon after receiving `HostToDaemon::ScrollbackChunk` from the
+    /// session-host and before `ScrollbackDumpComplete`. The TUI accumulates chunks
+    /// and reconstructs the screen on `ScrollbackDumpComplete` receipt.
+    ScrollbackChunk {
+        /// Session this chunk belongs to.
+        session_id: String,
+        /// Row-major serialized vt100 screen cells for this chunk.
+        rows: Vec<Vec<crate::SerializedCell>>,
+        /// 0-indexed chunk sequence number.
+        chunk_seq: u32,
+    },
 }
 
 /// Messages sent from TUI clients to the daemon.
