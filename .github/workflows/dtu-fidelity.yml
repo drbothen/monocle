@@ -59,6 +59,11 @@ jobs:
         #
         # On schedule / workflow_dispatch runs github.base_ref is empty; skip
         # change detection and always run the oracle.
+        #
+        # SEC-001: BASE_REF is injected via env: rather than inline template
+        # interpolation to avoid shell-injection of untrusted ref strings.
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           set -euo pipefail
 
@@ -70,8 +75,6 @@ jobs:
             "scripts/audit-table.md"
             ".github/workflows/dtu-fidelity.yml"
           )
-
-          BASE_REF="${{ github.base_ref }}"
 
           if [[ -z "$BASE_REF" ]]; then
             # Scheduled or manual run — always execute the oracle.
@@ -131,11 +134,11 @@ jobs:
 
       - name: Upload per-fixture scores
         # Preserve scores as a CI artifact for post-merge analysis.
-        # Uploads even when the previous step fails (always: true) so regression
+        # Uploads even when the previous step fails (always()) so regression
         # detail is available when the gate is red.
         # Guard: only meaningful when the oracle actually ran (dtu_changed=true);
         # skip on the short-circuit path to avoid a spurious "file not found" error.
-        if: steps.dtu_changes.outputs.dtu_changed == 'true'
+        if: always() && steps.dtu_changes.outputs.dtu_changed == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: dtu-fidelity-scores
