@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-040
 epic_id: EPIC-09
-version: "1.2"
+version: "1.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -20,10 +20,10 @@ behavioral_contracts: [BC-2.09.002, BC-2.09.004, BC-2.09.005]
 verification_properties: []
 estimated_days: 4
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.002.md, version: "1.1.6"}
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.004.md, version: "1.0.6"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.002.md, version: "1.1.7"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.004.md, version: "1.0.7"}
   - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.005.md, version: "1.0.5"}
-  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.11.0"}
+  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.12.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
@@ -84,19 +84,28 @@ detects the child exit and sends `StateChanged::Terminated`.
 
 ### AC-006 (traces to BC-2.09.004 postcondition 1–3 — Kitty-enhanced keys → CSI u sequences)
 
-For key events where `is_kitty_enhanced_key(event.code, mods)` returns `true` (on Kitty-capable
-terminals), `encode_kitty_key(event.code, mods, event.kind)` produces a CSI u sequence:
+`App::kitty_active: bool` is set at TUI startup after the `CSI ? u` terminal capability query.
+When `kitty_active = true`, `is_kitty_enhanced_key(&event.code, mods, kitty_active)` returns
+`true` for any modifier-carrying key combo not already matched by a specific arm.
+`encode_kitty_key(&event.code, mods, event.kind)` produces a CSI u sequence:
 `ESC [ <unicode_codepoint> ; <modifier_value> u`.
 - `<modifier_value>` = 1 + sum of active modifier bits: Shift=1, Alt=2, Ctrl=4.
 - Example: `Ctrl+Shift+Enter` → `\x1b[13;6u` (codepoint 13; modifier = 1 + 1(shift) + 4(ctrl) = 6).
 - Example: `Shift+Tab` (Kitty path) → `\x1b[9;2u` (codepoint 9; modifier = 1 + 1(shift) = 2).
 
+IMPORTANT: `key_event_to_pty_bytes` signature is `(event: PtyKeyEvent, kitty_active: bool) -> Option<Vec<u8>>`.
+The monocle-tui dispatch arm passes `app.kitty_active` when calling this function.
+Both `is_kitty_enhanced_key` and `key_event_to_pty_bytes` remain PURE functions (no I/O);
+`kitty_active` is a plain bool input parameter.
+
 ### AC-007 (traces to BC-2.09.004 invariant 2 — Kitty unsupported terminals use VT fallback)
 
-When the terminal does not support Kitty keyboard protocol (`PushKeyboardEnhancementFlags`
-silently no-ops), `is_kitty_enhanced_key()` returns `false` for all keys because Kitty-enhanced
-`KeyEvent` variants are never generated. Standard VT sequences from the BC-2.09.002 table are
-used instead. No panic. No silent key loss.
+When the `CSI ? u` query returns no response (timeout) or a non-Kitty response, `kitty_active`
+is set to `false`. `PushKeyboardEnhancementFlags` is NOT called. `is_kitty_enhanced_key()`
+returns `false` for all keys when `kitty_active = false`. Standard VT sequences from the
+BC-2.09.002 table are used. Modifier combos with no VT encoding arm emit a TRACE log and
+return `None` (observable but not forwarded — the best-effort boundary per BC-2.09.002 PC-1).
+No panic. No silent key loss (TRACE makes all drops observable).
 
 ### AC-008 (traces to BC-2.09.004 invariant 1 — Kitty flags enabled globally at TUI startup)
 
@@ -229,8 +238,8 @@ Within the 30% context window bound. No split required.
 
 | BC | Title | Version |
 |----|-------|---------|
-| BC-2.09.002 | Full-Fidelity Keyboard Forwarding — All v1A Input Classes Reach PTY stdin | (see inputs: frontmatter) |
-| BC-2.09.004 | Kitty Keyboard Protocol — Enhanced Key Events Forwarded as CSI u Sequences | (see inputs: frontmatter) |
+| BC-2.09.002 | Full-Fidelity Keyboard Forwarding — All v1A Input Classes Reach PTY stdin | v1.1.7 |
+| BC-2.09.004 | Kitty Keyboard Protocol — Enhanced Key Events Forwarded as CSI u Sequences | v1.0.7 |
 | BC-2.09.005 | Bracketed Paste — Paste Events Wrapped in Bracket Sequences Before Forwarding | (see inputs: frontmatter) |
 
 ## Architecture Mapping
@@ -270,6 +279,7 @@ Within the 30% context window bound. No split required.
 
 | Version | Change | Pass |
 |---------|--------|------|
-| v1.2 | AC-008 dependency-reality cascade: architect (SS-embedded-pty v1.11.0) and product-owner (BC-2.09.004 v1.0.6) ruled that `REPORT_ASSOCIATED_TEXT` is unavailable in crossterm-0.29. AC-008 flag enumeration corrected from four flags to three (`DISAMBIGUATE_ESCAPE_CODES | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_EVENT_TYPES`); `REPORT_ALTERNATE_KEYS` explicitly excluded (no v1A requirement). Tasks startup line updated to match. Input pins updated to current authoritative versions: BC-2.09.002 v1.1.6, BC-2.09.004 v1.0.6, BC-2.09.005 v1.0.5, SS-embedded-pty v1.11.0. No behavior change to other ACs. | dependency-reality cascade |
+| v1.3 | S-040 adversarial pass-2 architect ruling (SS-embedded-pty v1.12.0). Three compounding design gaps corrected: (1) F-S040-BLOCKER-001: `is_kitty_enhanced_key` was hardcoded `false`; Kitty arm was dead code. (2) F-S040-HIGH-003: crossterm-0.29 has no "enhanced" KeyCode variants; a pure `(code, mods)` function cannot detect Kitty-active. (3) F-S040-HIGH-001: unmatched modifier combos silently dropped on non-Kitty terminals. Correct design: `is_kitty_enhanced_key(code, mods, kitty_active: bool)` + `key_event_to_pty_bytes(event, kitty_active: bool)`; `App::kitty_active` set from `CSI ? u` query at startup; `_ if !mods.is_empty()` TRACE+None arm for HIGH-001. AC-006 and AC-007 updated to reflect correct design. Input pin updated: SS-embedded-pty v1.12.0. | architect ruling |
+| v1.2 | AC-008 dependency-reality cascade: architect (SS-embedded-pty §Crossterm setup) and product-owner (BC-2.09.004) ruled that `REPORT_ASSOCIATED_TEXT` is unavailable in crossterm-0.29. AC-008 flag enumeration corrected from four flags to three (`DISAMBIGUATE_ESCAPE_CODES | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_EVENT_TYPES`); `REPORT_ALTERNATE_KEYS` explicitly excluded (no v1A requirement). Tasks startup line updated to match. Input pins updated to authoritative versions at that time. <!-- version-pin-historical: authored against SS-embedded-pty v1.11.0 at S-040 v1.2 authoring time --> No behavior change to other ACs. | dependency-reality cascade |
 | v1.1 | F-P21-SUG-001: AC-001 citation-scope correction — "BC-2.09.002 PC-2 table" was imprecise as the literal VT sequence table lives in SS-embedded-pty.md §Translation function; AC-001 now co-cites both (BC-2.09.002 PC-2 for behavioral fidelity; SS-embedded-pty.md §Translation function for the exact sequence mapping). No AC behavior change. | post-convergence |
 | v1.0 | Initial decomposition. | Phase-2 |

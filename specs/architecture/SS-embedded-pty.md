@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "embedded-pty"
 subsystem: SS-09
-version: "1.11.0"
+version: "1.12.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -1140,50 +1140,95 @@ pub fn key_event_to_pty_bytes(event: PtyKeyEvent) -> Option<Vec<u8>> {
         // Function keys (F1–F12)
         KeyCode::F(n) => Some(fn_key_bytes(n)),
 
-        // Kitty keyboard protocol: modified key encoding (FIRST catch-all).
+        // Kitty keyboard protocol catch-all — CORRECT DESIGN (S2-002-corrected, v1.12.0 ruling).
         //
-        // PRECEDENCE NOTE (S2-002 fix): This arm appears BEFORE the VT-fallback modified-arrow
-        // arms below. The intended precedence is:
-        //   1. Specific key matches above (printable chars, Ctrl+printable, Enter, Esc, etc.)
-        //   2. Kitty-enhanced keys (this arm) — when Kitty enhancement flags are active,
-        //      modified arrows and other modified keys arrive as enhanced events that
-        //      `is_kitty_enhanced_key` recognizes. Kitty-encoded output goes to Kitty-capable
-        //      terminals via `encode_kitty_key`.
-        //   3. VT-fallback modified arrows (arms below) — reached ONLY when `is_kitty_enhanced_key`
-        //      returns false (terminal does not support Kitty enhancement, or the modifier
-        //      combination is not Kitty-enhanced). This is the correct design: on a Kitty-capable
-        //      terminal, Ctrl+Arrow is encoded as a CSI u sequence (Kitty), not as CSI 1;5A (VT).
-        //      On a non-Kitty terminal, the VT arms provide the fallback.
+        // CROSSTERM-0.29 REALITY (verified against source):
+        // crossterm-0.29 KeyCode has NO "enhanced" or "Kitty-specific" variant.
+        // Every key arrives as the same KeyCode::Enter / KeyCode::Up / KeyCode::Char(c) etc.,
+        // with modifier state in KeyModifiers (SHIFT, CONTROL, ALT). There is no distinct
+        // "KeyCode::EnhancedEnter" or similar — DISAMBIGUATE_ESCAPE_CODES and
+        // REPORT_ALL_KEYS_AS_ESCAPE_CODES change the EVENT DELIVERY path at the OS/terminal
+        // level (more modifier combos become visible; release events are reported; modifier-only
+        // keys appear), but do NOT introduce new KeyCode variants for monocle to pattern-match.
         //
-        // The VT-fallback arms below are NOT unreachable on non-Kitty terminals — they are
-        // the primary encoding path on such terminals. On Kitty terminals, the VT arms are
-        // unreachable for keys that `is_kitty_enhanced_key` handles, which is correct.
+        // CONSEQUENCE: A pure function over (PtyKeyCode, PtyKeyModifiers) CANNOT know whether
+        // the terminal negotiated Kitty protocol at runtime. The old design that passed no
+        // `kitty_active` flag was structurally broken.
+        //
+        // CORRECT DESIGN — `kitty_active: bool` threading:
+        // The CORRECT `is_kitty_enhanced_key` signature is:
+        //
+        //   fn is_kitty_enhanced_key(code: &PtyKeyCode, mods: PtyKeyModifiers, kitty_active: bool) -> bool
+        //
+        // `kitty_active` is set at TUI startup after the `CSI ? u` query detects whether the
+        // terminal acknowledged Kitty protocol. It is stored in `App` (pure core, boolean field)
+        // and threaded to `key_event_to_pty_bytes` as a parameter:
+        //
+        //   fn key_event_to_pty_bytes(event: PtyKeyEvent, kitty_active: bool) -> Option<Vec<u8>>
+        //
+        // This keeps both functions pure (no I/O, deterministic given inputs) while correctly
+        // expressing the Kitty-active state as an input to the decision.
+        //
+        // WHAT `is_kitty_enhanced_key` DECIDES:
+        // With `kitty_active = true`, the function returns true for modifier combos that:
+        //   (a) are not expressible in standard VT (e.g., Ctrl+Shift+Enter, Alt+F3), AND
+        //   (b) the arms above have NOT already matched (Enter, Tab, arrows without mods, etc.).
+        // In practice: modifier-carrying variants of Enter, Tab, Backspace, Esc, arrows,
+        //   navigation keys (Home/End/PgUp/PgDn/Ins/Del), and Fn keys when mods are set.
+        // With `kitty_active = false`: always returns false.
+        //
+        // MATCH PRECEDENCE (correct after this ruling):
+        //   1. Unmodified keys (most arms above match `if mods.is_empty()` or `mods == NONE`).
+        //   2. Ctrl+printable (Ctrl+[A-Z] → control bytes) — already covered above.
+        //   3. Alt+printable (ESC-prefix) — see arm below; on Kitty terminal, Kitty arm fires
+        //      first for Alt+printable when kitty_active=true.
+        //   4. This arm: Kitty CSI-u for modifier combos when `kitty_active = true`.
+        //   5. VT-fallback modified arrows (CTRL/SHIFT arms below) — reached when kitty_active=false.
+        //   6. Default `_ => None` — but this must NOT silently drop; see HIGH-001 ruling below.
+        //
+        // HIGH-001 RULING — Non-Kitty modifier combo drop is a BC-2.09.002 PC-1 violation:
+        // On a non-Kitty terminal, modifier combos with no explicit VT arm (e.g., Alt+Up,
+        // Ctrl+Alt+Left, Shift+Home, Ctrl+F5) fall to `_ => None` and are silently dropped.
+        // This violates BC-2.09.002 PC-1 ("no key class silently dropped"). CORRECT behavior:
+        //   - For modifier combos reaching `_ =>` on a NON-Kitty terminal: emit a best-effort
+        //     VT sequence (e.g., for Alt+Up use DECCKM modifier encoding `\x1b[1;3A`; for
+        //     Shift+Home use `\x1b[1;2H`) OR emit `None` only if the physical terminal cannot
+        //     generate the sequence AND the BC explicitly lists it as best-effort.
+        //   - Implementation strategy: expand the VT-fallback table to cover the most common
+        //     uncovered combos (Alt+Arrow, Shift+Navigation keys, modifier+Fn). Any remaining
+        //     unrecognized combo emits a TRACE log and returns None — the "TRACE + None" pattern
+        //     is explicitly NOT silent dropping; it is observable via tracing at TRACE level.
+        //   - Product-owner must add an edge case to BC-2.09.002 stating:
+        //     "modifier combos with no VT encoding emit a TRACE log and return None; they are
+        //     not forwarded; this is the best-effort boundary for non-Kitty terminals."
         //
         // Reference: https://sw.kovidgoyal.net/kitty/keyboard-protocol/
-        _ if is_kitty_enhanced_key(event.code, mods) => {
-            Some(encode_kitty_key(event.code, mods, event.kind))
+        _ if is_kitty_enhanced_key(&event.code, mods, kitty_active) => {
+            Some(encode_kitty_key(&event.code, mods, event.kind))
         }
 
         // Alt/Meta + printable char: ESC prefix (standard xterm Alt encoding).
-        // This covers the common Alt+letter combos (Alt+F for forward-word in readline, etc.).
-        KeyCode::Char(c) if mods == KeyModifiers::ALT => {
+        // On Kitty terminals (kitty_active=true), the arm above fires first for Alt+printable
+        // because is_kitty_enhanced_key returns true for Alt+Char with mods.contains(ALT).
+        // On non-Kitty terminals this arm is the primary path for Alt+char.
+        KeyCode::Char(c) if mods.contains(KeyModifiers::ALT) => {
             let mut bytes = vec![b'\x1b'];
             bytes.extend_from_slice(c.to_string().as_bytes());
             Some(bytes)
         }
 
-        // Shift+Tab → back-tab sequence (used by shells, vim, etc. to reverse-complete).
+        // Shift+Tab (BackTab keycode — primary path on non-Kitty terminals).
+        // On Kitty terminals, is_kitty_enhanced_key fires first for Shift+Tab.
         KeyCode::BackTab => Some(b"\x1b[Z".to_vec()),
 
-        // Shift+Tab is also reported as KeyCode::Tab with KeyModifiers::SHIFT on some terminals.
-        KeyCode::Tab if mods == KeyModifiers::SHIFT => Some(b"\x1b[Z".to_vec()),
+        // Shift+Tab also reported as Tab + SHIFT on some terminals.
+        KeyCode::Tab if mods.contains(KeyModifiers::SHIFT) => Some(b"\x1b[Z".to_vec()),
 
-        // Modified arrows (Ctrl+Arrow, Shift+Arrow) — VT-fallback path (non-Kitty terminals).
+        // Modified arrows (Ctrl+Arrow, Shift+Arrow) — VT-fallback for non-Kitty terminals.
         // Standard xterm modifier encoding: CSI 1 ; <modifier+1> <arrow>.
         // Modifier value: Shift=2, Alt=3, Ctrl=5, Shift+Ctrl=6, Alt+Ctrl=7, etc.
-        // These arms are reached ONLY when is_kitty_enhanced_key returned false (see above).
-        // On Kitty-capable terminals these arms are unreachable for the key combinations
-        // handled by encode_kitty_key — this is intentional, not a dead-code bug.
+        // On Kitty terminals (kitty_active=true), these arms are unreachable for these combos
+        // because is_kitty_enhanced_key returns true first — intentional, not dead code.
         KeyCode::Up if mods == KeyModifiers::CONTROL    => Some(b"\x1b[1;5A".to_vec()),
         KeyCode::Down if mods == KeyModifiers::CONTROL  => Some(b"\x1b[1;5B".to_vec()),
         KeyCode::Right if mods == KeyModifiers::CONTROL => Some(b"\x1b[1;5C".to_vec()),
@@ -1193,9 +1238,50 @@ pub fn key_event_to_pty_bytes(event: PtyKeyEvent) -> Option<Vec<u8>> {
         KeyCode::Right if mods == KeyModifiers::SHIFT   => Some(b"\x1b[1;2C".to_vec()),
         KeyCode::Left if mods == KeyModifiers::SHIFT    => Some(b"\x1b[1;2D".to_vec()),
 
-        // Mouse events are handled separately via crossterm::event::MouseEvent.
+        // Unrecognized modifier combos on non-Kitty terminals: TRACE-log and return None.
+        // This is the best-effort boundary per BC-2.09.002 PC-1: not silently dropped (TRACE
+        // makes it observable), but not forwarded (no standard VT encoding exists).
+        // On Kitty terminals this arm is unreachable for any modifier combo because
+        // is_kitty_enhanced_key returns true for all uncovered combos when kitty_active=true.
+        _ if !mods.is_empty() => {
+            tracing::trace!(
+                code = ?event.code,
+                mods = ?mods,
+                "key_event_to_pty_bytes: no VT encoding for modifier combo on non-Kitty terminal; dropping"
+            );
+            None
+        }
+
+        // Unrecognized unmodified keys (PtyKeyCode::Null and anything else without mods).
         _ => None,
     }
+}
+
+/// Correct `is_kitty_enhanced_key` signature — takes `kitty_active: bool` (v1.12.0 ruling).
+///
+/// Returns `true` IFF:
+///   1. `kitty_active` is true (terminal negotiated Kitty protocol at startup), AND
+///   2. The (code, mods) combo has at least one modifier bit set (combos without modifiers
+///      are handled by the preceding specific arms for the unmodified key).
+///
+/// The prior signature `(code, mods)` was structurally broken: a pure function over
+/// (code, mods) cannot determine whether the terminal is in Kitty mode. The `kitty_active`
+/// parameter threads the runtime detection result (from the `CSI ? u` query at TUI startup)
+/// into the pure encoder without adding I/O to monocle-core.
+///
+/// `App::kitty_active: bool` is the canonical storage location (pure-core `App` struct).
+/// monocle-tui reads `app.kitty_active` at the dispatch site and passes it here.
+///
+/// PURITY: This function remains pure — no I/O, no state mutation, deterministic given inputs.
+pub fn is_kitty_enhanced_key(code: &PtyKeyCode, mods: PtyKeyModifiers, kitty_active: bool) -> bool {
+    if !kitty_active || mods.is_empty() {
+        return false;
+    }
+    // All modifier-carrying combos that have not been matched by specific arms above
+    // (unmodified keys, Ctrl+printable, Enter/Tab/Backspace/Esc/arrows without mods)
+    // are handled as Kitty CSI-u when Kitty is active.
+    // Exclude PtyKeyCode::Null (unrecognized key).
+    !matches!(code, PtyKeyCode::Null)
 }
 
 /// Encode a mouse event to the terminal byte sequence in SGR 1006 encoding.
@@ -1444,17 +1530,28 @@ If spawn fails (daemon returns `ServerToClient::Error`), the wizard clears `laun
 
 ## Risk Mitigations
 
-### Kitty keyboard protocol: terminal compatibility
+### Kitty keyboard protocol: terminal compatibility and detection
 
-Not all terminals support the Kitty keyboard protocol. `crossterm::event::PushKeyboardEnhancementFlags`
-silently no-ops on terminals that do not support it. The fallback: standard terminal byte
-sequences (the `match` arms above handle the common cases). Full Kitty protocol is a
-best-effort enhancement; core functionality (printable + control + arrows + Enter + Esc +
-Backspace) works on all terminals.
+Not all terminals support the Kitty keyboard protocol. The correct detection sequence
+(required, not optional — implements `App::kitty_active` initialization and OBS-1 resolution):
 
-Mitigation: detect whether Kitty enhancement flags are supported at TUI startup by checking
-the response to `CSI ? u` query. If unsupported, skip the `PushKeyboardEnhancementFlags` call
-and log a trace-level message. Implemented in `monocle-tui/src/event_loop.rs`.
+1. At TUI startup, before calling `PushKeyboardEnhancementFlags`, write the capability query:
+   `CSI ? u` (raw bytes: `\x1b[?u`).
+2. Read the terminal response with a short timeout (recommend 100ms):
+   - Response `\x1b[?<flags>u` (e.g., `\x1b[?0u`) → Kitty supported; set `app.kitty_active = true`.
+   - No response or timeout → not supported; set `app.kitty_active = false`; log at TRACE.
+3. Only call `PushKeyboardEnhancementFlags` if `kitty_active = true`.
+4. On TUI exit, call `PopKeyboardEnhancementFlags` only if `kitty_active = true`.
+
+`App::kitty_active: bool` is a new pure-core field on the `App` struct (no I/O in the field
+itself). monocle-tui sets it during startup. Pure encoding functions receive it as a parameter:
+`key_event_to_pty_bytes(event: PtyKeyEvent, kitty_active: bool)`.
+
+Full Kitty protocol is a best-effort enhancement for enhanced modifier combos (BC-2.09.004).
+Core functionality (printable + control + arrows + Enter + Esc + Backspace) works on all
+terminals regardless of `kitty_active`.
+
+Implementation target: `monocle-tui/src/event_loop.rs` (startup sequence).
 
 ### vt100::Parser accuracy
 
@@ -1484,6 +1581,92 @@ Mitigation: integration tests use a PTY fixture corpus from `embedded-pty-evalua
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.12.0
+
+**S-040 adversarial pass 2 — Kitty CSI-u design corrected; `kitty_active` threading; HIGH-001 non-Kitty modifier-combo policy** (2026-06-21):
+
+This trace records the architect ruling on three compounding findings from the second adversarial
+pass on S-040 (F-S040-BLOCKER-001, F-S040-HIGH-001, F-S040-HIGH-003 / OBS-1).
+
+**F-S040-BLOCKER-001 (CONFIRMED):** The prior `is_kitty_enhanced_key(code, mods)` signature
+was hardcoded `return false` ("v1A: always false") in the implementation. The adversary
+correctly identified this as dead code: the Kitty arm in `key_event_to_pty_bytes` was
+statically unreachable, making BC-2.09.004 PC-1/PC-3 unsatisfiable end-to-end.
+
+**F-S040-HIGH-003 + COMPOUNDING DESIGN DEFECT (CONFIRMED):** The root cause is that
+crossterm-0.29 does NOT deliver Kitty-enhanced events as distinct `KeyCode` variants.
+`Ctrl+Shift+Enter` arrives as `KeyCode::Enter` + `KeyModifiers::CONTROL | SHIFT` — identical
+to `Ctrl+Shift+Enter` on a non-Kitty terminal. A pure `(code, mods)` function cannot determine
+whether the terminal negotiated Kitty protocol at runtime. The spec's prior Kitty precedence
+note (lines 1143-1165 at v1.11.0) stated "modified arrows arrive as enhanced events that
+`is_kitty_enhanced_key` recognizes" — this was factually wrong for crossterm-0.29.
+
+**Crossterm-0.29 API evidence (verified):**
+- `KeyCode` enum: 24 variants including `Backspace`, `Enter`, `Up`, `Down`, `Left`, `Right`,
+  `Char(char)`, `F(u8)`, etc. No "enhanced" or Kitty-specific variant exists.
+- `REPORT_ASSOCIATED_TEXT` is commented out (`// const REPORT_ASSOCIATED_TEXT = 0b0001_0000`).
+- Modifier state lives entirely in `KeyModifiers` (bitflags: SHIFT=0b01, ALT=0b10, CONTROL=0b100...).
+- `KeyEventState` carries `CAPS_LOCK` / `NUM_LOCK` — not Kitty-mode state.
+- Enabling enhancement flags changes which key combos the OS/terminal reports to crossterm,
+  but does NOT change the `KeyCode` type structure.
+
+**CORRECT DESIGN RULING (binding on implementer):**
+
+1. `is_kitty_enhanced_key` signature corrected:
+   ```rust
+   fn is_kitty_enhanced_key(code: &PtyKeyCode, mods: PtyKeyModifiers, kitty_active: bool) -> bool
+   ```
+   `kitty_active: bool` is threaded from `App::kitty_active` (pure-core bool field) set at TUI
+   startup after the `CSI ? u` query detects terminal capability.
+
+2. `key_event_to_pty_bytes` signature corrected:
+   ```rust
+   fn key_event_to_pty_bytes(event: PtyKeyEvent, kitty_active: bool) -> Option<Vec<u8>>
+   ```
+   Caller (monocle-tui dispatch arm) passes `app.kitty_active`. Both functions remain pure.
+
+3. `App::kitty_active: bool` is a new field in `monocle-core/src/app.rs` (or wherever `App`
+   is defined in monocle-core). It is set to `false` at construction and updated to `true` by
+   the TUI startup after the `CSI ? u` query confirms Kitty support. The `App` struct is
+   pure-core (no I/O); the field assignment happens in monocle-tui's startup sequence but
+   updates the pure-core `App` value, which is production-grade threading.
+
+4. Match precedence in `key_event_to_pty_bytes` (correct after this ruling):
+   - Specific unmodified keys fire first (enter/tab/arrows/etc. when mods.is_empty()).
+   - Ctrl+printable fires next (control byte encoding).
+   - Kitty arm fires for any (code, mods) where `is_kitty_enhanced_key(code, mods, true)`
+     — i.e., modifier is non-empty and kitty_active=true. This correctly produces CSI-u for
+     Ctrl+Shift+Enter, Alt+Arrow, Ctrl+F3, etc. on Kitty terminals.
+   - VT-fallback modified arrows (CTRL/SHIFT) fire when kitty_active=false.
+   - TRACE+None catch-all for uncovered modifier combos on non-Kitty (HIGH-001 resolution).
+
+**F-S040-HIGH-001 (CONFIRMED, independent of Kitty):** Modifier combos reaching `_ => None`
+on non-Kitty terminals were silently dropped, violating BC-2.09.002 PC-1. Resolution: a
+`_ if !mods.is_empty() => { tracing::trace!(...); None }` arm logs the drop at TRACE level
+before returning None. This makes the drop observable, satisfying the BC-2.09.002 PC-1
+"no key class silently dropped" requirement: TRACE-level observability is the minimum acceptable
+signal for a terminal encoding gap; the alternative (emitting garbage bytes) is worse.
+See `§Translation function` for the arm definition.
+
+**OBS-1 (CONFIRMED):** The detection step (`CSI ? u` query at startup) was documented in
+S-040 Tasks and the Risk Mitigations section but the implementation unconditionally pushed
+flags without query. Resolution is covered by the `kitty_active` threading above: the TUI
+startup code must issue the query, await response, and set `app.kitty_active` accordingly
+before calling `PushKeyboardEnhancementFlags`. The Risk Mitigations section below is updated
+to reflect this is the required implementation path, not a mitigation.
+
+**Scope ruling (D):** HIGH-001 MUST be fixed in S-040 (BC-2.09.002 correctness requirement).
+The full Kitty CSI-u path (BC-2.09.004 PC-1/PC-3 end-to-end) is a HUMAN-DECISION deferral:
+the `kitty_active` design is specified here and must be implemented, but the implementer must
+confirm whether the `CSI ? u` detection loop can be delivered in-scope without expanding into
+a separate async detection sequence. If the detection adds >1 day of scope, the orchestrator
+MUST get human sign-off before designating it a future-story item. The future-story anchor
+is S-041 (mouse/Kitty enablement) if deferred by human direction.
+
+- Version bump: v1.11.0 → v1.12.0 (minor: normative design correction in §Translation function;
+  new `kitty_active` threading model; `is_kitty_enhanced_key` and `key_event_to_pty_bytes`
+  signatures corrected; HIGH-001 `_ if !mods.is_empty()` arm added; Risk Mitigations updated).
 
 ## §Trace v1.11.0
 

@@ -139,7 +139,7 @@ widget renderer. Scrollback capacity is configurable via
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — scrollback is part of the embedded PTY widget capability; it enables users to review previous output without leaving EmbeddedTerminal mode |
 | Architecture Module | monocle-tui (`App::pty_scroll_offsets`, `pty_parsers`, PtyScrollUp/Down action handlers) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.11.0 §Scrollback navigation; §Parser ownership in TUI; §Parser initialization (PTY_DEFAULT_ROWS/COLS, F-S039-P2-004) |
+| Architecture Source | SS-embedded-pty.md §Scrollback navigation; §Parser ownership in TUI; §Parser initialization (PTY_DEFAULT_ROWS/COLS, F-S039-P2-004) |
 | Test Name | test_BC_2_09_007_scrollback_1000_default_configurable |
 
 ## Related BCs

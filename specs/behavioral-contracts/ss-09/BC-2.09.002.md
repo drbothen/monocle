@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.6"
+version: "1.1.7"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -153,7 +153,7 @@ mouse events in SGR encoding, and bracketed paste. No keyboard class is deferred
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — full-fidelity keyboard forwarding is explicitly named in CAP-009, and this BC defines the complete key translation table and forwarding contract |
 | Architecture Module | monocle-core (`key_event_to_pty_bytes()` pure function); monocle-tui (Action dispatch, IPC KeyInput send) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.11.0 §Full-Fidelity Keyboard Encoding; §Translation function; §Esc key handling contract; §Bracketed paste; §Mouse support |
+| Architecture Source | SS-embedded-pty.md v1.12.0 §Full-Fidelity Keyboard Encoding; §Translation function (kitty_active threading; HIGH-001 TRACE+None policy); §Esc key handling contract; §Bracketed paste; §Mouse support |
 | Test Name | test_BC_2_09_002_keyboard_forwarding_all_classes |
 
 ## Related BCs
@@ -174,6 +174,14 @@ S-040 — Implement key_event_to_pty_bytes() and KeyInput IPC send in monocle-tu
 ## VP Anchors
 
 VP-TBD — Keyboard translation unit tests (filled after VP creation)
+
+## §Trace v1.1.7
+
+**Arch-source pin: SS-embedded-pty.md v1.11.0 → v1.12.0** (2026-06-21):
+- S-040 adversarial pass-2 architect ruling corrected §Translation function: `kitty_active: bool`
+  threading added; HIGH-001 `_ if !mods.is_empty()` TRACE+None arm documented. Architecture
+  Source row updated. No behavioral content changed in this BC.
+- SE-16d monotonicity: v1.1.7 timestamp >= v1.1.6 timestamp. PASS (same-day sequential patch).
 
 ## §Trace v1.1.6
 

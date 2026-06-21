@@ -130,9 +130,9 @@ SS-session-manager:
 
 SS-embedded-pty:
   path: specs/architecture/SS-embedded-pty.md
-  current_version: "1.11.0"
-  last_bump_commit: "[S-040 delivery — crossterm-0.29 Kitty flag set corrected; REPORT_ASSOCIATED_TEXT unavailable; three-flag set DISAMBIGUATE|REPORT_ALL_KEYS|REPORT_EVENT_TYPES; REPORT_ALTERNATE_KEYS omitted by design]" # version-pin-historical
-  last_bump_date: "2026-06-20"
+  current_version: "1.12.0"
+  last_bump_commit: "[S-040 pass-2 adversarial ruling — Kitty design corrected: kitty_active threading, is_kitty_enhanced_key/key_event_to_pty_bytes signatures, HIGH-001 TRACE+None policy]"
+  last_bump_date: "2026-06-21"
 
 SS-engine-module-v2-delta:
   path: specs/architecture/SS-engine-module-v2-delta.md
@@ -228,8 +228,8 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.31"
-  last_bump_commit: "[S-040 POL-11 cascade — S-040 input pin v1.1→v1.2]"
+  current_version: "1.32"
+  last_bump_commit: "[S-040 pass-2 ruling cascade — S-040 input pin v1.2→v1.3]"
   last_bump_date: "2026-06-21"
 
 sprint-state:
@@ -809,9 +809,9 @@ BC-2.09.001:
 
 BC-2.09.002:
   path: specs/behavioral-contracts/ss-09/BC-2.09.002.md
-  current_version: "1.1.6"
-  last_bump_commit: "[S-040 POL-11 cascade — arch-source pin SS-embedded-pty v1.10.0→v1.11.0]" # version-pin-historical
-  last_bump_date: "2026-06-20"
+  current_version: "1.1.7"
+  last_bump_commit: "[S-040 pass-2 ruling — arch-source pin SS-embedded-pty §Translation; kitty_active threading noted]"
+  last_bump_date: "2026-06-21"
 
 BC-2.09.003:
   path: specs/behavioral-contracts/ss-09/BC-2.09.003.md
@@ -821,9 +821,9 @@ BC-2.09.003:
 
 BC-2.09.004:
   path: specs/behavioral-contracts/ss-09/BC-2.09.004.md
-  current_version: "1.0.6"
-  last_bump_commit: "[S-040 dependency-reality correction — three-flag Kitty set; arch-source pin SS-embedded-pty §Crossterm setup S-040 delivery ruling]"
-  last_bump_date: "2026-06-20"
+  current_version: "1.0.7"
+  last_bump_commit: "[S-040 pass-2 ruling — arch-source pin SS-embedded-pty §Translation; kitty_active threading; corrected is_kitty_enhanced_key signature]"
+  last_bump_date: "2026-06-21"
 
 BC-2.09.005:
   path: specs/behavioral-contracts/ss-09/BC-2.09.005.md
@@ -973,8 +973,8 @@ S-038-session-manager-hook-injection:
 
 S-040-keyboard-forwarding:
   path: stories/S-040-keyboard-forwarding.md
-  current_version: "1.2"
-  last_bump_commit: "[S-040 AC-008 dependency-reality cascade — three-flag Kitty set; input pins synced to BC-2.09.004 v1.0.6, SS-embedded-pty v1.11.0]"
+  current_version: "1.3"
+  last_bump_commit: "[S-040 pass-2 adversarial ruling — kitty_active threading, corrected signatures, HIGH-001 TRACE+None, SS-embedded-pty v1.12.0]"
   last_bump_date: "2026-06-21"
 
 S-046-pty-output-fan-out:
