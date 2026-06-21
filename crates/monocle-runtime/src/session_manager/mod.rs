@@ -4467,6 +4467,15 @@ impl SessionManager {
             ResizePath::Running { writer } => {
                 let resize_msg = serde_json::to_vec(&DaemonToHost::Resize { rows, cols })
                     .map_err(|e| SessionError::Io(std::io::Error::other(e)))?;
+                // MED-002 / MAX_FRAME_LEN exemption: DaemonToHost::Resize carries only two
+                // u16 fields (rows, cols). The maximum JSON encoding — e.g.,
+                // `{"Resize":{"rows":65535,"cols":65535}}` — is ~40 bytes, orders of magnitude
+                // below MAX_FRAME_LEN (256 KiB). A pre-send guard would be unreachable dead
+                // code. Contrast with DaemonToHost::KeyInput { bytes: Vec<u8> } (sibling
+                // send_key_input), which carries variable-length terminal byte sequences that
+                // can exceed 256 KiB in pathological paste operations. Only variable-payload
+                // messages require the guard; fixed-schema messages with bounded field types
+                // are exempt. This exemption is intentional and documented here.
                 let len = (resize_msg.len() as u32).to_le_bytes();
                 let mut w = writer.lock().await;
                 let r1 = w.write_all(&len).await;

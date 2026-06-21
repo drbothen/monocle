@@ -228,9 +228,7 @@ async fn read_daemon_to_host(stream: &mut tokio::net::UnixStream) -> DaemonToHos
 }
 
 /// Drain all pending ServerToClient messages from an mpsc receiver without blocking.
-fn drain_server_msgs(
-    rx: &mut tokio::sync::mpsc::Receiver<ServerToClient>,
-) -> Vec<ServerToClient> {
+fn drain_server_msgs(rx: &mut tokio::sync::mpsc::Receiver<ServerToClient>) -> Vec<ServerToClient> {
     let mut out = Vec::new();
     while let Ok(msg) = rx.try_recv() {
         out.push(msg);

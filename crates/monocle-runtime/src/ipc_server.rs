@@ -631,33 +631,67 @@ async fn handle_detach_session(
 /// Mirrors the `handle_key_input` dispatch pattern (S-040). Called after the TUI's 50ms
 /// debounce window expires (BC-2.09.006 postcondition 2).
 ///
-/// # Error behaviour (BC-2.09.006 edge case EC-238)
+/// # Zero-dimension clamp (BC-2.09.006 AC-014 / EC-239 / BC-2.05.010 Inv-5)
 ///
-/// - `SessionNotFound` / `SessionNotReady`: logged at WARN; `ServerToClient::Error` sent
-///   to the requesting client. The session may have terminated mid-resize — benign race.
-/// - Write errors to the session-host: logged at WARN; propagated as `ServerToClient::Error`.
+/// `rows` and `cols` are clamped to a minimum of 1 at the handler boundary before being
+/// passed to `resize_session`. Pre-clamp zero values must NOT reach the session-host.
+/// A `tracing::warn!` is emitted when clamping occurs.
+///
+/// # WARN-drop carve-out (BC-2.09.006 AC-013/AC-016 / BC-2.05.010 Inv-6)
+///
+/// ALL error paths from `resize_session` — including `session_manager is None`,
+/// `SessionNotFound`, `SessionNotReady`, and `SessionHostDead` / IO errors — are
+/// WARN-dropped: the error is logged at WARN level and the handler returns without
+/// sending `ServerToClient::Error` to the client. This is an explicit carve-out
+/// from the general error-propagation policy for resize messages.
+///
+/// Rationale: a resize failure is benign (the session may have terminated mid-resize);
+/// propagating an error frame to the TUI would require the TUI to handle it and could
+/// cause spurious error overlays during normal session teardown.
 async fn handle_resize_pane(
     session_id: String,
     rows: u16,
     cols: u16,
-    client_tx: &tokio::sync::mpsc::Sender<ServerToClient>,
+    // WARN-drop carve-out (BC-2.09.006 AC-013/AC-016 / BC-2.05.010 Inv-6): this handler
+    // never sends ServerToClient::Error for resize failures. The parameter is kept in the
+    // signature to mirror the handle_key_input dispatch pattern and to allow future callers
+    // to pass a client_tx without API breakage if the carve-out policy changes.
+    _client_tx: &tokio::sync::mpsc::Sender<ServerToClient>,
     state: &DaemonState,
 ) {
-    use crate::session_manager::{session_error_to_code, IpcOp};
+    // HIGH-003 / AC-014 / EC-239 / BC-2.05.010 Inv-5: zero-dimension clamp.
+    // Clamp rows and cols to minimum 1 BEFORE calling resize_session.
+    // Pre-clamp zeros must never reach the session-host PTY.
+    let rows = if rows == 0 {
+        tracing::warn!(
+            session_id = %session_id,
+            "handle_resize_pane: rows=0 clamped to rows=1 (EC-239 / BC-2.05.010 Inv-5)"
+        );
+        1u16
+    } else {
+        rows
+    };
+    let cols = if cols == 0 {
+        tracing::warn!(
+            session_id = %session_id,
+            "handle_resize_pane: cols=0 clamped to cols=1 (EC-239 / BC-2.05.010 Inv-5)"
+        );
+        1u16
+    } else {
+        cols
+    };
 
+    // HIGH-002 / AC-013 / BC-2.05.010 Inv-6: WARN-drop when session_manager is None.
+    // NO ServerToClient::Error is sent for any resize failure path.
     let sm = match state.session_manager.as_ref() {
         Some(sm) => sm,
         None => {
-            tracing::error!(
+            tracing::warn!(
                 session_id = %session_id,
-                "handle_resize_pane: session_manager is None (daemon wiring bug)"
+                "handle_resize_pane: session_manager is None (daemon wiring bug) — \
+                 ResizePane WARN-dropped per BC-2.09.006 AC-013/BC-2.05.010 Inv-6"
             );
-            let _ = client_tx
-                .send(ServerToClient::Error {
-                    code: "invalid_request".to_string(),
-                    message: "session_manager not initialized".to_string(),
-                })
-                .await;
+            // WARN-drop: no ServerToClient::Error sent (ResizePane carve-out).
             return;
         }
     };
@@ -678,19 +712,18 @@ async fn handle_resize_pane(
             );
         }
         Err(e) => {
+            // HIGH-002 / AC-013 / AC-016 / BC-2.05.010 Inv-6: WARN-drop carve-out.
+            // All resize_session errors (SessionNotFound, SessionNotReady, SessionHostDead,
+            // Io) are logged at WARN and silently discarded — no ServerToClient::Error.
             tracing::warn!(
                 session_id = %session_id,
                 rows,
                 cols,
                 error = %e,
-                "handle_resize_pane: resize_session failed (EC-238)"
+                "handle_resize_pane: resize_session failed — WARN-dropped \
+                 (BC-2.09.006 AC-013/AC-016 / BC-2.05.010 Inv-6)"
             );
-            let _ = client_tx
-                .send(ServerToClient::Error {
-                    code: session_error_to_code(IpcOp::Resize, &e).to_string(),
-                    message: e.to_string(),
-                })
-                .await;
+            // WARN-drop: no ServerToClient::Error sent (ResizePane carve-out).
         }
     }
 }

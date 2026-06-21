@@ -1256,6 +1256,69 @@ pub fn clear_resize_debounce_state(app: &mut App) {
     tracing::trace!("clear_resize_debounce_state: resize debounce state cleared");
 }
 
+/// Post-render seam: detect layout-change resizes and fire the debounce on expiry.
+///
+/// This function is called by `App::run()` after every `terminal.draw()` call. It is the
+/// SINGLE authoritative path for both kinds of resize detection per BC-2.09.006 PC-1:
+///
+/// 1. **Terminal Event::Resize** (crossterm event): `handle_crossterm_event` calls
+///    `on_resize_detected` when `Event::Resize` fires, which arms the debounce and resizes
+///    the parser. On the subsequent tick, `tick_resize_debounce` reads `last_pty_pane_area`
+///    (which the render step has now updated to reflect the new terminal dimensions) and
+///    calls `check_resize_debounce` to fire the pending message.
+///
+/// 2. **Layout-change resize** (panel/overlay toggle without a crossterm Event::Resize):
+///    The render step updates `app.last_pty_pane_area` to the new pane `Rect`. On the
+///    next tick, `tick_resize_debounce` compares `last_pty_pane_area` against the current
+///    parser size. If they differ, it calls `on_resize_detected` to resize the parser and
+///    arm the debounce, then immediately calls `check_resize_debounce` to fire if 50ms
+///    has elapsed (though typically the deadline will not yet have elapsed on the same tick
+///    as arming — the fire happens on the next tick after 50ms passes).
+///
+/// # Mode guard (BC-2.09.006 EC-236 / Invariant 3)
+///
+/// Must be a complete no-op when `app.mode` is NOT `AppMode::EmbeddedTerminal`. The render
+/// step sets `last_pty_pane_area` only in EmbeddedTerminal mode, but this guard is explicit
+/// for safety in case `last_pty_pane_area` has a stale value from a prior EmbeddedTerminal
+/// session.
+///
+/// # Call site (BLOCKER-001 contract)
+///
+/// `App::run()` MUST call `tick_resize_debounce(&mut app)` after every `terminal.draw()`.
+/// Without this call, no `ClientToServer::ResizePane` is ever sent (the feature is
+/// production-inert — BC-2.09.006 PC-2 is never satisfied).
+pub fn tick_resize_debounce(app: &mut App) {
+    // EC-236 / Invariant 3: mode guard — no-op in any non-EmbeddedTerminal mode.
+    let session_id = match &app.mode {
+        AppMode::EmbeddedTerminal { session_id, .. } => session_id.clone(),
+        _ => return,
+    };
+
+    // Read the pane area captured by the render step. If None, render hasn't run yet — no-op.
+    let Some(area) = app.last_pty_pane_area else {
+        return;
+    };
+
+    let area_rows = area.height;
+    let area_cols = area.width;
+
+    // HIGH-001 / BC-2.09.006 PC-1 ("at each render cycle"): detect layout-change resizes.
+    // Compare the captured pane area against the current parser size. If they differ, this
+    // is a layout-driven resize (panel toggle, overlay shown/hidden) that did NOT produce a
+    // crossterm Event::Resize. Call on_resize_detected to resize the local parser and arm
+    // the debounce.
+    //
+    // on_resize_detected is a no-op when area_rows == 0 || area_cols == 0 (EC-239) and
+    // when area == parser size (already resized). Both cases are safe to call unconditionally.
+    on_resize_detected(app, &session_id, area_rows, area_cols);
+
+    // BLOCKER-001 / BC-2.09.006 PC-2: check the debounce deadline and fire ResizePane if
+    // the 50ms window has elapsed. This is the ONLY path that emits ResizePane from the run
+    // loop. check_resize_debounce is a no-op when no deadline is armed (None) or when the
+    // deadline has not yet elapsed.
+    check_resize_debounce(app, &session_id, area_rows, area_cols);
+}
+
 // ---------------------------------------------------------------------------
 // PermissionPromptPayload → PromptModal conversion
 // ---------------------------------------------------------------------------
@@ -2692,6 +2755,13 @@ pub async fn run(kitty_active: bool) -> Result<()> {
         terminal.draw(|frame| {
             render_frame(&mut app, &mut sessions_state, frame);
         })?;
+
+        // 1a. Post-render resize detection and debounce fire (BLOCKER-001 / BC-2.09.006 PC-1/2).
+        // render_frame captures `last_pty_pane_area` during EmbeddedTerminal rendering;
+        // tick_resize_debounce reads it here to detect layout-change resizes (panel toggles,
+        // overlay open/close) and to fire any pending 50ms ResizePane debounce.
+        // Must be called AFTER terminal.draw() on every tick per BC-2.09.006 AC-001 contract.
+        tick_resize_debounce(&mut app);
 
         // 2. Poll keyboard (non-blocking, bounded by tick_rate — BLOCKER-002: full binding
         //    dispatch via resolve_binding). The 16ms ceiling is unchanged from the original
