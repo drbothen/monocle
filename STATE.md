@@ -2,12 +2,12 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "8.06"
+version: "8.07"
 status: active
 producer: state-manager
-timestamp: 2026-06-20T12:00:00Z
+timestamp: 2026-06-20T14:00:00Z
 phase: phase-3-v1A-wave-9
-current_step: "D-341 (2026-06-20): PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK RESOLVED. PR #48 @ 3eba172 merged CLEAN to develop (no admin bypass — fix touched dtu-fidelity.yml so oracle ran real path and passed). dtu-fidelity.yml: removed top-level paths-filter; added internal pure-bash change-detection gate; skip path exits 0 (always-report); oracle runs when DTU-relevant paths changed; job name byte-identical. Future TUI-only PRs (S-040/S-042/S-043) now merge without admin bypass. develop HEAD: 3eba172. STATE v8.05→v8.06."
+current_step: "D-341+housekeeping (2026-06-20): docs(resume) PR #49 @ a852934 merged to develop (NEXT-SESSION-RESUME.md refresh; no code change). PR #49 validated D-341 fix in production — non-DTU PR merged CLEAN, DTU oracle skip-success path, no admin bypass. develop HEAD: a852934 (docs PR #49); prior chain: 3eba172 = DTU CI fix (PR #48 D-341); a7ad00e = S-039 (PR #47, last STORY commit). STATE v8.06→v8.07."
 prior_step: "D-340 (2026-06-20): S-039 MERGED to develop via PR #47 @ a7ad00e (admin squash-merge). PTY output pipeline, 8 pts, EPIC-09, Wave 9, BC-2.09.001 v1.7.2. 10-pass adversarial (3 CLEAN: passes 8/9/10). 35 behavioral tests green. Security review PASS_WITH_NOTES (2 LOW fixed in-scope). Admin bypass: PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK recorded (in-progress). Wave 9: 1/6 done (8/42 pts). 39/51 stories done (238/311 pts). develop HEAD: a7ad00e."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
@@ -21,12 +21,16 @@ dtu_services: [hook-endpoints-x5]
 current_cycle: cycle-001
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v8.06 — 2026-06-20
+  ZERO-CONTEXT RESUME CHECKPOINT v8.07 — 2026-06-20
   PHASE-3 v1A ACTIVE — WAVE 9 STARTED (S-039 DONE) — NEXT: S-040
   ============================================================================
   POSITION: Phase-3 TDD implementation, v1A control-center scope, Wave 9.
   STATUS: S-039 MERGED PR #47 @ a7ad00e (D-340). DTU deadlock RESOLVED (D-341).
-  develop @ 3eba172. S-039 worktree cleaned up. 10 workspace crates.
+  docs(resume) PR #49 @ a852934 merged CLEAN (D-341 production validation —
+  non-DTU PR, DTU oracle skip-success path, no admin bypass).
+  develop @ a852934. HEAD chain: a852934 = docs PR #49; 3eba172 = DTU CI fix
+  PR #48; a7ad00e = S-039 PR #47 (last STORY commit).
+  S-039 worktree cleaned up. 10 workspace crates.
   39/51 stories done (238/311 pts). Wave 9: 1/6 done (8/42 pts).
 
   THIS SESSION DELIVERED:
@@ -149,7 +153,7 @@ next_session_resume_protocol: |
   wit-bindgen unmatched-skip, PATH isolation flake.
 
   factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'`
-  develop HEAD: 3eba172 (CI fix PR #48 D-341; S-039 @ a7ad00e last STORY commit)
+  develop HEAD: a852934 (docs PR #49; 3eba172 = DTU CI fix PR #48 D-341; a7ad00e = S-039 last STORY)
   ============================================================================
 ---
 
@@ -332,9 +336,10 @@ PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK (RESOLVED D-341 2026-06-20 — PR 
 ## Decision History
 
 Full decisions archive: `cycles/cycle-001/decisions-archive.md`
-D-001..D-241: early phases; D-242..D-341: Phase-1d + Phase-2 + Phase-3 (appended 2026-06-16/17/18/19/20)
+D-001..D-241: early phases; D-242..D-341: Phase-1d + Phase-2 + Phase-3 (appended 2026-06-16/17/18/19/20); housekeeping 2026-06-20 (PR #49 HEAD update)
 
 Key decisions last session:
+- housekeeping (2026-06-20): docs(resume) PR #49 @ a852934 merged to develop. NEXT-SESSION-RESUME.md refresh; no functional/code change. Validated D-341 fix in production: non-DTU PR merged CLEAN via DTU oracle skip-success path — no admin bypass required. develop HEAD: a852934. STATE v8.06→v8.07.
 - D-341 (2026-06-20): PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK RESOLVED. PR #48 @ 3eba172 merged CLEAN to develop (no admin bypass — fix touched dtu-fidelity.yml so oracle ran real path and passed). dtu-fidelity.yml: removed top-level paths-filter; added internal pure-bash change-detection gate; skip path exits 0 (always-report); oracle gate runs when DTU-relevant paths changed; job name byte-identical. Future TUI-only PRs (S-040/S-042/S-043) now merge without admin bypass. develop HEAD: 3eba172. STATE v8.05→v8.06.
 - D-340 (2026-06-20): S-039 MERGED to develop via PR #47 @ a7ad00e (admin squash-merge). PTY output pipeline, 8 pts, EPIC-09, Wave 9, BC-2.09.001. 10-pass adversarial convergence (3 consecutive CLEAN: passes 8/9/10). Trajectory P1(3 BLOCKER)→P2(3 HIGH)→P3(1 HIGH)→P4(2 MED)→P5(3 MED)→P6 CLEAN→P7(1 MED)→P8/9/10 CLEAN. 35 behavioral tests green. Security review PASS_WITH_NOTES (2 LOW fixed in-scope). pr-reviewer APPROVE. Spec artifacts evolved: BC-2.09.001 v1.7.2 (Inv-3/4/5/7/8/9, EC-200..208); BC-2.09.007 v1.3.1; SS-embedded-pty v1.10.0; SS-config v1.4.0; BC-2.07.002 v1.1.0 (pty_scrollback_rows); S-039 v1.8; STORY-INDEX v5.54. Admin bypass required: PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK (dtu-fidelity.yml path-filter deadlock on TUI-only PRs; enforce_admins=false; required_approving_review_count=0; no review bypass). Durable fix in-progress (devops). F-S039-P9-OBS-001 recorded (EmbeddedTerminal placeholder sizing; surface at Wave-9 gate). Wave 9: 1/6 done (8/42 pts). 39/51 stories done (238/311 pts). develop HEAD: a7ad00e. STATE v8.04→v8.05.
 - D-339 (2026-06-20): S-036 MERGED to develop via PR #46 @ d924183 (squash). Sixth Wave-8 story (TIER-3). rediscover_sessions, 8 pts, EPIC-08. BC-2.08.002 (session-host survives graceful restart via setsid) + BC-2.08.004 v1.4.0 (all alive sessions visible after restart within 5s; UDS bind blocked). 12-pass adversarial convergence (3 consecutive CLEAN: passes 10/11/12). BLOCKER-001 SO_PEERCRED on Terminating Kill connect + BLOCKER-002 watchdog select! early-close leak fixed in-scope. HIGH (PID cross-check/dual-pid SIGTERM/watchdog registry leak/frame-cap MAX_FRAME_LEN/§3b emission gaps) fixed in-scope. MED (null-deadline 12s-window/GC-grace anchored at Terminated/§3b emission helper) fixed in-scope. SEC-001 CWE-284 pid=0 guards + SEC-002 CWE-284 SO_PEERCRED pid=None bypass + SEC-003 CWE-22 socket_path traversal — all RESOLVED IN-SCOPE during PR #46 security review. AC-004 spec-text drift (proxy_task: Some→None) corrected. MED-002 RESOLVED for S-036 scope (no SessionEntry.generation guard; three-layer safety argument extends to re-discovery). SS-session-manager v2.15.0→v2.15.1; BC-2.08.004 v1.3.5→v1.4.0; EVAL-INDEX v1.26→v1.28; S-036 v1.3→v1.5. PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP recurred (architect commit 772cb68 to develop; caught by orchestrator; develop reset; folded into worktree PR). POSITIVE: PROCESS-GAP-FACTORY-ARTIFACTS-NOT-PUSHED held. Wave 8: 6/12 done (38/74 pts). 38/51 stories done (230/311 pts). develop HEAD: d924183. STATE v8.03→v8.04.
