@@ -15,7 +15,7 @@
 //!   Invariant 2 (AC-006)    → test_BC_2_09_006_resize_to_same_size_no_op
 //!   Invariant 3 (AC-007)    → test_BC_2_09_006_dashboard_mode_no_resizepane
 //!   Invariant 4 (AC-008)    → test_BC_2_09_006_local_parser_not_debounced
-//!   Edge case EC-235 (AC-009)→ test_BC_2_09_006_mid_window_resize_resets_deadline
+//!   Edge case EC-235 (AC-009)→ test_BC_2_09_006_mid_window_resize_does_not_reset_deadline
 //!   Edge case EC-236 (AC-010)→ test_BC_2_09_006_dashboard_mode_no_resizepane (alias)
 //!   Edge case EC-237 (AC-011)→ test_BC_2_09_006_resize_to_same_size_no_op (alias)
 //!   Edge case EC-239 (AC-012)→ test_BC_2_09_006_zero_dimensions_no_op
@@ -283,10 +283,11 @@ async fn test_BC_2_09_006_no_ipc_before_debounce_expires() {
 }
 
 // ---------------------------------------------------------------------------
-// AC-005 / BC-2.09.006 Invariant 1 — rapid resize coalesced; mid-window reset
+// AC-005 / BC-2.09.006 Invariant 1 — rapid resize coalesced (no deadline reset)
 //
 // Only one ResizePane per 50ms window; intermediate sizes discarded.
-// A mid-window resize resets the debounce deadline.
+// The debounce deadline is anchored at the FIRST detected change and does NOT reset
+// on intermediate resizes — only the final pending size is captured (EC-235).
 // ---------------------------------------------------------------------------
 
 /// test_BC_2_09_006_rapid_resize_coalesced
@@ -343,19 +344,27 @@ async fn test_BC_2_09_006_rapid_resize_coalesced() {
     }
 }
 
-/// test_BC_2_09_006_mid_window_resize_resets_deadline
+/// test_BC_2_09_006_mid_window_resize_does_not_reset_deadline
 ///
-/// BC-2.09.006 edge case EC-235 (debounce deadline reset on mid-window resize):
-///   t=0: first resize arms deadline at t+50ms.
-///   t=30ms: second resize detected. The deadline is RESET to t=30ms+50ms.
-///   t=60ms: first deadline (t+50ms) would have fired — but since the deadline
-///            was reset, the window has NOT expired yet. No ResizePane at t=60ms.
-///   t=80ms: 50ms from reset (t=30ms+50ms) — ResizePane IS sent.
+/// BC-2.09.006 edge case EC-235 — mid-window resize does NOT reset the debounce deadline.
+/// The deadline is anchored at the FIRST detected change and stays fixed.
 ///
-/// This confirms that each mid-window resize restarts the 50ms countdown from scratch,
-/// per BC-2.09.006 Invariant 1 (only the final size per window is sent).
+/// Orchestrator ruling (adjudicated against BC): no-reset semantics per Postcondition 1
+/// ("50ms has elapsed since the FIRST detected change"), Invariant 1 ("Only one
+/// ResizePane message is sent per 50ms window; intermediate sizes are discarded"),
+/// and EC-235 ("only the final stable size within each 50ms window is sent").
+///
+/// Timeline under test:
+///   t=0:   first resize 24x80 -> 26x84; deadline armed at t+50ms.
+///   t=30ms: second resize 26x84 -> 28x90 mid-window; deadline must STAY at t=0+50ms.
+///   t=51ms: 50ms from FIRST detection — ResizePane MUST fire with the latest
+///            captured size (28, 90), NOT the original (26, 84).
+///
+/// This test must FAIL against the current reset-semantics implementation (deadline
+/// is reset to t=30ms+50ms=80ms, so deadline_after_second > deadline_after_first and
+/// no message fires at t=51ms).
 #[tokio::test(start_paused = true)]
-async fn test_BC_2_09_006_mid_window_resize_resets_deadline() {
+async fn test_BC_2_09_006_mid_window_resize_does_not_reset_deadline() {
     let (mut app, mut rx) = make_app_in_embedded(SESSION_A, 24, 80);
 
     // t=0: first resize arms debounce deadline at t=0+50ms.
@@ -364,50 +373,39 @@ async fn test_BC_2_09_006_mid_window_resize_resets_deadline() {
         .resize_debounce_deadline
         .expect("deadline must be armed after first resize");
 
-    // t=30ms: second resize — deadline must be reset to t=30ms+50ms.
+    // t=30ms: second resize mid-window — deadline must NOT move (no-reset semantics).
     tokio::time::advance(Duration::from_millis(30)).await;
     on_resize_detected(&mut app, SESSION_A, 28, 90);
     let deadline_after_second = app
         .resize_debounce_deadline
         .expect("deadline must remain armed after second resize");
 
-    // The second deadline must be LATER than the first (reset to now+50ms > 0ms+50ms).
-    assert!(
-        deadline_after_second > deadline_after_first,
-        "BC-2.09.006 EC-235: mid-window resize must RESET the debounce deadline \
-         to a later time — first={:?}, second={:?}",
-        deadline_after_first,
-        deadline_after_second
+    // BC-2.09.006 Postcondition 1 / Invariant 1 / EC-235 (orchestrator ruling):
+    // The deadline is anchored at the FIRST detected change and must NOT be pushed out
+    // by intermediate resizes. deadline_after_second must equal deadline_after_first.
+    assert_eq!(
+        deadline_after_second, deadline_after_first,
+        "BC-2.09.006 EC-235 (orchestrator ruling — no-reset semantics): mid-window          resize must NOT change the debounce deadline; expected both deadlines equal          (anchored at first-change + 50ms).          first={:?}, second={:?}",
+        deadline_after_first, deadline_after_second
     );
 
-    // t=51ms: past the ORIGINAL deadline (t=0+50ms) but before the RESET deadline (t=30ms+50ms=80ms).
+    // t=51ms: past the first-change deadline (t=0+50ms). ResizePane MUST fire now
+    // because the deadline was anchored at t=0+50ms and has elapsed.
     tokio::time::advance(Duration::from_millis(21)).await;
     check_resize_debounce(&mut app, SESSION_A, 28, 90);
     let msgs_at_51ms = drain(&mut rx);
-    assert!(
-        msgs_at_51ms.is_empty(),
-        "BC-2.09.006 EC-235: no ResizePane must fire at t=51ms — the deadline was \
-         reset to t=80ms after the mid-window resize; got {} messages",
+    assert_eq!(
+        msgs_at_51ms.len(),
+        1,
+        "BC-2.09.006 EC-235 / Invariant 1: exactly one ResizePane must fire at t=51ms          (50ms from first-change deadline) — got {} messages.          Deadline is anchored at first detection, not reset on mid-window resize.",
         msgs_at_51ms.len()
     );
-
-    // t=80ms: 50ms from the reset. ResizePane must fire now.
-    tokio::time::advance(Duration::from_millis(29)).await;
-    check_resize_debounce(&mut app, SESSION_A, 28, 90);
-    let msgs_at_80ms = drain(&mut rx);
-    assert_eq!(
-        msgs_at_80ms.len(),
-        1,
-        "BC-2.09.006 EC-235: exactly one ResizePane must fire 50ms after the mid-window \
-         deadline reset — got {} messages",
-        msgs_at_80ms.len()
-    );
-    match &msgs_at_80ms[0] {
+    match &msgs_at_51ms[0] {
         ClientToServer::ResizePane { rows, cols, .. } => {
             assert_eq!(
                 (*rows, *cols),
                 (28, 90),
-                "BC-2.09.006 EC-235: ResizePane must carry the FINAL dimensions (28, 90)"
+                "BC-2.09.006 EC-235: ResizePane must carry the FINAL pending size                  (28, 90) — the latest size captured during the coalescing window,                  not the initial (26, 84)"
             );
         }
         other => panic!("expected ResizePane, got {:?}", other),
