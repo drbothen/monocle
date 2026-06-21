@@ -2416,18 +2416,12 @@ pub async fn run() -> Result<()> {
         //    dispatch via resolve_binding). The 16ms ceiling is unchanged from the original
         //    implementation; the 1ms was only in the removed timeout wrapper.
         if event::poll(tick_rate)? {
-            if let Event::Key(ct_key) = event::read()? {
-                // Convert crossterm KeyEvent → monocle-core KeyEvent (pure-core type).
-                let core_key = crossterm_key_to_core(&ct_key);
-
-                // Dispatch through the full binding chain (F-S025-ADV4-MED-004:
-                // extracted to `dispatch_key_event` for testability — tests call
-                // the same function rather than duplicating the gate logic).
-                if dispatch_key_event(&mut app, &core_key, &binding_layers, &mut sessions_state)
-                    == KeyOutcome::Quit
-                {
-                    break;
-                }
+            let raw_event = event::read()?;
+            if handle_crossterm_event(&mut app, raw_event, &binding_layers, &mut sessions_state)
+                .await
+                .is_err()
+            {
+                break;
             }
         }
 
@@ -2710,6 +2704,118 @@ pub async fn run() -> Result<()> {
     // leak background tasks between test runs or on graceful shutdown.
     reader_handle.abort();
     writer_handle.abort();
+
+    Ok(())
+}
+
+/// Route a single crossterm `Event` through the correct dispatch path.
+///
+/// This function is the per-event handler factored out of `run()`'s event loop
+/// for testability (BC-2.09.002 / F-S040-BLOCKER-001). The event loop calls it
+/// for every event returned by `crossterm::event::read()`.
+///
+/// # Dispatch routing
+///
+/// When `app.mode` is `AppMode::EmbeddedTerminal { session_id, .. }`:
+/// - `Event::Key(key)` → `dispatch_embedded_terminal_key()`:
+///   - Bare Esc (no modifiers) → call `exit_embedded_terminal` and return `Ok(())`.
+///   - All other keys → forward to PTY via `ClientToServer::KeyInput`.
+/// - `Event::Paste(text)` → `dispatch_embedded_terminal_paste()` → bracketed paste to PTY.
+///
+/// When `app.mode` is NOT `AppMode::EmbeddedTerminal`:
+/// - `Event::Key(key)` → `dispatch_key_event()` (binding chain).
+///   Returns `Err(())` if `KeyOutcome::Quit`.
+/// - `Event::Paste(_)` → silently ignored (paste only meaningful in EmbeddedTerminal).
+/// - All other events → silently ignored.
+///
+/// # Returns
+///
+/// - `Ok(())` → continue the event loop.
+/// - `Err(())` → break the event loop (quit signal from key dispatch).
+#[allow(clippy::result_unit_err)]
+pub async fn handle_crossterm_event(
+    app: &mut App,
+    event: crossterm::event::Event,
+    binding_layers: &monocle_core::tui::binding::BindingLayers,
+    sessions_state: &mut crate::ui::sessions_panel::SessionsPanelState,
+) -> Result<(), ()> {
+    use crossterm::event::Event;
+
+    match &app.mode {
+        // ---------------------------------------------------------------------------
+        // EmbeddedTerminal mode: keyboard forwarding path (BC-2.09.002 / BC-2.09.005)
+        // ---------------------------------------------------------------------------
+        AppMode::EmbeddedTerminal { session_id, .. } => {
+            let session_id = session_id.clone();
+            match event {
+                Event::Key(ct_key) => {
+                    // Gate: IPC channel must be wired before dispatching.
+                    // If the channel is offline (daemon disconnected), log and ignore —
+                    // the reconnect loop will re-wire app.ipc_tx.
+                    let Some(ipc_tx) = app.ipc_tx.clone() else {
+                        tracing::warn!(
+                            "handle_crossterm_event: EmbeddedTerminal Key — IPC channel offline; \
+                             key dropped (session: {session_id})"
+                        );
+                        return Ok(());
+                    };
+
+                    // BC-2.09.002 Invariant 2: dispatch_embedded_terminal_key checks Esc
+                    // BEFORE calling key_event_to_pty_bytes (non-negotiable ordering).
+                    // Returns true if bare Esc was intercepted (ExitEmbeddedTerminal signal).
+                    let should_exit = crate::event_loop::dispatch_embedded_terminal_key(
+                        ct_key,
+                        &session_id,
+                        &ipc_tx,
+                    )
+                    .await;
+
+                    if should_exit {
+                        exit_embedded_terminal(app, &session_id);
+                    }
+                }
+                Event::Paste(text) => {
+                    // BC-2.09.005: bracketed paste — wrap in \x1b[200~...\x1b[201~ and send.
+                    let Some(ipc_tx) = app.ipc_tx.clone() else {
+                        tracing::warn!(
+                            "handle_crossterm_event: EmbeddedTerminal Paste — IPC channel offline; \
+                             paste dropped (session: {session_id})"
+                        );
+                        return Ok(());
+                    };
+                    crate::event_loop::dispatch_embedded_terminal_paste(
+                        &text,
+                        &session_id,
+                        &ipc_tx,
+                    )
+                    .await;
+                }
+                // Other events (resize, focus, mouse) — ignore in EmbeddedTerminal for now.
+                _ => {}
+            }
+        }
+
+        // ---------------------------------------------------------------------------
+        // Non-EmbeddedTerminal modes: existing binding chain dispatch
+        // ---------------------------------------------------------------------------
+        _ => {
+            if let Event::Key(ct_key) = event {
+                // Convert crossterm KeyEvent → monocle-core KeyEvent (pure-core type).
+                let core_key = crossterm_key_to_core(&ct_key);
+
+                // Dispatch through the full binding chain (F-S025-ADV4-MED-004:
+                // extracted to `dispatch_key_event` for testability — tests call
+                // the same function rather than duplicating the gate logic).
+                if dispatch_key_event(app, &core_key, binding_layers, sessions_state)
+                    == KeyOutcome::Quit
+                {
+                    return Err(());
+                }
+            }
+            // Event::Paste in non-EmbeddedTerminal modes: silently ignored.
+            // Other events (resize, focus, mouse): silently ignored.
+        }
+    }
 
     Ok(())
 }

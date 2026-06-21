@@ -76,3 +76,14 @@ pub use app::setup_ipc_streams_with_rx;
 pub use app::pty_output_channel;
 #[doc(hidden)]
 pub use app::IPC_READER_CHANNEL_CAPACITY;
+
+// S-040: crossterm event routing seam — exposed for wiring integration tests.
+// handle_crossterm_event encapsulates the per-event dispatch (Key → embedded dispatch
+// or binding chain; Paste → bracketed paste) so tests can drive it without a real
+// terminal event loop.
+#[doc(hidden)]
+pub use app::handle_crossterm_event;
+// S-040: builtin binding layers constructor — exposed so integration tests can build
+// a real BindingLayers without re-implementing the full layer stack.
+#[doc(hidden)]
+pub use app::build_builtin_binding_layers;
