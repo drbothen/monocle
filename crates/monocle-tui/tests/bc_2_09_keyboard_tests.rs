@@ -302,6 +302,69 @@ async fn test_BC_2_09_002_esc_release_does_not_exit() {
 }
 
 // ---------------------------------------------------------------------------
+// ADV-OBS-1 — Esc Repeat must NOT exit; must forward \x1b to PTY
+// ---------------------------------------------------------------------------
+
+/// BC-2.09.002 Invariant 2 — bare Esc KeyEventKind::Repeat forwards \x1b, does not exit
+///
+/// Invariant 2 defines three behaviors keyed on KeyEventKind for bare Esc (no modifiers):
+///   Press  → Action::ExitEmbeddedTerminal (intercepted, returns true, zero bytes sent)
+///   Release → discarded (returns false, zero bytes sent — PC-3)
+///   Repeat → NOT intercepted; falls through dispatch_embedded_terminal_key to
+///            key_event_to_pty_bytes which produces \x1b (the raw Esc byte forwarded to PTY)
+///
+/// Repeat events only occur when Kitty keyboard enhancement is active (kitty_active=true).
+/// The ExitEmbeddedTerminal guard in dispatch_embedded_terminal_key requires kind==Press;
+/// a Repeat event does NOT satisfy that guard and MUST fall through to the PTY forwarding path.
+///
+/// This is ADV-OBS-1 coverage — closes the third-branch gap. The code is already correct;
+/// this test is a regression guard so a future broadening of the guard to `kind != Release`
+/// (which would wrongly intercept Repeat) is caught immediately.
+///
+/// Contrast with:
+///   test_BC_2_09_002_esc_not_forwarded_directly  — Press returns true, zero bytes
+///   test_BC_2_09_002_esc_release_does_not_exit   — Release returns false, zero bytes
+#[tokio::test]
+async fn test_BC_2_09_002_esc_repeat_forwards_esc_not_exit() {
+    let (tx, mut rx) = mpsc::channel::<ClientToServer>(16);
+    // Repeat events only occur when Kitty keyboard enhancement is active.
+    let event = make_key_event(
+        crossterm::event::KeyCode::Esc,
+        crossterm::event::KeyModifiers::NONE,
+        crossterm::event::KeyEventKind::Repeat,
+    );
+
+    let exited = dispatch_embedded_terminal_key(event, "session-esc-repeat", true, &tx).await;
+
+    // Repeat MUST NOT signal exit — ADV-OBS-1 / BC-2.09.002 Invariant 2 Repeat clause
+    assert!(
+        !exited,
+        "dispatch_embedded_terminal_key must return false for bare Esc Repeat \
+         (BC-2.09.002 Invariant 2 — Repeat is NOT intercepted as ExitEmbeddedTerminal)"
+    );
+
+    // Esc Repeat must produce exactly one KeyInput carrying the raw \x1b byte.
+    let sent = drain_channel(&mut rx);
+    assert_eq!(
+        sent.len(),
+        1,
+        "Esc Repeat must forward exactly one KeyInput to PTY; got {} message(s) (ADV-OBS-1)",
+        sent.len()
+    );
+    match &sent[0] {
+        ClientToServer::KeyInput { bytes, session_id } => {
+            assert_eq!(
+                bytes.as_slice(),
+                b"\x1b",
+                "Esc Repeat must produce raw \\x1b byte (BC-2.09.002 Invariant 2 Repeat clause)"
+            );
+            assert_eq!(session_id, "session-esc-repeat");
+        }
+        other => panic!("expected ClientToServer::KeyInput, got {:?}", other),
+    }
+}
+
+// ---------------------------------------------------------------------------
 // BC-2.09.002 / BC-2.09.004 — session_id is threaded correctly
 // ---------------------------------------------------------------------------
 
