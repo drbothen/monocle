@@ -41,10 +41,9 @@ use crate::keyboard_conv::crossterm_key_to_pty;
 /// # Detection (ADV-BLOCKER-001 / SS-embedded-pty.md §Risk Mitigations v1.13.0)
 ///
 /// Uses `crossterm::terminal::supports_keyboard_enhancement()` to detect Kitty
-/// keyboard protocol support. This is the correct crossterm API — the previous
-/// hand-rolled CSI?u probe (detached stdin reader thread + 100ms recv_timeout)
-/// violated the architectural rule against threads reading stdin outside the
-/// crossterm event loop.
+/// keyboard protocol support. This is the correct crossterm API — an earlier
+/// hand-rolled probe approach was retired because it violated the architectural
+/// rule against threads reading stdin outside the crossterm event loop.
 ///
 /// EC-234: `Err(_)` from `supports_keyboard_enhancement` → treated as `false`;
 /// TRACE log emitted, no panic. Kitty flags are NOT pushed on Err.

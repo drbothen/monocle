@@ -22,8 +22,8 @@ use std::sync::Arc;
 /// Without this hook, a panic in raw-mode leaves the terminal corrupted,
 /// requiring the user to run `reset` or close the terminal emulator.
 ///
-/// `kitty_active` is an `Arc<AtomicBool>` set by `setup_terminal()` after the
-/// CSI ? u probe. The panic hook captures it so `teardown_keyboard_enhancement`
+/// `kitty_active` is an `Arc<AtomicBool>` set by `setup_terminal()` after calling
+/// `crossterm::terminal::supports_keyboard_enhancement()`. The panic hook captures it so `teardown_keyboard_enhancement`
 /// correctly conditionalises `PopKeyboardEnhancementFlags` even when called from
 /// a panic context.
 fn install_panic_hook(kitty_active: Arc<AtomicBool>) {
@@ -77,10 +77,10 @@ fn restore_terminal(kitty_active: bool) {
 }
 
 /// Initialise the terminal: enable raw mode, enter the alternate screen, probe for Kitty
-/// keyboard protocol support (CSI ? u), and install global keyboard enhancement flags +
+/// keyboard protocol support via `crossterm::terminal::supports_keyboard_enhancement()`, and install global keyboard enhancement flags +
 /// bracketed paste.
 ///
-/// Returns the `kitty_active` bool from the CSI ? u probe. Callers must store this and
+/// Returns the `kitty_active` bool from `supports_keyboard_enhancement()`. Callers must store this and
 /// pass it to every `teardown_keyboard_enhancement` call (normal and panic paths).
 ///
 /// # Errors
@@ -100,7 +100,7 @@ fn setup_terminal() -> Result<bool> {
         let _ = disable_raw_mode();
         return Err(e.into());
     }
-    // Probe for Kitty protocol (CSI ? u) and conditionally install enhancement flags +
+    // Detect Kitty protocol via supports_keyboard_enhancement() and conditionally install enhancement flags +
     // bracketed paste. Returns kitty_active bool (BC-2.09.004 Invariant 1 /
     // BC-2.09.005 Invariant 1: global, not gated on mode).
     match setup_keyboard_enhancement() {

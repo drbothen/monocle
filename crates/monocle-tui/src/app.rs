@@ -435,10 +435,10 @@ pub struct App {
     // -----------------------------------------------------------------------
     /// Whether the terminal negotiated Kitty keyboard protocol at startup.
     ///
-    /// Set by `event_loop::setup_keyboard_enhancement()` after the `CSI ? u`
-    /// query (write `\x1b[?u`, read response with 100ms timeout). `true` when
-    /// the terminal responds with `\x1b[?<n>u` (Kitty protocol supported); `false`
-    /// otherwise (timeout or non-Kitty response).
+    /// Set by `event_loop::setup_keyboard_enhancement()` via
+    /// `crossterm::terminal::supports_keyboard_enhancement()`. `true` when
+    /// the crossterm API confirms Kitty protocol is supported; `false`
+    /// otherwise (unsupported or API error — see EC-234).
     ///
     /// Used by `handle_crossterm_event` to thread `kitty_active` into
     /// `key_event_to_pty_bytes(event, app.kitty_active)`. `PushKeyboardEnhancementFlags`
@@ -528,7 +528,7 @@ impl App {
 
             // S-040: Kitty keyboard protocol support (BC-2.09.004 Invariant 2).
             // Initialized false; set true by setup_keyboard_enhancement() at TUI startup
-            // if the terminal responds to the CSI ? u capability query within 100ms.
+            // if crossterm::terminal::supports_keyboard_enhancement() returns Ok(true).
             kitty_active: false,
         }
     }
@@ -2285,8 +2285,8 @@ pub fn picker_select_prev(app: &mut App) {
 /// Called by `main()` after terminal setup. Connects to the monocle daemon
 /// UDS, loads config, and drives the render+event loop until exit.
 ///
-/// `kitty_active` is the result of the CSI ? u probe performed by
-/// `setup_keyboard_enhancement()` in `main.rs`. It is stored in `app.kitty_active`
+/// `kitty_active` is the result of `crossterm::terminal::supports_keyboard_enhancement()`
+/// called by `setup_keyboard_enhancement()` in `main.rs`. It is stored in `app.kitty_active`
 /// so that `handle_crossterm_event` can thread it into `key_event_to_pty_bytes`.
 ///
 /// # Exit paths
@@ -2352,9 +2352,10 @@ pub async fn run(kitty_active: bool) -> Result<()> {
     };
 
     let mut app = App::new(config);
-    // Set kitty_active from the CSI ?u probe result (performed by setup_keyboard_enhancement
-    // before the event loop starts). This threads the probe result into key_event_to_pty_bytes
-    // via handle_crossterm_event without any I/O in the pure-core path.
+    // Set kitty_active from the supports_keyboard_enhancement() result (performed by
+    // setup_keyboard_enhancement before the event loop starts). This threads the detection
+    // result into key_event_to_pty_bytes via handle_crossterm_event without any I/O in the
+    // pure-core path.
     app.kitty_active = kitty_active;
 
     // F-PASS4-MED-001: create the app event channel for internal task → event-loop delivery.

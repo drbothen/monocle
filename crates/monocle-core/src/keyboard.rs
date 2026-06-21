@@ -245,7 +245,7 @@ pub struct PtyRect {
 ///   `crossterm::event::KeyEvent` → `PtyKeyEvent` via `keyboard_conv::crossterm_key_to_pty()`
 ///   before calling this function. See SS-embedded-pty.md §Dependency Boundary (F-P2-I06).
 /// - `kitty_active`: `true` if the terminal negotiated Kitty keyboard protocol at startup
-///   (set by the `CSI ? u` query in `event_loop::setup_keyboard_enhancement`). When `true`,
+///   (set by `crossterm::terminal::supports_keyboard_enhancement()` in `event_loop::setup_keyboard_enhancement`). When `true`,
 ///   modifier combos not otherwise matched route to `encode_kitty_key` via the Kitty
 ///   catch-all arm. When `false`, the VT-fallback table is used.
 pub fn key_event_to_pty_bytes(event: PtyKeyEvent, kitty_active: bool) -> Option<Vec<u8>> {
@@ -407,8 +407,8 @@ pub fn key_event_to_pty_bytes(event: PtyKeyEvent, kitty_active: bool) -> Option<
 /// same `KeyCode::Enter` / `KeyCode::Up` / `KeyCode::Char(c)` etc. regardless of
 /// whether Kitty protocol was negotiated. A pure function over `(code, mods)` therefore
 /// CANNOT know whether the terminal negotiated Kitty protocol; the `kitty_active: bool`
-/// parameter carries that information explicitly (set at TUI startup from the `CSI ? u`
-/// query result stored in `App::kitty_active`).
+/// parameter carries that information explicitly (set at TUI startup from
+/// `crossterm::terminal::supports_keyboard_enhancement()` stored in `App::kitty_active`).
 ///
 /// **Return value:**
 /// - `false` immediately when `!kitty_active` (early-return guard — non-Kitty terminal).
