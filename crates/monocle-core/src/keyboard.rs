@@ -110,8 +110,10 @@ impl std::ops::BitAnd for PtyKeyModifiers {
 /// Mirror of `crossterm::event::KeyEventKind`.
 ///
 /// `#[non_exhaustive]` per BC-2.02.003 — crossterm may add new event kinds in
-/// future versions; new variants would be mapped to `PtyKeyEventKind::Release` as
-/// a safe default until a BC update formalizes handling.
+/// future versions. Because the enum is `#[non_exhaustive]`, the compiler requires
+/// an exhaustive match with a wildcard arm (`_`), making any unhandled future variant
+/// a compile-time error rather than a silent runtime behaviour change. Callers that
+/// pattern-match on this type MUST handle the wildcard arm explicitly.
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PtyKeyEventKind {
@@ -233,7 +235,11 @@ pub struct PtyRect {
 /// - `event`: A `PtyKeyEvent` (core-owned type). `monocle-tui` converts
 ///   `crossterm::event::KeyEvent` → `PtyKeyEvent` via `keyboard_conv::crossterm_key_to_pty()`
 ///   before calling this function. See SS-embedded-pty.md §Dependency Boundary (F-P2-I06).
-pub fn key_event_to_pty_bytes(event: PtyKeyEvent) -> Option<Vec<u8>> {
+/// - `kitty_active`: `true` if the terminal negotiated Kitty keyboard protocol at startup
+///   (set by the `CSI ? u` query in `event_loop::setup_keyboard_enhancement`). When `true`,
+///   modifier combos not otherwise matched route to `encode_kitty_key` via the Kitty
+///   catch-all arm. When `false`, the VT-fallback table is used.
+pub fn key_event_to_pty_bytes(event: PtyKeyEvent, kitty_active: bool) -> Option<Vec<u8>> {
     // BC-2.09.002 PC-3: Release events are discarded — not forwarded to PTY.
     if event.kind == PtyKeyEventKind::Release {
         return None;
@@ -242,12 +248,22 @@ pub fn key_event_to_pty_bytes(event: PtyKeyEvent) -> Option<Vec<u8>> {
     let mods = event.modifiers;
 
     match event.code {
+        // -----------------------------------------------------------------------
+        // Arm 1: Unmodified specific keys — matched unconditionally (mods.is_empty()
+        // guards prevent false matches on modifier combos of the same keycode).
+        // These are the authoritative VT byte sequences per BC-2.09.002 PC-2 table.
+        // They are placed FIRST so that named keys always encode correctly on any
+        // terminal — the Kitty catch-all arm below only fires for unmatched combos.
+        // -----------------------------------------------------------------------
+
         // Printable characters with no modifier → UTF-8 bytes of the character.
         PtyKeyCode::Char(c) if mods.is_empty() => Some(c.to_string().into_bytes()),
 
-        // Ctrl-modified printable keys → control characters \x01–\x1a.
-        // Ctrl+A = \x01, Ctrl+B = \x02, ..., Ctrl+Z = \x1a.
-        // Also handles Ctrl+@ → \x00 (NUL) and Ctrl+[ → \x1b (Esc).
+        // -----------------------------------------------------------------------
+        // Arm 2: Ctrl+printable → control bytes \x00–\x1f (arm 1 didn't match
+        // because mods is non-empty here). Handles Ctrl+@ → \x00 (NUL) and
+        // Ctrl+[ → \x1b (Esc) as special cases of the formula c - '@'.
+        // -----------------------------------------------------------------------
         PtyKeyCode::Char(c)
             if mods.contains(PtyKeyModifiers::CONTROL) && !mods.contains(PtyKeyModifiers::ALT) =>
         {
@@ -259,61 +275,72 @@ pub fn key_event_to_pty_bytes(event: PtyKeyEvent) -> Option<Vec<u8>> {
             }
         }
 
-        // Special keys (BC-2.09.002 PC-2 table).
-        PtyKeyCode::Enter => Some(b"\r".to_vec()),
-        PtyKeyCode::Backspace => Some(b"\x7f".to_vec()),
-        PtyKeyCode::Tab => Some(b"\t".to_vec()),
+        // Special keys (BC-2.09.002 PC-2 table) — matched unconditionally.
+        // Enter/Backspace/Tab/Esc have no modifier variants in the BC-2.09.002 VT table;
+        // modifier combos (e.g. Ctrl+Enter) fall through to the Kitty arm below.
+        PtyKeyCode::Enter if mods.is_empty() => Some(b"\r".to_vec()),
+        PtyKeyCode::Backspace if mods.is_empty() => Some(b"\x7f".to_vec()),
+        PtyKeyCode::Tab if mods.is_empty() => Some(b"\t".to_vec()),
         // Esc reached here means the dispatch layer forwarded it (not the first Esc).
         // Per BC-2.09.002 Invariant 2: the first bare Esc is intercepted BEFORE this
         // function; reaching here means the dispatch layer has already handled the exit.
         // In practice key_event_to_pty_bytes should NOT be called with Esc (the dispatch
         // layer consumes it), but if it is, forward as \x1b per the BC table.
-        PtyKeyCode::Esc => Some(b"\x1b".to_vec()),
+        PtyKeyCode::Esc if mods.is_empty() => Some(b"\x1b".to_vec()),
 
-        // Arrow keys (BC-2.09.002 PC-2 table).
+        // Arrow keys (BC-2.09.002 PC-2 table) — unmodified only.
+        // Modified arrows are handled by VT-fallback arms below (or Kitty arm if active).
         PtyKeyCode::Up if mods.is_empty() => Some(b"\x1b[A".to_vec()),
         PtyKeyCode::Down if mods.is_empty() => Some(b"\x1b[B".to_vec()),
         PtyKeyCode::Right if mods.is_empty() => Some(b"\x1b[C".to_vec()),
         PtyKeyCode::Left if mods.is_empty() => Some(b"\x1b[D".to_vec()),
 
         // Navigation keys (BC-2.09.002 PC-2 table).
-        PtyKeyCode::Home => Some(b"\x1b[H".to_vec()),
-        PtyKeyCode::End => Some(b"\x1b[F".to_vec()),
-        PtyKeyCode::PageUp => Some(b"\x1b[5~".to_vec()),
-        PtyKeyCode::PageDown => Some(b"\x1b[6~".to_vec()),
-        PtyKeyCode::Insert => Some(b"\x1b[2~".to_vec()),
-        PtyKeyCode::Delete => Some(b"\x1b[3~".to_vec()),
+        PtyKeyCode::Home if mods.is_empty() => Some(b"\x1b[H".to_vec()),
+        PtyKeyCode::End if mods.is_empty() => Some(b"\x1b[F".to_vec()),
+        PtyKeyCode::PageUp if mods.is_empty() => Some(b"\x1b[5~".to_vec()),
+        PtyKeyCode::PageDown if mods.is_empty() => Some(b"\x1b[6~".to_vec()),
+        PtyKeyCode::Insert if mods.is_empty() => Some(b"\x1b[2~".to_vec()),
+        PtyKeyCode::Delete if mods.is_empty() => Some(b"\x1b[3~".to_vec()),
 
-        // Function keys F1–F12 (BC-2.09.002 PC-2 table).
-        PtyKeyCode::F(n) => Some(fn_key_bytes(n)),
+        // Function keys F1–F12 (BC-2.09.002 PC-2 table) — unmodified.
+        PtyKeyCode::F(n) if mods.is_empty() => Some(fn_key_bytes(n)),
 
-        // Kitty-enhanced keys: modifier combos not expressible in standard VT.
-        // Checked BEFORE Alt+char and BackTab per SS-embedded-pty.md §Translation function
-        // S2-002 precedence note (lines ~1143-1160): on a Kitty terminal, Alt+char arrives
-        // as a CSI-u encoded event (distinct crossterm type), so is_kitty_enhanced_key
-        // returns true and this arm fires before the Alt+char ESC-prefix arm.
-        // On non-Kitty terminals is_kitty_enhanced_key returns false (no enhanced events
-        // are generated), so the Alt+char and BackTab VT arms below are used instead
-        // (BC-2.09.004 PC-4).
-        ref code if is_kitty_enhanced_key(code, mods) => {
+        // -----------------------------------------------------------------------
+        // Arm 3: Kitty catch-all — fires for modifier-carrying combos when
+        // kitty_active=true. `is_kitty_enhanced_key` returns true when
+        // kitty_active=true AND mods is non-empty AND code is not Null.
+        // This arm is placed AFTER all named VT arms so that unmodified keys and
+        // Ctrl+printable never reach it. On non-Kitty terminals (kitty_active=false),
+        // is_kitty_enhanced_key returns false and this arm is skipped entirely.
+        // SS-embedded-pty.md §Translation function S2-002 / HIGH-001 ruling.
+        // -----------------------------------------------------------------------
+        ref code if is_kitty_enhanced_key(code, mods, kitty_active) => {
             Some(encode_kitty_key(code, mods, event.kind))
         }
 
-        // Alt/Meta + printable char: ESC prefix (standard xterm Alt encoding).
-        // Only reached on non-Kitty terminals (Kitty arm above fires first when active).
+        // -----------------------------------------------------------------------
+        // Arm 4: Alt+printable → ESC prefix (standard xterm Alt encoding).
+        // Only reached on non-Kitty terminals (arm 3 fires first when kitty_active=true).
+        // -----------------------------------------------------------------------
         PtyKeyCode::Char(c) if mods.contains(PtyKeyModifiers::ALT) => {
             let mut bytes = vec![b'\x1b'];
             bytes.extend_from_slice(c.to_string().as_bytes());
             Some(bytes)
         }
 
-        // Shift+Tab as a distinct BackTab keycode.
-        // Only reached on non-Kitty terminals (Kitty arm above fires first when active).
+        // -----------------------------------------------------------------------
+        // Arm 5: Shift+Tab (BackTab keycode).
+        // Only reached on non-Kitty terminals (arm 3 fires first when kitty_active=true).
+        // -----------------------------------------------------------------------
         PtyKeyCode::BackTab => Some(b"\x1b[Z".to_vec()),
 
-        // VT-fallback modified arrows for non-Kitty terminals.
+        // -----------------------------------------------------------------------
+        // Arm 6: VT-fallback modified arrows for non-Kitty terminals.
         // Standard xterm modifier encoding: CSI 1;<mod+1><arrow>.
         // Shift=2, Ctrl=5, Shift+Ctrl=6, Alt=3, etc.
+        // On Kitty terminals (kitty_active=true), arm 3 fires first — intentional.
+        // -----------------------------------------------------------------------
         PtyKeyCode::Up if mods.contains(PtyKeyModifiers::CONTROL) => Some(b"\x1b[1;5A".to_vec()),
         PtyKeyCode::Down if mods.contains(PtyKeyModifiers::CONTROL) => Some(b"\x1b[1;5B".to_vec()),
         PtyKeyCode::Right if mods.contains(PtyKeyModifiers::CONTROL) => Some(b"\x1b[1;5C".to_vec()),
@@ -323,7 +350,26 @@ pub fn key_event_to_pty_bytes(event: PtyKeyEvent) -> Option<Vec<u8>> {
         PtyKeyCode::Right if mods.contains(PtyKeyModifiers::SHIFT) => Some(b"\x1b[1;2C".to_vec()),
         PtyKeyCode::Left if mods.contains(PtyKeyModifiers::SHIFT) => Some(b"\x1b[1;2D".to_vec()),
 
-        // Unrecognized keycodes (PtyKeyCode::Null and anything not matched above).
+        // -----------------------------------------------------------------------
+        // Arm 7: EC-217 TRACE+None — unrecognized modifier combo on non-Kitty terminal.
+        // Modifier combos with no VT encoding and no Kitty path emit a TRACE log and
+        // return None. This is the best-effort boundary per BC-2.09.002 PC-1: NOT a
+        // silent drop — the TRACE makes it observable. On Kitty terminals this arm is
+        // unreachable for modifier combos (arm 3 catches all non-empty mods).
+        // -----------------------------------------------------------------------
+        _ if !mods.is_empty() => {
+            tracing::trace!(
+                code = ?event.code,
+                mods = ?mods,
+                "key_event_to_pty_bytes: no VT encoding for modifier combo on non-Kitty terminal; dropping"
+            );
+            None
+        }
+
+        // -----------------------------------------------------------------------
+        // Arm 8: unrecognized key with no modifiers (PtyKeyCode::Null and anything
+        // else not matched above — e.g. Esc with modifiers falls here via arm 7).
+        // -----------------------------------------------------------------------
         _ => None,
     }
 }
@@ -331,44 +377,37 @@ pub fn key_event_to_pty_bytes(event: PtyKeyEvent) -> Option<Vec<u8>> {
 /// Returns `true` if `(code, mods)` should be encoded as a Kitty CSI u sequence
 /// rather than a standard VT byte sequence.
 ///
-/// Called by the TUI dispatch arm before `key_event_to_pty_bytes` to determine whether
-/// Kitty-enhanced encoding applies. Returns `false` on terminals that do not support
-/// Kitty keyboard protocol (the `PushKeyboardEnhancementFlags` command silently no-ops
-/// on unsupported terminals, so enhanced `KeyEvent` variants are never generated —
-/// `is_kitty_enhanced_key` will naturally return `false` for all observed events).
+/// # Design (BC-2.09.004 PC-1 / SS-embedded-pty.md §Translation function S2-002)
+///
+/// crossterm-0.29 has NO Kitty-specific `KeyCode` variants — every key arrives as the
+/// same `KeyCode::Enter` / `KeyCode::Up` / `KeyCode::Char(c)` etc. regardless of
+/// whether Kitty protocol was negotiated. A pure function over `(code, mods)` therefore
+/// CANNOT know whether the terminal negotiated Kitty protocol; the `kitty_active: bool`
+/// parameter carries that information explicitly (set at TUI startup from the `CSI ? u`
+/// query result stored in `App::kitty_active`).
+///
+/// **Return value:**
+/// - `false` immediately when `!kitty_active` (early-return guard — non-Kitty terminal).
+/// - `false` immediately when `mods.is_empty()` (unmodified keys are already handled
+///   by the named VT arms in `key_event_to_pty_bytes`).
+/// - `false` for `PtyKeyCode::Null` (unrecognized key — no CSI u encoding).
+/// - `true` for all other `(code, mods)` combinations when `kitty_active = true`.
+///   This includes modifier variants of Enter, Tab, Backspace, Esc, arrows, navigation
+///   keys, and Fn keys that are not covered by the named VT arms.
 ///
 /// # Purity
 ///
 /// This function is pure: no I/O, no state mutation (BC-2.09.004 Invariant 3).
-pub fn is_kitty_enhanced_key(code: &PtyKeyCode, mods: PtyKeyModifiers) -> bool {
-    // `is_kitty_enhanced_key` returns true ONLY for keys that are generated as
-    // Kitty-enhanced events by crossterm when `PushKeyboardEnhancementFlags` is active.
-    //
-    // Design rationale (BC-2.09.004 PC-4 / EC-228):
-    //
-    // On non-Kitty terminals, `PushKeyboardEnhancementFlags` silently no-ops. Crossterm
-    // never generates enhanced `KeyEvent` variants on such terminals. Therefore:
-    // - If a caller passes a plain `PtyKeyEvent` derived from a non-enhanced crossterm event
-    //   (standard terminal), this function returns false for that event.
-    // - Keys like Enter+CONTROL on standard terminals arrive as ordinary crossterm events
-    //   and should fall through to the standard VT table (Enter → \r best-effort per EC-228).
-    //
-    // In practice, this function is called from the TUI dispatch arm which has already
-    // processed the crossterm event. On a Kitty terminal, crossterm generates distinct
-    // enhanced event types for modifier combos. On a non-Kitty terminal, it generates
-    // standard events for the same physical keystrokes.
-    //
-    // For the unit-test context (simulating non-Kitty): standard events → false.
-    // The `encode_kitty_key` tests call it directly (not via `key_event_to_pty_bytes`).
-    //
-    // The `_` arm in `key_event_to_pty_bytes` that calls `encode_kitty_key` is reached
-    // only when crossterm generates an enhanced event that has no standard key code
-    // equivalent. In the unit test suite (pure monocle-core; no crossterm), no test
-    // passes an event that should trigger this arm through `key_event_to_pty_bytes`.
-    //
-    // v1A: always false (standard events only in unit tests; TUI layer handles detection).
-    let _ = (code, mods); // suppress unused parameter warnings
-    false
+pub fn is_kitty_enhanced_key(code: &PtyKeyCode, mods: PtyKeyModifiers, kitty_active: bool) -> bool {
+    // BC-2.09.004 PC-4 / EC-216: early-return guards.
+    // When kitty_active=false (non-Kitty terminal), ALWAYS return false.
+    // When mods.is_empty(), unmodified keys are already covered by named VT arms
+    // in key_event_to_pty_bytes — no CSI u encoding needed.
+    if !kitty_active || mods.is_empty() {
+        return false;
+    }
+    // Null key has no CSI u encoding (no codepoint to encode).
+    !matches!(code, PtyKeyCode::Null)
 }
 
 /// Encode a Kitty keyboard protocol key event as a CSI u byte sequence.

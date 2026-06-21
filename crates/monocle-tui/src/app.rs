@@ -429,6 +429,23 @@ pub struct App {
     /// timeout task — if `None` (e.g., unit tests that do not run the full event loop),
     /// no timeout is spawned and no abort handle is stored.
     pub app_event_tx: Option<tokio::sync::mpsc::Sender<AppEvent>>,
+
+    // -----------------------------------------------------------------------
+    // S-040: Kitty keyboard protocol detection (BC-2.09.004 Invariant 2)
+    // -----------------------------------------------------------------------
+    /// Whether the terminal negotiated Kitty keyboard protocol at startup.
+    ///
+    /// Set by `event_loop::setup_keyboard_enhancement()` after the `CSI ? u`
+    /// query (write `\x1b[?u`, read response with 100ms timeout). `true` when
+    /// the terminal responds with `\x1b[?<n>u` (Kitty protocol supported); `false`
+    /// otherwise (timeout or non-Kitty response).
+    ///
+    /// Used by `handle_crossterm_event` to thread `kitty_active` into
+    /// `key_event_to_pty_bytes(event, app.kitty_active)`. `PushKeyboardEnhancementFlags`
+    /// is only called when this is `true` (BC-2.09.004 Invariant 2).
+    ///
+    /// Initialized to `false`; updated at TUI startup by `setup_keyboard_enhancement`.
+    pub kitty_active: bool,
 }
 
 impl App {
@@ -508,6 +525,11 @@ impl App {
             // Unit tests that do not run the full event loop leave this as None, which
             // prevents timeout tasks from being spawned (no-op guard in enter_embedded_terminal).
             app_event_tx: None,
+
+            // S-040: Kitty keyboard protocol support (BC-2.09.004 Invariant 2).
+            // Initialized false; set true by setup_keyboard_enhancement() at TUI startup
+            // if the terminal responds to the CSI ? u capability query within 100ms.
+            kitty_active: false,
         }
     }
 }
@@ -2263,6 +2285,10 @@ pub fn picker_select_prev(app: &mut App) {
 /// Called by `main()` after terminal setup. Connects to the monocle daemon
 /// UDS, loads config, and drives the render+event loop until exit.
 ///
+/// `kitty_active` is the result of the CSI ? u probe performed by
+/// `setup_keyboard_enhancement()` in `main.rs`. It is stored in `app.kitty_active`
+/// so that `handle_crossterm_event` can thread it into `key_event_to_pty_bytes`.
+///
 /// # Exit paths
 ///
 /// - `q` from `Dashboard` mode → clean exit (status 0); `Esc` is context-sensitive
@@ -2271,7 +2297,7 @@ pub fn picker_select_prev(app: &mut App) {
 ///   any key press (AC-002).
 /// - `TransportEvent::Disconnected` → transitions to reconnect mode (AC-003).
 ///   Does NOT exit.
-pub async fn run() -> Result<()> {
+pub async fn run(kitty_active: bool) -> Result<()> {
     use crossterm::event::{self, Event};
     use ratatui::{backend::CrosstermBackend, Terminal};
     use std::io;
@@ -2326,6 +2352,10 @@ pub async fn run() -> Result<()> {
     };
 
     let mut app = App::new(config);
+    // Set kitty_active from the CSI ?u probe result (performed by setup_keyboard_enhancement
+    // before the event loop starts). This threads the probe result into key_event_to_pty_bytes
+    // via handle_crossterm_event without any I/O in the pure-core path.
+    app.kitty_active = kitty_active;
 
     // F-PASS4-MED-001: create the app event channel for internal task → event-loop delivery.
     // Bounded at 64 to match IPC_READER_CHANNEL_CAPACITY; dump-window timeout events are
@@ -2760,18 +2790,33 @@ pub async fn handle_crossterm_event(
                         return Ok(());
                     };
 
-                    // BC-2.09.002 Invariant 2: dispatch_embedded_terminal_key checks Esc
-                    // BEFORE calling key_event_to_pty_bytes (non-negotiable ordering).
-                    // Returns true if bare Esc was intercepted (ExitEmbeddedTerminal signal).
-                    let should_exit = crate::event_loop::dispatch_embedded_terminal_key(
-                        ct_key,
-                        &session_id,
-                        &ipc_tx,
-                    )
-                    .await;
+                    // BC-2.09.002 Invariant 2: Esc interception happens BEFORE key_event_to_pty_bytes.
+                    // This call uses app.kitty_active (threaded from App) to correctly route
+                    // Kitty-enhanced modifier combos when the terminal supports Kitty protocol.
+                    // dispatch_embedded_terminal_key defaults kitty_active=false for standalone
+                    // unit tests; the full App path uses app.kitty_active here for production fidelity.
+                    use crate::keyboard_conv::crossterm_key_to_pty;
+                    use crossterm::event::{KeyCode, KeyModifiers};
+                    use monocle_core::keyboard::key_event_to_pty_bytes;
 
-                    if should_exit {
+                    if ct_key.code == KeyCode::Esc && ct_key.modifiers == KeyModifiers::NONE {
                         exit_embedded_terminal(app, &session_id);
+                    } else {
+                        let pty_event = crossterm_key_to_pty(ct_key);
+                        let kitty_active = app.kitty_active;
+                        if let Some(bytes) = key_event_to_pty_bytes(pty_event, kitty_active) {
+                            if let Err(e) = ipc_tx
+                                .send(ClientToServer::KeyInput {
+                                    session_id: session_id.clone(),
+                                    bytes,
+                                })
+                                .await
+                            {
+                                tracing::warn!(
+                                    "handle_crossterm_event: EmbeddedTerminal KeyInput send failed: {e}"
+                                );
+                            }
+                        }
                     }
                 }
                 Event::Paste(text) => {
