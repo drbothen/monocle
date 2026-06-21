@@ -124,8 +124,8 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "2.16.0"
-  last_bump_commit: "[Architect ruling errata: Ruling A resize row split — S-047 owns daemon IPC arm + resize_session(); S-042 owns session-host DaemonToHost::Resize handler; stale row superseded by S-047 v1.1 IPC Handler Arm Ownership table]"
+  current_version: "2.17.0"
+  last_bump_commit: "[Human ruling: full end-to-end resize belongs to S-042; Ruling A collapsed from two-row split to single S-042 row; prior v2.16.0 split based on false ClientToServer non_exhaustive + S-047-ships-first assumptions]"
   last_bump_date: "2026-06-21"
 
 SS-embedded-pty:
@@ -210,8 +210,8 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.61"
-  last_bump_commit: "[Architect ruling: BC-2.09.006 coverage row split S-042/S-047; STORY-INDEX v5.61]"
+  current_version: "5.62"
+  last_bump_commit: "[Human ruling: S-042 full resize pipeline; points 5→8; Wave 9 42→45 pts; total 311→314; BC-2.09.006 coverage single-owner S-042]"
   last_bump_date: "2026-06-21"
 
 VP-INDEX:
@@ -228,15 +228,15 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.39"
-  last_bump_commit: "[Architect ruling cascade: S-042 v1.3→v1.4, S-047 v1.5→v1.6 input pin updates]"
+  current_version: "1.40"
+  last_bump_commit: "[Human ruling cascade: S-042 v1.4→v1.5, S-047 v1.6→v1.7 input pin updates]"
   last_bump_date: "2026-06-21"
 
 sprint-state:
   path: stories/sprint-state.yaml
-  current_version: "1.53"
-  last_bump_commit: "[D-340 — S-039 status draft→done; done 38→39; draft 12→11; points_complete 230→238; Wave 9: 1/6 done (8/42 pts)]"
-  last_bump_date: "2026-06-20"
+  current_version: "1.55"
+  last_bump_commit: "[Human ruling: S-042 points 5→8; wave_9_points 42→45; total_points 311→314]"
+  last_bump_date: "2026-06-21"
 
 nfr-catalog:
   path: specs/prd-supplements/nfr-catalog.md
@@ -707,8 +707,8 @@ BC-2.07.006:
 
 BC-2.03.005:
   path: specs/behavioral-contracts/ss-03/BC-2.03.005.md
-  current_version: "1.1.9"
-  last_bump_commit: "[SS-session-manager arch-source pin cascade v2.15.1→v2.16.0; no behavioral changes]"
+  current_version: "1.1.10"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.03.006:
@@ -719,92 +719,92 @@ BC-2.03.006:
 
 BC-2.03.007:
   path: specs/behavioral-contracts/ss-03/BC-2.03.007.md
-  current_version: "1.2.9"
-  last_bump_commit: "[SS-session-manager arch-source pin cascade v2.15.1→v2.16.0; no behavioral changes]"
+  current_version: "1.2.10"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.03.008:
   path: specs/behavioral-contracts/ss-03/BC-2.03.008.md
-  current_version: "1.1.2"
-  last_bump_commit: "[SS-session-manager arch-source pin cascade v2.15.1→v2.16.0; no behavioral changes]"
+  current_version: "1.1.3"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.05.009:
   path: specs/behavioral-contracts/ss-05/BC-2.05.009.md
-  current_version: "1.5.9"
-  last_bump_commit: "[SS-session-manager arch-source pin cascade v2.15.1→v2.16.0; no behavioral changes]"
+  current_version: "1.5.10"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.05.010:
   path: specs/behavioral-contracts/ss-05/BC-2.05.010.md
-  current_version: "1.9.8"
-  last_bump_commit: "[SS-session-manager arch-source pin cascade v2.15.1→v2.16.0; errata ruling Ruling A resize row split; no behavioral changes]"
+  current_version: "1.9.10"
+  last_bump_commit: "Fix stale body citation in §ResizePane carve-out; update SS-session-manager arch-source from prior to current version; remove stale line-number anchor"
   last_bump_date: "2026-06-21"
 
 BC-2.05.011:
   path: specs/behavioral-contracts/ss-05/BC-2.05.011.md
-  current_version: "1.2.9"
-  last_bump_commit: "[SS-session-manager arch-source pin cascade v2.15.1→v2.16.0; no behavioral changes]"
+  current_version: "1.2.10"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.06.025:
   path: specs/behavioral-contracts/ss-06/BC-2.06.025.md
-  current_version: "1.5.10"
-  last_bump_commit: "[SS-session-manager arch-source pin cascade v2.15.1→v2.16.0; no behavioral changes]"
+  current_version: "1.5.11"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.08.001:
   path: specs/behavioral-contracts/ss-08/BC-2.08.001.md
-  current_version: "1.5.7"
-  last_bump_commit: "[SS-session-manager arch-source pin cascade v2.15.1→v2.16.0; no behavioral changes]"
+  current_version: "1.5.8"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.08.002:
   path: specs/behavioral-contracts/ss-08/BC-2.08.002.md
-  current_version: "1.2.7"
-  last_bump_commit: "[SS-session-manager arch-source pin cascade v2.15.1→v2.16.0; no behavioral changes]"
+  current_version: "1.2.8"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.08.003:
   path: specs/behavioral-contracts/ss-08/BC-2.08.003.md
-  current_version: "1.5.4"
-  last_bump_commit: "[SS-session-manager arch-source pin cascade v2.15.1→v2.16.0; no behavioral changes]"
+  current_version: "1.5.5"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.08.004:
   path: specs/behavioral-contracts/ss-08/BC-2.08.004.md
-  current_version: "1.4.1"
-  last_bump_commit: "[SS-session-manager arch-source pin cascade v2.15.1→v2.16.0; no behavioral changes]"
+  current_version: "1.4.2"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.08.005:
   path: specs/behavioral-contracts/ss-08/BC-2.08.005.md
-  current_version: "1.0.10"
-  last_bump_commit: "[SS-session-manager arch-source pin cascade v2.15.1→v2.16.0; no behavioral changes]"
+  current_version: "1.0.11"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.08.006:
   path: specs/behavioral-contracts/ss-08/BC-2.08.006.md
-  current_version: "1.5.2"
-  last_bump_commit: "[SS-session-manager arch-source pin cascade v2.15.1→v2.16.0; no behavioral changes]"
+  current_version: "1.5.3"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.08.007:
   path: specs/behavioral-contracts/ss-08/BC-2.08.007.md
-  current_version: "1.5.8"
-  last_bump_commit: "[SS-session-manager arch-source pin cascade v2.15.1→v2.16.0; Ruling A errata; no behavioral changes]"
+  current_version: "1.5.9"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.08.008:
   path: specs/behavioral-contracts/ss-08/BC-2.08.008.md
-  current_version: "1.4.2"
-  last_bump_commit: "[SS-session-manager arch-source pin cascade v2.15.1→v2.16.0; Ruling A errata; no behavioral changes]"
+  current_version: "1.4.3"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.09.001:
   path: specs/behavioral-contracts/ss-09/BC-2.09.001.md
-  current_version: "1.7.4"
-  last_bump_commit: "[SS-session-manager arch-source pin cascade v2.15.1→v2.16.0; Ruling A errata; no behavioral changes]"
+  current_version: "1.7.5"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.09.002:
@@ -833,8 +833,8 @@ BC-2.09.005:
 
 BC-2.09.006:
   path: specs/behavioral-contracts/ss-09/BC-2.09.006.md
-  current_version: "1.2.0"
-  last_bump_commit: "[Architect ruling: Story Anchor split S-042 (TUI + session-host) vs S-047 (daemon leg); postcondition ownership table added; no behavioral content changed]"
+  current_version: "1.3.0"
+  last_bump_commit: "[Human ruling: full end-to-end resize belongs to S-042; Story Anchor PC-4/PC-5 moved from S-047 → S-042; single-owner table; prior v1.2.0 split based on false ClientToServer non_exhaustive assumption]"
   last_bump_date: "2026-06-21"
 
 BC-2.09.007:
@@ -985,8 +985,8 @@ S-046-pty-output-fan-out:
 
 S-047-ipc-lifecycle-variants:
   path: stories/S-047-ipc-lifecycle-variants.md
-  current_version: "1.6"
-  last_bump_commit: "[Architect ruling errata: File Structure resize_pane() → resize_session() (typo fix; AC-003 body was always correct)]"
+  current_version: "1.7"
+  last_bump_commit: "[Human ruling: ResizePane arm + resize_session() moved to S-042; IPC Handler Arm Ownership table updated; AC-003 ResizePane removed; File Structure updated; 3 arms → 2 arms]"
   last_bump_date: "2026-06-21"
 
 E-04-daemon-wiring:
@@ -1075,8 +1075,8 @@ S-041-mouse-forwarding-sgr:
 
 S-042-resize-debounce-resizepane:
   path: stories/S-042-resize-debounce-resizepane.md
-  current_version: "1.4"
-  last_bump_commit: "[Architect ruling: scope boundary clarification — daemon leg (resize_session, ipc_server) belongs to S-047; S-042 owns session-host DaemonToHost::Resize handler; Architecture Compliance Rules extended; BC input pin v1.1.5→v1.2.0]"
+  current_version: "1.5"
+  last_bump_commit: "[Human ruling: full end-to-end resize; points 5→8; AC-013..AC-016 (daemon leg); File Structure adds ipc_server.rs + session_manager/mod.rs + monocle-session-host; daemon tests + run-loop wiring test added]"
   last_bump_date: "2026-06-21"
 
 S-043-scrollback-navigation:

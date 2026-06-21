@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.54"
+version: "1.55"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-21T00:00:00Z
@@ -565,16 +565,16 @@ stories:
     notes: "Wave 9. Depends on S-040. Blocks S-044. BC: BC-2.09.003."
 
   - id: S-042
-    title: "PTY Resize Detection, 50ms Debounce, and ResizePane IPC"
+    title: "PTY Resize Detection, 50ms Debounce, ResizePane IPC, and Full Daemon Resize Pipeline"
     epic: EPIC-09
     wave: 9
-    points: 5
+    points: 8
     status: draft
     assigned_to: null
     started_at: null
     completed_at: null
     pr_url: null
-    notes: "Wave 9. Depends on S-039. Blocks S-043 (S-043 AC-009 requires S-042's ResizePane handler to reset pty_scroll_offsets). BC: BC-2.09.006."
+    notes: "Wave 9. Depends on S-039. Blocks S-043 (S-043 AC-009 requires S-042's ResizePane handler to reset pty_scroll_offsets). BC: BC-2.09.006. Expanded from 5→8 pts per human ruling 2026-06-21: full daemon resize pipeline (ipc_server ResizePane arm, resize_session impl, DaemonToHost::Resize forwarding, session-host pty.resize handler)."
 
   - id: S-043
     title: "Scrollback Navigation — PtyScrollUp/Down, Per-Session Offsets, Configurable Capacity"
@@ -657,7 +657,7 @@ summary:
   ready: 0
   blocked: 1
   draft: 10
-  total_points: 311
+  total_points: 314
   points_complete: 246
   wave_0_points: 3
   wave_1_points: 8
@@ -668,14 +668,14 @@ summary:
   wave_6_points: 34
   wave_7_points: 23
   wave_8_points: 74
-  wave_9_points: 42
+  wave_9_points: 45
   wave_7_gate_status: passed
   wave_7_gate_decision: D-232
   wave_7_gate_date: "2026-06-03"
   phase_3_status: COMPLETE
-  # WAVE-8/9 NOTE: total_points: 311 includes all waves (0-9). Phase-3 original deliverables remain 33 stories / 195 pts.
+  # WAVE-8/9 NOTE: total_points: 314 includes all waves (0-9). Phase-3 original deliverables remain 33 stories / 195 pts.
   #   Wave 8 (74 pts) = S-032 (5) + S-DAEMON-WIRE-FIX-001 (5) + S-033..S-038 (38) + S-045..S-048 (26).
-  #   Wave 9 (42 pts) = S-039..S-044 (42).
+  #   Wave 9 (45 pts) = S-039..S-044 (45). S-042 expanded from 5→8 pts per human ruling 2026-06-21.
   #   S-032 and S-DAEMON-WIRE-FIX-001 were previously excluded from the Phase-3 195 pt total; they are now
   #   included in wave_8_points and the full total_points: 311 corpus count.
   #   S-032 (EPIC-05, 5 pts): discharges deferred BC-2.05.004 v1.1.0 PC-2 daemon fan-out obligation.
@@ -688,6 +688,9 @@ summary:
   # total_stories note: 51 = 33 Phase-3 stories (including S-PHASE-3-PREP and S-DTU-001) + 2 Wave-8
   #   pre-existing (S-032, S-DAEMON-WIRE-FIX-001) + 16 new v1A (S-033..S-048). Blocked count (1) is
   #   S-PHASE-3-PREP (blocked on vsdd-factory spec-kit-mcp rc.19+).
+  # v1.55 updates (2026-06-21):
+  # - Human ruling: S-042 expanded to full end-to-end resize pipeline. Points 5→8.
+  #   S-042 title updated. Wave 9 total: 42→45 pts. Grand total: 311→314 pts.
   # v1.54 updates (2026-06-21):
   # - D-342: S-040 MERGED to develop via PR #50 @ d230a26 (squash-merge 2026-06-21).
   #   S-040 status: draft → done. completed_at: "2026-06-21". pr_url set.

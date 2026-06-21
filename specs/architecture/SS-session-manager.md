@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.16.0"
+version: "2.17.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -2944,8 +2944,7 @@ control connection).
 | `vt100::Parser.process()` live byte processing | S-039 | vt100::Parser integration |
 | `DaemonToHost::Attach` scrollback dump (`ScrollbackChunk*` + `ScrollbackDumpComplete`) | S-035 | attach_session; this is the daemon-side `attach_session()` implementation |
 | Keyboard forwarding (`DaemonToHost::KeyInput`) | S-047 | S-047 owns KeyInput / ResizePane / RenameSession IPC arms |
-| PTY resize daemon leg (`ClientToServer::ResizePane` dispatch arm, `resize_session()`, `DaemonToHost::Resize`) | S-047 | S-047 AC-003 Tasks owns the IPC arm + `session_manager.resize_session()` + `DaemonToHost::Resize` forwarding. S-042 owns the TUI-side leg only (detection, debounce, send). The prior "S-042" entry in this row was erroneous — superseded by S-047 v1.1 IPC Handler Arm Ownership table. |
-| PTY resize session-host leg (`DaemonToHost::Resize` handler in `monocle-session-host`) | S-042 | S-042 owns the session-host's `DaemonToHost::Resize` match arm: `pty.resize()` + `parser.set_size()`. This is the session-host binary handler, not the daemon IPC handler. |
+| PTY resize — full end-to-end (`ClientToServer::ResizePane` dispatch arm, `resize_session()`, `DaemonToHost::Resize` forwarding, session-host `DaemonToHost::Resize` handler, `pty.resize()`, `parser.set_size()`) | S-042 | Human ruling 2026-06-21: S-042 owns the complete resize pipeline end-to-end. `ClientToServer` is NOT `#[non_exhaustive]` and has NO wildcard arm — adding the variant without an arm is a compile error; S-047 is draft with undelivered deps; leaving `resize_session()` as `todo!()` ships a live panic path. S-047 keeps KeyInput + RenameSession IPC arms only. |
 | Session re-discovery (`DaemonToHost::Attach` on Detached session) | S-035 | attach_session() daemon side |
 | `ScrollbackChunk*` / `ScrollbackDumpComplete` framing | S-035 | screen-state transfer on Attach |
 | vt100 screen-state transfer (styled cells) | S-035 | attach scrollback serialization |
@@ -4144,6 +4143,25 @@ Add to the S-035 test suite:
   correctly specifies this. Resolves HIGH-001.
 
 - SE-16d monotonicity: v2.7.1 > v2.7.0. PASS.
+
+---
+
+## §Trace v2.17.0
+
+**Human ruling: full end-to-end resize belongs to S-042; Ruling A row corrected** (2026-06-21):
+
+- **Context:** The v2.16.0 Ruling A split (S-047 owns daemon leg; S-042 owns session-host leg)
+  was based on two false assumptions: (a) `ClientToServer` has `#[non_exhaustive]` + wildcard arm
+  — FALSE; the enum is exhaustive with no wildcard; (b) S-047 ships before S-042 (Wave 8 < Wave 9)
+  — FALSE; S-047 is `status: draft` with undelivered deps (S-046 ← S-032).
+- **Human ruling (authoritative 2026-06-21):** S-042 owns the full end-to-end resize:
+  `ClientToServer::ResizePane` dispatch arm, `resize_session()` implementation, `DaemonToHost::Resize`
+  forwarding, zero-dim clamp, session-host `pty.resize()` + `parser.set_size()`.
+- **Ruling A table updated:** Two-row split (daemon leg S-047, session-host leg S-042) collapsed
+  into a single row: full resize → S-042. Rationale added in Owning Story cell.
+- **S-047 scope:** S-047 retains KeyInput + RenameSession IPC arms and the scrollback protocol.
+  The ResizePane arm and `resize_session()` are S-042 scope.
+- **SE-16d monotonicity: v2.17.0 > v2.16.0. PASS.**
 
 ---
 

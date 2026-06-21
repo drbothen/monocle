@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.10"
+version: "1.0.11"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -106,7 +106,7 @@ immediately (no grace period for sidecars without a live process).
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — GC is explicitly named in CAP-008; this BC defines the 10-second grace period, sidecar cleanup, and SessionListUpdate publication that constitute the GC policy |
 | Architecture Module | monocle-runtime (SessionManager GC tokio task) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.16.0 §Session GC policy; SS-session-manager.md v2.16.0 §Terminated-in-grace defensive action×state matrix (F-P52-001); SS-session-manager.md v2.16.0 §session_error_to_code() (InvalidSessionName → "rename_failed"); SS-ipc.md v1.24.0 §ServerToClient::Error taxonomy; SS-daemon-wiring-v2-delta.md v1.12.0 |
+| Architecture Source | SS-session-manager.md v2.17.0 §Session GC policy; SS-session-manager.md v2.17.0 §Terminated-in-grace defensive action×state matrix (F-P52-001); SS-session-manager.md v2.17.0 §session_error_to_code() (InvalidSessionName → "rename_failed"); SS-ipc.md v1.24.0 §ServerToClient::Error taxonomy; SS-daemon-wiring-v2-delta.md v1.12.0 |
 | Test Name | test_BC_2_08_005_terminated_session_gc_after_10s |
 
 ## Related BCs
@@ -126,6 +126,12 @@ S-037 — Implement SessionManager GC task
 
 VP-TBD — GC timing tests using tokio::time::pause (filled after VP creation)
 
+
+## §Trace 1.0.11
+
+**SS-session-manager arch-source pin cascade v2.16.0→v2.17.0** (2026-06-21):
+- Architecture Source pin updated: SS-session-manager.md v2.16.0 → v2.17.0. No behavioral content changed.
+- SE-16d monotonicity: 1.0.11 > 1.0.10. PASS.
 
 ## §Trace v1.0.10
 

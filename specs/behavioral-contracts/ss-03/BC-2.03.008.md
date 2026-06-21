@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.2"
+version: "1.1.3"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -105,7 +105,7 @@ that must be explicitly opted into, not accidentally inherited.
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the capability boundary for the engine abstraction: spawn is opt-in, not universal; the default Err impl enforces that boundary for all engines that do not explicitly support monocle-controlled session spawning |
 | L2 Domain Invariants | DI-006 (EngineModule implementations must be stateless — the default impl performs no I/O and returns a constant error value, satisfying stateless detection requirement; spawn_recipe() is not a detection method but the same stateless principle applies to non-overriding impls) |
 | Architecture Module | monocle-core (`EngineModule` trait default impl) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module-v2-delta.md v1.6.0 §spawn_recipe() — new trait method (default impl signature); SS-session-manager.md v2.16.0 §session_error_to_code — `EngineError::UnsupportedOperation` → `"spawn_unsupported"` arm (F-P44-IMP-001); SS-ipc.md v1.24.0 §`ServerToClient::Error` — `"spawn_unsupported"` as 11th wire code in taxonomy (12 total as of v1.23.2; `session_not_ready` is the 12th — F-P50-001; `spawn_unsupported` positional rank unchanged) |
+| Architecture Source | SS-engine-module-v2-delta.md v1.6.0 §spawn_recipe() — new trait method (default impl signature); SS-session-manager.md v2.17.0 §session_error_to_code — `EngineError::UnsupportedOperation` → `"spawn_unsupported"` arm (F-P44-IMP-001); SS-ipc.md v1.24.0 §`ServerToClient::Error` — `"spawn_unsupported"` as 11th wire code in taxonomy (12 total as of v1.23.2; `session_not_ready` is the 12th — F-P50-001; `spawn_unsupported` positional rank unchanged) |
 | Stories | S-033 (primary — trait method + default impl deliverer); S-045 (secondary — ClaudeCodeModule concrete override; BC-2.03.005/006/007 anchor) |
 | Cross-Ref | BC-2.03.005 (ClaudeCodeModule overrides this default with the real spawn_recipe() implementation) |
 | Test Name | test_BC_2_03_008_default_spawn_recipe_unsupported_operation |
@@ -129,6 +129,12 @@ Secondary reference: S-045 delivers the `ClaudeCodeModule` concrete override (BC
 
 VP-TBD — Default UnsupportedOperation unit test (filled after VP creation)
 
+
+## §Trace 1.1.3
+
+**SS-session-manager arch-source pin cascade v2.16.0→v2.17.0** (2026-06-21):
+- Architecture Source pin updated: SS-session-manager.md v2.16.0 → v2.17.0. No behavioral content changed.
+- SE-16d monotonicity: 1.1.3 > 1.1.2. PASS.
 
 ## §Trace v1.1.2
 

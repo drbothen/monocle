@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-047
 epic_id: EPIC-05
-version: "1.6"
+version: "1.7"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -28,7 +28,7 @@ inputs:
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
-traces_to: "Implements BC-2.05.010 (7 new ClientToServer variants + routing with SpawnOptions, no-silent-failure invariant, ResizePane zero-dim clamp) and BC-2.05.011 (ScrollbackChunk*/Complete/PtyReset server-to-client variants + pending_pty_bytes buffer + post-dump replay)"
+traces_to: "Implements BC-2.05.010 (KeyInput + RenameSession IPC routing with no-silent-failure invariant) and BC-2.05.011 (ScrollbackChunk*/Complete/PtyReset server-to-client variants + pending_pty_bytes buffer + post-dump replay). NOTE: ResizePane IPC arm and resize_session() moved to S-042 per human ruling 2026-06-21."
 # BC status: BC-2.05.010 and BC-2.05.011 non-empty; status draft pending Phase-2 adversarial convergence gate
 ---
 
@@ -65,7 +65,7 @@ is reserved for `DetachSession` on a `Launching` session (F-P50-001).
 No `ServerToClient::Error` is emitted for `KillSession` on a `Terminating` session — the
 IPC handler returns silently after the idempotent `Ok(())` from `kill_session()`.
 
-### AC-003 (traces to BC-2.05.010 KeyInput postcondition 1 / ResizePane postcondition 1 — KeyInput and ResizePane routing via SessionManager → DaemonToHost)
+### AC-003 (traces to BC-2.05.010 KeyInput postcondition 1 — KeyInput routing via SessionManager → DaemonToHost)
 
 `ClientToServer::KeyInput { session_id: String, bytes: Vec<u8> }` — the daemon IPC handler
 calls `session_manager.send_key_input(&session_id, bytes)`, which sends
@@ -77,14 +77,9 @@ SS-session-manager.md §monocle-session-host binary and ADR-0009/ADR-0010).
 host dead), returns `ServerToClient::Error { code: "session_not_found" }` or `"attach_failed"`
 as appropriate per the 12-code taxonomy — no `"pty_write_failed"` code.
 
-`ClientToServer::ResizePane { session_id: String, rows: u16, cols: u16 }` — the daemon IPC
-handler calls `session_manager.resize_session(&session_id, rows.max(1), cols.max(1))`, which
-sends `DaemonToHost::Resize { rows, cols }` to the session-host over the control connection.
-The session-host calls `pty.resize(PtySize { rows, cols, .. })` and `parser.set_size(rows, cols)`
-(it owns the PTY; the daemon issues NO ioctl directly).
-Zero-dim clamp: if `rows == 0` OR `cols == 0`, clamp to 1 BEFORE sending `DaemonToHost::Resize`.
-After clamping, WARN-drop all transport errors for resize (do NOT propagate as
-`ServerToClient::Error` — resize failures are advisory only per BC-2.05.010 PC-6 carve-out).
+NOTE: `ClientToServer::ResizePane` routing, `session_manager.resize_session()` implementation,
+zero-dim clamp, and `DaemonToHost::Resize` forwarding are owned by **S-042** (human ruling
+2026-06-21). S-047 does NOT implement `resize_session()` or the ResizePane IPC arm.
 
 ### AC-004 (traces to BC-2.05.010 DetachSession postcondition 1 — DetachSession received; blocks on Launching, defensive path only)
 
@@ -220,19 +215,17 @@ from registry) or `"attach_failed"` (session host dead) — NOT a phantom `"pty_
       `"kill_rejected"`, `"permission_denied"`, `"protocol_error"`) if they appear.
 
 ### Daemon Routing (monocle-runtime)
-- [ ] Add match arms for `KeyInput`, `ResizePane`, and `RenameSession` in the daemon's IPC dispatch
-      loop (`monocle-runtime/src/ipc_handler.rs`). These are the 3 arms owned by S-047.
-      The `SpawnSession`, `KillSession`, `AttachSession`, and `DetachSession` arms are authored by
-      S-033, S-034, and S-035 respectively — S-047 MUST NOT re-add or duplicate those arms.
+- [ ] Add match arms for `KeyInput` and `RenameSession` in the daemon's IPC dispatch
+      loop (`monocle-runtime/src/ipc_server.rs`). These are the 2 arms owned by S-047.
+      The `SpawnSession`, `KillSession`, `AttachSession`, `DetachSession`, and `ResizePane` arms
+      are authored by S-033, S-034, S-035, and S-042 respectively — S-047 MUST NOT re-add or
+      duplicate those arms.
       - `KeyInput` → `session_manager.send_key_input(id, bytes)` — on `Err(SessionNotFound)` return
         `ServerToClient::Error { code: "session_not_found" }`; on `Err(SessionHostDead)` return
         `ServerToClient::Error { code: "attach_failed" }`. Do NOT use `"pty_write_failed"` — it is
         NOT in the canonical 12-code taxonomy (AC-012).
-      - `ResizePane` → clamp `rows.max(1), cols.max(1)` (zero-dim guard) THEN call
-        `session_manager.resize_session(id, clamped_rows, clamped_cols)`, which sends
-        `DaemonToHost::Resize { rows, cols }` to the session-host (which owns the PTY fd
-        and calls ioctl). The daemon issues NO ioctl directly. WARN-drop all
-        transport errors (no `ServerToClient::Error` response for resize).
+      - NOTE: `ResizePane` arm and `resize_session()` are S-042 scope (human ruling 2026-06-21).
+        When S-047 is dispatched, both will already be implemented by S-042.
       - `RenameSession` → call `session_manager.rename_session(id, new_name)` → update display_name,
         fan-out `SessionListUpdate`.
 - [ ] Add `pending_pty_bytes: HashMap<(String, String), VecDeque<Bytes>>` to `DaemonState`
@@ -263,7 +256,7 @@ from registry) or `"attach_failed"` (session host dead) — NOT a phantom `"pty_
 - [ ] Write integration tests in `monocle-runtime/tests/ipc_lifecycle.rs`:
       - `test_BC_2_05_010_spawn_session_carries_spawn_options_not_recipe` (AC-001)
       - `test_BC_2_05_010_kill_session_allowed_launching_rejected_terminating` (AC-002)
-      - `test_BC_2_05_010_resize_pane_zero_clamp_warns_not_errors` (AC-003)
+      - `test_BC_2_05_010_key_input_routes_to_session_host` (AC-003 — KeyInput routing; ResizePane tests are in S-042 scope)
       - `test_BC_2_05_010_detach_session_blocks_on_launching` (AC-004)
       - `test_BC_2_05_010_rename_session_propagates_list_update` (AC-005)
       - `test_BC_2_05_010_attach_session_triggers_scrollback_sequence` (AC-006)
@@ -332,8 +325,8 @@ is in `monocle-tui`. These boundaries are enforced by the workspace dependency g
 | File | Action | Notes |
 |------|--------|-------|
 | `crates/monocle-ipc/src/lib.rs` | MODIFY | Add 7 new `ClientToServer` variants; add `ScrollbackChunk`, `ScrollbackDumpComplete` to `ServerToClient`; verify `SpawnOptions` struct (all wire fields use `String` — no typed newtypes) |
-| `crates/monocle-runtime/src/ipc_handler.rs` | MODIFY | Add match arms for `KeyInput`, `ResizePane`, and `RenameSession` (3 arms owned by S-047); `SpawnSession`/`KillSession`/`AttachSession`/`DetachSession` arms are authored by S-033/S-034/S-035 — do NOT duplicate |
-| `crates/monocle-runtime/src/session_manager/mod.rs` | MODIFY | Add `write_pty_bytes()`, `resize_session()`, and `rename_session()` methods; `kill_session()` is authored by S-034 (canonical path: module dir, not flat .rs file). Method name is `resize_session()` (canonical per SS-session-manager.md §Public API — NOT `resize_pane()`). |
+| `crates/monocle-runtime/src/ipc_server.rs` | MODIFY | Add match arms for `KeyInput` and `RenameSession` (2 arms owned by S-047); `SpawnSession`/`KillSession`/`AttachSession`/`DetachSession`/`ResizePane` arms are authored by S-033/S-034/S-035/S-042 respectively — do NOT duplicate |
+| `crates/monocle-runtime/src/session_manager/mod.rs` | MODIFY | Add `write_pty_bytes()` and `rename_session()` methods. NOTE: `resize_session()` is implemented by S-042 (human ruling 2026-06-21) — when S-047 is dispatched the stub will be replaced; do NOT re-implement or duplicate it. `kill_session()` is authored by S-034. |
 | `crates/monocle-runtime/src/scrollback.rs` | CREATE | Scrollback dump task implementation |
 | `crates/monocle-runtime/src/lib.rs` | MODIFY | Add `pub mod scrollback;` |
 | `crates/monocle-tui/src/ipc_receiver.rs` | MODIFY | Add handlers for ScrollbackChunk, ScrollbackDumpComplete, PtyReset (TUI-side) |
@@ -394,9 +387,9 @@ passes with the same story file.
 
 ## IPC Handler Arm Ownership Disambiguation
 
-S-047 authors the **`ClientToServer::KeyInput`**, **`ClientToServer::ResizePane`**, and
-**`ClientToServer::RenameSession`** arms in `monocle-runtime/src/ipc_handler.rs`.
-The canonical 7-arm split across the SS-08/SS-09 stories is:
+S-047 authors the **`ClientToServer::KeyInput`** and **`ClientToServer::RenameSession`**
+arms in `monocle-runtime/src/ipc_server.rs`.
+The canonical arm ownership split is:
 
 | IPC Handler Arm | Owning Story |
 |-----------------|-------------|
@@ -405,14 +398,16 @@ The canonical 7-arm split across the SS-08/SS-09 stories is:
 | `ClientToServer::AttachSession` | S-035 |
 | `ClientToServer::DetachSession` | S-035 |
 | `ClientToServer::KeyInput` | **S-047** (this story) |
-| `ClientToServer::ResizePane` | **S-047** (this story) |
+| `ClientToServer::ResizePane` | **S-042** (human ruling 2026-06-21 — moved from S-047) |
 | `ClientToServer::RenameSession` | **S-047** (this story) |
 
-S-047 MUST NOT re-add or duplicate the SpawnSession, KillSession, AttachSession, or DetachSession
-arms — those arms are authored by S-033, S-034, and S-035 and already present in `ipc_handler.rs`
-when S-047 is dispatched. S-047 only adds the 3 arms above (KeyInput, ResizePane, RenameSession)
-and integrates the full dispatch loop by routing through the SessionManager methods established
-by S-033/S-034/S-035.
+S-047 MUST NOT re-add or duplicate the SpawnSession, KillSession, AttachSession, DetachSession,
+or ResizePane arms — those arms are authored by S-033, S-034, S-035, and S-042 respectively.
+S-047 only adds the 2 arms above (KeyInput, RenameSession) and integrates the dispatch loop by
+routing through the SessionManager methods established by S-033/S-034/S-035.
+
+NOTE: `resize_session()` in `session_manager/mod.rs` is implemented by S-042. When S-047 is
+dispatched, that stub will already be replaced with a real implementation.
 
 ## Subsystem Anchor Justification
 
@@ -424,6 +419,7 @@ extensions — the client/server lifecycle message set — which is the core cap
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 1.7 | 2026-06-21 | vsdd-factory:architect | Human ruling 2026-06-21: ResizePane IPC arm and resize_session() moved from S-047 → S-042. AC-003 header updated to KeyInput-only; ResizePane NOTE added. IPC Handler Arm Ownership table: ResizePane row changed from S-047 → S-042 with ruling citation. Tasks: ResizePane arm removed from daemon routing task; 3 arms → 2 arms; test `test_BC_2_05_010_resize_pane_zero_clamp_warns_not_errors` renamed to `test_BC_2_05_010_key_input_routes_to_session_host` (resize tests are S-042 scope). File Structure: ipc_server.rs row updated (3 arms → 2 arms); session_manager/mod.rs NOTE added that resize_session() is S-042's. traces_to updated. IPC file reference corrected ipc_handler.rs → ipc_server.rs (canonical file used since S-040). |
 | 1.6 | 2026-06-21 | vsdd-factory:architect | Architect ruling errata: File Structure `resize_pane()` → `resize_session()` (method name must match SS-session-manager.md §Public API; typo never caught in prior story-writer passes). AC-003 body was already correct. Input pins bumped: BC-2.05.010 v1.9.4→v1.9.8 (arch-source cascade, no behavioral change), SS-session-manager v2.6.1→v2.16.0 (Ruling A errata confirms resize daemon leg is S-047 scope). No AC changes. <!-- version-pin-historical: BC-2.05.010 v1.9.4 and SS-session-manager v2.6.1 are historical pre-cascade versions cited in this trace row only --> |
 | 1.5 | 2026-06-16 | vsdd-factory:story-writer | S-047-AC009-PTYRESET-QUALIFIER: AC-009 trace header updated from "postcondition 3" to "§PtyReset postcondition 3" — adding the §PtyReset subsection qualifier to match BC-2.05.011's section structure (symmetric with AC-007 §ScrollbackChunk and AC-008 §ScrollbackDumpComplete corrections in v1.4). AC body unchanged. |
 | 1.4 | 2026-06-16 | vsdd-factory:story-writer | F-P23-IMP-001: AC-007 header corrected from "postcondition 1" to "§ScrollbackChunk postcondition 3" (contiguity/gap→re-attach is §ScrollbackChunk PC-3, not PC-1); AC-008 header corrected from "postcondition 2" to "§ScrollbackDumpComplete postcondition 3" (total_chunks validation is §ScrollbackDumpComplete PC-3, not PC-2). Closes F-P20-CRIT-001 class for S-047: all AC-001..AC-012 headers now cite subsection-scoped real clauses. AC bodies unchanged. |

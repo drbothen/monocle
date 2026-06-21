@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.61"
+version: "5.62"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-21T00:00:00Z
@@ -92,7 +92,7 @@ traces_to: .factory/specs/prd.md
 | S-039 | PTY Output Pipeline — vt100::Parser, PseudoTerminal Render, PtyOutput IPC Handler, Auto-Attach on First Entry | EPIC-09 | 8 | 9 | done | S-040, S-042, S-043 |
 | S-040 | Full-Fidelity Keyboard Forwarding — key_event_to_pty_bytes, Kitty Protocol CSI u, and Bracketed Paste | EPIC-09 | 8 | 9 | done | S-041, S-044 |
 | S-041 | Mouse Forwarding — mouse_event_to_pty_bytes, SGR 1006 Scoped Entry/Exit, Out-of-Pane Clip | EPIC-09 | 5 | 9 | draft | S-044 |
-| S-042 | PTY Resize Detection, 50ms Debounce, and ResizePane IPC | EPIC-09 | 5 | 9 | draft | S-043 |
+| S-042 | PTY Resize Detection, 50ms Debounce, ResizePane IPC, and Full Daemon Resize Pipeline | EPIC-09 | 8 | 9 | draft | S-043 |
 | S-043 | Scrollback Navigation — PtyScrollUp/Down, Per-Session Offsets, Configurable Capacity | EPIC-09 | 3 | 9 | draft | — |
 | S-044 | EmbeddedTerminal + SessionCreation AppMode Transitions, SessionCreation Wizard, SpawnAck, and Permission Badge+Bell | EPIC-09 | 13 | 9 | draft | — |
 | S-045 | ClaudeCodeModule::spawn_recipe() — Happy Path, CCR Injection, and Error Cases (Concrete Override Only; Default Trait Impl is S-033) | EPIC-03 | 5 | 8 | draft | — |
@@ -117,7 +117,7 @@ traces_to: .factory/specs/prd.md
 | Wave 6 | S-022, S-023, S-025, S-026 | 34 | IPC + TUI integration — S-022 (serial prerequisite), then S-023 + S-025 (parallel after S-022), then S-026 (after S-023 + S-022). 34 pts. |
 | Wave 7 | S-027, S-028, S-029, S-031 | 23 | Polish: overlay rendering, filter, killer scenario, profile picker (parallel-eligible within wave) |
 | Wave 8 | S-032, S-DAEMON-WIRE-FIX-001, S-033, S-034, S-035, S-036, S-037, S-038, S-045, S-046, S-047, S-048 | 74 | Session Manager + delta IPC/TUI + spawn recipe: S-033 is Wave-8 root (serial prerequisite within wave); S-034/S-035/S-036/S-037/S-038/S-045/S-046/S-047/S-048 serial after their Wave-8 deps |
-| Wave 9 | S-039, S-040, S-041, S-042, S-043, S-044 | 42 | Embedded PTY: S-039 is Wave-9 root (serial prerequisite within wave); S-040/S-042 parallel after S-039; S-041 after S-040; S-043 after S-042; S-044 after S-040+S-041 |
+| Wave 9 | S-039, S-040, S-041, S-042, S-043, S-044 | 45 | Embedded PTY: S-039 is Wave-9 root (serial prerequisite within wave); S-040/S-042 parallel after S-039; S-041 after S-040; S-043 after S-042; S-044 after S-040+S-041. S-042 expanded from 5→8 pts (full daemon resize pipeline per human ruling 2026-06-21). |
 
 ## BC Coverage Table
 
@@ -218,7 +218,7 @@ traces_to: .factory/specs/prd.md
 | BC-2.09.003 | Mouse Events Forwarded to PTY in SGR Encoding When in EmbeddedTerminal | S-041 | AC-001..AC-006 | YES |
 | BC-2.09.004 | Kitty Keyboard Protocol — Enhanced Key Events Forwarded as CSI u Sequences | S-040 | AC-006..AC-008, AC-014 | YES |
 | BC-2.09.005 | Bracketed Paste — Paste Events Wrapped in Bracket Sequences Before Forwarding | S-040 | AC-009..AC-010 | YES |
-| BC-2.09.006 | Resize — PTY and Parser Resized Within 2 Render Ticks of Pane Area Change; 50ms Debounce | S-042 (TUI-side AC-001..AC-012; session-host DaemonToHost::Resize handler), S-047 (daemon IPC arm + resize_session(): PC-4/PC-5) | AC-001..AC-012 (S-042); PC-4/PC-5 daemon leg (S-047 AC-003) | YES |
+| BC-2.09.006 | Resize — PTY and Parser Resized Within 2 Render Ticks of Pane Area Change; 50ms Debounce | S-042 (full end-to-end: TUI AC-001..AC-016, daemon IPC arm, resize_session, DaemonToHost::Resize, session-host pty.resize) | AC-001..AC-016 (all S-042) | YES |
 | BC-2.09.007 | Scrollback — 1000 Rows Default; Configurable; PtyScrollUp/Down Navigate | S-043 | AC-001..AC-014 | YES |
 | BC-2.09.008 | EmbeddedTerminal AppMode Enter/Exit Transitions; SessionCreation Wizard Auto-Transitions to EmbeddedTerminal | S-044 | AC-001..AC-015 | YES |
 | BC-2.09.009 | Permission Badge+Bell — Status Bar Badge + Audible Bell Within One Render Tick While in EmbeddedTerminal or SessionCreation | S-044 | AC-016..AC-021 | YES |
@@ -1251,6 +1251,16 @@ SE-16d monotonicity: v5.30 timestamp 2026-06-03 >= v5.29 timestamp 2026-06-03. P
 - No wave/points/BC coverage changes — story remains Wave 3, 8 pts, BC-2.03.001..004.
 - SE-22 v2 sibling-sweep: sprint-state.yaml v1.16→v1.17 (done 14→15, not_started 2→1, points_complete 67→75); STATE.md v6.05→v6.06.
 - STORY-INDEX version bumped v2.8→v2.9.
+
+## §Trace v5.62 — Human ruling: full resize end-to-end belongs to S-042 (2026-06-21)
+
+**Human ruling overrides v5.61 architect split ruling:**
+- S-042 points updated 5→8 (expanded to full daemon resize pipeline).
+- S-042 title updated to reflect full scope (adds "and Full Daemon Resize Pipeline").
+- Wave 9 total updated 42→45 pts (S-042 +3 pts).
+- BC-2.09.006 coverage row: single-owner S-042 for all ACs (AC-001..AC-016); S-047 removed from coverage.
+- Root cause of v5.61 error: `ClientToServer` is NOT `#[non_exhaustive]` and has NO wildcard arm; S-047 is
+  draft with undelivered deps. The prior split was based on two false premises. Human ruling resolves.
 
 ## §Trace v5.61 — BC-2.09.006 story-anchor split (2026-06-21)
 

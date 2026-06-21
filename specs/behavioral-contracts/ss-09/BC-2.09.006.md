@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.0"
+version: "1.3.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -120,30 +120,55 @@ the parser must reflect the new size within 2 render ticks of the first dimensio
 
 ## Story Anchor
 
-- **S-042** — TUI-side: resize detection, 50ms debounce, `ClientToServer::ResizePane` send,
-  local `vt100::Parser` immediate resize, session-host `DaemonToHost::Resize` handler
-  (`pty.resize()` + `parser.set_size()`) [Postconditions 1, 2, 3, 6 (session-host half), 7, 8].
-- **S-047** — Daemon-side: `ClientToServer::ResizePane` IPC dispatch arm in `ipc_handler.rs`,
-  `SessionManager::resize_session()` implementation, `DaemonToHost::Resize` forwarding to
-  session-host [Postconditions 4, 5]. Wave 8. S-047 delivers before S-042 (Wave 8 precedes
-  Wave 9); `ResizePane` messages from S-042's TUI will be handled correctly when S-047 lands.
+- **S-042** — Full end-to-end resize: TUI-side (resize detection, 50ms debounce,
+  `ClientToServer::ResizePane` send, local `vt100::Parser` immediate resize) + daemon
+  routing leg (`ClientToServer::ResizePane` IPC dispatch arm in `ipc_server.rs`,
+  `SessionManager::resize_session()` implementation, zero-dimension clamp,
+  `DaemonToHost::Resize` forwarding) + session-host leg (`DaemonToHost::Resize` handler:
+  `pty.resize()` + `parser.set_size()`) [All Postconditions 1–8; EC-238 daemon host-dead
+  error handling; EC-239 daemon zero-dim clamp]. Wave 9.
+- **S-047** — IPC lifecycle variants (BC-2.05.010/BC-2.05.011): `KeyInput`, `RenameSession`,
+  scrollback protocol, fan-out. S-047 does NOT own the `ResizePane` IPC arm or
+  `resize_session()` — these are S-042 scope per human ruling 2026-06-21.
 
-**Postcondition ownership split:**
+**Postcondition ownership (all S-042):**
 
 | PC | Description (summary) | Owning Story |
 |----|----------------------|-------------|
 | PC-1 | Size change detection per render cycle | S-042 |
 | PC-2 | `ClientToServer::ResizePane` sent on debounce expiry | S-042 |
 | PC-3 | Local `vt100::Parser` resized immediately (not debounced) | S-042 |
-| PC-4 | Daemon routes `ResizePane` → `SessionManager::resize_session()` | S-047 |
-| PC-5 | `SessionManager` sends `DaemonToHost::Resize` to session-host | S-047 |
+| PC-4 | Daemon routes `ResizePane` → `SessionManager::resize_session()` | S-042 |
+| PC-5 | `SessionManager` sends `DaemonToHost::Resize` to session-host | S-042 |
 | PC-6 | Session-host calls `pty.resize()` and `parser.set_size()` | S-042 (session-host binary) |
 | PC-7 | Harness child receives SIGWINCH | S-042 (session-host binary, via `portable-pty`) |
-| PC-8 | End-to-end latency ≤ 100ms | S-042 + S-047 (joint obligation) |
+| PC-8 | End-to-end latency ≤ 100ms | S-042 |
 
 ## VP Anchors
 
 VP-TBD — Resize debounce timing tests (filled after VP creation)
+
+## §Trace v1.3.0
+
+**Human ruling: full end-to-end resize belongs to S-042; ResizePane/resize_session removed from S-047 scope** (2026-06-21):
+
+- **Root cause of correction:** The v1.2.0 Architect ruling (S-042/S-047 split) was based on two
+  false assumptions: (a) `ClientToServer` is `#[non_exhaustive]` with a wildcard `_ =>` arm so an
+  unrecognised `ResizePane` variant would be silently dropped — this is FALSE; `ClientToServer`
+  has no `#[non_exhaustive]` and no wildcard arm; adding `ResizePane` without a matching arm is
+  a compile error; (b) S-047 ships before S-042 (Wave 8 before Wave 9) — this is FALSE; S-047 is
+  `status: draft`, Wave 8, and its deps (S-046 ← S-032) are undelivered. Leaving `resize_session()`
+  as `todo!()` while S-042's TUI sends `ResizePane` ships a live compile failure and an
+  end-to-end-inert feature, violating the production-grade principle.
+- **Human ruling (authoritative 2026-06-21):** Expand S-042 to end-to-end. The RESIZE-specific
+  daemon leg (ipc_server.rs `ResizePane` dispatch arm, `session_manager.resize_session()`,
+  zero-dim clamp, `DaemonToHost::Resize` forwarding) belongs to S-042, NOT S-047.
+- **Story Anchor revised:** Single owner S-042 for all PCs 1–8, EC-238, EC-239 daemon clamp.
+  S-047 keeps non-resize IPC lifecycle variants (KeyInput, RenameSession, scrollback protocol).
+- **Postcondition ownership table updated:** PC-4 and PC-5 moved from S-047 → S-042.
+- **No behavioral content changed.** PC-1..PC-8 text, invariants, and edge case definitions
+  are unchanged. Only ownership attribution revised.
+- SE-16d monotonicity: v1.3.0 > v1.2.0. PASS.
 
 ## §Trace v1.2.0
 

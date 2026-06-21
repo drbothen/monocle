@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.9.8"
+version: "1.9.10"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:45:00Z
@@ -125,7 +125,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
      spurious popups during normal session startup.
    Both paths are WARN-dropped. The WARN-drop carve-out covers ALL `resize_session()` errors
    without enumeration — F-P51-001 strengthens, not narrows, this invariant. Per
-   SS-session-manager.md v2.16.0 §ResizePane special rule (lines 572-576).
+   SS-session-manager.md v2.17.0 §ResizePane special rule.
 
 ### DetachSession
 
@@ -251,7 +251,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
 | L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — these ClientToServer variants extend the internal transport capability with session lifecycle control messages (spawn, kill, key input, resize, detach, rename, re-attach) — all transported over the existing UDS per the session/event/prompt push design |
 | Architecture Module | monocle-ipc (`ClientToServer` enum new variants); monocle-runtime (IPC handler routing to SessionManager) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-daemon-wiring-v2-delta.md v1.12.0 §IPC handler — new ClientToServer variants (including AttachSession; `ClientToServer::SpawnSession { opts: SpawnOptions }` wire variant under Model A — I27-001); SS-ipc.md v1.24.0 §`ClientToServer::SpawnSession { opts: SpawnOptions }` (Model A wire variant — I27-001); SS-ipc.md v1.24.0 §`ClientToServer::AttachSession` (I3-004 — TUI re-attach; replaces incorrect "TUI sends DaemonToHost::Attach" description); SS-ipc.md v1.24.0 §`ServerToClient::Error` — Error variant + code taxonomy (`spawn_failed`, `binary_not_found`, `invalid_spawn_arg`, `spawn_unsupported`, `sidecar_write_failed`, `session_id_collision`, `session_not_found`, `attach_failed`, `kill_failed`, `rename_failed`, `invalid_request`, `session_not_ready`) — 12 codes as of v1.23.2; `spawn_unsupported` added F-P44-IMP-001; `session_not_ready` added F-P50-001; wire producer is DetachSession arm only (F-P51-001); added by architect in Pass-6 parallel track (C6-001); SS-session-manager.md v2.16.0 §session_error_to_code (spawn-path arms — Model A reachability for binary_not_found/invalid_spawn_arg confirmed I27-001; UnsupportedOperation → "spawn_unsupported" arm added F-P44-IMP-001; SessionNotReady producer-set: DetachSession arm only, resize excluded F-P51-001); SS-engine-module-v2-delta.md v1.6.0 §SessionError (9-variant enum including SessionNotReady — F-P50-001) |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.12.0 §IPC handler — new ClientToServer variants (including AttachSession; `ClientToServer::SpawnSession { opts: SpawnOptions }` wire variant under Model A — I27-001); SS-ipc.md v1.24.0 §`ClientToServer::SpawnSession { opts: SpawnOptions }` (Model A wire variant — I27-001); SS-ipc.md v1.24.0 §`ClientToServer::AttachSession` (I3-004 — TUI re-attach; replaces incorrect "TUI sends DaemonToHost::Attach" description); SS-ipc.md v1.24.0 §`ServerToClient::Error` — Error variant + code taxonomy (`spawn_failed`, `binary_not_found`, `invalid_spawn_arg`, `spawn_unsupported`, `sidecar_write_failed`, `session_id_collision`, `session_not_found`, `attach_failed`, `kill_failed`, `rename_failed`, `invalid_request`, `session_not_ready`) — 12 codes as of v1.23.2; `spawn_unsupported` added F-P44-IMP-001; `session_not_ready` added F-P50-001; wire producer is DetachSession arm only (F-P51-001); added by architect in Pass-6 parallel track (C6-001); SS-session-manager.md v2.17.0 §session_error_to_code (spawn-path arms — Model A reachability for binary_not_found/invalid_spawn_arg confirmed I27-001; UnsupportedOperation → "spawn_unsupported" arm added F-P44-IMP-001; SessionNotReady producer-set: DetachSession arm only, resize excluded F-P51-001); SS-engine-module-v2-delta.md v1.6.0 §SessionError (9-variant enum including SessionNotReady — F-P50-001) |
 | Cross-Ref | BC-2.08.001 (SpawnSession → spawn_session()); BC-2.08.003 (KillSession → kill_session()); BC-2.08.007 (DetachSession → detach_session()) |
 | Test Name | test_BC_2_05_010_new_client_to_server_variants_routed |
 
@@ -275,6 +275,20 @@ S-047 — Implement new ClientToServer IPC variants and daemon routing
 
 VP-TBD — IPC variant routing integration tests (filled after VP creation)
 
+
+## §Trace v1.9.10
+
+**SS-session-manager body-citation fix v2.16.0→v2.17.0** (2026-06-21):
+- Body citation at §ResizePane IPC arm carve-out: `SS-session-manager.md v2.16.0 §ResizePane special rule (lines 572-576)` → `SS-session-manager.md v2.17.0 §ResizePane special rule`. Line reference removed (line numbers shift across versions; section anchor is stable).
+- Removed stale line-number anchor `(lines 572-576)` per POL-11 active-citation hygiene.
+- No behavioral content changed.
+- SE-16d monotonicity: v1.9.10 > v1.9.9. PASS.
+
+## §Trace v1.9.9
+
+**SS-session-manager arch-source pin cascade v2.16.0→v2.17.0** (2026-06-21):
+- Architecture Source pin updated: SS-session-manager.md v2.16.0 → v2.17.0. No behavioral content changed.
+- SE-16d monotonicity: v1.9.9 > v1.9.8. PASS.
 
 ## §Trace v1.9.8
 
