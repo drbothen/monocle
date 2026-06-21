@@ -210,8 +210,8 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.54"
-  last_bump_commit: "[S-039 Pass-7 input-pin sync — BC-2.09.001 1.7.1→1.7.2; S-039 v1.7→v1.8; §Trace v5.54 added]"
+  current_version: "5.55"
+  last_bump_commit: "[D-340 — S-039 status draft→done; Wave-9 first delivery (8/42 pts); §Trace v5.55 added; 39/51 stories done (238/311 pts)]"
   last_bump_date: "2026-06-20"
 
 VP-INDEX:
@@ -234,8 +234,8 @@ EVAL-INDEX:
 
 sprint-state:
   path: stories/sprint-state.yaml
-  current_version: "1.52"
-  last_bump_commit: "[D-339 — S-036 status draft→done; done 37→38; draft 13→12; points_complete 222→230; Wave 8: 6/12 done]"
+  current_version: "1.53"
+  last_bump_commit: "[D-340 — S-039 status draft→done; done 38→39; draft 12→11; points_complete 230→238; Wave 9: 1/6 done (8/42 pts)]"
   last_bump_date: "2026-06-20"
 
 nfr-catalog:

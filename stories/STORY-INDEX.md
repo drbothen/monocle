@@ -1,10 +1,10 @@
 ---
 document_type: story-index
 level: L4
-version: "5.54"
+version: "5.55"
 status: active
 producer: vsdd-factory:state-manager
-timestamp: 2026-06-19T01:00:00Z
+timestamp: 2026-06-20T00:00:00Z
 phase: 2
 inputs:
   - .factory/specs/prd.md
@@ -89,7 +89,7 @@ traces_to: .factory/specs/prd.md
 | S-036 | SessionManager::rediscover_sessions — setsid Persistence; All States Handled Within 5s; UDS Bind Blocked | EPIC-08 | 8 | 8 | done | — |
 | S-037 | SessionManager GC Task — Terminated Sessions Removed After 10s Grace Period | EPIC-08 | 3 | 8 | done | — |
 | S-038 | SessionManager Hook Auto-Injection — hooks-settings.json Writer + SpawnOptions.hooks_settings_path Population | EPIC-08 | 3 | 8 | done | — |
-| S-039 | PTY Output Pipeline — vt100::Parser, PseudoTerminal Render, PtyOutput IPC Handler, Auto-Attach on First Entry | EPIC-09 | 8 | 9 | draft | S-040, S-042, S-043 |
+| S-039 | PTY Output Pipeline — vt100::Parser, PseudoTerminal Render, PtyOutput IPC Handler, Auto-Attach on First Entry | EPIC-09 | 8 | 9 | done | S-040, S-042, S-043 |
 | S-040 | Full-Fidelity Keyboard Forwarding — key_event_to_pty_bytes, Kitty Protocol CSI u, and Bracketed Paste | EPIC-09 | 8 | 9 | draft | S-041, S-044 |
 | S-041 | Mouse Forwarding — mouse_event_to_pty_bytes, SGR 1006 Scoped Entry/Exit, Out-of-Pane Clip | EPIC-09 | 5 | 9 | draft | S-044 |
 | S-042 | PTY Resize Detection, 50ms Debounce, and ResizePane IPC | EPIC-09 | 5 | 9 | draft | S-043 |
@@ -498,6 +498,19 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.55
+
+**S-039 MERGED — Wave-9 first delivery (D-340, 2026-06-20):**
+
+- S-039 Story Registry row: `draft` → `done`. PR #47 @ a7ad00e (admin squash-merge 2026-06-20).
+- 10-pass fresh-context adversarial convergence (3 consecutive CLEAN: passes 8/9/10). Security review PASS_WITH_NOTES (2 LOW fixed in-scope). pr-reviewer APPROVE.
+- Trajectory: P1(3 BLOCKER)→P2(3 HIGH)→P3(1 HIGH)→P4(2 MED)→P5(3 MED)→P6 CLEAN→P7(1 MED)→P8/9/10 CLEAN. 35 behavioral tests green.
+- Spec cascade: BC-2.09.001 v1.7.2; BC-2.09.007 v1.3.1; SS-embedded-pty v1.10.0; SS-config v1.4.0; BC-2.07.002 v1.1.0; S-039 v1.8.
+- Admin bypass required: PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK (dtu-fidelity.yml path-filter excludes TUI-only PRs; required CI context never reports). F-S039-P9-OBS-001 recorded (EmbeddedTerminal pane sizing; S-042 scope; Wave-9 gate).
+- Wave 9: 1/6 stories done (8/42 pts). 39/51 stories done (238/311 pts). develop HEAD: a7ad00e.
+- SE-16d monotonicity: v5.55 timestamp 2026-06-20 >= v5.54 timestamp 2026-06-20. PASS.
+- SE-22 v2 sibling-sweep: sprint-state.yaml v1.52→v1.53 (done 38→39, draft 12→11, points_complete 230→238); STATE.md v8.04→v8.05; STORY-INDEX 5.54→5.55.
 
 ## §Trace v5.54
 

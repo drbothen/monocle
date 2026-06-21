@@ -1,9 +1,9 @@
 ---
 document_type: sprint-state
-version: "1.52"
+version: "1.53"
 status: active
 producer: vsdd-factory:state-manager
-timestamp: 2026-06-19T01:00:00Z
+timestamp: 2026-06-20T00:00:00Z
 phase: 2
 target_implementation_phase: 3
 traces_to: STORY-INDEX.md
@@ -533,13 +533,12 @@ stories:
     epic: EPIC-09
     wave: 9
     points: 8
-    status: draft
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    worktree: ".worktrees/S-039"
-    notes: "Wave 9 root for EPIC-09 (Embedded PTY). Blocks S-040, S-042, S-043 (direct edges only; S-041/S-044 are transitive via S-040). Depends on S-021, S-025, S-035. BC: BC-2.09.001."
+    completed_at: "2026-06-20"
+    pr_url: "https://github.com/jmagady/monocle/pull/47"
+    notes: "Wave 9. PR #47 @ a7ad00e (admin squash-merge 2026-06-20). 10-pass adversarial convergence (3 consecutive CLEAN: passes 8/9/10). Trajectory P1(3 BLOCKER)→P2(3 HIGH)→P3(1 HIGH)→P4(2 MED)→P5(3 MED)→P6 CLEAN→P7(1 MED)→P8/9/10 CLEAN. 35 behavioral tests green. Security review PASS_WITH_NOTES (2 LOW fixed in-scope). pr-reviewer APPROVE. BC-2.09.001 v1.7.2 (Inv-3/4/5/7/8/9, EC-200..208); BC-2.09.007 v1.3.1; SS-embedded-pty v1.10.0; SS-config v1.4.0; BC-2.07.002 v1.1.0 (pty_scrollback_rows). Admin bypass required: DTU path-filter deadlock (TUI-only PR never triggered dtu-fidelity.yml required check; enforce_admins=false). PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK recorded, in-progress fix this session. D-340. Unblocks S-040, S-042, S-043."
 
   - id: S-040
     title: "Full-Fidelity Keyboard Forwarding — key_event_to_pty_bytes, Kitty Protocol CSI u, and Bracketed Paste"
@@ -654,12 +653,12 @@ summary:
   not_started: 0
   in_progress: 0
   review: 0
-  done: 38
+  done: 39
   ready: 0
   blocked: 1
-  draft: 12
+  draft: 11
   total_points: 311
-  points_complete: 230
+  points_complete: 238
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
@@ -689,6 +688,15 @@ summary:
   # total_stories note: 51 = 33 Phase-3 stories (including S-PHASE-3-PREP and S-DTU-001) + 2 Wave-8
   #   pre-existing (S-032, S-DAEMON-WIRE-FIX-001) + 16 new v1A (S-033..S-048). Blocked count (1) is
   #   S-PHASE-3-PREP (blocked on vsdd-factory spec-kit-mcp rc.19+).
+  # v1.53 updates (2026-06-20):
+  # - D-340: S-039 MERGED to develop via PR #47 @ a7ad00e (admin squash-merge 2026-06-20).
+  #   S-039 status: draft → done. completed_at: "2026-06-20". pr_url set.
+  #   done: 38 → 39; draft: 12 → 11; points_complete: 230 → 238.
+  #   PTY output pipeline. BC-2.09.001 v1.7.2; BC-2.09.007 v1.3.1; SS-embedded-pty v1.10.0.
+  #   10-pass adversarial (3 CLEAN: passes 8/9/10). 35 behavioral tests green.
+  #   Security review PASS_WITH_NOTES (2 LOW fixed in-scope). pr-reviewer APPROVE.
+  #   Admin bypass: DTU path-filter deadlock (PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK).
+  #   Wave 9: 1/6 done (8/42 pts). develop HEAD: a7ad00e.
   # v1.52 updates (2026-06-20):
   # - D-339: S-036 MERGED to develop via PR #46 @ d924183 (squash-merge 2026-06-20).
   #   S-036 status: draft → done. completed_at: "2026-06-20". pr_url set.
