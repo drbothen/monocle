@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.6"
+version: "1.5.7"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-14T12:00:00Z
@@ -143,7 +143,7 @@ goes directly to `Launching`.
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC is the primary definition of the spawn operation that launches the session-host process and creates the session registry entry |
 | L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness — the sidecar is a monocle-owned file, not a harness file; the atomic write via tempfile::persist ensures no partial writes to monocle's own state) |
 | Architecture Module | monocle-runtime (SessionManager sub-module — `monocle-runtime/src/session_manager/mod.rs`) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.15.1 §SessionManager §Public API (`spawn_session(opts: SpawnOptions)` signature — Model A; `spawn_recipe()` called daemon-side as first step; UUID generated in IPC handler BEFORE spawn_session()); SS-session-manager.md v2.15.1 §session-state.json schema (schema_version 3); SS-session-manager.md v2.15.1 §session_error_to_code (spawn-path arms: `EngineError::BinaryNotFound` → `"binary_not_found"`, `EngineError::InvalidPath` → `"invalid_spawn_arg"`); SS-engine-module-v2-delta.md v1.6.0 §SpawnOptions and §SpawnRecipe types (Model A wire/internal type assignment — I27-001); SS-ipc.md v1.24.0 §`ClientToServer::SpawnSession { opts: SpawnOptions }` (wire variant — Model A) + §`ServerToClient::SpawnAck { session_id }` (new variant — F-P41-IMP-001); ADR-0009 v1.0.2 §Decision; SS-daemon-wiring-v2-delta.md v1.12.0 §3b (SessionStateChanged emission rule) |
+| Architecture Source | SS-session-manager.md v2.16.0 §SessionManager §Public API (`spawn_session(opts: SpawnOptions)` signature — Model A; `spawn_recipe()` called daemon-side as first step; UUID generated in IPC handler BEFORE spawn_session()); SS-session-manager.md v2.16.0 §session-state.json schema (schema_version 3); SS-session-manager.md v2.16.0 §session_error_to_code (spawn-path arms: `EngineError::BinaryNotFound` → `"binary_not_found"`, `EngineError::InvalidPath` → `"invalid_spawn_arg"`); SS-engine-module-v2-delta.md v1.6.0 §SpawnOptions and §SpawnRecipe types (Model A wire/internal type assignment — I27-001); SS-ipc.md v1.24.0 §`ClientToServer::SpawnSession { opts: SpawnOptions }` (wire variant — Model A) + §`ServerToClient::SpawnAck { session_id }` (new variant — F-P41-IMP-001); ADR-0009 v1.0.2 §Decision; SS-daemon-wiring-v2-delta.md v1.12.0 §3b (SessionStateChanged emission rule) |
 | Test Name | test_BC_2_08_001_spawn_session_entry_created_within_2s |
 
 ## Related BCs
@@ -170,6 +170,12 @@ S-033 — Implement SessionManager::spawn_session() with SessionHostSpawner
 
 VP-TBD — Session spawn integration tests (filled after VP creation)
 
+
+## §Trace v1.5.7
+
+**SS-session-manager v2.15.1 → v2.16.0 Architecture Source pin cascade (Ruling A errata)** (2026-06-21):
+- Architecture Source pin updated. No behavioral content changed.
+- SE-16d monotonicity: v1.5.7 > v1.5.6. PASS.
 
 ## §Trace v1.5.4
 

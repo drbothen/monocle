@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.0"
+version: "1.4.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-19T00:00:00Z
@@ -57,11 +57,11 @@ seconds for the typical case of up to 8 sessions.
    a. `nix::sys::signal::kill(Pid::from_raw(pid), None)` probes process liveness.
    b. If alive: apply state-dependent handling:
       - **State `Launching` or `Running`:** Verify SO_PEERCRED peer uid matches daemon uid
-        (per SS-session-manager.md v2.15.1 §Per-session UDS security I5); if mismatch → log
+        (per SS-session-manager.md §Per-session UDS security I5); if mismatch → log
         WARN, SIGTERM both pids, delete sidecar, skip. If uid matches: send `DaemonToHost::Attach`;
         wait up to 5s for the full `HostToDaemon::ScrollbackChunk*` + `HostToDaemon::ScrollbackDumpComplete`
         sequence (chunked scrollback protocol — `ScrollbackDump` single-message form is
-        RETIRED per SS-session-manager.md v2.15.1); on `ScrollbackDumpComplete` receipt, register
+        RETIRED per SS-session-manager.md); on `ScrollbackDumpComplete` receipt, register
         `SessionEntry` with `state: Running` and populate `host_conn`.
       - **State `Detached` (I3-005 fix):** Verify SO_PEERCRED; if uid matches: register
         `SessionEntry` with `state: Detached` and `host_conn: None`. DO NOT send
@@ -180,7 +180,7 @@ seconds for the typical case of up to 8 sessions.
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — re-discovery on daemon restart is explicitly named in CAP-008; this BC defines the complete re-discovery algorithm including the ordering guarantee |
 | Architecture Module | monocle-runtime (SessionManager `rediscover_sessions()`; `daemon_start_sequence` step 8b) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.15.1 §Daemon startup: session re-discovery (including §Re-discovery state handling — I4 all states covered; I3-002 Terminating watchdog; I3-005 Detached preservation); §session-state.json schema (schema_version history 1/2/3); SS-daemon-wiring-v2-delta.md v1.12.0 §daemon_start_sequence() — session re-discovery step (step 8b placement and insertion invariant) |
+| Architecture Source | SS-session-manager.md v2.16.0 §Daemon startup: session re-discovery (including §Re-discovery state handling — I4 all states covered; I3-002 Terminating watchdog; I3-005 Detached preservation); §session-state.json schema (schema_version history 1/2/3); SS-daemon-wiring-v2-delta.md v1.12.0 §daemon_start_sequence() — session re-discovery step (step 8b placement and insertion invariant) |
 | Test Name | test_BC_2_08_004_rediscovery_completes_before_uds_bind |
 
 ## Related BCs
@@ -202,6 +202,12 @@ S-036 — Implement daemon_start_sequence step 8b: rediscover_sessions()
 
 VP-TBD — Re-discovery integration tests including timing (filled after VP creation)
 
+
+## §Trace v1.4.1
+
+**SS-session-manager v2.15.1 → v2.16.0 Architecture Source pin cascade (Ruling A errata)** (2026-06-21):
+- Architecture Source pin updated. No behavioral content changed.
+- SE-16d monotonicity: v1.4.1 > v1.4.0. PASS.
 
 ## §Trace v1.4.0
 

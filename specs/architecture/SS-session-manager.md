@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.15.1"
+version: "2.16.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
-timestamp: 2026-06-19T00:00:00Z
+timestamp: 2026-06-21T00:00:00Z
 inputs:
   - research/domain-monocle-vision-synthesis.md
   - specs/product-brief.md
@@ -2010,7 +2010,7 @@ further BC-2.08.006 edits are needed.
 The `--settings` arg carries this shared path. No user action required. `lock.app = 'monocle'`
 filter in the hook JSON ensures only monocle-launched sessions trigger the monocle endpoint.
 
-**Single-writer mandate (F-S038-PASS1-001 — BC-2.08.006 v1.5.1):**
+**Single-writer mandate (F-S038-PASS1-001 — BC-2.08.006):**
 `session_manager::write_hooks_settings_json` is the SOLE function that serializes
 `hooks-settings.json`. It is called from exactly two sites:
 
@@ -2944,7 +2944,8 @@ control connection).
 | `vt100::Parser.process()` live byte processing | S-039 | vt100::Parser integration |
 | `DaemonToHost::Attach` scrollback dump (`ScrollbackChunk*` + `ScrollbackDumpComplete`) | S-035 | attach_session; this is the daemon-side `attach_session()` implementation |
 | Keyboard forwarding (`DaemonToHost::KeyInput`) | S-047 | S-047 owns KeyInput / ResizePane / RenameSession IPC arms |
-| PTY resize (`DaemonToHost::Resize`) | S-042 | resize_session and ResizePane handler |
+| PTY resize daemon leg (`ClientToServer::ResizePane` dispatch arm, `resize_session()`, `DaemonToHost::Resize`) | S-047 | S-047 AC-003 Tasks owns the IPC arm + `session_manager.resize_session()` + `DaemonToHost::Resize` forwarding. S-042 owns the TUI-side leg only (detection, debounce, send). The prior "S-042" entry in this row was erroneous — superseded by S-047 v1.1 IPC Handler Arm Ownership table. |
+| PTY resize session-host leg (`DaemonToHost::Resize` handler in `monocle-session-host`) | S-042 | S-042 owns the session-host's `DaemonToHost::Resize` match arm: `pty.resize()` + `parser.set_size()`. This is the session-host binary handler, not the daemon IPC handler. |
 | Session re-discovery (`DaemonToHost::Attach` on Detached session) | S-035 | attach_session() daemon side |
 | `ScrollbackChunk*` / `ScrollbackDumpComplete` framing | S-035 | screen-state transfer on Attach |
 | vt100 screen-state transfer (styled cells) | S-035 | attach scrollback serialization |
@@ -3301,7 +3302,7 @@ locus for UUID v4 collisions. `spawn_session()` MUST NOT perform its own retry l
 
 #### Rationale
 
-F-P41-IMP-001 (BC-2.08.001 v1.5.6) established that UUID generation lives in the IPC handler,
+F-P41-IMP-001 (BC-2.08.001) established that UUID generation lives in the IPC handler,
 not inside `spawn_session()`. `spawn_session()` receives an already-generated `session_id` via
 `opts.with_daemon_fields()`. If `spawn_session()` detects a collision (session_id already in
 registry), the correct response is `Err(SessionError::SessionIdCollision { session_id })` — it
@@ -4143,6 +4144,27 @@ Add to the S-035 test suite:
   correctly specifies this. Resolves HIGH-001.
 
 - SE-16d monotonicity: v2.7.1 > v2.7.0. PASS.
+
+---
+
+## §Trace v2.16.0
+
+**Ruling A errata — Resize row split: S-047 owns daemon leg; S-042 owns session-host leg** (2026-06-21):
+
+- **Ruling A row correction:** The "PTY resize | S-042 | resize_session and ResizePane handler" row
+  was erroneous. S-047 AC-003 and its IPC Handler Arm Ownership table (S-047 v1.1+) explicitly own
+  `ClientToServer::ResizePane` dispatch arm in `ipc_handler.rs` and `session_manager.resize_session()`.
+  S-042's `target_module: monocle-tui` and its File Structure Requirements do NOT list
+  `monocle-runtime/src/ipc_server.rs` or `session_manager/mod.rs`. The STORY-INDEX BC-2.05.010
+  row confirms S-047 owns all 7 `ClientToServer` IPC variants including ResizePane.
+  Row split into: (1) daemon leg → S-047; (2) session-host `DaemonToHost::Resize` handler → S-042.
+- **Production-grade rationale:** The S-042 implementer must NOT implement `resize_session()` in
+  `session_manager/mod.rs` — that method belongs to S-047. The S-042 implementer is responsible
+  only for the session-host's `DaemonToHost::Resize { rows, cols }` match arm: calling
+  `pty.resize()` and `parser.set_size()`.
+- **SPEC-CROSS-REF:** BC-2.09.006 Story Anchor and postconditions 4-7 updated in BC v1.2.0 to
+  explicitly split ownership S-042 (PC-1/2/3/8, TUI-side) vs S-047 (PC-4/5/6/7, daemon-side).
+- **SE-16d monotonicity: v2.16.0 > v2.15.1. PASS.**
 
 ---
 

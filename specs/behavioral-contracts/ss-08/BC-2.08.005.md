@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.9"
+version: "1.0.10"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -68,7 +68,7 @@ immediately (no grace period for sidecars without a live process).
    Terminated session via `rename_session()` is not allowed — attempting `rename_session()` on
    a Terminated-in-grace session returns `Err(SessionError::InvalidSessionName { reason:
    "session terminated" })`, which maps to wire code `"rename_failed"` per
-   `session_error_to_code()` (SS-session-manager.md v2.15.1 §Terminated-in-grace defensive
+   `session_error_to_code()` (SS-session-manager.md §Terminated-in-grace defensive
    action×state matrix, F-P52-001). The GC task is not cancellable; the rename error is the
    observable safety mechanism that prevents display_name mutation on a corpse. The TUI-side
    guard (BC-2.06.025 Invariant 6) ensures `"rename_failed"` with this reason is a
@@ -106,7 +106,7 @@ immediately (no grace period for sidecars without a live process).
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — GC is explicitly named in CAP-008; this BC defines the 10-second grace period, sidecar cleanup, and SessionListUpdate publication that constitute the GC policy |
 | Architecture Module | monocle-runtime (SessionManager GC tokio task) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.15.1 §Session GC policy; SS-session-manager.md v2.15.1 §Terminated-in-grace defensive action×state matrix (F-P52-001); SS-session-manager.md v2.15.1 §session_error_to_code() (InvalidSessionName → "rename_failed"); SS-ipc.md v1.24.0 §ServerToClient::Error taxonomy; SS-daemon-wiring-v2-delta.md v1.12.0 |
+| Architecture Source | SS-session-manager.md v2.16.0 §Session GC policy; SS-session-manager.md v2.16.0 §Terminated-in-grace defensive action×state matrix (F-P52-001); SS-session-manager.md v2.16.0 §session_error_to_code() (InvalidSessionName → "rename_failed"); SS-ipc.md v1.24.0 §ServerToClient::Error taxonomy; SS-daemon-wiring-v2-delta.md v1.12.0 |
 | Test Name | test_BC_2_08_005_terminated_session_gc_after_10s |
 
 ## Related BCs
@@ -126,6 +126,12 @@ S-037 — Implement SessionManager GC task
 
 VP-TBD — GC timing tests using tokio::time::pause (filled after VP creation)
 
+
+## §Trace v1.0.10
+
+**SS-session-manager v2.15.1 → v2.16.0 Architecture Source pin cascade (Ruling A errata)** (2026-06-21):
+- Architecture Source pin updated. No behavioral content changed.
+- SE-16d monotonicity: v1.0.10 > v1.0.9. PASS.
 
 ## §Trace v1.0.8
 

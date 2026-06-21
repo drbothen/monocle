@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-046
 epic_id: EPIC-05
-version: "1.7"
+version: "1.8"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -171,7 +171,7 @@ From `architecture/SS-ipc.md v1.24.0` (§Daemon-Side Per-Client Fan-out Channel)
 - `PtyReset` is a first-class `ServerToClient` variant, NOT a synthetic event.
 - `biased;` select! ensures hook events are never starved by PTY volume.
 
-From `architecture/SS-session-manager.md v2.15.1`:
+From `architecture/SS-session-manager.md`:
 - `DaemonState` owns all session-scoped resources; `PtyBroker` is created per-session inside
   `SessionManager::spawn_session()`.
 - `pty_drop_counter` is a daemon-global atomic, not a per-session counter.

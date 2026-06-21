@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.60"
+version: "5.61"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-21T00:00:00Z
@@ -218,7 +218,7 @@ traces_to: .factory/specs/prd.md
 | BC-2.09.003 | Mouse Events Forwarded to PTY in SGR Encoding When in EmbeddedTerminal | S-041 | AC-001..AC-006 | YES |
 | BC-2.09.004 | Kitty Keyboard Protocol — Enhanced Key Events Forwarded as CSI u Sequences | S-040 | AC-006..AC-008, AC-014 | YES |
 | BC-2.09.005 | Bracketed Paste — Paste Events Wrapped in Bracket Sequences Before Forwarding | S-040 | AC-009..AC-010 | YES |
-| BC-2.09.006 | Resize — PTY and Parser Resized Within 2 Render Ticks of Pane Area Change; 50ms Debounce | S-042 | AC-001..AC-012 | YES |
+| BC-2.09.006 | Resize — PTY and Parser Resized Within 2 Render Ticks of Pane Area Change; 50ms Debounce | S-042 (TUI-side AC-001..AC-012; session-host DaemonToHost::Resize handler), S-047 (daemon IPC arm + resize_session(): PC-4/PC-5) | AC-001..AC-012 (S-042); PC-4/PC-5 daemon leg (S-047 AC-003) | YES |
 | BC-2.09.007 | Scrollback — 1000 Rows Default; Configurable; PtyScrollUp/Down Navigate | S-043 | AC-001..AC-014 | YES |
 | BC-2.09.008 | EmbeddedTerminal AppMode Enter/Exit Transitions; SessionCreation Wizard Auto-Transitions to EmbeddedTerminal | S-044 | AC-001..AC-015 | YES |
 | BC-2.09.009 | Permission Badge+Bell — Status Bar Badge + Audible Bell Within One Render Tick While in EmbeddedTerminal or SessionCreation | S-044 | AC-016..AC-021 | YES |
@@ -1251,6 +1251,16 @@ SE-16d monotonicity: v5.30 timestamp 2026-06-03 >= v5.29 timestamp 2026-06-03. P
 - No wave/points/BC coverage changes — story remains Wave 3, 8 pts, BC-2.03.001..004.
 - SE-22 v2 sibling-sweep: sprint-state.yaml v1.16→v1.17 (done 14→15, not_started 2→1, points_complete 67→75); STATE.md v6.05→v6.06.
 - STORY-INDEX version bumped v2.8→v2.9.
+
+## §Trace v5.61 — BC-2.09.006 story-anchor split (2026-06-21)
+
+**Architect ruling: BC-2.09.006 coverage row updated to reflect S-042/S-047 split ownership:**
+- BC-2.09.006 coverage row updated: S-042 owns TUI-side ACs (AC-001..AC-012) and session-host
+  `DaemonToHost::Resize` handler; S-047 owns daemon IPC arm (`ClientToServer::ResizePane` dispatch)
+  and `resize_session()` implementation (BC-2.09.006 PC-4/PC-5).
+- Root cause: SS-session-manager.md Ruling A had a stale row assigning the daemon leg to S-042.
+  Superseded by S-047 v1.1 IPC Handler Arm Ownership table and AC-003. Corrected in this burst.
+- STORY-INDEX version bumped v5.60 → v5.61.
 
 ## §Trace v2.8
 

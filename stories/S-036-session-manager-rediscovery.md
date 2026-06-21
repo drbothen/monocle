@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-036
 epic_id: EPIC-08
-version: "1.5"
+version: "1.6"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -28,7 +28,7 @@ inputs:
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
 traces_to: "Implements BC-2.08.002 (session-host setsid + survival across graceful daemon restart) and BC-2.08.004 (rediscover_sessions: all alive sessions visible after restart within 5s; UDS bind blocked until complete)"
-# BC status: BC-2.08.002 v1.2.6, BC-2.08.004 v1.4.0 — non-empty; status draft pending Phase-2 adversarial convergence gate
+# BC status: BC-2.08.002, BC-2.08.004 — non-empty; status draft pending Phase-2 adversarial convergence gate
 ---
 
 # S-036: SessionManager::rediscover_sessions — setsid Persistence; All States Handled Within 5s; UDS Bind Blocked
@@ -73,7 +73,7 @@ SS-daemon-wiring-v2-delta.md §daemon_start_sequence() — session re-discovery 
 For sidecar with `state: "Launching"` or `state: "Running"` and alive PID:
 - Verify SO_PEERCRED peer uid matches daemon uid. If mismatch: log WARN; SIGTERM both PIDs; delete sidecar; skip.
 - Send `DaemonToHost::Attach`; wait up to 5s for full `HostToDaemon::ScrollbackChunk*` + `HostToDaemon::ScrollbackDumpComplete` sequence. The retired single-message `ScrollbackDump` form is NOT accepted.
-- On `ScrollbackDumpComplete` receipt: register `SessionEntry` with `state: Running` and `host_conn: Some(SessionHostConnection { writer, proxy_task: None })`. Re-discovery registers the control connection only; the PTY-streaming proxy task (`proxy_task: Some(...)`) is established on an explicit `AttachSession` request (S-035 `attach_session()` path) — PTY output pipeline is S-039/S-047 scope. See SS-session-manager.md v2.15.1 §Re-discovery state handling and §SessionHostConnection (`proxy_task` is None during Launching; started at `Launching → Running` via `StateChanged::Running` only).
+- On `ScrollbackDumpComplete` receipt: register `SessionEntry` with `state: Running` and `host_conn: Some(SessionHostConnection { writer, proxy_task: None })`. Re-discovery registers the control connection only; the PTY-streaming proxy task (`proxy_task: Some(...)`) is established on an explicit `AttachSession` request (S-035 `attach_session()` path) — PTY output pipeline is S-039/S-047 scope. See SS-session-manager.md §Re-discovery state handling and §SessionHostConnection (`proxy_task` is None during Launching; started at `Launching → Running` via `StateChanged::Running` only).
 - If 5s timeout: treat session-host as non-responsive; send SIGTERM to session-host PID; delete sidecar; skip (no `SessionEntry` added).
 
 ### AC-005 (traces to BC-2.08.004 postcondition 2b — state Detached: preserve intent; NO Attach sent; NO SessionStateChanged emitted)

@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.5"
+version: "1.2.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -120,11 +120,54 @@ the parser must reflect the new size within 2 render ticks of the first dimensio
 
 ## Story Anchor
 
-S-042 — Implement resize detection, debounce, ResizePane IPC in monocle-tui
+- **S-042** — TUI-side: resize detection, 50ms debounce, `ClientToServer::ResizePane` send,
+  local `vt100::Parser` immediate resize, session-host `DaemonToHost::Resize` handler
+  (`pty.resize()` + `parser.set_size()`) [Postconditions 1, 2, 3, 6 (session-host half), 7, 8].
+- **S-047** — Daemon-side: `ClientToServer::ResizePane` IPC dispatch arm in `ipc_handler.rs`,
+  `SessionManager::resize_session()` implementation, `DaemonToHost::Resize` forwarding to
+  session-host [Postconditions 4, 5]. Wave 8. S-047 delivers before S-042 (Wave 8 precedes
+  Wave 9); `ResizePane` messages from S-042's TUI will be handled correctly when S-047 lands.
+
+**Postcondition ownership split:**
+
+| PC | Description (summary) | Owning Story |
+|----|----------------------|-------------|
+| PC-1 | Size change detection per render cycle | S-042 |
+| PC-2 | `ClientToServer::ResizePane` sent on debounce expiry | S-042 |
+| PC-3 | Local `vt100::Parser` resized immediately (not debounced) | S-042 |
+| PC-4 | Daemon routes `ResizePane` → `SessionManager::resize_session()` | S-047 |
+| PC-5 | `SessionManager` sends `DaemonToHost::Resize` to session-host | S-047 |
+| PC-6 | Session-host calls `pty.resize()` and `parser.set_size()` | S-042 (session-host binary) |
+| PC-7 | Harness child receives SIGWINCH | S-042 (session-host binary, via `portable-pty`) |
+| PC-8 | End-to-end latency ≤ 100ms | S-042 + S-047 (joint obligation) |
 
 ## VP Anchors
 
 VP-TBD — Resize debounce timing tests (filled after VP creation)
+
+## §Trace v1.2.0
+
+**Architect ruling: Story Anchor split S-042 (TUI + session-host) vs S-047 (daemon leg)** (2026-06-21):
+
+- **Root cause:** SS-session-manager.md Ruling A table had a stale row assigning the daemon-side
+  `ResizePane` IPC handler and `resize_session()` to S-042. This contradicted S-047 AC-003,
+  S-047's IPC Handler Arm Ownership table, STORY-INDEX BC-2.05.010 row, and SS-session-manager
+  line 2946 (same Ruling A, keyboard-forwarding row which correctly says "S-047 owns KeyInput /
+  ResizePane / RenameSession IPC arms"). The stale row was an authoring artifact predating S-047
+  v1.1.
+- **Story Anchor expanded** from single "S-042" to a two-entry split table:
+  - S-042: PC-1/2/3/6/7/8 — TUI-side (detection, debounce, send, local parser, session-host handler)
+  - S-047: PC-4/5 — daemon-side (IPC dispatch arm, `resize_session()`, `DaemonToHost::Resize`)
+- **Postcondition ownership table added** under Story Anchor for implementer clarity.
+- **No behavioral content changed.** PC-1..PC-8 text is unchanged; only ownership attribution added.
+- **Implications for implementer:** S-042 implementer MUST NOT implement `resize_session()` in
+  `session_manager/mod.rs`. The `todo!("S-033 (S-047 scope): ...")` marker is correct — leave it
+  for S-047. S-042's daemon-side responsibility is the session-host binary's `DaemonToHost::Resize`
+  match arm only.
+- **EC-238 and EC-239 daemon-leg ownership:** EC-238 (`SessionError` from `resize_session()` →
+  Terminated transition) and EC-239 daemon zero-dim clamp belong to S-047. S-042 owns only the
+  TUI-side EC-239 no-op guard (already in AC-012 and S-042 Tasks).
+- SE-16d monotonicity: v1.2.0 > v1.1.5. PASS.
 
 ## §Trace v1.1.5
 

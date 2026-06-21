@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-042
 epic_id: EPIC-09
-version: "1.3"
+version: "1.4"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -20,7 +20,7 @@ behavioral_contracts: [BC-2.09.006]
 verification_properties: []
 estimated_days: 3
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.006.md, version: "1.1.5"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.006.md, version: "1.2.0"}
   - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.14.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
@@ -149,6 +149,42 @@ daemon-side, not re-implemented here).
 - `pty_scroll_offsets[session_id]` MUST be reset to 0 on resize (SS-embedded-pty.md §Scrollback offset invariants).
 - Forbidden: no `std::thread::sleep` in the event loop. Use `tokio::time::Instant` for debounce tracking.
 
+### Daemon-side and Session-Host-side Scope Boundary (CRITICAL — read before touching runtime code)
+
+**S-042 owns two things in the runtime layer and nothing else:**
+
+1. **`monocle-session-host` binary — `DaemonToHost::Resize` match arm** (BC-2.09.006 PC-6/7):
+   The session-host's event loop already has a `DaemonToHost::Resize { rows, cols }` variant
+   defined (per S-033 Ruling E — all `DaemonToHost` variants are present with stubs). S-042
+   must replace the stub with: `pty.resize(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 })?;`
+   and `parser.set_size(rows, cols);`. This calls `portable-pty`'s resize, which sends SIGWINCH
+   to the harness child. Add a corresponding unit test in the session-host test module.
+
+2. **`monocle-ipc/src/lib.rs` — `ClientToServer::ResizePane` variant** (already present from
+   prior delivery; verify existence only; do NOT modify the variant definition).
+
+**S-042 MUST NOT touch:**
+
+- `monocle-runtime/src/ipc_server.rs` — The `ClientToServer::ResizePane` dispatch arm (calling
+  `handle_resize_pane`) belongs to **S-047** (Wave 8, IPC Handler Arm Ownership table). When S-042
+  is dispatched, S-047 may or may not be merged yet. If S-047 is NOT yet merged, the
+  `ClientToServer::ResizePane` match arm in `ipc_server.rs` will be ABSENT from the enum
+  (the variant was added by S-042 to `monocle-ipc/src/lib.rs` but `ipc_server.rs` uses
+  `#[non_exhaustive]` + wildcard `_ =>` arm for forward-compat per BC-2.05.010 AC-011). The
+  compiler will NOT panic; the wildcard arm fires, returning `ServerToClient::Error { code:
+  "invalid_request", message: "unknown variant" }`. This is the correct production-grade behavior
+  for an unrecognized variant arriving at the daemon before its handler is wired — no panic, no
+  silent drop, taxonomy-correct error code per the 12-code taxonomy.
+- `monocle-runtime/src/session_manager/mod.rs` — The `todo!("S-033 (S-047 scope): implement
+  resize_session()")` stub MUST be left untouched. `resize_session()` belongs to **S-047**.
+
+**Wave ordering implication (non-blocking):** S-047 is Wave 8 and MUST deliver before S-042
+(Wave 9) due to S-042's `depends_on: [S-039]` (which is Wave 9). The dependency graph does
+NOT require a direct S-047→S-042 edge because Wave 8 completes before Wave 9 starts. When
+S-042 is dispatched, S-047 will already be merged and the `ResizePane` daemon dispatch arm
+will be live. No panic path will exist at delivery time. This ruling records the ownership
+split for clarity but does NOT require a new dependency edge.
+
 ## Library and Framework Requirements
 
 | Library | Version | Usage | Source |
@@ -218,6 +254,7 @@ Within the 30% context window bound. No split required.
 
 | Version | Change | Pass |
 |---------|--------|------|
+| v1.4 | Architect ruling: daemon-side scope boundary clarification. BC-2.09.006 input pin bumped v1.1.5→v1.2.0 (Story Anchor split). Architecture Compliance Rules extended with "Daemon-side and Session-Host-side Scope Boundary" section: S-042 owns the session-host `DaemonToHost::Resize` handler and verifying the `ResizePane` IPC variant exists; S-047 owns the daemon IPC dispatch arm and `resize_session()`. MUST NOT touch `ipc_server.rs` or `session_manager/mod.rs`. No AC changes — behavioral scope unchanged. | architect |
 | v1.3 | Input pins updated <!-- version-pin-historical: prior versions BC-2.09.006 v1.1.3, SS-embedded-pty v1.7.0 at S-042 v1.2 authoring time -->: BC-2.09.006 bumped v1.1.3→v1.1.5 (multiple BC revisions since initial authoring), SS-embedded-pty bumped v1.7.0→v1.14.0 (major arch evolution through S-040 delivery cycle). SS-deps-pin-manifest v1.2.1 and SS-deps-pin-manifest-v2-delta v1.0.2 unchanged. No AC or task changes. | story-writer |
 | v1.2 | Phase-2 Pass-5 fix burst: S-042→S-043 dep edge added (`blocks: [S-043]`); S-043 AC-009 requires the `ResizePane` handler scroll-offset reset owned by S-042. | story-writer |
 | v1.1 | AC ranges and dependency corrections from Phase-2 Pass-5 housekeeping (BC-2.09.006 `AC-001..AC-012` coverage; STORY-INDEX dep column corrected). | story-writer |

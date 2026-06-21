@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-047
 epic_id: EPIC-05
-version: "1.5"
+version: "1.6"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -20,10 +20,10 @@ behavioral_contracts: [BC-2.05.010, BC-2.05.011]
 verification_properties: []
 estimated_days: 5
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.010.md, version: "1.9.4"}
+  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.010.md, version: "1.9.8"}
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.011.md, version: "1.2.5"}
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
-  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
+  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.16.0"}
   - {path: .factory/specs/architecture/SS-conventions-anti-patterns.md, version: "1.32.6"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
@@ -333,7 +333,7 @@ is in `monocle-tui`. These boundaries are enforced by the workspace dependency g
 |------|--------|-------|
 | `crates/monocle-ipc/src/lib.rs` | MODIFY | Add 7 new `ClientToServer` variants; add `ScrollbackChunk`, `ScrollbackDumpComplete` to `ServerToClient`; verify `SpawnOptions` struct (all wire fields use `String` — no typed newtypes) |
 | `crates/monocle-runtime/src/ipc_handler.rs` | MODIFY | Add match arms for `KeyInput`, `ResizePane`, and `RenameSession` (3 arms owned by S-047); `SpawnSession`/`KillSession`/`AttachSession`/`DetachSession` arms are authored by S-033/S-034/S-035 — do NOT duplicate |
-| `crates/monocle-runtime/src/session_manager/mod.rs` | MODIFY | Add `write_pty_bytes()`, `resize_pane()`, and `rename_session()` methods; `kill_session()` is authored by S-034 (canonical path: module dir, not flat .rs file) |
+| `crates/monocle-runtime/src/session_manager/mod.rs` | MODIFY | Add `write_pty_bytes()`, `resize_session()`, and `rename_session()` methods; `kill_session()` is authored by S-034 (canonical path: module dir, not flat .rs file). Method name is `resize_session()` (canonical per SS-session-manager.md §Public API — NOT `resize_pane()`). |
 | `crates/monocle-runtime/src/scrollback.rs` | CREATE | Scrollback dump task implementation |
 | `crates/monocle-runtime/src/lib.rs` | MODIFY | Add `pub mod scrollback;` |
 | `crates/monocle-tui/src/ipc_receiver.rs` | MODIFY | Add handlers for ScrollbackChunk, ScrollbackDumpComplete, PtyReset (TUI-side) |
@@ -424,6 +424,7 @@ extensions — the client/server lifecycle message set — which is the core cap
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 1.6 | 2026-06-21 | vsdd-factory:architect | Architect ruling errata: File Structure `resize_pane()` → `resize_session()` (method name must match SS-session-manager.md §Public API; typo never caught in prior story-writer passes). AC-003 body was already correct. Input pins bumped: BC-2.05.010 v1.9.4→v1.9.8 (arch-source cascade, no behavioral change), SS-session-manager v2.6.1→v2.16.0 (Ruling A errata confirms resize daemon leg is S-047 scope). No AC changes. <!-- version-pin-historical: BC-2.05.010 v1.9.4 and SS-session-manager v2.6.1 are historical pre-cascade versions cited in this trace row only --> |
 | 1.5 | 2026-06-16 | vsdd-factory:story-writer | S-047-AC009-PTYRESET-QUALIFIER: AC-009 trace header updated from "postcondition 3" to "§PtyReset postcondition 3" — adding the §PtyReset subsection qualifier to match BC-2.05.011's section structure (symmetric with AC-007 §ScrollbackChunk and AC-008 §ScrollbackDumpComplete corrections in v1.4). AC body unchanged. |
 | 1.4 | 2026-06-16 | vsdd-factory:story-writer | F-P23-IMP-001: AC-007 header corrected from "postcondition 1" to "§ScrollbackChunk postcondition 3" (contiguity/gap→re-attach is §ScrollbackChunk PC-3, not PC-1); AC-008 header corrected from "postcondition 2" to "§ScrollbackDumpComplete postcondition 3" (total_chunks validation is §ScrollbackDumpComplete PC-3, not PC-2). Closes F-P20-CRIT-001 class for S-047: all AC-001..AC-012 headers now cite subsection-scoped real clauses. AC bodies unchanged. |
 | 1.3 | 2026-06-16 | vsdd-factory:story-writer | Corpus-wide AC-trace-citation audit (F-P20-CRIT-001 class): re-anchored AC-002..AC-006 from flat global PC numbers (PC-5..PC-10) to subsection-scoped clauses (KillSession/KeyInput/ResizePane/DetachSession/RenameSession/AttachSession PC-1); AC-010 BC-2.05.011 invariant 1→6 (pending_pty_bytes); AC-011 invariant 4→6 (No-silent-failure); AC-012 invariant 5→invariant 6 / Architecture Source §ServerToClient::Error. AC bodies unchanged. |
