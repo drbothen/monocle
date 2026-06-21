@@ -232,7 +232,7 @@ pub async fn dispatch_embedded_terminal_key(
 /// - Large pastes (> 64 KiB) are sent as a single `KeyInput` — no chunking (BC-2.09.005 Invariant 3).
 ///
 /// This function handles `Event::Paste` ONLY — paste events MUST NOT be routed through
-/// `key_event_to_pty_bytes()` (BC-2.09.005 Invariant 2; BC-2.09.010 AC-010).
+/// `key_event_to_pty_bytes()` (BC-2.09.005 Invariant 2; S-040 AC-010).
 ///
 /// # Parameters
 ///
