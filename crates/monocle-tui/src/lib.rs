@@ -24,7 +24,7 @@ pub mod ui;
 /// `crossterm_mouse_to_pty()` and `ratatui_rect_to_pty()`.
 pub mod keyboard_conv;
 
-/// Keyboard and paste dispatch stubs for `AppMode::EmbeddedTerminal` (S-040).
+/// Keyboard enhancement setup/teardown and `AppMode::EmbeddedTerminal` key/paste dispatch (S-040).
 ///
 /// Contains `setup_keyboard_enhancement()`, `teardown_keyboard_enhancement()`,
 /// `dispatch_embedded_terminal_key()`, and `dispatch_embedded_terminal_paste()`.
