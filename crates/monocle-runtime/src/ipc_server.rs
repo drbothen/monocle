@@ -187,9 +187,10 @@ async fn spawn_client_task(
                         handle_detach_session(session_id, &tx, &state).await;
                     }
                     // S-040: KeyInput handler (BC-2.09.002 — keyboard/paste forwarding)
-                    // Stub: implementer wires this to SessionManager::send_key_input().
-                    #[allow(clippy::todo)]
-                    Ok(ClientToServer::KeyInput { .. }) => todo!("S-040: implement KeyInput daemon dispatch → SessionManager::send_key_input()"),
+                    // Forward bytes to the session-host via SessionManager::send_key_input().
+                    Ok(ClientToServer::KeyInput { session_id, bytes }) => {
+                        handle_key_input(session_id, bytes, &tx, &state).await;
+                    }
                     Err(IpcError::Disconnected) => {
                         tracing::debug!("TUI client disconnected (EOF)");
                         break;
@@ -609,6 +610,60 @@ async fn handle_detach_session(
             let _ = client_tx
                 .send(ServerToClient::Error {
                     code: session_error_to_code(IpcOp::Detach, &e).to_string(),
+                    message: e.to_string(),
+                })
+                .await;
+        }
+    }
+}
+
+/// Handle a `ClientToServer::KeyInput` message from a TUI client.
+///
+/// Forwards the keyboard bytes to the session-host via `SessionManager::send_key_input()`,
+/// which writes `DaemonToHost::KeyInput { bytes }` to the per-session control connection.
+///
+/// # Error behaviour (BC-2.09.002)
+///
+/// - `SessionNotFound` / `SessionNotReady`: logged at WARN; `ServerToClient::Error` sent
+///   to the requesting client. The session may have terminated between the TUI sending
+///   the `KeyInput` and the daemon processing it — this is a benign race.
+/// - Write errors to the session-host: logged at WARN; propagated as `ServerToClient::Error`.
+async fn handle_key_input(
+    session_id: String,
+    bytes: Vec<u8>,
+    client_tx: &tokio::sync::mpsc::Sender<ServerToClient>,
+    state: &DaemonState,
+) {
+    use crate::session_manager::{session_error_to_code, IpcOp};
+
+    let sm = match state.session_manager.as_ref() {
+        Some(sm) => sm,
+        None => {
+            tracing::error!("handle_key_input: session_manager is None (daemon wiring bug)");
+            let _ = client_tx
+                .send(ServerToClient::Error {
+                    code: "invalid_request".to_string(),
+                    message: "session_manager not initialized".to_string(),
+                })
+                .await;
+            return;
+        }
+    };
+
+    let result = sm.lock().await.send_key_input(&session_id, bytes).await;
+    match result {
+        Ok(()) => {
+            // Bytes forwarded successfully; no response needed (fire-and-continue).
+        }
+        Err(e) => {
+            tracing::warn!(
+                session_id = %session_id,
+                error = %e,
+                "handle_key_input: send_key_input failed"
+            );
+            let _ = client_tx
+                .send(ServerToClient::Error {
+                    code: session_error_to_code(IpcOp::KeyInput, &e).to_string(),
                     message: e.to_string(),
                 })
                 .await;

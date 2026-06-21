@@ -102,11 +102,7 @@ async fn test_BC_2_09_002_non_esc_key_does_not_exit() {
     assert_eq!(sent.len(), 1, "exactly one KeyInput should be sent for 'a'");
     match &sent[0] {
         ClientToServer::KeyInput { bytes, session_id } => {
-            assert_eq!(
-                bytes,
-                &[0x61],
-                "Char('a') should produce bytes [0x61]"
-            );
+            assert_eq!(bytes, &[0x61], "Char('a') should produce bytes [0x61]");
             assert_eq!(session_id, "session-abc");
         }
         other => panic!("expected ClientToServer::KeyInput, got {:?}", other),

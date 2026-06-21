@@ -25,29 +25,60 @@ use monocle_core::keyboard::{PtyKeyCode, PtyKeyEvent, PtyKeyEventKind, PtyKeyMod
 /// Called by the `EmbeddedTerminal` keyboard dispatch arm in `event_loop.rs` as the
 /// type boundary crossing: crossterm types remain in `monocle-tui`; `monocle-core`
 /// functions see only `PtyKeyEvent`.
-#[allow(clippy::todo)]
-pub fn crossterm_key_to_pty(_e: KeyEvent) -> PtyKeyEvent {
-    todo!("S-040: implement crossterm_key_to_pty field-by-field conversion")
+pub fn crossterm_key_to_pty(e: KeyEvent) -> PtyKeyEvent {
+    PtyKeyEvent {
+        code: crossterm_keycode_to_pty(e.code),
+        modifiers: crossterm_mods_to_pty(e.modifiers),
+        kind: crossterm_kind_to_pty(e.kind),
+    }
 }
 
 // ---------------------------------------------------------------------------
 // Private conversion helpers
-// These helpers are called from crossterm_key_to_pty() once the implementer
-// fills in the real logic. dead_code is suppressed here because the stubs are
-// structurally present for the implementer to call from the public function above.
 // ---------------------------------------------------------------------------
 
-#[allow(clippy::todo, dead_code)]
-fn crossterm_keycode_to_pty(_c: KeyCode) -> PtyKeyCode {
-    todo!("S-040: implement crossterm_keycode_to_pty match")
+fn crossterm_keycode_to_pty(c: KeyCode) -> PtyKeyCode {
+    match c {
+        KeyCode::Char(ch) => PtyKeyCode::Char(ch),
+        KeyCode::Enter => PtyKeyCode::Enter,
+        KeyCode::Backspace => PtyKeyCode::Backspace,
+        KeyCode::Tab => PtyKeyCode::Tab,
+        KeyCode::BackTab => PtyKeyCode::BackTab,
+        KeyCode::Esc => PtyKeyCode::Esc,
+        KeyCode::Delete => PtyKeyCode::Delete,
+        KeyCode::Insert => PtyKeyCode::Insert,
+        KeyCode::Up => PtyKeyCode::Up,
+        KeyCode::Down => PtyKeyCode::Down,
+        KeyCode::Left => PtyKeyCode::Left,
+        KeyCode::Right => PtyKeyCode::Right,
+        KeyCode::Home => PtyKeyCode::Home,
+        KeyCode::End => PtyKeyCode::End,
+        KeyCode::PageUp => PtyKeyCode::PageUp,
+        KeyCode::PageDown => PtyKeyCode::PageDown,
+        KeyCode::F(n) => PtyKeyCode::F(n),
+        // All unrecognized keycodes map to Null; key_event_to_pty_bytes returns None for Null.
+        _ => PtyKeyCode::Null,
+    }
 }
 
-#[allow(clippy::todo, dead_code)]
-fn crossterm_mods_to_pty(_m: KeyModifiers) -> PtyKeyModifiers {
-    todo!("S-040: implement crossterm_mods_to_pty bitflag mapping")
+fn crossterm_mods_to_pty(m: KeyModifiers) -> PtyKeyModifiers {
+    let mut bits = 0u8;
+    if m.contains(KeyModifiers::SHIFT) {
+        bits |= PtyKeyModifiers::SHIFT.0;
+    }
+    if m.contains(KeyModifiers::CONTROL) {
+        bits |= PtyKeyModifiers::CONTROL.0;
+    }
+    if m.contains(KeyModifiers::ALT) {
+        bits |= PtyKeyModifiers::ALT.0;
+    }
+    PtyKeyModifiers(bits)
 }
 
-#[allow(clippy::todo, dead_code)]
-fn crossterm_kind_to_pty(_k: KeyEventKind) -> PtyKeyEventKind {
-    todo!("S-040: implement crossterm_kind_to_pty match")
+fn crossterm_kind_to_pty(k: KeyEventKind) -> PtyKeyEventKind {
+    match k {
+        KeyEventKind::Press => PtyKeyEventKind::Press,
+        KeyEventKind::Repeat => PtyKeyEventKind::Repeat,
+        KeyEventKind::Release => PtyKeyEventKind::Release,
+    }
 }

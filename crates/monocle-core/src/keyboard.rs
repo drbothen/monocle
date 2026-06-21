@@ -243,14 +243,14 @@ pub fn key_event_to_pty_bytes(event: PtyKeyEvent) -> Option<Vec<u8>> {
 
     match event.code {
         // Printable characters with no modifier → UTF-8 bytes of the character.
-        PtyKeyCode::Char(c) if mods.is_empty() => {
-            Some(c.to_string().into_bytes())
-        }
+        PtyKeyCode::Char(c) if mods.is_empty() => Some(c.to_string().into_bytes()),
 
         // Ctrl-modified printable keys → control characters \x01–\x1a.
         // Ctrl+A = \x01, Ctrl+B = \x02, ..., Ctrl+Z = \x1a.
         // Also handles Ctrl+@ → \x00 (NUL) and Ctrl+[ → \x1b (Esc).
-        PtyKeyCode::Char(c) if mods.contains(PtyKeyModifiers::CONTROL) && !mods.contains(PtyKeyModifiers::ALT) => {
+        PtyKeyCode::Char(c)
+            if mods.contains(PtyKeyModifiers::CONTROL) && !mods.contains(PtyKeyModifiers::ALT) =>
+        {
             let ctrl_byte = (c.to_ascii_uppercase() as u8).wrapping_sub(b'@');
             if ctrl_byte <= 31 {
                 Some(vec![ctrl_byte])
@@ -392,9 +392,15 @@ pub fn encode_kitty_key(
     // Modifier value = 1 + sum of active modifier bits.
     // Shift=1, Alt=2, Ctrl=4 (BC-2.09.004 PC-2 canonical bitfield).
     let mut mod_bits: u32 = 0;
-    if mods.contains(PtyKeyModifiers::SHIFT)   { mod_bits += 1; }
-    if mods.contains(PtyKeyModifiers::ALT)     { mod_bits += 2; }
-    if mods.contains(PtyKeyModifiers::CONTROL) { mod_bits += 4; }
+    if mods.contains(PtyKeyModifiers::SHIFT) {
+        mod_bits += 1;
+    }
+    if mods.contains(PtyKeyModifiers::ALT) {
+        mod_bits += 2;
+    }
+    if mods.contains(PtyKeyModifiers::CONTROL) {
+        mod_bits += 4;
+    }
     let modifier_value = 1 + mod_bits;
 
     // CSI u sequence: ESC [ <codepoint> ; <modifier_value> u
@@ -405,21 +411,21 @@ pub fn encode_kitty_key(
 fn pty_key_codepoint(code: &PtyKeyCode) -> u32 {
     match code {
         PtyKeyCode::Char(c) => *c as u32,
-        PtyKeyCode::Enter => 13,       // CR
-        PtyKeyCode::Tab => 9,          // HT
-        PtyKeyCode::BackTab => 9,      // same codepoint as Tab; Shift bit distinguishes
-        PtyKeyCode::Backspace => 127,  // DEL
+        PtyKeyCode::Enter => 13,      // CR
+        PtyKeyCode::Tab => 9,         // HT
+        PtyKeyCode::BackTab => 9,     // same codepoint as Tab; Shift bit distinguishes
+        PtyKeyCode::Backspace => 127, // DEL
         PtyKeyCode::Esc => 27,
-        PtyKeyCode::Up => 65,          // 'A'
-        PtyKeyCode::Down => 66,        // 'B'
-        PtyKeyCode::Right => 67,       // 'C'
-        PtyKeyCode::Left => 68,        // 'D'
-        PtyKeyCode::Home => 72,        // 'H'
-        PtyKeyCode::End => 70,         // 'F'
-        PtyKeyCode::PageUp => 53,      // '5' (tilde sequences use numeric codes)
-        PtyKeyCode::PageDown => 54,    // '6'
-        PtyKeyCode::Insert => 50,      // '2'
-        PtyKeyCode::Delete => 51,      // '3'
+        PtyKeyCode::Up => 65,       // 'A'
+        PtyKeyCode::Down => 66,     // 'B'
+        PtyKeyCode::Right => 67,    // 'C'
+        PtyKeyCode::Left => 68,     // 'D'
+        PtyKeyCode::Home => 72,     // 'H'
+        PtyKeyCode::End => 70,      // 'F'
+        PtyKeyCode::PageUp => 53,   // '5' (tilde sequences use numeric codes)
+        PtyKeyCode::PageDown => 54, // '6'
+        PtyKeyCode::Insert => 50,   // '2'
+        PtyKeyCode::Delete => 51,   // '3'
         // Function keys: standard VT codepoints for CSI u.
         // These are the standard decimal codepoints used by Kitty for F-keys.
         PtyKeyCode::F(n) => match n {
@@ -461,11 +467,11 @@ pub fn fn_key_bytes(n: u8) -> Vec<u8> {
         3 => b"\x1bOR".to_vec(),
         4 => b"\x1bOS".to_vec(),
         // F5–F12: VT tilde sequences.
-        5  => b"\x1b[15~".to_vec(),
-        6  => b"\x1b[17~".to_vec(),
-        7  => b"\x1b[18~".to_vec(),
-        8  => b"\x1b[19~".to_vec(),
-        9  => b"\x1b[20~".to_vec(),
+        5 => b"\x1b[15~".to_vec(),
+        6 => b"\x1b[17~".to_vec(),
+        7 => b"\x1b[18~".to_vec(),
+        8 => b"\x1b[19~".to_vec(),
+        9 => b"\x1b[20~".to_vec(),
         10 => b"\x1b[21~".to_vec(),
         11 => b"\x1b[23~".to_vec(),
         12 => b"\x1b[24~".to_vec(),
@@ -690,10 +696,7 @@ mod tests {
             modifiers: PtyKeyModifiers::NONE,
             kind: PtyKeyEventKind::Press,
         };
-        assert_eq!(
-            key_event_to_pty_bytes(event),
-            Some(vec![0x1b, b'[', b'Z'])
-        );
+        assert_eq!(key_event_to_pty_bytes(event), Some(vec![0x1b, b'[', b'Z']));
     }
 
     /// BC-2.09.002 PC-2 — F6–F12 tilde sequences (full table)
@@ -823,7 +826,10 @@ mod tests {
     #[test]
     fn test_BC_2_09_004_kitty_unsupported_fallback() {
         // On non-Kitty terminals, plain keys don't trigger Kitty encoding.
-        assert!(!is_kitty_enhanced_key(&PtyKeyCode::Enter, PtyKeyModifiers::NONE));
+        assert!(!is_kitty_enhanced_key(
+            &PtyKeyCode::Enter,
+            PtyKeyModifiers::NONE
+        ));
         // Even with modifiers, a non-enhanced event (standard terminal) returns false.
         // The standard table handles Enter → \r regardless.
         assert!(!is_kitty_enhanced_key(

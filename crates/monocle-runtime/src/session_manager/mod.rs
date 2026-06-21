@@ -4346,13 +4346,111 @@ impl SessionManager {
     }
 
     /// Forward keyboard bytes to a session's PTY stdin.
-    #[allow(clippy::todo)]
+    ///
+    /// Serializes `DaemonToHost::KeyInput { bytes }` and writes it to the session-host
+    /// control connection. Called by the IPC server's `KeyInput` dispatch arm (S-040).
+    ///
+    /// # Preconditions (BC-2.09.002)
+    ///
+    /// - Session must be `Running` with an established `host_conn`.
+    /// - `bytes` must be non-empty terminal byte sequences produced by `key_event_to_pty_bytes`
+    ///   or the bracketed-paste encoder.
+    ///
+    /// # Error behaviour
+    ///
+    /// - `SessionNotFound`: `session_id` not in registry.
+    /// - `SessionNotReady`: session exists but is not `Running` (Launching without conn,
+    ///   Detached, Terminating, or Terminated).
+    /// - Write failure is logged at WARN and propagated as `SessionError::Io`.
     pub async fn send_key_input(
         &mut self,
-        _session_id: &str,
-        _bytes: Vec<u8>,
+        session_id: &str,
+        bytes: Vec<u8>,
     ) -> Result<(), SessionError> {
-        todo!("S-033 (S-047 scope): implement send_key_input()")
+        use monocle_ipc::types::DaemonToHost;
+        use tokio::io::AsyncWriteExt;
+
+        // SEC-002 (CWE-22): validate session_id is a UUID.
+        if uuid::Uuid::parse_str(session_id).is_err() {
+            return Err(SessionError::SessionNotFound {
+                session_id: session_id.to_string(),
+            });
+        }
+
+        // Get the writer for the Running session.
+        enum KeyInputPath {
+            Running {
+                writer: Arc<Mutex<tokio::net::unix::OwnedWriteHalf>>,
+            },
+            NotReady,
+            NotFound,
+        }
+
+        let path = {
+            let guard = self.sessions.lock().await;
+            match guard.get(session_id) {
+                None => KeyInputPath::NotFound,
+                Some(entry) => {
+                    if entry.state == SessionState::Running {
+                        if let Some(conn) = entry.host_conn.as_ref() {
+                            KeyInputPath::Running {
+                                writer: Arc::clone(&conn.writer),
+                            }
+                        } else {
+                            KeyInputPath::NotReady
+                        }
+                    } else {
+                        KeyInputPath::NotReady
+                    }
+                }
+            }
+            // guard released
+        };
+
+        match path {
+            KeyInputPath::NotFound => {
+                return Err(SessionError::SessionNotFound {
+                    session_id: session_id.to_string(),
+                });
+            }
+            KeyInputPath::NotReady => {
+                return Err(SessionError::SessionNotReady {
+                    session_id: session_id.to_string(),
+                });
+            }
+            KeyInputPath::Running { writer } => {
+                let key_msg = serde_json::to_vec(&DaemonToHost::KeyInput { bytes })
+                    .map_err(|e| SessionError::Io(std::io::Error::other(e)))?;
+                if key_msg.len() > MAX_FRAME_LEN {
+                    return Err(SessionError::Io(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!(
+                            "KeyInput message exceeds MAX_FRAME_LEN: {} bytes",
+                            key_msg.len()
+                        ),
+                    )));
+                }
+                let len = (key_msg.len() as u32).to_le_bytes();
+                let mut w = writer.lock().await;
+                let r1 = w.write_all(&len).await;
+                let r2 = if r1.is_ok() {
+                    w.write_all(&key_msg).await
+                } else {
+                    r1
+                };
+                let r3 = if r2.is_ok() { w.flush().await } else { r2 };
+                if let Err(e) = r3 {
+                    tracing::warn!(
+                        session_id = %session_id,
+                        error = %e,
+                        "send_key_input: failed to write DaemonToHost::KeyInput to session-host"
+                    );
+                    return Err(SessionError::Io(e));
+                }
+            }
+        }
+
+        Ok(())
     }
 
     /// Re-discover session-hosts from sidecar files on daemon startup (S-036 scope).
