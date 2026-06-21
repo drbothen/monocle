@@ -691,6 +691,13 @@ pub fn on_pty_output(app: &mut App, session_id: String, bytes: Vec<u8>) {
 /// This provides backpressure and prevents silent drops of `AttachSession` commands.
 /// The call site (Action::EnterEmbeddedTerminal dispatch arm) MUST `.await` this function.
 pub async fn enter_embedded_terminal(app: &mut App, session_id: String) {
+    // ADV3-HIGH-001 (belt-and-suspenders) / BC-2.09.006 Invariants 1/2/3:
+    // Always start with clean resize state regardless of how the prior EmbeddedTerminal
+    // session was left. This guards against stale last_sent_size/deadline from any
+    // exit path (exit_embedded_terminal, EmbeddedTerminal→Overlay, or a future path)
+    // suppressing the first ResizePane of the new session or bypassing the 50ms window.
+    clear_resize_debounce_state(app);
+
     // BC-2.09.001 PC-6 / SS-embedded-pty.md §Auto-attach mandate (I11-001 PRONG A):
     // If the session has NOT received a ScrollbackDumpComplete in this TUI lifetime,
     // run the full auto-attach + buffering + dump protocol.
@@ -1616,6 +1623,12 @@ pub fn on_permission_prompt_queued(app: &mut App, payload: PermissionPromptPaylo
             }
         };
         app.mode = AppMode::Overlay { prior };
+        // ADV3-HIGH-001 / BC-2.09.006 Invariants 1/2/3: clear resize debounce state on ANY
+        // departure from EmbeddedTerminal. The EmbeddedTerminal→Overlay transition does not
+        // go through exit_embedded_terminal, so we clear here explicitly. Stale debounce
+        // state would suppress the first ResizePane on re-entry (Invariant 2 dedup) or fire
+        // the armed debounce for the wrong session after mode transition.
+        clear_resize_debounce_state(app);
     }
 }
 
@@ -3147,17 +3160,17 @@ pub async fn handle_crossterm_event(
                     )
                     .await;
                 }
-                // BLOCKER-001 / BC-2.09.006 PC-1/2: terminal resize event wiring (S-042).
-                // crossterm::event::Event::Resize(cols, rows) — note crossterm's parameter order
-                // is (width=cols, height=rows), but the spec and BC-2.09.006 use (rows, cols).
-                Event::Resize(cols, rows) => {
-                    // EC-236 / Invariant 3: mode guard is implicit here — this arm is only
-                    // reachable in AppMode::EmbeddedTerminal (outer match arm above).
-                    on_resize_detected(app, &session_id, rows, cols);
-                    // check_resize_debounce is called by the run loop tick separately; it is
-                    // also exercised in tests directly (bc_2_09_006_run_loop_wiring.rs).
-                }
-                // Other events (focus, mouse): silently ignored in EmbeddedTerminal mode.
+                // OBS-001 / BC-2.09.006: the Event::Resize arm that previously called
+                // on_resize_detected here has been removed. It was passing FULL-terminal
+                // dimensions (not the PTY pane dims), causing a 1-tick wrong local parser
+                // size on the first resize event. The per-render tick_resize_debounce path
+                // reading last_pty_pane_area is the single authoritative detection path —
+                // it covers both terminal resizes (next render updates last_pty_pane_area
+                // from the fresh terminal area) and layout-change resizes that never produce
+                // a crossterm Event::Resize. No correctness regression: resize detection
+                // still fires on the immediately following tick after the render step.
+                //
+                // Other events (focus, mouse, resize): silently ignored in EmbeddedTerminal.
                 _ => {}
             }
         }
