@@ -515,6 +515,146 @@ async fn test_BC_2_09_005_oversized_paste_guard() {
     }
 }
 
+// ---------------------------------------------------------------------------
+// PASS-5 BLOCKER-001: JSON-expansion paste guard (BC-2.09.005 EC-245)
+//
+// The current production guard in dispatch_embedded_terminal_paste compares the
+// RAW bracketed byte length to MAX_MESSAGE_BYTES.  However, write_framed serializes
+// ClientToServer::KeyInput to JSON, encoding the bytes Vec<u8> as a JSON integer
+// array.  Each byte value 0-255 serializes as its decimal string representation plus
+// a comma separator:
+//
+//   byte 120 ('x') -> "120," = 4 chars    (3-digit value)
+//   byte  27 (\x1b) -> "27,"  = 3 chars
+//
+// This produces an approximately 3-4x expansion from raw to serialized frame size.
+//
+// The bug:
+//   A paste of 80_000 'x' chars has:
+//     - raw bracketed length:  6 + 80_000 + 6 = 80_012 bytes  (< 262_144 ceiling)
+//     - JSON frame length:     ~320_100 bytes                  (> 262_144 ceiling)
+//
+// The raw guard passes the 80_000-char paste.  write_framed then rejects it with
+// MessageTooLarge, which KILLS the IPC writer task, silently dropping ALL subsequent
+// keystrokes for the session.
+//
+// BC-2.09.005 EC-245 requires the guard to check the FRAMED/SERIALIZED size, not the
+// raw bracketed byte count.
+//
+// This test is the Red Gate for BLOCKER-001 (pass-5).  It FAILS against current
+// production code (raw guard passes the 80_000-char paste -> 1 message received,
+// expected 0).  The implementer must fix dispatch_embedded_terminal_paste to check
+// the serialized JSON frame size before enqueueing.
+// ---------------------------------------------------------------------------
+
+/// BLOCKER-001 (pass-5) / BC-2.09.005 EC-245 — JSON-expansion paste slips raw guard, kills writer
+///
+/// Constructs a paste whose RAW bracketed length is UNDER the 262_144-byte ceiling but
+/// whose SERIALIZED JSON frame is OVER it.  Specifically:
+///
+///   text = "x".repeat(80_000)   (each 'x' byte = 120)
+///
+///   raw bracketed length:  b"\x1b[200~".len() + 80_000 + b"\x1b[201~".len()
+///                        = 6 + 80_000 + 6 = 80_012 bytes
+///                        80_012 < 262_144  =>  passes the current raw guard
+///
+///   JSON frame length:     each 3-digit byte value ("120,") = 4 chars/byte
+///                          total bytes-array ~= 80_012 * 4 = 320_048 chars
+///                          full frame ~= 320_100 bytes
+///                          320_100 > 262_144  =>  write_framed rejects with MessageTooLarge
+///
+/// The IPC writer task calls write_framed after dequeueing.  MessageTooLarge terminates
+/// that task, silently dropping ALL subsequent keystrokes.
+///
+/// The CORRECT behavior (BC-2.09.005 EC-245): the guard in dispatch_embedded_terminal_paste
+/// must detect this before sending (by computing or approximating the serialized frame
+/// size) and drop the paste, leaving the channel/writer alive.
+///
+/// After the drop, a small follow-up paste ("hello") must succeed (channel still open,
+/// writer task not killed) — the writer-survival assertion.
+///
+/// # Red Gate
+///
+/// This test FAILS against the current production code:
+///   - current raw guard: 80_012 < 262_144  =>  paste is enqueued
+///   - test receives 1 message (expected 0)  =>  assertion fails
+///
+/// Source: BC-2.09.005 EC-245; S-040 BLOCKER-001 (pass-5).
+#[tokio::test]
+async fn test_BC_2_09_005_paste_json_expansion_guard() {
+    use monocle_ipc::types::ClientToServer;
+    use monocle_tui::event_loop::dispatch_embedded_terminal_paste;
+    use tokio::sync::mpsc;
+
+    // 80_000 'x' chars:
+    //   raw bracketed = 80_012 bytes  (< 262_144: passes raw guard TODAY)
+    //   JSON frame    ~ 320_100 bytes (> 262_144: write_framed would reject)
+    let expansion_text = "x".repeat(80_000);
+
+    // Use a generous channel capacity — the test must prove the paste is NOT enqueued,
+    // not that the channel is full.
+    let (tx, mut rx) = mpsc::channel::<ClientToServer>(32);
+
+    dispatch_embedded_terminal_paste(&expansion_text, "session-expansion", &tx).await;
+
+    // Drain everything the function sent.
+    let msgs: Vec<_> = {
+        let mut v = Vec::new();
+        while let Ok(m) = rx.try_recv() {
+            v.push(m);
+        }
+        v
+    };
+
+    // MUST receive ZERO messages.
+    //
+    // Red Gate failure message explains the current bug so the implementer knows
+    // exactly what to fix: the raw guard passes 80_012 < 262_144, but the JSON
+    // frame is ~320_100 > 262_144 and write_framed would kill the writer task.
+    assert!(
+        msgs.is_empty(),
+        "JSON-expansion paste guard failure (BC-2.09.005 EC-245 / BLOCKER-001): \
+         received {} KeyInput message(s); expected 0. \
+         Current bug: raw bracketed guard passes 80_012 < 262_144, but the JSON \
+         frame is ~320_100 bytes > 262_144 ceiling. \
+         write_framed would reject with MessageTooLarge, killing the IPC writer task \
+         and silently dropping ALL subsequent keystrokes. \
+         Fix: guard must check serialized frame size, not raw byte count.",
+        msgs.len()
+    );
+
+    // Writer-survival assertion: even after the guard fires, the channel MUST remain
+    // open.  A small follow-up paste must produce exactly one KeyInput.
+    dispatch_embedded_terminal_paste("hello", "session-expansion", &tx).await;
+    let follow_up: Vec<_> = {
+        let mut v = Vec::new();
+        while let Ok(m) = rx.try_recv() {
+            v.push(m);
+        }
+        v
+    };
+    assert_eq!(
+        follow_up.len(),
+        1,
+        "Writer-survival failure: IPC channel must remain open after JSON-expansion guard fires; \
+         follow-up 'hello' paste must produce exactly 1 KeyInput (BC-2.09.005 EC-245)."
+    );
+    match &follow_up[0] {
+        ClientToServer::KeyInput { bytes, session_id } => {
+            assert_eq!(
+                bytes.as_slice(),
+                b"\x1b[200~hello\x1b[201~",
+                "follow-up bracketed paste mismatch after JSON-expansion guard (BC-2.09.005 AC-009)"
+            );
+            assert_eq!(session_id, "session-expansion");
+        }
+        other => panic!(
+            "expected ClientToServer::KeyInput for follow-up paste, got {:?}",
+            other
+        ),
+    }
+}
+
 /// ADV-HIGH-002 regression guard / BC-2.09.005 AC-009 — normal small paste still works
 ///
 /// Verifies that after the oversized-paste guard is implemented, a small paste
