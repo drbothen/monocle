@@ -1265,6 +1265,63 @@ impl SessionManager {
             .insert(session_id.to_string(), entry);
     }
 
+    /// Test helper: insert a session in `Running` state with a live `host_conn` writer.
+    ///
+    /// Enables `resize_session()` and `send_key_input()` tests to verify that
+    /// `DaemonToHost::Resize` / `DaemonToHost::KeyInput` frames are forwarded correctly
+    /// without going through the full daemon spawn pipeline.
+    ///
+    /// The caller provides the daemon-side `OwnedWriteHalf` of a `UnixStream::pair()`
+    /// and retains the host-side stream to read the forwarded frames.
+    ///
+    /// # Test usage (BC-2.09.006 AC-015 — DaemonToHost::Resize forwarding)
+    ///
+    /// ```rust,ignore
+    /// let (daemon_stream, host_stream) = tokio::net::UnixStream::pair().unwrap();
+    /// let (_, write_half) = daemon_stream.into_split();
+    /// manager
+    ///     .insert_running_session_for_test("uuid", 42, "/tmp/s.sock".into(), write_half)
+    ///     .await;
+    /// manager.resize_session("uuid", 30, 100).await.unwrap();
+    /// // Read DaemonToHost::Resize from host_stream.
+    /// ```
+    ///
+    /// This function does NOT exist in production builds.
+    #[cfg(any(test, feature = "test-utils"))]
+    #[allow(dead_code)]
+    pub async fn insert_running_session_for_test(
+        &self,
+        session_id: &str,
+        session_host_pid: u32,
+        socket_path: PathBuf,
+        write_half: tokio::net::unix::OwnedWriteHalf,
+    ) {
+        let entry = SessionEntry {
+            session_id: session_id.to_string(),
+            session_host_pid,
+            session_host_socket: socket_path,
+            state: SessionState::Running,
+            cwd: PathBuf::from("/tmp/test-cwd"),
+            project_root: PathBuf::from("/tmp/test-project"),
+            harness_id: "claude-code".to_string(),
+            profile_id: "default".to_string(),
+            started_at: chrono::Utc::now(),
+            display_name: "claude-code — test-project".to_string(),
+            kill_deadline: None,
+            degraded: false,
+            degraded_reason: None,
+            host_conn: Some(SessionHostConnection {
+                writer: Arc::new(Mutex::new(write_half)),
+                reader: None,
+                proxy_task: None,
+            }),
+        };
+        self.sessions
+            .lock()
+            .await
+            .insert(session_id.to_string(), entry);
+    }
+
     /// Test accessor: returns `true` if `session_id` has an active `proxy_task` in its
     /// `SessionHostConnection`.
     ///

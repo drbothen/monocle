@@ -3,8 +3,10 @@
 //! Anchored to BC-2.09.006 (Resize — PTY and Parser Resized Within 2 Render Ticks
 //! of Pane Area Change; 50ms Debounce).
 //!
-//! Every test MUST FAIL before implementation — the four stub bodies are `todo!()`
-//! which panic, so the Red Gate is satisfied as long as those stubs are unimplemented.
+//! Tests cover: TUI-side size-change detection, 50ms debounce expiry, local
+//! vt100::Parser immediate resize, ResizePane IPC emission, coalescing of rapid
+//! resize events, mode-guard (Dashboard → no-op), zero-dim guard, and debounce
+//! state clearing on EmbeddedTerminal exit.
 //!
 //! BC clause → test mapping:
 //!

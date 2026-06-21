@@ -468,6 +468,36 @@ async fn send_host_msg(
 /// 2. If any are missing: send `StateChanged { Launching, degraded_env: Some([...]) }` first.
 /// 3. Send `StateChanged { Running, degraded_env: None }` to signal readiness.
 ///
+/// Apply a PTY resize and parser resize in response to `DaemonToHost::Resize`.
+///
+/// Called from the `DaemonToHost::Resize` arm inside `step_event_loop` (BC-2.09.006 PC-6/7).
+///
+/// # Contract (BC-2.09.006 PC-6/7)
+///
+/// - Calls `pty_master.resize(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 })`.
+///   This triggers `SIGWINCH` to the harness child (PC-7) via `portable-pty`'s resize path.
+/// - Calls `parser.set_size(rows, cols)` to keep the local vt100 parser in sync.
+/// - On `pty_master.resize()` error: WARN-log and return `Err(SessionHostError::Io(...))`.
+///
+/// # S-042 scope
+///
+/// This function is extracted as a pure helper to enable unit-testing PC-6/7 without
+/// driving the full event loop. Called from `step_event_loop`'s `DaemonToHost::Resize` arm.
+#[allow(dead_code)]
+#[allow(clippy::todo)]
+pub(crate) fn apply_resize_to_pty_and_parser(
+    _pty_master: &dyn portable_pty::MasterPty,
+    _parser: &mut vt100::Parser,
+    _rows: u16,
+    _cols: u16,
+) -> Result<(), SessionHostError> {
+    todo!(
+        "S-042: implement apply_resize_to_pty_and_parser — call _pty_master.resize(PtySize \
+         {{ rows: _rows, cols: _cols, pixel_width: 0, pixel_height: 0 }}) and \
+         _parser.set_size(_rows, _cols)"
+    )
+}
+
 /// **MED-003 (SIGKILL reap):** After SIGKILL escalation, a blocking `waitpid` reaps
 /// the child PID to prevent zombies. The normal exit path (SIGTERM succeeds) is already
 /// reaped by `run()` via `child.wait()` after this function returns.
@@ -1750,4 +1780,127 @@ mod tests {
             "BC-HOOK-030: MONOCLE_SESSION_ID must not be in the session env overlay"
         );
     }
+
+    // -----------------------------------------------------------------------
+    // BC-2.09.006 PC-6/7 — session-host DaemonToHost::Resize arm
+    //
+    // Postcondition 6: session-host calls `pty.resize(PtySize { rows, cols, .. })`.
+    // Postcondition 7: harness child receives SIGWINCH (via portable-pty on pty.resize()).
+    //
+    // These tests drive `apply_resize_to_pty_and_parser()` — the pure helper that
+    // the implementer will extract and call from the `DaemonToHost::Resize` arm in
+    // `step_event_loop`.
+    //
+    // RED GATE: `apply_resize_to_pty_and_parser()` is `todo!()` — panics on every call.
+    // -----------------------------------------------------------------------
+
+    /// test_BC_2_09_006_session_host_resize_arm_calls_parser_set_size
+    ///
+    /// AC-S042-session-host / BC-2.09.006 PC-6:
+    ///   `apply_resize_to_pty_and_parser(pty_master, parser, rows, cols)` must call
+    ///   `parser.set_size(rows, cols)`. After the call, `parser.screen().size()` must
+    ///   return `(30, 100)` (canonical test vector: 24×80 → 30×100).
+    ///
+    ///   RED GATE: `apply_resize_to_pty_and_parser()` is `todo!()` — panics.
+    #[tokio::test]
+    async fn test_BC_2_09_006_session_host_resize_arm_calls_parser_set_size() {
+        // Create a real PTY pair so pty_master is a valid MasterPty.
+        let pty_system = portable_pty::native_pty_system();
+        let pair = pty_system
+            .openpty(portable_pty::PtySize {
+                rows: 24,
+                cols: 80,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .expect(
+                "BC-2.09.006 PC-6 test setup: openpty must succeed — PTY unavailable in CI?",
+            );
+
+        let mut parser = step_init_vt100_parser(24, 80);
+
+        // Verify initial size.
+        let initial_size = parser.screen().size();
+        assert_eq!(
+            initial_size,
+            (24, 80),
+            "BC-2.09.006 PC-6 pre-condition: parser must start at 24×80"
+        );
+
+        // RED GATE: todo!() panics here; after implementation parser is at 30×100.
+        super::apply_resize_to_pty_and_parser(
+            pair.master.as_ref(),
+            &mut parser,
+            30,
+            100,
+        )
+        .expect(
+            "BC-2.09.006 PC-6: apply_resize_to_pty_and_parser(30, 100) must return Ok(())",
+        );
+
+        // Assert parser reflects the new size (canonical test vector: 24×80 → 30×100).
+        let new_size = parser.screen().size();
+        assert_eq!(
+            new_size,
+            (30, 100),
+            "BC-2.09.006 PC-6: parser.screen().size() must be (30, 100) after resize — \
+             got {:?}",
+            new_size
+        );
+    }
+
+    /// test_BC_2_09_006_session_host_resize_arm_pty_master_resize_called
+    ///
+    /// AC-S042-session-host / BC-2.09.006 PC-6/7:
+    ///   `apply_resize_to_pty_and_parser()` calls `pty_master.resize(PtySize { rows: 30,
+    ///   cols: 100, .. })`. The PTY master resize is observable: after `pty.resize()`,
+    ///   `pty_master.get_size()` returns the new size (rows=30, cols=100).
+    ///
+    ///   RED GATE: `apply_resize_to_pty_and_parser()` is `todo!()` — panics.
+    #[tokio::test]
+    async fn test_BC_2_09_006_session_host_resize_arm_pty_master_resize_called() {
+        let pty_system = portable_pty::native_pty_system();
+        let pair = pty_system
+            .openpty(portable_pty::PtySize {
+                rows: 24,
+                cols: 80,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .expect(
+                "BC-2.09.006 PC-6/7 test setup: openpty must succeed",
+            );
+
+        let mut parser = step_init_vt100_parser(24, 80);
+
+        // RED GATE: todo!() panics here.
+        super::apply_resize_to_pty_and_parser(
+            pair.master.as_ref(),
+            &mut parser,
+            30,
+            100,
+        )
+        .expect(
+            "BC-2.09.006 PC-6/7: apply_resize_to_pty_and_parser(30, 100) must return Ok(())",
+        );
+
+        // Assert PTY master reflects the new size via get_size().
+        // This also validates PC-7: portable-pty sends SIGWINCH when pty.resize() is called.
+        let pty_size = pair
+            .master
+            .get_size()
+            .expect("BC-2.09.006 PC-7: pty_master.get_size() must return the current size");
+
+        assert_eq!(
+            pty_size.rows, 30,
+            "BC-2.09.006 PC-6/7: PTY master rows must be 30 after resize — got {}",
+            pty_size.rows
+        );
+        assert_eq!(
+            pty_size.cols, 100,
+            "BC-2.09.006 PC-6/7: PTY master cols must be 100 after resize — got {}",
+            pty_size.cols
+        );
+    }
+
 }
