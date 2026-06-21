@@ -1,7 +1,7 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.35"
+version: "1.36"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-20T00:00:00Z
@@ -35,7 +35,7 @@ inputs:
   - {path: .factory/stories/S-046-pty-output-fan-out.md, version: "1.7"}
   - {path: .factory/stories/S-047-ipc-lifecycle-variants.md, version: "1.5"}
   - {path: .factory/stories/S-048-sessions-panel-multi-project.md, version: "1.3"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.44.2"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.44.4"}
 traces_to: .factory/stories/STORY-INDEX.md
 input-hash: "[pending]"
 ---
@@ -188,6 +188,12 @@ the Wave 8-9 stories (S-033..S-048). The evaluator needs these story ACs as inpu
 scenarios. Their absence from inputs[] (F-GATE-ADV-003) left the evaluator blind to the ACs for all 5
 new holdout scenarios. No holdout scenario IDs, titles, BCs, or behavioral semantics changed.
 **SE-16d PASS:** 2026-06-16 >= 2026-06-16 (same day as v1.18). PASS (same-day sequential patch).
+
+## §Trace v1.36 — POL-11 pin cascade: BC-INDEX input pin v1.44.2 → v1.44.4 (2026-06-21)
+
+**Bump:** 1.35 → 1.36.
+**Scope:** `inputs[]` BC-INDEX pin updated: `"1.44.2"` → `"1.44.4"` (BC-INDEX bumped through v1.44.3 and v1.44.4 during S-040 adversarial passes 3-4; EC-245 over-ceiling paste guard added to BC-2.09.005). No holdout scenario IDs, BCs, or behavioral semantics changed.
+**SE-16d PASS:** 2026-06-21 >= 2026-06-21 (v1.35 last bump date). PASS (same-day sequential patch).
 
 ## §Trace v1.35 — POL-11 pin cascade: S-040 input pin v1.5 → v1.6 (2026-06-21)
 

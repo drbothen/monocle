@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.6"
+version: "1.0.7"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -78,6 +78,7 @@ from typed keystrokes and disable auto-indentation/escaping during paste.
 | EC-231 | Paste text contains embedded `\x1b[200~` sequence (attacker input) | Forwarded verbatim; monocle does not sanitize paste text; the outer bracketed sequence is still present; security concern is mitigated by the fact that the PTY is a user-controlled terminal |
 | EC-232 | Empty paste (zero-length text) | `\x1b[200~\x1b[201~` forwarded — the bracket sequences with no content between them |
 | EC-233 | Paste in Dashboard mode (not in EmbeddedTerminal) | `Event::Paste` is processed by Dashboard handlers (typically as a no-op or search input); NOT sent to PTY |
+| EC-245 | Bracketed paste whose framed IPC size exceeds `MAX_MESSAGE_BYTES` (262144 bytes) | The guard in `dispatch_embedded_terminal_paste` MUST check whether (`\x1b[200~` + text + `\x1b[201~` wrapped in the `ClientToServer::KeyInput` JSON envelope) would exceed `MAX_MESSAGE_BYTES`. If so, the paste is NOT enqueued: a WARN log is emitted and the paste is dropped. The IPC writer task remains alive; the keyboard/paste session remains fully functional for subsequent input. Rationale: the no-fragmentation rule (AC-009/EC-214 in BC-2.09.002) precludes splitting a single paste across multiple `KeyInput` messages, so a paste above the ceiling is rejected observably rather than truncated or fragmented. An over-ceiling paste enqueued without this guard would produce a `MessageTooLarge` error, terminating the IPC writer task and silently dropping all subsequent keystrokes. This EC defines the upper boundary of Invariant-3's ~255.9 KiB ceiling: pastes at or below the ceiling are forwarded (Invariant-3); pastes above it are WARN-logged and dropped. |
 
 ## Canonical Test Vectors
 
@@ -119,6 +120,21 @@ S-040 — Same story as BC-2.09.002 (paste handling in EmbeddedTerminal event di
 ## VP Anchors
 
 VP-TBD — Bracketed paste unit tests (filled after VP creation)
+
+## §Trace v1.0.7
+
+**S-040 pass-4 — EC-245: over-ceiling paste guard** (2026-06-21):
+
+- **EC-245 added:** Bracketed paste whose framed IPC size exceeds `MAX_MESSAGE_BYTES` (262144
+  bytes) is NOT enqueued. The guard in `dispatch_embedded_terminal_paste` detects this condition,
+  emits a WARN log, and drops the paste. The IPC writer task remains alive; subsequent input is
+  unaffected. Rationale: the no-fragmentation rule (AC-009/EC-214 in BC-2.09.002) precludes
+  splitting a single paste; an over-ceiling paste without this guard would enqueue an oversized
+  frame, producing `MessageTooLarge` and terminating the writer task (silencing all subsequent
+  keystrokes). EC-245 defines the upper boundary of Invariant-3's ~255.9 KiB ceiling.
+- No other behavioral content changed (Invariant-3, postconditions, test vectors unchanged).
+- Version bump: v1.0.6 → v1.0.7 (patch: edge case added at ceiling boundary).
+- SE-16d monotonicity: v1.0.7 timestamp 2026-06-21 >= v1.0.6 timestamp 2026-06-21. PASS.
 
 ## §Trace v1.0.6
 

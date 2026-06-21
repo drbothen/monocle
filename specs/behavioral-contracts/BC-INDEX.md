@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract-index
 level: L3
-version: "1.44.3"
+version: "1.44.4"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-20T00:00:00Z
@@ -1223,6 +1223,23 @@ SE-16d monotonicity: v1.39 timestamp 2026-06-03 ≥ v1.38 timestamp 2026-06-03. 
 - BC-INDEX version: 1.40.4 → 1.40.5. No BC ID additions or retirements. No H1 title changes.
 
 SE-16d monotonicity: v1.40.5 timestamp 2026-06-14T20:00:00Z > v1.40.4 timestamp 2026-06-14T19:00:00Z. PASS.
+
+## §Trace v1.44.4
+
+**S-040 pass-4 — BC-2.09.005 EC-245: over-ceiling paste guard** (2026-06-21):
+
+BC version bumps in this dispatch:
+- BC-2.09.005 v1.0.6 → v1.0.7: EC-245 added (S-040 adversarial pass 4). Bracketed paste whose
+  framed IPC size exceeds `MAX_MESSAGE_BYTES` (262144 bytes) is NOT enqueued. The guard in
+  `dispatch_embedded_terminal_paste` emits a WARN log and drops the oversized paste. IPC writer
+  task remains alive; subsequent input is unaffected. EC-245 defines the upper boundary of
+  Invariant-3's ~255.9 KiB ceiling and is consistent with AC-009/EC-214 in BC-2.09.002
+  (no-fragmentation rule: a paste above ceiling is rejected, not split).
+
+No BC H1 title changes. No BC ID additions or retirements. BC count unchanged: 138 active.
+BC-INDEX version: 1.44.3 → 1.44.4.
+
+SE-16d monotonicity: v1.44.4 timestamp 2026-06-21 >= v1.44.3 timestamp 2026-06-21. PASS.
 
 ## §Trace v1.44.3
 

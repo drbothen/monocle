@@ -204,8 +204,8 @@ ARCH-INDEX:
 
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
-  current_version: "1.44.2"
-  last_bump_commit: "[S-040 pass-2 BC behavioral content — kitty_active threading; EC-217 TRACE+None; EC-234 timeout]" # version-pin-historical
+  current_version: "1.44.4"
+  last_bump_commit: "[S-040 pass-4 — BC-2.09.005 v1.0.7 EC-245 over-ceiling paste guard]" # version-pin-historical
   last_bump_date: "2026-06-21"
 
 STORY-INDEX:
@@ -228,8 +228,8 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.35"
-  last_bump_commit: "[S-040 final pin reconciliation cascade — S-040 input pin v1.5→v1.6; §Trace v1.35 added]"
+  current_version: "1.36"
+  last_bump_commit: "[S-040 pass-4 POL-11 cascade — BC-INDEX input pin v1.44.2→v1.44.4; §Trace v1.36 added]" # version-pin-historical
   last_bump_date: "2026-06-21"
 
 sprint-state:
@@ -827,8 +827,8 @@ BC-2.09.004:
 
 BC-2.09.005:
   path: specs/behavioral-contracts/ss-09/BC-2.09.005.md
-  current_version: "1.0.6"
-  last_bump_commit: "[S-040 pass-3 O-3 — Invariant-3 paste ceiling corrected to ~255.9 KiB (MAX_MESSAGE_BYTES minus ~100 bytes envelope overhead)]" # version-pin-historical
+  current_version: "1.0.7"
+  last_bump_commit: "[S-040 pass-4 — EC-245 over-ceiling paste guard: dispatch_embedded_terminal_paste refuses oversized frames to prevent IPC writer task termination]" # version-pin-historical
   last_bump_date: "2026-06-21"
 
 BC-2.09.006:
@@ -974,7 +974,7 @@ S-038-session-manager-hook-injection:
 S-040-keyboard-forwarding:
   path: stories/S-040-keyboard-forwarding.md
   current_version: "1.6"
-  last_bump_commit: "[S-040 final pin reconciliation — BC-2.09.002 v1.2.0, BC-2.09.005 v1.0.6; AC-015/EC-218 Esc+modifier coverage added]"
+  last_bump_commit: "[S-040 final pin reconciliation — BC-2.09.002 v1.2.0, BC-2.09.005 v1.0.6; AC-015/EC-218 Esc+modifier coverage added]" # version-pin-historical
   last_bump_date: "2026-06-21"
 
 S-046-pty-output-fan-out:
