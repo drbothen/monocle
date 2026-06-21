@@ -210,8 +210,8 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.53"
-  last_bump_commit: "[F-S039-P6-LOW-001 — S-039 v1.6→v1.7; AC-005 step-5 dump_in_progress.remove fix; input pins BC-2.09.001 1.7.0→1.7.1 / SS-embedded-pty 1.9.0→1.10.0; §Trace v5.53 added]"
+  current_version: "5.54"
+  last_bump_commit: "[S-039 Pass-7 input-pin sync — BC-2.09.001 1.7.1→1.7.2; S-039 v1.7→v1.8; §Trace v5.54 added]"
   last_bump_date: "2026-06-20"
 
 VP-INDEX:
@@ -1063,8 +1063,8 @@ S-038-session-manager-hook-injection:
 
 S-039-pty-output-pipeline:
   path: stories/S-039-pty-output-pipeline.md
-  current_version: "1.7"
-  last_bump_commit: "[F-S039-P6-LOW-001 — AC-005 step-5 dump_in_progress.insert(false)→remove(&session_id); input pins BC-2.09.001 1.7.0→1.7.1 / SS-embedded-pty 1.9.0→1.10.0]"
+  current_version: "1.8"
+  last_bump_commit: "[S-039 Pass-7 input-pin sync — BC-2.09.001 1.7.1→1.7.2 (EC-208 oversized-message clarification)]"
   last_bump_date: "2026-06-20"
 
 S-041-mouse-forwarding-sgr:

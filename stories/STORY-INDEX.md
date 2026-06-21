@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.53"
+version: "5.54"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-19T01:00:00Z
@@ -498,6 +498,14 @@ GAP-P2-005 is L1 (BC clause) deferred: latency budget validation for BC-2.06.017
   an intra-Wave-2 ordering constraint; S-009 remains Wave 3. Wave point totals unchanged.
 - SE-22 v2 consumer-ledger: dep-graph v1.9→v2.0 (sibling); sprint-state.yaml v1.4→v1.5 (sibling).
 - STORY-INDEX version bumped v1.8→v1.9.
+
+## §Trace v5.54
+
+**S-039 Pass-7 input-pin sync — BC-2.09.001 1.7.1→1.7.2 (EC-208 oversized-message clarification, 2026-06-20):**
+
+- S-039-pty-output-pipeline.md v1.7→v1.8. Input pin refreshed: BC-2.09.001 1.7.1→1.7.2 (EC-208 oversized-message clarification bumped BC from v1.7.1→v1.7.2 during S-039 adversarial Pass-7).
+- SE-16d monotonicity: v5.54 timestamp 2026-06-20 >= v5.53 timestamp 2026-06-20. PASS.
+- SE-22 v2 sibling-sweep: version-pin-registry.yaml S-039-pty-output-pipeline 1.7→1.8; STORY-INDEX 5.53→5.54.
 
 ## §Trace v5.53
 

@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-039
 epic_id: EPIC-09
-version: "1.7"
+version: "1.8"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-20T00:00:00Z
@@ -20,7 +20,7 @@ behavioral_contracts: [BC-2.09.001]
 verification_properties: []
 estimated_days: 4
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.001.md, version: "1.7.1"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.001.md, version: "1.7.2"}
   - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.10.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
