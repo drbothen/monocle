@@ -457,9 +457,9 @@ async fn test_BC_2_09_002_handle_crossterm_event_kitty_active_false_ctrl_shift_e
 /// Source: BC-2.09.005 EC-245; ADV-HIGH-002.
 #[tokio::test]
 async fn test_BC_2_09_005_oversized_paste_guard() {
+    use monocle_ipc::types::ClientToServer;
     use monocle_tui::event_loop::dispatch_embedded_terminal_paste;
     use tokio::sync::mpsc;
-    use monocle_ipc::types::ClientToServer;
 
     // A paste text of 262200 bytes:
     //   bracketed frame: 6 + 262200 + 6 = 262212 raw bytes
@@ -524,9 +524,9 @@ async fn test_BC_2_09_005_oversized_paste_guard() {
 /// Source: BC-2.09.005 EC-232; AC-009; ADV-HIGH-002 regression guard.
 #[tokio::test]
 async fn test_BC_2_09_005_oversized_paste_guard_does_not_affect_small_paste() {
+    use monocle_ipc::types::ClientToServer;
     use monocle_tui::event_loop::dispatch_embedded_terminal_paste;
     use tokio::sync::mpsc;
-    use monocle_ipc::types::ClientToServer;
 
     let (tx, mut rx) = mpsc::channel::<ClientToServer>(4);
     dispatch_embedded_terminal_paste("hello", "session-small", &tx).await;
