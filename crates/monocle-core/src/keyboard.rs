@@ -445,7 +445,7 @@ pub fn is_kitty_enhanced_key(code: &PtyKeyCode, mods: PtyKeyModifiers, kitty_act
 /// Example: `Ctrl+Shift+Enter` → `\x1b[13;6u`
 /// (Enter codepoint = 13; modifier = 1 + shift(1) + ctrl(4) = 6)
 ///
-/// Called only when `is_kitty_enhanced_key(code, mods)` returns `true`.
+/// Called only when `is_kitty_enhanced_key(code, mods, kitty_active)` returns `true`.
 ///
 /// # Purity
 ///
