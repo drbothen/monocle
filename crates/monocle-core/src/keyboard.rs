@@ -65,9 +65,11 @@ pub enum PtyKeyCode {
     Null,
 }
 
-/// Mirror of `crossterm::event::KeyModifiers` (bitflags).
+/// monocle-owned bitflag type for PTY key modifiers.
 ///
-/// Matches crossterm bit values exactly so `monocle-tui` conversion is a single cast.
+/// Bit values are monocle-defined and do NOT match crossterm's bit layout.
+/// Conversion from `crossterm::event::KeyModifiers` is an explicit per-bit remap
+/// performed in `monocle-tui::keyboard_conv` — it is NOT a single cast.
 /// Only SHIFT, CONTROL, and ALT are used in v1A scope.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PtyKeyModifiers(pub u8);
