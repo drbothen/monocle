@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.0.9"
+version: "1.0.10"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -127,7 +127,7 @@ the enhancement flags silently no-op and standard VT sequences are used as fallb
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — Kitty keyboard protocol is explicitly named in CAP-009; this BC defines the CSI u encoding for Kitty-enhanced key events |
 | Architecture Module | monocle-core (`encode_kitty_key()`, `is_kitty_enhanced_key()` pure functions); monocle-tui (PushKeyboardEnhancementFlags setup, PopKeyboardEnhancementFlags cleanup) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.13.0 §Crossterm setup (keyboard enhancement flags; three-flag set; supports_keyboard_enhancement detection); §Translation function (Kitty catch-all precedence; O-1 functional-key codepoints in v1A scope; kitty_active threading; is_kitty_enhanced_key signature); §Risk Mitigations (supports_keyboard_enhancement mandate) |
+| Architecture Source | SS-embedded-pty.md v1.14.0 §Crossterm setup (keyboard enhancement flags; three-flag set; supports_keyboard_enhancement detection); §Translation function (Kitty catch-all precedence; O-1 functional-key codepoints in v1A scope; kitty_active threading; is_kitty_enhanced_key signature); §Risk Mitigations (supports_keyboard_enhancement mandate) |
 | Test Name | test_BC_2_09_004_kitty_protocol_csi_u_sequences |
 
 ## Related BCs
@@ -146,6 +146,16 @@ S-040 — Same story as BC-2.09.002 (keyboard encoding includes Kitty branch)
 ## VP Anchors
 
 VP-TBD — Kitty encoding unit tests (filled after VP creation)
+
+## §Trace v1.0.10
+
+**Arch-source pin: SS-embedded-pty.md v1.13.0 → v1.14.0** (2026-06-21):
+- S-040 adversarial pass-6 ADV-MED-001 closed. Architecture Source row updated to v1.14.0.
+- PO behavioral directive recorded in SS-embedded-pty.md §Trace v1.14.0: EC-234 trigger
+  description must remove "100ms" / "CSI ?u query times out" language; correct mechanism is
+  supports_keyboard_enhancement() with crossterm's internal 2000ms timeout. No behavioral
+  content changed in this file (PO action required per PO directives in SS-embedded-pty).
+- SE-16d monotonicity: v1.0.10 timestamp 2026-06-21 >= v1.0.9 timestamp 2026-06-21. PASS.
 
 ## §Trace v1.0.9
 

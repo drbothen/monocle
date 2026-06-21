@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.0"
+version: "1.2.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -159,7 +159,7 @@ mouse events in SGR encoding, and bracketed paste. No keyboard class is deferred
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — full-fidelity keyboard forwarding is explicitly named in CAP-009, and this BC defines the complete key translation table and forwarding contract |
 | Architecture Module | monocle-core (`key_event_to_pty_bytes()` pure function); monocle-tui (Action dispatch, IPC KeyInput send) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.13.0 §Full-Fidelity Keyboard Encoding; §Translation function (Ctrl-arm canonical guard mods.contains(CONTROL)&&!contains(ALT); Tab+SHIFT confirmed; Kitty precedence for modified VT-capable keys; kitty_active threading; HIGH-001 TRACE+None policy); §Risk Mitigations (supports_keyboard_enhancement mandate; FORBIDDEN raw stdin thread) |
+| Architecture Source | SS-embedded-pty.md v1.14.0 §Full-Fidelity Keyboard Encoding; §Translation function (Ctrl-arm canonical guard mods.contains(CONTROL)&&!contains(ALT); Tab+SHIFT confirmed; Kitty precedence for modified VT-capable keys; kitty_active threading; HIGH-001 TRACE+None policy); §Risk Mitigations (supports_keyboard_enhancement mandate; FORBIDDEN raw stdin thread); §Call site in event_loop.rs (Esc-intercept kind guard: Press-only ruling, ADV-MED-001) |
 | Test Name | test_BC_2_09_002_keyboard_forwarding_all_classes |
 
 ## Related BCs
@@ -180,6 +180,16 @@ S-040 — Implement key_event_to_pty_bytes() and KeyInput IPC send in monocle-tu
 ## VP Anchors
 
 VP-TBD — Keyboard translation unit tests (filled after VP creation)
+
+## §Trace v1.2.1
+
+**Arch-source pin: SS-embedded-pty.md v1.13.0 → v1.14.0** (2026-06-21):
+- S-040 adversarial pass-6 ADV-MED-001 closed: Esc-intercept kind guard added to normative
+  template. Architecture Source row updated to v1.14.0 with §Call site in event_loop.rs anchor.
+- PO behavioral directive recorded in SS-embedded-pty.md §Trace v1.14.0: Invariant 2 must
+  be amended to add Press-only kind guard. No behavioral content changed in this file (PO
+  action required per PO directives in SS-embedded-pty).
+- SE-16d monotonicity: v1.2.1 timestamp 2026-06-21 >= v1.2.0 timestamp 2026-06-21. PASS.
 
 ## §Trace v1.2.0
 

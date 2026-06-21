@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "embedded-pty"
 subsystem: SS-09
-version: "1.13.0"
+version: "1.14.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -1043,8 +1043,29 @@ use monocle_core::keyboard::{key_event_to_pty_bytes, mouse_event_to_pty_bytes};
 // Key events:
 Event::Key(crossterm_key_event) if app_mode == EmbeddedTerminal => {
     // Esc interception BEFORE conversion (per BC-2.09.002 Invariant 2).
+    //
+    // KIND GUARD REQUIRED: when Kitty keyboard enhancement is active
+    // (REPORT_EVENT_TYPES flag enabled), crossterm emits KeyEventKind::Release
+    // events. Without the kind guard, a bare-Esc Release fires
+    // Action::ExitEmbeddedTerminal, violating BC-2.09.002 PC-3 ("Release events
+    // discarded — no action taken").
+    //
+    // RULING: intercept on KeyEventKind::Press ONLY (not Repeat).
+    // Rationale: a held-down Esc with auto-repeat would fire ExitEmbeddedTerminal
+    // repeatedly across multiple render ticks, which is surprising and unnecessary —
+    // a single Press is sufficient to exit. Repeat events for Esc fall through to
+    // key_event_to_pty_bytes(), where the Release-discard guard (kind == Release →
+    // return None) already handles Release; Repeat events for Esc produce \x1b bytes
+    // forwarded to the PTY (a held Esc inside the embedded terminal is unusual but
+    // not harmful). Only the FIRST Press triggers exit.
+    //
+    // NOTE: the kind guard applies to the Esc intercept arm independently of the
+    // Release-discard guard inside key_event_to_pty_bytes(). Both guards are
+    // required: the dispatch-layer kind guard prevents premature exit; the
+    // key_event_to_pty_bytes Release guard prevents forwarding Release bytes to PTY.
     if crossterm_key_event.code == crossterm::event::KeyCode::Esc
        && crossterm_key_event.modifiers.is_empty()
+       && matches!(crossterm_key_event.kind, crossterm::event::KeyEventKind::Press)
     {
         dispatch(Action::ExitEmbeddedTerminal);
     } else {
@@ -1701,6 +1722,61 @@ Mitigation: integration tests use a PTY fixture corpus from `embedded-pty-evalua
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.14.0
+
+**S-040 adversarial pass 6 — Esc-intercept kind guard; ADV-MED-001 closed** (2026-06-21):
+
+**ADV-MED-001 (Esc-intercept missing KeyEventKind guard — CONFIRMED, FIXED):**
+
+The normative Esc-intercept template (§"Call site in event_loop.rs") omitted a
+`KeyEventKind` guard on the `Action::ExitEmbeddedTerminal` dispatch arm. When
+`REPORT_EVENT_TYPES` is active (Kitty keyboard protocol enabled), crossterm emits
+`KeyEventKind::Release` for every key-release event. Without the guard, a bare-Esc
+Release triggered `Action::ExitEmbeddedTerminal`, violating BC-2.09.002 PC-3 ("Release
+events discarded — no action taken").
+
+**RULING — Press only (not Press|Repeat):**
+The kind guard is `matches!(crossterm_key_event.kind, crossterm::event::KeyEventKind::Press)`.
+Repeat is excluded. Rationale: a held Esc produces auto-repeat events; firing
+ExitEmbeddedTerminal on each Repeat frame would be semantically wrong (repeated mode
+transitions across render ticks). One Press is sufficient and correct. Repeat events
+for Esc fall through to `key_event_to_pty_bytes()` where they produce `\x1b` bytes —
+unusual in practice but well-defined. Release events are discarded by the Release guard
+inside `key_event_to_pty_bytes()`.
+
+**Ordering note:** The kind guard at the dispatch layer is independent of the
+Release-discard guard inside `key_event_to_pty_bytes()`. Both are required:
+- Dispatch-layer guard: prevents ExitEmbeddedTerminal on Release/Repeat.
+- `key_event_to_pty_bytes` guard: prevents forwarding Release bytes to PTY.
+The Release-discard rule in BC-2.09.002 PC-3 applies to the Esc intercept path too,
+not only to the forwarding path inside `key_event_to_pty_bytes`.
+
+**100ms residual text audit:**
+Lines 1658/1660/1725 in the previous version contain "100ms" in the §Risk Mitigations
+historical-rationale paragraph (explaining WHY the hand-rolled probe was wrong). These
+are explanatory, not prescriptive — no normative spec language uses 100ms as a timeout
+target. Line 1692 (BC-2.09.001 title "PTY output renders within 100ms") is an NFR
+latency target, not a probe reference. No residual prescriptive "100ms CSI?u probe"
+language exists in this document.
+
+**PO directives (cascaded spec changes — do NOT implement in this burst):**
+1. **BC-2.09.002 Invariant 2:** Add kind guard to the Esc-intercept normative statement.
+   Current text: "The Action dispatch layer MUST intercept `KeyCode::Esc` (no modifiers) as
+   `Action::ExitEmbeddedTerminal` BEFORE `key_event_to_pty_bytes()` is called."
+   Required addition: append "The intercept MUST fire ONLY on `KeyEventKind::Press`. Release
+   and Repeat events matching the Esc+no-modifiers pattern MUST NOT trigger
+   ExitEmbeddedTerminal: Release events are discarded per PC-3; Repeat events fall through to
+   `key_event_to_pty_bytes()` and produce `\x1b` bytes."
+2. **BC-2.09.004 EC-234:** Change "CSI ?u query times out at startup (terminal does not
+   respond within 100ms)" to "terminal does not respond (supports_keyboard_enhancement()
+   returns Err(_) or Ok(false))". Remove the 100ms timeout language from the trigger
+   description; the detection mechanism is `crossterm::terminal::supports_keyboard_enhancement()`
+   with crossterm's internal 2000ms timeout (per §Risk Mitigations). The 100ms language
+   was the old hand-rolled probe description and is stale.
+
+- Version bump: v1.13.0 → v1.14.0 (normative: Esc-intercept kind guard added with Press-only
+  ruling and ordering rationale; 100ms audit confirmed clean; PO cascade directives recorded).
 
 ## §Trace v1.13.0
 

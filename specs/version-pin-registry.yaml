@@ -130,8 +130,8 @@ SS-session-manager:
 
 SS-embedded-pty:
   path: specs/architecture/SS-embedded-pty.md
-  current_version: "1.13.0"
-  last_bump_commit: "[S-040 pass-3 adversarial ruling — supports_keyboard_enhancement mandate+FORBIDDEN thread; Ctrl-arm contains guard; Tab+SHIFT confirmed; O-1 Kitty codepoints in scope; O-3 MAX_FRAME_LEN verified]"
+  current_version: "1.14.0"
+  last_bump_commit: "[S-040 pass-6 ADV-MED-001 — Esc-intercept kind guard (Press-only ruling); PO cascade directives for BC-2.09.002 Invariant 2 + BC-2.09.004 EC-234 recorded]"
   last_bump_date: "2026-06-21"
 
 SS-engine-module-v2-delta:
@@ -809,8 +809,8 @@ BC-2.09.001:
 
 BC-2.09.002:
   path: specs/behavioral-contracts/ss-09/BC-2.09.002.md
-  current_version: "1.2.0"
-  last_bump_commit: "[S-040 pass-3 ADV-HIGH-003 — EC-218 Esc+modifier edge case (architect-specified: guard mods.is_empty(); Kitty CSI-u vs TRACE+None)]" # version-pin-historical
+  current_version: "1.2.1"
+  last_bump_commit: "[S-040 pass-6 ADV-MED-001 — arch-source pin SS-embedded-pty cascade; PO directive: Invariant 2 kind guard]"
   last_bump_date: "2026-06-21"
 
 BC-2.09.003:
@@ -821,8 +821,8 @@ BC-2.09.003:
 
 BC-2.09.004:
   path: specs/behavioral-contracts/ss-09/BC-2.09.004.md
-  current_version: "1.0.9"
-  last_bump_commit: "[S-040 pass-3 arch-source pin; O-1 Kitty functional-key codepoints in v1A scope; supports_keyboard_enhancement detection mandate]" # version-pin-historical
+  current_version: "1.0.10"
+  last_bump_commit: "[S-040 pass-6 ADV-MED-001 — arch-source pin SS-embedded-pty cascade; PO directive: EC-234 100ms→supports_keyboard_enhancement]"
   last_bump_date: "2026-06-21"
 
 BC-2.09.005:
