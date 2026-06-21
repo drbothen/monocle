@@ -1,12 +1,9 @@
-//! Keyboard and paste dispatch stubs for `AppMode::EmbeddedTerminal`.
+//! Keyboard and paste dispatch for `AppMode::EmbeddedTerminal`.
 //!
-//! This module contains the stub entry points for the S-040 keyboard forwarding work:
+//! This module implements the S-040 keyboard forwarding work:
 //! - Global Kitty keyboard enhancement + bracketed paste TUI startup/exit.
 //! - `EmbeddedTerminal` keyboard dispatch arm (Key events → `KeyInput` IPC).
 //! - `EmbeddedTerminal` paste dispatch arm (Paste events → bracketed-wrap → `KeyInput` IPC).
-//!
-//! All function bodies are `todo!()` — the implementer writes real code here.
-//! Tests for these functions MUST fail (Red Gate) until the implementer completes them.
 //!
 //! # Integration contract
 //!

@@ -10,8 +10,8 @@
 //! seam; all type adaptation happens here and nowhere else.
 //!
 //! S-041 extends this file with `crossterm_mouse_to_pty()` and `ratatui_rect_to_pty()`
-//! in that story's scope. The function stubs for mouse and rect are intentionally
-//! absent from this file to keep S-040 stub scope minimal.
+//! in that story's scope. Those functions are intentionally absent here — mouse and
+//! rect conversion is out of S-040 scope.
 
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use monocle_core::keyboard::{PtyKeyCode, PtyKeyEvent, PtyKeyEventKind, PtyKeyModifiers};

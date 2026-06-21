@@ -561,13 +561,8 @@ pub fn fn_key_bytes(n: u8) -> Vec<u8> {
 // ---------------------------------------------------------------------------
 // Tests — pure monocle-core tests; NO crossterm types allowed here.
 // All test names follow test_BC_S_SS_NNN_xxx() pattern (TDD naming convention).
-// These tests MUST FAIL until the implementer updates the production signatures.
-//
-// RED GATE: All calls to key_event_to_pty_bytes and is_kitty_enhanced_key use
-// the NEW 2-arg / 3-arg signatures. The production code still has the OLD
-// 1-arg / 2-arg signatures. This causes a compile error in monocle-core's
-// test target — that compile error IS the Red Gate for the new-signature tests.
-// The implementer must update the production signatures to make these compile.
+// All calls to key_event_to_pty_bytes and is_kitty_enhanced_key use the
+// 2-arg / 3-arg signatures implemented in S-040.
 // ---------------------------------------------------------------------------
 #[cfg(test)]
 #[allow(non_snake_case)]
@@ -1132,22 +1127,15 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // PASS-3 DIRECTIVES — all tests below are new Red Gate additions
-    // per S-040 pass-3 design directives (SS-embedded-pty.md §Trace v1.13.0).
-    // Each test MUST FAIL until the implementer applies the corresponding fix.
-    // -----------------------------------------------------------------------
-
-    // -----------------------------------------------------------------------
-    // O-1: Real Kitty functional-key codepoints
+    // Kitty functional-key codepoint correctness (O-1 / BC-2.09.004 EC-225)
     //
-    // Current production pty_key_codepoint() uses WRONG values for nav/arrow keys
-    // (e.g., Up=65='A', Home=72='H'). The correct Kitty functional-key codepoints per
-    // https://sw.kovidgoyal.net/kitty/keyboard-protocol/#functional-key-definitions are:
+    // pty_key_codepoint() uses the correct Kitty functional-key codepoints per
+    // https://sw.kovidgoyal.net/kitty/keyboard-protocol/#functional-key-definitions:
     //   Up=57352, Down=57353, Left=57351, Right=57354
     //   Home=57360, End=57361, PageUp=57362, PageDown=57363
     //   Insert=57348, Delete=57349
     //   F1=57364..F12=57375
-    // These tests will FAIL (assertion error) until pty_key_codepoint() is corrected.
+    // Source: SS-embedded-pty.md §Trace v1.13.0 O-1.
     // -----------------------------------------------------------------------
 
     /// O-1 / BC-2.09.004 — Ctrl+Up → \x1b[57352;5u (Kitty functional-key codepoint)
@@ -1185,7 +1173,6 @@ mod tests {
     /// O-1 / BC-2.09.004 — Shift+Home → \x1b[57360;2u (Kitty functional-key codepoint)
     ///
     /// Home codepoint = 57360 (Kitty spec); modifier = 1 + shift(1) = 2.
-    /// Current production has Home=72 ('H') → \x1b[72;2u — WRONG.
     ///
     /// Source: SS-embedded-pty.md §Trace v1.13.0 O-1.
     #[test]
@@ -1277,24 +1264,19 @@ mod tests {
     // -----------------------------------------------------------------------
     // MED-003: PtyKeyModifiers::contains all-bits semantics
     //
-    // The current implementation uses `self.0 & other.0 != 0` (any-bit test).
-    // The CORRECT semantics for `contains` is all-bits: `self.0 & other.0 == other.0`.
-    // The any-bit form causes false positives: CONTROL.contains(CONTROL | ALT) returns
-    // true because `CONTROL.0 & (CONTROL | ALT).0 != 0` — but ALT bit is NOT set in
-    // CONTROL, so `contains(CONTROL|ALT)` should return false.
+    // `contains` uses all-bits semantics: `self.0 & other.0 == other.0`.
+    // This matches the standard bitflags convention and crossterm's own `contains`.
+    // The any-bit form (`!= 0`) would cause false positives: CONTROL.contains(CONTROL|ALT)
+    // would return true because `CONTROL.0 & (CONTROL|ALT).0 != 0` — but ALT bit is NOT
+    // set in CONTROL, so `contains(CONTROL|ALT)` must return false.
     //
     // Source: SS-embedded-pty.md §Core-Owned Mirror Types.
     // -----------------------------------------------------------------------
 
-    /// MED-003 — PtyKeyModifiers::contains must use all-bits semantics
+    /// MED-003 — PtyKeyModifiers::contains uses all-bits semantics
     ///
     /// `contains(other)` returns true IFF ALL bits of `other` are set in `self`.
-    ///
-    /// Current production: `self.0 & other.0 != 0` (any-bit) — WRONG.
-    /// Correct:            `self.0 & other.0 == other.0` (all-bits).
-    ///
-    /// The second and third assertions below FAIL on the current implementation
-    /// because the any-bit form returns true when only a partial bit overlap exists.
+    /// Uses `self.0 & other.0 == other.0` (all-bits per standard bitflags convention).
     ///
     /// Source: SS-embedded-pty.md §Core-Owned Mirror Types; standard bitflags convention.
     #[test]
@@ -1306,7 +1288,7 @@ mod tests {
         );
 
         // (CONTROL | SHIFT).contains(CONTROL | ALT) — ALT bit is NOT set → false.
-        // any-bit impl returns true (CONTROL overlaps) — WRONG. all-bits returns false.
+        // All-bits semantics: `(CONTROL|SHIFT).0 & (CONTROL|ALT).0 == (CONTROL|ALT).0` → false.
         assert!(
             !(PtyKeyModifiers::CONTROL | PtyKeyModifiers::SHIFT)
                 .contains(PtyKeyModifiers::CONTROL | PtyKeyModifiers::ALT),
@@ -1315,7 +1297,7 @@ mod tests {
         );
 
         // CONTROL.contains(CONTROL | SHIFT) — SHIFT bit is NOT set → false.
-        // any-bit impl returns true (CONTROL overlaps) — WRONG. all-bits returns false.
+        // All-bits semantics: `CONTROL.0 & (CONTROL|SHIFT).0 == (CONTROL|SHIFT).0` → false.
         assert!(
             !PtyKeyModifiers::CONTROL.contains(PtyKeyModifiers::CONTROL | PtyKeyModifiers::SHIFT),
             "CONTROL.contains(CONTROL|SHIFT) must be false — SHIFT bit is not set in CONTROL; \
@@ -1384,21 +1366,17 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // PASS-4 HIGH-001: modified-arrow VT-fallback arms must use EXACT-EQUALITY
-    // guards (mods == CONTROL, not mods.contains(CONTROL)).
+    // ADV-HIGH-001: modified-arrow VT-fallback arms use EXACT-EQUALITY guards
+    // (mods == CONTROL, not mods.contains(CONTROL)).
     //
     // The VT-fallback arms for modified arrows (SS-embedded-pty.md §Translation
-    // function lines 1291-1298) are specified with exact-equality guards:
+    // function arm 6) use exact-equality guards:
     //   KeyCode::Up if mods == PtyKeyModifiers::CONTROL => ...
     //
-    // Production code at arm 6 currently uses `mods.contains(CONTROL)` (contains
-    // semantics). This causes `Ctrl+Alt+Up` (mods = CONTROL|ALT = 0x0C) and
-    // `Ctrl+Shift+Up` (mods = CONTROL|SHIFT = 0x05) to match the CONTROL arm and
-    // return \x1b[1;5A — WRONG. Per EC-217 the correct behavior for multi-modifier
-    // combos with no exact VT arm is TRACE+None (observable drop).
-    //
-    // These tests FAIL on the current production code (returns \x1b[1;5A instead
-    // of None). The implementer must tighten arm 6 to exact-equality guards.
+    // Exact equality means `Ctrl+Alt+Up` (mods = CONTROL|ALT = 0x0C) and
+    // `Ctrl+Shift+Up` (mods = CONTROL|SHIFT = 0x05) do NOT match the CONTROL arm.
+    // Per EC-217 the correct behavior for multi-modifier combos with no exact VT
+    // arm is TRACE+None (observable drop).
     //
     // Source: BC-2.09.002 EC-217; SS-embedded-pty.md §Translation function;
     //         S-040 pass-4 ADV-HIGH-001.
@@ -1407,15 +1385,11 @@ mod tests {
     /// ADV-HIGH-001 / BC-2.09.002 EC-217 — Ctrl+Alt+Up on non-Kitty terminal → None
     ///
     /// Ctrl+Alt+Up (mods = CONTROL|ALT) has no exact VT arm in the spec table.
-    /// The VT-fallback arm `Up if mods == CONTROL` requires exact equality and must NOT
+    /// The VT-fallback arm `Up if mods == CONTROL` requires exact equality and does NOT
     /// match CONTROL|ALT. On a non-Kitty terminal (kitty_active=false), this combo falls
     /// through all named arms and reaches the `_ if !mods.is_empty()` TRACE+None arm.
     ///
     /// Expected: None (TRACE log emitted; drop is observable, not silent per BC-2.09.002 PC-1).
-    ///
-    /// Current production bug: `mods.contains(CONTROL)` matches CONTROL|ALT → returns
-    /// \x1b[1;5A (fabricated bytes). This is a protocol data corruption bug: the upstream
-    /// program (Claude Code) receives Ctrl+Up when Ctrl+Alt+Up was pressed.
     ///
     /// Source: BC-2.09.002 EC-217; SS-embedded-pty.md §Translation function; ADV-HIGH-001.
     #[test]
@@ -1434,7 +1408,6 @@ mod tests {
             key_event_to_pty_bytes(event, false),
             None,
             "Ctrl+Alt+Up on non-Kitty terminal must return None (EC-217 TRACE+None); \
-             current production bug: returns \\x1b[1;5A via contains() guard — \
              source: BC-2.09.002 EC-217; ADV-HIGH-001"
         );
     }
@@ -1467,23 +1440,21 @@ mod tests {
             key_event_to_pty_bytes(event, false),
             None,
             "Ctrl+Shift+Up on non-Kitty terminal must return None (EC-217 TRACE+None); \
-             current production bug: returns \\x1b[1;5A via contains() guard — \
              source: BC-2.09.002 EC-217; ADV-HIGH-001"
         );
     }
 
     // -----------------------------------------------------------------------
-    // ADV-HIGH-001 regression guards — single-modifier arrows MUST still work
+    // ADV-HIGH-001 regression guards — single-modifier arrows still work
     //
-    // These tests verify that tightening arm 6 to exact-equality does NOT break
+    // These tests verify that arm 6 exact-equality guards do NOT break
     // the primary VT-fallback cases for Ctrl+Arrow and Shift+Arrow.
-    // They are expected to PASS both before and after the fix (they guard regression).
     // -----------------------------------------------------------------------
 
     /// ADV-HIGH-001 regression guard — Ctrl+Up → \x1b[1;5A (exact CONTROL arm, kitty_active=false)
     ///
-    /// This is the happy-path single-modifier case. After the fix, the exact equality
-    /// arm `Up if mods == CONTROL` still fires for CONTROL alone (no ALT, no SHIFT bit).
+    /// This is the happy-path single-modifier case. The exact equality
+    /// arm `Up if mods == CONTROL` fires for CONTROL alone (no ALT, no SHIFT bit).
     ///
     /// Source: BC-2.09.002 PC-2 table; SS-embedded-pty.md §Translation function arm 6.
     #[test]
@@ -1496,7 +1467,7 @@ mod tests {
         assert_eq!(
             key_event_to_pty_bytes(event, false),
             Some(b"\x1b[1;5A".to_vec()),
-            "Ctrl+Up on non-Kitty terminal must still produce \\x1b[1;5A after fix \
+            "Ctrl+Up on non-Kitty terminal must produce \\x1b[1;5A \
              (exact-equality arm for CONTROL alone; ADV-HIGH-001 regression guard)"
         );
     }
@@ -1514,7 +1485,7 @@ mod tests {
         assert_eq!(
             key_event_to_pty_bytes(event, false),
             Some(b"\x1b[1;2A".to_vec()),
-            "Shift+Up on non-Kitty terminal must still produce \\x1b[1;2A after fix \
+            "Shift+Up on non-Kitty terminal must produce \\x1b[1;2A \
              (exact-equality arm for SHIFT alone; ADV-HIGH-001 regression guard)"
         );
     }

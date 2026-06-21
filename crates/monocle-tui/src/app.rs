@@ -33,7 +33,7 @@ use monocle_ipc::types::{
 // effectful monocle-tui crate, NOT in pure monocle-core.
 // PermissionDecisionKind: re-exported from lib.rs for integration tests and for S-026
 // decision handler implementations. The re-export here ensures the type is visible at
-// the app module level when todo!() stubs are replaced with real code.
+// the app module level for all callers that import from `monocle_tui::app`.
 pub use monocle_ipc::types::PermissionDecisionKind;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::PathBuf;
