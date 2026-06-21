@@ -8,12 +8,11 @@
 //! live in monocle-core/src/keyboard.rs #[cfg(test)] module — those functions have
 //! no crossterm dependency and are tested against PtyKey* types only.
 //!
-//! # Red Gate
+//! # Coverage
 //!
-//! All tests in this file MUST FAIL until the implementer fills in the todo!() stubs
-//! in event_loop.rs (dispatch_embedded_terminal_key, dispatch_embedded_terminal_paste).
-//!
-//! Tests compile against the current stub code and fail at runtime via panic from todo!().
+//! These tests verify the fully-implemented dispatch functions in event_loop.rs
+//! (dispatch_embedded_terminal_key, dispatch_embedded_terminal_paste).
+//! All tests pass against the current production implementation.
 
 #![allow(non_snake_case)]
 
@@ -266,10 +265,10 @@ async fn test_BC_2_09_005_paste_newlines_preserved_verbatim() {
 /// modifiers NONE, kind Release) MUST be discarded: dispatch returns false and
 /// zero bytes are sent to the IPC channel.
 ///
-/// This is the ADV-MED-001 Red Gate test. The current guard at event_loop.rs
-/// checks `code == Esc && modifiers == NONE` without inspecting `event.kind`,
-/// so a Release event currently returns true (wrongly signalling exit). This test
-/// MUST FAIL against the un-fixed implementation and PASS only after the fix.
+/// This was the ADV-MED-001 Red Gate test. The guard at event_loop.rs correctly
+/// checks `code == Esc && modifiers == NONE && kind == Press`, so a Release event
+/// returns false (correctly not signalling exit). This test is now a regression
+/// guard confirming the kind==Press check remains in place.
 ///
 /// Contrast with test_BC_2_09_002_esc_not_forwarded_directly, which uses
 /// KeyEventKind::Press and expects true (exit signalled).
@@ -394,9 +393,8 @@ async fn test_BC_2_09_002_key_input_carries_correct_session_id() {
 
 // ---------------------------------------------------------------------------
 // BC-2.09.005: Paste edge cases — EC-230 and EC-231
-// These tests exercise the dispatch helper directly (signatures unchanged from
-// the current worktree; they compile against the existing dispatch_embedded_terminal_paste stub).
-// They should FAIL at assertion (todo!() panic) until the implementer fills the stub.
+// These tests exercise the dispatch helper directly against the fully-implemented
+// dispatch_embedded_terminal_paste function. They pass against the current production code.
 // ---------------------------------------------------------------------------
 
 /// BC-2.09.005 EC-230 — paste text containing ESC characters is forwarded verbatim

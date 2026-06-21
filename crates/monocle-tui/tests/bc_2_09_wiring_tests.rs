@@ -304,7 +304,7 @@ async fn test_paste_ignored_outside_embedded_terminal() {
 // These tests verify that handle_crossterm_event correctly threads app.kitty_active
 // into key_event_to_pty_bytes. A regression that hardcodes kitty_active=false in the
 // production path (e.g., by ignoring app.kitty_active and always calling
-// dispatch_embedded_terminal_key with false) must fail these tests.
+// dispatch_embedded_terminal_key with false) would be caught by these tests.
 //
 // Source: S-040 pass-3 directive HIGH-001; SS-embedded-pty.md §Translation function
 // S2-002 / ADV-BLOCKER-001; BC-2.09.004 PC-1.
@@ -438,8 +438,8 @@ async fn test_BC_2_09_002_handle_crossterm_event_kitty_active_false_ctrl_shift_e
 // guard would enqueue a frame that write_framed rejects with MessageTooLarge, which
 // terminates the IPC writer task and silently drops ALL subsequent keystrokes.
 //
-// These tests will FAIL on the current production code (dispatch_embedded_terminal_paste
-// has no size guard and always enqueues the payload).
+// dispatch_embedded_terminal_paste implements this size guard; these tests verify
+// that oversized payloads are dropped and the channel remains open.
 // ---------------------------------------------------------------------------
 
 /// ADV-HIGH-002 / BC-2.09.005 EC-245 — oversized paste is dropped, writer task survives
@@ -481,8 +481,8 @@ async fn test_BC_2_09_005_oversized_paste_guard() {
     assert!(
         msgs.is_empty(),
         "oversized paste must be dropped by guard (0 KeyInput messages expected); \
-         got {}. Current production bug: no size guard → oversized frame enqueued. \
-         Source: BC-2.09.005 EC-245; ADV-HIGH-002",
+         got {}. The size guard in dispatch_embedded_terminal_paste must drop oversized frames \
+         before enqueueing. Source: BC-2.09.005 EC-245; ADV-HIGH-002",
         msgs.len()
     );
 
@@ -518,33 +518,28 @@ async fn test_BC_2_09_005_oversized_paste_guard() {
 // ---------------------------------------------------------------------------
 // PASS-5 BLOCKER-001: JSON-expansion paste guard (BC-2.09.005 EC-245)
 //
-// The current production guard in dispatch_embedded_terminal_paste compares the
-// RAW bracketed byte length to MAX_MESSAGE_BYTES.  However, write_framed serializes
-// ClientToServer::KeyInput to JSON, encoding the bytes Vec<u8> as a JSON integer
-// array.  Each byte value 0-255 serializes as its decimal string representation plus
-// a comma separator:
+// The production guard in dispatch_embedded_terminal_paste must account for
+// JSON serialization expansion when comparing against MAX_MESSAGE_BYTES.
+// write_framed serializes ClientToServer::KeyInput to JSON, encoding the bytes
+// Vec<u8> as a JSON integer array.  Each byte value 0-255 serializes as its
+// decimal string representation plus a comma separator:
 //
 //   byte 120 ('x') -> "120," = 4 chars    (3-digit value)
 //   byte  27 (\x1b) -> "27,"  = 3 chars
 //
 // This produces an approximately 3-4x expansion from raw to serialized frame size.
 //
-// The bug:
+// The failure mode without a serialized-size guard:
 //   A paste of 80_000 'x' chars has:
 //     - raw bracketed length:  6 + 80_000 + 6 = 80_012 bytes  (< 262_144 ceiling)
 //     - JSON frame length:     ~320_100 bytes                  (> 262_144 ceiling)
 //
-// The raw guard passes the 80_000-char paste.  write_framed then rejects it with
-// MessageTooLarge, which KILLS the IPC writer task, silently dropping ALL subsequent
-// keystrokes for the session.
+// A guard that checks only the raw byte count would pass the 80_000-char paste.
+// write_framed would then reject it with MessageTooLarge, killing the IPC writer
+// task and silently dropping ALL subsequent keystrokes for the session.
 //
-// BC-2.09.005 EC-245 requires the guard to check the FRAMED/SERIALIZED size, not the
-// raw bracketed byte count.
-//
-// This test is the Red Gate for BLOCKER-001 (pass-5).  It FAILS against current
-// production code (raw guard passes the 80_000-char paste -> 1 message received,
-// expected 0).  The implementer must fix dispatch_embedded_terminal_paste to check
-// the serialized JSON frame size before enqueueing.
+// BC-2.09.005 EC-245 requires the guard to check the FRAMED/SERIALIZED size, not
+// the raw bracketed byte count.  The production implementation satisfies this.
 // ---------------------------------------------------------------------------
 
 /// BLOCKER-001 (pass-5) / BC-2.09.005 EC-245 — JSON-expansion paste slips raw guard, kills writer
@@ -556,7 +551,7 @@ async fn test_BC_2_09_005_oversized_paste_guard() {
 ///
 ///   raw bracketed length:  b"\x1b[200~".len() + 80_000 + b"\x1b[201~".len()
 ///                        = 6 + 80_000 + 6 = 80_012 bytes
-///                        80_012 < 262_144  =>  passes the current raw guard
+///                        80_012 < 262_144  =>  would pass a naive raw-byte guard
 ///
 ///   JSON frame length:     each 3-digit byte value ("120,") = 4 chars/byte
 ///                          total bytes-array ~= 80_012 * 4 = 320_048 chars
@@ -573,11 +568,13 @@ async fn test_BC_2_09_005_oversized_paste_guard() {
 /// After the drop, a small follow-up paste ("hello") must succeed (channel still open,
 /// writer task not killed) — the writer-survival assertion.
 ///
-/// # Red Gate
+/// # Regression Guard
 ///
-/// This test FAILS against the current production code:
-///   - current raw guard: 80_012 < 262_144  =>  paste is enqueued
-///   - test receives 1 message (expected 0)  =>  assertion fails
+/// This test was the BLOCKER-001 Red Gate (pass-5). The production implementation
+/// now checks the serialized JSON frame size before enqueueing, so this test passes.
+/// It remains as a regression guard: a future change that reverts to a raw-byte-only
+/// guard would cause the 80_000-char paste to be enqueued (1 message received,
+/// expected 0) and this test would catch it immediately.
 ///
 /// Source: BC-2.09.005 EC-245; S-040 BLOCKER-001 (pass-5).
 #[tokio::test]
@@ -587,8 +584,8 @@ async fn test_BC_2_09_005_paste_json_expansion_guard() {
     use tokio::sync::mpsc;
 
     // 80_000 'x' chars:
-    //   raw bracketed = 80_012 bytes  (< 262_144: passes raw guard TODAY)
-    //   JSON frame    ~ 320_100 bytes (> 262_144: write_framed would reject)
+    //   raw bracketed = 80_012 bytes  (< 262_144: passes a naive raw-byte guard)
+    //   JSON frame    ~ 320_100 bytes (> 262_144: write_framed would reject without serialized-size guard)
     let expansion_text = "x".repeat(80_000);
 
     // Use a generous channel capacity — the test must prove the paste is NOT enqueued,
@@ -606,20 +603,21 @@ async fn test_BC_2_09_005_paste_json_expansion_guard() {
         v
     };
 
-    // MUST receive ZERO messages.
+    // MUST receive ZERO messages — the serialized-size guard drops the oversized paste.
     //
-    // Red Gate failure message explains the current bug so the implementer knows
-    // exactly what to fix: the raw guard passes 80_012 < 262_144, but the JSON
-    // frame is ~320_100 > 262_144 and write_framed would kill the writer task.
+    // If this assertion fails (1 message received), the guard has regressed to a
+    // raw-byte-only check: 80_012 < 262_144 passes, but the JSON frame is ~320_100
+    // bytes, which exceeds the 262_144 ceiling and would cause write_framed to
+    // reject with MessageTooLarge, killing the IPC writer task.
     assert!(
         msgs.is_empty(),
-        "JSON-expansion paste guard failure (BC-2.09.005 EC-245 / BLOCKER-001): \
+        "JSON-expansion paste guard regression (BC-2.09.005 EC-245 / BLOCKER-001): \
          received {} KeyInput message(s); expected 0. \
-         Current bug: raw bracketed guard passes 80_012 < 262_144, but the JSON \
-         frame is ~320_100 bytes > 262_144 ceiling. \
+         The serialized-size guard must drop this paste: raw bracketed length \
+         80_012 < 262_144, but JSON frame ~320_100 bytes > 262_144 ceiling. \
          write_framed would reject with MessageTooLarge, killing the IPC writer task \
          and silently dropping ALL subsequent keystrokes. \
-         Fix: guard must check serialized frame size, not raw byte count.",
+         Guard must check serialized frame size, not raw byte count.",
         msgs.len()
     );
 
