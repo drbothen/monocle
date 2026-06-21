@@ -85,10 +85,10 @@ pub fn setup_keyboard_enhancement() -> Result<bool> {
         tracing::trace!(
             "setup_keyboard_enhancement: Kitty protocol detected; installing enhancement flags"
         );
-        // crossterm 0.29: REPORT_ASSOCIATED_TEXT is not stable in this version;
-        // use the three stable flags. The spec calls for 4 flags; REPORT_ASSOCIATED_TEXT
-        // is not exposed by crossterm 0.29 (it is commented out in the upstream source).
-        // The three active flags provide full Kitty disambiguation and event-type reporting.
+        // The canonical flag set is 3 flags:
+        //   DISAMBIGUATE_ESCAPE_CODES | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_EVENT_TYPES
+        // REPORT_ASSOCIATED_TEXT is unavailable in crossterm 0.29 and intentionally excluded.
+        // REPORT_ALTERNATE_KEYS is intentionally omitted (not required by this protocol surface).
         crossterm::execute!(
             io::stdout(),
             PushKeyboardEnhancementFlags(
