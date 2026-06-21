@@ -363,14 +363,14 @@ pub fn key_event_to_pty_bytes(event: PtyKeyEvent, kitty_active: bool) -> Option<
         // Shift=2, Ctrl=5, Shift+Ctrl=6, Alt=3, etc.
         // On Kitty terminals (kitty_active=true), arm 3 fires first — intentional.
         // -----------------------------------------------------------------------
-        PtyKeyCode::Up if mods.contains(PtyKeyModifiers::CONTROL) => Some(b"\x1b[1;5A".to_vec()),
-        PtyKeyCode::Down if mods.contains(PtyKeyModifiers::CONTROL) => Some(b"\x1b[1;5B".to_vec()),
-        PtyKeyCode::Right if mods.contains(PtyKeyModifiers::CONTROL) => Some(b"\x1b[1;5C".to_vec()),
-        PtyKeyCode::Left if mods.contains(PtyKeyModifiers::CONTROL) => Some(b"\x1b[1;5D".to_vec()),
-        PtyKeyCode::Up if mods.contains(PtyKeyModifiers::SHIFT) => Some(b"\x1b[1;2A".to_vec()),
-        PtyKeyCode::Down if mods.contains(PtyKeyModifiers::SHIFT) => Some(b"\x1b[1;2B".to_vec()),
-        PtyKeyCode::Right if mods.contains(PtyKeyModifiers::SHIFT) => Some(b"\x1b[1;2C".to_vec()),
-        PtyKeyCode::Left if mods.contains(PtyKeyModifiers::SHIFT) => Some(b"\x1b[1;2D".to_vec()),
+        PtyKeyCode::Up if mods == PtyKeyModifiers::CONTROL => Some(b"\x1b[1;5A".to_vec()),
+        PtyKeyCode::Down if mods == PtyKeyModifiers::CONTROL => Some(b"\x1b[1;5B".to_vec()),
+        PtyKeyCode::Right if mods == PtyKeyModifiers::CONTROL => Some(b"\x1b[1;5C".to_vec()),
+        PtyKeyCode::Left if mods == PtyKeyModifiers::CONTROL => Some(b"\x1b[1;5D".to_vec()),
+        PtyKeyCode::Up if mods == PtyKeyModifiers::SHIFT => Some(b"\x1b[1;2A".to_vec()),
+        PtyKeyCode::Down if mods == PtyKeyModifiers::SHIFT => Some(b"\x1b[1;2B".to_vec()),
+        PtyKeyCode::Right if mods == PtyKeyModifiers::SHIFT => Some(b"\x1b[1;2C".to_vec()),
+        PtyKeyCode::Left if mods == PtyKeyModifiers::SHIFT => Some(b"\x1b[1;2D".to_vec()),
 
         // -----------------------------------------------------------------------
         // Arm 7: EC-217 TRACE+None — unrecognized modifier combo on non-Kitty terminal.
