@@ -205,7 +205,7 @@ ARCH-INDEX:
 BC-INDEX:
   path: specs/behavioral-contracts/BC-INDEX.md
   current_version: "1.44.2"
-  last_bump_commit: "[S-040 pass-2 BC behavioral content — BC-2.09.004 v1.0.7→v1.0.8; BC-2.09.002 v1.1.7→v1.1.8; kitty_active threading; EC-217; EC-234]"
+  last_bump_commit: "[S-040 pass-2 BC behavioral content — kitty_active threading; EC-217 TRACE+None; EC-234 timeout]" # version-pin-historical
   last_bump_date: "2026-06-21"
 
 STORY-INDEX:

@@ -35,7 +35,7 @@ inputs:
   - {path: .factory/stories/S-046-pty-output-fan-out.md, version: "1.7"}
   - {path: .factory/stories/S-047-ipc-lifecycle-variants.md, version: "1.5"}
   - {path: .factory/stories/S-048-sessions-panel-multi-project.md, version: "1.3"}
-  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.44.0"}
+  - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.44.2"}
 traces_to: .factory/stories/STORY-INDEX.md
 input-hash: "[pending]"
 ---
