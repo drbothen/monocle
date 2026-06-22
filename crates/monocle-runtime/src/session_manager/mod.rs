@@ -1265,6 +1265,63 @@ impl SessionManager {
             .insert(session_id.to_string(), entry);
     }
 
+    /// Test helper: insert a session in `Running` state with a live `host_conn` writer.
+    ///
+    /// Enables `resize_session()` and `send_key_input()` tests to verify that
+    /// `DaemonToHost::Resize` / `DaemonToHost::KeyInput` frames are forwarded correctly
+    /// without going through the full daemon spawn pipeline.
+    ///
+    /// The caller provides the daemon-side `OwnedWriteHalf` of a `UnixStream::pair()`
+    /// and retains the host-side stream to read the forwarded frames.
+    ///
+    /// # Test usage (BC-2.09.006 AC-015 — DaemonToHost::Resize forwarding)
+    ///
+    /// ```rust,ignore
+    /// let (daemon_stream, host_stream) = tokio::net::UnixStream::pair().unwrap();
+    /// let (_, write_half) = daemon_stream.into_split();
+    /// manager
+    ///     .insert_running_session_for_test("uuid", 42, "/tmp/s.sock".into(), write_half)
+    ///     .await;
+    /// manager.resize_session("uuid", 30, 100).await.unwrap();
+    /// // Read DaemonToHost::Resize from host_stream.
+    /// ```
+    ///
+    /// This function does NOT exist in production builds.
+    #[cfg(any(test, feature = "test-utils"))]
+    #[allow(dead_code)]
+    pub async fn insert_running_session_for_test(
+        &self,
+        session_id: &str,
+        session_host_pid: u32,
+        socket_path: PathBuf,
+        write_half: tokio::net::unix::OwnedWriteHalf,
+    ) {
+        let entry = SessionEntry {
+            session_id: session_id.to_string(),
+            session_host_pid,
+            session_host_socket: socket_path,
+            state: SessionState::Running,
+            cwd: PathBuf::from("/tmp/test-cwd"),
+            project_root: PathBuf::from("/tmp/test-project"),
+            harness_id: "claude-code".to_string(),
+            profile_id: "default".to_string(),
+            started_at: chrono::Utc::now(),
+            display_name: "claude-code — test-project".to_string(),
+            kill_deadline: None,
+            degraded: false,
+            degraded_reason: None,
+            host_conn: Some(SessionHostConnection {
+                writer: Arc::new(Mutex::new(write_half)),
+                reader: None,
+                proxy_task: None,
+            }),
+        };
+        self.sessions
+            .lock()
+            .await
+            .insert(session_id.to_string(), entry);
+    }
+
     /// Test accessor: returns `true` if `session_id` has an active `proxy_task` in its
     /// `SessionHostConnection`.
     ///
@@ -4334,15 +4391,132 @@ impl SessionManager {
         })
     }
 
-    /// Resize the PTY for a session.
-    #[allow(clippy::todo)]
+    /// Resize the PTY for a session (BC-2.09.006 PC-5, AC-013/AC-015/AC-016).
+    ///
+    /// Serializes `DaemonToHost::Resize { rows, cols }` and writes it to the session-host
+    /// control connection via `host_conn.writer`. Called by `handle_resize_pane()` in
+    /// `ipc_server.rs` after zero-dimension clamping.
+    ///
+    /// # Error behaviour (ResizePane WARN-drop carve-out — AC-013)
+    ///
+    /// - `SessionNotFound`: `session_id` not in registry. Caller WARN-drops.
+    /// - `SessionNotReady`: session is Launching (host_conn None) or non-Running state.
+    ///   Caller WARN-drops.
+    /// - `SessionHostDead` / `Io`: write to host_conn failed (EC-238). Caller WARN-drops.
+    ///
+    /// None of these errors produce a `ServerToClient::Error` wire response to the TUI.
     pub async fn resize_session(
         &mut self,
-        _session_id: &str,
-        _rows: u16,
-        _cols: u16,
+        session_id: &str,
+        rows: u16,
+        cols: u16,
     ) -> Result<(), SessionError> {
-        todo!("S-033 (S-047 scope): implement resize_session()")
+        use monocle_ipc::types::DaemonToHost;
+        use tokio::io::AsyncWriteExt;
+
+        // SEC-002 (CWE-22): validate session_id is a UUID — reject malformed IDs as NotFound.
+        if uuid::Uuid::parse_str(session_id).is_err() {
+            return Err(SessionError::SessionNotFound {
+                session_id: session_id.to_string(),
+            });
+        }
+
+        // Resolve the writer from the registry under a short lock.
+        enum ResizePath {
+            Running {
+                writer: Arc<Mutex<tokio::net::unix::OwnedWriteHalf>>,
+            },
+            NotReady,
+            NotFound,
+        }
+
+        let path = {
+            let guard = self.sessions.lock().await;
+            match guard.get(session_id) {
+                None => ResizePath::NotFound,
+                Some(entry) => {
+                    if entry.state == SessionState::Running {
+                        if let Some(conn) = entry.host_conn.as_ref() {
+                            ResizePath::Running {
+                                writer: Arc::clone(&conn.writer),
+                            }
+                        } else {
+                            // Running invariant violated (host_conn should be Some for Running).
+                            ResizePath::NotReady
+                        }
+                    } else {
+                        // Launching (host_conn None), Detached, Terminating, Terminated.
+                        ResizePath::NotReady
+                    }
+                }
+            }
+            // guard released
+        };
+
+        match path {
+            ResizePath::NotFound => {
+                return Err(SessionError::SessionNotFound {
+                    session_id: session_id.to_string(),
+                });
+            }
+            ResizePath::NotReady => {
+                return Err(SessionError::SessionNotReady {
+                    session_id: session_id.to_string(),
+                });
+            }
+            ResizePath::Running { writer } => {
+                let resize_msg = serde_json::to_vec(&DaemonToHost::Resize { rows, cols })
+                    .map_err(|e| SessionError::Io(std::io::Error::other(e)))?;
+                // MED-002 / MAX_FRAME_LEN exemption: DaemonToHost::Resize carries only two
+                // u16 fields (rows, cols). The maximum JSON encoding — e.g.,
+                // `{"Resize":{"rows":65535,"cols":65535}}` — is ~40 bytes, orders of magnitude
+                // below MAX_FRAME_LEN (256 KiB). A pre-send guard would be unreachable dead
+                // code. Contrast with DaemonToHost::KeyInput { bytes: Vec<u8> } (sibling
+                // send_key_input), which carries variable-length terminal byte sequences that
+                // can exceed 256 KiB in pathological paste operations. Only variable-payload
+                // messages require the guard; fixed-schema messages with bounded field types
+                // are exempt. This exemption is intentional and documented here.
+                // CWE-190 mitigation: checked conversion from usize to u32.
+                // DaemonToHost::Resize carries only two u16 fields; the maximum
+                // JSON encoding is ~40 bytes — this try_from() is infallible in
+                // practice. The error arm handles the impossible overflow case
+                // by returning SessionError::Io rather than panicking.
+                let len_u32 = u32::try_from(resize_msg.len()).map_err(|_| {
+                    SessionError::Io(std::io::Error::other(
+                        "resize_msg length exceeds u32::MAX — invariant violation",
+                    ))
+                })?;
+                let mut w = writer.lock().await;
+                let r1 = w.write_all(&len_u32.to_le_bytes()).await;
+                let r2 = if r1.is_ok() {
+                    w.write_all(&resize_msg).await
+                } else {
+                    r1
+                };
+                let r3 = if r2.is_ok() { w.flush().await } else { r2 };
+                if let Err(e) = r3 {
+                    tracing::warn!(
+                        session_id = %session_id,
+                        rows = rows,
+                        cols = cols,
+                        error = %e,
+                        "resize_session: failed to write DaemonToHost::Resize to session-host (EC-238)"
+                    );
+                    return Err(SessionError::SessionHostDead {
+                        session_id: session_id.to_string(),
+                    });
+                }
+
+                tracing::trace!(
+                    session_id = %session_id,
+                    rows = rows,
+                    cols = cols,
+                    "resize_session: DaemonToHost::Resize forwarded to session-host"
+                );
+            }
+        }
+
+        Ok(())
     }
 
     /// Forward keyboard bytes to a session's PTY stdin.

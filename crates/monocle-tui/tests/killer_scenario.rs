@@ -484,6 +484,10 @@ async fn test_BC_2_06_022_killer_scenario_accept() {
         ClientToServer::KeyInput { .. } => {
             panic!("unexpected KeyInput in this test context");
         }
+        // S-042 stub: ResizePane is not expected in this PermissionDecision test context.
+        ClientToServer::ResizePane { .. } => {
+            panic!("unexpected ResizePane in this test context");
+        }
     }
 
     // Step 6: Modal must still be in overlay_stack — not popped on send (BC-2.06.023).
@@ -725,6 +729,10 @@ async fn test_BC_2_06_022_killer_scenario_multi_prompt() {
         ClientToServer::KeyInput { .. } => {
             panic!("unexpected KeyInput in this test context");
         }
+        // S-042 stub: ResizePane is not expected in this PermissionDecision test context.
+        ClientToServer::ResizePane { .. } => {
+            panic!("unexpected ResizePane in this test context");
+        }
     }
 
     // Step 5: MockDaemon sends PermissionPromptResolved for P1 over the REAL UDS socket.
@@ -812,6 +820,10 @@ async fn test_BC_2_06_022_killer_scenario_multi_prompt() {
         // S-040 stub: KeyInput is not expected in this PermissionDecision test context.
         ClientToServer::KeyInput { .. } => {
             panic!("unexpected KeyInput in this test context");
+        }
+        // S-042 stub: ResizePane is not expected in this PermissionDecision test context.
+        ClientToServer::ResizePane { .. } => {
+            panic!("unexpected ResizePane in this test context");
         }
     }
 
@@ -1011,6 +1023,10 @@ async fn test_BC_2_06_022_killer_scenario_accept_always() {
         ClientToServer::KeyInput { .. } => {
             panic!("unexpected KeyInput in this test context");
         }
+        // S-042 stub: ResizePane is not expected in this PermissionDecision test context.
+        ClientToServer::ResizePane { .. } => {
+            panic!("unexpected ResizePane in this test context");
+        }
     }
 
     // Overlay_stack is NOT modified on send — awaiting PermissionPromptResolved from daemon.
@@ -1094,6 +1110,10 @@ async fn test_BC_2_06_022_killer_scenario_accept_always() {
         // S-040 stub: KeyInput is not expected in this PermissionDecision test context.
         ClientToServer::KeyInput { .. } => {
             panic!("unexpected KeyInput in this test context");
+        }
+        // S-042 stub: ResizePane is not expected in this PermissionDecision test context.
+        ClientToServer::ResizePane { .. } => {
+            panic!("unexpected ResizePane in this test context");
         }
     }
 
@@ -1566,6 +1586,10 @@ async fn test_BC_2_06_022_killer_scenario_isolation_parallel_safe() {
         ClientToServer::KeyInput { .. } => {
             panic!("unexpected KeyInput in this test context");
         }
+        // S-042 stub: ResizePane is not expected in this PermissionDecision test context.
+        ClientToServer::ResizePane { .. } => {
+            panic!("unexpected ResizePane in this test context");
+        }
     }
 
     // Verify Daemon B received Deny for pid_b (not contaminated by App A's Allow).
@@ -1607,6 +1631,10 @@ async fn test_BC_2_06_022_killer_scenario_isolation_parallel_safe() {
         // S-040 stub: KeyInput is not expected in this PermissionDecision test context.
         ClientToServer::KeyInput { .. } => {
             panic!("unexpected KeyInput in this test context");
+        }
+        // S-042 stub: ResizePane is not expected in this PermissionDecision test context.
+        ClientToServer::ResizePane { .. } => {
+            panic!("unexpected ResizePane in this test context");
         }
     }
 

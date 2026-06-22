@@ -450,6 +450,42 @@ pub struct App {
     ///
     /// Initialized to `false` in `App::new()`; set to the detected value by `app::run()`.
     pub kitty_active: bool,
+
+    // -----------------------------------------------------------------------
+    // S-042: PTY resize debounce fields (BC-2.09.006)
+    // -----------------------------------------------------------------------
+    /// Last PTY dimensions sent to the daemon via `ClientToServer::ResizePane`.
+    ///
+    /// Tracks `(rows, cols)` of the most recently sent `ResizePane` message.
+    /// A new `ResizePane` is sent only when the pending dimensions differ from this
+    /// value AND the 50ms debounce window has elapsed (BC-2.09.006 Invariant 2).
+    /// `None` means no `ResizePane` has been sent in this TUI session.
+    ///
+    /// Reset to `None` on exit from `AppMode::EmbeddedTerminal` so that the next
+    /// entry will always check and send the current dimensions if needed.
+    pub last_sent_size: Option<(u16, u16)>,
+
+    /// Deadline for the current 50ms resize debounce window.
+    ///
+    /// Set to `Some(tokio::time::Instant::now() + 50ms)` on the first pane area change
+    /// detected in a debounce window. Cleared after `ResizePane` is sent or on exit from
+    /// `AppMode::EmbeddedTerminal`. `None` means no pending resize is in the debounce queue.
+    ///
+    /// The debounce check in the event loop fires `ResizePane` when
+    /// `Instant::now() >= deadline` AND `pending_size != last_sent_size`
+    /// (BC-2.09.006 Invariant 1).
+    pub resize_debounce_deadline: Option<tokio::time::Instant>,
+
+    /// The pane `Rect` used in the most recent `EmbeddedTerminal` render cycle.
+    ///
+    /// Captured by `render_frame` each time `AppMode::EmbeddedTerminal` is active and
+    /// the terminal widget is rendered. Read by `on_resize_detected` and
+    /// `check_resize_debounce` to determine the current pane dimensions without
+    /// re-entering the render closure.
+    ///
+    /// `None` on construction and when not in `EmbeddedTerminal` mode. The resize
+    /// detection path reads this to compare against the parser's current size.
+    pub last_pty_pane_area: Option<ratatui::layout::Rect>,
 }
 
 impl App {
@@ -535,6 +571,15 @@ impl App {
             // where kitty_active is the bool returned by event_loop::setup_keyboard_enhancement()
             // (called from main::setup_terminal()) at TUI startup.
             kitty_active: false,
+
+            // S-042: PTY resize debounce fields (BC-2.09.006).
+            // Both start as None — no resize has been sent and no debounce is pending.
+            // Set during the resize detection path in the render/event loop.
+            last_sent_size: None,
+            resize_debounce_deadline: None,
+            // S-042: last rendered PTY pane area — None until the first EmbeddedTerminal render.
+            // Captured by render_frame on each EmbeddedTerminal tick; read by resize detection.
+            last_pty_pane_area: None,
         }
     }
 }
@@ -646,6 +691,13 @@ pub fn on_pty_output(app: &mut App, session_id: String, bytes: Vec<u8>) {
 /// This provides backpressure and prevents silent drops of `AttachSession` commands.
 /// The call site (Action::EnterEmbeddedTerminal dispatch arm) MUST `.await` this function.
 pub async fn enter_embedded_terminal(app: &mut App, session_id: String) {
+    // ADV3-HIGH-001 (belt-and-suspenders) / BC-2.09.006 Invariants 1/2/3:
+    // Always start with clean resize state regardless of how the prior EmbeddedTerminal
+    // session was left. This guards against stale last_sent_size/deadline from any
+    // exit path (exit_embedded_terminal, EmbeddedTerminal→Overlay, or a future path)
+    // suppressing the first ResizePane of the new session or bypassing the 50ms window.
+    clear_resize_debounce_state(app);
+
     // BC-2.09.001 PC-6 / SS-embedded-pty.md §Auto-attach mandate (I11-001 PRONG A):
     // If the session has NOT received a ScrollbackDumpComplete in this TUI lifetime,
     // run the full auto-attach + buffering + dump protocol.
@@ -752,6 +804,12 @@ pub fn exit_embedded_terminal(app: &mut App, session_id: &str) {
     // This ensures the NEXT enter_embedded_terminal call for the same session re-runs
     // the full attach + dump protocol (fresh dump from daemon side per S-047 AC-006).
     app.pty_dump_received.remove(session_id);
+
+    // HIGH-001 / BC-2.09.006 S-042: clear resize debounce state on exit from EmbeddedTerminal
+    // so that the next enter_embedded_terminal starts with clean resize state.
+    // Any pending debounce deadline or last_sent_size from the exiting session must be cleared;
+    // leaving stale state would cause the next session to skip its first resize (Invariant 1).
+    clear_resize_debounce_state(app);
 
     // Restore prior AppMode (Dashboard with prior focus).
     let prior = match &app.mode {
@@ -1009,6 +1067,300 @@ type PtyOutputChannelPair = (
 pub fn pty_output_channel() -> PtyOutputChannelPair {
     // BC-2.09.001 Invariant 3: bounded channel with backpressure (.send().await, not try_send).
     tokio::sync::mpsc::channel::<Result<ServerToClient, IpcError>>(IPC_READER_CHANNEL_CAPACITY)
+}
+
+// ---------------------------------------------------------------------------
+// S-042: PTY resize detection and 50ms debounce (BC-2.09.006)
+// ---------------------------------------------------------------------------
+
+/// Handle pane area change detection during a render cycle in `AppMode::EmbeddedTerminal`.
+///
+/// Called once per render cycle when `AppMode::EmbeddedTerminal` is active and the
+/// rendered pane `Rect` is known. Performs two independent operations:
+///
+/// 1. **Immediate local parser resize** (not debounced, BC-2.09.006 postcondition 3 /
+///    Invariant 4): if `area.rows != parser_rows || area.cols != parser_cols` AND
+///    `area.rows > 0 && area.cols > 0`, calls
+///    `pty_parsers[session_id].set_size(area.rows, area.cols)` and resets
+///    `pty_scroll_offsets[session_id] = 0` (SS-embedded-pty.md §Scrollback offset invariants).
+///
+/// 2. **Debounce timer arm** (BC-2.09.006 Postcondition 1 / Invariant 1 / EC-235): sets
+///    `resize_debounce_deadline = Some(Instant::now() + 50ms)` ONLY when the deadline is
+///    currently `None` (first detected change in a window). Mid-window resizes update the
+///    local parser immediately but do NOT reset the deadline — the window is anchored at
+///    the FIRST detected change. Intermediate sizes are coalesced: only the latest pending
+///    size (passed to `check_resize_debounce` by the caller) is sent at expiry.
+///
+/// Zero-dimension guard (BC-2.09.006 edge case EC-239): if `area.rows == 0` or
+/// `area.cols == 0`, the function is a complete no-op (no parser resize, no debounce arm).
+///
+/// Does NOT send `ResizePane` IPC — use [`check_resize_debounce`] for that.
+pub fn on_resize_detected(app: &mut App, session_id: &str, area_rows: u16, area_cols: u16) {
+    // EC-239 (BC-2.09.006): degenerate pane area — complete no-op.
+    // Neither the local parser nor the debounce state are touched.
+    if area_rows == 0 || area_cols == 0 {
+        tracing::trace!(
+            session_id = %session_id,
+            area_rows,
+            area_cols,
+            "on_resize_detected: degenerate pane area (EC-239) — no-op"
+        );
+        return;
+    }
+
+    // Look up the parser for this session; absent means a race during session creation.
+    let Some(parser) = app.pty_parsers.get_mut(session_id) else {
+        tracing::trace!(
+            session_id = %session_id,
+            "on_resize_detected: session not in pty_parsers — no-op"
+        );
+        return;
+    };
+
+    let (parser_rows, parser_cols) = parser.screen().size();
+
+    // Postcondition 1 (AC-001): if area == parser size, no change detected — no-op.
+    if area_rows == parser_rows && area_cols == parser_cols {
+        return;
+    }
+
+    // BC-2.09.006 postcondition 3 / Invariant 4: resize the local vt100 parser IMMEDIATELY.
+    // This is NOT debounced — the render loop reads the parser size on the very next tick
+    // and must see the correct dimensions even before the IPC ResizePane is sent.
+    // `set_size` lives on `vt100::Screen`, accessed via `parser.screen_mut()`.
+    parser.screen_mut().set_size(area_rows, area_cols);
+
+    // SS-embedded-pty.md §Scrollback offset invariants: "resize reflows content; old offset
+    // is meaningless". Reset pty_scroll_offsets[session_id] to 0 on every genuine resize.
+    app.pty_scroll_offsets.insert(session_id.to_string(), 0);
+
+    // BC-2.09.006 Postcondition 1 / Invariant 1 / EC-235 (orchestrator ruling — no-reset
+    // semantics): the debounce deadline is anchored at the FIRST detected change in a window.
+    // ARM only when the deadline is currently None; mid-window resizes leave the deadline
+    // unchanged so only one ResizePane is sent per 50ms window (one message per window,
+    // intermediate sizes coalesced — the caller passes the latest size to check_resize_debounce).
+    if app.resize_debounce_deadline.is_none() {
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(50);
+        app.resize_debounce_deadline = Some(deadline);
+        tracing::trace!(
+            session_id = %session_id,
+            area_rows,
+            area_cols,
+            "on_resize_detected: parser resized immediately; debounce deadline armed at now+50ms"
+        );
+    } else {
+        tracing::trace!(
+            session_id = %session_id,
+            area_rows,
+            area_cols,
+            "on_resize_detected: mid-window resize — parser resized immediately; \
+             debounce deadline unchanged (anchored at first detection)"
+        );
+    }
+}
+
+/// Check whether the 50ms debounce window has elapsed and send `ResizePane` IPC if so.
+///
+/// Called from the event loop on each tick while `AppMode::EmbeddedTerminal` is active.
+/// Checks `resize_debounce_deadline.map_or(false, |d| Instant::now() >= d)`. When the
+/// deadline has passed AND `current_rows/cols` differ from `last_sent_size`:
+///
+/// 1. Sends `ClientToServer::ResizePane { session_id, rows: current_rows, cols: current_cols }`
+///    via `app.ipc_tx.try_send()` (non-blocking; bounded channel per BC-2.04.011).
+/// 2. Updates `app.last_sent_size = Some((current_rows, current_cols))`.
+/// 3. Clears `app.resize_debounce_deadline = None`.
+///
+/// No-op cases (BC-2.09.006 Invariant 2 / AC-006):
+/// - Deadline not yet set (`None`): no pending resize — no-op.
+/// - Deadline set but not yet elapsed: window still open — no-op; deadline preserved.
+/// - `current_size == last_sent_size`: size returned to previously sent value — no-op.
+///
+/// If `ipc_tx` is `None` (channel offline), the deadline is cleared without sending
+/// (benign race — the session will be resized on the next `enter_embedded_terminal`).
+pub fn check_resize_debounce(
+    app: &mut App,
+    session_id: &str,
+    current_rows: u16,
+    current_cols: u16,
+) {
+    // No pending debounce — no-op.
+    let Some(deadline) = app.resize_debounce_deadline else {
+        return;
+    };
+
+    // Debounce window not yet elapsed — no-op; preserve deadline.
+    if tokio::time::Instant::now() < deadline {
+        return;
+    }
+
+    // Deadline elapsed: clear it unconditionally (window is done regardless of send outcome).
+    app.resize_debounce_deadline = None;
+
+    // BC-2.09.006 Invariant 2 (AC-006): do not send if the size has not changed from the
+    // last-sent value. This prevents spurious IPC messages when the size returns to the
+    // previously-sent dimensions within the debounce window.
+    if app.last_sent_size == Some((current_rows, current_cols)) {
+        tracing::trace!(
+            session_id = %session_id,
+            current_rows,
+            current_cols,
+            "check_resize_debounce: pending size == last_sent_size — no ResizePane (Invariant 2)"
+        );
+        return;
+    }
+
+    // Send ResizePane over the outbound IPC channel (try_send: non-blocking, bounded).
+    let msg = ClientToServer::ResizePane {
+        session_id: session_id.to_string(),
+        rows: current_rows,
+        cols: current_cols,
+    };
+
+    match app.ipc_tx.as_ref() {
+        None => {
+            // IPC channel offline — clear debounce without sending (benign race).
+            tracing::warn!(
+                session_id = %session_id,
+                current_rows,
+                current_cols,
+                "check_resize_debounce: ipc_tx is None — ResizePane not sent (channel offline)"
+            );
+        }
+        Some(tx) => match tx.try_send(msg) {
+            Ok(()) => {
+                // ResizePane sent; update last_sent_size (Invariant 2).
+                app.last_sent_size = Some((current_rows, current_cols));
+                tracing::trace!(
+                    session_id = %session_id,
+                    current_rows,
+                    current_cols,
+                    "check_resize_debounce: ResizePane sent after 50ms debounce"
+                );
+            }
+            Err(e) => {
+                // Channel full or closed — log and skip (the IPC reader will reconnect).
+                tracing::warn!(
+                    session_id = %session_id,
+                    current_rows,
+                    current_cols,
+                    error = %e,
+                    "check_resize_debounce: try_send ResizePane failed"
+                );
+            }
+        },
+    }
+}
+
+/// Clear resize debounce state when exiting `AppMode::EmbeddedTerminal`.
+///
+/// Resets both `app.resize_debounce_deadline` and `app.last_sent_size` to `None`
+/// so that the next entry into `EmbeddedTerminal` mode starts with a clean slate.
+/// Called from the mode-exit path whenever `AppMode::EmbeddedTerminal` transitions away
+/// (BC-2.09.006 Tasks — "cleared on AppMode exit from EmbeddedTerminal").
+pub fn clear_resize_debounce_state(app: &mut App) {
+    app.resize_debounce_deadline = None;
+    app.last_sent_size = None;
+    tracing::trace!("clear_resize_debounce_state: resize debounce state cleared");
+}
+
+/// Compute the run-loop poll timeout, shrunk to the resize debounce deadline when one is armed.
+///
+/// # Contract (BC-2.09.006 PC-8 / F-S042-MED-001)
+///
+/// The run loop must wake no later than the resize debounce deadline so that
+/// `tick_resize_debounce` can fire the `ResizePane` IPC within the ≤100ms latency budget.
+/// Without this helper, `event::poll(tick_rate)` blocks for the full 100ms tick even when
+/// a 50ms debounce deadline is imminent, causing worst-case latency of 101ms (PC-8 violation).
+///
+/// # Arguments
+///
+/// - `deadline`: the current `App::resize_debounce_deadline` (None → no resize pending).
+/// - `tick_rate`: the run-loop tick ceiling (normally 100ms; also the overlay-timer granularity
+///   per BC-2.06.020 AC-009 — the return value MUST NOT exceed `tick_rate`).
+/// - `now`: the caller's wall-clock snapshot (`tokio::time::Instant::now()`).
+///
+/// # Returns
+///
+/// - `tick_rate` when no deadline is armed (idle path — unchanged behaviour).
+/// - `min(deadline.saturating_duration_since(now), tick_rate)` when a deadline is armed.
+///   `saturating_duration_since` produces `Duration::ZERO` for an already-elapsed deadline,
+///   which causes the run loop to wake immediately and call `tick_resize_debounce`.
+pub fn resize_aware_poll_timeout(
+    deadline: Option<tokio::time::Instant>,
+    tick_rate: std::time::Duration,
+    now: tokio::time::Instant,
+) -> std::time::Duration {
+    deadline.map_or(tick_rate, |d| {
+        d.saturating_duration_since(now).min(tick_rate)
+    })
+}
+
+/// Post-render seam: detect size changes and fire the debounce on expiry.
+///
+/// This function is called by `App::run()` after every `terminal.draw()` call. It is the
+/// SINGLE authoritative detection path for all resize events per BC-2.09.006 PC-1 —
+/// there is no separate crossterm `Event::Resize` arm; that arm was removed so that both
+/// user terminal resizes and layout changes (panel/overlay toggles) are handled uniformly:
+///
+/// 1. During `terminal.draw()`, the render step captures the PTY pane's `Rect` into
+///    `app.last_pty_pane_area`.
+///
+/// 2. On the next tick, `tick_resize_debounce` reads `last_pty_pane_area` and compares
+///    it against the current parser size (rows × cols). If they differ, it calls
+///    `on_resize_detected`, which immediately resizes the parser and arms the 50 ms
+///    debounce deadline.
+///
+/// 3. `check_resize_debounce` is then called unconditionally. When the 50 ms deadline
+///    has elapsed it sends `ClientToServer::ResizePane` and clears the armed state;
+///    otherwise it is a no-op and the fire happens on a subsequent tick after the
+///    deadline passes.
+///
+/// This single path handles both user terminal resizes (which change the pane `Rect` at
+/// the OS level) and layout changes (which change the pane `Rect` without any OS-level
+/// terminal resize event).
+///
+/// # Mode guard (BC-2.09.006 EC-236 / Invariant 3)
+///
+/// Must be a complete no-op when `app.mode` is NOT `AppMode::EmbeddedTerminal`. The render
+/// step sets `last_pty_pane_area` only in EmbeddedTerminal mode, but this guard is explicit
+/// for safety in case `last_pty_pane_area` has a stale value from a prior EmbeddedTerminal
+/// session.
+///
+/// # Call site (BLOCKER-001 contract)
+///
+/// `App::run()` MUST call `tick_resize_debounce(&mut app)` after every `terminal.draw()`.
+/// Without this call, no `ClientToServer::ResizePane` is ever sent (the feature is
+/// production-inert — BC-2.09.006 PC-2 is never satisfied).
+pub fn tick_resize_debounce(app: &mut App) {
+    // EC-236 / Invariant 3: mode guard — no-op in any non-EmbeddedTerminal mode.
+    let session_id = match &app.mode {
+        AppMode::EmbeddedTerminal { session_id, .. } => session_id.clone(),
+        _ => return,
+    };
+
+    // Read the pane area captured by the render step. If None, render hasn't run yet — no-op.
+    let Some(area) = app.last_pty_pane_area else {
+        return;
+    };
+
+    let area_rows = area.height;
+    let area_cols = area.width;
+
+    // HIGH-001 / BC-2.09.006 PC-1 ("at each render cycle"): detect layout-change resizes.
+    // Compare the captured pane area against the current parser size. If they differ, this
+    // is a layout-driven resize (panel toggle, overlay shown/hidden) that did NOT produce a
+    // crossterm Event::Resize. Call on_resize_detected to resize the local parser and arm
+    // the debounce.
+    //
+    // on_resize_detected is a no-op when area_rows == 0 || area_cols == 0 (EC-239) and
+    // when area == parser size (already resized). Both cases are safe to call unconditionally.
+    on_resize_detected(app, &session_id, area_rows, area_cols);
+
+    // BLOCKER-001 / BC-2.09.006 PC-2: check the debounce deadline and fire ResizePane if
+    // the 50ms window has elapsed. This is the ONLY path that emits ResizePane from the run
+    // loop. check_resize_debounce is a no-op when no deadline is armed (None) or when the
+    // deadline has not yet elapsed.
+    check_resize_debounce(app, &session_id, area_rows, area_cols);
 }
 
 // ---------------------------------------------------------------------------
@@ -1308,6 +1660,12 @@ pub fn on_permission_prompt_queued(app: &mut App, payload: PermissionPromptPaylo
             }
         };
         app.mode = AppMode::Overlay { prior };
+        // ADV3-HIGH-001 / BC-2.09.006 Invariants 1/2/3: clear resize debounce state on ANY
+        // departure from EmbeddedTerminal. The EmbeddedTerminal→Overlay transition does not
+        // go through exit_embedded_terminal, so we clear here explicitly. Stale debounce
+        // state would suppress the first ResizePane on re-entry (Invariant 2 dedup) or fire
+        // the armed debounce for the wrong session after mode transition.
+        clear_resize_debounce_state(app);
     }
 }
 
@@ -2448,10 +2806,25 @@ pub async fn run(kitty_active: bool) -> Result<()> {
             render_frame(&mut app, &mut sessions_state, frame);
         })?;
 
+        // 1a. Post-render resize detection and debounce fire (BLOCKER-001 / BC-2.09.006 PC-1/2).
+        // render_frame captures `last_pty_pane_area` during EmbeddedTerminal rendering;
+        // tick_resize_debounce reads it here to detect layout-change resizes (panel toggles,
+        // overlay open/close) and to fire any pending 50ms ResizePane debounce.
+        // Must be called AFTER terminal.draw() on every tick per BC-2.09.006 AC-001 contract.
+        tick_resize_debounce(&mut app);
+
         // 2. Poll keyboard (non-blocking, bounded by tick_rate — BLOCKER-002: full binding
         //    dispatch via resolve_binding). The 16ms ceiling is unchanged from the original
         //    implementation; the 1ms was only in the removed timeout wrapper.
-        if event::poll(tick_rate)? {
+        // F-S042-MED-001 / BC-2.09.006 PC-8: shrink poll timeout to the resize debounce
+        // deadline when one is armed so the run loop wakes in time for tick_resize_debounce.
+        // When no deadline is pending this equals tick_rate (idle path unchanged).
+        let poll_timeout = resize_aware_poll_timeout(
+            app.resize_debounce_deadline,
+            tick_rate,
+            tokio::time::Instant::now(),
+        );
+        if event::poll(poll_timeout)? {
             let raw_event = event::read()?;
             if handle_crossterm_event(&mut app, raw_event, &binding_layers, &mut sessions_state)
                 .await
@@ -2832,7 +3205,17 @@ pub async fn handle_crossterm_event(
                     )
                     .await;
                 }
-                // Other events (resize, focus, mouse) — ignore in EmbeddedTerminal for now.
+                // OBS-001 / BC-2.09.006: the Event::Resize arm that previously called
+                // on_resize_detected here has been removed. It was passing FULL-terminal
+                // dimensions (not the PTY pane dims), causing a 1-tick wrong local parser
+                // size on the first resize event. The per-render tick_resize_debounce path
+                // reading last_pty_pane_area is the single authoritative detection path —
+                // it covers both terminal resizes (next render updates last_pty_pane_area
+                // from the fresh terminal area) and layout-change resizes that never produce
+                // a crossterm Event::Resize. No correctness regression: resize detection
+                // still fires on the immediately following tick after the render step.
+                //
+                // Other events (focus, mouse, resize): silently ignored in EmbeddedTerminal.
                 _ => {}
             }
         }
@@ -3584,6 +3967,10 @@ pub fn render_frame(
             // build_dashboard_layout gives us a panel_area; we use sessions_area as the main pane.
             let layout = build_dashboard_layout(frame.area());
             let terminal_area = layout.sessions_area;
+
+            // S-042: capture the rendered pane area so resize detection can read it without
+            // re-entering the render closure (BC-2.09.006 §Architecture Compliance Rules).
+            app.last_pty_pane_area = Some(terminal_area);
 
             if let Some(parser) = app.pty_parsers.get(&session_id) {
                 render_embedded_terminal(frame, terminal_area, parser);

@@ -191,6 +191,11 @@ async fn spawn_client_task(
                     Ok(ClientToServer::KeyInput { session_id, bytes }) => {
                         handle_key_input(session_id, bytes, &tx, &state).await;
                     }
+                    // S-042: ResizePane handler (BC-2.09.006 — PTY resize after 50ms debounce)
+                    // Forward resize to the session-host via SessionManager::resize_session().
+                    Ok(ClientToServer::ResizePane { session_id, rows, cols }) => {
+                        handle_resize_pane(session_id, rows, cols, &tx, &state).await;
+                    }
                     Err(IpcError::Disconnected) => {
                         tracing::debug!("TUI client disconnected (EOF)");
                         break;
@@ -615,6 +620,150 @@ async fn handle_detach_session(
                 .await;
         }
     }
+}
+
+/// Handle a `ClientToServer::ResizePane` message from a TUI client.
+///
+/// Routes the resize request to `SessionManager::resize_session()`, which forwards
+/// `DaemonToHost::Resize { rows, cols }` to the session-host. The session-host calls
+/// `pty.resize()` and `parser.set_size()`, causing the harness child to receive `SIGWINCH`.
+///
+/// Mirrors the `handle_key_input` dispatch pattern (S-040). Called after the TUI's 50ms
+/// debounce window expires (BC-2.09.006 postcondition 2).
+///
+/// # Zero-dimension clamp (BC-2.09.006 AC-014 / EC-239 / BC-2.05.010 Inv-5)
+///
+/// `rows` and `cols` are clamped to a minimum of 1 at the handler boundary before being
+/// passed to `resize_session`. Pre-clamp zero values must NOT reach the session-host.
+/// A `tracing::warn!` is emitted when clamping occurs.
+///
+/// # WARN-drop carve-out (BC-2.09.006 AC-013/AC-016 / BC-2.05.010 Inv-6)
+///
+/// ALL error paths from `resize_session` — including `session_manager is None`,
+/// `SessionNotFound`, `SessionNotReady`, and `SessionHostDead` / IO errors — are
+/// WARN-dropped: the error is logged at WARN level and the handler returns without
+/// sending `ServerToClient::Error` to the client. This is an explicit carve-out
+/// from the general error-propagation policy for resize messages.
+///
+/// Rationale: a resize failure is benign (the session may have terminated mid-resize);
+/// propagating an error frame to the TUI would require the TUI to handle it and could
+/// cause spurious error overlays during normal session teardown.
+async fn handle_resize_pane(
+    session_id: String,
+    rows: u16,
+    cols: u16,
+    // WARN-drop carve-out (BC-2.09.006 AC-013/AC-016 / BC-2.05.010 Inv-6): this handler
+    // never sends ServerToClient::Error for resize failures. The parameter is kept in the
+    // signature to mirror the handle_key_input dispatch pattern and to allow future callers
+    // to pass a client_tx without API breakage if the carve-out policy changes.
+    _client_tx: &tokio::sync::mpsc::Sender<ServerToClient>,
+    state: &DaemonState,
+) {
+    // Validate session_id is UUID format before any log emission (CWE-532 mitigation).
+    // Rejects client-supplied strings that are not valid UUIDs before they can appear in
+    // any structured log field. Matches the uuid::Uuid::parse_str pattern used throughout
+    // session_manager (see resize_session, kill_session, etc.).
+    if uuid::Uuid::parse_str(&session_id).is_err() {
+        tracing::warn!(
+            session_id_len = session_id.len(),
+            "ResizePane: invalid session_id (not UUID format) — dropped"
+        );
+        return;
+    }
+
+    // HIGH-003 / AC-014 / EC-239 / BC-2.05.010 Inv-5: zero-dimension clamp.
+    // Clamp rows and cols to minimum 1 BEFORE calling resize_session.
+    // Pre-clamp zeros must never reach the session-host PTY.
+    let rows = if rows == 0 {
+        tracing::warn!(
+            session_id = %session_id,
+            "handle_resize_pane: rows=0 clamped to rows=1 (EC-239 / BC-2.05.010 Inv-5)"
+        );
+        1u16
+    } else {
+        rows
+    };
+    let cols = if cols == 0 {
+        tracing::warn!(
+            session_id = %session_id,
+            "handle_resize_pane: cols=0 clamped to cols=1 (EC-239 / BC-2.05.010 Inv-5)"
+        );
+        1u16
+    } else {
+        cols
+    };
+
+    // HIGH-002 / AC-013 / BC-2.05.010 Inv-6: WARN-drop when session_manager is None.
+    // NO ServerToClient::Error is sent for any resize failure path.
+    let sm = match state.session_manager.as_ref() {
+        Some(sm) => sm,
+        None => {
+            tracing::warn!(
+                session_id = %session_id,
+                "handle_resize_pane: session_manager is None (daemon wiring bug) — \
+                 ResizePane WARN-dropped per BC-2.09.006 AC-013/BC-2.05.010 Inv-6"
+            );
+            // WARN-drop: no ServerToClient::Error sent (ResizePane carve-out).
+            return;
+        }
+    };
+
+    let result = sm
+        .lock()
+        .await
+        .resize_session(&session_id, rows, cols)
+        .await;
+    match result {
+        Ok(()) => {
+            // Resize forwarded successfully; no response needed (fire-and-continue).
+            tracing::trace!(
+                session_id = %session_id,
+                rows,
+                cols,
+                "handle_resize_pane: resize_session forwarded to session-host"
+            );
+        }
+        Err(e) => {
+            // HIGH-002 / AC-013 / AC-016 / BC-2.05.010 Inv-6: WARN-drop carve-out.
+            // All resize_session errors (SessionNotFound, SessionNotReady, SessionHostDead,
+            // Io) are logged at WARN and silently discarded — no ServerToClient::Error.
+            tracing::warn!(
+                session_id = %session_id,
+                rows,
+                cols,
+                error = %e,
+                "handle_resize_pane: resize_session failed — WARN-dropped \
+                 (BC-2.09.006 AC-013/AC-016 / BC-2.05.010 Inv-6)"
+            );
+            // WARN-drop: no ServerToClient::Error sent (ResizePane carve-out).
+        }
+    }
+}
+
+/// Test seam: public wrapper around [`handle_resize_pane`] for external integration tests.
+///
+/// Exposes `handle_resize_pane` to tests in `crates/monocle-runtime/tests/` that must
+/// call the real IPC handler path (with zero-dim clamping, `session_manager` look-up,
+/// and `ServerToClient::Error` / WARN-drop behavior) rather than calling `resize_session`
+/// directly. Mirrors the `handle_spawn_session_pub` pattern.
+///
+/// AC-013 / AC-014 / AC-016 (BC-2.09.006): the WARN-drop policy is implemented in
+/// `handle_resize_pane`, not in `resize_session`. Tests that want to verify zero-dim
+/// clamping or WARN-drop semantics at the handler boundary MUST go through this seam.
+///
+/// Available under both `cfg(test)` (unit tests) and `feature = "test-utils"`
+/// (integration tests linked via dev-dependency with test-utils feature).
+///
+/// NEVER call this from production code. The cfg guard enforces that.
+#[cfg(any(test, feature = "test-utils"))]
+pub async fn handle_resize_pane_pub(
+    session_id: String,
+    rows: u16,
+    cols: u16,
+    client_tx: &tokio::sync::mpsc::Sender<ServerToClient>,
+    state: &DaemonState,
+) {
+    handle_resize_pane(session_id, rows, cols, client_tx, state).await
 }
 
 /// Handle a `ClientToServer::KeyInput` message from a TUI client.
