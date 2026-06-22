@@ -210,8 +210,8 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.65"
-  last_bump_commit: "[D-347: S-041 MERGED PR #54 @ 58fbd617; S-041 status draft→done; Wave 9 5/6 done (32/45 pts); 43/51 stories done (262/314 pts); S-044 UNBLOCKED]"
+  current_version: "5.67"
+  last_bump_commit: "[S-047 expanded to session-host producer scope — points updated, Wave 8 total updated, BC coverage updated; human ruling 2026-06-22]"
   last_bump_date: "2026-06-22"
 
 VP-INDEX:
@@ -234,8 +234,8 @@ EVAL-INDEX:
 
 sprint-state:
   path: stories/sprint-state.yaml
-  current_version: "1.58"
-  last_bump_commit: "[D-347: S-041 MERGED; status draft→done; done 42→43; draft 8→7; points_complete 257→262; Wave 9 5/6 done (32/45 pts); S-044 UNBLOCKED]"
+  current_version: "1.60"
+  last_bump_commit: "[S-047 points updated; wave_8_points updated; total_points updated; human ruling 2026-06-22 session-host scope expansion]"
   last_bump_date: "2026-06-22"
 
 nfr-catalog:

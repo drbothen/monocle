@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.59"
+version: "1.60"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-22T00:00:00Z
@@ -22,7 +22,7 @@ inputs:
   - {path: .factory/specs/architecture/SS-tui.md, version: "1.8.2"}
   - {path: .factory/specs/architecture/SS-config.md, version: "1.3.0"}
 input-hash: "[live-state]"
-traces_to_full: ".factory/stories/STORY-INDEX.md v5.48"
+traces_to_full: ".factory/stories/STORY-INDEX.md v5.67"
 ---
 
 stories:
@@ -628,13 +628,13 @@ stories:
     title: "IPC Lifecycle Variants — Spawn/Kill/Detach/Attach/Rename/Input/Resize + Scrollback Protocol"
     epic: EPIC-05
     wave: 8
-    points: 8
+    points: 16
     status: draft
     assigned_to: null
     started_at: null
     completed_at: null
     pr_url: null
-    notes: "Wave 8. Depends on S-021, S-022, S-023, S-033, S-034, S-035, S-046. Blocks S-048. BCs: BC-2.05.010, BC-2.05.011."
+    notes: "Wave 8. Depends on S-021, S-022, S-023, S-033, S-034, S-035, S-046. Blocks S-048. BCs: BC-2.05.010, BC-2.05.011. Points expanded from 8 to 16 per human ruling (session-host producer scope: PTY read loop, Phase A/B select!, KeyInput write, real scrollback dump, daemon forwarding — SS-session-manager §Ruling M)."
 
   - id: S-048
     title: "Sessions Panel — Multi-Project Grouping, Lifecycle Actions, and State-Aware Blocking"
@@ -657,7 +657,7 @@ summary:
   ready: 0
   blocked: 1
   draft: 6
-  total_points: 314
+  total_points: 322
   points_complete: 267
   wave_0_points: 3
   wave_1_points: 8
@@ -667,14 +667,20 @@ summary:
   wave_5_points: 34
   wave_6_points: 34
   wave_7_points: 23
-  wave_8_points: 74
+  wave_8_points: 82
   wave_9_points: 45
   wave_7_gate_status: passed
   wave_7_gate_decision: D-232
   wave_7_gate_date: "2026-06-03"
   phase_3_status: COMPLETE
-  # WAVE-8/9 NOTE: total_points: 314 includes all waves (0-9). Phase-3 original deliverables remain 33 stories / 195 pts.
-  #   Wave 8 (74 pts) = S-032 (5) + S-DAEMON-WIRE-FIX-001 (5) + S-033..S-038 (38) + S-045..S-048 (26).
+  # v1.60 updates (2026-06-22):
+  # - Human ruling 2026-06-22: S-047 expanded to session-host producer scope (SS-session-manager §Ruling M).
+  #   S-047 points: 8 → 16. AC-SH-001..AC-SH-005 added (PTY read loop, Phase A/B select!, KeyInput write,
+  #   real scrollback dump, daemon forwarding). subsystems: [SS-05] → [SS-05, SS-08].
+  #   wave_8_points: 74 → 82. total_points: 314 → 322. points_complete unchanged (S-047 still draft).
+  #   traces_to_full: STORY-INDEX.md v5.48 → v5.67.
+  # WAVE-8/9 NOTE: total_points: 322 includes all waves (0-9). Phase-3 original deliverables remain 33 stories / 195 pts.
+  #   Wave 8 (82 pts) = S-032 (5) + S-DAEMON-WIRE-FIX-001 (5) + S-033..S-038 (38) + S-045 (5) + S-046 (5) + S-047 (16) + S-048 (8). S-047 expanded from 8→16 pts per human ruling 2026-06-22.
   #   Wave 9 (45 pts) = S-039..S-044 (45). S-042 expanded from 5→8 pts per human ruling 2026-06-21.
   #   S-032 and S-DAEMON-WIRE-FIX-001 were previously excluded from the Phase-3 195 pt total; they are now
   #   included in wave_8_points and the full total_points: 311 corpus count.

@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.66"
+version: "5.67"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-22T00:00:00Z
@@ -97,12 +97,12 @@ traces_to: .factory/specs/prd.md
 | S-044 | EmbeddedTerminal + SessionCreation AppMode Transitions, SessionCreation Wizard, SpawnAck, and Permission Badge+Bell | EPIC-09 | 13 | 9 | draft | — |
 | S-045 | ClaudeCodeModule::spawn_recipe() — Happy Path, CCR Injection, and Error Cases (Concrete Override Only; Default Trait Impl is S-033) | EPIC-03 | 5 | 8 | draft | — |
 | S-046 | PtyOutput Fan-out Broker — Bounded Channel, Backpressure, and Client Lifecycle | EPIC-05 | 5 | 8 | done | S-047 |
-| S-047 | IPC Lifecycle Variants — Spawn/Kill/Detach/Attach/Rename/Input/Resize + Scrollback Protocol | EPIC-05 | 8 | 8 | draft | S-048 |
+| S-047 | IPC Lifecycle Variants — Spawn/Kill/Detach/Attach/Rename/Input/Resize + Scrollback Protocol | EPIC-05 | 16 | 8 | draft | S-048 |
 | S-048 | Sessions Panel — Multi-Project Grouping, Lifecycle Actions, and State-Aware Blocking | EPIC-06 | 8 | 8 | draft | — |
 
 **Total stories:** 51 (49 product + 1 DTU + 1 prep)
-**Total points (product):** 305 (excl. DTU 3 pts and PREP 3 pts)
-**Total points (all):** 311
+**Total points (product):** 313 (excl. DTU 3 pts and PREP 3 pts)
+**Total points (all):** 319
 
 ## Wave Summary
 
@@ -116,7 +116,7 @@ traces_to: .factory/specs/prd.md
 | Wave 5 | S-017, S-018, S-019, S-020, S-021 | 34 | Daemon integration — S-017 (serial prerequisite), then S-018, S-019, S-020, S-021 (parallel after S-017). 34 pts. |
 | Wave 6 | S-022, S-023, S-025, S-026 | 34 | IPC + TUI integration — S-022 (serial prerequisite), then S-023 + S-025 (parallel after S-022), then S-026 (after S-023 + S-022). 34 pts. |
 | Wave 7 | S-027, S-028, S-029, S-031 | 23 | Polish: overlay rendering, filter, killer scenario, profile picker (parallel-eligible within wave) |
-| Wave 8 | S-032, S-DAEMON-WIRE-FIX-001, S-033, S-034, S-035, S-036, S-037, S-038, S-045, S-046, S-047, S-048 | 74 | Session Manager + delta IPC/TUI + spawn recipe: S-033 is Wave-8 root (serial prerequisite within wave); S-034/S-035/S-036/S-037/S-038/S-045/S-046/S-047/S-048 serial after their Wave-8 deps |
+| Wave 8 | S-032, S-DAEMON-WIRE-FIX-001, S-033, S-034, S-035, S-036, S-037, S-038, S-045, S-046, S-047, S-048 | 82 | Session Manager + delta IPC/TUI + spawn recipe: S-033 is Wave-8 root (serial prerequisite within wave); S-034/S-035/S-036/S-037/S-038/S-045/S-046/S-047/S-048 serial after their Wave-8 deps. S-047 expanded from 8→16 pts (session-host producer scope per human ruling 2026-06-22). |
 | Wave 9 | S-039, S-040, S-041, S-042, S-043, S-044 | 45 | Embedded PTY: S-039 is Wave-9 root (serial prerequisite within wave); S-040/S-042 parallel after S-039; S-041 after S-040; S-043 after S-042; S-044 after S-040+S-041. S-042 expanded from 5→8 pts (full daemon resize pipeline per human ruling 2026-06-21). |
 
 ## BC Coverage Table
@@ -202,8 +202,8 @@ traces_to: .factory/specs/prd.md
 | BC-2.03.007 | spawn_recipe() Error Cases — BinaryNotFound and InvalidPath | S-045 | AC-005, AC-006, AC-007 | YES |
 | BC-2.03.008 | Default spawn_recipe() Returns UnsupportedOperation | S-033 | AC-009c, AC-009d | YES |
 | BC-2.05.009 | PtyOutput Fan-Out — Per-Session Bounded Channel (1024) with Drop Counter (stderr WARN) + PtyReset TUI Recovery | S-046 | AC-001..AC-008 | YES |
-| BC-2.05.010 | New ClientToServer IPC Variants — SpawnSession, KillSession, KeyInput, ResizePane, DetachSession, RenameSession, AttachSession | S-047 | AC-001..AC-012 | YES |
-| BC-2.05.011 | New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset | S-046 (PtyReset variant + broker emission), S-047 (TUI handler + scrollback protocol: AC-007..AC-010) | S-046: AC-005 (PtyReset emit); S-047: AC-007..AC-010 (scrollback + TUI reset) | YES |
+| BC-2.05.010 | New ClientToServer IPC Variants — SpawnSession, KillSession, KeyInput, ResizePane, DetachSession, RenameSession, AttachSession | S-047 | AC-SH-003 (KeyInput→PTY write), AC-001..AC-012 | YES |
+| BC-2.05.011 | New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset | S-046 (PtyReset variant + broker emission), S-047 (session-host producer legs + TUI handler + scrollback protocol: AC-SH-001..AC-SH-005, AC-007..AC-010) | S-046: AC-005 (PtyReset emit); S-047: AC-SH-001..AC-SH-005 (session-host PTY read, select!, KeyInput write, scrollback dump, daemon forwarding); S-047: AC-007..AC-010 (scrollback + TUI reset) | YES |
 | BC-2.06.025 | Multi-Session / Multi-Project Sessions Panel — Grouped by Project, Fast Switching, TUI Lifecycle Actions | S-048 | AC-001..AC-014 (AC-013: PC-1 all-5-state indicator; AC-014: PC-2 Enter-on-Detached→AttachSession→EmbeddedTerminal) | YES |
 | BC-2.08.001 | Session Spawn — SessionHostSpawner Called Within 2s; SessionEntry Created | S-033 | AC-001..AC-009b | YES |
 | BC-2.08.002 | Session Persistence — session-host Survives Graceful Daemon Restart | S-036 | AC-001..AC-002, AC-015 | YES |
@@ -1251,6 +1251,17 @@ SE-16d monotonicity: v5.30 timestamp 2026-06-03 >= v5.29 timestamp 2026-06-03. P
 - No wave/points/BC coverage changes — story remains Wave 3, 8 pts, BC-2.03.001..004.
 - SE-22 v2 sibling-sweep: sprint-state.yaml v1.16→v1.17 (done 14→15, not_started 2→1, points_complete 67→75); STATE.md v6.05→v6.06.
 - STORY-INDEX version bumped v2.8→v2.9.
+
+## §Trace v5.67 — S-047 expanded to session-host producer scope (human ruling 2026-06-22)
+
+- S-047 Story Registry row: points updated from 8 to 16 (session-host producer legs added per human ruling 2026-06-22 and SS-session-manager §Ruling M).
+- Added: AC-SH-001..AC-SH-005 cover PTY read loop, Phase A/B select! expansion, KeyInput write, real scrollback dump, and daemon scrollback forwarding.
+- S-047 subsystems updated from [SS-05] to [SS-05, SS-08] (session-host work touches SS-08 Session Manager scope).
+- BC Coverage Table: BC-2.05.010 row updated to include AC-SH-003 citation; BC-2.05.011 row updated to include AC-SH-001..AC-SH-005 citation.
+- Wave 8 total updated from 74 pts to 82 pts (S-047 delta: +8 pts).
+- Total product points updated from 305 to 313; total all-stories points updated from 311 to 319.
+- version-pin-registry.yaml STORY-INDEX entry updated to v5.67 (atomic per L-S027-004).
+- STORY-INDEX version bumped v5.66 → v5.67.
 
 ## §Trace v5.66 — S-046 MERGED PR #55 @ 45343ca (D-349, 2026-06-22)
 
