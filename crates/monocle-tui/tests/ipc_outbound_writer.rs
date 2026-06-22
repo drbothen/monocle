@@ -153,6 +153,10 @@ async fn test_f_s026_adv5_crit001_decision_message_traverses_wire_to_daemon() {
         ClientToServer::ResizePane { .. } => {
             panic!("unexpected ResizePane in this test context");
         }
+        // S-047 stub: RenameSession is not expected in this PermissionDecision test context.
+        ClientToServer::RenameSession { .. } => {
+            panic!("unexpected RenameSession in this test context");
+        }
     }
 
     reader_handle.abort();
@@ -248,6 +252,10 @@ async fn test_f_s026_adv5_crit001_reconnect_rewires_ipc_tx_to_new_channel() {
         // S-042 stub: ResizePane is not expected in this PermissionDecision test context.
         ClientToServer::ResizePane { .. } => {
             panic!("unexpected ResizePane in this test context");
+        }
+        // S-047 stub: RenameSession is not expected in this PermissionDecision test context.
+        ClientToServer::RenameSession { .. } => {
+            panic!("unexpected RenameSession in this test context");
         }
     }
 

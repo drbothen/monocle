@@ -896,6 +896,18 @@ pub struct SessionManager {
     /// `Arc::new(AtomicU64::new(0))` in `new()`; use `with_pty_drop_counter()` at the
     /// daemon wiring site in `lifecycle.rs` to share the same counter with `DaemonState`.
     pty_drop_counter: std::sync::Arc<std::sync::atomic::AtomicU64>,
+    /// Per `(session_id, client_id)` pending PTY bytes buffer for scrollback dump in-flight.
+    ///
+    /// Accumulates live `ServerToClient::PtyOutput` messages arriving via the broker DURING
+    /// the scrollback forwarding sequence (between `AttachSession` receipt and
+    /// `ScrollbackDumpComplete` send). After `ScrollbackDumpComplete` is sent, the buffer
+    /// is flushed as live `PtyOutput` messages to the same client (BC-2.05.011 Invariant 6,
+    /// AC-010, AC-SH-005). Keys are `(session_id, client_id)` — daemon-internal String pairs.
+    ///
+    /// This is a separate accumulation buffer from the per-client send channel (not bounded
+    /// by `CLIENT_CHANNEL_CAPACITY`). It is populated by the `attach_session` scrollback
+    /// forwarding path and cleared once the dump completes.
+    pending_pty_bytes: std::collections::HashMap<(String, String), std::collections::VecDeque<bytes::Bytes>>,
     /// Failure-injection seam for the PidFallback SIGTERM call (ADV-S034-IMPORTANT-001).
     ///
     /// `None` in production (cfg gate ensures it is always `None` in non-test builds).
@@ -967,6 +979,7 @@ impl SessionManager {
             hooks_settings_path,
             hook_endpoint_config,
             pty_drop_counter: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0)),
+            pending_pty_bytes: std::collections::HashMap::new(),
             #[cfg(any(test, feature = "test-utils"))]
             pid_sigterm_fn: None,
             #[cfg(any(test, feature = "test-utils"))]
@@ -4362,6 +4375,35 @@ impl SessionManager {
         crate::ipc_server::broadcast_to_subscribers(&self.broker, list_msg).await;
 
         Ok(())
+    }
+
+    /// Forward a scrollback dump to the attaching TUI client after `attach_session()` succeeds.
+    ///
+    /// Called from the `AttachSession` IPC handler (in `ipc_server.rs`) after `attach_session()`
+    /// returns `Ok(())`. Sends `ServerToClient::ScrollbackChunk*` + `ScrollbackDumpComplete`
+    /// directly to the requesting client's sender channel (NOT via `broadcast_to_subscribers` —
+    /// only the client that sent `ClientToServer::AttachSession` receives the dump).
+    ///
+    /// After `ScrollbackDumpComplete` is sent, flushes any `pending_pty_bytes` accumulated for
+    /// this `(session_id, client_id)` pair as live `PtyOutput` messages to the same client.
+    ///
+    /// # Parameters
+    ///
+    /// - `session_id`: the UUID string of the attached session.
+    /// - `client_id`: daemon-internal client identifier (matches the key used in `pending_pty_bytes`).
+    /// - `client_tx`: the mpsc sender for the requesting TUI client.
+    ///
+    /// # BC traceability
+    ///
+    /// BC-2.05.011, BC-2.05.010 / AC-SH-005, AC-006, AC-010.
+    #[allow(clippy::todo)]
+    pub async fn forward_scrollback_dump_to_client(
+        &mut self,
+        _session_id: &str,
+        _client_id: &str,
+        _client_tx: &tokio::sync::mpsc::Sender<monocle_ipc::types::ServerToClient>,
+    ) -> Result<(), SessionError> {
+        todo!()
     }
 
     /// Spawn a per-session GC tokio task that removes the `SessionEntry` from the

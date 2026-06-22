@@ -22,6 +22,7 @@ vt100         = "0.16"
 
 # Workspace dependencies
 tokio         = { workspace = true }
+bytes         = { workspace = true }
 serde         = { workspace = true }
 serde_json    = { workspace = true }
 nix           = { workspace = true, features = ["process", "signal", "user"] }

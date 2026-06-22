@@ -287,6 +287,10 @@ fn test_BC_2_05_008_client_to_server_permission_decision_allow_serde_roundtrip()
         ClientToServer::ResizePane { .. } => {
             panic!("unexpected ResizePane in this test context");
         }
+        // S-047 stub: RenameSession is not expected in this test context.
+        ClientToServer::RenameSession { .. } => {
+            panic!("unexpected RenameSession in this test context");
+        }
     }
 }
 
@@ -334,6 +338,10 @@ fn test_BC_2_05_008_client_to_server_permission_decision_deny_serde_roundtrip() 
         // S-042 stub: ResizePane is not expected in this test context.
         ClientToServer::ResizePane { .. } => {
             panic!("unexpected ResizePane in this test context");
+        }
+        // S-047 stub: RenameSession is not expected in this test context.
+        ClientToServer::RenameSession { .. } => {
+            panic!("unexpected RenameSession in this test context");
         }
     }
 }

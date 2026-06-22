@@ -670,44 +670,34 @@ pub(crate) async fn step_event_loop(
                             );
                             break PhaseBExit::Detach;
                         }
-                        // S-035: Attach handler (BC-2.08.007 §session-host Attach handler).
+                        // S-047: Attach handler (AC-SH-004 — real scrollback dump from vt100 parser).
                         //
-                        // Sends the scrollback dump: zero ScrollbackChunk messages (vt100 PTY
-                        // processing is S-047 scope; no screen state exists yet), then
-                        // ScrollbackDumpComplete to complete the protocol handshake.
+                        // Replaces the S-035 empty 0-chunk stub with a call to
+                        // `stream_scrollback_dump_chunked()` which derives the real scrollback
+                        // from the live `vt100::Parser` state and streams chunked rows to the
+                        // daemon (BC-2.05.011 §Screen-state transfer / SS-session-manager §Ruling M).
                         //
-                        // I3-003 (no pause): PtyBytes forwarding is also S-047 scope, so
-                        // resuming live PtyBytes is a no-op here. The daemon's proxy task will
-                        // handle PtyBytes once S-047 lands.
-                        //
-                        // PTY dimensions: hardcoded 24×80 (initial size from Step 3).
-                        // S-047 will derive these from the live parser state.
+                        // I3-003 (no pause): PtyBytes forwarding continues in the `select!` while
+                        // the dump is being prepared and sent. The select! arm completes before
+                        // re-entering (dump is bounded — AC-SH-004 step 2).
                         Ok(monocle_ipc::types::DaemonToHost::Attach) => {
                             tracing::debug!(
                                 session_id = %session_id,
-                                "session-host: received DaemonToHost::Attach — sending empty scrollback dump"
+                                "session-host: received DaemonToHost::Attach — streaming real scrollback dump"
                             );
-                            // Send ScrollbackDumpComplete (0 chunks — no PTY state yet, S-047 scope).
-                            let complete_msg =
-                                monocle_ipc::types::HostToDaemon::ScrollbackDumpComplete {
-                                    total_chunks: 0,
-                                    cursor_row: 0,
-                                    cursor_col: 0,
-                                    pty_rows: 24,
-                                    pty_cols: 80,
-                                };
-                            if let Err(e) = send_host_msg(&mut stream, &complete_msg).await {
+                            // AC-SH-004: real scrollback dump via stream_scrollback_dump_chunked().
+                            // On failure: WARN log and break PhaseBExit::Detach.
+                            if let Err(e) =
+                                stream_scrollback_dump_chunked(session_id, parser, &mut stream)
+                                    .await
+                            {
                                 tracing::warn!(
                                     session_id = %session_id,
                                     error = %e,
-                                    "session-host: failed to send ScrollbackDumpComplete on Attach"
+                                    "session-host: stream_scrollback_dump_chunked failed on Attach — detaching"
                                 );
                                 break PhaseBExit::Detach;
                             }
-                            tracing::debug!(
-                                session_id = %session_id,
-                                "session-host: ScrollbackDumpComplete sent (total_chunks=0)"
-                            );
                             // Continue Phase B — await next message (Detach/Kill/etc.).
                         }
                         // BC-2.09.006 PC-6/PC-7: resize the PTY and local parser
@@ -728,11 +718,29 @@ pub(crate) async fn step_event_loop(
                                 );
                             }
                         }
-                        Ok(_other) => {
-                            // KeyInput — S-047 scope. Other unknown variants are also ignored.
+                        // S-047: KeyInput handler (AC-SH-003 — write bytes to PTY stdin).
+                        //
+                        // On receive: `pty_writer.write_all(&bytes).await`.
+                        // On write success: continue Phase B (fire-and-forget at this layer).
+                        // On write failure: WARN log + break PhaseBExit::Detach.
+                        //
+                        // The daemon IPC layer maps the resulting SessionHostDead error to
+                        // "attach_failed" wire code in the KeyInput response (AC-SH-003).
+                        //
+                        // BC-2.05.010 KeyInput PC-1 / AC-SH-003 / SS-session-manager §Ruling M.
+                        Ok(monocle_ipc::types::DaemonToHost::KeyInput { bytes: _key_bytes }) => {
+                            // todo!(): the implementer will wire pty_writer.write_all(&_key_bytes).
+                            // Until then, log and continue (no panic — Phase B remains stable).
                             tracing::debug!(
                                 session_id = %session_id,
-                                "session-host: received unhandled DaemonToHost message (S-047 scope), ignoring"
+                                "session-host: DaemonToHost::KeyInput received (write to PTY stdin — S-047 todo)"
+                            );
+                        }
+                        Ok(_other) => {
+                            // Unknown/future variants — log and ignore.
+                            tracing::debug!(
+                                session_id = %session_id,
+                                "session-host: received unhandled DaemonToHost message, ignoring"
                             );
                         }
                         Err(e) => {
@@ -983,6 +991,87 @@ pub(crate) async fn kill_sequence(
         session_id = %session_id,
         "session-host: Kill sequence complete"
     );
+}
+
+// ---------------------------------------------------------------------------
+// S-047: PTY reader task and scrollback dump scaffolding (AC-SH-001..AC-SH-004)
+// ---------------------------------------------------------------------------
+
+/// Read `DaemonToHost` messages from the control connection in a non-blocking async wrapper.
+///
+/// Wraps the `stream.read_exact()` length-prefix protocol in an async function so Phase B's
+/// `tokio::select!` can race it against `pty_reader_rx.recv()` and `child_exit_watch`.
+///
+/// Returns the deserialized `DaemonToHost` message, or an error on EOF / protocol failure.
+///
+/// Called from Phase B `select!` arm (AC-SH-002 / BC-2.05.011 I3-003). On EOF the caller
+/// breaks with `PhaseBExit::Detach` so the session-host loops back to Phase A.
+///
+/// AC-SH-002 / BC-2.05.011.
+#[allow(dead_code)]
+#[allow(clippy::todo)]
+async fn recv_daemon_msg(
+    _stream: &mut tokio::net::UnixStream,
+) -> Result<monocle_ipc::types::DaemonToHost, SessionHostError> {
+    todo!()
+}
+
+/// Spawn the PTY reader `tokio::task::spawn_blocking` thread.
+///
+/// The blocking thread calls `pty_master.try_clone_reader()` to obtain a `Box<dyn Read + Send>`,
+/// then enters a 4096-byte read loop forwarding `bytes::Bytes` chunks to `tx` via
+/// `Handle::block_on(tx.send(Bytes::copy_from_slice(&buf[..n])))`.
+///
+/// Backpressure: the blocking `tx.send().await` (via `block_on`) applies natural backpressure
+/// from TUI render speed through the broker to the proxy task to the reader.
+///
+/// On `tx.send()` error: log WARN and exit the reader thread. This indicates the receiver
+/// was dropped (event loop exited abnormally) — not a silent drop.
+///
+/// The `pty_master.take_writer()` call MUST happen BEFORE this function is called (ONCE at
+/// startup, before PTY reads begin). `take_writer()` is NOT idempotent — calling it again panics.
+///
+/// Channel capacity: `mpsc::channel::<Bytes>(1024)` (bounded backpressure).
+///
+/// AC-SH-001 / BC-2.05.011 §ScrollbackChunk producer.
+#[allow(dead_code)]
+#[allow(clippy::todo)]
+fn spawn_pty_reader_task(
+    _session_id: String,
+    _pty_master: &dyn portable_pty::MasterPty,
+) -> tokio::sync::mpsc::Receiver<bytes::Bytes> {
+    todo!()
+}
+
+/// Stream a real scrollback dump from the live `vt100::Parser` state to the daemon.
+///
+/// Called from Phase B when `DaemonToHost::Attach` is received, replacing the empty
+/// 0-chunk stub from S-035 (AC-SH-004 / BC-2.05.011 §Screen-state transfer).
+///
+/// Steps (AC-SH-004):
+/// 1. Snapshot `parser.screen()` at the instant `Attach` is received.
+/// 2. No pause: PtyBytes forwarding continues in the `select!` while the dump is prepared.
+///    (The `select!` arm completes before re-entering — the dump is bounded and fast.)
+/// 3. Serialize scrollback + visible rows as `Vec<Vec<SerializedCell>>` using
+///    `SerializedCell::new` / `SerializedColor` from `monocle_ipc::types`.
+/// 4. Chunk at ≤200 rows per `HostToDaemon::ScrollbackChunk { rows, chunk_seq }`.
+///    `chunk_seq` starts at 0 and increments monotonically.
+/// 5. Send `HostToDaemon::ScrollbackDumpComplete { total_chunks, cursor_row, cursor_col,
+///    pty_rows, pty_cols }` derived from `screen.cursor_position()` and parser dimensions.
+/// 6. On any `send_host_msg()` error: log WARN and return `Err(SessionHostError::Io(...))`.
+///    The caller breaks Phase B with `PhaseBExit::Detach`.
+///
+/// `SerializedCell` and `SerializedColor` are imported from `monocle_ipc::types` (not redefined).
+/// Chunking limit: ≤200 rows per chunk to stay below the 256 KiB MAX_FRAME_LEN.
+///
+/// AC-SH-004 / BC-2.05.011 §Screen-state transfer / SS-session-manager §Ruling M.
+#[allow(clippy::todo)]
+async fn stream_scrollback_dump_chunked(
+    _session_id: &str,
+    _parser: &vt100::Parser,
+    _stream: &mut tokio::net::UnixStream,
+) -> Result<(), SessionHostError> {
+    todo!()
 }
 
 // ---------------------------------------------------------------------------

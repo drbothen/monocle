@@ -196,6 +196,11 @@ async fn spawn_client_task(
                     Ok(ClientToServer::ResizePane { session_id, rows, cols }) => {
                         handle_resize_pane(session_id, rows, cols, &tx, &state).await;
                     }
+                    // S-047: RenameSession handler (BC-2.05.010 RenameSession PC-4a)
+                    // Updates session display_name via SessionManager::rename_session().
+                    Ok(ClientToServer::RenameSession { session_id, new_name }) => {
+                        handle_rename_session(session_id, new_name, &tx, &state).await;
+                    }
                     Err(IpcError::Disconnected) => {
                         tracing::debug!("TUI client disconnected (EOF)");
                         break;
@@ -813,6 +818,66 @@ async fn handle_key_input(
             let _ = client_tx
                 .send(ServerToClient::Error {
                     code: session_error_to_code(IpcOp::KeyInput, &e).to_string(),
+                    message: e.to_string(),
+                })
+                .await;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// S-047: RenameSession IPC handler (BC-2.05.010 RenameSession PC-4a)
+// ---------------------------------------------------------------------------
+
+/// Handle a `ClientToServer::RenameSession` message from a TUI client.
+///
+/// IPC handler steps (BC-2.05.010 RenameSession PC-4a):
+/// 1. Retrieve session_manager from daemon state.
+/// 2. Call `session_manager.rename_session(session_id, new_name)`.
+/// 3. On success: `rename_session()` updates `display_name` in the registry and
+///    publishes `SessionListUpdate` to all clients (BC-2.08.005 / BC-2.08.008 PC-4a).
+/// 4. On error: send `ServerToClient::Error { code: "rename_failed", message }`.
+///
+/// Rename is permitted when the session is in `Launching` or `Running` state.
+/// On `Terminated` state, `rename_session()` returns `SessionError::SessionNotFound`
+/// or a lifecycle error that maps to `"rename_failed"` per the 12-code taxonomy.
+async fn handle_rename_session(
+    session_id: String,
+    new_name: String,
+    client_tx: &tokio::sync::mpsc::Sender<ServerToClient>,
+    state: &DaemonState,
+) {
+    use crate::session_manager::{session_error_to_code, IpcOp};
+
+    let sm = match state.session_manager.as_ref() {
+        Some(sm) => sm,
+        None => {
+            tracing::error!("handle_rename_session: session_manager is None (daemon wiring bug)");
+            let _ = client_tx
+                .send(ServerToClient::Error {
+                    code: "invalid_request".to_string(),
+                    message: "session_manager not initialized".to_string(),
+                })
+                .await;
+            return;
+        }
+    };
+
+    let result = sm.lock().await.rename_session(&session_id, new_name).await;
+    match result {
+        Ok(()) => {
+            // rename_session() emitted SessionListUpdate to all clients (BC-2.08.008 PC-4a).
+            // No additional response to the requesting client.
+        }
+        Err(e) => {
+            tracing::warn!(
+                session_id = %session_id,
+                error = %e,
+                "handle_rename_session: rename_session failed"
+            );
+            let _ = client_tx
+                .send(ServerToClient::Error {
+                    code: session_error_to_code(IpcOp::Rename, &e).to_string(),
                     message: e.to_string(),
                 })
                 .await;

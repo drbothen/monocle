@@ -998,6 +998,43 @@ pub fn on_scrollback_dump_complete(
     app.pty_dump_received.insert(session_id);
 }
 
+/// Accumulate an incoming `ServerToClient::ScrollbackChunk` for later screen reconstruction.
+///
+/// Validates `chunk_seq` contiguity (AC-007, BC-2.05.011 §ScrollbackChunk PC-3):
+/// - If `chunk_seq == expected_seq` (i.e., `buffered_chunks.len() as u32`): appends to buffer.
+/// - If `chunk_seq` is a gap: clears all buffered chunks for the session and re-triggers
+///   `ClientToServer::AttachSession` to restart the dump. The client MUST NOT attempt to
+///   reconstruct from out-of-order chunks.
+///
+/// Called from `handle_server_message` on receipt of `ServerToClient::ScrollbackChunk`.
+/// Reconstruction from accumulated rows happens in `on_scrollback_dump_complete`.
+///
+/// BC-2.05.011 §ScrollbackChunk PC-3 / AC-007.
+#[allow(clippy::todo)]
+pub fn on_scrollback_chunk(
+    _app: &mut App,
+    _session_id: String,
+    _rows: Vec<Vec<monocle_ipc::types::SerializedCell>>,
+    _chunk_seq: u32,
+) {
+    todo!()
+}
+
+/// Handle `ServerToClient::PtyReset` — PTY byte stream interrupted (BC-2.05.011 §PtyReset PC-3).
+///
+/// Steps (AC-009):
+/// 1. Clear all in-flight scrollback chunks for `session_id`.
+/// 2. Clear the local PTY display buffer for `session_id`.
+/// 3. Display status bar message `[PTY reset — <session_id_short>]` for 5 seconds.
+/// 4. Re-trigger `ClientToServer::AttachSession { session_id }` automatically.
+///
+/// Called from `handle_server_message` for `ServerToClient::PtyReset`.
+/// BC-2.05.011 §PtyReset postcondition 3 / BC-2.05.009 Invariant 4.
+#[allow(clippy::todo)]
+pub fn on_pty_reset(_app: &mut App, _session_id: String) {
+    todo!()
+}
+
 /// Handle `AppEvent::DumpWindowTimeout` — the dump-window timeout elapsed without
 /// receiving `ScrollbackDumpComplete`.
 ///
@@ -3775,27 +3812,24 @@ pub fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
             // Owned by S-047 (variant defined there); consumed here per story S-039.
             on_scrollback_dump_complete(app, session_id, pty_rows, pty_cols);
         }
-        ServerToClient::ScrollbackChunk { .. } => {
-            // ScrollbackChunk is accumulated by the S-047 implementer before
-            // ScrollbackDumpComplete arrives. S-039 stub: no-op (accumulation
-            // logic belongs to the S-047 implementation of on_scrollback_dump_complete).
-            tracing::trace!(
-                "ScrollbackChunk received (S-047/S-039 stub — accumulation not yet implemented)"
-            );
+        ServerToClient::ScrollbackChunk {
+            session_id,
+            rows,
+            chunk_seq,
+        } => {
+            // Accumulate scrollback chunks by session for reassembly on ScrollbackDumpComplete.
+            // Validates chunk_seq contiguity (AC-007): gap detected → clear buffer + re-attach.
+            // BC-2.05.011 §ScrollbackChunk postcondition 3.
+            on_scrollback_chunk(app, session_id, rows, chunk_seq);
         }
 
         // -----------------------------------------------------------------------
         // S-046: PTY parser-reset notification (BC-2.05.011, BC-2.05.009 Invariant 4)
         // S-047 owns the full TUI-side protocol handler (parser reset, re-attach trigger,
-        // 5-second status bar indicator). This arm compiles the S-046 variant into the
-        // match without implementing the S-047 handler body.
-        // TODO(S-047): implement on_pty_reset(app, session_id).
+        // 5-second status bar indicator). BC-2.05.011 §PtyReset postcondition 3.
         // -----------------------------------------------------------------------
         ServerToClient::PtyReset { session_id } => {
-            tracing::debug!(
-                session_id = %session_id,
-                "PtyReset received (S-047 handler not yet implemented)"
-            );
+            on_pty_reset(app, session_id);
         }
     }
     Ok(())

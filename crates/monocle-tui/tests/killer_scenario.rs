@@ -488,6 +488,10 @@ async fn test_BC_2_06_022_killer_scenario_accept() {
         ClientToServer::ResizePane { .. } => {
             panic!("unexpected ResizePane in this test context");
         }
+        // S-047 stub: RenameSession is not expected in this PermissionDecision test context.
+        ClientToServer::RenameSession { .. } => {
+            panic!("unexpected RenameSession in this test context");
+        }
     }
 
     // Step 6: Modal must still be in overlay_stack — not popped on send (BC-2.06.023).
@@ -733,6 +737,10 @@ async fn test_BC_2_06_022_killer_scenario_multi_prompt() {
         ClientToServer::ResizePane { .. } => {
             panic!("unexpected ResizePane in this test context");
         }
+        // S-047 stub: RenameSession is not expected in this PermissionDecision test context.
+        ClientToServer::RenameSession { .. } => {
+            panic!("unexpected RenameSession in this test context");
+        }
     }
 
     // Step 5: MockDaemon sends PermissionPromptResolved for P1 over the REAL UDS socket.
@@ -824,6 +832,10 @@ async fn test_BC_2_06_022_killer_scenario_multi_prompt() {
         // S-042 stub: ResizePane is not expected in this PermissionDecision test context.
         ClientToServer::ResizePane { .. } => {
             panic!("unexpected ResizePane in this test context");
+        }
+        // S-047 stub: RenameSession is not expected in this PermissionDecision test context.
+        ClientToServer::RenameSession { .. } => {
+            panic!("unexpected RenameSession in this test context");
         }
     }
 
@@ -1027,6 +1039,10 @@ async fn test_BC_2_06_022_killer_scenario_accept_always() {
         ClientToServer::ResizePane { .. } => {
             panic!("unexpected ResizePane in this test context");
         }
+        // S-047 stub: RenameSession is not expected in this PermissionDecision test context.
+        ClientToServer::RenameSession { .. } => {
+            panic!("unexpected RenameSession in this test context");
+        }
     }
 
     // Overlay_stack is NOT modified on send — awaiting PermissionPromptResolved from daemon.
@@ -1114,6 +1130,10 @@ async fn test_BC_2_06_022_killer_scenario_accept_always() {
         // S-042 stub: ResizePane is not expected in this PermissionDecision test context.
         ClientToServer::ResizePane { .. } => {
             panic!("unexpected ResizePane in this test context");
+        }
+        // S-047 stub: RenameSession is not expected in this PermissionDecision test context.
+        ClientToServer::RenameSession { .. } => {
+            panic!("unexpected RenameSession in this test context");
         }
     }
 
@@ -1590,6 +1610,10 @@ async fn test_BC_2_06_022_killer_scenario_isolation_parallel_safe() {
         ClientToServer::ResizePane { .. } => {
             panic!("unexpected ResizePane in this test context");
         }
+        // S-047 stub: RenameSession is not expected in this PermissionDecision test context.
+        ClientToServer::RenameSession { .. } => {
+            panic!("unexpected RenameSession in this test context");
+        }
     }
 
     // Verify Daemon B received Deny for pid_b (not contaminated by App A's Allow).
@@ -1635,6 +1659,10 @@ async fn test_BC_2_06_022_killer_scenario_isolation_parallel_safe() {
         // S-042 stub: ResizePane is not expected in this PermissionDecision test context.
         ClientToServer::ResizePane { .. } => {
             panic!("unexpected ResizePane in this test context");
+        }
+        // S-047 stub: RenameSession is not expected in this PermissionDecision test context.
+        ClientToServer::RenameSession { .. } => {
+            panic!("unexpected RenameSession in this test context");
         }
     }
 

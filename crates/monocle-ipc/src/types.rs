@@ -780,6 +780,29 @@ pub enum ClientToServer {
         /// New column count for the PTY.
         cols: u16,
     },
+
+    // -----------------------------------------------------------------------
+    // S-047 variant (BC-2.05.010 RenameSession PC-4a — update session display name)
+    // -----------------------------------------------------------------------
+    /// Request the daemon to rename a session's display name.
+    ///
+    /// The daemon calls `session_manager.rename_session(session_id, new_name)`, which
+    /// updates `session.display_name` in the registry and publishes `SessionListUpdate`
+    /// to all clients (BC-2.05.010 RenameSession PC-4a / BC-2.08.005).
+    ///
+    /// Rename is permitted when the session is in `Launching` or `Running` state.
+    /// On `Terminated` state the daemon returns `ServerToClient::Error { code: "rename_failed" }`.
+    ///
+    /// The field is `new_name` (canonical per SS-ipc.md §ClientToServer RenameSession).
+    /// Using `name` instead of `new_name` is an incorrect alias and MUST NOT be used.
+    ///
+    /// (BC-2.05.010, BC-2.08.005)
+    RenameSession {
+        /// The UUID string of the session to rename.
+        session_id: String,
+        /// The new human-readable display name for the session.
+        new_name: String,
+    },
 }
 
 /// The kind of permission decision the user made.

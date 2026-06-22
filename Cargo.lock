@@ -1713,6 +1713,7 @@ dependencies = [
 name = "monocle-session-host"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "chrono",
  "monocle-ipc",
  "nix 0.30.1",
