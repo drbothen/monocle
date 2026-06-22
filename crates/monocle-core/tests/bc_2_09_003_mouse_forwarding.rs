@@ -8,25 +8,33 @@
 //!
 //! | Test name | AC / BC clause |
 //! |-----------|----------------|
-//! | test_BC_2_09_003_mouse_events_sgr_encoded_left_press     | AC-004, PC-2, EC-220 |
-//! | test_BC_2_09_003_mouse_events_sgr_encoded_left_release   | AC-004, PC-2 (terminator m) |
-//! | test_BC_2_09_003_mouse_events_sgr_scroll_up              | AC-011, EC-222, PC-2 ScrollUp=64 |
-//! | test_BC_2_09_003_drag_encoding                           | AC-004, PC-2 Drag(Left)=32 |
-//! | test_BC_2_09_003_out_of_pane_returns_none                | AC-006, EC-221, PC-5 |
-//! | test_BC_2_09_003_1_indexed_origin                        | AC-009, EC-220 |
-//! | test_BC_2_09_003_1_indexed_nonzero_pane_origin           | AC-009, EC-220 (non-origin pane) |
-//! | test_BC_2_09_003_modifier_bits_ctrl                      | AC-004, PC-2 Ctrl|=16 |
-//! | test_BC_2_09_003_modifier_bits_shift                     | AC-004, PC-2 Shift|=4 |
-//! | test_BC_2_09_003_modifier_bits_alt                       | AC-004, PC-2 Alt|=8 |
-//! | test_BC_2_09_003_scroll_down_encoding                    | AC-011, EC-222, PC-2 ScrollDown=65 |
-//! | test_BC_2_09_003_middle_button_press                     | AC-004, PC-2 Down(Middle)=1 |
-//! | test_BC_2_09_003_right_button_press                      | AC-004, PC-2 Down(Right)=2 |
-//! | test_BC_2_09_003_terminator_m_for_release_only           | AC-004, PC-2 terminator correctness |
-//! | test_BC_2_09_003_terminator_M_for_non_release_variants   | AC-004, PC-2 terminator correctness |
-//! | test_BC_2_09_003_drag_middle_encoding                    | AC-004, PC-2 Drag(Middle)=33 |
-//! | test_BC_2_09_003_drag_right_encoding                     | AC-004, PC-2 Drag(Right)=34 |
-//! | test_BC_2_09_003_middle_button_release                   | AC-004, PC-2 Up(Middle)=1, terminator m |
-//! | test_BC_2_09_003_right_button_release                    | AC-004, PC-2 Up(Right)=2, terminator m |
+//! | test_BC_2_09_003_mouse_events_sgr_encoded_left_press           | AC-004, PC-2, EC-220 |
+//! | test_BC_2_09_003_mouse_events_sgr_encoded_left_release         | AC-004, PC-2 (terminator m) |
+//! | test_BC_2_09_003_mouse_events_sgr_scroll_up                    | AC-011, EC-222, PC-2 ScrollUp=64 |
+//! | test_BC_2_09_003_drag_encoding                                 | AC-004, PC-2 Drag(Left)=32 |
+//! | test_BC_2_09_003_out_of_pane_returns_none                      | AC-006, EC-221, PC-5 |
+//! | test_BC_2_09_003_out_of_pane_column_boundary_returns_none      | AC-006, EC-221 column-only boundary |
+//! | test_BC_2_09_003_out_of_pane_row_boundary_returns_none         | AC-006, EC-221 row-only boundary |
+//! | test_BC_2_09_003_1_indexed_origin                              | AC-009, EC-220 |
+//! | test_BC_2_09_003_1_indexed_nonzero_pane_origin                 | AC-009, EC-220 (non-origin pane) |
+//! | test_BC_2_09_003_pane_relative_offset_nonzero_pane             | AC-009, PC-2 pane-relative offset |
+//! | test_BC_2_09_003_modifier_bits_ctrl                            | AC-004, PC-2 Ctrl|=16 |
+//! | test_BC_2_09_003_modifier_bits_shift                           | AC-004, PC-2 Shift|=4 |
+//! | test_BC_2_09_003_modifier_bits_alt                             | AC-004, PC-2 Alt|=8 |
+//! | test_BC_2_09_003_modifier_bits_ctrl_shift_combined             | AC-004, PC-2 Ctrl|Shift combined bits |
+//! | test_BC_2_09_003_scroll_down_encoding                          | AC-011, EC-222, PC-2 ScrollDown=65 |
+//! | test_BC_2_09_003_middle_button_press                           | AC-004, PC-2 Down(Middle)=1 |
+//! | test_BC_2_09_003_right_button_press                            | AC-004, PC-2 Down(Right)=2 |
+//! | test_BC_2_09_003_terminator_m_for_release_only                 | AC-004, PC-2 terminator correctness |
+//! | test_BC_2_09_003_terminator_M_for_non_release_variants         | AC-004, PC-2 terminator correctness |
+//! | test_BC_2_09_003_drag_middle_encoding                          | AC-004, PC-2 Drag(Middle)=33 |
+//! | test_BC_2_09_003_drag_right_encoding                           | AC-004, PC-2 Drag(Right)=34 |
+//! | test_BC_2_09_003_middle_button_release                         | AC-004, PC-2 Up(Middle)=1, terminator m |
+//! | test_BC_2_09_003_right_button_release                          | AC-004, PC-2 Up(Right)=2, terminator m |
+//! | test_BC_2_09_003_moved_encoding                                | BC-2.09.003 PC-2 Moved=35, ADV-P1-OBS-002 |
+//! | test_BC_2_09_003_scroll_left_encoding                          | BC-2.09.003 PC-2 ScrollLeft=66, ADV-P1-OBS-002 |
+//! | test_BC_2_09_003_scroll_right_encoding                         | BC-2.09.003 PC-2 ScrollRight=67, ADV-P1-OBS-002 |
+//! | test_BC_2_09_003_out_of_pane_column_underflow_nonzero_pane     | AC-006, EC-221 u16 underflow guard, ADV-P1-OBS-002 |
 //!
 //! # Red Gate
 //!
@@ -528,9 +536,10 @@ fn test_BC_2_09_003_terminator_m_for_release_only() {
 ///   Px = 7 - 5 + 1 = 3, Py = 5 - 3 + 1 = 3
 ///   → `\x1b[<35;3;3M`
 ///
-/// Note: Moved is UNREACHABLE on Unix (crossterm enables mode 1002, not 1003).
-/// This test exercises the arm for Windows correctness and match-exhaustiveness
-/// per BC-2.09.003 Invariant 3 / PC-2 table note.
+/// Note: Moved IS reachable on Unix. crossterm's EnableMouseCapture enables
+/// mode 1003 (any-event tracking) as part of its standard mode set, so
+/// MouseEventKind::Moved (Ps=35) can be received on Unix terminals.
+/// This test verifies the SGR encoding per BC-2.09.003 PC-2 table (Ps=35, terminator M).
 #[test]
 fn test_BC_2_09_003_moved_encoding() {
     let event = mouse_event(PtyMouseEventKind::Moved, 7, 5);
