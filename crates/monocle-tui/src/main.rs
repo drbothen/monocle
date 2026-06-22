@@ -8,7 +8,9 @@
 
 use anyhow::Result;
 use crossterm::{
-    cursor, execute,
+    cursor,
+    event::DisableMouseCapture,
+    execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use monocle_tui::event_loop::{setup_keyboard_enhancement, teardown_keyboard_enhancement};
@@ -39,6 +41,16 @@ fn install_panic_hook(kitty_active: Arc<AtomicBool>) {
         // bracketed paste on ALL exit paths including panics, or the parent terminal
         // inherits the flags.
         teardown_keyboard_enhancement(kitty_active.load(Ordering::Relaxed));
+        // Unconditional mouse-capture teardown — BC-2.09.003 Invariant 1 / AC-002.
+        // A panic while AppMode::EmbeddedTerminal is active would otherwise leave mouse
+        // escape sequences (modes 1000/1002/1003/1015/1006) enabled in the parent shell.
+        // This teardown mirrors the symmetric keyboard teardown above: it is safe and
+        // idempotent when mouse capture was never entered (DisableMouseCapture is harmless
+        // if no EnableMouseCapture was sent, exactly like DisableBracketedPaste above).
+        // ORDER IS CRITICAL per BC-2.09.003 AC-002: SGR 1006l FIRST, then DisableMouseCapture.
+        print!("\x1b[?1006l");
+        let _ = io::stdout().flush();
+        let _ = execute!(io::stdout(), DisableMouseCapture);
         let _ = disable_raw_mode();
         let _ = execute!(io::stdout(), LeaveAlternateScreen, cursor::Show);
         let _ = io::stdout().flush();
@@ -64,6 +76,18 @@ fn restore_terminal(kitty_active: bool) {
     // Pop Kitty keyboard enhancement flags (if active) + disable bracketed paste FIRST,
     // before disabling raw mode (symmetric with setup order in setup_terminal).
     teardown_keyboard_enhancement(kitty_active);
+    // Unconditional mouse-capture teardown — BC-2.09.003 Invariant 1 / AC-002.
+    // Symmetric with the panic-hook path above: ensures mouse escape sequences are
+    // disabled on all normal exit paths even if the app exits while mouse capture is
+    // active. DisableMouseCapture is idempotent when capture was never entered.
+    // ORDER IS CRITICAL: SGR 1006l FIRST, then DisableMouseCapture.
+    print!("\x1b[?1006l");
+    if let Err(e) = io::stdout().flush() {
+        tracing::warn!(error = %e, "failed to flush stdout after SGR 1006l during terminal restore");
+    }
+    if let Err(e) = execute!(io::stdout(), DisableMouseCapture) {
+        tracing::warn!(error = %e, "failed to disable mouse capture during terminal restore");
+    }
     if let Err(e) = disable_raw_mode() {
         tracing::warn!(error = %e, "failed to disable raw mode during terminal restore");
     }
