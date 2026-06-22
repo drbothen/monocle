@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "embedded-pty"
 subsystem: SS-09
-version: "1.15.0"
+version: "1.16.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -210,23 +210,94 @@ struct App {
     pending_pty_bytes: HashMap<String, Vec<Vec<u8>>>,
 }
 
-/// Scrollback offset invariants (I7) — updated by S-043 Adversarial Pass-1 ruling (v1.15.0):
+/// Scrollback offset invariants (I7) — updated by S-043 Adversarial Pass-4 + vt100-0.16.2
+/// source grounding (v1.16.0). SUPERSEDES the bugged before/after scrollback_len() delta
+/// algorithm introduced in v1.15.0.
+///
+/// ## vt100 API semantics (verified against vt100-0.16.2 source — authoritative)
+///
+/// - `Screen::scrollback() -> usize` returns the VIEWPORT OFFSET (`scrollback_offset` in
+///   vt100 internals; 0 == live bottom). It does NOT return "rows in history". Calling
+///   `set_scrollback(usize::MAX)` clamps the offset to `scrollback.len()` and reading back
+///   `.scrollback()` after that call is one way to discover the current capped history depth
+///   — but the primary semantic of `scrollback()` is viewport offset, not depth.
+/// - `set_scrollback(n)` sets `scrollback_offset = n.min(scrollback.len())`.
+/// - vt100 performs content-anchoring NATIVELY: in `Grid::scroll_up` (grid.rs:571-574), when
+///   `scrollback_offset > 0` and a row is pushed to history, vt100 executes:
+///   `scrollback_offset = scrollback.len().min(scrollback_offset + 1)`.
+///   This auto-advances the viewport offset by 1 per row pushed, clamped to history length.
+///   The native content-anchoring is correct below cap AND at cap.
+/// - At cap (history length == configured `scrollback_len`, steady-state for long sessions),
+///   history depth is stable: depth_before == depth_after for each `process()`. But the
+///   vt100 offset still auto-advances per row pushed, clamped to `scrollback_len`. Example
+///   matching BC-2.09.007 canonical vector: stored offset 990 + 20 rows pushed → vt100
+///   advances offset to 1000 (clamped at cap). Correct content-anchoring at cap.
+/// - vt100 exposes NO monotonic / rows-appended counter and NO scroll callback.
+///   The configured `scrollback_len` has NO public getter; track it TUI-side.
+///   `Grid` is private; internal fields are not accessible.
+///
+/// ## WHY THE PRIOR ALGORITHM WAS WRONG (§Trace v1.16.0 for detail)
+///
+/// The v1.15.0 algorithm used `before = parser.screen().scrollback_len()` / `after = ...`
+/// to measure new rows. `scrollback_len()` is the HISTORY DEPTH. At cap:
+/// depth_before == depth_after == scrollback_len → delta == 0 → the offset was never
+/// adjusted → the viewport drifted (exactly the failure content-anchoring exists to prevent).
+/// Additionally, any `set_scrollback(usize::MAX)` probe call CLOBBERED vt100's native
+/// offset, suppressing vt100's own correct auto-anchoring.
+///
+/// ## CORRECT ALGORITHM — vt100-native content-anchoring (NORMATIVE)
+///
+/// On each `PtyOutput` for a session where `pty_scroll_offsets[session_id] > 0`:
+///
+///   1. Restore vt100's offset to the monocle-stored value:
+///      `parser.screen_mut().set_scrollback(stored_offset)`.
+///   2. Process the bytes: `parser.process(&bytes)`.
+///      vt100 auto-advances the offset by rows-pushed, clamped to history length.
+///      This is the native content-anchoring in Grid::scroll_up (vt100-0.16.2 source).
+///   3. Read back the new offset and store it:
+///      `pty_scroll_offsets[session_id] = parser.screen().scrollback()`.
+///
+/// When `pty_scroll_offsets[session_id] == 0` (live tail): no `set_scrollback` call is
+/// needed — `process(&bytes)` leaves the offset at 0 (live bottom) naturally.
+///
+/// This algorithm is correct:
+/// - Below cap: history grows, offset advances exactly with new rows.
+/// - At cap: offset advances by rows pushed, clamped to scrollback_len (e.g., 990+20→1000).
+/// - No manual delta calculation needed; no `scrollback_len()` probe required.
+/// - No suppression of vt100's native anchoring.
+///
+/// ## Cap-eviction reality
+///
+/// When the history reaches `scrollback_len` (steady state), rows evicted past the cap are
+/// gone permanently. The stored offset clamps at `scrollback_len` (the oldest available row).
+/// Content scrolled beyond the cap cannot be anchored — it no longer exists. This is correct,
+/// expected terminal emulator behavior, NOT a defect.
+///
+/// ## Explicit-scroll clamp (handle_pty_scroll_up — still correct)
+///
+/// When the user explicitly scrolls up (`PtyScrollUp` action):
+///
+///   let max_offset = {
+///       parser.screen_mut().set_scrollback(usize::MAX); // clamp to history depth
+///       parser.screen().scrollback()                    // read back clamped depth
+///   };
+///   pty_scroll_offsets[session_id] = (stored_offset + 1).min(max_offset);
+///   // Then restore the actual display offset:
+///   parser.screen_mut().set_scrollback(pty_scroll_offsets[session_id]);
+///
+/// Using `set_scrollback(MAX)` + readback as a way to discover current history depth for
+/// the explicit-scroll clamp is correct. This usage does NOT conflict with the new-output
+/// anchoring algorithm above because they run at different call sites: the clamp path runs
+/// in the scroll-up action handler ONLY; the content-anchor path runs in `on_pty_output` ONLY.
+///
+/// ## Per-session offset invariants
+///
 /// - `pty_scroll_offsets[session_id]` is initialized to 0 (live tail) when a session is added.
-/// - `PtyScrollUp` action increments `pty_scroll_offsets[focused_session_id]` (bounded by
-///   scrollback row count in `pty_parsers[id].screen().scrollback_len()`).
-/// - `PtyScrollDown` action decrements (floor 0).
-/// - **On `PtyOutput` received while scrolled back (CONTENT-ANCHORED — normative):**
-///   When `pty_scroll_offsets[session_id] > 0` (user is scrolled back), the offset MUST be
-///   incremented by the number of new scrollback rows generated by `parser.process(&bytes)`.
-///   Algorithm: read `before = parser.screen().scrollback_len()` BEFORE `process`, call
-///   `parser.process(&bytes)`, read `after = parser.screen().scrollback_len()` AFTER,
-///   compute `delta = after.saturating_sub(before)`, then:
-///     `pty_scroll_offsets[session_id] = min(after, pty_scroll_offsets[session_id] + delta)`.
-///   When `pty_scroll_offsets[session_id] == 0` (live tail): no adjustment — offset stays 0.
-///   Rationale: vt100 `set_scrollback(N)` is bottom-relative; a static N drifts the viewport
-///   toward newer content as lines arrive. Content-anchored semantics pin the viewport to the
-///   content rows the user is reading, matching iTerm2, tmux, kitty, wezterm, and Alacritty.
-///   See BC-2.09.007 PC-5 for the authoritative normative specification.
+/// - `PtyScrollUp` action increments offset (bounded by current history depth via the
+///   `set_scrollback(MAX)` read-back probe — explicit-scroll clamp above).
+/// - `PtyScrollDown` action decrements (floor 0); after decrement, call
+///   `set_scrollback(new_offset)` so vt100's internal offset is consistent.
+/// - On new `PtyOutput` while scrolled back: use the vt100-native algorithm above.
 /// - On `ResizePane` IPC (pane area changed): `pty_scroll_offsets[session_id]` is reset to
 ///   0 (live tail). Rationale: a resize reflows content; the old offset is meaningless against
 ///   the new layout; snapping to live tail is the least-surprising behavior (matches most
@@ -235,6 +306,8 @@ struct App {
 ///   is read from its own entry in `pty_scroll_offsets` — the offset is preserved from the
 ///   last time that session was focused. O(1) switch cost unchanged.
 /// - On `StateChanged::Terminated` for a session: `pty_scroll_offsets.remove(session_id)`.
+///
+/// See BC-2.09.007 PC-5 for the authoritative normative specification.
 ```
 
 **Canonical default dimensions constant (F-S039-P2-004 RULING):**
@@ -1548,13 +1621,22 @@ AND `pending_pty_drop_count[focused] > 0`, the status bar line MUST contain both
 Suppression is a silent correctness failure — the user would believe they are at live tail
 when they are not. See BC-2.09.007 PC-4.
 
-**Content-anchored offset preservation (S-043 Adversarial Pass-1 ruling, v1.15.0):**
+**Content-anchored offset preservation (v1.16.0 — vt100-native algorithm, NORMATIVE):**
 
 When new `PtyOutput` arrives for a session where `pty_scroll_offsets[session_id] > 0`,
-the offset MUST be adjusted to keep the viewport content-anchored. See §Scrollback offset
-invariants above for the normative algorithm. The authoritative specification is
-BC-2.09.007 PC-5. Implementation MUST use the before/after `scrollback_len()` delta pattern
-— NOT preserve the numeric offset unchanged and NOT reset to 0.
+the offset MUST be adjusted to keep the viewport content-anchored using vt100's native
+mechanism. The normative algorithm is specified in §Scrollback offset invariants above.
+The authoritative behavioral specification is BC-2.09.007 PC-5.
+
+Implementation MUST use the vt100-native restore-process-readback pattern:
+  1. `set_scrollback(stored_offset)` before `process()`.
+  2. `process(&bytes)` — vt100 auto-advances the offset.
+  3. Read back `scrollback()` and store as the new offset.
+
+Implementation MUST NOT use the before/after `scrollback_len()` delta probe (the v1.15.0
+algorithm). That algorithm fails at cap (delta == 0 forever → offset never adjusts →
+viewport drifts). See §Trace v1.16.0 and §Scrollback offset invariants for the full
+technical explanation and grounding against vt100-0.16.2 source.
 
 **O4 — Scrollback memory bound (includes per-cell styled-attribute size):**
 
@@ -1752,6 +1834,69 @@ Mitigation: integration tests use a PTY fixture corpus from `embedded-pty-evalua
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.16.0
+
+**S-043 Adversarial Pass-4 + vt100-0.16.2 source grounding — correct content-anchored scrollback algorithm; scrollback_len() delta probe RETIRED** (2026-06-21):
+
+**Root cause confirmed (BLOCKER — normative algorithm was wrong):**
+
+The v1.15.0 algorithm specified reading `before = parser.screen().scrollback_len()` before
+`process()` and `after = parser.screen().scrollback_len()` after, computing
+`delta = after.saturating_sub(before)`, and advancing the offset by `delta`. This algorithm
+has a critical failure at scrollback cap:
+
+- `Screen::scrollback_len()` returns the HISTORY DEPTH (number of stored rows), NOT the
+  viewport offset. At cap (history length == `scrollback_len`), depth is stable across any
+  `process()` call: depth_before == depth_after == scrollback_len → delta == 0 → the offset
+  was never adjusted → the viewport drifted toward newer content with every incoming output
+  line. This is the exact failure content-anchoring exists to prevent.
+- Additionally, calling `set_scrollback(usize::MAX)` as a probe CLOBBERS vt100's internal
+  `scrollback_offset`, suppressing vt100's own native content-anchoring logic.
+
+**vt100-0.16.2 source verification (authoritative ground truth):**
+
+- `Screen::scrollback() -> usize` returns `scrollback_offset` (the VIEWPORT OFFSET; 0 == live
+  bottom). It does NOT return history depth. This is the correct field for the monocle stored
+  offset: read it back after `process()` to get the new content-anchored position.
+- `set_scrollback(n)` sets `scrollback_offset = n.min(scrollback.len())`.
+- `Grid::scroll_up` (grid.rs:571-574): when `scrollback_offset > 0` and a row is pushed to
+  history, vt100 executes `scrollback_offset = scrollback.len().min(scrollback_offset + 1)`.
+  This is vt100's NATIVE content-anchoring — auto-advance by 1 per row, clamped to history.
+  It is correct below cap AND at cap.
+- At cap: history length is stable, but `scrollback_offset` still advances per row pushed
+  (clamped to `scrollback_len`). Example matching BC-2.09.007 canonical vector:
+  stored offset 990 + 20 rows pushed → vt100 advances to 1000 (clamped). Correct.
+- vt100 exposes NO monotonic rows-appended counter and NO scroll callback.
+  `scrollback_len` (the configured capacity) has no public getter; track it TUI-side.
+
+**Corrected algorithm (NORMATIVE — see §Scrollback offset invariants):**
+
+On each `PtyOutput` while `pty_scroll_offsets[session_id] > 0`:
+  1. `parser.screen_mut().set_scrollback(stored_offset)` — restore the stored position.
+  2. `parser.process(&bytes)` — vt100 auto-advances the offset natively.
+  3. `pty_scroll_offsets[session_id] = parser.screen().scrollback()` — read back new offset.
+
+When stored offset == 0: no `set_scrollback` call needed (offset stays at live bottom).
+
+The `set_scrollback(MAX)` + readback idiom is retained ONLY for the explicit-scroll clamp
+(`handle_pty_scroll_up`). It is the correct way to discover the current capped history depth
+for bounding a user-initiated scroll-up. This usage does NOT conflict with the new-output
+anchor algorithm — they run at separate call sites.
+
+**Downstream cascade required:**
+
+- BC-2.09.007 PC-5 and §Trace Ruling 2 reference the before/after `scrollback_len()` delta
+  algorithm. Product-owner MUST cascade the corrected algorithm into BC-2.09.007 in a
+  follow-on burst. The new SS-embedded-pty version to cite in BC-2.09.007 inputs[] is
+  `v1.16.0`. This is a product-owner obligation; the architect does not edit BC files.
+- S-043 inputs[] pin for SS-embedded-pty must be updated from v1.15.0 → v1.16.0 by
+  story-writer in the next S-043 pass.
+
+- Version bump: v1.15.0 → v1.16.0 (normative: wrong algorithm in §Scrollback offset
+  invariants replaced with vt100-native restore-process-readback; §Scrollback navigation
+  updated; vt100 API semantics documented with source grounding; cap-eviction reality noted;
+  explicit-scroll clamp correctness confirmed).
 
 ## §Trace v1.15.0
 

@@ -130,9 +130,9 @@ SS-session-manager:
 
 SS-embedded-pty:
   path: specs/architecture/SS-embedded-pty.md
-  current_version: "1.15.0"
-  last_bump_commit: "[S-043 Adversarial Pass-1 rulings — content-anchored scrollback + status-bar concurrent badges; §Scrollback offset invariants algorithm + §Scrollback navigation updated]"
-  last_bump_date: "2026-06-22"
+  current_version: "1.16.0"
+  last_bump_commit: "[S-043 Adversarial Pass-4 + vt100-0.16.2 grounding — BLOCKER fix: scrollback_len() delta probe RETIRED; vt100-native restore-process-readback algorithm; scrollback() is viewport offset, not depth; cap-eviction reality documented]"
+  last_bump_date: "2026-06-21"
 
 SS-engine-module-v2-delta:
   path: specs/architecture/SS-engine-module-v2-delta.md
@@ -974,7 +974,7 @@ S-038-session-manager-hook-injection:
 S-040-keyboard-forwarding:
   path: stories/S-040-keyboard-forwarding.md
   current_version: "1.8"
-  last_bump_commit: "[S-040 pass-6 adversarial fixes — ADV-MED-001 Esc Press-only guard + ADV-LOW-001/002 doc-comment corrections; BC-2.09.002 v1.2.2, BC-2.09.004 v1.0.11, SS-embedded-pty v1.14.0 pins]"
+  last_bump_commit: "[S-040 pass-6 adversarial fixes — ADV-MED-001 Esc Press-only guard + ADV-LOW-001/002 doc-comment corrections; BC-2.09.002 v1.2.2, BC-2.09.004 v1.0.11, SS-embedded-pty v1.14.0 pins]" # version-pin-historical
   last_bump_date: "2026-06-21"
 
 S-046-pty-output-fan-out:
