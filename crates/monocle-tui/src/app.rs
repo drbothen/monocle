@@ -682,7 +682,11 @@ pub fn on_pty_output(app: &mut App, session_id: String, bytes: Vec<u8>) {
     //   5. new_offset = (current_offset + new_rows).min(new_scrollback_len).
     //
     // When offset == 0 (live tail): no adjustment — live tail is never disturbed (AC-008).
-    let current_offset = app.pty_scroll_offsets.get(&session_id).copied().unwrap_or(0);
+    let current_offset = app
+        .pty_scroll_offsets
+        .get(&session_id)
+        .copied()
+        .unwrap_or(0);
 
     if current_offset > 0 {
         // Probe scrollback_len BEFORE process() by set_scrollback sentinel + read-back.
@@ -705,7 +709,9 @@ pub fn on_pty_output(app: &mut App, session_id: String, bytes: Vec<u8>) {
 
         // Compute new-row delta and update offset (saturating to prevent overflow).
         let new_rows = scrollback_after.saturating_sub(scrollback_before);
-        let new_offset = current_offset.saturating_add(new_rows).min(scrollback_after);
+        let new_offset = current_offset
+            .saturating_add(new_rows)
+            .min(scrollback_after);
         app.pty_scroll_offsets.insert(session_id, new_offset);
     } else {
         // Live tail (offset == 0): process bytes only; no offset adjustment.
