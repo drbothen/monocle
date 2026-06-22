@@ -392,7 +392,9 @@ pub enum Action {
     ///
     /// Only active in `AppMode::EmbeddedTerminal`. Increments
     /// `App::pty_scroll_offsets[focused_session_id]` toward older lines and clamps
-    /// at the maximum available scrollback rows (`screen().scrollback_len()`).
+    /// at the maximum available scrollback rows (determined by the
+    /// `set_scrollback(usize::MAX)` read-back probe — vt100 clamps the value
+    /// internally and `screen().scrollback()` returns the actual maximum).
     /// Does NOT send any IPC message — scrollback is a TUI-local viewport operation
     /// (BC-2.09.007 Postcondition 3).
     PtyScrollUp,
