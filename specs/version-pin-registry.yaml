@@ -130,9 +130,9 @@ SS-session-manager:
 
 SS-embedded-pty:
   path: specs/architecture/SS-embedded-pty.md
-  current_version: "1.16.0"
-  last_bump_commit: "[S-043 Adversarial Pass-4 + vt100-0.16.2 grounding — BLOCKER fix: scrollback_len() delta probe RETIRED; vt100-native restore-process-readback algorithm; scrollback() is viewport offset, not depth; cap-eviction reality documented]"
-  last_bump_date: "2026-06-21"
+  current_version: "1.17.0"
+  last_bump_commit: "[OBS-001 (S-041 Adv-Pass-1) — EnableMouseCapture enables 1003; Moved IS reachable on Unix; spec-accuracy-only fix]"
+  last_bump_date: "2026-06-22"
 
 SS-engine-module-v2-delta:
   path: specs/architecture/SS-engine-module-v2-delta.md
@@ -815,9 +815,9 @@ BC-2.09.002:
 
 BC-2.09.003:
   path: specs/behavioral-contracts/ss-09/BC-2.09.003.md
-  current_version: "1.5.4"
-  last_bump_commit: "[S-040 POL-11 cascade — arch-source pin SS-embedded-pty v1.10.0→v1.11.0; all active inline citations updated]" # version-pin-historical
-  last_bump_date: "2026-06-20"
+  current_version: "1.6.0"
+  last_bump_commit: "[OBS-001 (S-041 Adv-Pass-1) — EnableMouseCapture enables 1003; Moved IS reachable on Unix; Invariant 3 rewritten; PC-2 + Invariant 4 UNREACHABLE claim corrected]"
+  last_bump_date: "2026-06-22"
 
 BC-2.09.004:
   path: specs/behavioral-contracts/ss-09/BC-2.09.004.md
@@ -839,9 +839,9 @@ BC-2.09.006:
 
 BC-2.09.007:
   path: specs/behavioral-contracts/ss-09/BC-2.09.007.md
-  current_version: "1.5.0"
-  last_bump_commit: "[S-043 Pass-4 correction: PC-5 + Trace-Ruling-2 corrected to vt100-native content-anchoring; SS-embedded-pty pin v1.15.0→v1.16.0; 990+20→1000 vector attribution fixed]"
-  last_bump_date: "2026-06-21"
+  current_version: "1.5.1"
+  last_bump_commit: "[OBS-001 cascade (S-041 Adv-Pass-1) — SS-embedded-pty pin refresh v1.16.0→v1.17.0; no behavioral change]"
+  last_bump_date: "2026-06-22"
 
 BC-2.09.008:
   path: specs/behavioral-contracts/ss-09/BC-2.09.008.md
@@ -1069,8 +1069,8 @@ S-039-pty-output-pipeline:
 
 S-041-mouse-forwarding-sgr:
   path: stories/S-041-mouse-forwarding-sgr.md
-  current_version: "1.1"
-  last_bump_commit: "[S-041 pin refresh — BC-2.09.003 1.5.2→1.5.4; SS-embedded-pty 1.7.0→1.16.0; body refs verified accurate against v1.16.0 (scrollback-focused bump; mouse sections unchanged)]"
+  current_version: "1.2"
+  last_bump_commit: "[OBS-001 (S-041 Adv-Pass-1) — EnableMouseCapture enables 1003; Moved IS reachable; inputs pins updated BC-2.09.003→1.6.0 SS-embedded-pty→1.17.0; AC-008/task/arch-rules corrected]"
   last_bump_date: "2026-06-22"
 
 S-042-resize-debounce-resizepane:
@@ -1082,7 +1082,7 @@ S-042-resize-debounce-resizepane:
 S-043-scrollback-navigation:
   path: stories/S-043-scrollback-navigation.md
   current_version: "1.5"
-  last_bump_commit: "[BC-2.09.007 v1.5.0 + SS-embedded-pty v1.16.0 cascade: inputs[] pins updated; AC-008 rewritten to vt100-native three-step (set_scrollback→process→readback); AC-014 aligned; arch-compliance updated; on_pty_output task corrected; EC-246 added (content-anchor clamp-at-cap 990+20→1000)]"
+  last_bump_commit: "[BC-2.09.007 v1.5.0 + SS-embedded-pty v1.16.0 cascade: inputs[] pins updated; AC-008 rewritten to vt100-native three-step (set_scrollback→process→readback); AC-014 aligned; arch-compliance updated; on_pty_output task corrected; EC-246 added (content-anchor clamp-at-cap 990+20→1000)]" # version-pin-historical
   last_bump_date: "2026-06-21"
 
 S-044-appmode-transitions-permission-badge:

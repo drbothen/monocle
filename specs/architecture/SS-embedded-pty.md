@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "embedded-pty"
 subsystem: SS-09
-version: "1.16.0"
+version: "1.17.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -1486,20 +1486,24 @@ pub fn mouse_event_to_pty_bytes(
 
     // SGR mouse mode (1006): CSI < Ps ; Px ; Py M (press/motion) / m (release)
     //
-    // Mouse tracking mode: crossterm's EnableMouseCapture enables button-event tracking
-    // (xterm mode 1002) + SGR encoding (1006). It does NOT enable any-event tracking
-    // (mode 1003). The additional explicit `\x1b[?1006h` write at EmbeddedTerminal entry
-    // ensures SGR mode is active regardless of crossterm internals.
+    // Mouse tracking mode: crossterm's EnableMouseCapture emits ALL FIVE modes:
+    //   CSI ?1000h  — Normal (X10) tracking: press + release reports
+    //   CSI ?1002h  — Button-event tracking: motion while a button is held (Drag variants)
+    //   CSI ?1003h  — Any-event tracking: ALL motion including no-button (Moved variant)
+    //   CSI ?1015h  — RXVT extended coordinates (>223 columns/rows)
+    //   CSI ?1006h  — SGR extended coordinates (preferred; used for encoding here)
+    // Source: crossterm src/event.rs lines 321-334 (EnableMouseCapture::write_ansi).
+    // The additional explicit `\x1b[?1006h` write at EmbeddedTerminal entry ensures SGR
+    // mode is active regardless of crossterm internals.
     //
-    // Consequence for Moved: in mode 1002 (no 1003), terminals do NOT report no-button
-    // motion events on Unix. MouseEventKind::Moved is therefore unreachable on Unix in
-    // EmbeddedTerminal. It may be reachable on Windows (WinAPI console mouse input).
-    // The arm is retained for exhaustiveness and encoded correctly as 35 (3+32).
+    // Because mode 1003 IS enabled, MouseEventKind::Moved (no-button motion, Ps=35) IS
+    // reachable on Unix when the terminal emulator honours mode 1003. Both Moved and
+    // Drag arms are live paths on Unix.
     //
     // Complete Ps encoding table (base values before modifier bits):
     //   Buttons:   0 = left,   1 = middle,  2 = right   (Down/Up)
     //   Drag:     32 = left,  33 = middle, 34 = right   (Drag; btn_base + 32)
-    //   Motion:   35 = no-button motion                  (Moved; 3+32; unreachable on Unix)
+    //   Motion:   35 = no-button motion                  (Moved; 3+32; reachable on Unix via mode 1003)
     //   Scroll:   64 = up, 65 = down, 66 = left, 67 = right
     //   Modifier bits added to Ps: Shift|=4, Alt|=8, Ctrl|=16
     //   Terminator: 'M' for press/drag/scroll/motion, 'm' for release
@@ -1533,7 +1537,7 @@ pub fn mouse_event_to_pty_bytes(
         MouseEventKind::ScrollUp   => (64u32, b'M'),
         MouseEventKind::ScrollDown => (65u32, b'M'),
         // Moved: no-button motion. Ps = 3 + 32 = 35.
-        // Unreachable on Unix in 1002 mode (no 1003); retained for exhaustiveness + Windows.
+        // Reachable on Unix: EnableMouseCapture enables mode 1003 (any-event tracking).
         MouseEventKind::Moved      => (35u32, b'M'),
         // Horizontal scroll: encode as left (66) / right (67) per xterm convention.
         MouseEventKind::ScrollLeft  => (66u32, b'M'),
@@ -1834,6 +1838,32 @@ Mitigation: integration tests use a PTY fixture corpus from `embedded-pty-evalua
 BC IDs are proposals; product-owner assigns canonical IDs in the PRD delta.
 
 ---
+
+## §Trace v1.17.0
+
+**OBS-001 resolution (S-041 Adversarial-Pass-1) — `EnableMouseCapture` enables 1003 (any-event); `Moved` IS reachable on Unix** (2026-06-22):
+
+**Root cause confirmed:** The `mouse_event_to_pty_bytes` spec comment stated `EnableMouseCapture` enables only mode 1002 (button-event tracking) and NOT mode 1003 (any-event tracking), making `MouseEventKind::Moved` unreachable on Unix. This was factually wrong.
+
+**Ground truth from crossterm vendored source** (`src/event.rs` lines 321-334, crossterm-0.29.0):
+`EnableMouseCapture::write_ansi()` emits:
+```
+CSI ?1000h   Normal (X10) tracking
+CSI ?1002h   Button-event tracking (motion while button held)
+CSI ?1003h   Any-event tracking (ALL motion including no-button)
+CSI ?1015h   RXVT extended coordinates
+CSI ?1006h   SGR extended coordinates
+```
+Mode 1003 IS enabled. Terminals that honour 1003 will report no-button motion, producing `MouseEventKind::Moved`. The prior claim that "It does NOT enable any-event tracking (mode 1003)" was incorrect.
+
+**Fixes applied:**
+- Comment block at `mouse_event_to_pty_bytes` (formerly lines 1489-1496): replaced with accurate five-mode documentation citing crossterm source file and lines.
+- `Moved` arm inline comment (formerly line 1536): `Unreachable on Unix` → `Reachable on Unix: EnableMouseCapture enables mode 1003`.
+- BC-2.09.003 mirrored: Invariant 3, PC-2 Moved row, Invariant 4 all corrected (v1.5.4 → v1.6.0).
+
+**Code impact:** None. The `Moved => (35u32, b'M')` implementation was always correct; this is a spec-accuracy-only fix.
+
+Semver: patch (v1.16.0 → v1.17.0) — comment/spec-accuracy correction, no normative algorithm change.
 
 ## §Trace v1.16.0
 

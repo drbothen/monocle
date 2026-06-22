@@ -1,12 +1,12 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.0"
+version: "1.5.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-21T00:00:00Z
 phase: v1A-prd-delta
-inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md@v1.16.0]
+inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md@v1.17.0]
 input-hash: "3e74bba"
 traces_to: prd.md
 origin: greenfield
@@ -183,7 +183,7 @@ widget renderer. Scrollback capacity is configurable via
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — scrollback is part of the embedded PTY widget capability; it enables users to review previous output without leaving EmbeddedTerminal mode |
 | Architecture Module | monocle-tui (`App::pty_scroll_offsets`, `pty_parsers`, PtyScrollUp/Down action handlers) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md v1.16.0 §Scrollback offset invariants (vt100-native content-anchoring algorithm, corrected); §Parser ownership in TUI; §Parser initialization (PTY_DEFAULT_ROWS/COLS, F-S039-P2-004) |
+| Architecture Source | SS-embedded-pty.md v1.17.0 §Scrollback offset invariants (vt100-native content-anchoring algorithm, corrected); §Parser ownership in TUI; §Parser initialization (PTY_DEFAULT_ROWS/COLS, F-S039-P2-004) |
 | Test Name | test_BC_2_09_007_scrollback_1000_default_configurable |
 
 ## Related BCs
@@ -201,6 +201,16 @@ S-043 — Implement scrollback navigation in monocle-tui
 ## VP Anchors
 
 VP-TBD — Scrollback offset unit tests (filled after VP creation)
+
+## §Trace v1.5.1
+
+**OBS-001 cascade (S-041 Adv-Pass-1) — SS-embedded-pty pin refresh v1.16.0 → v1.17.0** (2026-06-22):
+- SS-embedded-pty bumped to v1.17.0 (OBS-001 resolution: mouse tracking mode comment corrected
+  in `mouse_event_to_pty_bytes`). The scrollback sections cited by this BC (§Scrollback offset
+  invariants, §Parser ownership in TUI, §Parser initialization) were NOT modified. This is a
+  mechanical POL-11 pin cascade — no behavioral content changed.
+- inputs[] and Architecture Source row updated to v1.17.0.
+- Patch bump: 1.5.0 → 1.5.1 (pin-only; no normative content change).
 
 ## §Trace v1.5.0
 

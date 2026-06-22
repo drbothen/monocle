@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-041
 epic_id: EPIC-09
-version: "1.1"
+version: "1.2"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-15T00:00:00Z
@@ -20,8 +20,8 @@ behavioral_contracts: [BC-2.09.003]
 verification_properties: []
 estimated_days: 3
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.003.md, version: "1.5.4"}
-  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.16.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.003.md, version: "1.6.0"}
+  - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.17.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
@@ -78,7 +78,7 @@ mouse mode `CSI < Ps_final ; Px ; Py M` (press/drag/scroll/moved) or `CSI < Ps_f
   - `Down(Left)=0`, `Down(Middle)=1`, `Down(Right)=2` (terminator `M`)
   - `Up(Left)=0`, `Up(Middle)=1`, `Up(Right)=2` (terminator `m`)
   - `Drag(Left)=32`, `Drag(Middle)=33`, `Drag(Right)=34` (terminator `M`)
-  - `Moved=35` (`3+32`; UNREACHABLE on Unix under 1002 tracking; retained for match-exhaustiveness and Windows)
+  - `Moved=35` (`3+32`; REACHABLE on Unix — `EnableMouseCapture` enables mode 1003 (any-event tracking) in addition to 1002)
   - `ScrollUp=64`, `ScrollDown=65`, `ScrollLeft=66`, `ScrollRight=67` (terminator `M`)
 - Modifier bits additive: `Shift |= 4`, `Alt |= 8`, `Ctrl |= 16`. `Ps_final = base_Ps | modifier_bits`.
 - Coordinate convention (1-indexed): `Px = col - pane_area.x + 1`, `Py = row - pane_area.y + 1`.
@@ -104,12 +104,14 @@ in S-040's `monocle-core/src/keyboard.rs`), NOT `crossterm::event::MouseEvent` o
 The `monocle-tui` dispatch site converts crossterm/ratatui types via `keyboard_conv::crossterm_mouse_to_pty()`
 and `keyboard_conv::ratatui_rect_to_pty()` before calling this function (F-P2-I06 ruling).
 
-### AC-008 (traces to BC-2.09.003 invariant 3 — 1002 button-event tracking; Moved unreachable on Unix)
+### AC-008 (traces to BC-2.09.003 invariant 3 — crossterm EnableMouseCapture enables 1000+1002+1003+1015+1006; Moved IS reachable on Unix)
 
-`EnableMouseCapture` enables mode 1002 (button-event tracking) — NOT 1003 (any-event tracking).
-`MouseEventKind::Moved` (Ps=35, no-button motion) is UNREACHABLE on Unix in 1002 mode. It is
-encoded correctly in the match arm (Ps=35) for Rust exhaustiveness and Windows correctness but
-MUST NOT appear in production Unix inputs.
+`EnableMouseCapture` (crossterm `src/event.rs` lines 321-334) emits all five tracking modes:
+`CSI ?1000h` (normal), `CSI ?1002h` (button-event — Drag variants), `CSI ?1003h` (any-event —
+Moved variant), `CSI ?1015h` (RXVT coords), `CSI ?1006h` (SGR coords). Because mode 1003 IS
+enabled, `MouseEventKind::Moved` (Ps=35, no-button motion) IS reachable on Unix when the terminal
+emulator honours mode 1003. Both `Moved` and `Drag` arms in `mouse_event_to_pty_bytes()` are live
+code paths on Unix.
 
 ### AC-009 (traces to BC-2.09.003 edge case EC-220 — click at (row=0, col=0) within pane → SGR Px=1, Py=1)
 
@@ -127,7 +129,7 @@ No bytes sent.
 
 ## Tasks
 
-- [ ] Implement `mouse_event_to_pty_bytes(event: PtyMouseEvent, pane_area: PtyRect) -> Option<Vec<u8>>` in `crates/monocle-core/src/keyboard.rs` (alongside key functions) per the complete base-Ps table and modifier-bit additive rule. Uses `PtyMouseEvent` and `PtyRect` (core-owned types from S-040). Includes `Drag(btn)` arm (Ps = btn_base + 32) and `Moved` arm (Ps=35; UNREACHABLE on Unix — document in comment).
+- [ ] Implement `mouse_event_to_pty_bytes(event: PtyMouseEvent, pane_area: PtyRect) -> Option<Vec<u8>>` in `crates/monocle-core/src/keyboard.rs` (alongside key functions) per the complete base-Ps table and modifier-bit additive rule. Uses `PtyMouseEvent` and `PtyRect` (core-owned types from S-040). Includes `Drag(btn)` arm (Ps = btn_base + 32) and `Moved` arm (Ps=35; reachable on Unix via mode 1003 enabled by EnableMouseCapture — document in comment).
 - [ ] Extend `crates/monocle-tui/src/keyboard_conv.rs` (created in S-040) with TWO new conversion functions per SS-embedded-pty.md §Conversion in monocle-tui: `crossterm_mouse_to_pty(e: crossterm::event::MouseEvent) -> PtyMouseEvent` and `ratatui_rect_to_pty(r: ratatui::layout::Rect) -> PtyRect`. These are the only additional crossterm/ratatui types that may appear in `keyboard_conv.rs` — confined to this file.
 - [ ] Add `Event::Mouse(event)` dispatch arm in the `EmbeddedTerminal` event loop section of `crates/monocle-tui/src/event_loop.rs`: convert via `keyboard_conv::crossterm_mouse_to_pty(event)` and `keyboard_conv::ratatui_rect_to_pty(pane_area)`, then call `mouse_event_to_pty_bytes(pty_event, pty_rect)`; if `Some(bytes)`, send `ClientToServer::KeyInput { session_id, bytes }`.
 - [ ] Extend `App::enter_embedded_terminal()` in `crates/monocle-tui/src/app.rs` with the scoped entry sequence: `EnableMouseCapture` then `print!("\x1b[?1006h")`.
@@ -146,7 +148,7 @@ No bytes sent.
 
 - **S-040** (keyboard forwarding): `App::enter_embedded_terminal()` and `App::exit_embedded_terminal()` skeletons exist (created in S-039). S-040 added the Kitty keyboard setup but explicitly deferred `EnableMouseCapture` to this story. The EmbeddedTerminal event dispatch arm exists; add `Event::Mouse` arm to it.
 - **S-039** (PTY output pipeline): `App::last_pty_pane_area: Rect` needs to be added if not already present — the render loop must record the pane `Rect` so the mouse event handler can use it. Confirm whether this was added; if not, add it in this story.
-- The `Moved` arm unreachability on Unix is intentional and MUST be documented with a comment. Do not remove it (Rust match exhaustiveness on a non-exhaustive enum).
+- The `Moved` arm IS reachable on Unix (crossterm enables mode 1003 which delivers no-button motion). It MUST be encoded correctly as Ps=35 and documented with a comment citing the OBS-001 finding. Do not remove it (Rust match exhaustiveness on a non-exhaustive enum).
 
 ## Architecture Compliance Rules
 
@@ -156,7 +158,7 @@ No bytes sent.
 - Scoped-capture invariant: `EnableMouseCapture` is NOT called at TUI startup. ANY change to global mouse capture requires human sign-off on CC-GLOBAL-MOUSE-CAPTURE per ADR and SS-embedded-pty.md §I3 UX tradeoff.
 - Coordinate indexing: 1-indexed output (`px = col - pane_area.x + 1`, `py = row - pane_area.y + 1`). The crossterm coordinate is 0-indexed terminal-window-relative; the SGR output is 1-indexed pane-relative.
 - The `Drag(btn)` match arm is NON-OPTIONAL. Its absence is a compile error (non-exhaustive match on a non-`#[non_exhaustive]` enum variant). Ps values: `Drag(Left)=32`, `Drag(Middle)=33`, `Drag(Right)=34`.
-- Forbidden: do NOT enable mode 1003 (any-event tracking). Only 1002 (via `EnableMouseCapture`) + 1006 (SGR via explicit `\x1b[?1006h` write).
+- Note: `EnableMouseCapture` already enables mode 1003 (any-event tracking) in addition to 1002. Do NOT add an additional explicit `\x1b[?1003h` write — it is already covered by `EnableMouseCapture`. The explicit additional write is only for SGR mode (`\x1b[?1006h`).
 
 ## Library and Framework Requirements
 
