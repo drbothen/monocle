@@ -1081,8 +1081,8 @@ S-042-resize-debounce-resizepane:
 
 S-043-scrollback-navigation:
   path: stories/S-043-scrollback-navigation.md
-  current_version: "1.4"
-  last_bump_commit: "[OBS-001 cascade: replace nonexistent screen().scrollback_len() references with read-back probe description in AC-002/AC-004/AC-008/AC-012/AC-014/tasks/arch-compliance/library-table/EC-240; BC-2.09.007 input version → 1.4.1]"
+  current_version: "1.5"
+  last_bump_commit: "[BC-2.09.007 v1.5.0 + SS-embedded-pty v1.16.0 cascade: inputs[] pins updated; AC-008 rewritten to vt100-native three-step (set_scrollback→process→readback); AC-014 aligned; arch-compliance updated; on_pty_output task corrected; EC-246 added (content-anchor clamp-at-cap 990+20→1000)]"
   last_bump_date: "2026-06-21"
 
 S-044-appmode-transitions-permission-badge:
