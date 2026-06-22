@@ -1,10 +1,10 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.40"
+version: "1.41"
 status: active
 producer: vsdd-factory:state-manager
-timestamp: 2026-06-20T00:00:00Z
+timestamp: 2026-06-22T00:00:00Z
 phase: 2
 visibility: holdout-evaluator-only
 inputs:
@@ -28,7 +28,7 @@ inputs:
   - {path: .factory/stories/S-039-pty-output-pipeline.md, version: "1.8"}
   - {path: .factory/stories/S-040-keyboard-forwarding.md, version: "1.8"}
   - {path: .factory/stories/S-041-mouse-forwarding-sgr.md, version: "1.0"}
-  - {path: .factory/stories/S-042-resize-debounce-resizepane.md, version: "1.5"}
+  - {path: .factory/stories/S-042-resize-debounce-resizepane.md, version: "1.6"}
   - {path: .factory/stories/S-043-scrollback-navigation.md, version: "1.1"}
   - {path: .factory/stories/S-044-appmode-transitions-permission-badge.md, version: "1.1"}
   - {path: .factory/stories/S-045-claude-code-spawn-recipe.md, version: "1.3"}

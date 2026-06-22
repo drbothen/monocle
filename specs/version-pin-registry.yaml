@@ -210,9 +210,9 @@ BC-INDEX:
 
 STORY-INDEX:
   path: stories/STORY-INDEX.md
-  current_version: "5.62"
-  last_bump_commit: "[Human ruling: S-042 full resize pipeline; points 5→8; Wave 9 42→45 pts; total 311→314; BC-2.09.006 coverage single-owner S-042]"
-  last_bump_date: "2026-06-21"
+  current_version: "5.63"
+  last_bump_commit: "[D-345: S-042 MERGED PR #51 @ 2f01de0; S-042 status draft→done; Wave 9 3/6 done (24/45 pts); 41/51 stories done (254/314 pts)]"
+  last_bump_date: "2026-06-22"
 
 VP-INDEX:
   path: specs/verification-properties/VP-INDEX.md
@@ -228,15 +228,15 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.40"
-  last_bump_commit: "[Human ruling cascade: S-042 v1.4→v1.5, S-047 v1.6→v1.7 input pin updates]"
+  current_version: "1.41"
+  last_bump_commit: "[D-345: S-042 story pin v1.5→v1.6 (status done); input cascade]"
   last_bump_date: "2026-06-21"
 
 sprint-state:
   path: stories/sprint-state.yaml
-  current_version: "1.55"
-  last_bump_commit: "[Human ruling: S-042 points 5→8; wave_9_points 42→45; total_points 311→314]"
-  last_bump_date: "2026-06-21"
+  current_version: "1.56"
+  last_bump_commit: "[D-345: S-042 MERGED; status draft→done; done 40→41; draft 10→9; points_complete 246→254; Wave 9 3/6 done (24/45 pts)]"
+  last_bump_date: "2026-06-22"
 
 nfr-catalog:
   path: specs/prd-supplements/nfr-catalog.md
@@ -1075,9 +1075,9 @@ S-041-mouse-forwarding-sgr:
 
 S-042-resize-debounce-resizepane:
   path: stories/S-042-resize-debounce-resizepane.md
-  current_version: "1.5"
-  last_bump_commit: "[Human ruling: full end-to-end resize; points 5→8; AC-013..AC-016 (daemon leg); File Structure adds ipc_server.rs + session_manager/mod.rs + monocle-session-host; daemon tests + run-loop wiring test added]"
-  last_bump_date: "2026-06-21"
+  current_version: "1.6"
+  last_bump_commit: "[D-345: S-042 MERGED PR #51 @ 2f01de0; status draft→done; timestamp updated to 2026-06-22]"
+  last_bump_date: "2026-06-22"
 
 S-043-scrollback-navigation:
   path: stories/S-043-scrollback-navigation.md

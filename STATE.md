@@ -2,18 +2,18 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "8.09"
+version: "8.10"
 status: active
 producer: state-manager
-timestamp: 2026-06-21T00:00:00Z
+timestamp: 2026-06-22T00:00:00Z
 phase: phase-3-v1A-wave-9
-current_step: "D-343 (2026-06-21): Zero-context durability checkpoint. S-042 stubs committed @ 40dd53a (local worktree .worktrees/S-042, branch story/S-042-resize-debounce, NOT pushed to origin). Worktree persists on disk. Next step: test-writer (BC-2.09.006 failing tests). Wave 9: 2/6 done (16/42 pts). 40/51 stories done (246/311 pts). develop HEAD: d230a26. STATE v8.08→v8.09."
-prior_step: "D-342 (2026-06-21): S-040 MERGED to develop via PR #50 @ d230a26 (squash-merge). Full-Fidelity Keyboard Forwarding, 8 pts, EPIC-09, Wave 9, P0. 17-pass adversarial (3 CLEAN: passes 15/16/17). 65 behavioral tests green. Security PASS_WITH_NOTES (0 crit/high, 2 LOW non-blocking). NO admin bypass. develop HEAD: d230a26. STATE v8.07→v8.08."
+current_step: "D-345 (2026-06-22): S-042 MERGED to develop via PR #51 @ 2f01de0 (squash-merge). Full end-to-end PTY Resize Detection + 50ms Debounce + ResizePane IPC. 8 pts, EPIC-09, Wave 9. 9-pass adversarial (3 CLEAN: passes 7/8/9). Security PASS (3 in-scope fixes). Wave 9: 3/6 done (24/45 pts). 41/51 stories done (254/314 pts). develop HEAD: 2f01de0. S-043 UNBLOCKED. STATE v8.09→v8.10."
+prior_step: "D-343 (2026-06-21): Zero-context durability checkpoint. S-042 stubs committed @ 40dd53a (local worktree .worktrees/S-042, branch story/S-042-resize-debounce, NOT pushed to origin). Test-writer next. Wave 9: 2/6 done (16/45 pts). 40/51 stories done (246/314 pts). develop HEAD: d230a26. STATE v8.08→v8.09."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "D-001..D-241 at cycles/cycle-001/decisions-archive.md. D-242..D-338 appended at cycles/cycle-001/decisions-archive.md §Phase-1d+Phase-2+Phase-3. Full durable_task_register YAML (127+ entries) at cycles/cycle-001/task-register-full.yaml."
-awaiting: "S-040 MERGED (D-342). Next: S-042 (resize-debounce, Wave 9) + S-043 (scrollback, Wave 9, depends S-042); S-041 (mouse-forwarding) UNBLOCKED by S-040. SEC-006-CCR-URL-VALIDATION MUST be fixed before S-045. S-046 waits on S-032; S-047 waits on S-033+S-034+S-035+S-046; S-048 waits on S-022+S-033+S-047. F-W8INT-001/002/003 parked for Wave-8 integration gate. WG-S036-001/002 parked for Wave-8/9 integration gate."
+awaiting: "S-042 MERGED (D-345). Next: S-043 (scrollback, Wave 9, UNBLOCKED by S-042); S-041 (mouse-forwarding, UNBLOCKED by S-040). SEC-006-CCR-URL-VALIDATION MUST be fixed before S-045. S-046 waits on S-032; S-047 waits on S-033+S-034+S-035+S-046; S-048 waits on S-022+S-033+S-047. F-W8INT-001/002/003 parked for Wave-8 integration gate. WG-S036-001/002 parked for Wave-8/9 integration gate."
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: 2026-06-03
@@ -21,60 +21,23 @@ dtu_services: [hook-endpoints-x5]
 current_cycle: cycle-001
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v8.09 — 2026-06-21
-  PHASE-3 v1A ACTIVE — WAVE 9 — S-042 IN-PROGRESS (STUBS DONE, TEST-WRITER NEXT)
+  ZERO-CONTEXT RESUME CHECKPOINT v8.10 — 2026-06-22
+  PHASE-3 v1A ACTIVE — WAVE 9 — S-042 DONE, NEXT: S-043 (UNBLOCKED) / S-041 (UNBLOCKED)
   ============================================================================
   POSITION: Phase-3 TDD implementation, v1A control-center scope, Wave 9.
-  STATUS: S-040 MERGED PR #50 @ d230a26 (D-342). develop @ d230a26.
-  40/51 stories done (246/311 pts). Wave 9: 2/6 done (16/42 pts).
+  STATUS: S-042 MERGED PR #51 @ 2f01de0 (D-345). develop @ 2f01de0.
+  41/51 stories done (254/314 pts). Wave 9: 3/6 done (24/45 pts).
   10 workspace crates.
 
-  S-042 IN-FLIGHT — RESUME HERE:
-  Story:    S-042 (PTY Resize Detection + 50ms Debounce + ResizePane IPC, 5 pts, EPIC-09,
-            Wave 9, P0). BC: BC-2.09.006 v1.1.5. SS-embedded-pty v1.14.0.
-  Worktree: /Users/jmagady/Dev/monocle/.worktrees/S-042  (EXISTS on disk)
-  Branch:   story/S-042-resize-debounce  (LOCAL ONLY — not pushed to origin)
-  Base SHA: d230a26  (develop HEAD at worktree creation)
-  Stub SHA: 40dd53a  (LOCAL-ONLY commit on story/S-042-resize-debounce)
-  Stub contents:
-    - monocle-ipc/src/types.rs: added ClientToServer::ResizePane { session_id, rows, cols }
-      wire variant; exhaustive match arms updated across 5 test files.
-    - monocle-runtime/src/ipc_server.rs: handle_resize_pane todo!() + ClientToServer
-      dispatch arm added.
-    - monocle-tui/src/app.rs: App::last_sent_size / resize_debounce_deadline /
-      last_pty_pane_area fields added; on_resize_detected / check_resize_debounce /
-      clear_resize_debounce_state methods as todo!() stubs; last_pty_pane_area capture
-      in render_frame.
-  Red Gate: ENFORCEABLE (4 todo!() bodies); build + clippy (-D warnings) GREEN.
-  Doc-comments: NEUTRAL/forward-looking (PROCESS-GAP-STUB-PHASE-DOCCOMMENTS applied).
-
-  NEXT STEP = Step 2: test-writer
-  Scope for test-writer: write FAILING tests anchored to BC-2.09.006 —
-    AC-001: size-change detection per render cycle
-      (area.rows/cols vs parser.screen().size(); test that TUI detects mismatch)
-    AC-002: ClientToServer::ResizePane sent on 50ms debounce expiry
-      (debounce window expires → ResizePane IPC sent in same render cycle)
-    AC-003: local vt100 Parser set_size called IMMEDIATELY every render — NOT debounced
-      (parser.set_size() fires synchronously on every area mismatch, before debounce)
-    Debounce edge cases: resize mid-window resets the deadline; no resize sent if
-      area returns to original size before window expires.
-    Daemon-side: ResizePane handler → DaemonToHost forwarding (session-host receives
-      SIGWINCH via pty resize path).
-  Read CURRENT spec versions: BC-2.09.006 v1.1.5 + SS-embedded-pty v1.14.0.
-  DO NOT use S-042 story frontmatter inputs[] pins — they are STALE (see below).
-
-  INPUT RE-PIN OBLIGATION (story-writer must re-pin before stub or test dispatch):
-  S-042 inputs[] in the story frontmatter cite:
-    BC-2.09.006.md version: "1.1.3"  — STALE; current is v1.1.5
-    SS-embedded-pty.md  version: "1.7.0"  — STALE; current is v1.14.0
-  Resolution: story-writer re-pins S-042 inputs[] to current versions from
-  version-pin-registry.yaml BEFORE test-writer reads the story spec. Same pattern
-  as S-040 input re-pin performed at start of S-040 delivery cycle.
-
-  WAVE-GATE IPC-WRITER-ERROR-TAXONOMY ITEM (surface at Wave-9 gate):
-  S-042 stub phase identified that the ipc_server ResizePane handler needs
-  error taxonomy alignment with the 12-code wire taxonomy (SS-ipc v1.24.0).
-  Non-blocking for delivery; surface as wave-gate item.
+  NEXT STEP = S-043 (scrollback-navigation) or S-041 (mouse-forwarding) — BOTH UNBLOCKED.
+  S-043 (Scrollback Navigation — PtyScrollUp/Down, Per-Session Offsets, Configurable Capacity,
+         3 pts, EPIC-09, Wave 9). BC: BC-2.09.007 v1.3.2. Deps: S-039 + S-042 — BOTH DONE.
+  S-041 (Mouse Forwarding — mouse_event_to_pty_bytes, SGR 1006 Scoped Entry/Exit, Out-of-Pane Clip,
+         5 pts, EPIC-09, Wave 9). BC: BC-2.09.003. Dep: S-040 — DONE.
+  S-043 and S-041 are independent (no dep between them); can be delivered in parallel or serial.
+  Per-story flow: stub-architect → test-writer (Red Gate) → implementer (TDD) → adversarial
+  (3 consecutive CLEAN) → demo-recorder (WEBM+.tape, NO GIF) → pr-manager (9 steps) →
+  state-manager checkpoint.
 
   HUMAN DIRECTIVE: CONTINUE AUTONOMOUSLY into subsequent ready stories until told
   to stop. Per-story flow + 3-consecutive-CLEAN adversarial convergence + clean
@@ -86,36 +49,36 @@ next_session_resume_protocol: |
   2. /Users/jmagady/Dev/monocle/CLAUDE.md               <- production-grade + routing
   3. This STATE.md (task register table below)          <- task register + history pointers
 
-  CORPUS FACTS (post-S-040-merge, checkpoint D-343):
-  Stories: 51 total / 311 pts (40 done; 10 draft v1A Waves 8-9; 1 blocked)
+  CORPUS FACTS (post-S-042-merge, checkpoint D-345):
+  Stories: 51 total / 314 pts (41 done; 9 draft v1A Waves 8-9; 1 blocked)
   New v1A: S-033..S-048 (16 stories); EPIC-08 Session Manager; EPIC-09 Embedded PTY
-  Waves: 8 (6/12 done, 38/74 pts); 9 (2/6 done, 16/42 pts) — S-042 IN PROGRESS
+  Waves: 8 (6/12 done, 38/74 pts); 9 (3/6 done, 24/45 pts)
 
   KEY VERSION PINS (canonical source: .factory/specs/version-pin-registry.yaml):
-  STORY-INDEX v5.60 | sprint-state v1.54 | wave-schedule v2.1
-  dependency-graph-expansion v2.10 | BC-INDEX v1.44.5 | EVAL-INDEX v1.38
-  ARCH-INDEX v1.0.30 | SS-ipc v1.24.0 | SS-session-manager v2.15.1
+  STORY-INDEX v5.63 | sprint-state v1.56 | wave-schedule v2.1
+  dependency-graph-expansion v2.10 | BC-INDEX v1.44.5 | EVAL-INDEX v1.41
+  ARCH-INDEX v1.0.30 | SS-ipc v1.24.0 | SS-session-manager v2.17.1
   SS-embedded-pty v1.14.0 | SS-config v1.4.0 | SS-engine-module-v2-delta v1.6.0
   SS-daemon-wiring-v2-delta v1.12.0 | SS-deps-pin-manifest-v2-delta v1.0.2
   prd v1.28.3 | product-brief v2.0.4 | domain-monocle-vision-synthesis v2.2.3
   BC-2.09.001 v1.7.3 | BC-2.09.002 v1.2.2 | BC-2.09.004 v1.0.11 | BC-2.09.005 v1.0.7
-  BC-2.09.006 v1.1.5 | BC-2.09.007 v1.3.1 | BC-2.07.002 v1.1.0 | S-039 v1.8 | S-040 v1.8
-  BC-2.08.002 v1.2.6 | BC-2.08.004 v1.4.0 | BC-2.08.006 v1.5.0 | S-036 v1.5
-  S-042 story v1.2 (stale inputs — re-pin before dispatch)
+  BC-2.09.006 v1.3.0 | BC-2.09.007 v1.3.2 | BC-2.07.002 v1.1.0 | S-039 v1.8 | S-040 v1.8
+  BC-2.08.002 v1.2.6 | BC-2.08.004 v1.4.0 | BC-2.08.006 v1.5.0 | S-042 story v1.5
   (Pull the rest from .factory/specs/version-pin-registry.yaml)
 
   NEXT-ACTION QUEUE:
-  1. S-042 (resize+debounce, Wave 9) — IN PROGRESS. Stubs @ 40dd53a. NEXT: test-writer.
-     S-043 depends on S-042; S-041 (mouse-forwarding) UNBLOCKED by S-040.
-     F-S039-P9-OBS-001 (EmbeddedTerminal pane sizing) reconciled by this story.
-  2. S-043 (scrollback, Wave 9) — depends on S-039 + S-042.
-  3. S-041 (mouse-forwarding, Wave 9) — UNBLOCKED by S-040. BC: BC-2.09.003.
-  4. PREREQUISITE GATE: SEC-006-CCR-URL-VALIDATION (CWE-20/93) MUST be fixed
+  1. S-043 (scrollback, Wave 9) — UNBLOCKED (deps S-039 + S-042 both done). BC: BC-2.09.007.
+  2. S-041 (mouse-forwarding, Wave 9) — UNBLOCKED by S-040. BC: BC-2.09.003.
+  3. PREREQUISITE GATE: SEC-006-CCR-URL-VALIDATION (CWE-20/93) MUST be fixed
      before S-045 (ClaudeCodeModule::spawn_recipe CCR URL injection).
-  5. S-046 waits on S-032; S-047 needs S-033+S-034+S-035+S-046;
+  4. S-046 waits on S-032; S-047 needs S-033+S-034+S-035+S-046;
      S-048 needs S-022+S-033+S-047.
-  6. F-W8INT-001/002/003 parked for Wave-8 integration gate; do NOT re-raise
+  5. F-W8INT-001/002/003 parked for Wave-8 integration gate; do NOT re-raise
      as in-scope findings during per-story delivery.
+  6. New follow-ups from S-042: F-S042-OBS-WRITEFRAMED-DOCNAMING,
+     F-S042-OBS-LASTPANEAREA-DOC, WG-S042-SESSIONHOST-KEYINPUT,
+     F-S039-P9-OBS-001 (verify/close at Wave-9 gate).
+     WAVE-GATE-IPC-WRITER-ERROR-TAXONOMY: SUPERSEDED/RESOLVED by D-344 (S-042 WARN-drop carve-out implemented).
 
   PER-STORY FLOW (verbatim — follow exactly):
   stub-architect → test-writer (Red Gate, all fail) → implementer (TDD green) →
@@ -163,8 +126,14 @@ next_session_resume_protocol: |
            Keyboard Forwarding. 17-pass adversarial (3 CLEAN: 15/16/17). 65 tests.
            Security PASS_WITH_NOTES (0 crit/high, 2 LOW). NO admin bypass. Wave 9:
            2/6 done (16/42 pts). 40/51 stories done (246/311 pts).
-  - D-343: Zero-context durability checkpoint. S-042 stubs @ 40dd53a (local worktree).
-           Test-writer next. STATE v8.08→v8.09.
+  - D-344: Human ruling — S-042 expanded to full end-to-end resize pipeline. S-047 ResizePane
+           scope removed. BC-2.09.006 v1.3.0, S-042 v1.5 (8 pts), SS-session-manager v2.17.1
+           (F-S042-ADV-MED-001 ownership-drift cleanup). spec cascade at factory-artifacts
+           22b5836+15d567a. Wave 9: 42→45 pts total.
+  - D-345: S-042 MERGED PR #51 @ 2f01de0. Full end-to-end PTY Resize. 8 pts. 9-pass (3 CLEAN).
+           Security PASS (3 in-scope: SEC-001 CWE-749, SEC-002 CWE-190, SEC-003 CWE-532).
+           NO admin bypass. Wave 9: 3/6 done (24/45 pts). 41/51 done (254/314 pts).
+           develop HEAD: 2f01de0. S-043 UNBLOCKED. STATE v8.09→v8.10.
   - Spawn-path Model A: SpawnOptions on wire; SpawnRecipe daemon-internal
   - IPC: 12-code wire taxonomy; 9-variant SessionError; schema_version 3
   - PTY (ADR-0011): portable-pty 0.9.0 + vt100 0.16.2 + tui-term =0.3.4; MSRV 1.88
@@ -188,7 +157,7 @@ next_session_resume_protocol: |
   wit-bindgen unmatched-skip, PATH isolation flake.
 
   factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'`
-  develop HEAD: d230a26 (S-040 PR #50; a852934 = docs PR #49; 3eba172 = DTU fix PR #48)
+  develop HEAD: 2f01de0 (S-042 PR #51; d230a26 = S-040 PR #50; a852934 = docs PR #49)
   ============================================================================
 ---
 
@@ -202,7 +171,7 @@ next_session_resume_protocol: |
 | 0.5-0.9 Brief + market intel | DONE 2026-05-14 | brief v2.0.4; validate-brief VALID |
 | 1 Spec Crystallization | DONE D-170 APPROVED | 57-pass Phase-1d adversarial. 113 Phase-1 BCs (138 total incl Phase-2 v1A). <!-- version-pin-historical: BC-INDEX v1.43.7 at Phase-1d close --> |
 | 2 Story Decomp v1A | PASSED/APPROVED D-325 | 26 passes (3/3 clean). 51 stories/311 pts. Gate APPROVED Joshua Magady 2026-06-16. |
-| 3 TDD v1A Waves 8-9 | IN PROGRESS — Wave 9 | S-033..S-036+S-038 MERGED (Wave 8: 6/12 done, 38/74 pts). S-039 MERGED PR #47 @ a7ad00e (D-340). S-040 MERGED PR #50 @ d230a26 (D-342). Wave 9: 2/6 done (16/42 pts). 40/51 stories done (246/311 pts). S-042 IN-PROGRESS (stubs @ 40dd53a, local worktree .worktrees/S-042, test-writer next). S-041 (mouse-forwarding) also unblocked. |
+| 3 TDD v1A Waves 8-9 | IN PROGRESS — Wave 9 | S-033..S-036+S-038 MERGED (Wave 8: 6/12 done, 38/74 pts). S-039 MERGED PR #47 @ a7ad00e (D-340). S-040 MERGED PR #50 @ d230a26 (D-342). S-042 MERGED PR #51 @ 2f01de0 (D-345). Wave 9: 3/6 done (24/45 pts). 41/51 stories done (254/314 pts). S-043 UNBLOCKED (deps S-039+S-042 done). S-041 UNBLOCKED (dep S-040 done). |
 | 3 TDD Waves 1-7 (pre-pivot) | COMPLETE D-232 | 32/33 done (192/195 pts). 1514 tests. develop @ 6811103 |
 | 4-7 | PENDING after Phase-3 v1A | Old observe-only scope superseded by v1A control-center |
 
@@ -345,7 +314,10 @@ None. All durable task register items are non-blocking.
 | SEC-003-S040-OVERSIZE-PASTE-UX | pending | implementer/UX-follow-up | n | [SEC S-040] (CWE-400, LOW, non-blocking) oversized-paste drop-with-WARN has no TUI status-bar notification; security adequate (drop is correct), UX improvement pending. Anchor: future UX hardening pass. |
 | F-S040-KEYINPUT-DOC-EMPTYBYTES | pending | implementer/tech-writer | n | [LOW nit] monocle-ipc types.rs KeyInput doc-comment silent on empty-bytes semantics (what does an empty Vec<u8> mean?); optional polish. Anchor: future maintenance pass. |
 | PROCESS-GAP-STUB-PHASE-DOCCOMMENTS | codification-pending | devops/session-reviewer | n | [process-gap] stub-architect emits module/test doc-comments with stub-phase language ("stubs", "All function bodies are todo!()", "Tests MUST fail (Red Gate)") that are NOT refreshed when the implementer fills them in; adversarial passes 10/12/13/14/17 of S-040 each caught a different stale doc-comment, costing ~5 extra convergence passes. Fix options: (a) stub-architect writes neutral/forward-looking module docs; (b) implementer self-audit step must refresh all stub-phase doc-comments. Lesson recorded at cycles/cycle-001/lessons.md §PROCESS-GAP-STUB-PHASE-DOCCOMMENTS. |
-| WAVE-GATE-IPC-WRITER-ERROR-TAXONOMY | pending | wave-gate/architect | n | [wave-gate] S-042 stub phase identified that the ipc_server ResizePane handler needs error taxonomy alignment with the 12-code wire taxonomy (SS-ipc v1.24.0). Non-blocking for S-042 delivery. Surface at Wave-9 integration gate. |
+| WAVE-GATE-IPC-WRITER-ERROR-TAXONOMY | SUPERSEDED D-344/D-345 | wave-gate/architect | n | [wave-gate] RESOLVED: S-042 ResizePane handler implemented with WARN-drop carve-out (per D-344 ruling); full 12-code wire taxonomy alignment is satisfied for the resize path. No remaining action. |
+| F-S042-OBS-WRITEFRAMED-DOCNAMING | pending | tech-writer/implementer | n | [LOW, doc-only] resize_session doc-comment + S-042 AC-015 cite `write_framed_to_stream` while impl uses byte-identical inline framing; rename/clarify in a future doc pass. Non-blocking. |
+| F-S042-OBS-LASTPANEAREA-DOC | pending | implementer | n | [LOW, doc-only] `App::last_pty_pane_area` doc claims "None when not EmbeddedTerminal" but field is never reset on mode exit (benign — mode guard prevents stale read). Optional polish. Non-blocking. |
+| WG-S042-SESSIONHOST-KEYINPUT | pending | wave-gate/implementer | n | [wave-gate, informational] session-host has no DaemonToHost::KeyInput arm (S-040 keyboard-forwarding leg) — confirm KeyInput end-to-end delivery at the Wave-9 integration gate. Non-blocking for per-story delivery. |
 
 ## Resolved/Closed Tasks (archived)
 
@@ -372,13 +344,18 @@ SEC-001-S036 (RESOLVED D-339 2026-06-20 — CWE-284 pid=0 guards; fixed in-scope
 SEC-002-S036 (RESOLVED D-339 2026-06-20 — CWE-284 SO_PEERCRED pid=None bypass; fixed in-scope PR #46 security review).
 SEC-003-S036 (RESOLVED D-339 2026-06-20 — CWE-22 socket_path traversal; fixed in-scope PR #46 security review).
 PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK (RESOLVED D-341 2026-06-20 — PR #48 @ 3eba172 merged CLEAN; dtu-fidelity.yml always-report pattern with internal pure-bash change-detection; TUI-only PRs now merge without admin bypass).
+SEC-001-S042-CWE-749 (RESOLVED D-345 2026-06-22 — #[cfg(test)] gate on handle_resize_pane_pub seam; fixed in-scope S-042 commits 4865ffe + 9cf2482).
+SEC-002-S042-CWE-190 (RESOLVED D-345 2026-06-22 — checked u32 cast; fixed in-scope S-042 commits 4865ffe + 9cf2482).
+SEC-003-S042-CWE-532 (RESOLVED D-345 2026-06-22 — UUID guard before log emit; fixed in-scope S-042 commits 4865ffe + 9cf2482).
+WAVE-GATE-IPC-WRITER-ERROR-TAXONOMY (SUPERSEDED D-344/D-345 — ResizePane WARN-drop carve-out implemented; no remaining action).
 
 ## Decision History
 
 Full decisions archive: `cycles/cycle-001/decisions-archive.md`
-D-001..D-241: early phases; D-242..D-343: Phase-1d + Phase-2 + Phase-3 (appended 2026-06-16/17/18/19/20/21)
+D-001..D-241: early phases; D-242..D-345: Phase-1d + Phase-2 + Phase-3 (appended 2026-06-16/17/18/19/20/21/22)
 
 Key decisions last session:
+- D-345 (2026-06-22): S-042 MERGED to develop via PR #51 @ 2f01de0 (squash-merge). Full end-to-end PTY Resize Detection + 50ms Debounce + ResizePane IPC. 8 pts, EPIC-09, Wave 9, P0. 9-pass adversarial convergence (3 consecutive CLEAN: passes 7/8/9). Trajectory: P1 BLOCKER (dead detection code)→P2 BLOCKER (unwired debounce fire) + daemon AC-013/014/016 violations + false-green daemon tests→P3 HIGH (stale resize-state on EmbeddedTerminal→Overlay)→P4 MED (fire latency vs PC-8 100ms tick)→P5 CLEAN(+2 LOW OBS fixed)→P6 spec residue (SS-session-manager stale ResizePane ownership)→P7/P8/P9 CLEAN. Security PASS (3 in-scope fixes: SEC-001 CWE-749 #[cfg(test)] gate, SEC-002 CWE-190 checked u32 cast, SEC-003 CWE-532 UUID guard before log; commits 4865ffe+9cf2482). pr-reviewer APPROVE. 11/11 CI green, NO admin bypass. Spec: BC-2.09.006 v1.3.0, S-042 story v1.5, SS-session-manager v2.17.1 (spec cascade already committed D-344). New follow-ups: F-S042-OBS-WRITEFRAMED-DOCNAMING, F-S042-OBS-LASTPANEAREA-DOC, WG-S042-SESSIONHOST-KEYINPUT. Wave 9: 3/6 done (24/45 pts). 41/51 stories done (254/314 pts). develop HEAD: 2f01de0. STATE v8.09→v8.10.
 - D-343 (2026-06-21): Zero-context durability checkpoint. S-042 stubs committed @ 40dd53a on story/S-042-resize-debounce (local worktree, not pushed). ResizePane wire variant + ipc_server stub + App fields + todo!() methods. Red Gate enforceable. Test-writer next. New follow-up: WAVE-GATE-IPC-WRITER-ERROR-TAXONOMY (Wave-9 gate). STATE v8.08→v8.09.
 - D-342 (2026-06-21): S-040 MERGED to develop via PR #50 @ d230a26 (squash-merge). Full-Fidelity Keyboard Forwarding, 8 pts, EPIC-09, Wave 9, P0. 17-pass adversarial convergence (3 consecutive CLEAN: passes 15/16/17). Trajectory: P1 BLOCKER (unwired dispatch)→P2 BLOCKER (Kitty dead-code)→P3 BLOCKER (CSI?u keystroke-theft)→P4 2×HIGH→P5 BLOCKER (paste guard size)→P6 MED→P7-P14 polish→P15/16/17 CLEAN. 65 behavioral tests green. Security PASS_WITH_NOTES (0 crit/high, 2 LOW non-blocking). pr-reviewer APPROVE. 11/11 CI green, NO admin bypass. Spec: SS-embedded-pty v1.14.0, BC-2.09.002 v1.2.2, BC-2.09.004 v1.0.11, BC-2.09.005 v1.0.7, S-040 v1.8, BC-INDEX v1.44.5, EVAL-INDEX v1.38. New follow-ups: SEC-001-S040-LOG-BEFORE-VALIDATE, SEC-003-S040-OVERSIZE-PASTE-UX, F-S040-KEYINPUT-DOC-EMPTYBYTES, PROCESS-GAP-STUB-PHASE-DOCCOMMENTS. Wave 9: 2/6 done (16/42 pts). 40/51 stories done (246/311 pts). STATE v8.07→v8.08.
 - housekeeping (2026-06-20): docs(resume) PR #49 @ a852934 merged CLEAN. D-341 production validation. STATE v8.06→v8.07.

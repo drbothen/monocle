@@ -3,9 +3,9 @@ document_type: lessons-learned
 level: ops
 project: monocle
 cycle: cycle-001
-version: "1.7"
+version: "1.8"
 producer: state-manager
-timestamp: 2026-06-21T00:00:00Z
+timestamp: 2026-06-22T00:00:00Z
 input-hash: "[live-state]"
 ---
 
@@ -2509,3 +2509,58 @@ Before adding a new writer/serializer, GREP for an existing one. If one exists (
 **Codification update:** The existing PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP register entry now shows two recurrences. The codified rule remains: architect=spec-only; all code (including doc-comment changes in source files) must go to implementer-in-worktree. Orchestrator must detect develop-HEAD drift after every architect dispatch and recover before proceeding.
 
 **Severity escalation consideration:** Two recurrences of the same anti-pattern is a signal that the architect agent prompt or routing instruction needs strengthening, not just a register note. Recommended follow-up: codify an explicit example in SS-conventions-anti-patterns.md §Anti-Patterns showing that even single-line doc-comment changes in Rust source files are "code" and must go through implementer-in-worktree.
+
+---
+
+### L-S042-ORCH-PARALLEL-WORKTREE [process-gap]: two mutating agents dispatched to same worktree concurrently
+
+**Date:** 2026-06-22
+**Severity:** process-gap (MEDIUM — race risk, no loss observed this instance)
+**Origin:** S-042 cycle. The orchestrator dispatched two mutating agents (implementer + test-writer) into the same `.worktrees/S-042` worktree concurrently during the OBS doc/comment fixes. The commits serialized cleanly with no content loss in this instance, but the pattern is a latent race: if both agents attempt to commit simultaneously they can lose each other's changes or produce a broken HEAD.
+
+**Codify (L-S042-ORCH-PARALLEL-WORKTREE):**
+1. Mutating agents (implementer, test-writer, stub-architect, any agent with Edit/Write/Bash access) MUST be serialized within the same worktree — never dispatched in parallel to the same path.
+2. If parallel work is needed (e.g., doc fixes + implementation), the second agent must wait for the first to commit and return before being dispatched, or each must work in an isolated copy.
+3. Read-only agents (adversary, code-reviewer, pr-reviewer) are exempt — they never commit and may be dispatched in parallel against the same worktree safely.
+4. The orchestrator dispatch log must show sequential worktree occupancy: each mutating dispatch receives a confirmed SHA from the previous occupant before proceeding.
+
+**S-7.02 cycle-closing note:** No deferral story required — this is a pure orchestration behavior fix requiring no spec or code changes. The orchestrator prompt/routing-table entry for "mutating agents must be serialized in worktree" captures the mitigation.
+
+---
+
+### PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP THIRD RECURRENCE (D-345, S-042 cycle) [process-gap]
+
+**Date:** 2026-06-22
+**Severity:** process-gap (HIGH — third recurrence; escalation required)
+**Origin:** S-042 cycle. The architect agent committed resume-doc changes (commit 4b370cb) directly to the `develop` branch. The orchestrator caught the develop-HEAD divergence and reset develop to origin before proceeding with the S-042 worktree PR. No content was lost; the change was abandoned (the resume-doc update was handled separately as a working-tree change for the next docs PR).
+
+**Third recurrence pattern:** This is now the third confirmed recurrence of PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP:
+- First: S-035 cycle (architect left spec+registry uncommitted; PROCESS-GAP-ARCHITECT-NO-COMMIT).
+- Second: S-036 cycle (architect committed POL-11 doc-comment change 772cb68 to develop).
+- Third: S-042 cycle (architect committed resume-doc 4b370cb to develop).
+
+The root cause is unchanged: architect agents interpret their "fix in scope" mandate as permission to write to develop directly. Two recurrences had already prompted a "severity escalation consideration" in the lessons; this third recurrence confirms the escalation is warranted.
+
+**Recommended follow-up (not deferred — should be actioned before next story):**
+1. Codify an explicit example in SS-conventions-anti-patterns.md §Anti-Patterns: "Architect commit to develop" — show that even resume-doc updates, doc-comment changes, and non-source prose edits in files living on `develop` must go via worktree + PR.
+2. Add a pre-dispatch check to the orchestrator's per-story flow: after every architect dispatch, run `git fetch && git log develop..origin/develop` to detect direct commits before proceeding to the next step.
+3. The architect agent prompt should include an explicit prohibition: "NEVER commit directly to any branch except factory-artifacts. All changes to develop-resident files must be staged in the story worktree for delivery via PR."
+
+**S-7.02 cycle-closing note:** No new deferral story needed. Mitigation is orchestration behavior + agent prompt hardening. Third recurrence makes this a blocking priority for pre-next-story prompt review.
+
+---
+
+### PROCESS-GAP-STUB-PHASE-DOCCOMMENTS [process-gap]: stale stub-phase doc-comments caught at adversarial passes
+
+**Date:** 2026-06-22
+**Severity:** process-gap (MEDIUM — repeated pattern across multiple stories)
+**Origin:** S-042 cycle, adversarial pass 5. A stale `tick_resize_debounce` doc-comment described a removed `Event::Resize` arm that no longer existed in the implementation. The doc-comment had been written during the stub phase to describe the stub's intended behavior and was not refreshed when the implementer filled in the body with the production design (which uses debounce timers, not raw events).
+
+**Recurrence history:** This pattern also occurred in S-040 (stale doc-comments caught at adversarial passes 10/12/13/14/17 — 5 separate instances). Recorded in PROCESS-GAP-STUB-PHASE-DOCCOMMENTS register entry (codification-pending).
+
+**Codify (PROCESS-GAP-STUB-PHASE-DOCCOMMENTS):**
+1. **Stub-architect option (preferred):** Write module-level and function-level doc-comments in neutral, forward-looking language that does not describe the stub-phase mechanics (no "stubs", no "all bodies are todo!()", no "tests MUST fail"). Describe the INTENT of the function (what it will do), not the current stub state.
+2. **Implementer obligation:** Before declaring TDD green-phase complete, sweep all doc-comments in modified files for stub-phase language (`todo!()`, `stub`, `placeholder`, removed event variants named in comments). Update any stale doc-comments to reflect the final implementation.
+3. **Adversary axis (codify):** Adversary should include a "doc-comment accuracy" axis in every pass — verify that named types, variants, and event paths referenced in doc-comments actually exist in the current implementation. A named-but-removed item in a doc-comment is a MEDIUM finding (misleads future maintainers).
+
+**S-7.02 cycle-closing note:** The register entry PROCESS-GAP-STUB-PHASE-DOCCOMMENTS (codification-pending) should be promoted to codified once the SS-conventions-anti-patterns.md §Anti-Patterns update (recommended above) lands. No new deferral story needed — this is an agent-behavior and adversary-axis fix.

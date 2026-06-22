@@ -3,10 +3,10 @@ document_type: story
 level: L4
 story_id: S-042
 epic_id: EPIC-09
-version: "1.5"
-status: draft
+version: "1.6"
+status: done
 producer: vsdd-factory:story-writer
-timestamp: 2026-06-16T00:00:00Z
+timestamp: 2026-06-22T00:00:00Z
 phase: 2
 points: 8
 wave: 9
