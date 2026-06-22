@@ -24,13 +24,14 @@
 //! `Action::ExitEmbeddedTerminal` before the key reaches the PTY forwarding path.
 
 use anyhow::Result;
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use monocle_core::keyboard::key_event_to_pty_bytes;
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent};
+use monocle_core::keyboard::{key_event_to_pty_bytes, mouse_event_to_pty_bytes};
 use monocle_ipc::framing::MAX_MESSAGE_BYTES;
 use monocle_ipc::types::ClientToServer;
+use ratatui::layout::Rect;
 use tokio::sync::mpsc::Sender;
 
-use crate::keyboard_conv::crossterm_key_to_pty;
+use crate::keyboard_conv::{crossterm_key_to_pty, crossterm_mouse_to_pty, ratatui_rect_to_pty};
 
 /// Install global keyboard enhancement flags and enable bracketed paste at TUI startup.
 ///
@@ -305,5 +306,58 @@ pub async fn dispatch_embedded_terminal_paste(
 
     if let Err(e) = ipc_tx.send(msg).await {
         tracing::warn!("dispatch_embedded_terminal_paste: IPC send failed (channel closed?): {e}");
+    }
+}
+
+/// Dispatch a crossterm `MouseEvent` while `AppMode::EmbeddedTerminal` is active.
+///
+/// Encodes the mouse event as an SGR 1006 byte sequence and sends it to the PTY
+/// as `ClientToServer::KeyInput { session_id, bytes }`.
+///
+/// This is the single code path from crossterm `Event::Mouse` to PTY `KeyInput` send
+/// while in `EmbeddedTerminal` mode (BC-2.09.003 Postcondition 3).
+///
+/// Dispatch steps:
+/// 1. Convert `crossterm::event::MouseEvent` → `PtyMouseEvent` via
+///    `keyboard_conv::crossterm_mouse_to_pty()` (purity boundary crossing).
+/// 2. Convert `ratatui::layout::Rect` (pane area from `app.last_pty_pane_area`) →
+///    `PtyRect` via `keyboard_conv::ratatui_rect_to_pty()`.
+/// 3. Call `mouse_event_to_pty_bytes(pty_event, pty_rect)`.
+/// 4. If `Some(bytes)`, send `ClientToServer::KeyInput { session_id, bytes }` via `ipc_tx`.
+/// 5. If `None` (event outside pane area — EC-221), nothing is sent.
+///
+/// `EnableMouseCapture` and SGR 1006h are applied at `enter_embedded_terminal()` entry;
+/// this function only handles per-event encoding and forwarding.
+///
+/// # Parameters
+///
+/// - `event`: The raw crossterm `MouseEvent` from the event loop.
+/// - `session_id`: UUID string of the currently-embedded session.
+/// - `pane_area`: The PTY pane's screen area (from `app.last_pty_pane_area`). Events
+///   outside this area produce `None` from `mouse_event_to_pty_bytes` and are not forwarded.
+/// - `ipc_tx`: The outbound IPC channel sender.
+pub async fn dispatch_embedded_terminal_mouse(
+    event: MouseEvent,
+    session_id: &str,
+    pane_area: Rect,
+    ipc_tx: &Sender<ClientToServer>,
+) {
+    // Convert crossterm type to core-owned type at the purity boundary.
+    let pty_event = crossterm_mouse_to_pty(event);
+    let pty_rect = ratatui_rect_to_pty(pane_area);
+
+    // Translate to SGR bytes. Returns None for out-of-pane events (EC-221).
+    if let Some(bytes) = mouse_event_to_pty_bytes(pty_event, pty_rect) {
+        if let Err(e) = ipc_tx
+            .send(ClientToServer::KeyInput {
+                session_id: session_id.to_owned(),
+                bytes,
+            })
+            .await
+        {
+            tracing::warn!(
+                "dispatch_embedded_terminal_mouse: IPC send failed (channel closed?): {e}"
+            );
+        }
     }
 }

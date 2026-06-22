@@ -528,6 +528,46 @@ fn pty_key_codepoint(code: &PtyKeyCode) -> u32 {
     }
 }
 
+/// Translate a `PtyMouseEvent` to the SGR 1006 encoded byte sequence for PTY stdin.
+///
+/// Returns `Some(bytes)` containing the complete SGR mouse mode sequence for events
+/// whose coordinates fall within the PTY pane area. Returns `None` for events outside
+/// the pane area — those MUST NOT be forwarded to the PTY.
+///
+/// The SGR encoding format is:
+/// - Press/Drag/Scroll/Moved: `CSI < Ps_final ; Px ; Py M`
+/// - Release (Up variants): `CSI < Ps_final ; Px ; Py m`
+///
+/// Base `Ps` values (per BC-2.09.003 §Postcondition 2 table):
+/// - `Down(Left)=0`, `Down(Middle)=1`, `Down(Right)=2` (terminator `M`)
+/// - `Up(Left)=0`, `Up(Middle)=1`, `Up(Right)=2` (terminator `m`)
+/// - `Drag(Left)=32`, `Drag(Middle)=33`, `Drag(Right)=34` (terminator `M`)
+/// - `Moved=35` (UNREACHABLE on Unix — crossterm enables mode 1002 button-event tracking,
+///   not mode 1003 any-event tracking; retained for Rust match-exhaustiveness and Windows)
+/// - `ScrollUp=64`, `ScrollDown=65`, `ScrollLeft=66`, `ScrollRight=67` (terminator `M`)
+///
+/// Modifier bits are additive: `Ps_final = base_Ps | modifier_bits`.
+/// Shift |= 4, Alt |= 8, Ctrl |= 16.
+///
+/// Coordinate convention (1-indexed pane-relative):
+/// `Px = event.column - pane_area.x + 1`, `Py = event.row - pane_area.y + 1`.
+///
+/// # Purity
+///
+/// This function is pure: no I/O, no state mutation, deterministic (BC-2.09.003 Invariant 2).
+///
+/// # Parameters
+///
+/// - `event`: A `PtyMouseEvent` (core-owned type). `monocle-tui` converts
+///   `crossterm::event::MouseEvent` → `PtyMouseEvent` via `keyboard_conv::crossterm_mouse_to_pty()`
+///   before calling this function. See SS-embedded-pty.md §Dependency Boundary (F-P2-I06).
+/// - `pane_area`: The PTY widget's screen area as a `PtyRect`. Events outside this area
+///   return `None` (BC-2.09.003 Postcondition 5 / EC-221).
+#[allow(clippy::todo)]
+pub fn mouse_event_to_pty_bytes(_event: PtyMouseEvent, _pane_area: PtyRect) -> Option<Vec<u8>> {
+    todo!()
+}
+
 /// Return the PTY byte sequence for function key F(n), n ∈ 1..=12.
 ///
 /// Authoritative mapping per BC-2.09.002 PC-2 table:
