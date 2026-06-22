@@ -815,8 +815,8 @@ BC-2.09.002:
 
 BC-2.09.003:
   path: specs/behavioral-contracts/ss-09/BC-2.09.003.md
-  current_version: "1.6.0"
-  last_bump_commit: "[OBS-001 (S-041 Adv-Pass-1) — EnableMouseCapture enables 1003; Moved IS reachable on Unix; Invariant 3 rewritten; PC-2 + Invariant 4 UNREACHABLE claim corrected]"
+  current_version: "1.6.1"
+  last_bump_commit: "[F-S041-P4-LOW-001 — stale line-number anchors 511-512 replaced with §mouse_event_to_pty_bytes stable section anchor; patch 1.6.0→1.6.1]"
   last_bump_date: "2026-06-22"
 
 BC-2.09.004:

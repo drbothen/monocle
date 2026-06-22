@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.6.0"
+version: "1.6.1"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -41,7 +41,7 @@ All coordinate examples in this BC (and in BC-2.09.002 EC-213) assume:
 - The EmbeddedTerminal pane is at terminal origin: `pane_area.x = 0`, `pane_area.y = 0`.
 - `crossterm::event::MouseEvent` provides 0-indexed `(column, row)` coordinates relative to
   the terminal window.
-- SGR output is 1-indexed via the canonical formula (SS-embedded-pty.md lines 511-512):
+- SGR output is 1-indexed via the canonical formula (SS-embedded-pty.md §mouse_event_to_pty_bytes — coordinate conversion block):
   `px = col - pane_area.x + 1`, `py = row - pane_area.y + 1`.
 - At origin: `px = col + 1`, `py = row + 1`.
 - Example: crossterm `(column: 10, row: 5)` → `\x1b[<0;11;6M` (11 = 10+1, 6 = 5+1).
@@ -177,6 +177,27 @@ S-041 — Implement mouse_event_to_pty_bytes() and SGR mode entry
 
 VP-TBD — Mouse event SGR encoding unit tests (filled after VP creation)
 
+## §Trace v1.6.1
+
+**F-S041-P4-LOW-001 — Replace stale line-number anchors with stable section anchors** (2026-06-22):
+- Two stale citations to `SS-embedded-pty.md lines 511-512` replaced with the stable section
+  anchor `SS-embedded-pty.md §mouse_event_to_pty_bytes — coordinate conversion block`.
+- Locations fixed: §Coordinate Convention (active spec body) and §Trace v1.3.0 (I23-002
+  finding description). The cited formula `px = col - pane_area.x + 1; py = row - pane_area.y + 1`
+  is unchanged and self-contained; only the locator reference was updated.
+- Rationale: in SS-embedded-pty v1.17.0, lines 511-512 no longer contain the coordinate
+  formula (the doc grew significantly). The formula now lives at line 1484 inside the
+  `mouse_event_to_pty_bytes` function body under `### Translation function`. Per POL-14,
+  section anchors are preferred over line-number anchors. The BC already uses
+  `§mouse_event_to_pty_bytes` as a stable anchor in the §Postconditions and §Invariants
+  sections — this fix aligns the remaining two stale citations.
+- Note: two additional `src/event.rs lines 321–334` citations remain (Invariant 3 and §Trace
+  v1.6.0). These reference an external dependency's source file at a historical verification
+  point. They are retained as-is: they live in historical trace context (ground-truth evidence
+  citation), not active spec-locator context, and the line range is narrower/less likely to
+  silently shift meaning.
+- Patch bump: 1.6.0 → 1.6.1 (patch: editorial anchor hygiene; no behavioral content changed).
+
 ## §Trace v1.6.0
 
 **OBS-001 resolution — `EnableMouseCapture` enables 1003 (any-event); `Moved` IS reachable on Unix** (S-041 Adversarial-Pass-1):
@@ -277,7 +298,7 @@ VP-TBD — Mouse event SGR encoding unit tests (filled after VP creation)
 **I23-001 + I23-002 + S23-001 — Coordinate convention added; test vectors corrected for +1 indexing** (2026-06-13):
 - Finding I23-002: Canonical Test Vectors at lines ~97-99 all omitted the +1 offset required
   by the canonical formula `px = col - pane_area.x + 1`, `py = row - pane_area.y + 1`
-  (SS-embedded-pty.md lines 511-512). The test vectors contradicted EC-220 (which correctly
+  (SS-embedded-pty.md §mouse_event_to_pty_bytes — coordinate conversion block). The test vectors contradicted EC-220 (which correctly
   states (row=0, col=0) → Px=1, Py=1) and PC-2 (which states Px/Py are 1-indexed).
   Three examples were wrong:
     - `(row=3, col=5)` press: `\x1b[<0;5;3M` → `\x1b[<0;6;4M` (Px=6, Py=4)
