@@ -839,9 +839,9 @@ BC-2.09.006:
 
 BC-2.09.007:
   path: specs/behavioral-contracts/ss-09/BC-2.09.007.md
-  current_version: "1.4.0"
-  last_bump_commit: "[S-043 Adversarial Pass-1 rulings — status-bar concurrent badges (PC-4) + content-anchored scrollback (PC-5); EC-244 updated, EC-245 added]"
-  last_bump_date: "2026-06-22"
+  current_version: "1.4.1"
+  last_bump_commit: "[OBS-001 editorial: replace nonexistent screen().scrollback_len() with accurate vt100 read-back probe description; no behavioral change]"
+  last_bump_date: "2026-06-21"
 
 BC-2.09.008:
   path: specs/behavioral-contracts/ss-09/BC-2.09.008.md
@@ -1081,9 +1081,9 @@ S-042-resize-debounce-resizepane:
 
 S-043-scrollback-navigation:
   path: stories/S-043-scrollback-navigation.md
-  current_version: "1.3"
-  last_bump_commit: "[S-043 body semantics cascade: BC-2.09.007 v1.4.0 — content-anchored scrollback (AC-008/AC-014/EC-244) + concurrent status-bar badges (AC-007/EC-245)]"
-  last_bump_date: "2026-06-22"
+  current_version: "1.4"
+  last_bump_commit: "[OBS-001 cascade: replace nonexistent screen().scrollback_len() references with read-back probe description in AC-002/AC-004/AC-008/AC-012/AC-014/tasks/arch-compliance/library-table/EC-240; BC-2.09.007 input version → 1.4.1]"
+  last_bump_date: "2026-06-21"
 
 S-044-appmode-transitions-permission-badge:
   path: stories/S-044-appmode-transitions-permission-badge.md

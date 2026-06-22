@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-043
 epic_id: EPIC-09
-version: "1.3"
+version: "1.4"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -20,7 +20,7 @@ behavioral_contracts: [BC-2.09.007]
 verification_properties: []
 estimated_days: 2
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.007.md, version: "1.4.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-09/BC-2.09.007.md, version: "1.4.1"}
   - {path: .factory/specs/architecture/SS-embedded-pty.md, version: "1.15.0"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
@@ -53,8 +53,9 @@ Claude Code output without leaving the embedded terminal or resizing the PTY.
 
 `Action::PtyScrollUp` in `AppMode::EmbeddedTerminal` increments
 `App::pty_scroll_offsets[focused_session_id]` by one scroll step. The offset is bounded by
-`pty_parsers[focused_session_id].screen().scrollback_len()` — it CANNOT exceed the number of
-available scrollback rows. If already at the maximum, the offset stays clamped.
+the maximum available scrollback rows — it CANNOT exceed that count. The upper bound is
+determined via the vt100 set_scrollback read-back probe (vt100 0.16.2 does not expose a
+public scrollback length accessor). If already at the maximum, the offset stays clamped.
 
 ### AC-003 (traces to BC-2.09.007 postcondition 2b — PtyScrollDown decrements per-session offset; floor 0)
 
@@ -65,7 +66,8 @@ down when already at 0 is a no-op (no error, no state change).
 ### AC-004 (traces to BC-2.09.007 postcondition 2c — clamp on both ends)
 
 Both `PtyScrollUp` and `PtyScrollDown` clamp `pty_scroll_offsets[focused_session_id]`:
-- Upper bound: `pty_parsers[focused_session_id].screen().scrollback_len()` (available rows).
+- Upper bound: the maximum available scrollback rows (determined via the vt100 set_scrollback
+  read-back probe, since vt100 0.16.2 does not expose a public scrollback length accessor).
 - Lower bound: 0.
 
 ### AC-005 (traces to BC-2.09.007 postcondition 2d — per-session offset independence on focus switch)
@@ -103,11 +105,16 @@ New `PtyOutput` received while the user is scrolled back does NOT force the view
 to the bottom. The `pty_scroll_offsets[focused_session_id]` is **content-anchored**: when new
 bytes arrive and `pty_scroll_offsets[session_id] > 0`, the handler MUST:
 
-1. Read `scrollback_before = parser.screen().scrollback_len()` before processing.
+1. Read `scrollback_before = parser.screen().scrollback()` (effective scrollback offset before
+   processing; use the read-back probe to capture current scrollback depth).
 2. Call `parser.process(&bytes)`.
-3. Read `scrollback_after = parser.screen().scrollback_len()` after processing.
+3. Read `scrollback_after = parser.screen().scrollback()` (effective scrollback offset after
+   processing). Note: vt100 0.16.2 does not expose a public `scrollback_len()` accessor on
+   `Screen`; the maximum available scrollback rows are determined via the read-back probe:
+   `set_scrollback(usize::MAX)` then `screen().scrollback()` yields the clamped effective maximum.
 4. Add `new_rows = scrollback_after - scrollback_before` to `pty_scroll_offsets[session_id]`.
-5. Clamp: `pty_scroll_offsets[session_id] = min(parser.screen().scrollback_len(), pty_scroll_offsets[session_id])`.
+5. Clamp: `pty_scroll_offsets[session_id] = min(effective_max, pty_scroll_offsets[session_id])`
+   where `effective_max` is determined via the read-back probe above.
 
 This keeps the viewport pinned to the same content rows the user is viewing — new output
 is appended at the bottom while the visible window stays in place.
@@ -136,8 +143,8 @@ focus-switch to show the wrong session's scrollback position.
 
 ### AC-012 (traces to BC-2.09.007 edge case EC-240 — scroll past beginning; clamped)
 
-`PtyScrollUp` when `pty_scroll_offsets[focused] == scrollback_len()` (already at oldest row)
-leaves the offset at the maximum. No error. No panic.
+`PtyScrollUp` when `pty_scroll_offsets[focused]` already equals the maximum available scrollback
+rows (already at oldest row) leaves the offset at the maximum. No error. No panic.
 
 ### AC-013 (traces to BC-2.09.007 edge case EC-241 — scroll down at live tail; no-op)
 
@@ -149,14 +156,16 @@ No IPC sent.
 When new `PtyOutput` arrives for the focused session while `pty_scroll_offsets[focused] > 0`,
 the parser is updated AND `pty_scroll_offsets[focused]` is incremented by the number of new
 scrollback rows produced by that process call (content-anchored per AC-008). The offset is
-then clamped to `parser.screen().scrollback_len()`. The status bar continues to show
+then clamped to the maximum available scrollback rows (determined via the vt100 set_scrollback
+read-back probe, since vt100 0.16.2 does not expose a public scrollback length accessor).
+The status bar continues to show
 `[scrolled back N rows]` with the updated N value. The viewport stays pinned to the same
 content rows the user was reading before the new output arrived.
 
 ## Tasks
 
 - [ ] Verify `App::pty_scroll_offsets: HashMap<String, usize>` field exists (added in S-039); if not, add it.
-- [ ] Implement `Action::PtyScrollUp` handler in `crates/monocle-tui/src/app.rs`: increment `pty_scroll_offsets[focused_session_id]`; clamp to `parsers[id].screen().scrollback_len()`; no IPC.
+- [ ] Implement `Action::PtyScrollUp` handler in `crates/monocle-tui/src/app.rs`: increment `pty_scroll_offsets[focused_session_id]`; clamp to the maximum available scrollback rows via the vt100 read-back probe (`set_scrollback(usize::MAX)` then read `screen().scrollback()`); no IPC.
 - [ ] Implement `Action::PtyScrollDown` handler in `crates/monocle-tui/src/app.rs`: decrement toward 0; no IPC.
 - [ ] Add `PtyScrollUp` and `PtyScrollDown` to the `Action` enum in `monocle-core` if absent; bind to configurable keys (default: `Ctrl+Up` / `Ctrl+Down` while in `EmbeddedTerminal`).
 - [ ] Thread `pty_scroll_offsets[focused_session_id]` into `render_embedded_terminal()` in
@@ -185,12 +194,12 @@ content rows the user was reading before the new output arrived.
 - [ ] The `pty_scrollback_rows` config load is OWNED BY S-039 (see S-039 AC-008 and Architecture Compliance Rules). S-043 asserts its existence via `App::scrollback_rows` field (set by S-039); it does NOT re-load the config. If S-039 has not yet created the `App::scrollback_rows` field, verify this before implementing S-043 (dependency on S-039 must be complete).
 - [ ] Write unit test `test_BC_2_09_007_scrollup_increments_offset`: `PtyScrollUp` × 10; assert `pty_scroll_offsets["s1"] = 10`; other sessions unaffected.
 - [ ] Write unit test `test_BC_2_09_007_scrolldown_decrements_floor_0`: at offset=0; `PtyScrollDown`; assert still 0; no error.
-- [ ] Write unit test `test_BC_2_09_007_clamp_at_max`: scroll past `scrollback_len()`; assert clamped.
+- [ ] Write unit test `test_BC_2_09_007_clamp_at_max`: scroll past maximum available scrollback rows; assert clamped.
 - [ ] Write unit test `test_BC_2_09_007_focus_switch_preserves_offsets`: "s1" offset=10; switch to "s2" offset=0; assert `pty_scroll_offsets["s1"]=10`; render uses `pty_scroll_offsets["s2"]=0`.
 - [ ] Write unit test `test_BC_2_09_007_no_ipc_for_scroll`: `PtyScrollUp`; assert no `ResizePane` or `KeyInput` in IPC sink.
 - [ ] Write unit test `test_BC_2_09_007_scrollback_rows_default_1000`: no `pty_scrollback_rows` in config; assert parser initialized with 1000.
 - [ ] Write unit test `test_BC_2_09_007_scrollback_rows_capped_10000`: config `pty_scrollback_rows: 15000`; assert clamped to 10000.
-- [ ] Implement `on_pty_output` content-anchored logic in `crates/monocle-tui/src/app.rs`: when `pty_scroll_offsets[session_id] > 0`, read `scrollback_before = parser.screen().scrollback_len()`, call `parser.process(&bytes)`, compute `new_rows = scrollback_after - scrollback_before`, add to offset, clamp to `parser.screen().scrollback_len()`. When offset == 0, call `process(&bytes)` only (no adjustment).
+- [ ] Implement `on_pty_output` content-anchored logic in `crates/monocle-tui/src/app.rs`: when `pty_scroll_offsets[session_id] > 0`, capture `scrollback_before` via `screen().scrollback()`, call `parser.process(&bytes)`, capture `scrollback_after` via `screen().scrollback()`, compute `new_rows = scrollback_after - scrollback_before`, add to offset, clamp to effective max via the read-back probe (`set_scrollback(usize::MAX)` then `screen().scrollback()`). Note: vt100 0.16.2 does not expose a public `scrollback_len()` accessor — use the read-back probe. When offset == 0, call `process(&bytes)` only (no adjustment).
 - [ ] Write unit test `test_BC_2_09_007_content_anchored_new_output`: scrolled to offset=10; 5 new rows arrive via `PtyOutput`; assert `pty_scroll_offsets["s1"] == 15` (incremented by new-row count); assert viewport rows unchanged; assert `[scrolled back 15 rows]` shown.
 - [ ] Write unit test `test_BC_2_09_007_content_anchor_clamp_at_max`: scrolled to offset=990 (near max 1000); 20 new rows arrive; assert offset clamped to `min(1000, 990+20) = 1000`; no overflow, no error.
 - [ ] Write unit test `test_BC_2_09_007_concurrent_status_bar_badges`: session scrolled back (offset > 0) AND dump-drop counter > 0 simultaneously; assert status bar renders BOTH `[scrolled back N rows]` AND `[dump: N drops]`; neither suppresses the other.
@@ -211,7 +220,7 @@ content rows the user was reading before the new output arrived.
 - `PtyScrollUp`/`PtyScrollDown` are pure TUI-local actions. NO IPC sent. Per BC-2.09.007 Postcondition 3, scroll navigation must not send `ResizePane`, `KeyInput`, or any other IPC.
 - `pty_scroll_offsets` is `HashMap<String, usize>`. There MUST NOT be a shared singular `pty_scroll_offset: usize` field. The I7 fix is canonical.
 - Scroll offset reset on resize is mandatory per SS-embedded-pty.md §Scrollback offset invariants. Do not omit.
-- New `PtyOutput` MUST NOT reset scroll offset to zero. The `on_pty_output` handler uses **content-anchored** semantics: when `pty_scroll_offsets[session_id] > 0`, the offset MUST be incremented by `scrollback_after - scrollback_before` (new rows added by `parser.process(&bytes)`), then clamped to `parser.screen().scrollback_len()`. A static numeric-preserve (offset unchanged) is INCORRECT — it causes the viewport to drift toward newer content as lines arrive. Live tail (offset == 0) is never adjusted. This matches the behavior of iTerm2, tmux, kitty, wezterm, and Alacritty.
+- New `PtyOutput` MUST NOT reset scroll offset to zero. The `on_pty_output` handler uses **content-anchored** semantics: when `pty_scroll_offsets[session_id] > 0`, the offset MUST be incremented by `scrollback_after - scrollback_before` (new rows added by `parser.process(&bytes)`), then clamped to the maximum available scrollback rows (determined via the vt100 set_scrollback read-back probe — vt100 0.16.2 does not expose a public `scrollback_len()` accessor on `Screen`). A static numeric-preserve (offset unchanged) is INCORRECT — it causes the viewport to drift toward newer content as lines arrive. Live tail (offset == 0) is never adjusted. This matches the behavior of iTerm2, tmux, kitty, wezterm, and Alacritty.
 - Status bar MUST render `[scrolled back N rows]` concurrently with all other status bar badges. The scrollback indicator MUST NOT be suppressed by any transient diagnostic badge (`[dump: N drops]`, `[N pending permission(s)]`, `[reconnecting...]`, or similar). When both conditions hold, both badges MUST render simultaneously.
 - Memory bound: 10000 rows × 80 cols × ~16 bytes/cell ≈ 12.8 MB per session. The 10000-row cap is justified by this bound. Do NOT allow values above 10000.
 
@@ -219,7 +228,7 @@ content rows the user was reading before the new output arrived.
 
 | Library | Version | Usage | Source |
 |---------|---------|-------|--------|
-| `vt100` | `=0.16.2` (exact) | `vt100::Parser::new()` with scrollback_rows; `screen().scrollback_len()` | SS-deps-pin-manifest-v2-delta.md |
+| `vt100` | `=0.16.2` (exact) | `vt100::Parser::new()` with scrollback_rows; `screen_mut().set_scrollback(n)`; `screen().scrollback()` for read-back probe (no public `scrollback_len()` in 0.16.2) | SS-deps-pin-manifest-v2-delta.md |
 | `tui-term` | `=0.3.4` (exact) | `PseudoTerminal` scrollback rendering API | SS-deps-pin-manifest-v2-delta.md |
 | `serde_json` | `=1.0.149` (exact) | `config.json:pty_scrollback_rows` deserialization | SS-deps-pin-manifest.md |
 | `tokio` | `=1.52` (exact) | Runtime (no new direct usage in this story) | SS-deps-pin-manifest.md |
@@ -268,7 +277,7 @@ Within the 30% context window bound. No split required.
 
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
-| EC-240 | Scroll past scrollback_len() | Clamped; no error |
+| EC-240 | Scroll past maximum available scrollback rows | Clamped; no error |
 | EC-241 | Scroll down at live tail (offset=0) | No-op; stays at 0 |
 | EC-242 | Config `pty_scrollback_rows: 20000` | Clamped to 10000 |
 | EC-243 | Config `pty_scrollback_rows: 0` | Clamped to 1 |
