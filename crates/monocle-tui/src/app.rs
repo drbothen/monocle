@@ -1270,16 +1270,52 @@ pub fn clear_resize_debounce_state(app: &mut App) {
 /// Handle `Action::PtyScrollUp` in `AppMode::EmbeddedTerminal`.
 ///
 /// Increments `App::pty_scroll_offsets[focused_session_id]` by one scroll step toward
-/// older output. The offset is clamped at the upper bound:
-/// `pty_parsers[session_id].screen().scrollback_len()`. If the session is already
-/// scrolled to the oldest available row, the offset remains at the maximum — no error,
-/// no panic (BC-2.09.007 Postcondition 2a, AC-002, EC-240).
+/// older output. The offset is clamped at the effective scrollback maximum, which is
+/// determined via the read-back-clamp pattern: `set_scrollback(usize::MAX)` then read
+/// `screen().scrollback()` to obtain the actual available rows. vt100 does not expose
+/// `scrollback_len()` publicly on `Screen`; this probe is the canonical approach.
+///
+/// After probing the maximum, the scroll state is restored to the pre-probe value so
+/// the next render call does not inadvertently receive a stale maximum offset.
+///
+/// If the session is already scrolled to the oldest available row, the offset remains
+/// at the maximum — no error, no panic (BC-2.09.007 Postcondition 2a, AC-002, EC-240).
 ///
 /// This function performs NO IPC send. Scrollback navigation is a TUI-local viewport
 /// operation only (BC-2.09.007 Postcondition 3, AC-006).
-#[allow(clippy::todo)]
-pub fn handle_pty_scroll_up(_app: &mut App) {
-    todo!()
+pub fn handle_pty_scroll_up(app: &mut App) {
+    let session_id = match &app.mode {
+        AppMode::EmbeddedTerminal { session_id, .. } => session_id.clone(),
+        _ => return,
+    };
+
+    let Some(parser) = app.pty_parsers.get_mut(&session_id) else {
+        return;
+    };
+
+    // Probe the effective scrollback maximum using the read-back-clamp pattern.
+    // vt100 0.16.2 does not expose Screen::scrollback_len() publicly; setting
+    // scrollback to a sentinel far beyond any possible history and reading back
+    // the clamped result gives the number of rows currently in history.
+    parser.screen_mut().set_scrollback(usize::MAX);
+    let max_available = parser.screen().scrollback();
+    // Restore to live tail before we compute the new offset below.
+    parser.screen_mut().set_scrollback(0);
+
+    if max_available == 0 {
+        // No scrollback history yet; nothing to scroll.
+        return;
+    }
+
+    let current = app
+        .pty_scroll_offsets
+        .get(&session_id)
+        .copied()
+        .unwrap_or(0);
+
+    // Increment by one scroll step, clamped to max_available (EC-240).
+    let new_offset = current.saturating_add(1).min(max_available);
+    app.pty_scroll_offsets.insert(session_id, new_offset);
 }
 
 /// Handle `Action::PtyScrollDown` in `AppMode::EmbeddedTerminal`.
@@ -1290,9 +1326,26 @@ pub fn handle_pty_scroll_up(_app: &mut App) {
 ///
 /// This function performs NO IPC send. Scrollback navigation is a TUI-local viewport
 /// operation only (BC-2.09.007 Postcondition 3, AC-006).
-#[allow(clippy::todo)]
-pub fn handle_pty_scroll_down(_app: &mut App) {
-    todo!()
+pub fn handle_pty_scroll_down(app: &mut App) {
+    let session_id = match &app.mode {
+        AppMode::EmbeddedTerminal { session_id, .. } => session_id.clone(),
+        _ => return,
+    };
+
+    let current = app
+        .pty_scroll_offsets
+        .get(&session_id)
+        .copied()
+        .unwrap_or(0);
+
+    if current == 0 {
+        // Already at live tail — no-op (EC-241, AC-013).
+        return;
+    }
+
+    // Decrement by one scroll step; floor is 0 (live tail).
+    let new_offset = current.saturating_sub(1);
+    app.pty_scroll_offsets.insert(session_id, new_offset);
 }
 
 /// Compute the run-loop poll timeout, shrunk to the resize debounce deadline when one is armed.
