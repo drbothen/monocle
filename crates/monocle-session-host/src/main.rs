@@ -220,7 +220,7 @@ async fn run(args: CliArgs) -> Result<(), SessionHostError> {
     })?;
 
     // Step 6: initialize vt100 parser (BC-2.09.006: resized in DaemonToHost::Resize handler).
-    let mut _parser = step_init_vt100_parser(24, 80);
+    let mut parser = step_init_vt100_parser(24, 80);
 
     // Step 7: bind per-session UDS socket with mode 0o600.
     let listener = step_bind_uds(&args.runtime_dir, &args.session_id).await?;
@@ -238,7 +238,7 @@ async fn run(args: CliArgs) -> Result<(), SessionHostError> {
         child_pid,
         socket_path,
         pty_pair.master,
-        &mut _parser,
+        &mut parser,
     )
     .await?;
 
