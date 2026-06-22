@@ -980,7 +980,7 @@ S-040-keyboard-forwarding:
 S-046-pty-output-fan-out:
   path: stories/S-046-pty-output-fan-out.md
   current_version: "1.9"
-  last_bump_commit: "[inputs[] pin refresh — BC-2.05.009 v1.5.5→v1.5.11, BC-2.05.011 v1.2.5→v1.2.11, SS-session-manager v2.6.1→v2.17.1; body accuracy verified; no behavioral change]"
+  last_bump_commit: "[inputs[] pin refresh — BC-2.05.009, BC-2.05.011, SS-session-manager bumped (historical deltas archived in story Trace); body accuracy verified; no behavioral change]"
   last_bump_date: "2026-06-22"
 
 S-047-ipc-lifecycle-variants:
