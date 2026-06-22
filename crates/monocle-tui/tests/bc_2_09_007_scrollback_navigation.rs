@@ -9,6 +9,14 @@
 //! functions will panic "not yet implemented". Tests on already-implemented GC
 //! and resize-reset paths assert S-043's framing of those invariants.
 //!
+//! ADV Pass-1 additions (v1.4.0 BCs):
+//!   - test_BC_2_09_007_content_anchored_new_output (replaces
+//!     test_BC_2_09_007_new_output_does_not_reset_scroll_offset — PC-5)
+//!   - test_BC_2_09_007_concurrent_status_bar_badges (PC-4, EC-245)
+//!   - test_BC_2_09_007_status_bar_string_rendered (AC-007, HIGH-003)
+//!   - test_BC_2_09_007_ctrl_up_dispatch_scrolls_no_ipc (AC-002/AC-006/PC-3, BLOCKER-002)
+//!   - test_BC_2_09_007_ctrl_down_dispatch_scrolls_no_ipc (symmetric)
+//!
 //! Test naming: test_BC_2_09_007_<assertion_name> as required by the TDD contract.
 //!
 //! BC clause → test mapping:
@@ -21,7 +29,11 @@
 //!   Postcondition 2d / AC-005 / AC-011 → test_BC_2_09_007_focus_switch_preserves_offsets
 //!   Postcondition 3 / AC-006 → test_BC_2_09_007_no_ipc_for_scroll
 //!   Postcondition 4 / AC-007 → test_BC_2_09_007_status_bar_indicator_when_scrolled
-//!   Postcondition 5 / AC-008 / AC-014 / EC-244 → test_BC_2_09_007_new_output_does_not_reset_scroll_offset
+//!   Postcondition 4 / AC-007 (render string) → test_BC_2_09_007_status_bar_string_rendered
+//!   Postcondition 4 / AC-007 / PC-4 / EC-245 → test_BC_2_09_007_concurrent_status_bar_badges
+//!   Postcondition 5 / AC-008 / AC-014 / EC-244 / PC-5 → test_BC_2_09_007_content_anchored_new_output
+//!   Postcondition 3 / AC-002 / AC-006 / PC-3 (dispatch) → test_BC_2_09_007_ctrl_up_dispatch_scrolls_no_ipc
+//!   Postcondition 3 / AC-003 / AC-006 / PC-3 (dispatch) → test_BC_2_09_007_ctrl_down_dispatch_scrolls_no_ipc
 //!   Invariant 3a / AC-009 → test_BC_2_09_007_resize_resets_scroll_offset_to_zero
 //!   Invariant 3b / AC-010 → test_BC_2_09_007_terminated_session_removes_scroll_entry
 //!   Invariant 5 / AC-011 → test_BC_2_09_007_no_singular_shared_offset_field
@@ -37,9 +49,11 @@ use monocle_core::tui::state::{
 };
 use monocle_ipc::types::ClientToServer;
 use monocle_tui::app::{
-    gc_pty_session, handle_pty_scroll_down, handle_pty_scroll_up, on_pty_output,
-    on_resize_detected, App,
+    build_builtin_binding_layers, gc_pty_session, handle_crossterm_event, handle_pty_scroll_down,
+    handle_pty_scroll_up, on_pty_output, on_resize_detected, render_frame, App,
 };
+use monocle_tui::ui::sessions_panel::SessionsPanelState;
+use ratatui::{backend::TestBackend, Terminal};
 use tokio::sync::mpsc;
 
 // ---------------------------------------------------------------------------
@@ -111,6 +125,61 @@ fn effective_scrollback_max(parser: &mut vt100::Parser) -> usize {
     // Restore live tail.
     parser.screen_mut().set_scrollback(0);
     max
+}
+
+/// Collect all text from a ratatui `TestBackend` terminal buffer into a flat string.
+///
+/// Used by render_frame-based tests to scrape the rendered status bar for badge
+/// strings such as `[scrolled back N rows]` and `[dump: N drops]`.
+fn buffer_text(terminal: &Terminal<TestBackend>) -> String {
+    let buf = terminal.backend().buffer().clone();
+    let area = buf.area();
+    (0..area.height)
+        .flat_map(|y| (0..area.width).map(move |x| (x, y)))
+        .map(|(x, y)| buf[(x, y)].symbol().to_string())
+        .collect()
+}
+
+/// Render `app` into a 100×30 TestBackend via `render_frame` and return the terminal.
+///
+/// Matches the helper pattern in render_frame_integration_s028.rs.
+fn render_app_to_terminal(app: &mut App) -> Terminal<TestBackend> {
+    let backend = TestBackend::new(100, 30);
+    let mut terminal = Terminal::new(backend).expect("test terminal must initialize");
+    terminal
+        .draw(|frame| {
+            let mut state = SessionsPanelState::default();
+            render_frame(app, &mut state, frame);
+        })
+        .expect("terminal.draw must succeed");
+    terminal
+}
+
+/// Build a crossterm `KeyEvent` for Ctrl+Up (Press).
+fn ctrl_up_event() -> crossterm::event::Event {
+    crossterm::event::Event::Key(crossterm::event::KeyEvent::new_with_kind(
+        crossterm::event::KeyCode::Up,
+        crossterm::event::KeyModifiers::CONTROL,
+        crossterm::event::KeyEventKind::Press,
+    ))
+}
+
+/// Build a crossterm `KeyEvent` for Ctrl+Down (Press).
+fn ctrl_down_event() -> crossterm::event::Event {
+    crossterm::event::Event::Key(crossterm::event::KeyEvent::new_with_kind(
+        crossterm::event::KeyCode::Down,
+        crossterm::event::KeyModifiers::CONTROL,
+        crossterm::event::KeyEventKind::Press,
+    ))
+}
+
+/// Drain all messages from an IPC receiver channel without blocking.
+fn drain_ipc(rx: &mut mpsc::Receiver<ClientToServer>) -> Vec<ClientToServer> {
+    let mut out = Vec::new();
+    while let Ok(msg) = rx.try_recv() {
+        out.push(msg);
+    }
+    out
 }
 
 // ---------------------------------------------------------------------------
@@ -647,107 +716,149 @@ fn test_BC_2_09_007_status_bar_indicator_when_scrolled() {
 }
 
 // ---------------------------------------------------------------------------
-// AC-008 / AC-014 / EC-244: new PTY output does not reset scroll offset
+// AC-008 / AC-014 / EC-244 / PC-5: content-anchored offset on new PTY output
 // BC-2.09.007 Postcondition 5
 //
-// This test exercises the on_pty_output path. The scroll offset is set by
-// directly mutating pty_scroll_offsets (not via handle_pty_scroll_up which is
-// todo!()) — simulating "already scrolled back to 10" without the handler.
-// The assertion that on_pty_output does NOT reset the offset is a behavioral
-// test of an already-wired path; it FAILS if the implementation is absent
-// (offset remains at its pre-set value only if on_pty_output leaves it alone).
+// REPLACES test_BC_2_09_007_new_output_does_not_reset_scroll_offset (ADV Pass-1).
+//
+// The old test only asserted offset != 0 after new output (numeric-preserve
+// semantics). The v1.4.0 BC requires CONTENT-ANCHORED semantics: the offset
+// must INCREASE by the number of new scrollback rows produced by the process()
+// call so that the viewport stays pinned to the same content rows.
+//
+// Current impl (on_pty_output line ~672): parser.process(&bytes) with NO offset
+// adjustment. This test FAILS because the offset stays at the numeric value
+// (e.g. 10) rather than becoming offset + new_rows.
+//
+// NOTE: on_pty_output validates that session_id is a well-formed UUID (SEC-004).
+// Tests that exercise on_pty_output MUST use UUID-format session IDs.
 // ---------------------------------------------------------------------------
 
-/// test_BC_2_09_007_new_output_does_not_reset_scroll_offset
+/// test_BC_2_09_007_content_anchored_new_output
 ///
-/// Exercises BC-2.09.007 Postcondition 5 (AC-008), AC-014, and Edge Case EC-244:
-///   New PtyOutput arriving while scrolled back does NOT force the viewport to
-///   jump to the bottom. pty_scroll_offsets[focused_session_id] is preserved.
-///   The status bar indicator remains (offset still > 0 after new bytes arrive).
+/// Exercises BC-2.09.007 Postcondition 5 / PC-5 (AC-008, AC-014, EC-244):
+///   New PtyOutput while scrolled back (offset=10) MUST increment the offset
+///   by K (the number of new scrollback rows produced), yielding offset = 10+K
+///   (clamped to scrollback_max). Numeric-preserve (offset stays 10) is WRONG.
 ///
-/// Canonical test vector:
-///   scrolled to offset=10; PtyOutput arrives → offset still 10.
+/// Canonical test vector (BC-2.09.007):
+///   Scrolled to offset=10; 5 new rows of output arrive
+///   → pty_scroll_offsets = min(15, scrollback_max).
 ///
-/// NOTE: on_pty_output validates that session_id is a well-formed UUID (SEC-004).
-/// Tests that exercise on_pty_output MUST use UUID-format session IDs.
+/// RED: current on_pty_output calls parser.process(&bytes) without adjusting
+/// pty_scroll_offsets. The offset stays at 10, failing the 10+K assertion.
 #[tokio::test]
-async fn test_BC_2_09_007_new_output_does_not_reset_scroll_offset() {
+async fn test_BC_2_09_007_content_anchored_new_output() {
     // UUID-format session ID required: on_pty_output validates via Uuid::parse_str.
     let session_id = "00000007-0000-4000-8007-000000000001";
     let mut app = make_app_in_embedded(session_id);
 
-    // Feed initial content so the parser has scrollback history.
+    // Feed initial content so the parser has a scrollback history well above 10.
+    // 50 lines into a 24-row screen: 26 rows go into scrollback history.
     feed_lines(&mut app, session_id, 50);
 
-    // Directly set the scroll offset to 10 (simulating "already scrolled back"),
-    // bypassing handle_pty_scroll_up (which is todo!()) to isolate this assertion.
-    app.pty_scroll_offsets.insert(session_id.to_string(), 10);
+    // Read scrollback_max BEFORE new output arrives.
+    let scrollback_max_before = {
+        let parser = app.pty_parsers.get_mut(session_id).unwrap();
+        effective_scrollback_max(parser)
+    };
+    assert!(
+        scrollback_max_before >= 10,
+        "BC-2.09.007 PC-5 precondition: scrollback history must be >= 10 rows after 50 lines; \
+         got {}",
+        scrollback_max_before
+    );
 
+    // Set scroll offset to 10 (simulating "already scrolled back").
+    // Direct mutation bypasses handle_pty_scroll_up (which tests the scroll handler;
+    // this test isolates the on_pty_output content-anchored update path).
+    app.pty_scroll_offsets.insert(session_id.to_string(), 10);
     assert_eq!(
         scroll_offset(&app, session_id),
         10,
-        "BC-2.09.007 EC-244 precondition: offset must be 10 before PtyOutput arrives"
+        "BC-2.09.007 PC-5 precondition: offset must be 10 before new output"
     );
+
+    // Construct K=5 new lines. Each line is exactly one output row in the 80-col parser.
+    // The new rows will push 5 new lines into scrollback history (parser is 24 rows tall;
+    // each new line beyond the visible area scrolls one row into history).
+    let new_line_count = 5usize;
+    let new_bytes: Vec<u8> = (0..new_line_count)
+        .flat_map(|i| format!("new-content-row-{}\r\n", i).into_bytes())
+        .collect();
+
+    // Measure scrollback_max before vs after to compute the actual K delta.
+    // This avoids hardcoding assumptions about how many rows land in scrollback
+    // (depends on current screen fullness). The BC specifies: new_offset = 10 + delta.
+    let scrollback_max_before_process = {
+        let parser = app.pty_parsers.get_mut(session_id).unwrap();
+        effective_scrollback_max(parser)
+    };
 
     // Act: new PtyOutput arrives while scrolled back.
-    on_pty_output(
-        &mut app,
-        session_id.to_string(),
-        b"new-output-while-scrolled\r\n".to_vec(),
-    );
+    on_pty_output(&mut app, session_id.to_string(), new_bytes);
 
-    // Assert 1 (AC-008 / Postcondition 5): offset preserved at 10 — NOT reset to 0.
+    // Measure scrollback_max after process() to compute the actual new-row delta.
+    let scrollback_max_after_process = {
+        let parser = app.pty_parsers.get_mut(session_id).unwrap();
+        effective_scrollback_max(parser)
+    };
+
+    // K = new scrollback rows added by the process() call.
+    // The BC algorithm: new_offset = min(old_offset + K, new_scrollback_max).
+    let k = scrollback_max_after_process.saturating_sub(scrollback_max_before_process);
+    let expected_offset = (10 + k).min(scrollback_max_after_process);
+
+    // Assert 1 (PC-5 / AC-008 / EC-244): offset must be content-anchored (10 + K), NOT 10.
+    let actual_offset = scroll_offset(&app, session_id);
     assert_eq!(
-        scroll_offset(&app, session_id),
-        10,
-        "BC-2.09.007 Postcondition 5 / AC-008 / EC-244: pty_scroll_offsets must remain 10 \
-         after PtyOutput arrives — new output must NOT force viewport to live tail"
+        actual_offset,
+        expected_offset,
+        "BC-2.09.007 Postcondition 5 / PC-5 / AC-008 / EC-244: offset must be content-anchored \
+         (old_offset + K = 10 + {} = {}, clamped to {}); got {}. \
+         Numeric-preserve (offset stays 10) is WRONG — the viewport drifts toward newer content.",
+        k,
+        10 + k,
+        scrollback_max_after_process,
+        actual_offset
     );
 
-    // Assert 2 (AC-014): the parser was still updated with the new bytes.
-    // The content is visible when the user scrolls back to live tail.
-    // After feeding 50 lines into a 24-row screen, the live bottom shows the last rows.
-    // The new line is appended after line49 — verify via scrollback_len check:
-    // the effective max after new output must exceed 0 (parser still healthy).
+    // Assert 2 (PC-5): the offset is NOT the raw numeric-preserve value (10) when K > 0.
+    // If K == 0, the new bytes produced no new scrollback rows (e.g., the output did not
+    // scroll the screen). In that edge case numeric-preserve and content-anchored are
+    // equivalent (10 + 0 = 10), so we only enforce the distinction when K > 0.
+    if k > 0 {
+        assert_ne!(
+            actual_offset, 10,
+            "BC-2.09.007 PC-5: offset must NOT stay at the numeric-preserve value 10 \
+             when K={} new scrollback rows arrived — must be content-anchored at {}",
+            k, expected_offset
+        );
+    }
+
+    // Assert 3 (AC-014): parser was updated with new bytes (content is accessible).
     let parser = app
         .pty_parsers
         .get_mut(session_id)
         .expect("BC-2.09.007 AC-014: parser must still exist after PtyOutput");
-
-    // Probe the effective scrollback max — if on_pty_output processed the bytes,
-    // the parser state is updated (max >= original max, possibly the same since
-    // the screen only holds scrollback_rows lines). The key property is the offset
-    // was NOT reset (Assert 1 passed). We additionally verify via contents that
-    // the new bytes are in the parser (set scrollback to 0 to see live screen content).
     parser.screen_mut().set_scrollback(0);
-    let contents = parser.screen().contents();
-
-    // The live screen (last 24 rows) must contain "new-output-while-scrolled" OR
-    // the new line scrolled into scrollback history (screen is 24 rows; if there were
-    // already 50 lines the new line is on the current bottom). We check screen contents
-    // AND scrollback content (set_scrollback to a large value and re-check).
-    let live_has_new = contents.contains("new-output-while-scrolled");
-
-    // Check scrollback history as well for the new content.
+    let live_contents = parser.screen().contents();
     parser.screen_mut().set_scrollback(usize::MAX);
-    let all_rows_contents = parser.screen().contents();
-    let scrollback_has_new = all_rows_contents.contains("new-output-while-scrolled");
-    // Restore live tail.
+    let all_contents = parser.screen().contents();
     parser.screen_mut().set_scrollback(0);
 
     assert!(
-        live_has_new || scrollback_has_new,
+        live_contents.contains("new-content-row-") || all_contents.contains("new-content-row-"),
         "BC-2.09.007 AC-014: parser must be updated with new bytes even while scrolled back; \
-         'new-output-while-scrolled' must appear in live or scrollback content. \
-         Live screen: {:?}",
-        contents.trim_end()
+         'new-content-row-' must appear in live or scrollback content. Live: {:?}",
+        live_contents.trim_end()
     );
 
-    // Assert 3 (AC-014 indicator): offset remains > 0 → indicator would still be shown.
+    // Assert 4 (AC-014 indicator): offset is > 0 → scrollback indicator would still show.
     assert!(
         scroll_offset(&app, session_id) > 0,
-        "BC-2.09.007 AC-014: pty_scroll_offsets must remain > 0 after PtyOutput \
-         — status bar indicator '[scrolled back N rows]' must still be shown"
+        "BC-2.09.007 AC-014: pty_scroll_offsets must remain > 0 after content-anchored update \
+         — status bar indicator must still show"
     );
 }
 
@@ -1032,5 +1143,322 @@ fn test_BC_2_09_007_render_embedded_terminal_with_scroll_offset() {
         "BC-2.09.007 render / EC-240: effective scroll offset must be clamped to \
          scrollback_len()={} when scroll_offset={} exceeds the buffer",
         max_scrollback, oversized_offset
+    );
+}
+
+// ---------------------------------------------------------------------------
+// AC-007 / HIGH-003: status bar rendered buffer literally contains "[scrolled back N rows]"
+// BC-2.09.007 Postcondition 4
+//
+// The existing test_BC_2_09_007_status_bar_indicator_when_scrolled only asserts
+// the usize RETURN VALUE of render_embedded_terminal. It never scrapes the rendered
+// status bar string. This test drives render_frame (the full production render path)
+// and asserts the terminal buffer literally contains the badge string.
+//
+// RED: if the render_frame integration path for EmbeddedTerminal is absent or the
+// badge string does not match `[scrolled back N rows]`, the assertion fails.
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_09_007_status_bar_string_rendered
+///
+/// Exercises BC-2.09.007 Postcondition 4 / AC-007 (ADV Pass-1 HIGH-003):
+///   When pty_scroll_offsets[focused] > 0, the rendered terminal buffer (via
+///   render_frame + TestBackend) literally contains `[scrolled back N rows]`
+///   with the correct N.
+///
+///   When pty_scroll_offsets[focused] == 0 (live tail), the string is ABSENT
+///   from the rendered buffer.
+///
+/// RED: render_frame EmbeddedTerminal path may be absent or the badge path may
+/// suppress/omit the string. The absent-case assertion also catches spurious
+/// rendering of the indicator at live tail.
+#[test]
+fn test_BC_2_09_007_status_bar_string_rendered() {
+    // Arrange: App in EmbeddedTerminal mode with a scrolled-back session.
+    let session_id = "s1-status-bar-string";
+    let mut app = make_app_in_embedded(session_id);
+
+    // Feed enough content to create scrollback history so set_scrollback(5) is non-zero.
+    feed_lines(&mut app, session_id, 50);
+
+    // Verify precondition: effective scrollback max >= 5.
+    let max_sb = {
+        let parser = app.pty_parsers.get_mut(session_id).unwrap();
+        effective_scrollback_max(parser)
+    };
+    assert!(
+        max_sb >= 5,
+        "BC-2.09.007 status-bar string precondition: effective scrollback max must be >= 5; \
+         got {}",
+        max_sb
+    );
+
+    // --- Case A: scrolled back 5 rows → indicator must be present ---
+    let test_offset: usize = 5;
+    app.pty_scroll_offsets
+        .insert(session_id.to_string(), test_offset);
+
+    let terminal_a = render_app_to_terminal(&mut app);
+    let text_a = buffer_text(&terminal_a);
+
+    let expected_badge = format!("[scrolled back {} rows]", test_offset);
+    assert!(
+        text_a.contains(&expected_badge),
+        "BC-2.09.007 Postcondition 4 / AC-007: rendered status bar must contain '{}' \
+         when pty_scroll_offsets[focused] = {}; rendered buffer (first 300 chars): {:?}",
+        expected_badge,
+        test_offset,
+        &text_a[..text_a.len().min(300)]
+    );
+
+    // --- Case B: live tail (offset=0) → indicator must be ABSENT ---
+    app.pty_scroll_offsets.insert(session_id.to_string(), 0);
+
+    let terminal_b = render_app_to_terminal(&mut app);
+    let text_b = buffer_text(&terminal_b);
+
+    // The literal badge string must not appear when at live tail.
+    assert!(
+        !text_b.contains("[scrolled back"),
+        "BC-2.09.007 Postcondition 4 / AC-007: '[scrolled back' must NOT appear in \
+         the rendered status bar when pty_scroll_offsets[focused] == 0 (live tail); \
+         found in buffer: {:?}",
+        text_b.lines().find(|l| l.contains("[scrolled back"))
+    );
+}
+
+// ---------------------------------------------------------------------------
+// AC-007 / PC-4 / EC-245: scrollback indicator and dump-drop badge coexist
+// BC-2.09.007 Postcondition 4 (concurrent-badge mandate from v1.4.0)
+//
+// The current render_frame implementation uses:
+//   let pty_status_msg = dump_drop_status.or(scrollback_indicator)...
+// which is an OR-chain: when dump_drop_status is Some, scrollback_indicator
+// is NEVER reached (suppressed). This violates PC-4 which mandates BOTH badges
+// appear simultaneously.
+//
+// RED: buffer contains dump-drop string but NOT the scrollback indicator string,
+// or lacks both. The test will fail because the suppression chain is active.
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_09_007_concurrent_status_bar_badges
+///
+/// Exercises BC-2.09.007 Postcondition 4 / PC-4 / EC-245:
+///   When the focused session is scrolled back (offset > 0) AND a dump-drop
+///   condition is active, BOTH `[scrolled back N rows]` AND `[dump: N drops]`
+///   must appear in the rendered status bar simultaneously. Neither suppresses
+///   the other.
+///
+/// RED: current render_frame uses `dump_drop_status.or(scrollback_indicator)`
+/// which suppresses the scrollback badge when dump-drop is active. The test
+/// asserts both strings are present.
+#[test]
+fn test_BC_2_09_007_concurrent_status_bar_badges() {
+    // Arrange: App in EmbeddedTerminal with scrolled-back session AND dump-drop active.
+    let session_id = "s1-concurrent-badge";
+    let mut app = make_app_in_embedded(session_id);
+
+    // Feed content to create scrollback history.
+    feed_lines(&mut app, session_id, 50);
+
+    let max_sb = {
+        let parser = app.pty_parsers.get_mut(session_id).unwrap();
+        effective_scrollback_max(parser)
+    };
+    assert!(
+        max_sb >= 5,
+        "BC-2.09.007 PC-4 precondition: scrollback max must be >= 5; got {}",
+        max_sb
+    );
+
+    // Set scrolled-back offset.
+    let scroll_back: usize = 5;
+    app.pty_scroll_offsets
+        .insert(session_id.to_string(), scroll_back);
+
+    // Activate dump-drop condition: dump_in_progress = true AND pending_pty_drop_count = 3.
+    app.dump_in_progress.insert(session_id.to_string(), true);
+    app.pending_pty_drop_count.insert(session_id.to_string(), 3);
+
+    // Act: render via render_frame.
+    let terminal = render_app_to_terminal(&mut app);
+    let text = buffer_text(&terminal);
+
+    // Assert 1 (PC-4 / EC-245): scrollback indicator present.
+    let scrollback_badge = format!("[scrolled back {} rows]", scroll_back);
+    assert!(
+        text.contains(&scrollback_badge),
+        "BC-2.09.007 PC-4 / EC-245: rendered status bar must contain '{}' when scrolled back \
+         even with dump-drop active; rendered buffer (first 400 chars): {:?}",
+        scrollback_badge,
+        &text[..text.len().min(400)]
+    );
+
+    // Assert 2 (PC-4 / EC-245): dump-drop badge present.
+    let dump_badge = "[dump: 3 drops]";
+    assert!(
+        text.contains(dump_badge),
+        "BC-2.09.007 PC-4 / EC-245: rendered status bar must contain '{}' when dump-drop \
+         is active even with scrollback indicator also active; rendered buffer (first 400 chars): {:?}",
+        dump_badge,
+        &text[..text.len().min(400)]
+    );
+
+    // Assert 3 (PC-4): BOTH appear on the same render — neither suppresses the other.
+    // (The two individual assertions above together prove concurrent rendering.)
+}
+
+// ---------------------------------------------------------------------------
+// AC-002 / AC-006 / PC-3 / BLOCKER-002: Ctrl+Up in EmbeddedTerminal increments
+// pty_scroll_offsets and sends NO IPC — via handle_crossterm_event dispatch path.
+// BC-2.09.007 Postcondition 2a + Postcondition 3
+//
+// BLOCKER-002 identifies that in AppMode::EmbeddedTerminal, handle_crossterm_event
+// routes ALL key events directly to dispatch_embedded_terminal_key (PTY forwarding).
+// The binding chain (dispatch_key_event) is NEVER invoked in EmbeddedTerminal mode.
+// Therefore Ctrl+Up is forwarded as a PTY byte sequence (KeyInput IPC), and
+// PtyScrollUp/handle_pty_scroll_up are NEVER reached.
+//
+// This test drives handle_crossterm_event with a real crossterm Ctrl+Up event and
+// asserts: (a) pty_scroll_offsets[focused] INCREMENTED by 1; (b) NO IPC sent.
+//
+// RED: current impl sends KeyInput IPC for Ctrl+Up and does NOT increment the offset.
+// Both assertions will fail.
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_09_007_ctrl_up_dispatch_scrolls_no_ipc
+///
+/// Exercises BC-2.09.007 Postcondition 2a (AC-002) and Postcondition 3 (AC-006 / PC-3)
+/// via the production handle_crossterm_event dispatch path (BLOCKER-002):
+///   - Feeding a real crossterm Ctrl+Up KeyEvent through handle_crossterm_event
+///     in AppMode::EmbeddedTerminal must increment pty_scroll_offsets[focused] by 1.
+///   - No `ClientToServer::KeyInput` and no `ClientToServer::ResizePane` may be sent.
+///
+/// RED: current dispatch sends Ctrl+Up to the PTY as a KeyInput IPC byte sequence
+/// and never calls handle_pty_scroll_up. The offset stays at 0, IPC is sent.
+#[tokio::test]
+async fn test_BC_2_09_007_ctrl_up_dispatch_scrolls_no_ipc() {
+    // UUID-format session ID: handle_crossterm_event calls dispatch_embedded_terminal_key
+    // which sends ClientToServer::KeyInput using the session_id string directly.
+    let session_id = "00000007-0000-4000-8007-000000000003";
+    let mut app = make_app_in_embedded(session_id);
+
+    // Wire a real bounded IPC channel so we can inspect outbound sends.
+    let (ipc_tx, mut ipc_rx) = mpsc::channel::<ClientToServer>(64);
+    app.ipc_tx = Some(ipc_tx);
+
+    // Feed content so there is scrollback history to scroll into.
+    feed_lines(&mut app, session_id, 50);
+
+    // Verify precondition: scrollback max >= 1.
+    let max_sb = {
+        let parser = app.pty_parsers.get_mut(session_id).unwrap();
+        effective_scrollback_max(parser)
+    };
+    assert!(
+        max_sb >= 1,
+        "BC-2.09.007 BLOCKER-002 precondition: scrollback max must be >= 1; got {}",
+        max_sb
+    );
+
+    // Pre-condition: offset starts at 0.
+    assert_eq!(
+        scroll_offset(&app, session_id),
+        0,
+        "BC-2.09.007 BLOCKER-002 precondition: offset must be 0 before Ctrl+Up"
+    );
+
+    let binding_layers = build_builtin_binding_layers();
+    let mut sessions_state = SessionsPanelState::default();
+
+    // Act: feed a real crossterm Ctrl+Up key event through the production dispatch path.
+    let _ = handle_crossterm_event(
+        &mut app,
+        ctrl_up_event(),
+        &binding_layers,
+        &mut sessions_state,
+    )
+    .await;
+
+    // Assert 1 (AC-002 / Postcondition 2a): offset INCREMENTED by 1.
+    let after_offset = scroll_offset(&app, session_id);
+    assert_eq!(
+        after_offset, 1,
+        "BC-2.09.007 AC-002 / Postcondition 2a: pty_scroll_offsets[focused] must be 1 \
+         after Ctrl+Up via handle_crossterm_event; got {}. \
+         BLOCKER-002: EmbeddedTerminal dispatch must intercept Ctrl+Up → PtyScrollUp \
+         BEFORE forwarding to dispatch_embedded_terminal_key.",
+        after_offset
+    );
+
+    // Assert 2 (AC-006 / Postcondition 3 / PC-3): NO IPC sent.
+    let sent = drain_ipc(&mut ipc_rx);
+    assert!(
+        sent.is_empty(),
+        "BC-2.09.007 Postcondition 3 / AC-006: Ctrl+Up must NOT send any IPC message; \
+         got {} message(s): {:?}",
+        sent.len(),
+        sent.iter()
+            .map(|m| format!("{:?}", m))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+}
+
+/// test_BC_2_09_007_ctrl_down_dispatch_scrolls_no_ipc
+///
+/// Symmetric test for Ctrl+Down. Exercises BC-2.09.007 Postcondition 2b (AC-003)
+/// and Postcondition 3 (AC-006 / PC-3) via handle_crossterm_event:
+///   - Start with offset=5; Ctrl+Down decrements to 4.
+///   - No IPC sent.
+///
+/// RED: current dispatch sends Ctrl+Down to PTY as KeyInput IPC; offset unchanged.
+#[tokio::test]
+async fn test_BC_2_09_007_ctrl_down_dispatch_scrolls_no_ipc() {
+    let session_id = "00000007-0000-4000-8007-000000000004";
+    let mut app = make_app_in_embedded(session_id);
+
+    let (ipc_tx, mut ipc_rx) = mpsc::channel::<ClientToServer>(64);
+    app.ipc_tx = Some(ipc_tx);
+
+    feed_lines(&mut app, session_id, 50);
+
+    // Pre-set offset to 5 so Ctrl+Down has room to decrement.
+    app.pty_scroll_offsets.insert(session_id.to_string(), 5);
+    assert_eq!(
+        scroll_offset(&app, session_id),
+        5,
+        "BC-2.09.007 BLOCKER-002 precondition (ctrl-down): offset must be 5 before Ctrl+Down"
+    );
+
+    let binding_layers = build_builtin_binding_layers();
+    let mut sessions_state = SessionsPanelState::default();
+
+    // Act: feed a real crossterm Ctrl+Down key event.
+    let _ = handle_crossterm_event(
+        &mut app,
+        ctrl_down_event(),
+        &binding_layers,
+        &mut sessions_state,
+    )
+    .await;
+
+    // Assert 1 (AC-003 / Postcondition 2b): offset DECREMENTED to 4.
+    let after_offset = scroll_offset(&app, session_id);
+    assert_eq!(
+        after_offset, 4,
+        "BC-2.09.007 AC-003 / Postcondition 2b: pty_scroll_offsets[focused] must be 4 \
+         after Ctrl+Down (from 5) via handle_crossterm_event; got {}. \
+         BLOCKER-002: EmbeddedTerminal dispatch must route Ctrl+Down → PtyScrollDown.",
+        after_offset
+    );
+
+    // Assert 2 (AC-006 / Postcondition 3): NO IPC sent.
+    let sent = drain_ipc(&mut ipc_rx);
+    assert!(
+        sent.is_empty(),
+        "BC-2.09.007 Postcondition 3 / AC-006: Ctrl+Down must NOT send any IPC message; \
+         got {} message(s)",
+        sent.len()
     );
 }
