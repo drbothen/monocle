@@ -907,7 +907,8 @@ pub struct SessionManager {
     /// This is a separate accumulation buffer from the per-client send channel (not bounded
     /// by `CLIENT_CHANNEL_CAPACITY`). It is populated by the `attach_session` scrollback
     /// forwarding path and cleared once the dump completes.
-    pending_pty_bytes: std::collections::HashMap<(String, String), std::collections::VecDeque<bytes::Bytes>>,
+    pending_pty_bytes:
+        std::collections::HashMap<(String, String), std::collections::VecDeque<bytes::Bytes>>,
     /// Failure-injection seam for the PidFallback SIGTERM call (ADV-S034-IMPORTANT-001).
     ///
     /// `None` in production (cfg gate ensures it is always `None` in non-test builds).

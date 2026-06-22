@@ -2032,4 +2032,319 @@ mod tests {
             pty_size.cols
         );
     }
+
+    // ---------------------------------------------------------------------------
+    // S-047 Red Gate: AC-SH-001..004 session-host producer tests
+    //
+    // All tests in this section MUST FAIL before S-047 implementation because:
+    // - spawn_pty_reader_task() is todo!()
+    // - recv_daemon_msg() is todo!()
+    // - stream_scrollback_dump_chunked() is todo!()
+    //
+    // AC-SH-001: PTY reader task sends Bytes chunks to the mpsc channel.
+    // AC-SH-002: Phase A/B select! arms feed parser and accept daemon connection.
+    // AC-SH-003: KeyInput arm writes bytes to PTY stdin; write failure exits Phase B.
+    // AC-SH-004: Attach produces real scrollback from parser; chunk_seq is contiguous.
+    // ---------------------------------------------------------------------------
+
+    /// AC-SH-001: `spawn_pty_reader_task()` returns a `Receiver<Bytes>` and spawns
+    /// a blocking thread that reads from the PTY master. The returned receiver must
+    /// be ready to receive (channel capacity = 1024).
+    ///
+    /// The test verifies the function signature contract: a real PTY is opened and
+    /// `spawn_pty_reader_task()` is called. On success, the receiver is returned.
+    ///
+    /// FAILS because `spawn_pty_reader_task()` is `todo!()`.
+    #[tokio::test]
+    async fn test_AC_SH_001_pty_reader_task_sends_bytes_to_channel() {
+        use portable_pty::{native_pty_system, CommandBuilder, PtySize};
+
+        let pty_system = native_pty_system();
+        let pair = pty_system
+            .openpty(PtySize {
+                rows: 24,
+                cols: 80,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .expect("AC-SH-001: openpty must succeed");
+
+        // Spawn a trivial child on the slave so the PTY is live (echo produces output).
+        let cmd = CommandBuilder::new("echo");
+        let _cmd_with_arg = cmd;
+        // Re-create with arg
+        let mut echo_cmd = portable_pty::CommandBuilder::new("sh");
+        echo_cmd.args(["-c", "echo hello-pty; sleep 1"]);
+        let _child = pair
+            .slave
+            .spawn_command(echo_cmd)
+            .expect("AC-SH-001: spawn echo child on PTY slave");
+        drop(pair.slave);
+
+        let session_id = "ac-sh-001-0000-4000-a000-000000000001".to_string();
+
+        // FAILS: spawn_pty_reader_task() is todo!()
+        let mut rx = spawn_pty_reader_task(session_id, pair.master.as_ref());
+
+        // Expect at least one Bytes chunk within 3s (echo output triggers a read).
+        let chunk = tokio::time::timeout(std::time::Duration::from_secs(3), rx.recv())
+            .await
+            .expect("AC-SH-001: spawn_pty_reader_task channel must receive within 3s")
+            .expect("AC-SH-001: channel must not close before receiving bytes");
+
+        assert!(
+            !chunk.is_empty(),
+            "AC-SH-001: received Bytes chunk must be non-empty"
+        );
+    }
+
+    /// AC-SH-004: `stream_scrollback_dump_chunked()` serializes the live `vt100::Parser`
+    /// screen state and sends `HostToDaemon::ScrollbackChunk*` + `HostToDaemon::ScrollbackDumpComplete`
+    /// over the given UDS stream.
+    ///
+    /// FAILS because `stream_scrollback_dump_chunked()` is `todo!()`.
+    #[tokio::test]
+    async fn test_AC_SH_004_attach_produces_real_scrollback_from_parser() {
+        let socket_path = tmp_sock("sh004-attach");
+        let listener =
+            tokio::net::UnixListener::bind(&socket_path).expect("AC-SH-004: bind test socket");
+
+        // Spawn the mock daemon side that reads messages from the session-host.
+        let _socket_path_clone = socket_path.clone();
+        let daemon_task = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.expect("AC-SH-004: daemon accept");
+            let mut chunks: Vec<HostToDaemon> = Vec::new();
+            'recv: loop {
+                match tokio::time::timeout(
+                    std::time::Duration::from_secs(3),
+                    read_host_msg(&mut stream),
+                )
+                .await
+                {
+                    Ok(msg) => {
+                        let done = matches!(msg, HostToDaemon::ScrollbackDumpComplete { .. });
+                        chunks.push(msg);
+                        if done {
+                            break 'recv;
+                        }
+                    }
+                    Err(_) => break 'recv,
+                }
+            }
+            chunks
+        });
+
+        // Connect as the session-host side.
+        let mut sh_stream = tokio::net::UnixStream::connect(&socket_path)
+            .await
+            .expect("AC-SH-004: session-host connect");
+
+        // Create a real vt100::Parser with some content.
+        let mut parser = vt100::Parser::new(24, 80, 1000);
+        parser.process(b"hello world\r\n");
+        parser.process(b"second line\r\n");
+
+        let session_id = "ac-sh-004-0000-4000-a000-000000000001";
+
+        // FAILS: stream_scrollback_dump_chunked() is todo!()
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            stream_scrollback_dump_chunked(session_id, &parser, &mut sh_stream),
+        )
+        .await
+        .expect("AC-SH-004: stream_scrollback_dump_chunked must not hang");
+
+        assert!(
+            result.is_ok(),
+            "AC-SH-004: stream_scrollback_dump_chunked must succeed; got {:?}",
+            result
+        );
+
+        let msgs = daemon_task.await.expect("AC-SH-004: daemon task panicked");
+
+        // Must have ScrollbackDumpComplete.
+        let complete = msgs
+            .iter()
+            .find(|m| matches!(m, HostToDaemon::ScrollbackDumpComplete { .. }));
+        assert!(
+            complete.is_some(),
+            "AC-SH-004: daemon must receive ScrollbackDumpComplete. Got: {:?}",
+            msgs
+        );
+
+        // chunk_seq values must be contiguous starting from 0.
+        let chunks: Vec<u32> = msgs
+            .iter()
+            .filter_map(|m| {
+                if let HostToDaemon::ScrollbackChunk { chunk_seq, .. } = m {
+                    Some(*chunk_seq)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        for (expected, actual) in chunks.iter().enumerate() {
+            assert_eq!(
+                *actual, expected as u32,
+                "AC-SH-004: chunk_seq must be contiguous starting from 0; \
+                 expected {} got {}",
+                expected, actual
+            );
+        }
+
+        // total_chunks in DumpComplete must match chunks sent.
+        if let Some(HostToDaemon::ScrollbackDumpComplete { total_chunks, .. }) = complete {
+            assert_eq!(
+                *total_chunks as usize,
+                chunks.len(),
+                "AC-SH-004: ScrollbackDumpComplete.total_chunks ({}) must match chunk count ({})",
+                total_chunks,
+                chunks.len()
+            );
+        }
+
+        let _ = std::fs::remove_file(&socket_path);
+    }
+
+    /// AC-SH-004 (AC-SH-004 chunk_seq contiguity): chunk_seq values are 0, 1, 2, ... monotonically.
+    ///
+    /// Uses a parser with enough content to produce multiple chunks (>200 rows).
+    ///
+    /// FAILS because `stream_scrollback_dump_chunked()` is `todo!()`.
+    #[tokio::test]
+    async fn test_AC_SH_004_attach_chunk_seq_is_contiguous() {
+        let socket_path = tmp_sock("sh004-seq");
+        let listener =
+            tokio::net::UnixListener::bind(&socket_path).expect("AC-SH-004-seq: bind test socket");
+
+        let daemon_task = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.expect("accept");
+            let mut chunks = Vec::new();
+            'recv2: loop {
+                match tokio::time::timeout(
+                    std::time::Duration::from_secs(5),
+                    read_host_msg(&mut stream),
+                )
+                .await
+                {
+                    Ok(msg) => {
+                        let done = matches!(msg, HostToDaemon::ScrollbackDumpComplete { .. });
+                        chunks.push(msg);
+                        if done {
+                            break 'recv2;
+                        }
+                    }
+                    Err(_) => break 'recv2,
+                }
+            }
+            chunks
+        });
+
+        let mut sh_stream = tokio::net::UnixStream::connect(&socket_path)
+            .await
+            .expect("connect");
+
+        // Create a parser with 250 rows of content (> 200-row chunk limit).
+        let mut parser = vt100::Parser::new(250, 80, 1000);
+        for i in 0..250u16 {
+            parser.process(format!("line {:03}\r\n", i).as_bytes());
+        }
+
+        let session_id = "ac-sh-004b-000-4000-a000-000000000001";
+
+        // FAILS: stream_scrollback_dump_chunked() is todo!()
+        tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            stream_scrollback_dump_chunked(session_id, &parser, &mut sh_stream),
+        )
+        .await
+        .expect("must not hang")
+        .expect("must succeed");
+
+        let msgs = daemon_task.await.expect("daemon task");
+
+        let chunk_seqs: Vec<u32> = msgs
+            .iter()
+            .filter_map(|m| {
+                if let HostToDaemon::ScrollbackChunk { chunk_seq, .. } = m {
+                    Some(*chunk_seq)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // For 250 rows with ≤200 rows/chunk limit, expect at least 2 chunks.
+        assert!(
+            chunk_seqs.len() >= 2,
+            "AC-SH-004: 250-row parser must produce ≥2 chunks (≤200 rows/chunk). Got: {:?}",
+            chunk_seqs
+        );
+
+        // Verify contiguity.
+        for (expected, actual) in chunk_seqs.iter().enumerate() {
+            assert_eq!(
+                *actual, expected as u32,
+                "AC-SH-004: chunk_seq NOT contiguous: expected {}, got {}",
+                expected, actual
+            );
+        }
+
+        let _ = std::fs::remove_file(&socket_path);
+    }
+
+    /// AC-SH-003: `recv_daemon_msg()` reads a length-prefixed `DaemonToHost` frame from
+    /// the stream and deserializes it.
+    ///
+    /// FAILS because `recv_daemon_msg()` is `todo!()`.
+    #[tokio::test]
+    async fn test_AC_SH_003_recv_daemon_msg_reads_key_input_frame() {
+        let socket_path = tmp_sock("sh003-recv");
+        let listener =
+            tokio::net::UnixListener::bind(&socket_path).expect("AC-SH-003: bind test socket");
+
+        // Daemon side: write a DaemonToHost::KeyInput frame.
+        let daemon_task = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.expect("accept");
+            write_daemon_msg(
+                &mut stream,
+                &monocle_ipc::types::DaemonToHost::KeyInput {
+                    bytes: vec![0x68, 0x69], // "hi"
+                },
+            )
+            .await;
+            stream // keep alive
+        });
+
+        let mut sh_stream = tokio::net::UnixStream::connect(&socket_path)
+            .await
+            .expect("connect");
+
+        // FAILS: recv_daemon_msg() is todo!()
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(3),
+            recv_daemon_msg(&mut sh_stream),
+        )
+        .await
+        .expect("AC-SH-003: recv_daemon_msg must not hang")
+        .expect("AC-SH-003: recv_daemon_msg must succeed");
+
+        match result {
+            monocle_ipc::types::DaemonToHost::KeyInput { bytes } => {
+                assert_eq!(
+                    bytes,
+                    vec![0x68u8, 0x69u8],
+                    "AC-SH-003: KeyInput bytes must survive recv_daemon_msg unchanged"
+                );
+            }
+            other => panic!(
+                "AC-SH-003: expected DaemonToHost::KeyInput, got: {:?}",
+                other
+            ),
+        }
+
+        let _ = daemon_task.await;
+        let _ = std::fs::remove_file(&socket_path);
+    }
 }
