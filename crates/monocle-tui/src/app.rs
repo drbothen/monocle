@@ -3783,6 +3783,20 @@ pub fn handle_server_message(app: &mut App, msg: ServerToClient) -> Result<()> {
                 "ScrollbackChunk received (S-047/S-039 stub — accumulation not yet implemented)"
             );
         }
+
+        // -----------------------------------------------------------------------
+        // S-046: PTY parser-reset notification (BC-2.05.011, BC-2.05.009 Invariant 4)
+        // S-047 owns the full TUI-side protocol handler (parser reset, re-attach trigger,
+        // 5-second status bar indicator). This arm compiles the S-046 variant into the
+        // match without implementing the S-047 handler body.
+        // TODO(S-047): implement on_pty_reset(app, session_id).
+        // -----------------------------------------------------------------------
+        ServerToClient::PtyReset { session_id } => {
+            tracing::debug!(
+                session_id = %session_id,
+                "PtyReset received (S-047 handler not yet implemented)"
+            );
+        }
     }
     Ok(())
 }

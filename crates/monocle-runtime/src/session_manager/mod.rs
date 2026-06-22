@@ -716,6 +716,16 @@ struct SessionEntry {
     degraded_reason: Option<String>,
     /// Live CONTROL connection (None until post-spawn monitor connects).
     host_conn: Option<SessionHostConnection>,
+    /// PTY broker INPUT channel sender for this session (S-046).
+    ///
+    /// The PTY proxy task calls `.send(frame).await` on this sender for each
+    /// `HostToDaemon::PtyBytes` message received from the session-host.
+    /// The `PtyBroker` event loop fans the frame out to all connected TUI clients.
+    ///
+    /// `None` until `spawn_session()` wires the broker at Launching state.
+    /// The `PtyBroker` event loop task is started in `spawn_session()`; this field
+    /// provides the input sender so the proxy task can forward PTY bytes.
+    pty_broker_input_tx: Option<tokio::sync::mpsc::Sender<std::sync::Arc<bytes::Bytes>>>,
 }
 
 // ---------------------------------------------------------------------------
@@ -879,6 +889,13 @@ pub struct SessionManager {
     /// startup and a spawn call, `spawn_session()` uses this cached config to re-write
     /// the file (BC-2.08.006 EC-182 / AC-013).
     hook_endpoint_config: HookEndpointConfig,
+    /// Daemon-global PTY drop counter shared with every `PtyBroker` instance (S-046, BC-2.05.009 PC-3).
+    ///
+    /// Incremented only on OOM-level channel failure (sender error / receiver gone).
+    /// Shared with `DaemonState.pty_drop_counter` via `Arc`. Defaults to a fresh
+    /// `Arc::new(AtomicU64::new(0))` in `new()`; use `with_pty_drop_counter()` at the
+    /// daemon wiring site in `lifecycle.rs` to share the same counter with `DaemonState`.
+    pty_drop_counter: std::sync::Arc<std::sync::atomic::AtomicU64>,
     /// Failure-injection seam for the PidFallback SIGTERM call (ADV-S034-IMPORTANT-001).
     ///
     /// `None` in production (cfg gate ensures it is always `None` in non-test builds).
@@ -949,11 +966,26 @@ impl SessionManager {
             peer_cred_verifier: Arc::new(RealPeerCredVerifier),
             hooks_settings_path,
             hook_endpoint_config,
+            pty_drop_counter: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0)),
             #[cfg(any(test, feature = "test-utils"))]
             pid_sigterm_fn: None,
             #[cfg(any(test, feature = "test-utils"))]
             pid_sigkill_fn: None,
         }
+    }
+
+    /// Wire the daemon-global PTY drop counter (from `DaemonState.pty_drop_counter`) into this
+    /// `SessionManager` so that all `PtyBroker` instances created by `spawn_session()` share
+    /// the same counter (BC-2.05.009 PC-3 — daemon-global atomic).
+    ///
+    /// Must be called before any `spawn_session()` invocations to ensure the shared counter
+    /// is wired. Production callers: `lifecycle::daemon_start_sequence()`.
+    pub fn with_pty_drop_counter(
+        &mut self,
+        counter: std::sync::Arc<std::sync::atomic::AtomicU64>,
+    ) -> &mut Self {
+        self.pty_drop_counter = counter;
+        self
     }
 
     /// Replace the `PeerCredVerifier` used by post-spawn monitors spawned from this
@@ -1096,6 +1128,7 @@ impl SessionManager {
             degraded: false,
             degraded_reason: None,
             host_conn: None,
+            pty_broker_input_tx: None,
         };
         self.sessions
             .lock()
@@ -1173,6 +1206,7 @@ impl SessionManager {
                 reader: None,
                 proxy_task: None,
             }),
+            pty_broker_input_tx: None,
         };
         self.sessions
             .lock()
@@ -1212,6 +1246,7 @@ impl SessionManager {
             degraded: false,
             degraded_reason: None,
             host_conn: None,
+            pty_broker_input_tx: None,
         };
         self.sessions
             .lock()
@@ -1258,6 +1293,7 @@ impl SessionManager {
             degraded: false,
             degraded_reason: None,
             host_conn: None,
+            pty_broker_input_tx: None,
         };
         self.sessions
             .lock()
@@ -1315,6 +1351,7 @@ impl SessionManager {
                 reader: None,
                 proxy_task: None,
             }),
+            pty_broker_input_tx: None,
         };
         self.sessions
             .lock()
@@ -1548,6 +1585,7 @@ impl SessionManager {
                 degraded: false,
                 degraded_reason: None,
                 host_conn: None,
+                pty_broker_input_tx: None,
             };
             guard.insert(session_id.clone(), entry);
 
@@ -1671,6 +1709,35 @@ impl SessionManager {
                 )
                 .await;
             });
+        }
+
+        // S-046: Create PtyBroker for this session and wire the INPUT channel sender into
+        // the SessionEntry so the proxy task (spawned at Launching → Running) can forward
+        // PTY bytes through the broker to all connected TUI clients (BC-2.05.009).
+        {
+            let mut pty_broker = crate::pty_broker::PtyBroker::new(
+                session_id.clone(),
+                std::sync::Arc::clone(&self.pty_drop_counter),
+                // Pass the daemon's shared SubscriberList — NOT a cloned snapshot.
+                // Clients connecting after broker construction are visible to the event loop
+                // because the event loop holds an Arc to the live shared list (Q1 ruling).
+                std::sync::Arc::clone(&self.broker),
+            );
+            // Start the event loop. A hook/control channel is created here; future work
+            // (S-047+) will use this channel to signal the broker for hook prioritization
+            // (BC-2.05.009 Invariant 6). For now the hook arm drains a channel that is
+            // dropped when the session is torn down.
+            let (_hook_tx, hook_rx) = tokio::sync::mpsc::channel::<()>(8);
+            let _broker_task = pty_broker.spawn_event_loop(hook_rx);
+            // Store the INPUT sender in the SessionEntry so the proxy task can forward bytes.
+            let broker_input_tx = pty_broker.input_tx.clone();
+            let mut guard = self.sessions.lock().await;
+            if let Some(entry) = guard.get_mut(&session_id) {
+                entry.pty_broker_input_tx = Some(broker_input_tx);
+            }
+            // `pty_broker` (and `_hook_tx`) are dropped here; the event loop task holds the
+            // INPUT receiver and the Arc<SubscriberList> reference and will run until the
+            // INPUT channel closes.
         }
 
         tracing::info!(
@@ -3242,6 +3309,7 @@ impl SessionManager {
         let broker = Arc::clone(&self.broker);
         let session_id = session_id.to_string();
         let runtime_dir = self.runtime_dir.clone();
+        let pty_drop_counter = Arc::clone(&self.pty_drop_counter);
         // F-S035-005: clone pid_sigterm_fn seam so attach-timeout SIGTERM routes through
         // the same injection seam as kill_session PidFallback (testability / consistency).
         #[cfg(any(test, feature = "test-utils"))]
@@ -3720,6 +3788,16 @@ impl SessionManager {
                         _ => unreachable!("matched Success above"),
                     };
 
+                    // S-046: Retrieve the PtyBroker INPUT channel sender stored in the SessionEntry
+                    // by spawn_session(). Pass it to the proxy task so PTY bytes are forwarded
+                    // through the broker to all TUI clients (BC-2.05.009).
+                    let pty_broker_input_tx = {
+                        let guard = sessions.lock().await;
+                        guard
+                            .get(&session_id)
+                            .and_then(|e| e.pty_broker_input_tx.clone())
+                    };
+
                     // Step 5 (BC-2.08.007 PC-5 / AC-003): start PTY proxy task.
                     // Ruling L (SS-session-manager §Ruling L-1): pass sessions + sidecar_path so the
                     // proxy_task can call transition_to_terminated_standalone on StateChanged{Terminated}
@@ -3731,6 +3809,8 @@ impl SessionManager {
                         Arc::clone(&broker),
                         Arc::clone(&sessions),
                         sidecar_path.clone(),
+                        pty_broker_input_tx,
+                        Arc::clone(&pty_drop_counter),
                     );
 
                     // Wrap writer in Arc<Mutex<>> for storage in SessionHostConnection.
@@ -3862,8 +3942,13 @@ impl SessionManager {
     /// Spawn the PTY proxy task for a newly-attached session.
     ///
     /// Reads `HostToDaemon` messages from the control connection read half and:
-    /// - `PtyBytes`: forwards bytes to the daemon broker (SS-09 scope for TUI rendering).
-    /// - `PtyReset`: logs debug (SS-09 scope for reset broadcasting).
+    /// - `PtyBytes`: forwards raw bytes to the `PtyBroker` INPUT channel via
+    ///   `.send().await` (backpressure — BC-2.05.009 Invariant 3). The broker fans out
+    ///   to all TUI clients. If `pty_broker_input_tx` is `None` (not wired), bytes are
+    ///   silently discarded (backwards-compatible no-op).
+    /// - `PtyReset`: forwards the reset signal to the `PtyBroker` INPUT channel as a
+    ///   signal (no bytes). The broker emits `ServerToClient::PtyReset` to TUI clients.
+    ///   If `pty_broker_input_tx` is `None`, a debug log is emitted instead.
     /// - `StateChanged{Terminated}` (Ruling L, L-2): calls `transition_to_terminated_standalone`
     ///   to deliver the fast-path kill confirmation without waiting for the 12s watchdog.
     /// - `Goodbye` (Ruling L, L-2 defensive): calls `transition_to_terminated_standalone`
@@ -3882,6 +3967,8 @@ impl SessionManager {
         broker: Arc<monocle_ipc::server::SubscriberList>,
         sessions: Arc<tokio::sync::Mutex<HashMap<String, SessionEntry>>>,
         sidecar_path: PathBuf,
+        pty_broker_input_tx: Option<tokio::sync::mpsc::Sender<std::sync::Arc<bytes::Bytes>>>,
+        pty_drop_counter: std::sync::Arc<std::sync::atomic::AtomicU64>,
     ) -> JoinHandle<()> {
         use tokio::io::AsyncReadExt;
 
@@ -3943,20 +4030,59 @@ impl SessionManager {
 
                 match msg {
                     monocle_ipc::types::HostToDaemon::PtyBytes { bytes } => {
-                        // Forward PTY bytes to broker as PtyOutput (SS-09 scope for TUI rendering).
-                        // For S-035, broadcast is a best-effort no-op if ServerToClient::PtyOutput
-                        // is not yet defined; the broker will handle known variants.
-                        let _ = (&broker, &bytes, &session_id);
-                        // No-op broadcast for S-035: SS-09 defines ServerToClient::PtyOutput.
-                        // The proxy task must exist and consume bytes to keep the socket from
-                        // blocking; the actual fan-out to TUI clients is SS-09 scope.
+                        // Forward PTY bytes to the PtyBroker INPUT channel via `.send().await`
+                        // (backpressure — BC-2.05.009 Invariant 3 / S-046).
+                        // The broker event loop fans out to all connected TUI clients.
+                        if let Some(ref tx) = pty_broker_input_tx {
+                            let frame = std::sync::Arc::new(bytes::Bytes::from(bytes));
+                            if let Err(_e) = tx.send(frame).await {
+                                // INPUT channel closed while the session is still live —
+                                // OOM-level failure (BC-2.05.009 Invariant 4b / PC-3):
+                                // 1. Increment the daemon-global PTY drop counter.
+                                // 2. Log WARN with the counter value.
+                                // 3. Broadcast PtyReset to all TUI clients (exactly once).
+                                // 4. Break the proxy receive loop — the session is
+                                //    unrecoverable once the broker INPUT channel is gone.
+                                //    Subsequent PtyBytes frames would re-trigger the same
+                                //    error, flooding TUI clients with repeated PtyReset
+                                //    broadcasts (each triggers a re-attach). Breaking here
+                                //    ensures exactly one PtyReset is emitted per failure.
+                                let n = pty_drop_counter
+                                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+                                    + 1;
+                                tracing::warn!(
+                                    session_id = %session_id,
+                                    drop_n = n,
+                                    "WARN: PTY channel drop #{n} for session {session_id}"
+                                );
+                                crate::ipc_server::broadcast_to_subscribers(
+                                    &broker,
+                                    monocle_ipc::types::ServerToClient::PtyReset {
+                                        session_id: session_id.clone(),
+                                    },
+                                )
+                                .await;
+                                break;
+                            }
+                        }
+                        // else: no broker wired (test or early startup) — bytes consumed silently
+                        // to keep the UDS socket from blocking (SS-session-manager invariant).
                     }
                     monocle_ipc::types::HostToDaemon::PtyReset => {
                         tracing::debug!(
                             session_id = %session_id,
                             "proxy_task: received PtyReset from session-host"
                         );
-                        // SS-09: broadcast ServerToClient::PtyReset to TUI clients.
+                        // S-046 / BC-2.05.009 Invariant 4: broadcast ServerToClient::PtyReset
+                        // to TUI clients via the IPC subscriber broker.
+                        // The PtyReset variant is defined and owned by S-046.
+                        crate::ipc_server::broadcast_to_subscribers(
+                            &broker,
+                            monocle_ipc::types::ServerToClient::PtyReset {
+                                session_id: session_id.clone(),
+                            },
+                        )
+                        .await;
                     }
                     // Ruling L (L-2): StateChanged{Terminated} fast-path kill confirmation.
                     // The session-host sent Terminated — publish the transition immediately
@@ -5272,6 +5398,7 @@ impl SessionManager {
                             degraded: false,
                             degraded_reason: None,
                             host_conn: None,
+                            pty_broker_input_tx: None,
                         };
                         self.sessions
                             .lock()
@@ -5497,6 +5624,7 @@ impl SessionManager {
                 degraded: false,
                 degraded_reason: None,
                 host_conn: None,
+                pty_broker_input_tx: None,
             };
             self.sessions
                 .lock()
@@ -5764,6 +5892,7 @@ impl SessionManager {
                             reader: None,
                             proxy_task: None,
                         }),
+                        pty_broker_input_tx: None,
                     };
                     self.sessions
                         .lock()
@@ -11928,6 +12057,7 @@ mod tests {
                 degraded: false,
                 degraded_reason: None,
                 host_conn: None,
+                pty_broker_input_tx: None,
             };
             manager
                 .sessions
@@ -12469,6 +12599,7 @@ mod tests {
                         reader: None,
                         proxy_task: None,
                     }),
+                    pty_broker_input_tx: None,
                 },
             );
         }

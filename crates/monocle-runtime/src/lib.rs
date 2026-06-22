@@ -90,6 +90,16 @@ pub mod ipc_server;
 /// - [`hooks::SessionState`]: Active / Stopped
 pub mod hooks;
 
+/// PtyOutput fan-out broker — bounded channel, backpressure, and subscriber lifecycle (S-046).
+///
+/// Implements BC-2.05.009: `PtyBroker` struct with INPUT channel `Arc<Bytes>(1024)`.
+/// Fan-out is via the shared `SubscriberList` (`broadcast_to_subscribers`); the broker does
+/// NOT own a per-client sender registry. Disconnect is 1-strike: a `TrySendError::Full` from
+/// `SubscriberList` causes immediate client removal. `ServerToClient::PtyReset` is emitted by
+/// the proxy task (on session-host `HostToDaemon::PtyReset` or on a proxy send error), NOT by
+/// the broker. The broker returns on graceful input-channel close without emitting `PtyReset`.
+pub mod pty_broker;
+
 /// Session Manager — daemon-side coordinator for session-host processes (S-033).
 ///
 /// Implements BC-2.08.001 (spawn_session), BC-2.08.008 (SessionStateChanged broadcast),
