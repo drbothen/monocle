@@ -2,18 +2,18 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "8.14"
+version: "8.15"
 status: active
 producer: state-manager
-timestamp: 2026-06-22T00:00:00Z
+timestamp: 2026-06-22T12:00:00Z
 phase: phase-3-v1A-wave-9
-current_step: "D-349 (2026-06-22): S-046 MERGED to develop via PR #55 @ 45343ca (squash-merge). PtyOutput Fan-out Broker — bounded INPUT channel(1024), broadcast_to_subscribers (Option A), 1-strike disconnect, pty_drop_counter, ServerToClient::PtyReset. 5 pts, EPIC-05, Wave 8. 8-pass adversarial (3 CLEAN: passes 6/7/8). Security PASS (0 crit/high). SS-ipc v1.25.0; BC-2.05.009 v1.6.0; S-046 v2.0. Wave 8: 7/12 done (43/74 pts). 44/51 stories done (267/314 pts). S-047 UNBLOCKED. develop HEAD: 45343ca. STATE v8.13→v8.14."
-prior_step: "D-348 (2026-06-22): GOVERNANCE CHECKPOINT — Wave-9 re-sequencing + gate semantics ruling (Joshua Magady). New order: S-046→S-047→S-044 (PRODUCER before CONSUMER). Wave-9 gate = contract-green only; EPIC-09 end-to-end gate = separate post-S-047/S-044. WG-S042-SESSIONHOST-KEYINPUT re-framed: severity UPGRADED, anchor S-047. F-S039-P9-OBS-001 marked for close-at-gate. develop HEAD: 58fbd617 (unchanged). STATE v8.12→v8.13."
+current_step: "D-350 (2026-06-22): ZERO-CONTEXT DURABILITY CHECKPOINT — S-047 MID-IMPLEMENTATION (NOT merged). S-047 EXPANDED 8 pts→16 pts per human ruling 2026-06-22 (full producer scope: BC-2.05.010/011, SS-05/SS-08, story v1.8). Architect design: SS-session-manager v2.18.0 §Ruling M (commit 43c89d7). Story integrated by story-writer (commit 6d9d2e7). Worktree story/S-047-ipc-lifecycle-variants @ .worktrees/S-047, based develop @ 45343ca. Commits: stub 6631aa2, tests da18a3e (22 tests: 14 RED→now green, 8 pre-existing-GREEN), impl (14/14 green). BLOCKER F-S047-DAEMON-RELAY-INERT: daemon does NOT relay real ScrollbackChunk frames to TUI client — total_chunks:0 UNCONDITIONAL stub in forward_scrollback_dump_to_client (mod.rs:4400) + proxy-task TODO at mod.rs:3914 discards HostToDaemon::ScrollbackChunk. Adversarial NOT started. 44/51 done (267/322 pts after S-047 expansion). develop HEAD: 45343ca. STATE v8.14→v8.15."
+prior_step: "D-349 (2026-06-22): S-046 MERGED to develop via PR #55 @ 45343ca (squash-merge). PtyOutput Fan-out Broker — bounded INPUT channel(1024), broadcast_to_subscribers (Option A), 1-strike disconnect, pty_drop_counter, ServerToClient::PtyReset. 5 pts, EPIC-05, Wave 8. 8-pass adversarial (3 CLEAN: passes 6/7/8). Security PASS (0 crit/high). SS-ipc v1.25.0; BC-2.05.009 v1.6.0; S-046 v2.0. Wave 8: 7/12 done (43/74 pts). 44/51 stories done (267/314 pts). S-047 UNBLOCKED. develop HEAD: 45343ca. STATE v8.13→v8.14."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "D-001..D-241 at cycles/cycle-001/decisions-archive.md. D-242..D-338 appended at cycles/cycle-001/decisions-archive.md §Phase-1d+Phase-2+Phase-3. Full durable_task_register YAML (127+ entries) at cycles/cycle-001/task-register-full.yaml."
-awaiting: "D-349 S-046 DONE. S-047 NEXT (UNBLOCKED — deps S-021+S-022+S-023+S-033+S-034+S-035+S-046 ALL DONE; 8 pts, EPIC-05, Wave 8). Then S-044 (after S-047; 13 pts, EPIC-09 — makes PTY slice end-to-end). Wave-9 contract-green gate after S-044. EPIC-09 end-to-end integration gate after S-047+S-044 (verify WG-S046-SPAWN-PROXY-NOT-STARTED + WG-S046-OOM-POSITIVE-COVERAGE + WG-S042-SESSIONHOST-KEYINPUT + full slice). SEC-006-CCR-URL-VALIDATION MUST be fixed before S-045. S-048 waits on S-022+S-033+S-047. F-W8INT-001/002/003 parked for Wave-8 gate. New follow-ups registered: WG-S046-SPAWN-PROXY-NOT-STARTED, WG-S046-OOM-POSITIVE-COVERAGE, F-S046-PRREV-SUGGESTIONS, F-S046-SEC-PREEXISTING, WG-S046-SERVERTOCLIENT-NONEXHAUSTIVE."
+awaiting: "D-350 S-047 IN PROGRESS (mid-implementation, worktree .worktrees/S-047, NOT merged). BLOCKER F-S047-DAEMON-RELAY-INERT must be fixed BEFORE adversarial convergence. Resume: S-047-NEXT-1 (wire daemon relay), S-047-NEXT-2 (real-relay integration test), S-047-NEXT-3 (chunk-rows alignment), then adversarial→demo→PR→checkpoint (S-047-NEXT-4). Then S-044 (13 pts, EPIC-09) after S-047. Wave-9 contract-green gate after S-044. EPIC-09 end-to-end integration gate after S-047+S-044. SEC-006-CCR-URL-VALIDATION MUST be fixed before S-045. S-048 waits on S-022+S-033+S-047. F-W8INT-001/002/003 parked for Wave-8 gate."
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: 2026-06-03
@@ -21,14 +21,36 @@ dtu_services: [hook-endpoints-x5]
 current_cycle: cycle-001
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v8.14 — 2026-06-22
-  PHASE-3 v1A ACTIVE — WAVES 8+9 — S-046 DONE, NEXT: S-047 (PRODUCER FIRST)
+  ZERO-CONTEXT RESUME CHECKPOINT v8.15 — 2026-06-22 (D-350)
+  PHASE-3 v1A ACTIVE — WAVES 8+9 — S-047 IN PROGRESS (mid-impl, NOT merged)
   D-348: Wave-9 RE-SEQUENCED — PRODUCER (S-046→S-047) before CONSUMER (S-044)
   ============================================================================
   POSITION: Phase-3 TDD implementation, v1A control-center scope, Waves 8+9.
   STATUS: S-046 MERGED PR #55 @ 45343ca (D-349). develop @ 45343ca.
-  44/51 stories done (267/314 pts). Wave 8: 7/12 done (43/74 pts).
-  Wave 9: 5/6 done (32/45 pts). 10 workspace crates.
+  44/51 stories done (267/322 pts — S-047 expanded 8→16 pts, total 314→322).
+  Wave 8: 7/12 done (43/74 pts). Wave 9: 5/6 done (32/45 pts). 10 workspace crates.
+
+  D-350 CHECKPOINT (2026-06-22):
+  S-047 MID-IMPLEMENTATION — NOT merged. Expanded 8 pts→16 pts (human ruling
+  2026-06-22; full producer scope: session-host producer + daemon relay + TUI
+  consumers; BC-2.05.010/011; subsystems SS-05/SS-08; story v1.8).
+  Architect design: SS-session-manager v2.18.0 §Ruling M (commit 43c89d7 on
+  factory-artifacts). Story-writer integrated scope (commit 6d9d2e7).
+  Worktree: /Users/jmagady/Dev/monocle/.worktrees/S-047
+  Branch: story/S-047-ipc-lifecycle-variants (based develop @ 45343ca)
+  Commits in worktree (NOT pushed to origin):
+    stub 6631aa2, tests da18a3e (22 tests: 14 RED→green, 8 pre-existing-GREEN),
+    implementation (14/14 target tests green). build/clippy/fmt/POL-11/POL-12 clean.
+
+  CONFIRMED PRE-ADVERSARIAL DEFECT — MUST FIX BEFORE CONVERGENCE:
+  F-S047-DAEMON-RELAY-INERT (BLOCKER): daemon does NOT relay real ScrollbackChunk
+  frames to TUI client. forward_scrollback_dump_to_client (mod.rs:4400) sends
+  ServerToClient::ScrollbackDumpComplete{total_chunks:0} UNCONDITIONALLY.
+  Proxy task receives HostToDaemon::ScrollbackChunk (mod.rs:3585) but TODO at
+  mod.rs:3914 discards chunks. Session-host correctly produces real chunks but
+  daemon→client relay is UNWIRED. AC-006 + AC-SH-005 not delivered end-to-end.
+  The 14 green tests cover isolated host producer + EC-306 empty-dump path only —
+  no test exercises real relay. Same class as S-046-inert-broker gap.
 
   D-349 DECISION (2026-06-22):
   S-046 (PtyOutput Fan-out Broker) MERGED. Key architectural detail (Option A):
@@ -50,19 +72,37 @@ next_session_resume_protocol: |
     DROPS KeyInput in catch-all. Keyboard+mouse live forwarding blocked until S-047.
   - F-S039-P9-OBS-001: MARK FOR CLOSE-AT-GATE (S-042 resize landed).
 
-  NEXT STEP = S-047 (IPC lifecycle variants) — FULLY UNBLOCKED.
-  S-047 (BC-2.05.010/011, 8 pts, EPIC-05, Wave 8). ALL deps done:
-    S-021 (done), S-022 (done), S-023 (done), S-033 (done), S-034 (done),
-    S-035 (done), S-046 (done 2026-06-22). NO remaining blockers.
-  S-047 scope: session-host DaemonToHost::KeyInput→PTY-stdin arm + HostToDaemon::PtyBytes
-    →ServerToClient::PtyOutput live streaming + ScrollbackChunk/ScrollbackDumpComplete
-    TUI handlers + PtyReset TUI handler. BC-2.05.010/011.
-  After S-047: S-044 (EmbeddedTerminal+SessionCreation entry trigger + wizard +
-    SpawnAck + BC-2.09.009 permission badge+bell, 13 pts — makes slice functional).
-  After S-044: Wave-9 contract-green integration gate.
-  After Wave-9 gate: EPIC-09 end-to-end integration gate (live vertical slice,
-    verify WG-S046-SPAWN-PROXY-NOT-STARTED + WG-S046-OOM-POSITIVE-COVERAGE +
-    WG-S042-SESSIONHOST-KEYINPUT + full enter→live-output→keyboard/mouse→exit slice).
+  NEXT-ACTION QUEUE — S-047 RESUME (D-350 order):
+  1. S-047-NEXT-1 (implementer, BLOCKER): wire daemon scrollback relay per architect
+     Ruling M — forward session-host's real ScrollbackChunk + ScrollbackDumpComplete
+     frames to the REQUESTING client. Replace total_chunks:0 stub in
+     forward_scrollback_dump_to_client (mod.rs:4400) AND/OR implement proxy-task
+     TODO at mod.rs:3914. If proxy-task↔forward coordination is ambiguous vs
+     Ruling M, route to architect first.
+  2. S-047-NEXT-2 (test-writer): add real-relay integration test (session-host
+     produces N>0 chunks → daemon forwards → client receives N ScrollbackChunk +
+     ScrollbackDumpComplete{total_chunks:N}) that FAILS against current empty-dump
+     stub. Closes coverage gap that masked F-S047-DAEMON-RELAY-INERT.
+  3. S-047-NEXT-3: resolve F-S047-CHUNK-ROWS-50-VS-200 — align to ≤200 rows/chunk
+     per Ruling M / story AC-SH-004, or confirm 50 is intentional.
+  4. S-047-NEXT-4: adversarial convergence (3 consecutive CLEAN, fresh-context,
+     whole-system trace; specifically verify daemon relay reaches real clients, like
+     S-046 inert-broker check) → demo (WEBM+.tape) → pr-manager (9 steps) →
+     devops cleanup + reconcile → state-manager checkpoint.
+
+  POST-S-047 QUEUE:
+  5. S-044 (EmbeddedTerminal+SessionCreation entry trigger + wizard + SpawnAck +
+     BC-2.09.009 permission badge+bell, 13 pts, EPIC-09) — after S-047.
+  6. Wave-9 contract-green integration gate (after S-044 merges).
+  7. EPIC-09 end-to-end integration gate (after S-047+S-044; live slice:
+     enter→PtyOutput→keyboard/mouse→exit). Verify:
+     WG-S046-SPAWN-PROXY-NOT-STARTED (architect Ruling 5: attach-driven canonical),
+     WG-S046-OOM-POSITIVE-COVERAGE, WG-S042-SESSIONHOST-KEYINPUT (closed S-047),
+     WG-S043-PERMISSION-BADGE-COEXIST, full enter→live-output→keyboard/mouse→exit.
+  8. SEC-006-CCR-URL-VALIDATION (CWE-20/93) MUST be fixed before S-045.
+  9. S-048 (after S-022+S-033+S-047).
+  [F-W8INT-001/002/003 parked for Wave-8 gate; do NOT re-raise per-story.]
+
   Per-story flow: stub-architect → test-writer (Red Gate) → implementer (TDD) → adversarial
   (3 consecutive CLEAN) → demo-recorder (WEBM+.tape, NO GIF) → pr-manager (9 steps) →
   state-manager checkpoint.
@@ -77,42 +117,25 @@ next_session_resume_protocol: |
   2. /Users/jmagady/Dev/monocle/CLAUDE.md               <- production-grade + routing
   3. This STATE.md (task register table below)          <- task register + history pointers
 
-  CORPUS FACTS (post-S-046-merge, checkpoint D-349):
-  Stories: 51 total / 314 pts (44 done; 6 draft v1A Waves 8-9; 1 blocked)
+  CORPUS FACTS (post-D-350 checkpoint):
+  Stories: 51 total / 322 pts (44 done; S-047 IN PROGRESS 16 pts; 5 draft v1A; 1 blocked)
   New v1A: S-033..S-048 (16 stories); EPIC-08 Session Manager; EPIC-09 Embedded PTY
   Waves: 8 (7/12 done, 43/74 pts); 9 (5/6 done, 32/45 pts)
+  S-047 expanded: 8 pts → 16 pts (total 314 → 322 pts)
 
   KEY VERSION PINS (canonical source: .factory/specs/version-pin-registry.yaml):
   STORY-INDEX v5.66 | sprint-state v1.59 | wave-schedule v2.1
   dependency-graph-expansion v2.10 | BC-INDEX v1.44.5 | EVAL-INDEX v1.42
-  ARCH-INDEX v1.0.30 | SS-ipc v1.25.0 | SS-session-manager v2.17.1
+  ARCH-INDEX v1.0.30 | SS-ipc v1.25.0 | SS-session-manager v2.18.0
   SS-embedded-pty v1.17.0 | SS-config v1.4.0 | SS-engine-module-v2-delta v1.6.0
   SS-daemon-wiring-v2-delta v1.12.0 | SS-deps-pin-manifest-v2-delta v1.0.2
   prd v1.28.3 | product-brief v2.0.4 | domain-monocle-vision-synthesis v2.2.3
   BC-2.05.009 v1.6.0 | BC-2.09.001 v1.7.3 | BC-2.09.002 v1.2.2 | BC-2.09.003 v1.6.1
   BC-2.09.004 v1.0.11 | BC-2.09.005 v1.0.7 | BC-2.09.006 v1.3.0 | BC-2.09.007 v1.5.1
   BC-2.07.002 v1.1.0 | S-039 v1.8 | S-040 v1.8 | S-041 story v1.3 | S-042 story v1.5
-  S-043 story v1.5 | S-046 story v2.0 | BC-2.08.002 v1.2.6 | BC-2.08.004 v1.4.0
-  BC-2.08.006 v1.5.0
+  S-043 story v1.5 | S-046 story v2.0 | S-047 story v1.8 | BC-2.05.010 (S-047)
+  BC-2.08.002 v1.2.6 | BC-2.08.004 v1.4.0 | BC-2.08.006 v1.5.0
   (Pull the rest from .factory/specs/version-pin-registry.yaml)
-
-  NEXT-ACTION QUEUE (D-348 revised order, S-046 complete):
-  1. S-047 (IPC lifecycle variants — session-host KeyInput→PTY-stdin arm + PtyBytes
-     streaming + ScrollbackChunk/ScrollbackDumpComplete TUI handlers + PtyReset TUI handler,
-     BC-2.05.010/011, 8 pts, EPIC-05, Wave 8) — FULLY UNBLOCKED.
-     Closes WG-S042-SESSIONHOST-KEYINPUT carry-forward (live keyboard+mouse forwarding).
-     Closes F-S035-AC005-DAEMON-BROADCAST (live PtyBytes producer).
-     Closes WG-S036-001/002 (live PTY streaming deps satisfied).
-  2. S-044 (EmbeddedTerminal+SessionCreation entry trigger + wizard + SpawnAck +
-     BC-2.09.009 permission badge+bell, 13 pts, EPIC-09) — after S-047.
-     Wires the EmbeddedTerminal entry trigger; makes live vertical slice functional.
-  3. Wave-9 contract-green integration gate (after S-044 merges).
-  4. EPIC-09 end-to-end integration gate (after S-047+S-044; live slice: enter→PtyOutput→
-     keyboard/mouse forwarding→exit). Verify: WG-S046-SPAWN-PROXY-NOT-STARTED +
-     WG-S046-OOM-POSITIVE-COVERAGE + WG-S042-SESSIONHOST-KEYINPUT + WG-S043-PERMISSION-BADGE-COEXIST.
-  5. SEC-006-CCR-URL-VALIDATION (CWE-20/93) MUST be fixed before S-045.
-  6. S-048 (after S-022+S-033+S-047).
-  [F-W8INT-001/002/003 parked for Wave-8 gate; do NOT re-raise per-story.]
 
   PER-STORY FLOW (verbatim — follow exactly):
   stub-architect → test-writer (Red Gate, all fail) → implementer (TDD green) →
@@ -214,7 +237,7 @@ next_session_resume_protocol: |
 | 0.5-0.9 Brief + market intel | DONE 2026-05-14 | brief v2.0.4; validate-brief VALID |
 | 1 Spec Crystallization | DONE D-170 APPROVED | 57-pass Phase-1d adversarial. 113 Phase-1 BCs (138 total incl Phase-2 v1A). <!-- version-pin-historical: BC-INDEX v1.43.7 at Phase-1d close --> |
 | 2 Story Decomp v1A | PASSED/APPROVED D-325 | 26 passes (3/3 clean). 51 stories/311 pts. Gate APPROVED Joshua Magady 2026-06-16. |
-| 3 TDD v1A Waves 8-9 | IN PROGRESS — Waves 8+9 | S-033..S-036+S-038 MERGED (Wave 8: 6/12 done, 38/74 pts). S-046 MERGED PR #55 @ 45343ca (D-349, Wave 8: 7/12 done, 43/74 pts). S-039 MERGED PR #47 @ a7ad00e (D-340). S-040 MERGED PR #50 @ d230a26 (D-342). S-041 MERGED PR #54 @ 58fbd617 (D-347). S-042 MERGED PR #51 @ 2f01de0 (D-345). S-043 MERGED PR #53 @ 5e6a2e0 (D-346). Wave 9: 5/6 done (32/45 pts). 44/51 stories done (267/314 pts). S-047 UNBLOCKED (all deps done). |
+| 3 TDD v1A Waves 8-9 | IN PROGRESS — Waves 8+9 | S-033..S-036+S-038 MERGED. S-046 MERGED PR #55 @ 45343ca (D-349, Wave 8: 7/12 done, 43/74 pts). S-039 MERGED PR #47 (D-340). S-040 MERGED PR #50 (D-342). S-041 MERGED PR #54 (D-347). S-042 MERGED PR #51 (D-345). S-043 MERGED PR #53 (D-346). Wave 9: 5/6 done (32/45 pts). 44/51 done (267/322 pts — S-047 expanded 8→16 pts). **S-047 IN PROGRESS** (D-350, mid-impl; BLOCKER F-S047-DAEMON-RELAY-INERT; adversarial NOT started). |
 | 3 TDD Waves 1-7 (pre-pivot) | COMPLETE D-232 | 32/33 done (192/195 pts). 1514 tests. develop @ 6811103 |
 | 4-7 | PENDING after Phase-3 v1A | Old observe-only scope superseded by v1A control-center |
 
@@ -376,6 +399,12 @@ None. All durable task register items are non-blocking.
 | F-S046-PRREV-SUGGESTIONS | pending | implementer | n | [S-046, LOW, non-blocking] 3 non-blocking pr-reviewer suggestions from PR #55. Bundle for a future hardening pass. Anchor: hardening sweep. |
 | F-S046-SEC-PREEXISTING | pending | security/maintenance | n | [S-046, pre-existing] SEC-001/SEC-003 + remaining MEDIUM security findings from PR #55 review are pre-existing in unchanged code (not introduced by S-046). Record for a maintenance/security sweep. Reference: PR #55 security review. Anchor: maintenance-sweep wave. |
 | WG-S046-SERVERTOCLIENT-NONEXHAUSTIVE | pending | prod-owner/wave-gate | n | [S-046, cross-story, wave-gate] ServerToClient is not #[non_exhaustive] vs BC-2.05.011 Invariant 1 — pre-existing enum decision. Reconcile at Wave-9 gate (PO). Anchor: Wave-9 gate / BC-2.05.011. Non-blocking. |
+| F-S047-DAEMON-RELAY-INERT | pending-BLOCKER | implementer (S-047-NEXT-1) | n | **[S-047, BLOCKER, pre-adversarial]** daemon does NOT relay real ScrollbackChunk frames to TUI client. forward_scrollback_dump_to_client (crates/monocle-runtime/src/session_manager/mod.rs:4400) sends ServerToClient::ScrollbackDumpComplete{total_chunks:0} UNCONDITIONALLY (empty dump). Proxy task receives HostToDaemon::ScrollbackChunk (mod.rs:3585) but TODO at mod.rs:3914 discards them — host chunks DISCARDED. Session-host correctly PRODUCES real chunks (stream_scrollback_dump_chunked) but daemon→client relay is UNWIRED → AC-006 (AttachSession scrollback sequence) and AC-SH-005 (daemon forwards host chunks to attaching client) NOT delivered end-to-end. 14 green tests cover isolated host producer + EC-306 empty-dump path only — NO test exercises real relay. Same class as S-046-inert-broker integration gap. MUST be fixed before adversarial convergence. Anchor: S-047-NEXT-1 (implementer) + S-047-NEXT-2 (test-writer). |
+| F-S047-CHUNK-ROWS-50-VS-200 | pending-LOW | implementer (S-047-NEXT-3) | n | [S-047, LOW] implementer used SCROLLBACK_CHUNK_MAX_ROWS=50; architect Ruling M / story AC-SH-004 specify ≤200 rows/chunk. Value is within spec but deviates from stated maximum — verify intent or align. Anchor: S-047-NEXT-3. |
+| S-047-NEXT-1 | pending | implementer | n | [S-047 resume step 1, BLOCKER] Wire daemon scrollback relay per architect Ruling M: forward session-host's real ScrollbackChunk + ScrollbackDumpComplete frames to the REQUESTING client. Replace total_chunks:0 stub in forward_scrollback_dump_to_client (mod.rs:4400) AND/OR implement proxy-task TODO at mod.rs:3914. Coordinate forward_scrollback_dump_to_client with proxy task that reads HostToDaemon::ScrollbackChunk (mod.rs:3585). If proxy-task↔forward coordination is ambiguous vs Ruling M, route to architect first. Precondition for adversarial. |
+| S-047-NEXT-2 | pending | test-writer | n | [S-047 resume step 2] Add real-relay integration test: session-host produces N>0 chunks → daemon forwards → client receives N ScrollbackChunk + ScrollbackDumpComplete{total_chunks:N}. Test MUST FAIL against current empty-dump stub (Red Gate discipline). Closes coverage gap that masked F-S047-DAEMON-RELAY-INERT. Run after S-047-NEXT-1. |
+| S-047-NEXT-3 | pending | implementer | n | [S-047 resume step 3] Resolve F-S047-CHUNK-ROWS-50-VS-200: align SCROLLBACK_CHUNK_MAX_ROWS to ≤200 per Ruling M / AC-SH-004, or confirm 50 is intentional and update spec/story. |
+| S-047-NEXT-4 | pending | orchestrator | n | [S-047 resume step 4] After NEXT-1/2/3 complete: adversarial convergence (3 consecutive CLEAN, fresh-context, whole-system trace — specifically verify daemon relay reaches real clients) → demo-recorder (WEBM+.tape) → pr-manager (9 steps) → devops worktree cleanup + reconcile → state-manager checkpoint. |
 
 ## Resolved/Closed Tasks (archived)
 
@@ -413,9 +442,10 @@ BURST-GAP-005-S039-S043-CROSSSTORY-CONFIG (RESOLVED D-346 2026-06-22 — S-043 s
 ## Decision History
 
 Full decisions archive: `cycles/cycle-001/decisions-archive.md`
-D-001..D-241: early phases; D-242..D-347: Phase-1d + Phase-2 + Phase-3 (appended 2026-06-16/17/18/19/20/21/22)
+D-001..D-241: early phases; D-242..D-350: Phase-1d + Phase-2 + Phase-3 (appended 2026-06-16/17/18/19/20/21/22)
 
 Key decisions last session:
+- D-350 (2026-06-22): ZERO-CONTEXT DURABILITY CHECKPOINT — S-047 MID-IMPLEMENTATION. S-047 EXPANDED 8 pts→16 pts per human ruling 2026-06-22 (full producer scope: session-host producer + daemon relay + TUI consumers; BC-2.05.010/011; subsystems SS-05/SS-08; story v1.8). Architect design: SS-session-manager v2.18.0 §Ruling M (commit 43c89d7). Story-writer integrated scope (commit 6d9d2e7). Worktree .worktrees/S-047 on story/S-047-ipc-lifecycle-variants (based develop @ 45343ca). Commits: stub 6631aa2, tests da18a3e (22 tests: 14 RED→green, 8 pre-existing-GREEN), implementation (14/14 green). build/clippy/fmt/POL-11/POL-12 clean. CONFIRMED BLOCKER before adversarial: F-S047-DAEMON-RELAY-INERT — daemon does NOT relay real ScrollbackChunk frames to TUI client; forward_scrollback_dump_to_client (mod.rs:4400) sends total_chunks:0 unconditionally; proxy-task TODO at mod.rs:3914 discards HostToDaemon::ScrollbackChunk; AC-006/AC-SH-005 undelivered end-to-end; S-046-inert-broker class gap. LOW: F-S047-CHUNK-ROWS-50-VS-200 (SCROLLBACK_CHUNK_MAX_ROWS=50 vs spec ≤200). Resume next-steps registered: S-047-NEXT-1 (daemon relay wiring), S-047-NEXT-2 (real-relay integration test), S-047-NEXT-3 (chunk-rows alignment), S-047-NEXT-4 (adversarial→demo→PR→checkpoint). 44/51 done (267/322 pts — total 314→322 after expansion). develop HEAD: 45343ca. STATE v8.14→v8.15.
 - D-349 (2026-06-22): S-046 MERGED to develop via PR #55 @ 45343ca (squash-merge 2026-06-22). PtyOutput Fan-out Broker — bounded INPUT channel(1024) + .send().await backpressure; fans out via Arc<SubscriberList>/broadcast_to_subscribers (Option A — broker owns NO client registry); 1-strike disconnect; pty_drop_counter (proxy-task OOM-only); ServerToClient::PtyReset variant added (S-046 owns it); biased select! hook priority. 5 pts, EPIC-05, Wave 8. 8-pass adversarial convergence (3 CLEAN: passes 6/7/8). P1 found broker was INERT in production (own client registry never populated → PTY bytes silently discarded). Architect RE-ARCHITECTED to Option A (fan out via shared SubscriberList) → fixed & verified. Security PASS (0 crit/high). 41-citation SS-ipc de-version cascade permanently broke the SS-ipc version-pin treadmill (POL-11 now exit 0). Spec: SS-ipc v1.25.0, BC-2.05.009 v1.6.0, BC-2.05.011 (PtyReset variant), S-046 v2.0. New follow-ups: WG-S046-SPAWN-PROXY-NOT-STARTED, WG-S046-OOM-POSITIVE-COVERAGE, F-S046-PRREV-SUGGESTIONS, F-S046-SEC-PREEXISTING, WG-S046-SERVERTOCLIENT-NONEXHAUSTIVE. LESSON-S046-INERT-BROKER-UNIT-TEST-TAUTOLOGY recorded in lessons.md. sprint-state v1.58→v1.59; STORY-INDEX v5.65→v5.66. Wave 8: 7/12 done (43/74 pts). 44/51 done (267/314 pts). develop HEAD: 45343ca. STATE v8.13→v8.14.
 - D-348 (2026-06-22): GOVERNANCE CHECKPOINT — Wave-9 re-sequencing + gate semantics (Joshua Magady ruling). (1) NEW DELIVERY ORDER: S-046→S-047→S-044 (PRODUCER before CONSUMER). S-044 deferred behind S-046+S-047 so that when EmbeddedTerminal entry trigger wires, the live vertical slice (PtyOutput + keyboard/mouse forwarding) is already functional. (2) Wave-9 gate = CONTRACT-GREEN (per-story BCs + 3 clean adversarial). EPIC-09 end-to-end gate = SEPARATE milestone post-S-047+S-044 (enter→live PtyOutput→keyboard/mouse→exit). (3) WG-S042-SESSIONHOST-KEYINPUT re-framed from informational to CARRY-FORWARD, severity UPGRADED; main.rs:731-737 DROPS KeyInput in catch-all; keyboard+mouse live forwarding blocked until S-047. WG-S036-001/002 + F-S035-AC005-DAEMON-BROADCAST anchored S-047 confirmed. F-S039-P9-OBS-001 marked for close-at-gate (S-042 resize landed). (4) PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP → human-owned manual remediation; no self-improvement story. S-046 UNBLOCKED (deps S-021+S-032 done). STATE v8.12→v8.13.
 - D-347 (2026-06-22): S-041 MERGED to develop via PR #54 @ 58fbd617 (squash-merge). Mouse Forwarding — pure mouse_event_to_pty_bytes SGR 1006 encoder (full Ps table, modifier bits, 1-indexed pane-relative coords, out-of-pane→None), scoped EnableMouseCapture lifecycle (capture active IFF EmbeddedTerminal), Event::Mouse dispatch→KeyInput IPC. 5 pts, EPIC-09, Wave 9, P0. 14-pass adversarial convergence (3 consecutive CLEAN: passes 12/13/14). Trajectory: P1 BLOCKER (crossterm 1003 Moved-reachable SPEC ERROR corrected)→P4 stale line-anchor→P7 HIGH (scoped capture leaked across Overlay transition; fixed + mouse_capture_active observable + regression test)→P11 BLOCKER (panic/exit no teardown; fixed unconditional restore_terminal + main.rs panic hook)→P12/13/14 CLEAN. Spec: BC-2.09.003 v1.5.2→v1.6.1, SS-embedded-pty v1.16.0→v1.17.0, S-041 v1.0→v1.3, EVAL-INDEX v1.41→v1.42, BC-2.09.007 v1.5.0→v1.5.1. Security PASS (0 crit/high; 1 MED non-blocking, 4 LOW). pr-reviewer APPROVE. 11/11 CI, NO admin bypass. Demo: docs/demo-evidence/S-041/ (WEBM+.tape). S-044 UNBLOCKED. New follow-ups: F-S041-SEC-PANIC-HOOK-STDOUT-LOCK, F-S041-SEC-LOW, F-S041-CAPTURE-LIFECYCLE-WRITESEAM, WG-S041-EMBEDDED-ENTRY-TRIGGER. PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP 4th recurrence (commit 5c93579 to develop; orchestrator caught). PROCESS-GAP-SPEC-ALGORITHM-NOT-GROUNDED-IN-CRATE-SOURCE 2nd instance. sprint-state v1.57→v1.58; STORY-INDEX v5.64→v5.65. Wave 9: 5/6 done (32/45 pts). 43/51 done (262/314 pts). develop HEAD: 58fbd617. STATE v8.11→v8.12.
