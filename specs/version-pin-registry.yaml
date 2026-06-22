@@ -1081,8 +1081,8 @@ S-042-resize-debounce-resizepane:
 
 S-043-scrollback-navigation:
   path: stories/S-043-scrollback-navigation.md
-  current_version: "1.2"
-  last_bump_commit: "[S-043 Adversarial Pass-1 — inputs cascade: BC-2.09.007 v1.1.3→v1.4.0, SS-embedded-pty v1.7.0→v1.15.0]"
+  current_version: "1.3"
+  last_bump_commit: "[S-043 body semantics cascade: BC-2.09.007 v1.4.0 — content-anchored scrollback (AC-008/AC-014/EC-244) + concurrent status-bar badges (AC-007/EC-245)]"
   last_bump_date: "2026-06-22"
 
 S-044-appmode-transitions-permission-badge:

@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-043
 epic_id: EPIC-09
-version: "1.2"
+version: "1.3"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -80,17 +80,42 @@ with its own `pty_scroll_offsets[session_id]`.
 Neither `PtyScrollUp` nor `PtyScrollDown` sends any IPC message (`ResizePane`, `KeyInput`, or
 otherwise). Scrollback navigation is a TUI-local viewport operation only.
 
-### AC-007 (traces to BC-2.09.007 postcondition 4 — scrolled-back indicator in status bar)
+### AC-007 (traces to BC-2.09.007 postcondition 4 — scrolled-back indicator in status bar; concurrent with transient badges)
 
 When `pty_scroll_offsets[focused_session_id] > 0`, the status bar displays a visible indicator
 such as `[scrolled back N rows]` (where N is the current offset value). When the offset is 0
 (live tail), the indicator is absent.
 
-### AC-008 (traces to BC-2.09.007 postcondition 5 — new PTY output does not force viewport to bottom)
+The `[scrolled back N rows]` indicator is **persistent viewport state** and is NEVER suppressed
+by any transient diagnostic badge. Specifically:
+- When a dump-drop warning (`[dump: N drops]`) is active, BOTH indicators render concurrently.
+- When a permission badge (`[N pending permission(s)]`) is active, BOTH render concurrently.
+- When a reconnect badge (`[reconnecting...]`) is active, BOTH render concurrently.
+- The status bar accommodates multiple concurrent badges simultaneously.
+
+Suppression would cause a silent correctness failure: the user believes they are at live tail
+when they are not. This is a mandatory production-grade correctness requirement per BC-2.09.007
+postcondition 4.
+
+### AC-008 (traces to BC-2.09.007 postcondition 5 — new PTY output uses content-anchored offset preservation)
 
 New `PtyOutput` received while the user is scrolled back does NOT force the viewport to jump
-to the bottom. The `pty_scroll_offsets[focused_session_id]` is preserved when new bytes arrive.
-The user must explicitly `PtyScrollDown` to return to live output.
+to the bottom. The `pty_scroll_offsets[focused_session_id]` is **content-anchored**: when new
+bytes arrive and `pty_scroll_offsets[session_id] > 0`, the handler MUST:
+
+1. Read `scrollback_before = parser.screen().scrollback_len()` before processing.
+2. Call `parser.process(&bytes)`.
+3. Read `scrollback_after = parser.screen().scrollback_len()` after processing.
+4. Add `new_rows = scrollback_after - scrollback_before` to `pty_scroll_offsets[session_id]`.
+5. Clamp: `pty_scroll_offsets[session_id] = min(parser.screen().scrollback_len(), pty_scroll_offsets[session_id])`.
+
+This keeps the viewport pinned to the same content rows the user is viewing — new output
+is appended at the bottom while the visible window stays in place.
+
+When `pty_scroll_offsets[session_id] == 0` (live tail), `process(&bytes)` is called normally
+and the offset stays at 0 (no adjustment). Live tail is never disturbed.
+
+The user must explicitly `PtyScrollDown` to return to live output from a scrolled-back position.
 
 ### AC-009 (traces to BC-2.09.007 invariant 3a — scroll offset reset to 0 on ResizePane for that session)
 
@@ -119,11 +144,14 @@ leaves the offset at the maximum. No error. No panic.
 `PtyScrollDown` when `pty_scroll_offsets[focused] == 0` leaves the offset at 0. No error.
 No IPC sent.
 
-### AC-014 (traces to BC-2.09.007 edge case EC-244 — new output while scrolled back; indicator remains)
+### AC-014 (traces to BC-2.09.007 edge case EC-244 — new output while scrolled back; content-anchored; indicator updated)
 
 When new `PtyOutput` arrives for the focused session while `pty_scroll_offsets[focused] > 0`,
-the parser is updated AND `pty_scroll_offsets[focused]` is preserved (not reset). The status
-bar shows `[scrolled back N rows]`.
+the parser is updated AND `pty_scroll_offsets[focused]` is incremented by the number of new
+scrollback rows produced by that process call (content-anchored per AC-008). The offset is
+then clamped to `parser.screen().scrollback_len()`. The status bar continues to show
+`[scrolled back N rows]` with the updated N value. The viewport stays pinned to the same
+content rows the user was reading before the new output arrived.
 
 ## Tasks
 
@@ -162,7 +190,10 @@ bar shows `[scrolled back N rows]`.
 - [ ] Write unit test `test_BC_2_09_007_no_ipc_for_scroll`: `PtyScrollUp`; assert no `ResizePane` or `KeyInput` in IPC sink.
 - [ ] Write unit test `test_BC_2_09_007_scrollback_rows_default_1000`: no `pty_scrollback_rows` in config; assert parser initialized with 1000.
 - [ ] Write unit test `test_BC_2_09_007_scrollback_rows_capped_10000`: config `pty_scrollback_rows: 15000`; assert clamped to 10000.
-- [ ] Write unit test `test_BC_2_09_007_new_output_does_not_reset_scroll_offset`: scrolled to offset=10; `PtyOutput` arrives; assert offset still 10.
+- [ ] Implement `on_pty_output` content-anchored logic in `crates/monocle-tui/src/app.rs`: when `pty_scroll_offsets[session_id] > 0`, read `scrollback_before = parser.screen().scrollback_len()`, call `parser.process(&bytes)`, compute `new_rows = scrollback_after - scrollback_before`, add to offset, clamp to `parser.screen().scrollback_len()`. When offset == 0, call `process(&bytes)` only (no adjustment).
+- [ ] Write unit test `test_BC_2_09_007_content_anchored_new_output`: scrolled to offset=10; 5 new rows arrive via `PtyOutput`; assert `pty_scroll_offsets["s1"] == 15` (incremented by new-row count); assert viewport rows unchanged; assert `[scrolled back 15 rows]` shown.
+- [ ] Write unit test `test_BC_2_09_007_content_anchor_clamp_at_max`: scrolled to offset=990 (near max 1000); 20 new rows arrive; assert offset clamped to `min(1000, 990+20) = 1000`; no overflow, no error.
+- [ ] Write unit test `test_BC_2_09_007_concurrent_status_bar_badges`: session scrolled back (offset > 0) AND dump-drop counter > 0 simultaneously; assert status bar renders BOTH `[scrolled back N rows]` AND `[dump: N drops]`; neither suppresses the other.
 
 ## Previous Story Intelligence
 
@@ -180,7 +211,8 @@ bar shows `[scrolled back N rows]`.
 - `PtyScrollUp`/`PtyScrollDown` are pure TUI-local actions. NO IPC sent. Per BC-2.09.007 Postcondition 3, scroll navigation must not send `ResizePane`, `KeyInput`, or any other IPC.
 - `pty_scroll_offsets` is `HashMap<String, usize>`. There MUST NOT be a shared singular `pty_scroll_offset: usize` field. The I7 fix is canonical.
 - Scroll offset reset on resize is mandatory per SS-embedded-pty.md §Scrollback offset invariants. Do not omit.
-- New `PtyOutput` MUST NOT reset scroll offset. The user's viewport choice is preserved until they explicitly scroll down.
+- New `PtyOutput` MUST NOT reset scroll offset to zero. The `on_pty_output` handler uses **content-anchored** semantics: when `pty_scroll_offsets[session_id] > 0`, the offset MUST be incremented by `scrollback_after - scrollback_before` (new rows added by `parser.process(&bytes)`), then clamped to `parser.screen().scrollback_len()`. A static numeric-preserve (offset unchanged) is INCORRECT — it causes the viewport to drift toward newer content as lines arrive. Live tail (offset == 0) is never adjusted. This matches the behavior of iTerm2, tmux, kitty, wezterm, and Alacritty.
+- Status bar MUST render `[scrolled back N rows]` concurrently with all other status bar badges. The scrollback indicator MUST NOT be suppressed by any transient diagnostic badge (`[dump: N drops]`, `[N pending permission(s)]`, `[reconnecting...]`, or similar). When both conditions hold, both badges MUST render simultaneously.
 - Memory bound: 10000 rows × 80 cols × ~16 bytes/cell ≈ 12.8 MB per session. The 10000-row cap is justified by this bound. Do NOT allow values above 10000.
 
 ## Library and Framework Requirements
@@ -240,7 +272,8 @@ Within the 30% context window bound. No split required.
 | EC-241 | Scroll down at live tail (offset=0) | No-op; stays at 0 |
 | EC-242 | Config `pty_scrollback_rows: 20000` | Clamped to 10000 |
 | EC-243 | Config `pty_scrollback_rows: 0` | Clamped to 1 |
-| EC-244 | New output arrives while scrolled back | Parser updated; offset preserved; indicator still shown |
+| EC-244 | New output arrives while scrolled back | Parser processes bytes; offset is incremented by new-row count (content-anchored); viewport stays pinned to same content rows; `[scrolled back N rows]` indicator shown with updated N |
+| EC-245 | Both scrolled-back AND dump-drop warning active simultaneously | Status bar renders BOTH `[scrolled back N rows]` AND `[dump: N drops]` concurrently; neither suppresses the other |
 
 ## Subsystem Anchor Justifications
 
