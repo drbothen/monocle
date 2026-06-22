@@ -337,7 +337,7 @@ pub struct DaemonState {
     ///
     /// Incremented ONLY on sender-error / OOM / receiver-gone conditions in the PTY
     /// broker's INPUT channel. NOT incremented on normal `.send().await` backpressure
-    /// waits, per-client 3-strike disconnects, or graceful session teardown.
+    /// waits, per-client 1-strike disconnects (SubscriberList semantics), or graceful session teardown.
     ///
     /// When incremented, the PTY broker logs a `WARN`-level structured trace entry to
     /// the session-host's stderr: `WARN: PTY channel drop #N for session <session_id>`.
