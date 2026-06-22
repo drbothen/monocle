@@ -1,7 +1,7 @@
 ---
 document_type: holdout-scenario-index
 level: ops
-version: "1.43"
+version: "1.44"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-22T00:00:00Z
@@ -32,7 +32,7 @@ inputs:
   - {path: .factory/stories/S-043-scrollback-navigation.md, version: "1.5"}
   - {path: .factory/stories/S-044-appmode-transitions-permission-badge.md, version: "1.1"}
   - {path: .factory/stories/S-045-claude-code-spawn-recipe.md, version: "1.3"}
-  - {path: .factory/stories/S-046-pty-output-fan-out.md, version: "1.9"}
+  - {path: .factory/stories/S-046-pty-output-fan-out.md, version: "2.0"}
   - {path: .factory/stories/S-047-ipc-lifecycle-variants.md, version: "1.7"}
   - {path: .factory/stories/S-048-sessions-panel-multi-project.md, version: "1.3"}
   - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.44.4"}
@@ -188,6 +188,12 @@ the Wave 8-9 stories (S-033..S-048). The evaluator needs these story ACs as inpu
 scenarios. Their absence from inputs[] (F-GATE-ADV-003) left the evaluator blind to the ACs for all 5
 new holdout scenarios. No holdout scenario IDs, titles, BCs, or behavioral semantics changed.
 **SE-16d PASS:** 2026-06-16 >= 2026-06-16 (same day as v1.18). PASS (same-day sequential patch).
+
+## §Trace v1.44 — POL-11 pin cascade: S-046 input pin cascaded (2026-06-22)
+
+**Bump:** 1.43 → 1.44.
+**Scope:** `inputs[]` S-046 story pin updated: `"1.9"` → `"2.0"` (S-046 bumped to v2.0: BC-2.05.009 and SS-ipc cascaded to current canonical versions; broker re-architected to use broadcast_to_subscribers via shared SubscriberList — no per-client HashMap in PtyBroker; 1-strike replaces 3-strike; AC-002/003/004/005 rewritten; Tasks/Architecture Compliance Rules/Edge Cases updated to SubscriberList model). No holdout scenario IDs, BCs, or behavioral semantics changed.
+**SE-16d PASS:** 2026-06-22 >= 2026-06-22 (v1.43 last bump date). PASS (same-day sequential patch).
 
 ## §Trace v1.43 — POL-11 pin cascade: S-046 input pin v1.8 → v1.9 (2026-06-22)
 

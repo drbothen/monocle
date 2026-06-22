@@ -3,10 +3,10 @@ document_type: story
 level: L4
 story_id: S-046
 epic_id: EPIC-05
-version: "1.9"
+version: "2.0"
 status: draft
 producer: vsdd-factory:story-writer
-timestamp: 2026-06-16T00:00:00Z
+timestamp: 2026-06-22T00:00:00Z
 phase: 2
 points: 5
 wave: 8
@@ -20,14 +20,14 @@ behavioral_contracts: [BC-2.05.009, BC-2.05.011]
 verification_properties: []
 estimated_days: 3
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.009.md, version: "1.5.11"}
+  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.009.md, version: "1.6.0"}
   - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.011.md, version: "1.2.11"}
-  - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
+  - {path: .factory/specs/architecture/SS-ipc.md, version: "1.25.0"}
   - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.17.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
-traces_to: "Implements BC-2.05.009 (PtyOutput fan-out broker — bounded INPUT channel Arc<Bytes>(1024), per-client mpsc::Sender<ServerToClient>(64), 3-strike disconnect, PtyReset on broker task drop) and BC-2.05.011 (PtyReset variant definition — S-046 OWNS the ServerToClient::PtyReset variant; S-047 references it)"
+traces_to: "Implements BC-2.05.009 (PtyOutput fan-out broker — bounded INPUT channel Arc<Bytes>(1024), broadcast_to_subscribers via shared SubscriberList, 1-strike disconnect, PtyReset on proxy tx.send error or session-host PtyReset) and BC-2.05.011 (PtyReset variant definition — S-046 OWNS the ServerToClient::PtyReset variant; S-047 references it)"
 # BC status: BC-2.05.009 and BC-2.05.011 non-empty; status draft pending Phase-2 adversarial convergence gate
 ---
 
@@ -36,62 +36,101 @@ traces_to: "Implements BC-2.05.009 (PtyOutput fan-out broker — bounded INPUT c
 ## Narrative
 
 As the monocle daemon, I want the PTY output broker to fan-out terminal bytes to all
-connected IPC clients using a bounded `tokio::mpsc::channel(1024)` with
-`.send().await` backpressure (never drop on full), maintain a per-client isolated
-write buffer of capacity 64, disconnect after 3 consecutive send failures, and emit
-`ServerToClient::PtyReset` when a PTY writer task is dropped — so that TUI clients
-receive a faithful, ordered view of terminal output and the daemon does not silently
-lose bytes or fail to notify clients when a session terminates.
+connected IPC clients using a bounded `tokio::mpsc::channel(1024)` INPUT channel with
+`.send().await` backpressure (never drop on full), and then broadcast each wrapped
+`ServerToClient::PtyOutput` frame to all registered TUI clients via
+`broadcast_to_subscribers(&shared_subscriber_list, msg)` — the same `SubscriberList`
+used for all other daemon fan-out — so that TUI clients receive a faithful, ordered
+view of terminal output, slow clients are isolated immediately (1-strike), and the
+daemon does not silently lose bytes or fail to notify clients when a session terminates.
+`ServerToClient::PtyReset` is emitted when the session-host explicitly sends
+`HostToDaemon::PtyReset`, or when the proxy task's `tx.send` returns an error
+(OOM-level failure). The broker does NOT own its own client registry.
 
 ## Acceptance Criteria
 
-### AC-001 (traces to BC-2.05.009 postcondition 1 — bounded channel 1024 with await backpressure)
+### AC-001 (traces to BC-2.05.009 postcondition 1 — bounded INPUT channel 1024 with await backpressure)
 
-The PtyOutput broker's primary fan-out channel is `tokio::mpsc::channel(1024)` (bounded,
-NOT `unbounded_channel`). When the channel is full, the broker caller (PTY reader task)
-blocks on `.send().await` — it does NOT drop the message, does NOT yield and retry later,
-and does NOT log and continue. Backpressure propagates to the PTY reader.
+The `PtyBroker` owns a bounded INPUT channel (`tokio::mpsc::channel::<Arc<Bytes>>(1024)`,
+NOT `unbounded_channel`) between the proxy task and the broker event loop. When the INPUT
+channel is full, the proxy task's `tx.send(frame).await` call blocks — it does NOT drop
+the message, does NOT yield and retry later, and does NOT log and continue. Backpressure
+propagates through the proxy task to the PTY reader. The `PtyBroker` struct field is the
+INPUT channel sender/receiver pair; it does NOT own per-client channel fields.
 
-### AC-002 (traces to BC-2.05.009 postcondition 2 — per-client isolated `mpsc::Sender<ServerToClient>` with capacity 64)
+### AC-002 (traces to BC-2.05.009 postcondition 1b — fan-out via broadcast_to_subscribers on shared SubscriberList)
 
-Each connected IPC client has an isolated per-client channel of type
-`mpsc::Sender<ServerToClient>` with capacity 64 (per SS-ipc.md §Daemon-Side Per-Client
-Fan-out Channel and architect adjudication Q1):
-- The broker wraps each raw PTY frame (`Arc<Bytes>`) as `ServerToClient::PtyOutput { session_id: String, bytes: Vec<u8> }` before sending to each per-client channel. `Arc<Bytes>` MUST NOT be the per-client channel item type — the channel carries `ServerToClient` messages.
-- `fan_out(session_id: &str, frame: Arc<Bytes>)` creates a `ServerToClient::PtyOutput { session_id: session_id.to_string(), bytes: frame.to_vec() }` and sends it to each subscribed client's channel.
-- Channels are independent: a slow client's full channel does NOT block sends to other clients (3-strike disconnect applies, not blocking send).
-- The per-client `mpsc::Sender<ServerToClient>` is initialized fresh on connect and discarded on disconnect.
-- The broker's INPUT channel (PTY reader task → broker) remains `Arc<Bytes>` with capacity 1024. This input channel carries raw PTY frames before wrapping.
+The broker event loop wraps each `Arc<Bytes>` frame as
+`ServerToClient::PtyOutput { session_id: session_id.to_string(), bytes: frame.to_vec() }`
+and fans it out to ALL connected TUI clients by calling
+`broadcast_to_subscribers(&shared_subscriber_list, msg)`:
+- `shared_subscriber_list` is the daemon's single `Arc<SubscriberList>` (defined in
+  `monocle_ipc::server`), populated by `register_subscriber` on IPC connect and drained
+  by `remove_subscriber` on disconnect. The `PtyBroker` MUST NOT own its own
+  `clients: HashMap<...>` or `strike_counters: HashMap<...>` fields.
+- `broadcast_to_subscribers` uses `.try_send()` into each per-client
+  `mpsc::channel::<ServerToClient>(64)`. A slow client whose buffer is full is
+  disconnected immediately (1-strike, per BC-2.05.004 EC-005). Other clients are unaffected.
+- `Arc<Bytes>` MUST NOT be the item type of the per-client fan-out channel.
+  The per-client channel item type is `ServerToClient` (capacity 64).
+- The `PtyBroker` struct holds ONLY the INPUT channel sender/receiver and an
+  `Arc<SubscriberList>` reference passed at construction time from `spawn_session`.
 
-### AC-003 (traces to BC-2.05.009 postcondition 3 — 3-strike disconnect for slow clients)
+### AC-003 (traces to BC-2.05.009 postcondition 1b — 1-strike disconnect for slow clients via broadcast_to_subscribers)
 
-When sending to a per-client buffer fails `N` times consecutively:
-- Strike 1: log at `tracing::warn!` level with session ID and client ID.
-- Strike 2: log at `tracing::warn!`.
-- Strike 3: disconnect the client (close the write half; remove from active client set).
-- The strike counter resets to 0 after any successful send to that client.
-- Clients are never silently removed without exhausting all 3 strikes (unless hardware error).
+Slow-client disconnection is governed by `broadcast_to_subscribers` semantics
+(BC-2.05.004 EC-005, BC-2.05.009 Invariant 3b):
+- A single `TrySendError::Full` on any per-client send buffer (capacity 64) removes
+  that client immediately and fires its `disconnect: Notify`, causing the per-client
+  write task to close the UDS socket.
+- All other clients are unaffected by one client's disconnection.
+- No 3-strike counter is maintained; there is no `strike_counters` field in `PtyBroker`.
+- The 3-strike threshold was specified for the retired isolated per-broker registry
+  design and is superseded by the unified `SubscriberList` model per SS-ipc.md
+  §PtyBroker integration (Q1 ruling).
 
-### AC-004 (traces to BC-2.05.009 PC-3 — pty_drop_counter is a stderr-WARN-only diagnostic; drops are surfaced to TUI via PtyReset per Invariant 5)
+### AC-004 (traces to BC-2.05.009 postcondition 2/3 — pty_drop_counter incremented ONLY in proxy task on tx.send error)
 
-The `pty_drop_counter` metric is incremented ONLY when a message is dropped due to an
-OOM-level failure (channel closed, receiver gone). It is NOT incremented on backpressure
-waits, per-client buffer-full strikes, or graceful disconnects. When the counter increments,
-the PTY-broker logs a `WARN`-level structured trace entry to the session-host's stderr:
-`WARN: PTY channel drop #N for session <session_id>`. The counter is NOT surfaced over IPC
-and does NOT appear in any `ServerToClient` variant — there is no `ServerToClient::StatusUpdate`
-or similar counter-carrying variant in the IPC wire protocol. Actual PTY drops are surfaced
-to the TUI exclusively via `ServerToClient::PtyReset` (the 5-second status bar indicator
-is handled in S-047/S-048 — the broker's responsibility ends at emitting `PtyReset`, per
-BC-2.05.009 Invariant 5).
+The `pty_drop_counter` (`Arc<AtomicU64>`) is incremented ONLY when the proxy task's
+`tx.send(frame).await` returns `Err(_)` — meaning the broker INPUT channel receiver has
+been closed while the session is still live (OOM-level / programming error condition,
+unreachable under normal operation).
 
-### AC-005 (traces to BC-2.05.009 invariant 4 — PtyReset emitted on broker task drop)
+The counter is NOT incremented when:
+- The INPUT channel is full (that is backpressure — `.send().await` blocks until space is available).
+- The INPUT channel receiver closes because the session exited gracefully (`input_rx.recv()
+  == None` in the broker event loop — this is the NORMAL session-exit path).
+- A TUI client's per-client send buffer is full and the client is disconnected by
+  `broadcast_to_subscribers`.
 
-When the PTY writer task for a session is dropped (session exit, OOM kill, unexpected error):
-- The broker emits `ServerToClient::PtyReset { session_id }` to ALL connected clients
-  that were subscribed to that session's PTY output.
-- The emit is fire-and-forget per-client (3-strike rules apply). Emission failure for one
-  client does not prevent emission to others.
+When the counter increments, the proxy task logs at `WARN` level:
+`WARN: PTY channel drop #N for session <session_id>`.
+The counter is NOT surfaced over IPC and does NOT appear in any `ServerToClient` variant.
+Actual PTY drops are surfaced to the TUI exclusively via `ServerToClient::PtyReset`
+(the 5-second status bar indicator is handled in S-047/S-048 — the broker's responsibility
+ends at emitting `PtyReset`, per BC-2.05.009 Invariant 5).
+
+### AC-005 (traces to BC-2.05.009 invariant 4 — PtyReset emitted on exactly two triggers; NOT on graceful session exit)
+
+`ServerToClient::PtyReset { session_id }` is emitted via
+`broadcast_to_subscribers(&shared_subscriber_list, PtyReset)` on exactly TWO conditions:
+
+1. The session-host sends `HostToDaemon::PtyReset` (the session-host's own PTY reader
+   detected a byte drop in its internal ring). The proxy task calls
+   `broadcast_to_subscribers` with `PtyReset` directly. This is the primary production path.
+
+2. The proxy task's `tx.send(frame).await` returns `Err(_)` (the broker INPUT channel
+   receiver has been dropped while the session is still live — OOM-level failure). The
+   proxy task calls `broadcast_to_subscribers` with `PtyReset` and increments
+   `pty_drop_counter`.
+
+**The broker event loop MUST NOT emit `PtyReset` when `input_rx.recv()` returns `None`.**
+Input channel close is the NORMAL graceful session-exit path (proxy task exits, drops its
+sender). Emitting `PtyReset` on graceful teardown would spuriously corrupt TUI state.
+The broker MUST simply return when `input_rx.recv()` yields `None`.
+
+Emission is via `broadcast_to_subscribers` (1-strike slow-client model). Emission failure
+for one client does not prevent emission to others.
 
 ### AC-006 (traces to BC-2.05.009 invariant 6 — hook events priority over PtyOutput in select!)
 
@@ -119,17 +158,28 @@ When a TUI receives `ServerToClient::PtyReset`, the TUI-side handler:
 ## Tasks
 
 - [ ] Add `PtyBroker` struct to `monocle-runtime/src/pty_broker.rs` (new file):
-      - **INPUT channel** (PTY reader → broker): `tokio::mpsc::channel::<Arc<Bytes>>(1024)`. Carries raw PTY frame bytes before wrapping.
-      - **Per-client channels**: `HashMap<String, mpsc::Sender<ServerToClient>>` keyed by client_id (`String`). Each client channel has capacity 64. Strike counters: `HashMap<String, u8>`.
-      - `register_client(id: String, capacity: usize = 64)` → creates `mpsc::channel::<ServerToClient>(64)`, stores the Sender in registry, returns the Receiver end to the IPC writer task.
-      - `unregister_client(id: &str)` → removes and drops the per-client sender.
-      - `fan_out(session_id: &str, frame: Arc<Bytes>)` → wraps as `ServerToClient::PtyOutput { session_id: session_id.to_string(), bytes: frame.to_vec() }`, then sends to all registered client channels; applies 3-strike logic. `Arc<Bytes>` MUST NOT be the item type in per-client channels.
-      - `emit_pty_reset(session_id: &str)` → sends `ServerToClient::PtyReset { session_id: session_id.to_string() }` directly to all per-client channels (no Arc wrapping needed — already a `ServerToClient` message).
-- [ ] Implement the broker event loop as a `tokio::spawn`ed task using `tokio::select!` with
-      hook/control arm biased per AC-006. Ensure `biased;` keyword is used in `select!` macro.
-- [ ] Add `pty_drop_counter: Arc<AtomicU64>` to the `DaemonState` struct and increment only on OOM-level channel failure.
-- [ ] Update `SessionManager::spawn_session()` (from S-033) to create a `PtyBroker` for each session
-      and wire the PTY reader task → broker channel → per-client channels.
+      - **INPUT channel** (proxy task → broker): `tokio::mpsc::channel::<Arc<Bytes>>(1024)`. Carries raw PTY frame bytes before wrapping.
+      - **`Arc<SubscriberList>` reference**: passed in at construction from `spawn_session`; this is the daemon's shared subscriber registry — NOT a duplicate per-broker registry.
+      - The struct MUST NOT contain `clients: HashMap<...>` or `strike_counters: HashMap<...>` fields.
+      - Constructor signature: `PtyBroker::new(session_id: SessionId, subscriber_list: Arc<SubscriberList>, drop_counter: Arc<AtomicU64>) -> (PtyBroker, mpsc::Receiver<Arc<Bytes>>)` — returns the broker and the INPUT channel receiver (the broker holds the sender end).
+- [ ] Implement the broker event loop as a `tokio::spawn`ed task in `PtyBroker::spawn_event_loop`:
+      - Loop: `tokio::select! { biased; <hook/control arm>, <PTY input arm> }`.
+      - PTY input arm: on `Some(frame)` received from `input_rx`, call
+        `broadcast_to_subscribers(&self.subscriber_list, ServerToClient::PtyOutput { session_id: session_id.to_string(), bytes: frame.to_vec() })`.
+      - PTY input arm: on `None` (INPUT channel closed — graceful session exit), break out of
+        the loop and return WITHOUT emitting `PtyReset`.
+      - Ensure `biased;` keyword is used in `select!` macro per AC-006.
+- [ ] Add `pty_drop_counter: Arc<AtomicU64>` to the `DaemonState` struct. Increment ONLY in the
+      proxy task when `tx.send(frame).await` returns `Err(_)`.
+- [ ] Update the proxy task (in `SessionManager::spawn_session()` from S-033) to:
+      - On `HostToDaemon::PtyBytes`: call `tx.send(Arc::new(Bytes::from(bytes))).await`;
+        on `Err(_)` increment `pty_drop_counter` and call
+        `broadcast_to_subscribers(&subscriber_list, PtyReset { session_id })`.
+      - On `HostToDaemon::PtyReset`: call
+        `broadcast_to_subscribers(&subscriber_list, PtyReset { session_id })` directly.
+      - Do NOT emit `PtyReset` when the INPUT channel closes (`input_rx.recv() == None`).
+- [ ] Update `SessionManager::spawn_session()` to construct a `PtyBroker` per-session,
+      passing the daemon's shared `Arc<SubscriberList>` (not a cloned snapshot).
 - [ ] Add `ServerToClient::PtyReset { session_id: String }` variant to the IPC message enum
       (in `crates/monocle-ipc/src/lib.rs`, NOT `proto.rs` — canonical file per S-033/S-039/S-044)
       — this is a new variant defined in BC-2.05.011 but needed here for the broker to emit it.
@@ -137,10 +187,10 @@ When a TUI receives `ServerToClient::PtyReset`, the TUI-side handler:
       `SessionId` newtype MUST NOT appear in IPC wire types.
 - [ ] Write unit tests in `monocle-runtime/tests/pty_broker.rs`:
       - `test_BC_2_05_009_bounded_channel_backpressure_blocks_not_drops` (AC-001)
-      - `test_BC_2_05_009_per_client_isolation_slow_client_does_not_block_fast` (AC-002)
-      - `test_BC_2_05_009_three_strike_disconnect` (AC-003)
+      - `test_BC_2_05_009_fan_out_via_subscriber_list_not_broker_registry` (AC-002 — uses `register_subscriber` + `SubscriberList`, not `register_client`)
+      - `test_BC_2_05_009_one_strike_disconnect_slow_client` (AC-003 — verifies 1-strike via `broadcast_to_subscribers`)
       - `test_BC_2_05_009_pty_drop_counter_only_oom_not_backpressure` (AC-004)
-      - `test_BC_2_05_009_pty_reset_emitted_on_broker_drop` (AC-005)
+      - `test_BC_2_05_009_pty_reset_emitted_on_proxy_send_error_not_graceful_close` (AC-005 — two sub-cases: proxy send error emits reset; input_rx.recv()==None does NOT)
       - `test_BC_2_05_009_hook_events_priority_over_pty_output` (AC-006)
       - `test_BC_2_05_009_no_unbounded_channel_in_pty_path` (AC-007 — compile-time or grep assertion)
 
@@ -160,16 +210,26 @@ handler. This split is by-design to avoid a dependency cycle (S-047 depends on S
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-ipc.md v1.24.0` (§Daemon-Side Per-Client Fan-out Channel):
-- **Broker INPUT channel (PTY reader → broker):** `tokio::mpsc::channel::<Arc<Bytes>>(1024)`.
+From `architecture/SS-ipc.md v1.25.0` (§PtyBroker integration — Ruling Q1):
+- **`PtyBroker` MUST NOT own a client registry.** Fields `clients: HashMap<...>` and
+  `strike_counters: HashMap<...>` are FORBIDDEN in the `PtyBroker` struct.
+- **Broker INPUT channel (proxy task → broker):** `tokio::mpsc::channel::<Arc<Bytes>>(1024)`.
   Raw PTY frames; `Arc<Bytes>` is the item type at this layer only.
-- **Per-client channel:** `mpsc::Sender<ServerToClient>` with capacity 64. The broker wraps
-  each frame as `ServerToClient::PtyOutput { session_id, bytes }` before per-client send.
-  `Arc<Bytes>` MUST NOT be the per-client channel item type.
-- `emit_pty_reset()` sends `ServerToClient::PtyReset { session_id }` directly to per-client
-  channels — no wrapping needed, it is already a `ServerToClient` variant.
-- `PtyReset` is a first-class `ServerToClient` variant, NOT a synthetic event.
+- **Fan-out:** The broker event loop calls `broadcast_to_subscribers(&shared_subscriber_list, msg)`
+  with a `ServerToClient::PtyOutput` — the SAME `SubscriberList` used by all daemon-to-TUI
+  fan-out (hook events, session state changes, permission prompts).
+- **Slow-client disconnect:** 1-strike via `broadcast_to_subscribers` semantics
+  (BC-2.05.004 EC-005). No per-broker strike counters. No 3-strike logic.
+- **PtyReset triggers:** exactly two — (a) `HostToDaemon::PtyReset` from session-host;
+  (b) proxy task `tx.send(frame).await` returns `Err(_)`. MUST NOT emit on
+  `input_rx.recv() == None` (graceful session exit).
+- **Drop counter site:** proxy task only, on `tx.send().await` error. NOT on backpressure
+  full, NOT on `input_rx.recv() == None`, NOT on per-client `broadcast_to_subscribers` failure.
+- `Arc<Bytes>` MUST NOT be the per-client fan-out channel item type.
 - `biased;` select! ensures hook events are never starved by PTY volume.
+- **`spawn_session` passes `Arc<SubscriberList>`:** the shared list is passed at broker
+  construction; it MUST NOT be cloned into a snapshot at spawn time (that would miss
+  post-spawn connects).
 
 From `architecture/SS-session-manager.md`:
 - `DaemonState` owns all session-scoped resources; `PtyBroker` is created per-session inside
@@ -204,7 +264,7 @@ No new dependencies. All three are in the workspace `Cargo.toml` already.
 
 | BC | Title | Version | Ownership |
 |----|-------|---------|-----------|
-| BC-2.05.009 | PtyOutput Fan-out Broker — Bounded Channel, Backpressure, Per-Client Isolation, 3-Strike Disconnect | (see inputs: frontmatter) | OWNED by S-046 |
+| BC-2.05.009 | PtyOutput Fan-Out — Per-Session Bounded Channel (1024) with Drop Counter (stderr WARN) + PtyReset TUI Recovery | (see inputs: frontmatter) | OWNED by S-046 |
 | BC-2.05.011 | New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset | (see inputs: frontmatter) | PtyReset variant OWNED by S-046; ScrollbackChunk/ScrollbackDumpComplete variants owned by S-047 |
 
 **Ownership clarification (S-046 vs S-047):** `ServerToClient::PtyReset { session_id: String }` is
@@ -218,12 +278,12 @@ story) and the client-side protocol (S-047). Both stories co-own BC-2.05.011 but
 
 | ID | Description | Expected Behavior |
 |----|-------------|-------------------|
-| EC-200 | No clients registered; PTY frame arrives | Frame is silently discarded (no clients to fan-out to); `pty_drop_counter` NOT incremented |
-| EC-201 | One client disconnects mid-stream (Receiver dropped) | Next send attempt to that client fails → starts strike counter → disconnected after 3 strikes |
-| EC-202 | All clients disconnect; PTY keeps producing | All sends fail → all clients strike out; broker stays alive for new connects; `pty_drop_counter` NOT incremented (no OOM, just empty registry) |
-| EC-203 | PTY produces frames faster than channel capacity (1024 items) | Caller blocks on `.send().await` — backpressure to PTY reader until channel drains |
-| EC-204 | `emit_pty_reset()` called with no clients registered | No-op; no error |
-| EC-205 | Hook event arrives exactly when PTY frame arrives | `biased; select!` guarantees hook event processed first |
+| EC-200 | No TUI clients in `SubscriberList`; PTY frame arrives | `broadcast_to_subscribers` iterates over empty list; frame bytes discarded; `pty_drop_counter` NOT incremented |
+| EC-201 | One TUI client's per-client send buffer is full when `broadcast_to_subscribers` tries to send | 1-strike: client removed immediately by `broadcast_to_subscribers`; `disconnect: Notify` fired; other clients continue receiving uninterrupted |
+| EC-202 | All TUI clients disconnect; PTY keeps producing | `broadcast_to_subscribers` iterates over empty list; bytes discarded; broker stays alive for new connects (new connects populate `SubscriberList` dynamically); `pty_drop_counter` NOT incremented |
+| EC-203 | PTY produces frames faster than INPUT channel capacity (1024 items) | Proxy task's `tx.send(frame).await` blocks — backpressure to PTY reader until channel drains; no bytes dropped; `pty_drop_counter` NOT incremented |
+| EC-204 | `broadcast_to_subscribers` called with `PtyReset` when `SubscriberList` is empty | No-op; no error; `pty_drop_counter` NOT incremented |
+| EC-205 | Hook event arrives exactly when PTY frame arrives in broker `select!` | `biased; select!` guarantees hook/control arm processed first; PTY frame processed in next iteration |
 | EC-206 | `pty_drop_counter` is read concurrently by the logger task | Read via `Arc<AtomicU64>::load(Ordering::Relaxed)` — safe under concurrent writers; no IPC emission path reads this counter |
 
 ## Token Budget Estimate
@@ -260,6 +320,7 @@ managed by SS-05 per ARCH-INDEX Subsystem Registry SS-05 (monocle-ipc, daemon IP
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 2.0 | 2026-06-22 | vsdd-factory:story-writer | Architect re-architecture cascade (SS-ipc bump, BC-2.05.009 bump): inputs[] pins BC-2.05.009 and SS-ipc updated to current canonical versions. Narrative rewritten: broker owns INPUT channel + Arc<SubscriberList> only (no per-client HashMap, no strike_counters). AC-001 clarified as INPUT channel. AC-002 rewritten: fan-out via broadcast_to_subscribers on shared SubscriberList (not broker-owned registry). AC-003 rewritten: 1-strike via broadcast_to_subscribers (3-strike retired). AC-004 updated: drop counter ONLY on proxy task tx.send Err (not on input_rx.recv()==None). AC-005 updated: two canonical PtyReset triggers; explicitly MUST NOT emit on graceful input close. Tasks rewritten: register_client/unregister_client/fan_out/emit_pty_reset removed; broadcast_to_subscribers + Arc<SubscriberList> constructor; test names updated to SubscriberList model. Architecture Compliance Rules rewritten for Q1 ruling. EC-200/201/202/204 updated to SubscriberList semantics. |
 | 1.9 | 2026-06-22 | vsdd-factory:story-writer | inputs[] pin refresh — BC-2.05.009, BC-2.05.011, SS-session-manager bumped to canonical (SS-ipc/SS-deps-pin-manifest/SS-deps-pin-manifest-v2-delta unchanged); body accuracy verified against canonical specs — §Daemon-Side Per-Client Fan-out Channel contract stable (per-client mpsc::Sender<ServerToClient> cap 64, broker INPUT Arc<Bytes> cap 1024, biased select!, PtyReset ownership all confirmed); SS-session-manager spawn_session/DaemonState integration claims confirmed stable at current canonical. |
 | 1.4 | 2026-06-16 | vsdd-factory:story-writer | F-P24-SUG-002: BC-2.05.011 body BC-table title corrected — "ScrollbackChunk/ScrollbackDumpComplete/PtyReset Protocol" → "New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset" to match BC canonical title. |
 | 1.3 | 2026-06-16 | vsdd-factory:story-writer | Corpus-wide AC-trace-citation audit (F-P20-CRIT-001 class): AC-005 "postcondition 5"→"invariant 4" (PtyReset on drop); AC-006 "invariant 1"→"invariant 6" (hook priority); AC-007 "invariant 2"→"invariant 3" (backpressure/.send().await); AC-008 "invariant 3"→"invariant 4" (PtyReset protocol). AC bodies unchanged. |

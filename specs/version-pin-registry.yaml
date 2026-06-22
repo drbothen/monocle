@@ -228,8 +228,8 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.43"
-  last_bump_commit: "[POL-11 pin cascade: S-046 inputs[] pin v1.8→v1.9 (BC-2.05.009/BC-2.05.011/SS-session-manager refresh)]"
+  current_version: "1.44"
+  last_bump_commit: "[POL-11 pin cascade: S-046 inputs[] pin cascaded to current canonical (BC-2.05.009 + SS-ipc re-architecture; broadcast_to_subscribers model; 1-strike; story v2.0)]"
   last_bump_date: "2026-06-22"
 
 sprint-state:
@@ -979,8 +979,8 @@ S-040-keyboard-forwarding:
 
 S-046-pty-output-fan-out:
   path: stories/S-046-pty-output-fan-out.md
-  current_version: "1.9"
-  last_bump_commit: "[inputs[] pin refresh — BC-2.05.009, BC-2.05.011, SS-session-manager bumped (historical deltas archived in story Trace); body accuracy verified; no behavioral change]"
+  current_version: "2.0"
+  last_bump_commit: "[SS-ipc + BC-2.05.009 cascade: broker owns INPUT channel + Arc<SubscriberList> only; broadcast_to_subscribers fan-out; 1-strike replaces 3-strike; AC-002/003/004/005 rewritten; Tasks/Architecture Compliance Rules/Edge Cases updated to SubscriberList model]"
   last_bump_date: "2026-06-22"
 
 S-047-ipc-lifecycle-variants:
