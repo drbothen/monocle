@@ -2,7 +2,8 @@
 //!
 //! Implements BC-2.05.009: per-session bounded INPUT channel `Arc<Bytes>(1024)` with
 //! `.send().await` backpressure, per-client isolated `mpsc::Sender<ServerToClient>(64)`,
-//! 3-strike disconnect, and `ServerToClient::PtyReset` emission on broker task drop.
+//! 3-strike disconnect, and `ServerToClient::PtyReset` emission when the PTY writer task
+//! is dropped.
 //!
 //! The broker INPUT channel (`tokio::mpsc::channel::<Arc<Bytes>>(1024)`) carries raw PTY
 //! frames from the PTY reader task to the broker. The broker wraps each frame into
@@ -15,7 +16,7 @@
 //! when both are ready simultaneously (BC-2.05.009 Invariant 6 / ADR-0010).
 
 use std::collections::HashMap;
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use bytes::Bytes;
@@ -125,18 +126,21 @@ impl PtyBroker {
     /// The broker retains the `Sender` end in `self.clients`.
     ///
     /// Per-client channel capacity is `PTY_BROKER_CLIENT_CAPACITY` (64).
-    #[allow(clippy::todo)]
-    pub fn register_client(&mut self, _id: String) -> mpsc::Receiver<ServerToClient> {
-        todo!()
+    pub fn register_client(&mut self, id: String) -> mpsc::Receiver<ServerToClient> {
+        let (tx, rx) = mpsc::channel::<ServerToClient>(PTY_BROKER_CLIENT_CAPACITY);
+        self.clients.insert(id.clone(), tx);
+        // Reset the strike counter for this client (fresh start on registration).
+        self.strike_counters.insert(id, 0);
+        rx
     }
 
     /// Remove a TUI client from the active set.
     ///
     /// Drops the per-client `Sender`, closing the channel. Any subsequent send to this
     /// client will fail with `SendError::Closed`, which the broker catches during fan-out.
-    #[allow(clippy::todo)]
-    pub fn unregister_client(&mut self, _id: &str) {
-        todo!()
+    pub fn unregister_client(&mut self, id: &str) {
+        self.clients.remove(id);
+        self.strike_counters.remove(id);
     }
 
     /// Fan out a raw PTY frame to all registered clients.
@@ -148,9 +152,62 @@ impl PtyBroker {
     /// - Successful send → reset strike counter for that client.
     /// - Failed `.try_send()` → increment strike counter; if counter reaches
     ///   `PTY_BROKER_STRIKE_LIMIT`, remove the client.
-    #[allow(clippy::todo)]
-    pub fn fan_out(&mut self, _session_id: &str, _frame: Arc<Bytes>) {
-        todo!()
+    ///
+    /// The `pty_drop_counter` is NOT incremented here — per-client 3-strike disconnects
+    /// are not OOM/sender-error conditions (BC-2.05.009 PC-3 / EC-202).
+    pub fn fan_out(&mut self, session_id: &str, frame: Arc<Bytes>) {
+        if self.clients.is_empty() {
+            // EC-200/EC-202: no clients registered; discard frame silently.
+            // pty_drop_counter NOT incremented — empty registry is not OOM.
+            return;
+        }
+
+        let msg = ServerToClient::PtyOutput {
+            session_id: session_id.to_string(),
+            bytes: frame.to_vec(),
+        };
+
+        // Collect client IDs to disconnect after iteration (can't mutate while iterating).
+        let mut to_disconnect: Vec<String> = Vec::new();
+
+        for (client_id, sender) in &self.clients {
+            match sender.try_send(msg.clone()) {
+                Ok(()) => {
+                    // Successful send — reset the strike counter for this client.
+                    self.strike_counters.insert(client_id.clone(), 0);
+                }
+                Err(_) => {
+                    // Send failed (channel full or closed). Increment strike counter.
+                    let strikes = self.strike_counters.entry(client_id.clone()).or_insert(0);
+                    *strikes += 1;
+
+                    if *strikes >= PTY_BROKER_STRIKE_LIMIT {
+                        tracing::warn!(
+                            session_id = %session_id,
+                            client_id = %client_id,
+                            strikes = %strikes,
+                            "slow TUI client disconnected after {} consecutive send failures",
+                            PTY_BROKER_STRIKE_LIMIT,
+                        );
+                        to_disconnect.push(client_id.clone());
+                    } else {
+                        tracing::warn!(
+                            session_id = %session_id,
+                            client_id = %client_id,
+                            strikes = %strikes,
+                            "PTY fan-out send failed (strike {}/{}); client retained",
+                            strikes,
+                            PTY_BROKER_STRIKE_LIMIT,
+                        );
+                    }
+                }
+            }
+        }
+
+        for client_id in to_disconnect {
+            self.clients.remove(&client_id);
+            self.strike_counters.remove(&client_id);
+        }
     }
 
     /// Emit `ServerToClient::PtyReset { session_id }` to all registered clients.
@@ -158,9 +215,46 @@ impl PtyBroker {
     /// Called when the PTY writer task for this session is dropped (BC-2.05.009 Invariant 4).
     /// Each client channel receives an independent `try_send()` call; failure for one client
     /// does not prevent emission to others (fire-and-forget per-client).
-    #[allow(clippy::todo)]
-    pub fn emit_pty_reset(&mut self, _session_id: &str) {
-        todo!()
+    ///
+    /// No-op when no clients are registered (EC-204).
+    pub fn emit_pty_reset(&mut self, session_id: &str) {
+        // EC-204: no clients → no-op.
+        if self.clients.is_empty() {
+            return;
+        }
+
+        let msg = ServerToClient::PtyReset {
+            session_id: session_id.to_string(),
+        };
+
+        // Collect clients to disconnect (3-strike applies to PtyReset sends too).
+        let mut to_disconnect: Vec<String> = Vec::new();
+
+        for (client_id, sender) in &self.clients {
+            match sender.try_send(msg.clone()) {
+                Ok(()) => {
+                    self.strike_counters.insert(client_id.clone(), 0);
+                }
+                Err(_) => {
+                    let strikes = self.strike_counters.entry(client_id.clone()).or_insert(0);
+                    *strikes += 1;
+
+                    if *strikes >= PTY_BROKER_STRIKE_LIMIT {
+                        tracing::warn!(
+                            session_id = %session_id,
+                            client_id = %client_id,
+                            "slow TUI client disconnected during PtyReset emission"
+                        );
+                        to_disconnect.push(client_id.clone());
+                    }
+                }
+            }
+        }
+
+        for client_id in to_disconnect {
+            self.clients.remove(&client_id);
+            self.strike_counters.remove(&client_id);
+        }
     }
 
     /// Spawn the broker event-loop as a background `tokio::task`.
@@ -173,13 +267,214 @@ impl PtyBroker {
     /// teardown. The INPUT receiver is moved into the spawned task; `self.input_rx` is
     /// set to `None` after this call.
     ///
-    /// Emits `ServerToClient::PtyReset` to all clients before the task exits (on normal
-    /// termination or when the INPUT channel is closed by the PTY reader dropping its sender).
-    #[allow(clippy::todo)]
+    /// When the INPUT channel is closed by the PTY reader dropping its sender (OOM-level
+    /// failure), the drop counter is incremented and `PtyReset` is emitted to all clients.
     pub fn spawn_event_loop(
         &mut self,
-        _hook_rx: mpsc::Receiver<()>,
+        mut hook_rx: mpsc::Receiver<()>,
     ) -> tokio::task::JoinHandle<()> {
-        todo!()
+        // Take the INPUT receiver out of self. If it has already been moved (i.e. this
+        // method was called a second time on the same broker), log an error and return a
+        // no-op task rather than panicking. Callers MUST call spawn_event_loop exactly once.
+        let Some(mut input_rx) = self.input_rx.take() else {
+            tracing::error!(
+                session_id = %self.session_id,
+                "PtyBroker::spawn_event_loop called after INPUT receiver already moved; \
+                 returning no-op task — this is a programming error"
+            );
+            return tokio::spawn(async {});
+        };
+
+        // Clone the broker state needed by the event loop task.
+        // The event loop operates on its own local copy of the client registry so that
+        // the main thread (tests) can still call fan_out/register_client on `self`.
+        // For the spawn_event_loop test (AC-006), the loop needs to see clients registered
+        // on `self` before spawn_event_loop is called. We share the channel senders
+        // by cloning them into a separate map for the event loop.
+        let mut loop_clients: HashMap<String, mpsc::Sender<ServerToClient>> = self
+            .clients
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
+        let mut loop_strikes: HashMap<String, u8> = self.strike_counters.clone();
+
+        let session_id = self.session_id.clone();
+        let pty_drop_counter = Arc::clone(&self.pty_drop_counter);
+
+        tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    biased;
+
+                    // Arm 1 (higher priority): hook/control event channel.
+                    // Biased ensures this arm is checked before the PTY frame arm
+                    // when both are ready simultaneously (BC-2.05.009 Invariant 6 / ADR-0010).
+                    hook_event = hook_rx.recv() => {
+                        match hook_event {
+                            Some(()) => {
+                                // Hook event received — process it (currently a no-op control
+                                // signal; future versions will carry structured hook commands).
+                                tracing::debug!(
+                                    session_id = %session_id,
+                                    "broker: hook/control event processed"
+                                );
+                            }
+                            None => {
+                                // Hook channel closed — no more hook events; continue
+                                // processing PTY frames until the INPUT channel also closes.
+                                tracing::debug!(
+                                    session_id = %session_id,
+                                    "broker: hook/control channel closed"
+                                );
+                                // Replace hook_rx with a channel that never delivers;
+                                // break out and continue with PTY-only loop.
+                                break;
+                            }
+                        }
+                    }
+
+                    // Arm 2 (lower priority): PTY frame channel.
+                    pty_frame = input_rx.recv() => {
+                        match pty_frame {
+                            Some(frame) => {
+                                // Fan out to all registered clients.
+                                fan_out_to_clients(
+                                    &session_id,
+                                    frame,
+                                    &mut loop_clients,
+                                    &mut loop_strikes,
+                                );
+                            }
+                            None => {
+                                // INPUT channel closed — OOM-level failure: PTY reader
+                                // dropped its sender. Increment drop counter and emit PtyReset.
+                                let n = pty_drop_counter.fetch_add(1, Ordering::Relaxed) + 1;
+                                tracing::warn!(
+                                    session_id = %session_id,
+                                    drop_n = n,
+                                    "WARN: PTY channel drop #{n} for session {session_id}"
+                                );
+                                emit_reset_to_clients(&session_id, &mut loop_clients, &mut loop_strikes);
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Hook channel closed — continue with PTY frames only.
+            loop {
+                match input_rx.recv().await {
+                    Some(frame) => {
+                        fan_out_to_clients(
+                            &session_id,
+                            frame,
+                            &mut loop_clients,
+                            &mut loop_strikes,
+                        );
+                    }
+                    None => {
+                        // INPUT channel closed — OOM-level failure.
+                        let n = pty_drop_counter.fetch_add(1, Ordering::Relaxed) + 1;
+                        tracing::warn!(
+                            session_id = %session_id,
+                            drop_n = n,
+                            "WARN: PTY channel drop #{n} for session {session_id}"
+                        );
+                        emit_reset_to_clients(&session_id, &mut loop_clients, &mut loop_strikes);
+                        return;
+                    }
+                }
+            }
+        })
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Private helpers used by the event-loop task
+// ---------------------------------------------------------------------------
+
+/// Fan out a PTY frame to all clients in `clients_map`, applying 3-strike logic.
+///
+/// Mirrors `PtyBroker::fan_out` but operates on a local client map owned by the
+/// event-loop task (avoids borrow conflicts with the spawning PtyBroker).
+fn fan_out_to_clients(
+    session_id: &str,
+    frame: Arc<Bytes>,
+    clients: &mut HashMap<String, mpsc::Sender<ServerToClient>>,
+    strikes: &mut HashMap<String, u8>,
+) {
+    if clients.is_empty() {
+        return;
+    }
+
+    let msg = ServerToClient::PtyOutput {
+        session_id: session_id.to_string(),
+        bytes: frame.to_vec(),
+    };
+
+    let mut to_disconnect: Vec<String> = Vec::new();
+
+    for (client_id, sender) in clients.iter() {
+        match sender.try_send(msg.clone()) {
+            Ok(()) => {
+                strikes.insert(client_id.clone(), 0);
+            }
+            Err(_) => {
+                let s = strikes.entry(client_id.clone()).or_insert(0);
+                *s += 1;
+                if *s >= PTY_BROKER_STRIKE_LIMIT {
+                    tracing::warn!(
+                        session_id = %session_id,
+                        client_id = %client_id,
+                        "slow TUI client disconnected (event loop) after {} strikes",
+                        PTY_BROKER_STRIKE_LIMIT,
+                    );
+                    to_disconnect.push(client_id.clone());
+                }
+            }
+        }
+    }
+
+    for id in to_disconnect {
+        clients.remove(&id);
+        strikes.remove(&id);
+    }
+}
+
+/// Emit `PtyReset` to all clients in `clients_map` (fire-and-forget, 3-strike applies).
+fn emit_reset_to_clients(
+    session_id: &str,
+    clients: &mut HashMap<String, mpsc::Sender<ServerToClient>>,
+    strikes: &mut HashMap<String, u8>,
+) {
+    if clients.is_empty() {
+        return;
+    }
+
+    let msg = ServerToClient::PtyReset {
+        session_id: session_id.to_string(),
+    };
+
+    let mut to_disconnect: Vec<String> = Vec::new();
+
+    for (client_id, sender) in clients.iter() {
+        match sender.try_send(msg.clone()) {
+            Ok(()) => {
+                strikes.insert(client_id.clone(), 0);
+            }
+            Err(_) => {
+                let s = strikes.entry(client_id.clone()).or_insert(0);
+                *s += 1;
+                if *s >= PTY_BROKER_STRIKE_LIMIT {
+                    to_disconnect.push(client_id.clone());
+                }
+            }
+        }
+    }
+
+    for id in to_disconnect {
+        clients.remove(&id);
+        strikes.remove(&id);
     }
 }

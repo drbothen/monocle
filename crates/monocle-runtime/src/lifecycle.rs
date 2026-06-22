@@ -599,6 +599,12 @@ pub async fn daemon_start_sequence(
     let ipc_subscribers: monocle_ipc::server::SubscriberList =
         Arc::new(tokio::sync::Mutex::new(Vec::new()));
 
+    // S-046: Daemon-global PTY drop counter shared between SessionManager and DaemonState.
+    // Created here (before SessionManager) so the same Arc is injected into both.
+    // SessionManager receives it via with_pty_drop_counter(); DaemonState stores it directly.
+    let shared_pty_drop_counter: std::sync::Arc<std::sync::atomic::AtomicU64> =
+        std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
+
     // Step 8b: construct a single SessionManager, call rediscover_sessions(), and keep it
     // alive until it is moved into DaemonState.session_manager below (BC-2.08.004 AC-002 /
     // Invariant 1: re-discovery MUST complete before UDS bind; sessions discovered here
@@ -620,6 +626,9 @@ pub async fn daemon_start_sequence(
             engine_8b,
             hook_cfg.clone(),
         );
+        // S-046: Wire the daemon-global PTY drop counter into the SessionManager so that
+        // all PtyBrokers spawned within this manager update the shared counter (BC-2.05.009).
+        session_manager_8b.with_pty_drop_counter(std::sync::Arc::clone(&shared_pty_drop_counter));
         // S-036: Call rediscover_sessions() — MUST complete before step 9 + step 10.
         // On failure, log and proceed with empty (but valid) registry (BC-2.08.004 PC-6).
         match session_manager_8b.rediscover_sessions().await {
@@ -776,7 +785,10 @@ pub async fn daemon_start_sequence(
         // Re-discovered sessions are live in this SessionManager and will appear in
         // DaemonState, satisfying AC-015 (sessions visible in InitialState on first TUI connect).
         session_manager: Some(tokio::sync::Mutex::new(session_manager_for_daemon_state)),
-        pty_drop_counter: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0)),
+        // S-046: Use the shared counter created at step 8b — same Arc injected into
+        // SessionManager via with_pty_drop_counter(), so PtyBroker increments are
+        // visible here (BC-2.05.009 daemon-global counter requirement).
+        pty_drop_counter: shared_pty_drop_counter,
         session_id_gen: std::sync::Arc::new(crate::session_manager::UuidV4Generator),
         hook_decision_override: None,
         hook_delay_ms: None, // Unit-test override only; not set via env var.
