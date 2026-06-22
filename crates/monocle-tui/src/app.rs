@@ -668,8 +668,49 @@ pub fn on_pty_output(app: &mut App, session_id: String, bytes: Vec<u8>) {
         return;
     };
 
-    // BC-2.09.001 PC-2: feed bytes to the parser.
-    parser.process(&bytes);
+    // BC-2.09.007 Postcondition 5 / PC-5 / AC-008 / EC-244: content-anchored scroll offset.
+    //
+    // When the user is scrolled back (offset > 0), the viewport must stay pinned to the
+    // same content rows as new output arrives. vt100::set_scrollback(N) is bottom-relative,
+    // so a static numeric N causes the viewport to drift toward newer content as lines arrive.
+    //
+    // Algorithm (AC-008):
+    //   1. Read scrollback_len BEFORE processing (probe via set_scrollback(MAX) read-back).
+    //   2. Process the bytes.
+    //   3. Read scrollback_len AFTER processing.
+    //   4. new_rows = after - before (saturating_sub for safety).
+    //   5. new_offset = (current_offset + new_rows).min(new_scrollback_len).
+    //
+    // When offset == 0 (live tail): no adjustment — live tail is never disturbed (AC-008).
+    let current_offset = app.pty_scroll_offsets.get(&session_id).copied().unwrap_or(0);
+
+    if current_offset > 0 {
+        // Probe scrollback_len BEFORE process() by set_scrollback sentinel + read-back.
+        // This is the canonical vt100 approach: set_scrollback(usize::MAX) clamps to the
+        // actual scrollback len; parser.screen().scrollback() returns the clamped value.
+        // We restore to 0 immediately so the parser screen is not in a scrolled-back state
+        // during the process() call (process() does not care about the scrollback position,
+        // but we restore for invariant cleanliness).
+        parser.screen_mut().set_scrollback(usize::MAX);
+        let scrollback_before = parser.screen().scrollback();
+        parser.screen_mut().set_scrollback(0);
+
+        // BC-2.09.001 PC-2: feed bytes to the parser.
+        parser.process(&bytes);
+
+        // Probe scrollback_len AFTER process().
+        parser.screen_mut().set_scrollback(usize::MAX);
+        let scrollback_after = parser.screen().scrollback();
+        parser.screen_mut().set_scrollback(0);
+
+        // Compute new-row delta and update offset (saturating to prevent overflow).
+        let new_rows = scrollback_after.saturating_sub(scrollback_before);
+        let new_offset = current_offset.saturating_add(new_rows).min(scrollback_after);
+        app.pty_scroll_offsets.insert(session_id, new_offset);
+    } else {
+        // Live tail (offset == 0): process bytes only; no offset adjustment.
+        parser.process(&bytes);
+    }
 }
 
 /// Transition to `AppMode::EmbeddedTerminal` for `session_id`.
