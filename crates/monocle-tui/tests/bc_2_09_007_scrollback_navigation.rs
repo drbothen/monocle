@@ -37,8 +37,8 @@ use monocle_core::tui::state::{
 };
 use monocle_ipc::types::ClientToServer;
 use monocle_tui::app::{
-    gc_pty_session, handle_pty_scroll_down, handle_pty_scroll_up, on_pty_output, on_resize_detected,
-    App,
+    gc_pty_session, handle_pty_scroll_down, handle_pty_scroll_up, on_pty_output,
+    on_resize_detected, App,
 };
 use tokio::sync::mpsc;
 
@@ -559,10 +559,7 @@ async fn test_BC_2_09_007_no_ipc_for_scroll() {
     // try_recv() must return Empty — scrollback is TUI-local.
     let result = cmd_rx.try_recv();
     assert!(
-        matches!(
-            result,
-            Err(tokio::sync::mpsc::error::TryRecvError::Empty)
-        ),
+        matches!(result, Err(tokio::sync::mpsc::error::TryRecvError::Empty)),
         "BC-2.09.007 Postcondition 3 / AC-006: PtyScrollUp/Down must NOT send any IPC \
          message — scrollback is a TUI-local viewport operation. Got: {:?}",
         result.ok()
@@ -619,7 +616,8 @@ fn test_BC_2_09_007_status_bar_indicator_when_scrolled() {
     terminal
         .draw(|frame| {
             let area = Rect::new(0, 0, 80, 24);
-            effective_offset_nonzero = render_embedded_terminal(frame, area, &mut parser, non_zero_offset);
+            effective_offset_nonzero =
+                render_embedded_terminal(frame, area, &mut parser, non_zero_offset);
         })
         .expect("terminal.draw must succeed");
 
@@ -1024,7 +1022,8 @@ fn test_BC_2_09_007_render_embedded_terminal_with_scroll_offset() {
     terminal
         .draw(|frame| {
             let area = Rect::new(0, 0, 80, 24);
-            effective_clamped = render_embedded_terminal(frame, area, &mut parser, oversized_offset);
+            effective_clamped =
+                render_embedded_terminal(frame, area, &mut parser, oversized_offset);
         })
         .expect("terminal.draw must succeed at oversized scroll_offset");
 
