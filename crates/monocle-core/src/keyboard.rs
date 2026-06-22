@@ -528,6 +528,134 @@ fn pty_key_codepoint(code: &PtyKeyCode) -> u32 {
     }
 }
 
+/// Translate a `PtyMouseEvent` to the SGR 1006 encoded byte sequence for PTY stdin.
+///
+/// Returns `Some(bytes)` containing the complete SGR mouse mode sequence for events
+/// whose coordinates fall within the PTY pane area. Returns `None` for events outside
+/// the pane area — those MUST NOT be forwarded to the PTY.
+///
+/// The SGR encoding format is:
+/// - Press/Drag/Scroll/Moved: `CSI < Ps_final ; Px ; Py M`
+/// - Release (Up variants): `CSI < Ps_final ; Px ; Py m`
+///
+/// Base `Ps` values (per BC-2.09.003 §Postcondition 2 table):
+/// - `Down(Left)=0`, `Down(Middle)=1`, `Down(Right)=2` (terminator `M`)
+/// - `Up(Left)=0`, `Up(Middle)=1`, `Up(Right)=2` (terminator `m`)
+/// - `Drag(Left)=32`, `Drag(Middle)=33`, `Drag(Right)=34` (terminator `M`)
+/// - `Moved=35` (reachable on Unix — crossterm's `EnableMouseCapture` enables mode 1003
+///   any-event tracking; this arm encodes motion-only events correctly)
+/// - `ScrollUp=64`, `ScrollDown=65`, `ScrollLeft=66`, `ScrollRight=67` (terminator `M`)
+///
+/// Modifier bits are additive: `Ps_final = base_Ps | modifier_bits`.
+/// Shift |= 4, Alt |= 8, Ctrl |= 16.
+///
+/// Coordinate convention (1-indexed pane-relative):
+/// `Px = event.column - pane_area.x + 1`, `Py = event.row - pane_area.y + 1`.
+///
+/// # Purity
+///
+/// This function is pure: no I/O, no state mutation, deterministic (BC-2.09.003 Invariant 2).
+///
+/// # Parameters
+///
+/// - `event`: A `PtyMouseEvent` (core-owned type). `monocle-tui` converts
+///   `crossterm::event::MouseEvent` → `PtyMouseEvent` via `keyboard_conv::crossterm_mouse_to_pty()`
+///   before calling this function. See SS-embedded-pty.md §Dependency Boundary (F-P2-I06).
+/// - `pane_area`: The PTY widget's screen area as a `PtyRect`. Events outside this area
+///   return `None` (BC-2.09.003 Postcondition 5 / EC-221).
+pub fn mouse_event_to_pty_bytes(event: PtyMouseEvent, pane_area: PtyRect) -> Option<Vec<u8>> {
+    // BC-2.09.003 Postcondition 5 / EC-221: out-of-pane events return None.
+    // Valid column range: [pane_area.x, pane_area.x + pane_area.width)
+    // Valid row range:    [pane_area.y, pane_area.y + pane_area.height)
+    // Using saturating arithmetic avoids overflow on degenerate zero-size panes.
+    let right_edge = pane_area.x.saturating_add(pane_area.width);
+    let bottom_edge = pane_area.y.saturating_add(pane_area.height);
+    if event.column < pane_area.x
+        || event.column >= right_edge
+        || event.row < pane_area.y
+        || event.row >= bottom_edge
+    {
+        return None;
+    }
+
+    // Compute 1-indexed pane-relative coordinates.
+    // Both subtractions are safe: we verified col >= pane_area.x and row >= pane_area.y above.
+    let px = u32::from(event.column - pane_area.x) + 1;
+    let py = u32::from(event.row - pane_area.y) + 1;
+
+    // Determine base Ps and terminator from event kind.
+    // BC-2.09.003 PC-2 table — complete enumeration.
+    // Allow unreachable_patterns: PtyMouseEventKind is #[non_exhaustive]; the wildcard arm
+    // handles unknown future event variants added by upstream crossterm versions.
+    #[allow(unreachable_patterns)]
+    let (base_ps, terminator) = match &event.kind {
+        PtyMouseEventKind::Down(btn) => {
+            // Allow unreachable_patterns: PtyMouseButton is #[non_exhaustive]; the wildcard
+            // arm handles unknown future button variants added by upstream crossterm versions.
+            #[allow(unreachable_patterns)]
+            let base = match btn {
+                PtyMouseButton::Left => 0u32,
+                PtyMouseButton::Middle => 1,
+                PtyMouseButton::Right => 2,
+                _ => return None,
+            };
+            (base, b'M')
+        }
+        PtyMouseEventKind::Up(btn) => {
+            #[allow(unreachable_patterns)]
+            let base = match btn {
+                PtyMouseButton::Left => 0u32,
+                PtyMouseButton::Middle => 1,
+                PtyMouseButton::Right => 2,
+                _ => return None,
+            };
+            (base, b'm')
+        }
+        PtyMouseEventKind::Drag(btn) => {
+            // Motion-bit addition: Ps = button_base + 32 (BC-2.09.003 PC-2 table).
+            #[allow(unreachable_patterns)]
+            let base = match btn {
+                PtyMouseButton::Left => 32u32,
+                PtyMouseButton::Middle => 33,
+                PtyMouseButton::Right => 34,
+                _ => return None,
+            };
+            (base, b'M')
+        }
+        // Moved (Ps=35) is reachable on Unix: crossterm's EnableMouseCapture enables mode 1003
+        // any-event tracking, so motion-only events (no button held) ARE delivered.
+        // monocle relies on crossterm and does not separately suppress mode 1003.
+        // This arm encodes Moved events correctly per BC-2.09.003 Invariant 3 / AC-008.
+        PtyMouseEventKind::Moved => (35u32, b'M'),
+        PtyMouseEventKind::ScrollUp => (64u32, b'M'),
+        PtyMouseEventKind::ScrollDown => (65u32, b'M'),
+        PtyMouseEventKind::ScrollLeft => (66u32, b'M'),
+        PtyMouseEventKind::ScrollRight => (67u32, b'M'),
+        // Non-exhaustive enum: unknown future kinds have no defined SGR encoding.
+        _ => return None,
+    };
+
+    // Modifier-bit additive rule: Ps_final = base_Ps | modifier_bits.
+    // Shift |= 4, Alt |= 8, Ctrl |= 16. (BC-2.09.003 PC-2 / Invariant 4)
+    let mut modifier_bits: u32 = 0;
+    if event.modifiers.contains(PtyKeyModifiers::SHIFT) {
+        modifier_bits |= 4;
+    }
+    if event.modifiers.contains(PtyKeyModifiers::ALT) {
+        modifier_bits |= 8;
+    }
+    if event.modifiers.contains(PtyKeyModifiers::CONTROL) {
+        modifier_bits |= 16;
+    }
+    let ps_final = base_ps | modifier_bits;
+
+    // Format: ESC [ < Ps_final ; Px ; Py <terminator>
+    // CSI = ESC [ (0x1b 0x5b); SGR mouse format adds '<' before Ps.
+    let mut seq = format!("\x1b[<{};{};{}", ps_final, px, py).into_bytes();
+    seq.push(terminator);
+    Some(seq)
+}
+
 /// Return the PTY byte sequence for function key F(n), n ∈ 1..=12.
 ///
 /// Authoritative mapping per BC-2.09.002 PC-2 table:

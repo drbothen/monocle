@@ -486,6 +486,28 @@ pub struct App {
     /// `None` on construction and when not in `EmbeddedTerminal` mode. The resize
     /// detection path reads this to compare against the parser's current size.
     pub last_pty_pane_area: Option<ratatui::layout::Rect>,
+
+    // -----------------------------------------------------------------------
+    // S-041 / F-S041-P7-HIGH-001: scoped mouse capture observable flag
+    // (BC-2.09.003 Invariant 1)
+    // -----------------------------------------------------------------------
+    /// Whether scoped mouse capture (EnableMouseCapture + SGR 1006) is currently active.
+    ///
+    /// Set `true` by `enter_embedded_terminal` after `scoped_mouse_capture_enter()`.
+    /// Set `false` by every path that departs `AppMode::EmbeddedTerminal` before
+    /// `scoped_mouse_capture_exit()` is called.
+    ///
+    /// This flag serves two purposes:
+    /// 1. Makes `scoped_mouse_capture_exit` idempotent: the exit function no-ops when
+    ///    `mouse_capture_active == false`, preventing spurious `DisableMouseCapture`
+    ///    writes on paths where capture was already torn down.
+    /// 2. Provides a testable observable for the BC-2.09.003 Invariant 1 requirement
+    ///    that mouse capture is SCOPED to `AppMode::EmbeddedTerminal` — tests can
+    ///    assert this field is `false` after any non-EmbeddedTerminal mode is active.
+    ///
+    /// Initialized `false` (capture is NOT active at startup — CC-GLOBAL-MOUSE-CAPTURE
+    /// constraint). Only `enter_embedded_terminal` may set it `true`.
+    pub mouse_capture_active: bool,
 }
 
 impl App {
@@ -580,6 +602,10 @@ impl App {
             // S-042: last rendered PTY pane area — None until the first EmbeddedTerminal render.
             // Captured by render_frame on each EmbeddedTerminal tick; read by resize detection.
             last_pty_pane_area: None,
+
+            // S-041 / F-S041-P7-HIGH-001: mouse capture is NOT active at startup.
+            // Only enter_embedded_terminal sets this true (CC-GLOBAL-MOUSE-CAPTURE constraint).
+            mouse_capture_active: false,
         }
     }
 }
@@ -838,6 +864,16 @@ pub async fn enter_embedded_terminal(app: &mut App, session_id: String) {
         _ => FocusSnapshot::Sessions,
     };
 
+    // BC-2.09.003 AC-001 / Invariant 1 — Scoped mouse capture entry sequence:
+    // 1. crossterm::execute!(stdout(), EnableMouseCapture)
+    // 2. print!("\x1b[?1006h")  (SGR extended mouse mode on)
+    // EnableMouseCapture is NOT called at TUI startup — it is SCOPED to EmbeddedTerminal
+    // entry. ANY change to global mouse capture requires CC-GLOBAL-MOUSE-CAPTURE sign-off.
+    scoped_mouse_capture_enter();
+    // F-S041-P7-HIGH-001: set observable flag AFTER the capture is armed so that
+    // any departure from EmbeddedTerminal can consult it for idempotent teardown.
+    app.mouse_capture_active = true;
+
     // Transition to EmbeddedTerminal mode.
     app.mode = AppMode::EmbeddedTerminal { session_id, prior };
 }
@@ -858,6 +894,21 @@ pub fn exit_embedded_terminal(app: &mut App, session_id: &str) {
     // Any pending debounce deadline or last_sent_size from the exiting session must be cleared;
     // leaving stale state would cause the next session to skip its first resize (Invariant 1).
     clear_resize_debounce_state(app);
+
+    // BC-2.09.003 AC-002 / Invariant 1 — Scoped mouse capture exit sequence:
+    // 1. print!("\x1b[?1006l")  (SGR extended mouse mode off)  — MUST precede DisableMouseCapture
+    // 2. crossterm::execute!(stdout(), DisableMouseCapture)
+    // Ordering is critical: SGR `l` MUST precede DisableMouseCapture (inverting leaves
+    // the terminal in a broken state).
+    //
+    // F-S041-P7-HIGH-001: idempotency guard — only call scoped_mouse_capture_exit and
+    // clear the flag if capture is actually active.  This prevents spurious
+    // DisableMouseCapture writes when exit_embedded_terminal is called on a path that
+    // already tore down capture (e.g., the EmbeddedTerminal→Overlay→Dashboard chain).
+    if app.mouse_capture_active {
+        scoped_mouse_capture_exit();
+        app.mouse_capture_active = false;
+    }
 
     // Restore prior AppMode (Dashboard with prior focus).
     let prior = match &app.mode {
@@ -1312,6 +1363,79 @@ pub fn clear_resize_debounce_state(app: &mut App) {
 }
 
 // ---------------------------------------------------------------------------
+// S-041: Scoped mouse capture helpers (BC-2.09.003 Invariant 1)
+// ---------------------------------------------------------------------------
+
+/// Enable scoped mouse capture and SGR 1006 extended mouse mode on `EmbeddedTerminal` entry.
+///
+/// Executes in this exact order:
+/// 1. `crossterm::execute!(stdout(), crossterm::event::EnableMouseCapture)`
+/// 2. `print!("\x1b[?1006h")` (SGR extended mouse mode on)
+///
+/// `EnableMouseCapture` is NOT called at TUI startup — it is scoped to `EmbeddedTerminal`
+/// entry. ANY change to this invariant requires CC-GLOBAL-MOUSE-CAPTURE sign-off
+/// (SS-embedded-pty.md §I3 UX tradeoff: global capture would steal terminal text selection
+/// from monocle's sessions panel and other panels).
+///
+/// Called from `enter_embedded_terminal()`.
+fn scoped_mouse_capture_enter() {
+    use crossterm::event::EnableMouseCapture;
+    use std::io::stdout;
+
+    // AC-001 / BC-2.09.003 Invariant 1 entry sequence — ORDER IS CRITICAL:
+    // 1. EnableMouseCapture first (crossterm enables its standard mode set, including mode 1003
+    //    any-event tracking on Unix — so Moved events ARE delivered in EmbeddedTerminal)
+    // 2. SGR 1006h second (enables SGR extended coordinate encoding)
+    //
+    // This order matches the spec: EnableMouseCapture THEN print!("\x1b[?1006h").
+    if let Err(e) = crossterm::execute!(stdout(), EnableMouseCapture) {
+        tracing::warn!("scoped_mouse_capture_enter: EnableMouseCapture failed: {e}");
+    }
+    // SGR extended mouse mode on: enables 1006 extended coordinate encoding for mouse events.
+    // Must be written AFTER EnableMouseCapture so the terminal processes the escape sequences
+    // in the correct order.
+    print!("\x1b[?1006h");
+    // Flush stdout to ensure the SGR sequence reaches the terminal before any mouse events arrive.
+    use std::io::Write;
+    if let Err(e) = stdout().flush() {
+        tracing::warn!("scoped_mouse_capture_enter: stdout flush failed: {e}");
+    }
+}
+
+/// Disable scoped mouse capture and SGR 1006 extended mouse mode on `EmbeddedTerminal` exit.
+///
+/// Executes in this exact order:
+/// 1. `print!("\x1b[?1006l")` (SGR extended mouse mode off)
+/// 2. `crossterm::execute!(stdout(), crossterm::event::DisableMouseCapture)`
+///
+/// Ordering is critical: SGR `l` MUST precede `DisableMouseCapture`. Inverting the order
+/// leaves the terminal in a broken state (BC-2.09.003 AC-002 / Invariant 1).
+///
+/// Called from `exit_embedded_terminal()`.
+fn scoped_mouse_capture_exit() {
+    use crossterm::event::DisableMouseCapture;
+    use std::io::stdout;
+
+    // AC-002 / BC-2.09.003 Invariant 1 exit sequence — ORDER IS CRITICAL:
+    // 1. SGR 1006l first (disables SGR extended coordinate encoding)
+    // 2. DisableMouseCapture second (disables crossterm's mouse tracking modes)
+    //
+    // SGR `l` MUST precede DisableMouseCapture — inverting this order leaves the
+    // terminal in a broken state where SGR mode is still active after capture ends.
+    print!("\x1b[?1006l");
+    // Flush stdout to ensure the SGR-off sequence reaches the terminal before DisableMouseCapture.
+    use std::io::Write;
+    if let Err(e) = stdout().flush() {
+        tracing::warn!(
+            "scoped_mouse_capture_exit: stdout flush before DisableMouseCapture failed: {e}"
+        );
+    }
+    if let Err(e) = crossterm::execute!(stdout(), DisableMouseCapture) {
+        tracing::warn!("scoped_mouse_capture_exit: DisableMouseCapture failed: {e}");
+    }
+}
+
+// ---------------------------------------------------------------------------
 // S-043: PTY scrollback navigation handlers (BC-2.09.007)
 // ---------------------------------------------------------------------------
 
@@ -1365,7 +1489,7 @@ pub fn handle_pty_scroll_up(app: &mut App) {
     let new_offset = current.saturating_add(1).min(max_available);
     app.pty_scroll_offsets
         .insert(session_id.clone(), new_offset);
-    // SS-embedded-pty.md v1.16.0 §Scrollback offset invariants: sync vt100's internal offset
+    // SS-embedded-pty §Scrollback offset invariants: sync vt100's internal offset
     // to match the monocle-stored value immediately after an explicit scroll action so that
     // the stored offset and vt100's offset agree before the next render pass.
     // Note: the probe above left vt100 at offset 0 (restored via set_scrollback(0)); we now
@@ -1402,7 +1526,7 @@ pub fn handle_pty_scroll_down(app: &mut App) {
     let new_offset = current.saturating_sub(1);
     app.pty_scroll_offsets
         .insert(session_id.clone(), new_offset);
-    // SS-embedded-pty.md v1.16.0 §Scrollback offset invariants: sync vt100's internal offset
+    // SS-embedded-pty §Scrollback offset invariants: sync vt100's internal offset
     // to match the monocle-stored value immediately after an explicit scroll action so that
     // the stored offset and vt100's offset agree before the next render pass.
     if let Some(parser) = app.pty_parsers.get_mut(&session_id) {
@@ -1750,6 +1874,14 @@ pub fn on_initial_state(
     if !app.overlay_stack.is_empty() {
         // F-S025-ADV2-HIGH-003: AppMode::Overlay no longer stores the stack.
         // App::overlay_stack IS the stack. Mode variant signals "in overlay mode".
+        // F-S041-P7-HIGH-001 / BC-2.09.003 Invariant 1: if InitialState arrives while in
+        // EmbeddedTerminal (possible on reconnect when the prior session is still live),
+        // tear down scoped mouse capture before transitioning to Overlay. The mode
+        // transition does not go through exit_embedded_terminal in this code path.
+        if app.mouse_capture_active {
+            scoped_mouse_capture_exit();
+            app.mouse_capture_active = false;
+        }
         app.mode = AppMode::Overlay {
             prior: FocusSnapshot::Sessions,
         };
@@ -1813,6 +1945,15 @@ pub fn on_permission_prompt_queued(app: &mut App, payload: PermissionPromptPaylo
         // state would suppress the first ResizePane on re-entry (Invariant 2 dedup) or fire
         // the armed debounce for the wrong session after mode transition.
         clear_resize_debounce_state(app);
+        // F-S041-P7-HIGH-001 / BC-2.09.003 Invariant 1: tear down scoped mouse capture on
+        // EmbeddedTerminal→Overlay transition. This path does NOT go through
+        // exit_embedded_terminal, so capture must be torn down explicitly here.
+        // scoped_mouse_capture_exit is idempotent (guarded by mouse_capture_active) so
+        // calling it here is safe even if called a second time from a later teardown path.
+        if app.mouse_capture_active {
+            scoped_mouse_capture_exit();
+            app.mouse_capture_active = false;
+        }
     }
 }
 
@@ -3410,7 +3551,37 @@ pub async fn handle_crossterm_event(
                 // a crossterm Event::Resize. No correctness regression: resize detection
                 // still fires on the immediately following tick after the render step.
                 //
-                // Other events (focus, mouse, resize): silently ignored in EmbeddedTerminal.
+                // BC-2.09.003: Mouse events are forwarded to the PTY as SGR 1006 encoded
+                // byte sequences. EnableMouseCapture is scoped to EmbeddedTerminal entry
+                // (CC-GLOBAL-MOUSE-CAPTURE invariant). pane_area comes from
+                // last_pty_pane_area (updated each render tick); if None (no render yet),
+                // the event is dropped — a transient condition on the first tick only.
+                Event::Mouse(mouse_event) => {
+                    let Some(ipc_tx) = app.ipc_tx.clone() else {
+                        tracing::warn!(
+                            "handle_crossterm_event: EmbeddedTerminal Mouse — IPC channel offline; \
+                             mouse event dropped (session: {session_id})"
+                        );
+                        return Ok(());
+                    };
+                    let Some(pane_area) = app.last_pty_pane_area else {
+                        // No render tick yet; pane area unknown — drop this event.
+                        // This is a transient condition on the very first tick only.
+                        tracing::trace!(
+                            "handle_crossterm_event: EmbeddedTerminal Mouse — last_pty_pane_area \
+                             not yet set; mouse event dropped (transient)"
+                        );
+                        return Ok(());
+                    };
+                    crate::event_loop::dispatch_embedded_terminal_mouse(
+                        mouse_event,
+                        &session_id,
+                        pane_area,
+                        &ipc_tx,
+                    )
+                    .await;
+                }
+                // Other events (focus, resize): silently ignored in EmbeddedTerminal.
                 _ => {}
             }
         }
