@@ -4248,12 +4248,13 @@ pub fn render_frame(
             };
             // Merge pty_status_owned (scrollback + dump badges) with app.status_message so
             // that all active diagnostics are visible simultaneously (PC-4).
-            let composed: Option<String> = match (pty_status_owned.as_deref(), app.status_message.as_deref()) {
-                (Some(pty), Some(msg)) => Some(format!("{pty}  {msg}")),
-                (Some(pty), None) => Some(pty.to_string()),
-                (None, Some(msg)) => Some(msg.to_string()),
-                (None, None) => None,
-            };
+            let composed: Option<String> =
+                match (pty_status_owned.as_deref(), app.status_message.as_deref()) {
+                    (Some(pty), Some(msg)) => Some(format!("{pty}  {msg}")),
+                    (Some(pty), None) => Some(pty.to_string()),
+                    (None, Some(msg)) => Some(msg.to_string()),
+                    (None, None) => None,
+                };
             let pty_status_msg = composed.as_deref();
 
             // Always render the status bar in EmbeddedTerminal mode.
