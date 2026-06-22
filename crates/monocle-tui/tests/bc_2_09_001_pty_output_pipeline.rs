@@ -874,10 +874,12 @@ fn test_BC_2_09_001_render_embedded_terminal_calls_pseudo_terminal() {
     parser.process(b"Hello PTY\r\n");
 
     // Act: call render_embedded_terminal inside a draw closure.
+    // S-043: the scroll_offset argument is 0 (live tail) for this test.
+    // The parser is now passed as &mut per the S-043 scrollback API.
     terminal
         .draw(|frame| {
             let area = Rect::new(0, 0, 80, 24);
-            render_embedded_terminal(frame, area, &parser);
+            render_embedded_terminal(frame, area, &mut parser, 0);
         })
         .expect("terminal.draw must succeed");
 

@@ -668,8 +668,56 @@ pub fn on_pty_output(app: &mut App, session_id: String, bytes: Vec<u8>) {
         return;
     };
 
-    // BC-2.09.001 PC-2: feed bytes to the parser.
-    parser.process(&bytes);
+    // BC-2.09.007 Postcondition 5 / PC-5 / AC-008 / EC-244: content-anchored scroll offset.
+    //
+    // When the user is scrolled back (offset > 0), the viewport must stay pinned to the
+    // same content rows as new output arrives. vt100::set_scrollback(N) is bottom-relative,
+    // so a static numeric N causes the viewport to drift toward newer content as lines arrive.
+    //
+    // Algorithm (AC-008): vt100-native three-step — see comment block in the `if current_offset > 0`
+    // branch below for the authoritative description.
+    //
+    // When offset == 0 (live tail): no adjustment — live tail is never disturbed (AC-008).
+    let current_offset = app
+        .pty_scroll_offsets
+        .get(&session_id)
+        .copied()
+        .unwrap_or(0);
+
+    if current_offset > 0 {
+        // BC-2.09.007 PC-5 / v1.5.0: vt100-native content-anchoring algorithm.
+        //
+        // vt100 (Grid::scroll_up) auto-advances the scrollback_offset by 1 per row pushed
+        // to history, clamped to history length — natively, without any manual row counting.
+        // This works correctly below cap AND at cap (where the prior delta-probe algorithm
+        // produced delta == 0, causing viewport drift).
+        //
+        // Three-step protocol:
+        //   1. Restore monocle's stored offset into vt100 before process().
+        //   2. process() — vt100 auto-advances the offset natively.
+        //   3. Read back the new vt100 offset and store it.
+        //
+        // Important: do NOT call set_scrollback(MAX) here as a probe — that would clobber
+        // vt100's internal offset before process() runs, suppressing the native advancement.
+        // The set_scrollback(MAX) read-back probe is used ONLY in handle_pty_scroll_up for
+        // the explicit-scroll clamp; it must not appear in this output handler.
+
+        // Step 1: restore monocle's stored offset into vt100.
+        parser.screen_mut().set_scrollback(current_offset);
+
+        // Step 2: BC-2.09.001 PC-2: feed bytes to the parser.
+        // vt100 auto-advances the offset by rows pushed, clamped to history length.
+        parser.process(&bytes);
+
+        // Step 3: read back the vt100-advanced offset and store it.
+        // screen().scrollback() returns the VIEWPORT OFFSET (0 = live tail), not history depth.
+        let new_offset = parser.screen().scrollback();
+        app.pty_scroll_offsets.insert(session_id, new_offset);
+    } else {
+        // Live tail (offset == 0): process bytes only; no offset adjustment needed.
+        // vt100 leaves the offset at 0 naturally after process().
+        parser.process(&bytes);
+    }
 }
 
 /// Transition to `AppMode::EmbeddedTerminal` for `session_id`.
@@ -1261,6 +1309,105 @@ pub fn clear_resize_debounce_state(app: &mut App) {
     app.resize_debounce_deadline = None;
     app.last_sent_size = None;
     tracing::trace!("clear_resize_debounce_state: resize debounce state cleared");
+}
+
+// ---------------------------------------------------------------------------
+// S-043: PTY scrollback navigation handlers (BC-2.09.007)
+// ---------------------------------------------------------------------------
+
+/// Handle `Action::PtyScrollUp` in `AppMode::EmbeddedTerminal`.
+///
+/// Increments `App::pty_scroll_offsets[focused_session_id]` by one scroll step toward
+/// older output. The offset is clamped at the effective scrollback maximum, which is
+/// determined via the read-back-clamp pattern: `set_scrollback(usize::MAX)` then read
+/// `screen().scrollback()` to obtain the actual available rows. vt100 does not expose
+/// `scrollback_len()` publicly on `Screen`; this probe is the canonical approach.
+///
+/// After probing the maximum, the scroll state is restored to the pre-probe value so
+/// the next render call does not inadvertently receive a stale maximum offset.
+///
+/// If the session is already scrolled to the oldest available row, the offset remains
+/// at the maximum — no error, no panic (BC-2.09.007 Postcondition 2a, AC-002, EC-240).
+///
+/// This function performs NO IPC send. Scrollback navigation is a TUI-local viewport
+/// operation only (BC-2.09.007 Postcondition 3, AC-006).
+pub fn handle_pty_scroll_up(app: &mut App) {
+    let session_id = match &app.mode {
+        AppMode::EmbeddedTerminal { session_id, .. } => session_id.clone(),
+        _ => return,
+    };
+
+    let Some(parser) = app.pty_parsers.get_mut(&session_id) else {
+        return;
+    };
+
+    // Probe the effective scrollback maximum using the read-back-clamp pattern.
+    // vt100 (version pinned in Cargo.toml) does not expose Screen::scrollback_len() publicly; setting
+    // scrollback to a sentinel far beyond any possible history and reading back
+    // the clamped result gives the number of rows currently in history.
+    parser.screen_mut().set_scrollback(usize::MAX);
+    let max_available = parser.screen().scrollback();
+    // Restore to live tail before we compute the new offset below.
+    parser.screen_mut().set_scrollback(0);
+
+    if max_available == 0 {
+        // No scrollback history yet; nothing to scroll.
+        return;
+    }
+
+    let current = app
+        .pty_scroll_offsets
+        .get(&session_id)
+        .copied()
+        .unwrap_or(0);
+
+    // Increment by one scroll step, clamped to max_available (EC-240).
+    let new_offset = current.saturating_add(1).min(max_available);
+    app.pty_scroll_offsets
+        .insert(session_id.clone(), new_offset);
+    // SS-embedded-pty.md v1.16.0 §Scrollback offset invariants: sync vt100's internal offset
+    // to match the monocle-stored value immediately after an explicit scroll action so that
+    // the stored offset and vt100's offset agree before the next render pass.
+    // Note: the probe above left vt100 at offset 0 (restored via set_scrollback(0)); we now
+    // set the final offset here so vt100 is consistent with pty_scroll_offsets.
+    parser.screen_mut().set_scrollback(new_offset);
+}
+
+/// Handle `Action::PtyScrollDown` in `AppMode::EmbeddedTerminal`.
+///
+/// Decrements `App::pty_scroll_offsets[focused_session_id]` toward 0 (live tail).
+/// If the offset is already 0, this is a complete no-op — no state change, no IPC
+/// send, no error (BC-2.09.007 Postcondition 2b, AC-003, EC-241, AC-013).
+///
+/// This function performs NO IPC send. Scrollback navigation is a TUI-local viewport
+/// operation only (BC-2.09.007 Postcondition 3, AC-006).
+pub fn handle_pty_scroll_down(app: &mut App) {
+    let session_id = match &app.mode {
+        AppMode::EmbeddedTerminal { session_id, .. } => session_id.clone(),
+        _ => return,
+    };
+
+    let current = app
+        .pty_scroll_offsets
+        .get(&session_id)
+        .copied()
+        .unwrap_or(0);
+
+    if current == 0 {
+        // Already at live tail — no-op (EC-241, AC-013).
+        return;
+    }
+
+    // Decrement by one scroll step; floor is 0 (live tail).
+    let new_offset = current.saturating_sub(1);
+    app.pty_scroll_offsets
+        .insert(session_id.clone(), new_offset);
+    // SS-embedded-pty.md v1.16.0 §Scrollback offset invariants: sync vt100's internal offset
+    // to match the monocle-stored value immediately after an explicit scroll action so that
+    // the stored offset and vt100's offset agree before the next render pass.
+    if let Some(parser) = app.pty_parsers.get_mut(&session_id) {
+        parser.screen_mut().set_scrollback(new_offset);
+    }
 }
 
 /// Compute the run-loop poll timeout, shrunk to the resize debounce deadline when one is armed.
@@ -3158,7 +3305,54 @@ pub async fn handle_crossterm_event(
             let session_id = session_id.clone();
             match event {
                 Event::Key(ct_key) => {
-                    // Gate: IPC channel must be wired before dispatching.
+                    // BC-2.09.007 / SS-embedded-pty.md §"intercept before keybinding lookup":
+                    // Scroll actions (PtyScrollUp / PtyScrollDown) are TUI-local viewport
+                    // operations — they MUST be intercepted BEFORE the PTY forwarder
+                    // (dispatch_embedded_terminal_key) and MUST NOT send any IPC message.
+                    //
+                    // The intercept runs BEFORE the ipc_tx gate because scroll is IPC-free;
+                    // it fires even when the daemon is offline/reconnecting.
+                    //
+                    // Resolution: convert the crossterm key to the pure-core type, then
+                    // consult the per-context binding layer for AppModeTag::EmbeddedTerminal.
+                    // build_builtin_binding_layers already registers:
+                    //   (Ctrl+Up, EmbeddedTerminal) → PtyScrollUp
+                    //   (Ctrl+Down, EmbeddedTerminal) → PtyScrollDown
+                    // so no hardcoded key check is required — the binding remains configurable.
+                    {
+                        use crossterm::event::KeyEventKind;
+                        use monocle_core::tui::binding::resolve_binding;
+                        use monocle_core::tui::state::Action;
+                        let core_key = crossterm_key_to_core(&ct_key);
+                        if let Some((action, _)) =
+                            resolve_binding(&core_key, &app.mode, binding_layers)
+                        {
+                            match action {
+                                // BC-2.09.007 PC-3 / F-S043-P3-BLOCKER-001: KeyEventKind guard.
+                                // crossterm_key_to_core discards kind, so we check it here
+                                // before acting. Press and Repeat both scroll (hold-to-scroll
+                                // semantics). Release is swallowed — no scroll, no IPC, no
+                                // fall-through to the PTY forwarder. This prevents double-scroll
+                                // when REPORT_EVENT_TYPES is active (Kitty emits Press+Release
+                                // for every physical keypress).
+                                Action::PtyScrollUp => {
+                                    if ct_key.kind != KeyEventKind::Release {
+                                        handle_pty_scroll_up(app);
+                                    }
+                                    return Ok(());
+                                }
+                                Action::PtyScrollDown => {
+                                    if ct_key.kind != KeyEventKind::Release {
+                                        handle_pty_scroll_down(app);
+                                    }
+                                    return Ok(());
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+
+                    // Gate: IPC channel must be wired before dispatching to the PTY.
                     // If the channel is offline (daemon disconnected), log and ignore —
                     // the reconnect loop will re-wire app.ipc_tx.
                     let Some(ipc_tx) = app.ipc_tx.clone() else {
@@ -3169,10 +3363,11 @@ pub async fn handle_crossterm_event(
                         return Ok(());
                     };
 
-                    // ADV-HIGH-002 (SSOT dispatch): ALL key dispatch logic lives in
+                    // ADV-HIGH-002 (SSOT dispatch): ALL PTY key dispatch logic lives in
                     // dispatch_embedded_terminal_key — including Esc intercept, conversion,
-                    // key_event_to_pty_bytes call, and KeyInput send. There is NO inline
-                    // duplicate logic here (previous inline duplicate has been removed).
+                    // key_event_to_pty_bytes call, and KeyInput send. Scroll intercept
+                    // (above) is the only inline handling added here, and it returns early
+                    // before reaching this point.
                     //
                     // BC-2.09.002 Invariant 2: Esc interception is inside the helper,
                     // BEFORE key_event_to_pty_bytes (ordering is non-negotiable).
@@ -3728,6 +3923,31 @@ pub fn dispatch_key_event(
             KeyOutcome::Continue
         }
 
+        // S-043 (BC-2.09.007 Postcondition 2a / AC-002): PtyScrollUp fires only in
+        // AppMode::EmbeddedTerminal via the per-context PerContext layer binding.
+        // Delegates to handle_pty_scroll_up() which increments pty_scroll_offsets
+        // for the focused session and clamps at the effective scrollback maximum
+        // (via the set_scrollback read-back probe). No IPC sent.
+        //
+        // NOTE (OBS-002): These arms are defensive/fallback — the live path for
+        // EmbeddedTerminal scroll keys is the intercept in handle_crossterm_event
+        // (above the IPC gate), which returns early before reaching dispatch_key_event.
+        // These arms remain for defensive depth (non-EmbeddedTerminal mode bindings).
+        Some((Action::PtyScrollUp, _)) => {
+            handle_pty_scroll_up(app);
+            KeyOutcome::Continue
+        }
+
+        // S-043 (BC-2.09.007 Postcondition 2b / AC-003): PtyScrollDown fires only in
+        // AppMode::EmbeddedTerminal via the per-context PerContext layer binding.
+        // Delegates to handle_pty_scroll_down() which decrements pty_scroll_offsets
+        // toward 0. At offset 0 the call is a no-op. No IPC sent.
+        // NOTE (OBS-002): Defensive/fallback arm — see PtyScrollUp note above.
+        Some((Action::PtyScrollDown, _)) => {
+            handle_pty_scroll_down(app);
+            KeyOutcome::Continue
+        }
+
         Some((action, _)) => {
             // All other actions: drive the AppMode state machine.
             let is_quit = matches!(&action, Action::Quit);
@@ -3972,9 +4192,25 @@ pub fn render_frame(
             // re-entering the render closure (BC-2.09.006 §Architecture Compliance Rules).
             app.last_pty_pane_area = Some(terminal_area);
 
-            if let Some(parser) = app.pty_parsers.get(&session_id) {
-                render_embedded_terminal(frame, terminal_area, parser);
+            // S-043 (BC-2.09.007): read per-session scroll offset before mutably borrowing
+            // the parser. The offset defaults to 0 (live tail) when the session has no entry
+            // in pty_scroll_offsets (entry is inserted with value 0 on session creation,
+            // so this default is reached only during brief initialization races).
+            let scroll_offset = app
+                .pty_scroll_offsets
+                .get(&session_id)
+                .copied()
+                .unwrap_or(0);
+
+            // S-043: effective_offset is the vt100-clamped offset returned by
+            // render_embedded_terminal. Used to build the "[scrolled back N rows]" indicator.
+            let effective_scroll_offset: usize;
+
+            if let Some(parser) = app.pty_parsers.get_mut(&session_id) {
+                effective_scroll_offset =
+                    render_embedded_terminal(frame, terminal_area, parser, scroll_offset);
             } else {
+                effective_scroll_offset = 0;
                 // Parser not yet created (race before InitialState wires it); render placeholder.
                 use ratatui::widgets::Widget;
                 use ratatui::{
@@ -3993,9 +4229,10 @@ pub fn render_frame(
             }
 
             // F-PASS4-MED-001: if a dump is in progress AND bytes were dropped due to
-            // the cap, render "[dump: N drops]" in the status bar (overrides status_message
-            // for this frame while the condition holds — transient, never persisted to
-            // app.status_message).
+            // the cap, render "[dump: N drops]" in the status bar. This badge is transient
+            // (never persisted to app.status_message) and is rendered CONCURRENTLY with
+            // the scrollback indicator and app.status_message — it does NOT override or
+            // suppress any other badge. All active badges are composed below.
             let dump_drop_status: Option<String> = {
                 let in_progress = app
                     .dump_in_progress
@@ -4013,9 +4250,47 @@ pub fn render_frame(
                     None
                 }
             };
-            let pty_status_msg = dump_drop_status
-                .as_deref()
-                .or(app.status_message.as_deref());
+
+            // S-043 (BC-2.09.007 Postcondition 4 / AC-007 / PC-4 / EC-245):
+            // The scrollback indicator is PERSISTENT VIEWPORT STATE and must NEVER be
+            // suppressed by any transient diagnostic badge. When both the dump-drop badge
+            // and the scrollback indicator are active, BOTH are rendered concurrently in
+            // the status bar. Suppression would cause a silent correctness failure where
+            // the user believes they are at live tail when they are not.
+            let scrollback_indicator: Option<String> = if effective_scroll_offset > 0 {
+                Some(format!("[scrolled back {effective_scroll_offset} rows]"))
+            } else {
+                None
+            };
+
+            // Compose the status message: concatenate dump-drop badge + scrollback indicator
+            // + app.status_message when any combination is active simultaneously.
+            //
+            // BC-2.09.007 PC-4 concurrent-badge mandate: ALL active badges must coexist.
+            // The scrollback indicator (persistent viewport state) and dump-drop badge
+            // (transient diagnostic) MUST NEVER suppress app.status_message (e.g., the
+            // "[warn] scrollback dump timed out" message set by on_dump_window_timeout).
+            // Using .or() would silently drop app.status_message whenever pty_status_owned
+            // is Some — that is the ADV Pass-2 MED-001 defect. Instead, compose all active
+            // badges explicitly by joining with double-space separators, then include
+            // app.status_message as a concurrent peer (not a fallback).
+            let pty_status_owned: Option<String> = match (&dump_drop_status, &scrollback_indicator)
+            {
+                (Some(dump), Some(scroll)) => Some(format!("{dump}  {scroll}")),
+                (Some(dump), None) => Some(dump.clone()),
+                (None, Some(scroll)) => Some(scroll.clone()),
+                (None, None) => None,
+            };
+            // Merge pty_status_owned (scrollback + dump badges) with app.status_message so
+            // that all active diagnostics are visible simultaneously (PC-4).
+            let composed: Option<String> =
+                match (pty_status_owned.as_deref(), app.status_message.as_deref()) {
+                    (Some(pty), Some(msg)) => Some(format!("{pty}  {msg}")),
+                    (Some(pty), None) => Some(pty.to_string()),
+                    (None, Some(msg)) => Some(msg.to_string()),
+                    (None, None) => None,
+                };
+            let pty_status_msg = composed.as_deref();
 
             // Always render the status bar in EmbeddedTerminal mode.
             render_status_bar(
@@ -4430,6 +4705,43 @@ pub fn build_builtin_binding_layers() -> monocle_core::tui::binding::BindingLaye
             AppModeTag::Dashboard,
         ),
         Action::ScrollUp,
+    );
+
+    // S-043 (BC-2.09.007): Ctrl+Up → PtyScrollUp and Ctrl+Down → PtyScrollDown
+    // scoped to AppModeTag::EmbeddedTerminal.
+    //
+    // Plain Up/Down arrows are NOT used here because they conflict with plain Up/Down in
+    // other modes (SelectPrev/SelectNext). Ctrl-modified arrows are safe in EmbeddedTerminal
+    // because key forwarding (S-040) sends unmodified Up/Down to the PTY as ANSI escape
+    // sequences; Ctrl-modified arrows are intercepted at this layer before the PTY forwarder.
+    //
+    // Default bindings: Ctrl+Up → PtyScrollUp, Ctrl+Down → PtyScrollDown.
+    // These are per-context (EmbeddedTerminal) so they only fire while the embedded terminal
+    // is active and do not interfere with session navigation in Dashboard mode.
+    let ctrl = KeyModifiers {
+        ctrl: true,
+        shift: false,
+        alt: false,
+    };
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Up,
+                modifiers: ctrl,
+            },
+            AppModeTag::EmbeddedTerminal,
+        ),
+        Action::PtyScrollUp,
+    );
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Down,
+                modifiers: ctrl,
+            },
+            AppModeTag::EmbeddedTerminal,
+        ),
+        Action::PtyScrollDown,
     );
 
     layers

@@ -36,7 +36,7 @@ D-344 spec cascade (architect, already committed at factory-artifacts 22b5836+15
 
 ## Next-Action Queue
 
-1. **S-043** (scrollback-navigation, Wave 9) — **UNBLOCKED** (deps S-039 + S-042 both merged). BC: BC-2.09.007 v1.3.2. 3 pts. **START HERE** or run S-041 in parallel.
+1. **S-043** (scrollback-navigation, Wave 9) — **UNBLOCKED** (deps S-039 + S-042 both merged). BC: BC-2.09.007. 3 pts. **START HERE** or run S-041 in parallel.
 
 2. **S-041** (mouse-forwarding-sgr, Wave 9) — **UNBLOCKED** (dep S-040 merged). BC: BC-2.09.003. 5 pts. S-043 and S-041 have no mutual dependency; may be delivered in either order.
 
