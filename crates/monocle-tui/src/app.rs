@@ -1295,24 +1295,29 @@ pub fn resize_aware_poll_timeout(
     })
 }
 
-/// Post-render seam: detect layout-change resizes and fire the debounce on expiry.
+/// Post-render seam: detect size changes and fire the debounce on expiry.
 ///
 /// This function is called by `App::run()` after every `terminal.draw()` call. It is the
-/// SINGLE authoritative path for both kinds of resize detection per BC-2.09.006 PC-1:
+/// SINGLE authoritative detection path for all resize events per BC-2.09.006 PC-1 —
+/// there is no separate crossterm `Event::Resize` arm; that arm was removed so that both
+/// user terminal resizes and layout changes (panel/overlay toggles) are handled uniformly:
 ///
-/// 1. **Terminal Event::Resize** (crossterm event): `handle_crossterm_event` calls
-///    `on_resize_detected` when `Event::Resize` fires, which arms the debounce and resizes
-///    the parser. On the subsequent tick, `tick_resize_debounce` reads `last_pty_pane_area`
-///    (which the render step has now updated to reflect the new terminal dimensions) and
-///    calls `check_resize_debounce` to fire the pending message.
+/// 1. During `terminal.draw()`, the render step captures the PTY pane's `Rect` into
+///    `app.last_pty_pane_area`.
 ///
-/// 2. **Layout-change resize** (panel/overlay toggle without a crossterm Event::Resize):
-///    The render step updates `app.last_pty_pane_area` to the new pane `Rect`. On the
-///    next tick, `tick_resize_debounce` compares `last_pty_pane_area` against the current
-///    parser size. If they differ, it calls `on_resize_detected` to resize the parser and
-///    arm the debounce, then immediately calls `check_resize_debounce` to fire if 50ms
-///    has elapsed (though typically the deadline will not yet have elapsed on the same tick
-///    as arming — the fire happens on the next tick after 50ms passes).
+/// 2. On the next tick, `tick_resize_debounce` reads `last_pty_pane_area` and compares
+///    it against the current parser size (rows × cols). If they differ, it calls
+///    `on_resize_detected`, which immediately resizes the parser and arms the 50 ms
+///    debounce deadline.
+///
+/// 3. `check_resize_debounce` is then called unconditionally. When the 50 ms deadline
+///    has elapsed it sends `ClientToServer::ResizePane` and clears the armed state;
+///    otherwise it is a no-op and the fire happens on a subsequent tick after the
+///    deadline passes.
+///
+/// This single path handles both user terminal resizes (which change the pane `Rect` at
+/// the OS level) and layout changes (which change the pane `Rect` without any OS-level
+/// terminal resize event).
 ///
 /// # Mode guard (BC-2.09.006 EC-236 / Invariant 3)
 ///
