@@ -95,6 +95,8 @@ pub use app::check_resize_debounce;
 #[doc(hidden)]
 pub use app::clear_resize_debounce_state;
 #[doc(hidden)]
+pub use app::enter_embedded_terminal;
+#[doc(hidden)]
 pub use app::exit_embedded_terminal;
 #[doc(hidden)]
 pub use app::on_resize_detected;
