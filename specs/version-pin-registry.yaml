@@ -839,8 +839,8 @@ BC-2.09.006:
 
 BC-2.09.007:
   path: specs/behavioral-contracts/ss-09/BC-2.09.007.md
-  current_version: "1.4.1"
-  last_bump_commit: "[OBS-001 editorial: replace nonexistent screen().scrollback_len() with accurate vt100 read-back probe description; no behavioral change]"
+  current_version: "1.5.0"
+  last_bump_commit: "[S-043 Pass-4 correction: PC-5 + Trace-Ruling-2 corrected to vt100-native content-anchoring; SS-embedded-pty pin v1.15.0→v1.16.0; 990+20→1000 vector attribution fixed]"
   last_bump_date: "2026-06-21"
 
 BC-2.09.008:

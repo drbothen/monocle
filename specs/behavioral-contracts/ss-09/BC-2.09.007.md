@@ -1,12 +1,12 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.4.1"
+version: "1.5.0"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-03T23:30:00Z
+timestamp: 2026-06-21T00:00:00Z
 phase: v1A-prd-delta
-inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md]
+inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md@v1.16.0]
 input-hash: "3e74bba"
 traces_to: prd.md
 origin: greenfield
@@ -78,22 +78,32 @@ widget renderer. Scrollback capacity is configurable via
      not supersede it. Suppression would cause the user to believe they are at live tail when they
      are not — a silent correctness failure.
 5. New PTY output received while scrolled back does NOT force the viewport to jump to the
-   bottom. The `pty_scroll_offsets[focused_session_id]` value is **content-anchored**: when
-   new output arrives, the offset is incremented by the number of new rows processed so that
-   the viewport stays pinned to the same content rows the user is currently viewing.
+   bottom. The `pty_scroll_offsets[focused_session_id]` value is **content-anchored** using
+   the vt100-native mechanism: vt100 auto-advances the viewport offset as rows are pushed to
+   history (one per row pushed, clamped to history length — `Grid::scroll_up` in vt100 source).
+   The implementer MUST NOT use a manual delta calculation; the vt100 engine performs correct
+   content-anchoring natively, both below cap and at cap.
    Specifically:
    - `on_pty_output(session_id, bytes)` when `pty_scroll_offsets[session_id] > 0`:
-     call `parser.process(&bytes)`, then add the number of new scrollback rows generated
-     by that process call to `pty_scroll_offsets[session_id]`, then clamp the result to
-     `min(effective_max, new_offset)` where `effective_max` is the maximum available
-     scrollback rows — determined by the vt100 set_scrollback read-back probe
-     (`set_scrollback(usize::MAX)` then read `screen().scrollback()` for the clamped
-     effective maximum; vt100 0.16.2 does not expose a public scrollback length accessor)
-     (upper-bound clamp; no negative clamping needed because new rows only increase the offset).
-   - When `pty_scroll_offsets[session_id] == 0` (live tail): `process(&bytes)` is called
-     normally; the offset stays at 0 (no adjustment). Live tail is never disturbed.
+     1. Restore vt100's internal offset to the monocle-stored value:
+        `parser.screen_mut().set_scrollback(stored_offset)`.
+     2. Process the bytes: `parser.process(&bytes)`.
+        vt100 auto-advances the offset by rows-pushed, clamped to history length (native
+        content-anchoring; no manual row counting required).
+     3. Read back the new offset and store it:
+        `pty_scroll_offsets[session_id] = parser.screen().scrollback()`.
+        (`screen().scrollback()` returns the VIEWPORT OFFSET — 0 = live tail — NOT the
+        history depth. This read-back captures vt100's natively-advanced offset.)
+   - When `pty_scroll_offsets[session_id] == 0` (live tail): no `set_scrollback` call is
+     needed — `process(&bytes)` leaves the offset at 0 naturally. No adjustment occurs.
    - The user must explicitly `PtyScrollDown` to return to live output from a scrolled-back
      position.
+   - Correctness at cap: when history is at its maximum depth (steady-state for long sessions),
+     the old delta-probe algorithm saturated to delta=0 (depth_before == depth_after) and
+     incorrectly never advanced the offset — causing viewport drift. The vt100-native algorithm
+     correctly advances the offset per row pushed, clamped to `scrollback_len`, even at cap.
+     Example matching the canonical test vector: stored offset 990 + 20 rows pushed → vt100
+     advances offset to 1000 (clamped at cap). No overflow; no drift.
    - Rationale: vt100 `set_scrollback(N)` is bottom-relative; a static N causes the viewport
      to drift toward newer content as lines arrive. Content-anchored semantics match the
      behavior of all mainstream terminal emulators (iTerm2, tmux, kitty, wezterm, Alacritty)
@@ -173,7 +183,7 @@ widget renderer. Scrollback capacity is configurable via
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — scrollback is part of the embedded PTY widget capability; it enables users to review previous output without leaving EmbeddedTerminal mode |
 | Architecture Module | monocle-tui (`App::pty_scroll_offsets`, `pty_parsers`, PtyScrollUp/Down action handlers) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md §Scrollback navigation; §Parser ownership in TUI; §Parser initialization (PTY_DEFAULT_ROWS/COLS, F-S039-P2-004) |
+| Architecture Source | SS-embedded-pty.md v1.16.0 §Scrollback offset invariants (vt100-native content-anchoring algorithm, corrected); §Parser ownership in TUI; §Parser initialization (PTY_DEFAULT_ROWS/COLS, F-S039-P2-004) |
 | Test Name | test_BC_2_09_007_scrollback_1000_default_configurable |
 
 ## Related BCs
@@ -191,6 +201,80 @@ S-043 — Implement scrollback navigation in monocle-tui
 ## VP Anchors
 
 VP-TBD — Scrollback offset unit tests (filled after VP creation)
+
+## §Trace v1.5.0
+
+**S-043 Adversarial Pass-4 + vt100-0.16.2 source grounding — correct PC-5 to vt100-native content-anchoring mechanism** (2026-06-21):
+
+The architect corrected SS-embedded-pty.md to v1.16.0 (commit 8b85cf2) after verifying vt100-0.16.2
+source. This BC cascades that correction into PC-5 and the §Trace v1.4.0 Ruling 2 implementer note,
+both of which described the buggy history-depth-delta probe algorithm.
+
+### Root cause of the prior algorithm
+
+The v1.4.x PC-5 algorithm described: call `process(&bytes)`, then compute delta =
+new_scrollback_len − old_scrollback_len, then add delta to the stored offset. This relied on
+`scrollback_len()` (or the `set_scrollback(MAX)` / readback probe as a surrogate) to measure rows
+appended to history.
+
+**This algorithm is incorrect at cap.** When the scrollback buffer reaches its configured maximum
+(steady-state for any long-running session), `scrollback_len` is stable: depth_before ==
+depth_after for every `process()` call. Delta == 0. The stored offset is never advanced. The
+viewport drifts toward newer content as output arrives — the exact failure that content-anchoring
+exists to prevent.
+
+A secondary defect: issuing `set_scrollback(MAX)` inside `on_pty_output` (even as a probe)
+clobbers vt100's internal offset before `process()` runs, suppressing vt100's own native
+auto-anchoring that would otherwise be correct.
+
+### Correct algorithm (vt100-native, normative)
+
+Verified against vt100-0.16.2 source (`Grid::scroll_up`, grid.rs:571-574): when
+`scrollback_offset > 0` and a row is pushed to history, vt100 executes:
+`scrollback_offset = scrollback.len().min(scrollback_offset + 1)`.
+This auto-advances the viewport offset by 1 per row pushed, clamped to history length, natively.
+It is correct below cap AND at cap.
+
+The monocle `on_pty_output` handler MUST exploit this native behavior:
+
+1. `parser.screen_mut().set_scrollback(stored_offset)` — restore monocle's offset into vt100.
+2. `parser.process(&bytes)` — vt100 auto-advances natively.
+3. `pty_scroll_offsets[session_id] = parser.screen().scrollback()` — read back new offset.
+
+When offset == 0 (live tail): skip step 1; `process()` leaves offset at 0 naturally.
+
+Note: `screen().scrollback()` returns the VIEWPORT OFFSET (0 = live tail), not history depth.
+This is the authoritative semantic from vt100-0.16.2 source, confirmed by SS-embedded-pty.md
+v1.16.0 §Scrollback offset invariants.
+
+### Canonical test vector confirmed correct
+
+The 990+20→1000 canonical test vector (Canonical Test Vectors table, "content-anchored edge" row)
+is CORRECT under the vt100-native algorithm and was always correct as a behavioral specification.
+The prior PC-5 prose attributed it to a delta calculation — that attribution is now removed. Under
+the vt100-native algorithm: stored offset 990, 20 rows pushed → vt100 advances offset to
+min(1000, 990+20) = 1000 (clamped at cap). The behavioral expectation (offset 1000, no overflow,
+no error) is unchanged; only the mechanism description is corrected.
+
+### Changes in this version
+
+- **PC-5 rewritten:** replaced delta-probe algorithm with vt100-native set→process→readback
+  algorithm. Added correctness-at-cap explanation. Retained all behavioral guarantees.
+- **§Trace v1.4.0 Ruling 2 implementer note corrected:** removed reference to "scrollback_len
+  delta" as the canonical approach. Added explicit three-step vt100-native algorithm. Documented
+  the two defects in the prior approach (delta=0 at cap; `set_scrollback(MAX)` probe clobbering).
+- **inputs[] updated:** `architecture/SS-embedded-pty.md` pinned to v1.16.0 (was v1.15.0 implied
+  by v1.4.1 frontmatter). This BC's PC-5 normative algorithm is grounded in the v1.16.0 correction.
+- **Architecture Source row updated:** references SS-embedded-pty.md v1.16.0
+  §Scrollback offset invariants explicitly.
+- **990+20→1000 canonical test vector:** prose attribution corrected; behavioral expectation unchanged.
+
+### Routing directive
+
+S-043 story inputs[] must be updated to pin BC-2.09.007 v1.5.0 (was v1.4.1). Story-writer handles
+S-043 body/AC cascade under `bc_array_changes_propagate_to_body_and_acs` policy.
+
+- SE-16d monotonicity: v1.5.0 timestamp 2026-06-21 >= v1.4.1 timestamp 2026-06-21. PASS.
 
 ## §Trace v1.4.0
 
@@ -211,7 +295,7 @@ where the user believes they are at live tail when they are not.
 
 **Changes:** PC-4 rewritten with explicit concurrent-badge mandate; EC-245 added.
 
-### Ruling 2 — Content-anchored offset preservation (PC-5)
+### Ruling 2 — Content-anchored offset preservation (PC-5) — superseded by v1.5.0
 
 **Finding:** PC-5 previously specified that the numeric offset is "preserved, not reset to 0" on new PTY
 output. Because `vt100::set_scrollback(N)` is bottom-relative, preserving the NUMERIC offset causes viewport
@@ -225,36 +309,32 @@ the viewport pinned to the same content rows. When the user is at live tail (off
 made. This matches the UX of iTerm2, tmux, kitty, wezterm, and Alacritty — the canonical production-grade
 terminal-emulator behavior. Numeric-preserve is insufficient for monocle's production-grade positioning.
 
-**Implementer impact:** The `on_pty_output` handler MUST adjust `pty_scroll_offsets[session_id]` by the
-number of new rows generated by `parser.process(&bytes)` when the offset is > 0. Determining the new-row
-count requires reading the effective scrollback position before and after `process()` via
-`screen().scrollback()` (delta = rows added). Note: vt100 0.16.2 does not expose a public
-`scrollback_len()` accessor on `Screen`; the maximum available scrollback rows are determined via the
-read-back probe pattern (`set_scrollback(usize::MAX)` then `screen().scrollback()` yields the clamped
-effective maximum). Alternatively, parse the bytes to count newlines — but the read-back probe approach
-is the canonical vt100 pattern and does not require inspecting raw bytes.
+**Implementer impact (as of v1.4.0 — delta-probe description; superseded by v1.5.0 vt100-native algorithm):**
+The v1.4.0 description instructed computing delta = new_scrollback_len − old_scrollback_len. This description
+was corrected in v1.4.1 (nonexistent `scrollback_len()` removed) and then fully replaced in v1.5.0 with the
+vt100-native set→process→readback algorithm after architect vt100-0.16.2 source verification. See §Trace v1.5.0.
 
 **Test impact:** A new unit test `test_BC_2_09_007_content_anchored_new_output` is required. See new
 Canonical Test Vectors and VP rows above. The existing `test_BC_2_09_007_new_output_does_not_reset_scroll_offset`
 test is INCORRECT as written (it only asserts the offset is not reset to 0; it does not assert that the
 offset is adjusted by the new-row count). The test-writer MUST replace it with the content-anchored assertion.
 
-**Changes:** PC-5 rewritten with content-anchored semantics, rationale, and precise algorithm; EC-244
-updated; EC-245 added; new Canonical Test Vectors added; new VPs added.
+**Changes:** PC-5 rewritten with content-anchored semantics, rationale, and algorithm; EC-244 updated;
+EC-245 added; new Canonical Test Vectors added; new VPs added. Algorithm subsequently corrected in v1.5.0.
 
 **Routing directives (from product-owner to orchestrator):**
 1. **Implementer code change REQUIRED:** `on_pty_output` handler in `monocle-tui/src/app.rs` must
-   increment `pty_scroll_offsets[session_id]` by new-row delta when offset > 0. This MUST be scoped
-   to story S-043 (BC-2.09.007 is its only BC).
+   use the vt100-native content-anchoring algorithm (see §Trace v1.5.0 for the corrected algorithm).
+   This MUST be scoped to story S-043 (BC-2.09.007 is its only BC).
 2. **Test-writer change REQUIRED:** Replace `test_BC_2_09_007_new_output_does_not_reset_scroll_offset`
    with `test_BC_2_09_007_content_anchored_new_output` verifying the offset equals original_offset +
    new_rows (clamped). Add `test_BC_2_09_007_concurrent_status_bar_badges` verifying that scrollback
    indicator and dump-drop badge coexist.
 3. **Architecture update REQUIRED:** SS-embedded-pty.md §Scrollback navigation and §Scrollback offset
-   invariants updated in this same burst (see §Trace v1.15.0 there).
-4. **Story inputs[] cascade:** S-043 inputs[] version for BC-2.09.007 must be updated from 1.1.3 → 1.4.0
+   invariants updated in this same burst (see §Trace v1.15.0/v1.16.0 there).
+4. **Story inputs[] cascade:** S-043 inputs[] version for BC-2.09.007 must be updated to v1.5.0
    (story-writer responsibility per bc_array_changes_propagate_to_body_and_acs policy; orchestrator to
-   dispatch story-writer with AC-008/AC-014/EC-244 rewrite reflecting content-anchored semantics).
+   dispatch story-writer with AC-008/AC-014/EC-244 rewrite reflecting vt100-native content-anchored semantics).
 
 - SE-16d monotonicity: v1.4.0 timestamp 2026-06-22 >= v1.3.2 timestamp 2026-06-20. PASS.
 
