@@ -1341,7 +1341,7 @@ pub fn handle_pty_scroll_up(app: &mut App) {
     };
 
     // Probe the effective scrollback maximum using the read-back-clamp pattern.
-    // vt100 0.16.2 does not expose Screen::scrollback_len() publicly; setting
+    // vt100 (version pinned in Cargo.toml) does not expose Screen::scrollback_len() publicly; setting
     // scrollback to a sentinel far beyond any possible history and reading back
     // the clamped result gives the number of rows currently in history.
     parser.screen_mut().set_scrollback(usize::MAX);
@@ -3912,6 +3912,11 @@ pub fn dispatch_key_event(
         // AppMode::EmbeddedTerminal via the per-context PerContext layer binding.
         // Delegates to handle_pty_scroll_up() which increments pty_scroll_offsets
         // for the focused session and clamps at scrollback_len(). No IPC sent.
+        //
+        // NOTE (OBS-002): These arms are defensive/fallback — the live path for
+        // EmbeddedTerminal scroll keys is the intercept in handle_crossterm_event
+        // (above the IPC gate), which returns early before reaching dispatch_key_event.
+        // These arms remain for defensive depth (non-EmbeddedTerminal mode bindings).
         Some((Action::PtyScrollUp, _)) => {
             handle_pty_scroll_up(app);
             KeyOutcome::Continue
@@ -3921,6 +3926,7 @@ pub fn dispatch_key_event(
         // AppMode::EmbeddedTerminal via the per-context PerContext layer binding.
         // Delegates to handle_pty_scroll_down() which decrements pty_scroll_offsets
         // toward 0. At offset 0 the call is a no-op. No IPC sent.
+        // NOTE (OBS-002): Defensive/fallback arm — see PtyScrollUp note above.
         Some((Action::PtyScrollDown, _)) => {
             handle_pty_scroll_down(app);
             KeyOutcome::Continue

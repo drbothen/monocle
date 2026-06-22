@@ -111,7 +111,7 @@ fn scroll_offset(app: &App, session_id: &str) -> usize {
 
 /// Return the number of scrollback rows currently stored in the parser's history.
 ///
-/// vt100 0.16.2 does not expose `Screen::scrollback_len()` publicly. The internal
+/// vt100 (version pinned in Cargo.toml) does not expose `Screen::scrollback_len()` publicly. The internal
 /// `Grid::scrollback_len` is the capacity, but the actual rows in history grow as
 /// content is fed. We obtain the effective maximum by setting scrollback to a
 /// sentinel value far beyond any possible history and reading back the clamped result.
@@ -224,7 +224,7 @@ fn test_BC_2_09_007_scrollback_rows_default_1000() {
         parser.process(line.as_bytes());
     }
     // effective_scrollback_max() > 0 proves the parser was initialized with a real scrollback
-    // buffer. vt100 0.16.2 does not expose Screen::scrollback_len() publicly; we probe by
+    // buffer. vt100 (version pinned in Cargo.toml) does not expose Screen::scrollback_len() publicly; we probe by
     // setting scrollback to a large sentinel and reading back the clamped result.
     let max = effective_scrollback_max(&mut parser);
     assert!(
@@ -436,7 +436,7 @@ fn test_BC_2_09_007_clamp_at_max() {
     feed_lines(&mut app, session_id, 100);
 
     // Determine the effective max scrollback rows available in the parser's history.
-    // vt100 0.16.2 does not expose Screen::scrollback_len() publicly; we probe by
+    // vt100 (version pinned in Cargo.toml) does not expose Screen::scrollback_len() publicly; we probe by
     // setting scrollback to a large sentinel and reading back the clamped result.
     let max_available = {
         let parser = app.pty_parsers.get_mut(session_id).unwrap();
