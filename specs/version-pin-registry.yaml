@@ -130,9 +130,9 @@ SS-session-manager:
 
 SS-embedded-pty:
   path: specs/architecture/SS-embedded-pty.md
-  current_version: "1.14.0"
-  last_bump_commit: "[S-040 pass-6 ADV-MED-001 — Esc-intercept kind guard (Press-only ruling); PO cascade directives for BC-2.09.002 Invariant 2 + BC-2.09.004 EC-234 recorded]"
-  last_bump_date: "2026-06-21"
+  current_version: "1.15.0"
+  last_bump_commit: "[S-043 Adversarial Pass-1 rulings — content-anchored scrollback + status-bar concurrent badges; §Scrollback offset invariants algorithm + §Scrollback navigation updated]"
+  last_bump_date: "2026-06-22"
 
 SS-engine-module-v2-delta:
   path: specs/architecture/SS-engine-module-v2-delta.md
@@ -839,9 +839,9 @@ BC-2.09.006:
 
 BC-2.09.007:
   path: specs/behavioral-contracts/ss-09/BC-2.09.007.md
-  current_version: "1.3.2"
-  last_bump_commit: "[S-040 POL-11 cascade — arch-source pin SS-embedded-pty v1.10.0→v1.11.0]" # version-pin-historical
-  last_bump_date: "2026-06-20"
+  current_version: "1.4.0"
+  last_bump_commit: "[S-043 Adversarial Pass-1 rulings — status-bar concurrent badges (PC-4) + content-anchored scrollback (PC-5); EC-244 updated, EC-245 added]"
+  last_bump_date: "2026-06-22"
 
 BC-2.09.008:
   path: specs/behavioral-contracts/ss-09/BC-2.09.008.md
@@ -1081,9 +1081,9 @@ S-042-resize-debounce-resizepane:
 
 S-043-scrollback-navigation:
   path: stories/S-043-scrollback-navigation.md
-  current_version: "1.1"
-  last_bump_commit: "[Wave-9 story authoring — TUI scrollback navigation (PageUp/PageDn/Home/End/Escape), BC-2.09.001]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.2"
+  last_bump_commit: "[S-043 Adversarial Pass-1 — inputs cascade: BC-2.09.007 v1.1.3→v1.4.0, SS-embedded-pty v1.7.0→v1.15.0]"
+  last_bump_date: "2026-06-22"
 
 S-044-appmode-transitions-permission-badge:
   path: stories/S-044-appmode-transitions-permission-badge.md

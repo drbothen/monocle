@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.3.2"
+version: "1.4.0"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -67,9 +67,34 @@ widget renderer. Scrollback capacity is configurable via
 3. No `ResizePane` or `KeyInput` IPC message is sent for scroll actions — scrollback is a
    TUI-side viewport operation only.
 4. When `pty_scroll_offsets[focused_session_id] > 0`, a visual indicator is shown in the status
-   bar (`[scrolled back N rows]` or equivalent).
+   bar (`[scrolled back N rows]` or equivalent). This indicator is **persistent viewport state**
+   and is rendered concurrently with all other status bar badges. Specifically:
+   - The `[scrolled back N rows]` indicator is NOT suppressed by any transient diagnostic badge
+     (`[dump: N drops]`, `[N pending permission(s)]`, `[reconnecting...]`, or similar).
+   - When the user is scrolled back AND a transient warning is active, BOTH are rendered in the
+     status bar simultaneously. The status bar accommodates multiple concurrent badges.
+   - Rationale: the scrollback indicator reflects **persistent viewport state** that the user must
+     always be able to see (they may not realize they are scrolled back). Transient diagnostics do
+     not supersede it. Suppression would cause the user to believe they are at live tail when they
+     are not — a silent correctness failure.
 5. New PTY output received while scrolled back does NOT force the viewport to jump to the
-   bottom. The user must explicitly `PtyScrollDown` to return to live output.
+   bottom. The `pty_scroll_offsets[focused_session_id]` value is **content-anchored**: when
+   new output arrives, the offset is incremented by the number of new rows processed so that
+   the viewport stays pinned to the same content rows the user is currently viewing.
+   Specifically:
+   - `on_pty_output(session_id, bytes)` when `pty_scroll_offsets[session_id] > 0`:
+     call `parser.process(&bytes)`, then add the number of new scrollback rows generated
+     by that process call to `pty_scroll_offsets[session_id]`, then clamp the result to
+     `min(parser.screen().scrollback_len(), new_offset)` (upper-bound clamp; no negative
+     clamping needed because new rows only increase the offset).
+   - When `pty_scroll_offsets[session_id] == 0` (live tail): `process(&bytes)` is called
+     normally; the offset stays at 0 (no adjustment). Live tail is never disturbed.
+   - The user must explicitly `PtyScrollDown` to return to live output from a scrolled-back
+     position.
+   - Rationale: vt100 `set_scrollback(N)` is bottom-relative; a static N causes the viewport
+     to drift toward newer content as lines arrive. Content-anchored semantics match the
+     behavior of all mainstream terminal emulators (iTerm2, tmux, kitty, wezterm, Alacritty)
+     and is the expected UX for a production-grade TUI.
 
 ## Invariants
 
@@ -111,7 +136,8 @@ widget renderer. Scrollback capacity is configurable via
 | EC-241 | Scroll down when already at bottom (offset = 0) | `pty_scroll_offsets[focused_session_id]` stays at 0; no error |
 | EC-242 | `pty_scrollback_rows: 20000` in config | Clamped to 10000 at parser initialization |
 | EC-243 | `pty_scrollback_rows: 0` in config | Clamped to 1 (minimum 1-row scrollback; 0 would mean no scrollback which is confusing) |
-| EC-244 | New output arrives while scrolled back | Parser updates; viewport stays scrolled; user sees `[scrolled back N rows]` indicator |
+| EC-244 | New output arrives while scrolled back | Parser processes bytes; offset is incremented by new-row count (content-anchored); viewport stays pinned to same content rows; user sees `[scrolled back N rows]` indicator with updated count |
+| EC-245 | Both scrolled-back AND dump-drop warning active simultaneously | Status bar renders BOTH `[scrolled back N rows]` AND `[dump: N drops]` concurrently; neither suppresses the other |
 
 ## Canonical Test Vectors
 
@@ -122,6 +148,9 @@ widget renderer. Scrollback capacity is configurable via
 | Focus switch from "s1" (offset=10) to "s2" (offset=0) | `pty_scroll_offsets["s1"] = 10` preserved; `pty_scroll_offsets["s2"] = 0`; render uses `pty_scroll_offsets["s2"]` for new focused session | happy-path |
 | Config `pty_scrollback_rows: 500` | Parser initialized with `scrollback_rows = 500` | happy-path |
 | Config `pty_scrollback_rows: 15000` | Parser initialized with `scrollback_rows = 10000` (clamped) | edge-case |
+| Scrolled to offset=10; 5 new rows of output arrive (PtyOutput) | `pty_scroll_offsets["s1"] = 15` (incremented by 5 — content-anchored); viewport rows unchanged; `[scrolled back 15 rows]` shown | content-anchored |
+| Scrolled to offset=0 (live tail); 5 new rows of output arrive | `pty_scroll_offsets["s1"] = 0` (unchanged — live tail never adjusted); live output visible | content-anchored |
+| Scrolled to offset=990 (near max of 1000); 20 new rows arrive | offset clamped to `min(1000, 990+20) = 1000`; no overflow, no error | content-anchored edge |
 
 ## Verification Properties
 
@@ -131,6 +160,8 @@ widget renderer. Scrollback capacity is configurable via
 | VP-TBD | `PtyScrollUp/Down` adjusts `pty_scroll_offsets[focused_session_id]` and clamps correctly | unit |
 | VP-TBD | Focus switch preserves per-session scroll offsets (I7: no cross-session contamination) | unit |
 | VP-TBD | No IPC message sent for scroll actions | unit |
+| VP-TBD | Content-anchored: new PtyOutput while scrolled back increments offset by new-row count | unit |
+| VP-TBD | Status bar renders `[scrolled back N rows]` AND `[dump: N drops]` concurrently when both conditions are true | unit |
 
 ## Traceability
 
@@ -157,6 +188,69 @@ S-043 — Implement scrollback navigation in monocle-tui
 ## VP Anchors
 
 VP-TBD — Scrollback offset unit tests (filled after VP creation)
+
+## §Trace v1.4.0
+
+**S-043 Adversarial Pass-1 product rulings — status-bar precedence + content-anchored scrollback** (2026-06-22):
+
+Two product/intent questions surfaced by Adversarial Pass 1 on S-043 required authoritative ruling and explicit normative documentation.
+
+### Ruling 1 — Status-bar indicator precedence (PC-4)
+
+**Finding:** The `[scrolled back N rows]` indicator had no documented precedence rule relative to transient
+diagnostic badges like `[dump: N drops]`. The adversary identified a possible implementation where the
+dump-drop badge suppresses the scrollback indicator, leaving the user unaware they are scrolled back.
+
+**Ruling:** The `[scrolled back N rows]` indicator is **persistent viewport state** and is NEVER suppressed by
+any transient diagnostic. Both indicators MUST render concurrently when their respective conditions are true.
+The status bar accommodates multiple concurrent badges. Suppression would cause a silent correctness failure
+where the user believes they are at live tail when they are not.
+
+**Changes:** PC-4 rewritten with explicit concurrent-badge mandate; EC-245 added.
+
+### Ruling 2 — Content-anchored offset preservation (PC-5)
+
+**Finding:** PC-5 previously specified that the numeric offset is "preserved, not reset to 0" on new PTY
+output. Because `vt100::set_scrollback(N)` is bottom-relative, preserving the NUMERIC offset causes viewport
+CONTENT to drift toward newer output as lines arrive — the rows the user is reading scroll away silently.
+The adversary identified that the current BC text plus the current implementation use numeric-preserve, which
+does not match expected terminal-emulator UX.
+
+**Ruling:** The intended v1 behavior is **content-anchored preservation**: when new output arrives while the
+user is scrolled back (offset > 0), the offset is incremented by the number of new rows processed, keeping
+the viewport pinned to the same content rows. When the user is at live tail (offset == 0), no adjustment is
+made. This matches the UX of iTerm2, tmux, kitty, wezterm, and Alacritty — the canonical production-grade
+terminal-emulator behavior. Numeric-preserve is insufficient for monocle's production-grade positioning.
+
+**Implementer impact:** The `on_pty_output` handler MUST adjust `pty_scroll_offsets[session_id]` by the
+number of new rows generated by `parser.process(&bytes)` when the offset is > 0. Determining the new-row
+count requires reading `parser.screen().scrollback_len()` before and after `process()` (delta = rows added).
+Alternatively, parse the bytes to count newlines — but reading the scrollback_len delta is the canonical
+vt100 approach and does not require inspecting raw bytes.
+
+**Test impact:** A new unit test `test_BC_2_09_007_content_anchored_new_output` is required. See new
+Canonical Test Vectors and VP rows above. The existing `test_BC_2_09_007_new_output_does_not_reset_scroll_offset`
+test is INCORRECT as written (it only asserts the offset is not reset to 0; it does not assert that the
+offset is adjusted by the new-row count). The test-writer MUST replace it with the content-anchored assertion.
+
+**Changes:** PC-5 rewritten with content-anchored semantics, rationale, and precise algorithm; EC-244
+updated; EC-245 added; new Canonical Test Vectors added; new VPs added.
+
+**Routing directives (from product-owner to orchestrator):**
+1. **Implementer code change REQUIRED:** `on_pty_output` handler in `monocle-tui/src/app.rs` must
+   increment `pty_scroll_offsets[session_id]` by new-row delta when offset > 0. This MUST be scoped
+   to story S-043 (BC-2.09.007 is its only BC).
+2. **Test-writer change REQUIRED:** Replace `test_BC_2_09_007_new_output_does_not_reset_scroll_offset`
+   with `test_BC_2_09_007_content_anchored_new_output` verifying the offset equals original_offset +
+   new_rows (clamped). Add `test_BC_2_09_007_concurrent_status_bar_badges` verifying that scrollback
+   indicator and dump-drop badge coexist.
+3. **Architecture update REQUIRED:** SS-embedded-pty.md §Scrollback navigation and §Scrollback offset
+   invariants updated in this same burst (see §Trace v1.15.0 there).
+4. **Story inputs[] cascade:** S-043 inputs[] version for BC-2.09.007 must be updated from 1.1.3 → 1.4.0
+   (story-writer responsibility per bc_array_changes_propagate_to_body_and_acs policy; orchestrator to
+   dispatch story-writer with AC-008/AC-014/EC-244 rewrite reflecting content-anchored semantics).
+
+- SE-16d monotonicity: v1.4.0 timestamp 2026-06-22 >= v1.3.2 timestamp 2026-06-20. PASS.
 
 ## §Trace v1.3.2
 
