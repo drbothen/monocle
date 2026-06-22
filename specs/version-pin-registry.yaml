@@ -124,8 +124,8 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "2.17.0"
-  last_bump_commit: "[Human ruling: full end-to-end resize belongs to S-042; Ruling A collapsed from two-row split to single S-042 row; prior v2.16.0 split based on false ClientToServer non_exhaustive + S-047-ships-first assumptions]"
+  current_version: "2.17.1"
+  last_bump_commit: "[F-S042-ADV-MED-001 ownership-drift cleanup: ResizePane struck from KeyInput deferred-feature row and S-035 dependency-analysis ownership statement; D-344 ruling propagation]"
   last_bump_date: "2026-06-21"
 
 SS-embedded-pty:
@@ -707,8 +707,8 @@ BC-2.07.006:
 
 BC-2.03.005:
   path: specs/behavioral-contracts/ss-03/BC-2.03.005.md
-  current_version: "1.1.10"
-  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
+  current_version: "1.1.11"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup); no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.03.006:
@@ -719,92 +719,92 @@ BC-2.03.006:
 
 BC-2.03.007:
   path: specs/behavioral-contracts/ss-03/BC-2.03.007.md
-  current_version: "1.2.10"
-  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
+  current_version: "1.2.11"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup); no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.03.008:
   path: specs/behavioral-contracts/ss-03/BC-2.03.008.md
-  current_version: "1.1.3"
-  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
+  current_version: "1.1.4"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup); no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.05.009:
   path: specs/behavioral-contracts/ss-05/BC-2.05.009.md
-  current_version: "1.5.10"
-  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
+  current_version: "1.5.11"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup); no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.05.010:
   path: specs/behavioral-contracts/ss-05/BC-2.05.010.md
-  current_version: "1.9.10"
-  last_bump_commit: "Fix stale body citation in §ResizePane carve-out; update SS-session-manager arch-source from prior to current version; remove stale line-number anchor"
+  current_version: "1.9.11"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup); body citation at §ResizePane IPC arm carve-out updated; no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.05.011:
   path: specs/behavioral-contracts/ss-05/BC-2.05.011.md
-  current_version: "1.2.10"
-  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
+  current_version: "1.2.11"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup); no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.06.025:
   path: specs/behavioral-contracts/ss-06/BC-2.06.025.md
-  current_version: "1.5.11"
-  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
+  current_version: "1.5.12"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup); no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.08.001:
   path: specs/behavioral-contracts/ss-08/BC-2.08.001.md
-  current_version: "1.5.8"
-  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
+  current_version: "1.5.9"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup); no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.08.002:
   path: specs/behavioral-contracts/ss-08/BC-2.08.002.md
-  current_version: "1.2.8"
-  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
+  current_version: "1.2.9"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup); no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.08.003:
   path: specs/behavioral-contracts/ss-08/BC-2.08.003.md
-  current_version: "1.5.5"
-  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
+  current_version: "1.5.6"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup); no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.08.004:
   path: specs/behavioral-contracts/ss-08/BC-2.08.004.md
-  current_version: "1.4.2"
-  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
+  current_version: "1.4.3"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup); no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.08.005:
   path: specs/behavioral-contracts/ss-08/BC-2.08.005.md
-  current_version: "1.0.11"
-  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
+  current_version: "1.0.12"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup); no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.08.006:
   path: specs/behavioral-contracts/ss-08/BC-2.08.006.md
-  current_version: "1.5.3"
-  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
+  current_version: "1.5.4"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup); no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.08.007:
   path: specs/behavioral-contracts/ss-08/BC-2.08.007.md
-  current_version: "1.5.9"
-  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
+  current_version: "1.5.10"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup); no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.08.008:
   path: specs/behavioral-contracts/ss-08/BC-2.08.008.md
-  current_version: "1.4.3"
-  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
+  current_version: "1.4.4"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup); no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.09.001:
   path: specs/behavioral-contracts/ss-09/BC-2.09.001.md
-  current_version: "1.7.5"
-  last_bump_commit: "SS-session-manager arch-source pin cascade v2.16.0→v2.17.0; no behavioral changes"
+  current_version: "1.7.6"
+  last_bump_commit: "SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup); no behavioral changes"
   last_bump_date: "2026-06-21"
 
 BC-2.09.002:

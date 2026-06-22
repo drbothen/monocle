@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.17.0"
+version: "2.17.1"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -2943,7 +2943,7 @@ control connection).
 | PTY output streaming to daemon (`HostToDaemon::PtyBytes`) | S-039 / S-040 | PTY output pipeline; IPC dispatch wiring for `PtyOutput` |
 | `vt100::Parser.process()` live byte processing | S-039 | vt100::Parser integration |
 | `DaemonToHost::Attach` scrollback dump (`ScrollbackChunk*` + `ScrollbackDumpComplete`) | S-035 | attach_session; this is the daemon-side `attach_session()` implementation |
-| Keyboard forwarding (`DaemonToHost::KeyInput`) | S-047 | S-047 owns KeyInput / ResizePane / RenameSession IPC arms |
+| Keyboard forwarding (`DaemonToHost::KeyInput`) | S-047 | S-047 owns KeyInput / RenameSession IPC arms |
 | PTY resize — full end-to-end (`ClientToServer::ResizePane` dispatch arm, `resize_session()`, `DaemonToHost::Resize` forwarding, session-host `DaemonToHost::Resize` handler, `pty.resize()`, `parser.set_size()`) | S-042 | Human ruling 2026-06-21: S-042 owns the complete resize pipeline end-to-end. `ClientToServer` is NOT `#[non_exhaustive]` and has NO wildcard arm — adding the variant without an arm is a compile error; S-047 is draft with undelivered deps; leaving `resize_session()` as `todo!()` ships a live panic path. S-047 keeps KeyInput + RenameSession IPC arms only. |
 | Session re-discovery (`DaemonToHost::Attach` on Detached session) | S-035 | attach_session() daemon side |
 | `ScrollbackChunk*` / `ScrollbackDumpComplete` framing | S-035 | screen-state transfer on Attach |
@@ -3726,8 +3726,8 @@ stuck in `Running` with no state transition published.
 #### Dependency analysis — why this is S-035 in-scope (not deferred to S-039/S-047)
 
 S-039/S-040 own: PTY output fan-out (`PtyBytes` → broker → TUI), PTY reader task, harness
-child exit detection (`child_exit_watch` arm). S-047 owns: `KeyInput`, `Resize`, live
-interaction commands. None of these are prerequisites for handling `StateChanged{Terminated}`
+child exit detection (`child_exit_watch` arm). S-047 owns: `KeyInput`, `RenameSession`, live
+interaction commands (excluding `Resize` — S-042 scope per D-344 ruling). None of these are prerequisites for handling `StateChanged{Terminated}`
 in the proxy_task — the proxy_task already holds the reader and the broker, and
 `transition_to_terminated` (the GC path) is existing S-034 code. The fix is a purely additive
 match arm in S-035's own `spawn_pty_proxy_task`. No new IPC variants required.
@@ -4143,6 +4143,18 @@ Add to the S-035 test suite:
   correctly specifies this. Resolves HIGH-001.
 
 - SE-16d monotonicity: v2.7.1 > v2.7.0. PASS.
+
+---
+
+## §Trace v2.17.1
+
+**F-S042-ADV-MED-001 — S-047 ownership drift cleanup: ResizePane struck from KeyInput row and dependency analysis** (2026-06-21):
+
+- **Finding (F-S042-ADV-MED-001):** Deferred-feature table row for `DaemonToHost::KeyInput` (line ~2946) still read "S-047 owns KeyInput / ResizePane / RenameSession IPC arms", contradicting the v2.17.0 §Trace entry and the S-042 row immediately below it. A second ownership attribution at the S-035 dependency analysis section (line ~3729) listed "`Resize`" as an S-047 arm. Both are ownership-drift carry-overs from before the D-344 ruling.
+- **Fix 1 — Deferred-feature table:** "S-047 owns KeyInput / ResizePane / RenameSession IPC arms" → "S-047 owns KeyInput / RenameSession IPC arms". ResizePane dropped; ownership per D-344.
+- **Fix 2 — S-035 dependency analysis:** "S-047 owns: `KeyInput`, `Resize`, live interaction commands" → "S-047 owns: `KeyInput`, `RenameSession`, live interaction commands (excluding `Resize` — S-042 scope per D-344 ruling)". Behavior-description references to ResizePane carve-out (WARN-drop error handling at lines ~575-576, ~726, ~296, ~808, ~481-484, ~2294) are unchanged — those describe error-handling behavior, not ownership.
+- **Semver: patch (v2.17.0 → v2.17.1)** — errata correction of ownership attributions; no behavior change.
+- **SE-16d monotonicity: v2.17.1 > v2.17.0. PASS.**
 
 ---
 

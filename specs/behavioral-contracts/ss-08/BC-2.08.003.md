@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.5"
+version: "1.5.6"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -169,7 +169,7 @@ and sends SIGKILL directly to the session-host PID. The sidecar is not immediate
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC defines the kill operation, a core session lifecycle action named explicitly in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager `kill_session()`); monocle-session-host (SIGTERM delivery) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.17.0 §SessionManager §Public API (kill_session signature); §Kill-path host_conn rules (post-spawn monitor; PID fallback for Launching race window); §Per-session UDS protocol (DaemonToHost::Kill, HostToDaemon::StateChanged, Goodbye); §Per-session UDS security item 1 (SO_PEERCRED universal — no coverage holes); §Ruling J (watchdog dual-PID SIGKILL semantics — session-host PID + harness child PID); SS-daemon-wiring-v2-delta.md v1.12.0 §3b (SessionStateChanged emission rule: Terminating then SessionListUpdate) |
+| Architecture Source | SS-session-manager.md v2.17.1 §SessionManager §Public API (kill_session signature); §Kill-path host_conn rules (post-spawn monitor; PID fallback for Launching race window); §Per-session UDS protocol (DaemonToHost::Kill, HostToDaemon::StateChanged, Goodbye); §Per-session UDS security item 1 (SO_PEERCRED universal — no coverage holes); §Ruling J (watchdog dual-PID SIGKILL semantics — session-host PID + harness child PID); SS-daemon-wiring-v2-delta.md v1.12.0 §3b (SessionStateChanged emission rule: Terminating then SessionListUpdate) |
 | Test Name | test_BC_2_08_003_kill_session_sigterm_within_500ms |
 
 ## Related BCs
@@ -190,6 +190,12 @@ S-034 — Implement SessionManager::kill_session()
 
 VP-TBD — kill_session() timing and state transition tests (filled after VP creation)
 
+
+## §Trace 1.5.6
+
+**SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup)** (2026-06-21):
+- Architecture Source pin updated: SS-session-manager.md v2.17.0 → v2.17.1. No behavioral content changed.
+- SE-16d monotonicity: 1.5.6 > 1.5.5. PASS.
 
 ## §Trace 1.5.5
 

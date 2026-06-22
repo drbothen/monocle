@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.1.10"
+version: "1.1.11"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -122,7 +122,7 @@ per-session worktree applies). The returned recipe is consumed by `SessionManage
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the spawn recipe assembly for the ClaudeCodeModule adapter, which is the mechanism by which the engine abstraction enables monocle to launch Claude Code sessions |
 | L2 Domain Invariants | DI-007 (monocle must not write to any file owned by a harness or factory workflow system — PC-4 explicitly states spawn_recipe() writes no files; the hooks-settings.json path is passed through as a CLI arg string only) |
 | Architecture Module | monocle-runtime (ClaudeCodeModule implementation — `monocle-runtime/src/engine/claude_code.rs`) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module-v2-delta.md v1.6.0 §ClaudeCodeModule::spawn_recipe() implementation spec (two-pronged null-byte detection — C34-001); SS-session-manager.md v2.17.0 §SpawnRecipe integration with EngineModule |
+| Architecture Source | SS-engine-module-v2-delta.md v1.6.0 §ClaudeCodeModule::spawn_recipe() implementation spec (two-pronged null-byte detection — C34-001); SS-session-manager.md v2.17.1 §SpawnRecipe integration with EngineModule |
 | Stories | S-045 |
 | Test Name | test_BC_2_03_005_spawn_recipe_happy_path_binary_args_env_cwd |
 
@@ -145,6 +145,12 @@ S-045 — Implement ClaudeCodeModule::spawn_recipe() with binary resolution, --s
 
 VP-TBD — spawn_recipe() happy-path unit tests (filled after VP creation)
 
+
+## §Trace 1.1.11
+
+**SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup)** (2026-06-21):
+- Architecture Source pin updated: SS-session-manager.md v2.17.0 → v2.17.1. No behavioral content changed.
+- SE-16d monotonicity: 1.1.11 > 1.1.10. PASS.
 
 ## §Trace 1.1.10
 

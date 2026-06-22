@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.8"
+version: "1.2.9"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -113,7 +113,7 @@ client can connect.
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — this BC defines the persistence property: sessions survive daemon restart, which is the primary differentiator of the detached session-host model (ADR-0009) |
 | L2 Domain Invariants | DI-001 (hook event durability — session survival ensures hook events from in-progress sessions continue to flow after daemon restart, because the session-host continues running; this supports DI-001 continuity) |
 | Architecture Module | monocle-runtime (SessionManager, `rediscover_sessions()`); monocle-session-host (setsid startup step) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.17.0 §Daemon startup: session re-discovery; SS-session-manager.md v2.17.0 §monocle-session-host binary §startup sequence step 2; ADR-0009 v1.0.2 §Decision |
+| Architecture Source | SS-session-manager.md v2.17.1 §Daemon startup: session re-discovery; SS-session-manager.md v2.17.1 §monocle-session-host binary §startup sequence step 2; ADR-0009 v1.0.2 §Decision |
 | Test Name | test_BC_2_08_002_session_survives_daemon_graceful_restart |
 
 ## Related BCs
@@ -136,6 +136,12 @@ S-036 — Implement session re-discovery and setsid in monocle-session-host
 
 VP-TBD — Daemon restart integration test (filled after VP creation)
 
+
+## §Trace 1.2.9
+
+**SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup)** (2026-06-21):
+- Architecture Source pin updated: SS-session-manager.md v2.17.0 → v2.17.1. No behavioral content changed.
+- SE-16d monotonicity: 1.2.9 > 1.2.8. PASS.
 
 ## §Trace 1.2.8
 

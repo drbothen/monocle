@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.10"
+version: "1.2.11"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
@@ -134,7 +134,7 @@ matters for diagnostic accuracy.
 | Capability Anchor Justification | CAP-003 ("Engine abstraction over AI coding harnesses; Claude Code Phase 1 adapter") per ARCH-INDEX §Capability traceability — this BC defines the error taxonomy for spawn_recipe(), which is a method on the ClaudeCodeModule adapter; typed errors are essential for diagnostic accuracy in the engine abstraction layer |
 | L2 Domain Invariants | DI-006 (EngineModule implementations must be stateless — error variants carry no shared state; both errors are pure value returns) |
 | Architecture Module | monocle-runtime (ClaudeCodeModule — `monocle-runtime/src/engine/claude_code.rs`); monocle-core (`EngineError` type) per ARCH-INDEX Subsystem Registry SS-03 |
-| Architecture Source | SS-engine-module-v2-delta.md v1.6.0 §EngineError (new in v1A) + §Semantic contract (IMP-5 InvalidPath correction) + §spawn_recipe() two-pronged null-byte detection (C34-001) + §Phase Compatibility (I27-001 Model A: spawn_recipe() called daemon-side inside spawn_session()); SS-ipc.md v1.24.0 §ServerToClient::Error taxonomy (codes `"binary_not_found"` and `"invalid_spawn_arg"` — I12-001); SS-session-manager.md v2.17.0 §session_error_to_code spawn-path arms (EngineError bridge — I12-001; Model A reachability confirmed — I27-001) |
+| Architecture Source | SS-engine-module-v2-delta.md v1.6.0 §EngineError (new in v1A) + §Semantic contract (IMP-5 InvalidPath correction) + §spawn_recipe() two-pronged null-byte detection (C34-001) + §Phase Compatibility (I27-001 Model A: spawn_recipe() called daemon-side inside spawn_session()); SS-ipc.md v1.24.0 §ServerToClient::Error taxonomy (codes `"binary_not_found"` and `"invalid_spawn_arg"` — I12-001); SS-session-manager.md v2.17.1 §session_error_to_code spawn-path arms (EngineError bridge — I12-001; Model A reachability confirmed — I27-001) |
 | Test Name | test_BC_2_03_007_spawn_recipe_binary_not_found_and_invalid_path |
 
 ## Related BCs
@@ -155,6 +155,12 @@ S-045 — Same story as BC-2.03.005 (error handling in spawn_recipe())
 
 VP-TBD — spawn_recipe() error path unit tests (filled after VP creation)
 
+
+## §Trace 1.2.11
+
+**SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup)** (2026-06-21):
+- Architecture Source pin updated: SS-session-manager.md v2.17.0 → v2.17.1. No behavioral content changed.
+- SE-16d monotonicity: 1.2.11 > 1.2.10. PASS.
 
 ## §Trace 1.2.10
 

@@ -1,7 +1,7 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.5.9"
+version: "1.5.10"
 status: active
 producer: vsdd-factory:product-owner
 timestamp: 2026-06-19T00:00:00Z
@@ -169,7 +169,7 @@ background. The TUI can re-attach at any time.
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — detach/attach are explicitly named session lifecycle operations in CAP-008 |
 | Architecture Module | monocle-runtime (SessionManager `attach_session()`, `detach_session()`) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.17.0 §Public API (attach_session, detach_session signatures); §Per-session UDS protocol (DaemonToHost::Attach/Detach, HostToDaemon::ScrollbackChunk/ScrollbackDumpComplete); §Screen-state transfer on Attach; §Re-discovery state handling (I3-005 Detached preservation across restart); §host_conn type (proxy_task: Option<JoinHandle<()>> — F-P50-001); §Mapping table (SessionNotReady → "session_not_ready" on DetachSession arm; defensive precondition note — F-P51-001); §Terminated-in-grace action×state matrix (attach_session Detached cell: uid-mismatch → Terminated, protocol-error → stays Detached, EC-188 timeout → Terminated — F-S035-PASS5-MED-001); SS-daemon-wiring-v2-delta.md v1.12.0 §3b (SessionStateChanged{Running} before SessionListUpdate on attach) |
+| Architecture Source | SS-session-manager.md v2.17.1 §Public API (attach_session, detach_session signatures); §Per-session UDS protocol (DaemonToHost::Attach/Detach, HostToDaemon::ScrollbackChunk/ScrollbackDumpComplete); §Screen-state transfer on Attach; §Re-discovery state handling (I3-005 Detached preservation across restart); §host_conn type (proxy_task: Option<JoinHandle<()>> — F-P50-001); §Mapping table (SessionNotReady → "session_not_ready" on DetachSession arm; defensive precondition note — F-P51-001); §Terminated-in-grace action×state matrix (attach_session Detached cell: uid-mismatch → Terminated, protocol-error → stays Detached, EC-188 timeout → Terminated — F-S035-PASS5-MED-001); SS-daemon-wiring-v2-delta.md v1.12.0 §3b (SessionStateChanged{Running} before SessionListUpdate on attach) |
 | Test Name | test_BC_2_08_007_attach_receives_scrollback_detach_keeps_session_alive |
 
 ## Related BCs
@@ -189,6 +189,12 @@ S-035 — Implement SessionManager attach/detach
 ## VP Anchors
 
 VP-TBD — Attach/detach integration tests (filled after VP creation)
+
+## §Trace 1.5.10
+
+**SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup)** (2026-06-21):
+- Architecture Source pin updated: SS-session-manager.md v2.17.0 → v2.17.1. No behavioral content changed.
+- SE-16d monotonicity: 1.5.10 > 1.5.9. PASS.
 
 ## §Trace 1.5.9
 
