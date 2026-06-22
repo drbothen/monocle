@@ -4229,7 +4229,16 @@ pub fn render_frame(
             };
 
             // Compose the status message: concatenate dump-drop badge + scrollback indicator
-            // when both are active simultaneously (PC-4 concurrent-badge mandate).
+            // + app.status_message when any combination is active simultaneously.
+            //
+            // BC-2.09.007 PC-4 concurrent-badge mandate: ALL active badges must coexist.
+            // The scrollback indicator (persistent viewport state) and dump-drop badge
+            // (transient diagnostic) MUST NEVER suppress app.status_message (e.g., the
+            // "[warn] scrollback dump timed out" message set by on_dump_window_timeout).
+            // Using .or() would silently drop app.status_message whenever pty_status_owned
+            // is Some — that is the ADV Pass-2 MED-001 defect. Instead, compose all active
+            // badges explicitly by joining with double-space separators, then include
+            // app.status_message as a concurrent peer (not a fallback).
             let pty_status_owned: Option<String> = match (&dump_drop_status, &scrollback_indicator)
             {
                 (Some(dump), Some(scroll)) => Some(format!("{dump}  {scroll}")),
@@ -4237,9 +4246,15 @@ pub fn render_frame(
                 (None, Some(scroll)) => Some(scroll.clone()),
                 (None, None) => None,
             };
-            let pty_status_msg = pty_status_owned
-                .as_deref()
-                .or(app.status_message.as_deref());
+            // Merge pty_status_owned (scrollback + dump badges) with app.status_message so
+            // that all active diagnostics are visible simultaneously (PC-4).
+            let composed: Option<String> = match (pty_status_owned.as_deref(), app.status_message.as_deref()) {
+                (Some(pty), Some(msg)) => Some(format!("{pty}  {msg}")),
+                (Some(pty), None) => Some(pty.to_string()),
+                (None, Some(msg)) => Some(msg.to_string()),
+                (None, None) => None,
+            };
+            let pty_status_msg = composed.as_deref();
 
             // Always render the status bar in EmbeddedTerminal mode.
             render_status_bar(
