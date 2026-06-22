@@ -17,22 +17,50 @@
 
 use ratatui::layout::Rect;
 use ratatui::Frame;
+// PseudoTerminal is used by the implementation of render_embedded_terminal.
+// The import is retained here as a forward reference for the implementer.
+#[allow(unused_imports)]
 use tui_term::widget::PseudoTerminal;
 
 /// Render the embedded PTY terminal widget for `parser` into `frame` at `area`.
 ///
-/// Creates a `tui_term::widget::PseudoTerminal::new(parser.screen())` and renders it
-/// into the provided `Rect`. Called from `render_frame` when `AppMode::EmbeddedTerminal`
-/// is active (BC-2.09.001 AC-003 / postcondition 3).
+/// Applies `scroll_offset` rows of scrollback to the parser screen before rendering.
+/// The call sequence per the tui-term scrollback API is:
+///
+/// 1. `parser.screen_mut().set_scrollback(scroll_offset)` — drives which rows the
+///    screen reports; `0` is live tail, `N` is N rows back into scrollback history.
+///    vt100 clamps the value automatically to the actual scrollback buffer size.
+/// 2. `PseudoTerminal::new(parser.screen())` — hands the now-scrolled immutable
+///    screen reference to the widget.
+/// 3. `frame.render_widget(&widget, area)` — renders the scrolled view.
+///
+/// Called from `render_frame` when `AppMode::EmbeddedTerminal` is active and the
+/// scroll offset is read from `App::pty_scroll_offsets[session_id]`
+/// (BC-2.09.007 Postconditions 2a/2b, AC-007).
+///
+/// The `effective_offset` return value reflects the actual clamped offset applied
+/// by vt100 (`parser.screen().scrollback()`). The status bar uses this value to
+/// display the `[scrolled back N rows]` indicator when offset > 0 (AC-007).
+/// When the offset is 0, the indicator is absent.
 ///
 /// # Arguments
 ///
 /// * `frame` — ratatui `Frame` for the current draw call.
 /// * `area` — the `Rect` inside which the PTY widget is rendered.
-/// * `parser` — the `vt100::Parser` whose screen state is rendered.
-pub fn render_embedded_terminal(frame: &mut Frame<'_>, area: Rect, parser: &vt100::Parser) {
-    // BC-2.09.001 AC-003 / Postcondition 3: create PseudoTerminal widget from
-    // the parser's current screen and render it into the provided area.
-    let widget = PseudoTerminal::new(parser.screen());
-    frame.render_widget(&widget, area);
+/// * `parser` — mutable reference to the `vt100::Parser` whose screen state is rendered.
+///   Mutable because `set_scrollback` requires `&mut Screen`.
+/// * `scroll_offset` — number of rows scrolled back from live tail; 0 means live tail.
+///
+/// # Returns
+///
+/// The effective (vt100-clamped) scroll offset after `set_scrollback`. Used by the
+/// caller to render the scrolled-back status bar indicator.
+#[allow(clippy::todo)]
+pub fn render_embedded_terminal(
+    _frame: &mut Frame<'_>,
+    _area: Rect,
+    _parser: &mut vt100::Parser,
+    _scroll_offset: usize,
+) -> usize {
+    todo!()
 }

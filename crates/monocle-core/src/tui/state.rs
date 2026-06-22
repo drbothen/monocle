@@ -384,6 +384,27 @@ pub enum Action {
     /// `AppMode`. Registered as a global binding for `Ctrl-P` so it is active in
     /// ALL AppMode variants (BC-2.07.005 INV-1).
     ProfilePicker,
+
+    // -----------------------------------------------------------------------
+    // S-043: PTY scrollback navigation (BC-2.09.007)
+    // -----------------------------------------------------------------------
+    /// Scroll the embedded PTY viewport toward older output by one scroll step.
+    ///
+    /// Only active in `AppMode::EmbeddedTerminal`. Increments
+    /// `App::pty_scroll_offsets[focused_session_id]` toward older lines and clamps
+    /// at the maximum available scrollback rows (`screen().scrollback_len()`).
+    /// Does NOT send any IPC message — scrollback is a TUI-local viewport operation
+    /// (BC-2.09.007 Postcondition 3).
+    PtyScrollUp,
+
+    /// Scroll the embedded PTY viewport toward newer output by one scroll step.
+    ///
+    /// Only active in `AppMode::EmbeddedTerminal`. Decrements
+    /// `App::pty_scroll_offsets[focused_session_id]` toward 0 (live tail).
+    /// A decrement at offset 0 is a no-op — the offset is clamped at the lower
+    /// bound of 0. Does NOT send any IPC message.
+    /// (BC-2.09.007 Postcondition 3, AC-003).
+    PtyScrollDown,
 }
 
 /// Drive the `AppMode` state machine forward by one step.

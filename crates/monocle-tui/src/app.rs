@@ -1263,6 +1263,38 @@ pub fn clear_resize_debounce_state(app: &mut App) {
     tracing::trace!("clear_resize_debounce_state: resize debounce state cleared");
 }
 
+// ---------------------------------------------------------------------------
+// S-043: PTY scrollback navigation handlers (BC-2.09.007)
+// ---------------------------------------------------------------------------
+
+/// Handle `Action::PtyScrollUp` in `AppMode::EmbeddedTerminal`.
+///
+/// Increments `App::pty_scroll_offsets[focused_session_id]` by one scroll step toward
+/// older output. The offset is clamped at the upper bound:
+/// `pty_parsers[session_id].screen().scrollback_len()`. If the session is already
+/// scrolled to the oldest available row, the offset remains at the maximum — no error,
+/// no panic (BC-2.09.007 Postcondition 2a, AC-002, EC-240).
+///
+/// This function performs NO IPC send. Scrollback navigation is a TUI-local viewport
+/// operation only (BC-2.09.007 Postcondition 3, AC-006).
+#[allow(clippy::todo)]
+pub fn handle_pty_scroll_up(_app: &mut App) {
+    todo!()
+}
+
+/// Handle `Action::PtyScrollDown` in `AppMode::EmbeddedTerminal`.
+///
+/// Decrements `App::pty_scroll_offsets[focused_session_id]` toward 0 (live tail).
+/// If the offset is already 0, this is a complete no-op — no state change, no IPC
+/// send, no error (BC-2.09.007 Postcondition 2b, AC-003, EC-241, AC-013).
+///
+/// This function performs NO IPC send. Scrollback navigation is a TUI-local viewport
+/// operation only (BC-2.09.007 Postcondition 3, AC-006).
+#[allow(clippy::todo)]
+pub fn handle_pty_scroll_down(_app: &mut App) {
+    todo!()
+}
+
 /// Compute the run-loop poll timeout, shrunk to the resize debounce deadline when one is armed.
 ///
 /// # Contract (BC-2.09.006 PC-8 / F-S042-MED-001)
@@ -3728,6 +3760,24 @@ pub fn dispatch_key_event(
             KeyOutcome::Continue
         }
 
+        // S-043 (BC-2.09.007 Postcondition 2a / AC-002): PtyScrollUp fires only in
+        // AppMode::EmbeddedTerminal via the per-context PerContext layer binding.
+        // Delegates to handle_pty_scroll_up() which increments pty_scroll_offsets
+        // for the focused session and clamps at scrollback_len(). No IPC sent.
+        Some((Action::PtyScrollUp, _)) => {
+            handle_pty_scroll_up(app);
+            KeyOutcome::Continue
+        }
+
+        // S-043 (BC-2.09.007 Postcondition 2b / AC-003): PtyScrollDown fires only in
+        // AppMode::EmbeddedTerminal via the per-context PerContext layer binding.
+        // Delegates to handle_pty_scroll_down() which decrements pty_scroll_offsets
+        // toward 0. At offset 0 the call is a no-op. No IPC sent.
+        Some((Action::PtyScrollDown, _)) => {
+            handle_pty_scroll_down(app);
+            KeyOutcome::Continue
+        }
+
         Some((action, _)) => {
             // All other actions: drive the AppMode state machine.
             let is_quit = matches!(&action, Action::Quit);
@@ -3972,9 +4022,25 @@ pub fn render_frame(
             // re-entering the render closure (BC-2.09.006 §Architecture Compliance Rules).
             app.last_pty_pane_area = Some(terminal_area);
 
-            if let Some(parser) = app.pty_parsers.get(&session_id) {
-                render_embedded_terminal(frame, terminal_area, parser);
+            // S-043 (BC-2.09.007): read per-session scroll offset before mutably borrowing
+            // the parser. The offset defaults to 0 (live tail) when the session has no entry
+            // in pty_scroll_offsets (entry is inserted with value 0 on session creation,
+            // so this default is reached only during brief initialization races).
+            let scroll_offset = app
+                .pty_scroll_offsets
+                .get(&session_id)
+                .copied()
+                .unwrap_or(0);
+
+            // S-043: effective_offset is the vt100-clamped offset returned by
+            // render_embedded_terminal. Used to build the "[scrolled back N rows]" indicator.
+            let effective_scroll_offset: usize;
+
+            if let Some(parser) = app.pty_parsers.get_mut(&session_id) {
+                effective_scroll_offset =
+                    render_embedded_terminal(frame, terminal_area, parser, scroll_offset);
             } else {
+                effective_scroll_offset = 0;
                 // Parser not yet created (race before InitialState wires it); render placeholder.
                 use ratatui::widgets::Widget;
                 use ratatui::{
@@ -4013,8 +4079,20 @@ pub fn render_frame(
                     None
                 }
             };
+
+            // S-043 (BC-2.09.007 Postcondition 4 / AC-007): when the effective scroll
+            // offset is > 0, append "[scrolled back N rows]" to the status bar. This
+            // indicator takes lower precedence than the dump-drop status; when both
+            // are active simultaneously, the dump-drop message is shown instead.
+            let scrollback_indicator: Option<String> = if effective_scroll_offset > 0 {
+                Some(format!("[scrolled back {effective_scroll_offset} rows]"))
+            } else {
+                None
+            };
+
             let pty_status_msg = dump_drop_status
                 .as_deref()
+                .or(scrollback_indicator.as_deref())
                 .or(app.status_message.as_deref());
 
             // Always render the status bar in EmbeddedTerminal mode.
@@ -4430,6 +4508,43 @@ pub fn build_builtin_binding_layers() -> monocle_core::tui::binding::BindingLaye
             AppModeTag::Dashboard,
         ),
         Action::ScrollUp,
+    );
+
+    // S-043 (BC-2.09.007): Ctrl+Up → PtyScrollUp and Ctrl+Down → PtyScrollDown
+    // scoped to AppModeTag::EmbeddedTerminal.
+    //
+    // Plain Up/Down arrows are NOT used here because they conflict with plain Up/Down in
+    // other modes (SelectPrev/SelectNext). Ctrl-modified arrows are safe in EmbeddedTerminal
+    // because key forwarding (S-040) sends unmodified Up/Down to the PTY as ANSI escape
+    // sequences; Ctrl-modified arrows are intercepted at this layer before the PTY forwarder.
+    //
+    // Default bindings: Ctrl+Up → PtyScrollUp, Ctrl+Down → PtyScrollDown.
+    // These are per-context (EmbeddedTerminal) so they only fire while the embedded terminal
+    // is active and do not interfere with session navigation in Dashboard mode.
+    let ctrl = KeyModifiers {
+        ctrl: true,
+        shift: false,
+        alt: false,
+    };
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Up,
+                modifiers: ctrl,
+            },
+            AppModeTag::EmbeddedTerminal,
+        ),
+        Action::PtyScrollUp,
+    );
+    layers.per_context.insert(
+        (
+            KeyEvent {
+                code: KeyCode::Down,
+                modifiers: ctrl,
+            },
+            AppModeTag::EmbeddedTerminal,
+        ),
+        Action::PtyScrollDown,
     );
 
     layers
