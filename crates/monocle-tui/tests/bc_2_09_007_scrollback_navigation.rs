@@ -3,18 +3,16 @@
 //! Anchored to BC-2.09.007 (Scrollback — 1000 Rows Default; Configurable;
 //! PtyScrollUp/Down Navigate).
 //!
-//! Every test MUST FAIL before implementation — the `handle_pty_scroll_up` and
-//! `handle_pty_scroll_down` handlers are `todo!()` stubs, and
-//! `render_embedded_terminal` is also a `todo!()` stub. Tests that call those
-//! functions will panic "not yet implemented". Tests on already-implemented GC
-//! and resize-reset paths assert S-043's framing of those invariants.
+//! All handlers are implemented: `handle_pty_scroll_up`, `handle_pty_scroll_down`,
+//! and `render_embedded_terminal`. Tests on already-implemented GC and resize-reset
+//! paths assert S-043's framing of those invariants.
 //!
 //! ADV Pass-1 additions (v1.4.0 BCs):
 //!   - test_BC_2_09_007_content_anchored_new_output (replaces
 //!     test_BC_2_09_007_new_output_does_not_reset_scroll_offset — PC-5)
 //!   - test_BC_2_09_007_concurrent_status_bar_badges (PC-4, EC-245)
 //!   - test_BC_2_09_007_status_bar_string_rendered (AC-007, HIGH-003)
-//!   - test_BC_2_09_007_ctrl_up_dispatch_scrolls_no_ipc (AC-002/AC-006/PC-3, BLOCKER-002)
+//!   - test_BC_2_09_007_ctrl_up_dispatch_scrolls_no_ipc (AC-002/AC-006/PC-3, BLOCKER-001)
 //!   - test_BC_2_09_007_ctrl_down_dispatch_scrolls_no_ipc (symmetric)
 //!
 //! Test naming: test_BC_2_09_007_<assertion_name> as required by the TDD contract.
@@ -196,8 +194,7 @@ fn drain_ipc(rx: &mut mpsc::Receiver<ClientToServer>) -> Vec<ClientToServer> {
 ///
 /// S-039 owns the config-load; S-043 asserts the field is present and correct.
 ///
-/// This test will FAIL if App::scrollback_rows is not wired (Red Gate: todo!() in
-/// App::new scrollback config path or missing field).
+/// S-039 owns the config-load; S-043 asserts the field is present and correctly defaulted.
 #[test]
 fn test_BC_2_09_007_scrollback_rows_default_1000() {
     // Assert the canonical default helper.
@@ -298,8 +295,6 @@ fn test_BC_2_09_007_scrollback_rows_clamped_min_1() {
 // AC-002: PtyScrollUp increments pty_scroll_offsets[focused_session_id]
 // BC-2.09.007 Postcondition 2a
 //
-// RED GATE: handle_pty_scroll_up is todo!() — these tests panic with
-// "not yet implemented" until the implementer fills in the body.
 // ---------------------------------------------------------------------------
 
 /// test_BC_2_09_007_scrollup_increments_offset
@@ -375,7 +370,6 @@ fn test_BC_2_09_007_scrollup_increments_offset() {
 // AC-003 / EC-241: PtyScrollDown at offset=0 is a no-op (floor 0)
 // BC-2.09.007 Postcondition 2b
 //
-// RED GATE: handle_pty_scroll_down is todo!() — panics until implemented.
 // ---------------------------------------------------------------------------
 
 /// test_BC_2_09_007_scrolldown_decrements_floor_0
@@ -423,7 +417,6 @@ fn test_BC_2_09_007_scrolldown_decrements_floor_0() {
 // AC-004 / AC-012 / EC-240: scroll past scrollback_len() is clamped
 // BC-2.09.007 Postcondition 2c
 //
-// RED GATE: handle_pty_scroll_up is todo!() — panics until implemented.
 // ---------------------------------------------------------------------------
 
 /// test_BC_2_09_007_clamp_at_max
@@ -487,8 +480,6 @@ fn test_BC_2_09_007_clamp_at_max() {
 // ---------------------------------------------------------------------------
 // AC-005 / AC-011: focus switch preserves per-session offsets
 // BC-2.09.007 Postcondition 2d / Invariant 5
-//
-// RED GATE: handle_pty_scroll_up is todo!() — panics until implemented.
 // ---------------------------------------------------------------------------
 
 /// test_BC_2_09_007_focus_switch_preserves_offsets
@@ -588,8 +579,6 @@ fn test_BC_2_09_007_focus_switch_preserves_offsets() {
 // ---------------------------------------------------------------------------
 // AC-006: No IPC message sent for PtyScrollUp / PtyScrollDown
 // BC-2.09.007 Postcondition 3
-//
-// RED GATE: handle_pty_scroll_up and handle_pty_scroll_down are todo!() — panics.
 // ---------------------------------------------------------------------------
 
 /// test_BC_2_09_007_no_ipc_for_scroll
@@ -639,9 +628,8 @@ async fn test_BC_2_09_007_no_ipc_for_scroll() {
 // AC-007: Status bar indicator when scrolled back
 // BC-2.09.007 Postcondition 4
 //
-// RED GATE: render_embedded_terminal is todo!() — panics until implemented.
-// The render_embedded_terminal stub returns usize (the effective scroll offset)
-// for the caller to build the "[scrolled back N rows]" indicator.
+// render_embedded_terminal returns usize (the effective scroll offset) for the
+// caller to build the "[scrolled back N rows]" indicator.
 // ---------------------------------------------------------------------------
 
 /// test_BC_2_09_007_status_bar_indicator_when_scrolled
@@ -719,16 +707,12 @@ fn test_BC_2_09_007_status_bar_indicator_when_scrolled() {
 // AC-008 / AC-014 / EC-244 / PC-5: content-anchored offset on new PTY output
 // BC-2.09.007 Postcondition 5
 //
-// REPLACES test_BC_2_09_007_new_output_does_not_reset_scroll_offset (ADV Pass-1).
+// Replaces test_BC_2_09_007_new_output_does_not_reset_scroll_offset (ADV Pass-1).
 //
-// The old test only asserted offset != 0 after new output (numeric-preserve
+// The prior test only asserted offset != 0 after new output (numeric-preserve
 // semantics). The v1.4.0 BC requires CONTENT-ANCHORED semantics: the offset
 // must INCREASE by the number of new scrollback rows produced by the process()
 // call so that the viewport stays pinned to the same content rows.
-//
-// Current impl (on_pty_output line ~672): parser.process(&bytes) with NO offset
-// adjustment. This test FAILS because the offset stays at the numeric value
-// (e.g. 10) rather than becoming offset + new_rows.
 //
 // NOTE: on_pty_output validates that session_id is a well-formed UUID (SEC-004).
 // Tests that exercise on_pty_output MUST use UUID-format session IDs.
@@ -739,14 +723,12 @@ fn test_BC_2_09_007_status_bar_indicator_when_scrolled() {
 /// Exercises BC-2.09.007 Postcondition 5 / PC-5 (AC-008, AC-014, EC-244):
 ///   New PtyOutput while scrolled back (offset=10) MUST increment the offset
 ///   by K (the number of new scrollback rows produced), yielding offset = 10+K
-///   (clamped to scrollback_max). Numeric-preserve (offset stays 10) is WRONG.
+///   (clamped to scrollback_max). Numeric-preserve (offset stays 10) is incorrect
+///   per v1.4.0 semantics.
 ///
 /// Canonical test vector (BC-2.09.007):
 ///   Scrolled to offset=10; 5 new rows of output arrive
 ///   → pty_scroll_offsets = min(15, scrollback_max).
-///
-/// RED: current on_pty_output calls parser.process(&bytes) without adjusting
-/// pty_scroll_offsets. The offset stays at 10, failing the 10+K assertion.
 #[tokio::test]
 async fn test_BC_2_09_007_content_anchored_new_output() {
     // UUID-format session ID required: on_pty_output validates via Uuid::parse_str.
@@ -866,12 +848,8 @@ async fn test_BC_2_09_007_content_anchored_new_output() {
 // AC-009 / Invariant 3a: ResizePane for session resets scroll offset to 0
 // BC-2.09.007 Invariant 3a
 //
-// The ResizePane reset is owned by S-042. This test ASSERTS that S-042
-// implemented it correctly. It drives handle_server_message with a ResizePane
-// event and verifies pty_scroll_offsets[session_id] == 0.
-// RED GATE: if S-042 did not implement the reset, the assertion fails (offset
-// remains non-zero). If S-042 did implement it but the path is changed by S-043,
-// the test catches the regression.
+// The ResizePane reset is owned by S-042. This test asserts that S-042
+// implemented it correctly, and catches any regression introduced by S-043.
 // ---------------------------------------------------------------------------
 
 /// test_BC_2_09_007_resize_resets_scroll_offset_to_zero
@@ -1053,8 +1031,6 @@ fn test_BC_2_09_007_no_singular_shared_offset_field() {
 // ---------------------------------------------------------------------------
 // Render wiring: render_embedded_terminal called with scroll_offset from App
 // BC-2.09.007 Postcondition 1 + Postcondition 4 (render path)
-//
-// RED GATE: render_embedded_terminal is todo!() — panics until implemented.
 // ---------------------------------------------------------------------------
 
 /// test_BC_2_09_007_render_embedded_terminal_with_scroll_offset
@@ -1150,13 +1126,9 @@ fn test_BC_2_09_007_render_embedded_terminal_with_scroll_offset() {
 // AC-007 / HIGH-003: status bar rendered buffer literally contains "[scrolled back N rows]"
 // BC-2.09.007 Postcondition 4
 //
-// The existing test_BC_2_09_007_status_bar_indicator_when_scrolled only asserts
-// the usize RETURN VALUE of render_embedded_terminal. It never scrapes the rendered
-// status bar string. This test drives render_frame (the full production render path)
-// and asserts the terminal buffer literally contains the badge string.
-//
-// RED: if the render_frame integration path for EmbeddedTerminal is absent or the
-// badge string does not match `[scrolled back N rows]`, the assertion fails.
+// test_BC_2_09_007_status_bar_indicator_when_scrolled asserts the usize RETURN VALUE
+// of render_embedded_terminal. This test also scrapes the rendered status bar string
+// via render_frame (the full production render path) to confirm the badge string appears.
 // ---------------------------------------------------------------------------
 
 /// test_BC_2_09_007_status_bar_string_rendered
@@ -1167,11 +1139,8 @@ fn test_BC_2_09_007_render_embedded_terminal_with_scroll_offset() {
 ///   with the correct N.
 ///
 ///   When pty_scroll_offsets[focused] == 0 (live tail), the string is ABSENT
-///   from the rendered buffer.
-///
-/// RED: render_frame EmbeddedTerminal path may be absent or the badge path may
-/// suppress/omit the string. The absent-case assertion also catches spurious
-/// rendering of the indicator at live tail.
+///   from the rendered buffer. This also catches spurious rendering of the
+///   indicator at live tail.
 #[test]
 fn test_BC_2_09_007_status_bar_string_rendered() {
     // Arrange: App in EmbeddedTerminal mode with a scrolled-back session.
@@ -1231,14 +1200,9 @@ fn test_BC_2_09_007_status_bar_string_rendered() {
 // AC-007 / PC-4 / EC-245: scrollback indicator and dump-drop badge coexist
 // BC-2.09.007 Postcondition 4 (concurrent-badge mandate from v1.4.0)
 //
-// The current render_frame implementation uses:
-//   let pty_status_msg = dump_drop_status.or(scrollback_indicator)...
-// which is an OR-chain: when dump_drop_status is Some, scrollback_indicator
-// is NEVER reached (suppressed). This violates PC-4 which mandates BOTH badges
-// appear simultaneously.
-//
-// RED: buffer contains dump-drop string but NOT the scrollback indicator string,
-// or lacks both. The test will fail because the suppression chain is active.
+// render_frame concatenates both badges when both conditions hold (PC-4).
+// The scrollback indicator (persistent viewport state) is NEVER suppressed
+// by any transient diagnostic badge.
 // ---------------------------------------------------------------------------
 
 /// test_BC_2_09_007_concurrent_status_bar_badges
@@ -1248,10 +1212,6 @@ fn test_BC_2_09_007_status_bar_string_rendered() {
 ///   condition is active, BOTH `[scrolled back N rows]` AND `[dump: N drops]`
 ///   must appear in the rendered status bar simultaneously. Neither suppresses
 ///   the other.
-///
-/// RED: current render_frame uses `dump_drop_status.or(scrollback_indicator)`
-/// which suppresses the scrollback badge when dump-drop is active. The test
-/// asserts both strings are present.
 #[test]
 fn test_BC_2_09_007_concurrent_status_bar_badges() {
     // Arrange: App in EmbeddedTerminal with scrolled-back session AND dump-drop active.
@@ -1309,33 +1269,22 @@ fn test_BC_2_09_007_concurrent_status_bar_badges() {
 }
 
 // ---------------------------------------------------------------------------
-// AC-002 / AC-006 / PC-3 / BLOCKER-002: Ctrl+Up in EmbeddedTerminal increments
+// AC-002 / AC-006 / PC-3 / BLOCKER-001: Ctrl+Up in EmbeddedTerminal increments
 // pty_scroll_offsets and sends NO IPC — via handle_crossterm_event dispatch path.
 // BC-2.09.007 Postcondition 2a + Postcondition 3
 //
-// BLOCKER-002 identifies that in AppMode::EmbeddedTerminal, handle_crossterm_event
-// routes ALL key events directly to dispatch_embedded_terminal_key (PTY forwarding).
-// The binding chain (dispatch_key_event) is NEVER invoked in EmbeddedTerminal mode.
-// Therefore Ctrl+Up is forwarded as a PTY byte sequence (KeyInput IPC), and
-// PtyScrollUp/handle_pty_scroll_up are NEVER reached.
-//
-// This test drives handle_crossterm_event with a real crossterm Ctrl+Up event and
-// asserts: (a) pty_scroll_offsets[focused] INCREMENTED by 1; (b) NO IPC sent.
-//
-// RED: current impl sends KeyInput IPC for Ctrl+Up and does NOT increment the offset.
-// Both assertions will fail.
+// handle_crossterm_event intercepts scroll bindings (Ctrl+Up → PtyScrollUp,
+// Ctrl+Down → PtyScrollDown) BEFORE dispatch_embedded_terminal_key, so scroll
+// actions are TUI-local and no IPC is sent.
 // ---------------------------------------------------------------------------
 
 /// test_BC_2_09_007_ctrl_up_dispatch_scrolls_no_ipc
 ///
 /// Exercises BC-2.09.007 Postcondition 2a (AC-002) and Postcondition 3 (AC-006 / PC-3)
-/// via the production handle_crossterm_event dispatch path (BLOCKER-002):
+/// via the production handle_crossterm_event dispatch path (BLOCKER-001):
 ///   - Feeding a real crossterm Ctrl+Up KeyEvent through handle_crossterm_event
 ///     in AppMode::EmbeddedTerminal must increment pty_scroll_offsets[focused] by 1.
 ///   - No `ClientToServer::KeyInput` and no `ClientToServer::ResizePane` may be sent.
-///
-/// RED: current dispatch sends Ctrl+Up to the PTY as a KeyInput IPC byte sequence
-/// and never calls handle_pty_scroll_up. The offset stays at 0, IPC is sent.
 #[tokio::test]
 async fn test_BC_2_09_007_ctrl_up_dispatch_scrolls_no_ipc() {
     // UUID-format session ID: handle_crossterm_event calls dispatch_embedded_terminal_key
@@ -1357,7 +1306,7 @@ async fn test_BC_2_09_007_ctrl_up_dispatch_scrolls_no_ipc() {
     };
     assert!(
         max_sb >= 1,
-        "BC-2.09.007 BLOCKER-002 precondition: scrollback max must be >= 1; got {}",
+        "BC-2.09.007 BLOCKER-001 precondition: scrollback max must be >= 1; got {}",
         max_sb
     );
 
@@ -1365,7 +1314,7 @@ async fn test_BC_2_09_007_ctrl_up_dispatch_scrolls_no_ipc() {
     assert_eq!(
         scroll_offset(&app, session_id),
         0,
-        "BC-2.09.007 BLOCKER-002 precondition: offset must be 0 before Ctrl+Up"
+        "BC-2.09.007 BLOCKER-001 precondition: offset must be 0 before Ctrl+Up"
     );
 
     let binding_layers = build_builtin_binding_layers();
@@ -1386,7 +1335,7 @@ async fn test_BC_2_09_007_ctrl_up_dispatch_scrolls_no_ipc() {
         after_offset, 1,
         "BC-2.09.007 AC-002 / Postcondition 2a: pty_scroll_offsets[focused] must be 1 \
          after Ctrl+Up via handle_crossterm_event; got {}. \
-         BLOCKER-002: EmbeddedTerminal dispatch must intercept Ctrl+Up → PtyScrollUp \
+         BLOCKER-001: EmbeddedTerminal dispatch intercepts Ctrl+Up → PtyScrollUp \
          BEFORE forwarding to dispatch_embedded_terminal_key.",
         after_offset
     );
@@ -1411,8 +1360,6 @@ async fn test_BC_2_09_007_ctrl_up_dispatch_scrolls_no_ipc() {
 /// and Postcondition 3 (AC-006 / PC-3) via handle_crossterm_event:
 ///   - Start with offset=5; Ctrl+Down decrements to 4.
 ///   - No IPC sent.
-///
-/// RED: current dispatch sends Ctrl+Down to PTY as KeyInput IPC; offset unchanged.
 #[tokio::test]
 async fn test_BC_2_09_007_ctrl_down_dispatch_scrolls_no_ipc() {
     let session_id = "00000007-0000-4000-8007-000000000004";
@@ -1428,7 +1375,7 @@ async fn test_BC_2_09_007_ctrl_down_dispatch_scrolls_no_ipc() {
     assert_eq!(
         scroll_offset(&app, session_id),
         5,
-        "BC-2.09.007 BLOCKER-002 precondition (ctrl-down): offset must be 5 before Ctrl+Down"
+        "BC-2.09.007 BLOCKER-001 precondition (ctrl-down): offset must be 5 before Ctrl+Down"
     );
 
     let binding_layers = build_builtin_binding_layers();
@@ -1449,7 +1396,7 @@ async fn test_BC_2_09_007_ctrl_down_dispatch_scrolls_no_ipc() {
         after_offset, 4,
         "BC-2.09.007 AC-003 / Postcondition 2b: pty_scroll_offsets[focused] must be 4 \
          after Ctrl+Down (from 5) via handle_crossterm_event; got {}. \
-         BLOCKER-002: EmbeddedTerminal dispatch must route Ctrl+Down → PtyScrollDown.",
+         BLOCKER-001: EmbeddedTerminal dispatch routes Ctrl+Down → PtyScrollDown.",
         after_offset
     );
 
