@@ -506,15 +506,23 @@ async fn test_BC_2_09_006_dashboard_mode_no_resizepane() {
         msgs.len()
     );
 
-    // Also verify: on_resize_detected called while Dashboard mode is active.
-    // Even if called, the session_id must not be the current EmbeddedTerminal session
-    // (there is none). The function must guard on parser existence and mode context.
-    // We check that no deadline is armed as a result.
+    // Also verify: calling on_resize_detected while in Dashboard mode does NOT emit IPC.
+    //
+    // on_resize_detected has NO AppMode guard. When called with a session that has a
+    // parser (SESSION_A was registered by make_app_in_embedded) and non-zero dimensions,
+    // it WILL resize the parser immediately AND arm the debounce deadline. That is
+    // intentional: the parser resize is always synchronous (Invariant 4).
+    //
+    // What does NOT happen: no ResizePane IPC is sent here. IPC is sent by
+    // check_resize_debounce, which is ONLY called by tick_resize_debounce, and
+    // tick_resize_debounce guards on AppMode::EmbeddedTerminal before doing anything
+    // (see test_BC_2_09_006_run_loop_resize_in_dashboard_is_noop in
+    // bc_2_09_006_run_loop_wiring.rs for that gate's coverage).
+    //
+    // This assertion confirms: on_resize_detected alone — without a subsequently
+    // fired debounce deadline processed via tick_resize_debounce — produces zero
+    // ResizePane IPC messages regardless of the current AppMode.
     on_resize_detected(&mut app, SESSION_A, 30, 100);
-    // In Dashboard mode with no EmbeddedTerminal, implementations may vary —
-    // but the debounce state must reflect no active resize intent.
-    // Since mode is Dashboard, the implementation's AppMode guard prevents the arm.
-    // We verify no IPC was sent.
     let msgs2 = drain(&mut rx);
     assert!(
         msgs2.is_empty(),
