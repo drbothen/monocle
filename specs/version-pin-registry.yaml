@@ -228,8 +228,8 @@ L2-INDEX:
 
 EVAL-INDEX:
   path: specs/holdout-scenarios/EVAL-INDEX.md
-  current_version: "1.42"
-  last_bump_commit: "[POL-11 fix: S-043 inputs[] pin v1.1→v1.5 (canonical current)]"
+  current_version: "1.43"
+  last_bump_commit: "[POL-11 pin cascade: S-046 inputs[] pin v1.8→v1.9 (BC-2.05.009/BC-2.05.011/SS-session-manager refresh)]"
   last_bump_date: "2026-06-22"
 
 sprint-state:
@@ -979,9 +979,9 @@ S-040-keyboard-forwarding:
 
 S-046-pty-output-fan-out:
   path: stories/S-046-pty-output-fan-out.md
-  current_version: "1.8"
-  last_bump_commit: "[SS-session-manager POL-11 de-version: inline v2.15.1 citation converted to version-free form; no behavioral change]"
-  last_bump_date: "2026-06-21"
+  current_version: "1.9"
+  last_bump_commit: "[inputs[] pin refresh — BC-2.05.009 v1.5.5→v1.5.11, BC-2.05.011 v1.2.5→v1.2.11, SS-session-manager v2.6.1→v2.17.1; body accuracy verified; no behavioral change]"
+  last_bump_date: "2026-06-22"
 
 S-047-ipc-lifecycle-variants:
   path: stories/S-047-ipc-lifecycle-variants.md

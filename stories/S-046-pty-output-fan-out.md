@@ -3,7 +3,7 @@ document_type: story
 level: L4
 story_id: S-046
 epic_id: EPIC-05
-version: "1.8"
+version: "1.9"
 status: draft
 producer: vsdd-factory:story-writer
 timestamp: 2026-06-16T00:00:00Z
@@ -20,10 +20,10 @@ behavioral_contracts: [BC-2.05.009, BC-2.05.011]
 verification_properties: []
 estimated_days: 3
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.009.md, version: "1.5.5"}
-  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.011.md, version: "1.2.5"}
+  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.009.md, version: "1.5.11"}
+  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.011.md, version: "1.2.11"}
   - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
-  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.6.1"}
+  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.17.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
@@ -260,6 +260,7 @@ managed by SS-05 per ARCH-INDEX Subsystem Registry SS-05 (monocle-ipc, daemon IP
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 1.9 | 2026-06-22 | vsdd-factory:story-writer | inputs[] pin refresh — BC-2.05.009 v1.5.5→v1.5.11, BC-2.05.011 v1.2.5→v1.2.11, SS-session-manager v2.6.1→v2.17.1 (SS-ipc v1.24.0/SS-deps-pin-manifest v1.2.1/SS-deps-pin-manifest-v2-delta v1.0.2 unchanged); body accuracy verified against canonical specs — §Daemon-Side Per-Client Fan-out Channel contract stable (per-client mpsc::Sender<ServerToClient> cap 64, broker INPUT Arc<Bytes> cap 1024, biased select!, PtyReset ownership all confirmed); SS-session-manager spawn_session/DaemonState integration claims confirmed stable at v2.17.1. |
 | 1.4 | 2026-06-16 | vsdd-factory:story-writer | F-P24-SUG-002: BC-2.05.011 body BC-table title corrected — "ScrollbackChunk/ScrollbackDumpComplete/PtyReset Protocol" → "New ServerToClient IPC Variants — ScrollbackChunk, ScrollbackDumpComplete, PtyReset" to match BC canonical title. |
 | 1.3 | 2026-06-16 | vsdd-factory:story-writer | Corpus-wide AC-trace-citation audit (F-P20-CRIT-001 class): AC-005 "postcondition 5"→"invariant 4" (PtyReset on drop); AC-006 "invariant 1"→"invariant 6" (hook priority); AC-007 "invariant 2"→"invariant 3" (backpressure/.send().await); AC-008 "invariant 3"→"invariant 4" (PtyReset protocol). AC bodies unchanged. |
 | 1.0 | 2026-06-15 | vsdd-factory:story-writer | Initial decomposition |
