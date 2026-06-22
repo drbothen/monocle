@@ -15,6 +15,13 @@
 //!   - test_BC_2_09_007_ctrl_up_dispatch_scrolls_no_ipc (AC-002/AC-006/PC-3, BLOCKER-001)
 //!   - test_BC_2_09_007_ctrl_down_dispatch_scrolls_no_ipc (symmetric)
 //!
+//! ADV Pass-4 changes (v1.5.0 BCs / independent oracle corrections):
+//!   - test_BC_2_09_007_content_anchored_new_output: REWRITTEN with independent oracle
+//!     (ADV P4 HIGH-001 — prior version was tautological; expected value derived from the
+//!     same probe formula as the implementation, making it unable to catch wrong semantics)
+//!   - test_BC_2_09_007_content_anchor_clamp_at_max: NEW (ADV P4 BLOCKER-002 — cap-
+//!     saturation regime; EC-246 canonical test vector; RED against current delta-probe impl)
+//!
 //! Test naming: test_BC_2_09_007_<assertion_name> as required by the TDD contract.
 //!
 //! BC clause → test mapping:
@@ -29,7 +36,8 @@
 //!   Postcondition 4 / AC-007 → test_BC_2_09_007_status_bar_indicator_when_scrolled
 //!   Postcondition 4 / AC-007 (render string) → test_BC_2_09_007_status_bar_string_rendered
 //!   Postcondition 4 / AC-007 / PC-4 / EC-245 → test_BC_2_09_007_concurrent_status_bar_badges
-//!   Postcondition 5 / AC-008 / AC-014 / EC-244 / PC-5 → test_BC_2_09_007_content_anchored_new_output
+//!   Postcondition 5 / AC-008 / AC-014 / EC-244 / PC-5 → test_BC_2_09_007_content_anchored_new_output (ADV P4 HIGH-001 rewrite)
+//!   Postcondition 5 / AC-008 / EC-246 / PC-5 (cap) → test_BC_2_09_007_content_anchor_clamp_at_max (ADV P4 BLOCKER-002 new)
 //!   Postcondition 3 / AC-002 / AC-006 / PC-3 (dispatch) → test_BC_2_09_007_ctrl_up_dispatch_scrolls_no_ipc
 //!   Postcondition 3 / AC-003 / AC-006 / PC-3 (dispatch) → test_BC_2_09_007_ctrl_down_dispatch_scrolls_no_ipc
 //!   Invariant 3a / AC-009 → test_BC_2_09_007_resize_resets_scroll_offset_to_zero
@@ -709,116 +717,141 @@ fn test_BC_2_09_007_status_bar_indicator_when_scrolled() {
 //
 // Replaces test_BC_2_09_007_new_output_does_not_reset_scroll_offset (ADV Pass-1).
 //
-// The prior test only asserted offset != 0 after new output (numeric-preserve
-// semantics). The v1.4.0 BC requires CONTENT-ANCHORED semantics: the offset
-// must INCREASE by the number of new scrollback rows produced by the process()
-// call so that the viewport stays pinned to the same content rows.
+// The prior test (ADV Pass-1) only asserted offset != 0 after new output
+// (numeric-preserve semantics). The v1.4.0 BC requires CONTENT-ANCHORED semantics:
+// the offset must INCREASE by the number of new scrollback rows produced.
+//
+// ADV Pass-4 HIGH-001 rewrite: the intermediate version computed its expected value
+// using effective_scrollback_max() before/after — the SAME delta probe formula used
+// by the (buggy) implementation. That created a tautological test: if the probe
+// semantics were wrong, expected and actual would still match. This rewrite computes
+// the expected offset from FIRST PRINCIPLES (independent oracle).
+//
+// INDEPENDENT ORACLE DESIGN:
+//   - Parser: 24-row screen, 1000-row scrollback capacity.
+//   - Feed SCREEN_ROWS + KNOWN_HISTORY_ROWS = 24 + 30 = 54 lines.
+//     After 54 lines: 30 rows are in scrollback; the screen is fully occupied
+//     (24 rows visible), so EVERY additional \r\n line pushes exactly 1 row to history.
+//     This invariant holds below cap and is derivable from vt100's screen model alone —
+//     no probe required.
+//   - Set offset = 3 (literal).
+//   - Feed exactly 5 more lines.
+//   - Expected offset = 3 + 5 = 8 (literal independent oracle — not probe-derived).
+//   - Below-cap regime: history grows from 30 → 35; well under the 1000-row cap.
 //
 // NOTE: on_pty_output validates that session_id is a well-formed UUID (SEC-004).
 // Tests that exercise on_pty_output MUST use UUID-format session IDs.
 // ---------------------------------------------------------------------------
 
+// Screen height constant for the parser used in below-cap content-anchor tests.
+// vt100::Parser::new(SCREEN_ROWS, 80, ...) — 24 rows matches PTY_DEFAULT_ROWS.
+const CONTENT_ANCHOR_SCREEN_ROWS: usize = 24;
+
+// Number of lines to feed BEYOND the screen height to establish known scrollback history.
+// After (CONTENT_ANCHOR_SCREEN_ROWS + CONTENT_ANCHOR_PREFILL_ABOVE_SCREEN) lines, the
+// scrollback contains exactly CONTENT_ANCHOR_PREFILL_ABOVE_SCREEN rows and the screen is
+// fully occupied. Every additional \r\n line thereafter pushes exactly 1 row to history.
+const CONTENT_ANCHOR_PREFILL_ABOVE_SCREEN: usize = 30;
+
 /// test_BC_2_09_007_content_anchored_new_output
 ///
 /// Exercises BC-2.09.007 Postcondition 5 / PC-5 (AC-008, AC-014, EC-244):
-///   New PtyOutput while scrolled back (offset=10) MUST increment the offset
-///   by K (the number of new scrollback rows produced), yielding offset = 10+K
-///   (clamped to scrollback_max). Numeric-preserve (offset stays 10) is incorrect
-///   per v1.4.0 semantics.
+///   New PtyOutput while scrolled back (offset=3) MUST advance the offset by 5
+///   (one per new scrollback row) to yield offset = 8. Numeric-preserve (stays 3)
+///   and zero-reset (becomes 0) are both WRONG per v1.5.0 semantics.
+///
+/// INDEPENDENT ORACLE: the expected value 8 is derived from first principles —
+/// known screen height (24), known prefill (30 rows above screen = screen already
+/// full before new output arrives), known new-line count (5), starting offset (3).
+/// No probe (effective_scrollback_max, set_scrollback/readback delta) is used to
+/// compute the expected value.
+///
+/// This test operates BELOW cap (35 history rows after new output << 1000 cap), so
+/// it exercises the normal below-cap path and serves as a regression guard for that
+/// regime. See test_BC_2_09_007_content_anchor_clamp_at_max for the at-cap regime.
 ///
 /// Canonical test vector (BC-2.09.007):
 ///   Scrolled to offset=10; 5 new rows of output arrive
 ///   → pty_scroll_offsets = min(15, scrollback_max).
+///   (Here we use offset=3 for a smaller, fully-determined setup; behavior is identical.)
 #[tokio::test]
 async fn test_BC_2_09_007_content_anchored_new_output() {
     // UUID-format session ID required: on_pty_output validates via Uuid::parse_str.
     let session_id = "00000007-0000-4000-8007-000000000001";
     let mut app = make_app_in_embedded(session_id);
 
-    // Feed initial content so the parser has a scrollback history well above 10.
-    // 50 lines into a 24-row screen: 26 rows go into scrollback history.
-    feed_lines(&mut app, session_id, 50);
+    // STEP 1: Establish known-state scrollback history.
+    //
+    // Feed exactly (CONTENT_ANCHOR_SCREEN_ROWS + CONTENT_ANCHOR_PREFILL_ABOVE_SCREEN) lines.
+    // After this feed:
+    //   - Screen is fully occupied (24 visible rows).
+    //   - Scrollback contains exactly CONTENT_ANCHOR_PREFILL_ABOVE_SCREEN = 30 rows.
+    //   - Every subsequent \r\n line pushes EXACTLY 1 row into scrollback history.
+    // This is derivable from vt100's screen model: when the 24-row screen is full,
+    // a new \r\n scrolls the topmost screen row into history (Grid::scroll_up).
+    // No probe is required to establish this invariant.
+    let prefill_count = CONTENT_ANCHOR_SCREEN_ROWS + CONTENT_ANCHOR_PREFILL_ABOVE_SCREEN;
+    feed_lines(&mut app, session_id, prefill_count);
 
-    // Read scrollback_max BEFORE new output arrives.
-    let scrollback_max_before = {
-        let parser = app.pty_parsers.get_mut(session_id).unwrap();
-        effective_scrollback_max(parser)
-    };
-    assert!(
-        scrollback_max_before >= 10,
-        "BC-2.09.007 PC-5 precondition: scrollback history must be >= 10 rows after 50 lines; \
-         got {}",
-        scrollback_max_before
-    );
-
-    // Set scroll offset to 10 (simulating "already scrolled back").
-    // Direct mutation bypasses handle_pty_scroll_up (which tests the scroll handler;
-    // this test isolates the on_pty_output content-anchored update path).
-    app.pty_scroll_offsets.insert(session_id.to_string(), 10);
+    // STEP 2: Set the starting scroll offset to a literal known value.
+    // 3 is well below both the 30-row history depth and the 1000-row cap.
+    const START_OFFSET: usize = 3;
+    app.pty_scroll_offsets
+        .insert(session_id.to_string(), START_OFFSET);
     assert_eq!(
         scroll_offset(&app, session_id),
-        10,
-        "BC-2.09.007 PC-5 precondition: offset must be 10 before new output"
+        START_OFFSET,
+        "BC-2.09.007 PC-5 precondition: offset must be {} before new output",
+        START_OFFSET
     );
 
-    // Construct K=5 new lines. Each line is exactly one output row in the 80-col parser.
-    // The new rows will push 5 new lines into scrollback history (parser is 24 rows tall;
-    // each new line beyond the visible area scrolls one row into history).
-    let new_line_count = 5usize;
-    let new_bytes: Vec<u8> = (0..new_line_count)
-        .flat_map(|i| format!("new-content-row-{}\r\n", i).into_bytes())
+    // STEP 3: Construct exactly 5 new lines.
+    // Each line is a single \r\n-terminated row shorter than 80 cols — guaranteed to
+    // push exactly 1 row to history because the screen is already full (established above).
+    const NEW_ROW_COUNT: usize = 5;
+    let new_bytes: Vec<u8> = (0..NEW_ROW_COUNT)
+        .flat_map(|i| format!("anchor-row-{}\r\n", i).into_bytes())
         .collect();
 
-    // Measure scrollback_max before vs after to compute the actual K delta.
-    // This avoids hardcoding assumptions about how many rows land in scrollback
-    // (depends on current screen fullness). The BC specifies: new_offset = 10 + delta.
-    let scrollback_max_before_process = {
-        let parser = app.pty_parsers.get_mut(session_id).unwrap();
-        effective_scrollback_max(parser)
-    };
+    // STEP 4: Independent oracle.
+    // Because the screen was full before this call and we feed NEW_ROW_COUNT lines,
+    // each with a terminal \r\n, exactly NEW_ROW_COUNT rows enter scrollback history.
+    // vt100-native content-anchoring advances the stored offset by 1 per row pushed:
+    //   new_offset = START_OFFSET + NEW_ROW_COUNT = 3 + 5 = 8
+    // History after: 30 + 5 = 35 rows — well below the 1000-row cap (no clamping).
+    const EXPECTED_OFFSET: usize = START_OFFSET + NEW_ROW_COUNT; // = 8, a literal.
 
-    // Act: new PtyOutput arrives while scrolled back.
+    // STEP 5: Act — new PtyOutput arrives while scrolled back.
     on_pty_output(&mut app, session_id.to_string(), new_bytes);
 
-    // Measure scrollback_max after process() to compute the actual new-row delta.
-    let scrollback_max_after_process = {
-        let parser = app.pty_parsers.get_mut(session_id).unwrap();
-        effective_scrollback_max(parser)
-    };
-
-    // K = new scrollback rows added by the process() call.
-    // The BC algorithm: new_offset = min(old_offset + K, new_scrollback_max).
-    let k = scrollback_max_after_process.saturating_sub(scrollback_max_before_process);
-    let expected_offset = (10 + k).min(scrollback_max_after_process);
-
-    // Assert 1 (PC-5 / AC-008 / EC-244): offset must be content-anchored (10 + K), NOT 10.
+    // STEP 6: Assert (independent oracle — no probe used here).
     let actual_offset = scroll_offset(&app, session_id);
     assert_eq!(
-        actual_offset,
-        expected_offset,
-        "BC-2.09.007 Postcondition 5 / PC-5 / AC-008 / EC-244: offset must be content-anchored \
-         (old_offset + K = 10 + {} = {}, clamped to {}); got {}. \
-         Numeric-preserve (offset stays 10) is WRONG — the viewport drifts toward newer content.",
-        k,
-        10 + k,
-        scrollback_max_after_process,
-        actual_offset
+        actual_offset, EXPECTED_OFFSET,
+        "BC-2.09.007 Postcondition 5 / PC-5 / AC-008 / EC-244 (ADV P4 HIGH-001 oracle): \
+         offset must advance from {} to {} after {} new scrollback rows arrive \
+         (vt100-native content-anchoring: one per row pushed); got {}. \
+         Numeric-preserve (offset stays {}) is WRONG — viewport drifts toward newer content. \
+         Zero-reset (offset becomes 0) is also WRONG — loses the user's scroll position.",
+        START_OFFSET, EXPECTED_OFFSET, NEW_ROW_COUNT, actual_offset, START_OFFSET
     );
 
-    // Assert 2 (PC-5): the offset is NOT the raw numeric-preserve value (10) when K > 0.
-    // If K == 0, the new bytes produced no new scrollback rows (e.g., the output did not
-    // scroll the screen). In that edge case numeric-preserve and content-anchored are
-    // equivalent (10 + 0 = 10), so we only enforce the distinction when K > 0.
-    if k > 0 {
-        assert_ne!(
-            actual_offset, 10,
-            "BC-2.09.007 PC-5: offset must NOT stay at the numeric-preserve value 10 \
-             when K={} new scrollback rows arrived — must be content-anchored at {}",
-            k, expected_offset
-        );
-    }
+    // Assert: offset is NOT the numeric-preserve value (no drift).
+    assert_ne!(
+        actual_offset, START_OFFSET,
+        "BC-2.09.007 PC-5 (HIGH-001 oracle): offset must NOT stay at {} (numeric-preserve). \
+         Content-anchored algorithm must advance it to {}.",
+        START_OFFSET, EXPECTED_OFFSET
+    );
 
-    // Assert 3 (AC-014): parser was updated with new bytes (content is accessible).
+    // Assert: offset is NOT zero (no inadvertent live-tail reset).
+    assert_ne!(
+        actual_offset, 0,
+        "BC-2.09.007 PC-5 (HIGH-001 oracle): offset must NOT be reset to 0 (live tail). \
+         The user is still scrolled back; offset must remain > 0."
+    );
+
+    // Assert (AC-014): parser was updated with new bytes (content is accessible).
     let parser = app
         .pty_parsers
         .get_mut(session_id)
@@ -830,17 +863,178 @@ async fn test_BC_2_09_007_content_anchored_new_output() {
     parser.screen_mut().set_scrollback(0);
 
     assert!(
-        live_contents.contains("new-content-row-") || all_contents.contains("new-content-row-"),
+        live_contents.contains("anchor-row-") || all_contents.contains("anchor-row-"),
         "BC-2.09.007 AC-014: parser must be updated with new bytes even while scrolled back; \
-         'new-content-row-' must appear in live or scrollback content. Live: {:?}",
+         'anchor-row-' must appear in live or scrollback content. Live: {:?}",
         live_contents.trim_end()
     );
 
-    // Assert 4 (AC-014 indicator): offset is > 0 → scrollback indicator would still show.
+    // Assert (AC-014 indicator): offset is > 0 → scrollback indicator would still show.
     assert!(
         scroll_offset(&app, session_id) > 0,
         "BC-2.09.007 AC-014: pty_scroll_offsets must remain > 0 after content-anchored update \
          — status bar indicator must still show"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// AC-008 / EC-246: content-anchor clamp at cap (at-cap regime)
+// BC-2.09.007 Postcondition 5 / EC-246
+//
+// This test covers the at-cap regime where the scrollback history is SATURATED
+// (depth == configured scrollback_rows capacity). The old delta-probe algorithm
+// produced delta == 0 at cap (history depth is the same before and after process()
+// when the cap is already reached), leaving the stored offset static. This caused
+// the viewport to drift toward newer content — exactly the failure content-anchoring
+// exists to prevent.
+//
+// The vt100-native algorithm (set_scrollback → process → readback) correctly advances
+// the offset by rows pushed even at cap, clamped to scrollback_rows.
+//
+// CANONICAL TEST VECTOR (BC-2.09.007 §Canonical Test Vectors, "content-anchored edge"):
+//   Scrolled to offset=990 (near max of 1000); 20 new rows arrive
+//   → offset clamped to min(1000, 990+20) = 1000; no overflow, no error.
+//
+// INDEPENDENT ORACLE: expected = app.scrollback_rows as usize = 1000 (configured cap).
+// This is read directly from the App field — not derived from any probe.
+//
+// RED GATE assertion (against current delta-probe implementation):
+//   At cap, delta == 0 → stored offset stays at 990 → test FAILS with:
+//   left=990, right=1000.
+//
+// NOTE: on_pty_output validates that session_id is a well-formed UUID (SEC-004).
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_09_007_content_anchor_clamp_at_max
+///
+/// Exercises BC-2.09.007 Postcondition 5 / AC-008 / EC-246:
+///   When history is SATURATED at cap and the user is scrolled to offset=990,
+///   feeding 20 new rows via PtyOutput MUST clamp the stored offset to the cap
+///   (= 1000 for the default scrollback_rows configuration).
+///
+/// INDEPENDENT ORACLE: expected = app.scrollback_rows (= 1000 from MonocleConfig::default()).
+///   This is read from the App field, not from any vt100 probe.
+///
+/// RED GATE: against the current implementation (delta-probe: scrollback_len_before ==
+///   scrollback_len_after at cap → delta = 0 → offset stays 990), this test FAILS:
+///   expected 1000, got 990.
+///
+/// Named test_BC_2_09_007_content_anchor_clamp_at_max per S-043 v1.5 §Tasks and EC-246.
+#[tokio::test]
+async fn test_BC_2_09_007_content_anchor_clamp_at_max() {
+    // UUID-format session ID required: on_pty_output validates via Uuid::parse_str.
+    let session_id = "00000007-0000-4000-8007-000000000008";
+    let mut app = make_app_in_embedded(session_id);
+
+    // Read the configured scrollback cap directly from the App field.
+    // This is the INDEPENDENT ORACLE for the expected clamped offset.
+    // app.scrollback_rows is set by App::new from MonocleConfig::default() → 1000.
+    // We read it rather than hardcode 1000 to remain correct if the harness
+    // test setup changes the default config in the future.
+    let scrollback_cap = app.scrollback_rows as usize;
+    assert!(
+        scrollback_cap > 20,
+        "BC-2.09.007 EC-246 precondition: configured scrollback_rows must be > 20 \
+         to allow a near-cap starting offset with headroom; got {}",
+        scrollback_cap
+    );
+
+    // STEP 1: SATURATE history to cap.
+    //
+    // Feed exactly (CONTENT_ANCHOR_SCREEN_ROWS + scrollback_cap) lines.
+    // After this feed:
+    //   - History contains exactly scrollback_cap rows (fully saturated at cap).
+    //   - Screen contains the most recent CONTENT_ANCHOR_SCREEN_ROWS rows.
+    //   - Every additional \r\n line evicts the oldest history row and pushes 1 new row
+    //     (net history depth stays at scrollback_cap; rows are cycled, not accumulated).
+    let saturation_lines = CONTENT_ANCHOR_SCREEN_ROWS + scrollback_cap;
+    feed_lines(&mut app, session_id, saturation_lines);
+
+    // Verify saturation via probe (used as PRECONDITION check only — NOT to compute expected).
+    let probed_max_after_saturation = {
+        let parser = app.pty_parsers.get_mut(session_id).unwrap();
+        effective_scrollback_max(parser)
+    };
+    assert_eq!(
+        probed_max_after_saturation, scrollback_cap,
+        "BC-2.09.007 EC-246 precondition: history must be saturated at scrollback_cap={} \
+         after feeding {} lines; got probed_max={} \
+         (if this fails, the saturation line count is wrong)",
+        scrollback_cap, saturation_lines, probed_max_after_saturation
+    );
+
+    // STEP 2: Set a near-cap starting offset (headroom of 10).
+    // The canonical test vector (BC-2.09.007) uses cap=1000, offset=990, new_rows=20.
+    let headroom = 10usize;
+    let start_offset = scrollback_cap - headroom; // = 990 for cap=1000.
+    app.pty_scroll_offsets
+        .insert(session_id.to_string(), start_offset);
+    assert_eq!(
+        scroll_offset(&app, session_id),
+        start_offset,
+        "BC-2.09.007 EC-246 precondition: offset must be {} (cap - headroom) before new output",
+        start_offset
+    );
+
+    // STEP 3: Feed new_rows > headroom so the correct algorithm clamps at cap.
+    // 20 new rows with headroom=10 means: vt100 tries to advance by 20, clamps at cap=1000.
+    // At cap, each new line evicts one old row from history; history depth stays at cap.
+    let new_rows = 20usize; // > headroom (10), so correct clamp lands at cap.
+    let new_bytes: Vec<u8> = (0..new_rows)
+        .flat_map(|i| format!("cap-row-{}\r\n", i).into_bytes())
+        .collect();
+
+    // STEP 4: Independent oracle.
+    // vt100-native algorithm: offset advances by min(new_rows, scrollback_cap - start_offset)
+    // and is clamped to scrollback_cap.
+    // Expected = min(start_offset + new_rows, scrollback_cap) = min(990+20, 1000) = 1000.
+    let expected_offset = start_offset.saturating_add(new_rows).min(scrollback_cap);
+    // expected_offset == scrollback_cap because new_rows (20) > headroom (10).
+    assert_eq!(
+        expected_offset, scrollback_cap,
+        "BC-2.09.007 EC-246 test design assertion: expected_offset must equal cap \
+         ({}) when new_rows ({}) > headroom ({}); got {}",
+        scrollback_cap, new_rows, headroom, expected_offset
+    );
+
+    // STEP 5: Act — new PtyOutput arrives while scrolled back at near-cap offset.
+    on_pty_output(&mut app, session_id.to_string(), new_bytes);
+
+    // STEP 6: Assert — offset must be clamped to the cap (independent oracle).
+    let actual_offset = scroll_offset(&app, session_id);
+    assert_eq!(
+        actual_offset,
+        expected_offset, // = scrollback_cap = 1000
+        "BC-2.09.007 Postcondition 5 / AC-008 / EC-246 (ADV P4 BLOCKER-002 cap-clamp): \
+         offset must advance from {} to {} (cap={}) after {} new rows arrive with history \
+         saturated at cap; got {}. \
+         RED GATE: current delta-probe impl sees delta=0 at cap (history depth unchanged) \
+         and leaves offset at {} — expected {}, got {}.",
+        start_offset,
+        expected_offset,
+        scrollback_cap,
+        new_rows,
+        actual_offset,
+        start_offset,
+        expected_offset,
+        actual_offset
+    );
+
+    // Assert: offset is NOT the pre-output value (no drift due to delta=0 at cap).
+    assert_ne!(
+        actual_offset, start_offset,
+        "BC-2.09.007 EC-246 (ADV P4 BLOCKER-002): offset must NOT remain at {} (static/drift). \
+         The delta-probe impl produces delta=0 at cap and fails here. \
+         vt100-native algorithm must advance offset to {} (cap).",
+        start_offset, expected_offset
+    );
+
+    // Assert: no overflow (offset stays at or below cap).
+    assert!(
+        actual_offset <= scrollback_cap,
+        "BC-2.09.007 EC-246: offset must not exceed scrollback_cap={}; got {}",
+        scrollback_cap,
+        actual_offset
     );
 }
 
