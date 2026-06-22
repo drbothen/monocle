@@ -1235,7 +1235,7 @@ pub enum HostToDaemon {
     PtyReset,
 }
 
-// C5-002 (SS-ipc.md v1.24.0): SerializedCell and SerializedColor are defined in
+// C5-002 (SS-ipc.md §Supporting Types): SerializedCell and SerializedColor are defined in
 // monocle-ipc (crate::ipc::SerializedCell / crate::ipc::SerializedColor) so both
 // monocle-session-host (writer) and monocle-tui (reader) share the type without a
 // cross-binary dependency. The canonical definition with full field documentation

@@ -7,7 +7,7 @@ producer: vsdd-factory:product-owner
 timestamp: 2026-06-16T00:00:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-embedded-pty.md, architecture/SS-ipc.md]
-input-hash: "76c9b9d"
+input-hash: "c79ff2b"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-09
@@ -151,7 +151,7 @@ AppMode. A `Ctrl-D` or session termination also exits `EmbeddedTerminal` automat
 | L2 Capability | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability §SS-09 |
 | Capability Anchor Justification | CAP-009 ("Embedded PTY widget; full-fidelity keyboard forwarding (printable + control + arrows + mouse + Kitty); PTY byte pipeline (IPC → vt100 → tui-term); session creation wizard") per ARCH-INDEX §Capability traceability — session creation wizard and EmbeddedTerminal AppMode are both explicitly named in CAP-009; this BC covers the enter/exit transitions and the wizard auto-transition to EmbeddedTerminal |
 | Architecture Module | monocle-core (AppMode::EmbeddedTerminal, AppMode::SessionCreation variants, SessionCreationStep enum); monocle-tui (transition logic, wizard UI) per ARCH-INDEX Subsystem Registry SS-09 |
-| Architecture Source | SS-embedded-pty.md §TUI AppMode Extensions (EmbeddedTerminal, SessionCreation with `launching_session_id: Option<String>`, SessionCreationStep — F-P41-IMP-001); §Session Creation Wizard (SpawnAck receipt + launching_session_id storage + auto-advance match logic); §State machine invariants; SS-ipc.md v1.24.0 §ServerToClient::SpawnAck (point-to-point delivery to requesting client; wizard storage and filtering obligation) |
+| Architecture Source | SS-embedded-pty.md §TUI AppMode Extensions (EmbeddedTerminal, SessionCreation with `launching_session_id: Option<String>`, SessionCreationStep — F-P41-IMP-001); §Session Creation Wizard (SpawnAck receipt + launching_session_id storage + auto-advance match logic); §State machine invariants; SS-ipc.md §ServerToClient::SpawnAck (point-to-point delivery to requesting client; wizard storage and filtering obligation) |
 | Test Name | test_BC_2_09_008_embedded_terminal_transitions |
 
 ## Related BCs

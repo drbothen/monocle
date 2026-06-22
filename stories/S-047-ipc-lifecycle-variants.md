@@ -285,7 +285,7 @@ session state management directly in the handler.
 
 ## Architecture Compliance Rules
 
-From `architecture/SS-ipc.md v1.24.0` (canonical version):
+From `architecture/SS-ipc.md`:
 - Model A (I27-001): SpawnSession carries `SpawnOptions`; daemon builds `SpawnRecipe` internally.
   Model B (TUI sends SpawnRecipe) is REJECTED by architecture decision. Do not implement Model B.
 - **All wire `session_id` fields are `String`** (UUID-as-String). `ClientId` and `SessionId`

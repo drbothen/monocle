@@ -186,14 +186,14 @@ and that the TUI mode transitions to `EmbeddedTerminal` (or that the transition 
 
 ### Data Model
 - [ ] Ensure `SessionSnapshot` is defined in `crates/monocle-ipc/src/lib.rs` with the canonical
-      fields per SS-ipc.md v1.24.0 §Supporting Types (authority: SS-ipc.md, not BC-2.06.025
+      fields per SS-ipc.md §Supporting Types (authority: SS-ipc.md, not BC-2.06.025
       which may use prose-level field names):
       `session_id: String`, `display_name: String`, `state: SessionState`, `harness_id: String`,
       `project_root: String`, `cwd: String`, `spawned_by_monocle: Option<bool>`,
       `started_at_micros: i64`, `pty_rows: u16`, `pty_cols: u16`,
       `degraded: bool` (NOT `is_degraded`), `degraded_reason: Option<String>`.
       There is NO `worktree_root` field (use `cwd` for effective working dir) and NO `pid` field.
-      All wire IDs (`session_id`) are `String` (UUID-as-String) per SS-ipc v1.24.0 §Wire IDs.
+      All wire IDs (`session_id`) are `String` (UUID-as-String) per SS-ipc.md §Wire IDs.
       Verify against the struct definition — do NOT add extra fields not in the canonical struct.
 - [ ] Ensure `SessionState` enum is defined in `crates/monocle-ipc/src/lib.rs` with the canonical 5 variants:
       `Launching`, `Running`, `Detached`, `Terminating`, `Terminated`.
@@ -216,7 +216,7 @@ and that the TUI mode transitions to `EmbeddedTerminal` (or that the transition 
       - `Enter` on `Detached` state → send `ClientToServer::AttachSession { session_id }` + transition to `AppMode::EmbeddedTerminal` (AC-014).
       - `Enter` on `Running` state → transition to `AppMode::EmbeddedTerminal` directly (existing S-025 behavior; no IPC sent for already-attached session).
       All IPC messages carry `session_id: String` (from `SessionSnapshot.session_id`) — never a
-      newtype `SessionId`; wire fields are plain `String` per SS-ipc v1.24.0 §Wire IDs.
+      newtype `SessionId`; wire fields are plain `String` per SS-ipc.md §Wire IDs.
 - [ ] Add status bar message queue integration: 3-second and 5-second timed messages per AC-005/006/007.
 - [ ] Wire `SessionsPanel` into the main TUI layout (replace or extend the existing session list
       from S-025/S-028 — confirm which component it extends).
@@ -261,7 +261,7 @@ From `architecture/SS-tui.md v1.8.2`:
 - Status bar message queue: timerbound messages use `Instant` + duration, checked on each
   frame render. Do NOT use `tokio::time::sleep` for status bar expiry in the render path.
 
-From `architecture/SS-ipc.md v1.24.0` (§Wire IDs):
+From `architecture/SS-ipc.md` (§Wire IDs):
 - `SessionSnapshot` is the IPC wire type for sessions in `ServerToClient::SessionListUpdate`.
   The TUI receives `Vec<SessionSnapshot>` and must not call into daemon internals.
 - All `session_id` fields in wire messages are `String` (UUID-as-String). `SessionId`/`ClientId`

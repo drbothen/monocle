@@ -170,7 +170,7 @@ From `architecture/SS-engine-module-v2-delta.md v1.6.0`:
 - Model A (I27-001): `spawn_recipe()` is called INSIDE `spawn_session()` as its first step.
   The TUI sends `SpawnOptions`; the daemon builds `SpawnRecipe` daemon-side.
 
-From `architecture/SS-ipc.md v1.24.0`:
+From `architecture/SS-ipc.md`:
 - Wire codes `"binary_not_found"` and `"invalid_spawn_arg"` must be in the `ServerToClient::Error`
   taxonomy.
 

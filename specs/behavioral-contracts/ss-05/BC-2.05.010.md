@@ -7,7 +7,7 @@ producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:45:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-ipc.md, architecture/SS-daemon-wiring-v2-delta.md, architecture/SS-session-manager.md, architecture/SS-engine-module-v2-delta.md]
-input-hash: "1e1a9f1"
+input-hash: "e6d52b9"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-05
@@ -180,7 +180,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
    re-attaches a `Detached` session from the sessions panel. The TUI MUST NOT send
    `DaemonToHost::Attach` directly — that is a daemon→session-host message. The TUI sends
    `ClientToServer::AttachSession` to the daemon, which routes to `SessionManager::attach_session()`.
-   Per SS-ipc.md v1.24.0 §`ClientToServer::AttachSession`.
+   Per SS-ipc.md §`ClientToServer::AttachSession`.
 
 ## Invariants
 
@@ -209,7 +209,7 @@ message; `ClientToServer::AttachSession` is the correct TUI→daemon message.
    clamp (Invariant 5), the only remaining `resize_session()` failure is `SessionNotFound` —
    a benign race where the session terminated between the TUI sending the resize and the daemon
    processing it. These failures are WARN-logged and dropped; no `ServerToClient::Error` is sent.
-   Per SS-ipc.md v1.24.0 lines 1515/389 (normative citation) and SS-session-manager.md lines
+   Per SS-ipc.md lines 1515/389 (normative citation) and SS-session-manager.md lines
    572-576 (ResizePane special rule rationale). Also cited by SS-session-manager.md line 385
    as "BC-2.05.010 §No-silent-failure invariant" — this section is the named target of that
    forward-reference.

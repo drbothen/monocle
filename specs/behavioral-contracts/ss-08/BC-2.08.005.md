@@ -7,7 +7,7 @@ producer: vsdd-factory:product-owner
 timestamp: 2026-06-03T23:30:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-session-manager.md]
-input-hash: "6613339"
+input-hash: "16a8462"
 traces_to: prd.md
 origin: greenfield
 subsystem: SS-08
@@ -106,7 +106,7 @@ immediately (no grace period for sidecars without a live process).
 | L2 Capability | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability §SS-08 |
 | Capability Anchor Justification | CAP-008 ("Session lifecycle (spawn, kill, detach, rename); session-host process model; re-discovery on daemon restart; GC; hook auto-injection on spawn") per ARCH-INDEX §Capability traceability — GC is explicitly named in CAP-008; this BC defines the 10-second grace period, sidecar cleanup, and SessionListUpdate publication that constitute the GC policy |
 | Architecture Module | monocle-runtime (SessionManager GC tokio task) per ARCH-INDEX Subsystem Registry SS-08 |
-| Architecture Source | SS-session-manager.md v2.17.1 §Session GC policy; SS-session-manager.md v2.17.1 §Terminated-in-grace defensive action×state matrix (F-P52-001); SS-session-manager.md v2.17.1 §session_error_to_code() (InvalidSessionName → "rename_failed"); SS-ipc.md v1.24.0 §ServerToClient::Error taxonomy; SS-daemon-wiring-v2-delta.md v1.12.0 |
+| Architecture Source | SS-session-manager.md v2.17.1 §Session GC policy; SS-session-manager.md v2.17.1 §Terminated-in-grace defensive action×state matrix (F-P52-001); SS-session-manager.md v2.17.1 §session_error_to_code() (InvalidSessionName → "rename_failed"); SS-ipc.md §ServerToClient::Error taxonomy; SS-daemon-wiring-v2-delta.md v1.12.0 |
 | Test Name | test_BC_2_08_005_terminated_session_gc_after_10s |
 
 ## Related BCs
