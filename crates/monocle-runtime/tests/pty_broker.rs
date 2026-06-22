@@ -85,14 +85,6 @@ fn is_pty_output(msg: &ServerToClient, expected_session_id: &str, expected_bytes
     }
 }
 
-/// Returns true iff the message is `ServerToClient::PtyReset` for the given session.
-fn is_pty_reset(msg: &ServerToClient, expected_session_id: &str) -> bool {
-    match msg {
-        ServerToClient::PtyReset { session_id } => session_id == expected_session_id,
-        _ => false,
-    }
-}
-
 // ---------------------------------------------------------------------------
 // AC-001 (BC-2.05.009 PC-2, Invariant 3): bounded INPUT channel blocks on full
 // ---------------------------------------------------------------------------
@@ -526,16 +518,6 @@ async fn test_BC_2_05_009_pty_reset_not_emitted_on_graceful_input_close() {
          got unexpected message: {:?}",
         result,
     );
-
-    // Explicit PtyReset check with the helper (belt-and-suspenders — is_err above already
-    // covers this, but naming the specific forbidden message makes failure output clearer).
-    if let Ok(msg) = result {
-        assert!(
-            !is_pty_reset(&msg, "test-session-005"),
-            "broker MUST NOT emit PtyReset on graceful INPUT channel close; got: {:?}",
-            msg,
-        );
-    }
 
     // pty_drop_counter must remain 0 — graceful close is NOT an OOM drop.
     let drops = counter.load(Ordering::Relaxed);

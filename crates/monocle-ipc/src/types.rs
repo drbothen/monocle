@@ -626,19 +626,31 @@ pub enum ServerToClient {
     // -----------------------------------------------------------------------
     /// Notification that the PTY byte stream for a session was interrupted.
     ///
-    /// Emitted by the daemon's `PtyBroker` when the PTY writer task for a session is
-    /// dropped (session exit, OOM kill, or other extreme condition). The broker sends
-    /// this to ALL connected TUI clients that were subscribed to the session's PTY output.
+    /// Emitted by the daemon's **session proxy task** (NOT the `PtyBroker` event loop —
+    /// the broker never emits `PtyReset` directly). The proxy task broadcasts this to ALL
+    /// connected TUI clients via `broadcast_to_subscribers`.
+    ///
+    /// Exactly two trigger conditions (BC-2.05.009 Invariant 4):
+    ///
+    /// (a) **Primary production path:** the session-host sends
+    ///     `HostToDaemon::PtyReset` over the control connection — the proxy task
+    ///     receives it and immediately broadcasts `ServerToClient::PtyReset`.
+    ///
+    /// (b) **OOM-level failure:** the proxy task's `.send().await` on the
+    ///     `PtyBroker` INPUT channel returns `Err(_)` while the session is still live
+    ///     (INPUT receiver gone — BC-2.05.009 Invariant 4b / PC-3). The proxy
+    ///     increments the daemon-global PTY drop counter, logs a WARN, broadcasts
+    ///     `PtyReset`, then terminates the proxy receive loop (session unrecoverable).
+    ///
+    /// Graceful session exit (normal INPUT-channel close) does **not** emit `PtyReset`;
+    /// the proxy loop simply returns in that case.
     ///
     /// On receipt, the TUI client must:
     /// 1. Reset its `pty_parsers[session_id]` to a fresh `vt100::Parser` state.
     /// 2. Send `ClientToServer::AttachSession { session_id }` to trigger a fresh
     ///    `ScrollbackChunk*` + `ScrollbackDumpComplete` sequence (re-attach).
     /// 3. Display `[PTY reset — <session_id truncated>]` in the status bar for 5 seconds
-    ///    (S-047/S-048 scope; the broker's responsibility ends at emission).
-    ///
-    /// `PtyReset` fires ONLY on an actual PTY byte drop (channel `SendError`, OOM, or
-    /// other extreme condition). Under normal `.send().await` backpressure it never fires.
+    ///    (S-047 scope; the proxy task's responsibility ends at emission).
     PtyReset {
         /// The UUID string of the session whose PTY stream was reset.
         session_id: String,

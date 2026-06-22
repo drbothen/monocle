@@ -4040,7 +4040,13 @@ impl SessionManager {
                                 // OOM-level failure (BC-2.05.009 Invariant 4b / PC-3):
                                 // 1. Increment the daemon-global PTY drop counter.
                                 // 2. Log WARN with the counter value.
-                                // 3. Broadcast PtyReset to all TUI clients.
+                                // 3. Broadcast PtyReset to all TUI clients (exactly once).
+                                // 4. Break the proxy receive loop — the session is
+                                //    unrecoverable once the broker INPUT channel is gone.
+                                //    Subsequent PtyBytes frames would re-trigger the same
+                                //    error, flooding TUI clients with repeated PtyReset
+                                //    broadcasts (each triggers a re-attach). Breaking here
+                                //    ensures exactly one PtyReset is emitted per failure.
                                 let n = pty_drop_counter
                                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
                                     + 1;
@@ -4056,6 +4062,7 @@ impl SessionManager {
                                     },
                                 )
                                 .await;
+                                break;
                             }
                         }
                         // else: no broker wired (test or early startup) — bytes consumed silently

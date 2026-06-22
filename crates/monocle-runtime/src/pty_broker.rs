@@ -47,12 +47,12 @@ pub const PTY_BROKER_INPUT_CAPACITY: usize = 1024;
 /// (`64 × 256 KiB = 16 MiB` maximum in-flight per client).
 pub const PTY_BROKER_CLIENT_CAPACITY: usize = monocle_ipc::server::CLIENT_CHANNEL_CAPACITY;
 
-/// Strike limit constant — exported for test compatibility.
+/// Strike limit constant — **test anchor only; encodes no production behavior.**
 ///
-/// With the unified `SubscriberList` model, slow-client disconnect is governed by
-/// `broadcast_to_subscribers` 1-strike semantics (BC-2.05.009 Invariant 3b Q1 ruling).
-/// This constant is kept at 1 to reflect the 1-strike model. Tests that reference it
-/// exercise the `broadcast_to_subscribers` disconnection path.
+/// The production 1-strike disconnect is implemented directly inside
+/// `broadcast_to_subscribers` (in `monocle_ipc`). This constant is exported purely so
+/// tests can assert the value has not drifted (BC-2.05.009 Invariant 3b Q1 ruling).
+/// No production code path reads or branches on this constant.
 pub const PTY_BROKER_STRIKE_LIMIT: u8 = 1;
 
 // ---------------------------------------------------------------------------
