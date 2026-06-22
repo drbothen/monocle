@@ -101,3 +101,24 @@ pub use app::on_resize_detected;
 // S-042 / F-S042-MED-001: pure poll-timeout helper — test seam for BC-2.09.006 PC-8.
 #[doc(hidden)]
 pub use app::resize_aware_poll_timeout;
+
+// S-043: scrollback navigation handlers — exposed for BC-2.09.007 TDD tests.
+// These are test seams; not part of the stable public API.
+#[doc(hidden)]
+pub use app::gc_pty_session;
+#[doc(hidden)]
+pub use app::gc_session_with_mode_exit;
+#[doc(hidden)]
+pub use app::handle_pty_scroll_down;
+#[doc(hidden)]
+pub use app::handle_pty_scroll_up;
+#[doc(hidden)]
+pub use app::on_initial_state;
+#[doc(hidden)]
+pub use app::on_pty_output;
+#[doc(hidden)]
+pub use app::on_scrollback_dump_complete;
+#[doc(hidden)]
+pub use app::on_transport_event;
+#[doc(hidden)]
+pub use app::render_frame;
