@@ -1506,3 +1506,272 @@ async fn test_BC_2_09_007_ctrl_down_dispatch_scrolls_no_ipc() {
         sent.len()
     );
 }
+
+// ---------------------------------------------------------------------------
+// ADV Pass-3 F-S043-P3-BLOCKER-001: KeyEventKind guard in scroll intercept
+// BC-2.09.007 Postcondition 2a / PC-3
+//
+// REPORT_EVENT_TYPES is enabled globally (Kitty capability negotiation). A Kitty-capable
+// terminal emits BOTH KeyEventKind::Press AND KeyEventKind::Release for a single physical
+// key. The scroll intercept in handle_crossterm_event (EmbeddedTerminal branch) calls
+// crossterm_key_to_core which discards KeyEventKind — the resolved binding fires for all
+// three kinds (Press, Release, Repeat). This causes a physical Ctrl+Up to scroll 2 rows
+// (Press fires + Release fires) instead of 1.
+//
+// Correct semantics:
+//   Press   → acts (offset increments by 1)
+//   Repeat  → acts (hold-to-scroll; offset increments by 1)
+//   Release → no-op (must NOT scroll)
+//
+// The sibling PTY-forward path (dispatch_embedded_terminal_key / key_event_to_pty_bytes)
+// already guards on Release, discarding it. The scroll intercept must do the same.
+// ---------------------------------------------------------------------------
+
+/// Build a crossterm `KeyEvent` for Ctrl+Up with the specified `KeyEventKind`.
+fn ctrl_up_event_with_kind(kind: crossterm::event::KeyEventKind) -> crossterm::event::Event {
+    crossterm::event::Event::Key(crossterm::event::KeyEvent::new_with_kind(
+        crossterm::event::KeyCode::Up,
+        crossterm::event::KeyModifiers::CONTROL,
+        kind,
+    ))
+}
+
+/// test_BC_2_09_007_ctrl_up_release_does_not_scroll
+///
+/// Exercises BC-2.09.007 Postcondition 2a / PC-3 (ADV Pass-3 F-S043-P3-BLOCKER-001):
+///   A Ctrl+Up KeyEvent with `KeyEventKind::Release` fed through handle_crossterm_event
+///   in AppMode::EmbeddedTerminal MUST NOT increment pty_scroll_offsets[focused].
+///
+/// With REPORT_EVENT_TYPES enabled a Kitty terminal emits a Release event after every
+/// Press. The scroll intercept must discard Release to prevent double-scrolling.
+///
+/// RED GATE: current code does NOT guard on KeyEventKind. crossterm_key_to_core discards
+/// `kind`, so Release produces the same resolved action (PtyScrollUp) as Press, and the
+/// offset increments by 1 on the Release event — this test FAILS against current code.
+#[tokio::test]
+async fn test_BC_2_09_007_ctrl_up_release_does_not_scroll() {
+    // UUID-format session ID: see existing BLOCKER-001 tests.
+    let session_id = "00000007-0000-4000-8007-000000000005";
+    let mut app = make_app_in_embedded(session_id);
+
+    let (ipc_tx, mut ipc_rx) = mpsc::channel::<ClientToServer>(64);
+    app.ipc_tx = Some(ipc_tx);
+
+    // Feed content so there is scrollback history to scroll into.
+    feed_lines(&mut app, session_id, 50);
+
+    // Verify precondition: scrollback max >= 1 (Release must not scroll even when there is room).
+    let max_sb = {
+        let parser = app.pty_parsers.get_mut(session_id).unwrap();
+        effective_scrollback_max(parser)
+    };
+    assert!(
+        max_sb >= 1,
+        "BC-2.09.007 BLOCKER-001 Release precondition: scrollback max must be >= 1; got {}",
+        max_sb
+    );
+
+    // Pre-condition: offset starts at 0.
+    assert_eq!(
+        scroll_offset(&app, session_id),
+        0,
+        "BC-2.09.007 BLOCKER-001 Release precondition: offset must be 0 before Release event"
+    );
+
+    let binding_layers = build_builtin_binding_layers();
+    let mut sessions_state = SessionsPanelState::default();
+
+    // Act: feed a Ctrl+Up Release event through the production dispatch path.
+    let _ = handle_crossterm_event(
+        &mut app,
+        ctrl_up_event_with_kind(crossterm::event::KeyEventKind::Release),
+        &binding_layers,
+        &mut sessions_state,
+    )
+    .await;
+
+    // Assert 1 (F-S043-P3-BLOCKER-001): offset UNCHANGED — Release must not scroll.
+    let after_offset = scroll_offset(&app, session_id);
+    assert_eq!(
+        after_offset, 0,
+        "BC-2.09.007 Postcondition 2a / F-S043-P3-BLOCKER-001: pty_scroll_offsets[focused] \
+         must remain 0 after Ctrl+Up Release — KeyEventKind::Release must be discarded by \
+         the scroll intercept. Current code lacks the guard and scrolls on Release, \
+         causing double-scroll when REPORT_EVENT_TYPES is active. Got offset={}.",
+        after_offset
+    );
+
+    // Assert 2 (AC-006): no IPC sent for a Release event.
+    let sent = drain_ipc(&mut ipc_rx);
+    assert!(
+        sent.is_empty(),
+        "BC-2.09.007 Postcondition 3 / AC-006: Ctrl+Up Release must NOT send any IPC \
+         message; got {} message(s): {:?}",
+        sent.len(),
+        sent.iter()
+            .map(|m| format!("{:?}", m))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+}
+
+/// test_BC_2_09_007_ctrl_up_press_then_release_scrolls_once
+///
+/// Exercises BC-2.09.007 Postcondition 2a / PC-3 (ADV Pass-3 F-S043-P3-BLOCKER-001):
+///   The realistic Kitty sequence for one physical Ctrl+Up keypress is:
+///     1. KeyEventKind::Press → scroll intercept must scroll (offset + 1)
+///     2. KeyEventKind::Release → scroll intercept must discard (offset unchanged)
+///   After both events the offset must have advanced by EXACTLY 1 (not 2).
+///
+/// RED GATE: current code fires PtyScrollUp on both Press and Release because
+/// crossterm_key_to_core discards KeyEventKind. The offset advances by 2 — this
+/// test FAILS against current code.
+#[tokio::test]
+async fn test_BC_2_09_007_ctrl_up_press_then_release_scrolls_once() {
+    let session_id = "00000007-0000-4000-8007-000000000006";
+    let mut app = make_app_in_embedded(session_id);
+
+    let (ipc_tx, mut ipc_rx) = mpsc::channel::<ClientToServer>(64);
+    app.ipc_tx = Some(ipc_tx);
+
+    // Feed content so scrollback history is available.
+    feed_lines(&mut app, session_id, 50);
+
+    let max_sb = {
+        let parser = app.pty_parsers.get_mut(session_id).unwrap();
+        effective_scrollback_max(parser)
+    };
+    assert!(
+        max_sb >= 2,
+        "BC-2.09.007 BLOCKER-001 Press+Release precondition: scrollback max must be >= 2; got {}",
+        max_sb
+    );
+
+    // Pre-condition: offset starts at 0.
+    assert_eq!(
+        scroll_offset(&app, session_id),
+        0,
+        "BC-2.09.007 BLOCKER-001 Press+Release precondition: offset must be 0 before events"
+    );
+
+    let binding_layers = build_builtin_binding_layers();
+    let mut sessions_state = SessionsPanelState::default();
+
+    // Act step 1: feed the Press event — this MUST scroll.
+    let _ = handle_crossterm_event(
+        &mut app,
+        ctrl_up_event_with_kind(crossterm::event::KeyEventKind::Press),
+        &binding_layers,
+        &mut sessions_state,
+    )
+    .await;
+
+    let after_press = scroll_offset(&app, session_id);
+    assert_eq!(
+        after_press, 1,
+        "BC-2.09.007 BLOCKER-001 Press+Release: offset must be 1 after the Press event; \
+         got {}. (Press must always scroll.)",
+        after_press
+    );
+
+    // Act step 2: feed the Release event — this MUST NOT scroll.
+    let _ = handle_crossterm_event(
+        &mut app,
+        ctrl_up_event_with_kind(crossterm::event::KeyEventKind::Release),
+        &binding_layers,
+        &mut sessions_state,
+    )
+    .await;
+
+    // Assert (F-S043-P3-BLOCKER-001): EXACTLY 1 net scroll for one physical keypress.
+    let after_release = scroll_offset(&app, session_id);
+    assert_eq!(
+        after_release, 1,
+        "BC-2.09.007 Postcondition 2a / F-S043-P3-BLOCKER-001: one physical Ctrl+Up \
+         (Press + Release) must advance pty_scroll_offsets by EXACTLY 1, not 2. \
+         Current code scrolls on Release too (missing KeyEventKind guard), advancing \
+         by 2. Got offset={} (expected 1).",
+        after_release
+    );
+
+    // Assert (AC-006): no IPC sent for either event.
+    let sent = drain_ipc(&mut ipc_rx);
+    assert!(
+        sent.is_empty(),
+        "BC-2.09.007 Postcondition 3 / AC-006: Press+Release sequence must NOT send any \
+         IPC message; got {} message(s)",
+        sent.len()
+    );
+}
+
+/// test_BC_2_09_007_ctrl_up_repeat_scrolls
+///
+/// Exercises BC-2.09.007 Postcondition 2a / PC-3 (ADV Pass-3 F-S043-P3-BLOCKER-001):
+///   A Ctrl+Up KeyEvent with `KeyEventKind::Repeat` fed through handle_crossterm_event
+///   in AppMode::EmbeddedTerminal MUST increment pty_scroll_offsets[focused] by 1
+///   (hold-to-scroll semantics — the user is holding the key down).
+///
+/// Repeat events are generated by the OS/terminal when a key is held. The scroll
+/// intercept must treat Repeat identically to Press — each Repeat event scrolls one
+/// additional row. If this test passes against current code (because current code fires
+/// on all kinds including Repeat), it is kept as a regression guard to ensure Repeat
+/// semantics are preserved after the Release guard is added.
+#[tokio::test]
+async fn test_BC_2_09_007_ctrl_up_repeat_scrolls() {
+    let session_id = "00000007-0000-4000-8007-000000000007";
+    let mut app = make_app_in_embedded(session_id);
+
+    let (ipc_tx, mut ipc_rx) = mpsc::channel::<ClientToServer>(64);
+    app.ipc_tx = Some(ipc_tx);
+
+    // Feed content so there is scrollback history.
+    feed_lines(&mut app, session_id, 50);
+
+    let max_sb = {
+        let parser = app.pty_parsers.get_mut(session_id).unwrap();
+        effective_scrollback_max(parser)
+    };
+    assert!(
+        max_sb >= 1,
+        "BC-2.09.007 BLOCKER-001 Repeat precondition: scrollback max must be >= 1; got {}",
+        max_sb
+    );
+
+    // Pre-condition: offset starts at 0.
+    assert_eq!(
+        scroll_offset(&app, session_id),
+        0,
+        "BC-2.09.007 BLOCKER-001 Repeat precondition: offset must be 0 before Repeat event"
+    );
+
+    let binding_layers = build_builtin_binding_layers();
+    let mut sessions_state = SessionsPanelState::default();
+
+    // Act: feed a Ctrl+Up Repeat event.
+    let _ = handle_crossterm_event(
+        &mut app,
+        ctrl_up_event_with_kind(crossterm::event::KeyEventKind::Repeat),
+        &binding_layers,
+        &mut sessions_state,
+    )
+    .await;
+
+    // Assert (hold-to-scroll semantics): Repeat MUST scroll (offset = 1).
+    let after_repeat = scroll_offset(&app, session_id);
+    assert_eq!(
+        after_repeat, 1,
+        "BC-2.09.007 Postcondition 2a / F-S043-P3-BLOCKER-001: Ctrl+Up Repeat must advance \
+         pty_scroll_offsets[focused] by 1 (hold-to-scroll semantics). \
+         KeyEventKind::Repeat must be treated the same as Press. Got offset={}.",
+        after_repeat
+    );
+
+    // Assert (AC-006): no IPC sent for a Repeat event.
+    let sent = drain_ipc(&mut ipc_rx);
+    assert!(
+        sent.is_empty(),
+        "BC-2.09.007 Postcondition 3 / AC-006: Ctrl+Up Repeat must NOT send any IPC \
+         message; got {} message(s)",
+        sent.len()
+    );
+}
