@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.65"
+version: "5.66"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-22T00:00:00Z
@@ -96,7 +96,7 @@ traces_to: .factory/specs/prd.md
 | S-043 | Scrollback Navigation — PtyScrollUp/Down, Per-Session Offsets, Configurable Capacity | EPIC-09 | 3 | 9 | done | — |
 | S-044 | EmbeddedTerminal + SessionCreation AppMode Transitions, SessionCreation Wizard, SpawnAck, and Permission Badge+Bell | EPIC-09 | 13 | 9 | draft | — |
 | S-045 | ClaudeCodeModule::spawn_recipe() — Happy Path, CCR Injection, and Error Cases (Concrete Override Only; Default Trait Impl is S-033) | EPIC-03 | 5 | 8 | draft | — |
-| S-046 | PtyOutput Fan-out Broker — Bounded Channel, Backpressure, and Client Lifecycle | EPIC-05 | 5 | 8 | draft | S-047 |
+| S-046 | PtyOutput Fan-out Broker — Bounded Channel, Backpressure, and Client Lifecycle | EPIC-05 | 5 | 8 | done | S-047 |
 | S-047 | IPC Lifecycle Variants — Spawn/Kill/Detach/Attach/Rename/Input/Resize + Scrollback Protocol | EPIC-05 | 8 | 8 | draft | S-048 |
 | S-048 | Sessions Panel — Multi-Project Grouping, Lifecycle Actions, and State-Aware Blocking | EPIC-06 | 8 | 8 | draft | — |
 
@@ -1251,6 +1251,16 @@ SE-16d monotonicity: v5.30 timestamp 2026-06-03 >= v5.29 timestamp 2026-06-03. P
 - No wave/points/BC coverage changes — story remains Wave 3, 8 pts, BC-2.03.001..004.
 - SE-22 v2 sibling-sweep: sprint-state.yaml v1.16→v1.17 (done 14→15, not_started 2→1, points_complete 67→75); STATE.md v6.05→v6.06.
 - STORY-INDEX version bumped v2.8→v2.9.
+
+## §Trace v5.66 — S-046 MERGED PR #55 @ 45343ca (D-349, 2026-06-22)
+
+- S-046 Story Registry row: `draft` → `done`. PR #55 @ 45343ca (squash-merge 2026-06-22).
+- PtyOutput Fan-out Broker — bounded INPUT channel(1024), broadcast_to_subscribers (Option A), 1-strike disconnect, pty_drop_counter, ServerToClient::PtyReset variant. 5 pts, EPIC-05, Wave 8.
+- 8-pass adversarial convergence (3 consecutive CLEAN: passes 6/7/8). Security PASS (0 crit/high).
+- SS-ipc v1.25.0; BC-2.05.009 v1.6.0; BC-2.05.011 (PtyReset variant); S-046 story v2.0.
+- S-047 UNBLOCKED (all deps S-021+S-022+S-023+S-033+S-034+S-035+S-046 now done).
+- Wave 8: 7/12 done (43/74 pts). 44/51 stories done (267/314 pts).
+- STORY-INDEX version bumped v5.65 → v5.66.
 
 ## §Trace v5.65 — S-041 MERGED PR #54 @ 58fbd617 (D-347, 2026-06-22)
 

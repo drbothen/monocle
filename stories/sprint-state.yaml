@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.58"
+version: "1.59"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-22T00:00:00Z
@@ -617,12 +617,12 @@ stories:
     epic: EPIC-05
     wave: 8
     points: 5
-    status: draft
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 8. Depends on S-021, S-032. Blocks S-047. BC: BC-2.05.009."
+    completed_at: "2026-06-22"
+    pr_url: "https://github.com/jmagady/monocle/pull/55"
+    notes: "Wave 8. PR #55 @ 45343ca (squash-merge 2026-06-22). D-349. PtyOutput Fan-out Broker — bounded INPUT channel(1024) + backpressure, fans out via Arc<SubscriberList>/broadcast_to_subscribers (Option A), 1-strike disconnect, pty_drop_counter, ServerToClient::PtyReset variant (S-046 owns), biased select! hook priority. 8-pass adversarial convergence (3 CLEAN: passes 6/7/8). Security PASS (0 crit/high). SS-ipc v1.25.0; BC-2.05.009 v1.6.0; BC-2.05.011 (PtyReset variant); S-046 story v2.0. 41-citation SS-ipc de-version cascade (POL-11 now exit 0). Depends on S-021, S-032. Blocks S-047 (NOW UNBLOCKED — all deps done)."
 
   - id: S-047
     title: "IPC Lifecycle Variants — Spawn/Kill/Detach/Attach/Rename/Input/Resize + Scrollback Protocol"
@@ -653,12 +653,12 @@ summary:
   not_started: 0
   in_progress: 0
   review: 0
-  done: 43
+  done: 44
   ready: 0
   blocked: 1
-  draft: 7
+  draft: 6
   total_points: 314
-  points_complete: 262
+  points_complete: 267
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
@@ -688,6 +688,14 @@ summary:
   # total_stories note: 51 = 33 Phase-3 stories (including S-PHASE-3-PREP and S-DTU-001) + 2 Wave-8
   #   pre-existing (S-032, S-DAEMON-WIRE-FIX-001) + 16 new v1A (S-033..S-048). Blocked count (1) is
   #   S-PHASE-3-PREP (blocked on vsdd-factory spec-kit-mcp rc.19+).
+  # v1.59 updates (2026-06-22):
+  # - D-349: S-046 MERGED to develop via PR #55 @ 45343ca (squash-merge 2026-06-22).
+  #   S-046 status: draft → done. completed_at: "2026-06-22". pr_url set.
+  #   done: 43 → 44; draft: 7 → 6; points_complete: 262 → 267.
+  #   PtyOutput Fan-out Broker — bounded INPUT channel(1024), broadcast_to_subscribers (Option A),
+  #   1-strike disconnect, pty_drop_counter, ServerToClient::PtyReset variant. 5 pts, EPIC-05, Wave 8.
+  #   8-pass adversarial (3 CLEAN: passes 6/7/8). Security PASS (0 crit/high). SS-ipc v1.25.0; BC-2.05.009 v1.6.0; S-046 v2.0.
+  #   Wave 8: 7/12 done (43/74 pts). 44/51 stories done (267/314 pts). S-047 UNBLOCKED (all deps done).
   # v1.58 updates (2026-06-22):
   # - D-347: S-041 MERGED to develop via PR #54 @ 58fbd617 (squash-merge 2026-06-22).
   #   S-041 status: draft → done. completed_at: "2026-06-22". pr_url set.

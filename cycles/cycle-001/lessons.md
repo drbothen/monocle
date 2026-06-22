@@ -2715,3 +2715,26 @@ SS-ipc gained a new section (PtyBroker integration). This triggered a minor vers
 
 **Route: state-manager/housekeeping. Non-blocking.**
 
+
+---
+
+### LESSON-S046-INERT-BROKER-UNIT-TEST-TAUTOLOGY: unit tests passed against a parallel, never-wired code path masking a broker that silently discarded all PTY bytes in production (S-046, 2026-06-22) [process-gap]
+
+**Lesson class:** process-gap
+
+**Origin:** S-046's first implementation built a PtyBroker with its own client registry and methods (`register_client`, `fan_out`) that were NEVER invoked in production. In production, the daemon's `SubscriberList` (shared Arc) handled all subscriber management — the broker's own registry was a separate, parallel data structure that was never connected to the real client-tracking path.
+
+The unit tests passed cleanly: they called `register_client` and `fan_out` directly on the broker struct and verified the correct fan-out behavior. But these methods were never called from any production code path. The broker was wired into the daemon's select loop for INPUT receipt but its output fan-out was not connected to the shared `SubscriberList`. PTY bytes entered the broker's INPUT channel and were silently discarded with no error, no log at WARNING severity, and no test failure.
+
+**How it was caught:** The adversarial reviewer (pass 1) traced the full production data-flow from the PTY proxy task → HostToDaemon::PtyBytes → broker INPUT → fan-out → client sockets. This whole-system trace (not just the diff) revealed that `broadcast_to_subscribers` — the function that actually delivers bytes to clients — was never called by the broker. The adversary asked: "who calls this broker?" and found no production callsite.
+
+**Root cause:** Unit tests exercised the broker's internal methods in isolation. The tests were STRUCTURALLY CORRECT (the methods did what they claimed) but INTEGRATION-WRONG (the methods were never the production code path). This is a structural tautology: tests validated behavior of an API surface that was not wired to any real consumer.
+
+**Architectural fix applied:** Architect RE-ARCHITECTED to Option A: the broker owns ONLY the INPUT channel (bounded, 1024) and an `Arc<SubscriberList>` reference. Fan-out is performed by calling `broadcast_to_subscribers` on the shared `SubscriberList` — the same function used by all other broadcast paths. The broker's own client registry was deleted. The test suite was rewritten to exercise the `broadcast_to_subscribers` path.
+
+**Rules codified:**
+1. **Unit tests must exercise the PRODUCTION code path / real integration seam**, not a parallel/unwired API. If a method under test is never called from production code, that is a red flag — either the method is dead code or the test is testing the wrong thing.
+2. **Adversarial review must trace production wiring (who CALLS the code)**, not just the function-level behavior. For any new component, the adversary should ask: "what in the production binary invokes this?" If the answer is "nothing," the component is inert.
+3. **Integration seam tests should verify the full data-flow path**, not just the leaf function. For S-046, a correct integration test would have: (a) registered a subscriber via the real `SubscriberList`, (b) sent bytes through the broker's INPUT channel, (c) asserted that the subscriber received bytes. This would have caught the tautology.
+
+**Route: adversarial review protocol, test-writer discipline. Non-blocking for S-047+.**
