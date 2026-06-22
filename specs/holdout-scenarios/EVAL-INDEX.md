@@ -27,7 +27,7 @@ inputs:
   - {path: .factory/stories/S-038-session-manager-hook-injection.md, version: "1.5"}
   - {path: .factory/stories/S-039-pty-output-pipeline.md, version: "1.8"}
   - {path: .factory/stories/S-040-keyboard-forwarding.md, version: "1.8"}
-  - {path: .factory/stories/S-041-mouse-forwarding-sgr.md, version: "1.2"}
+  - {path: .factory/stories/S-041-mouse-forwarding-sgr.md, version: "1.3"}
   - {path: .factory/stories/S-042-resize-debounce-resizepane.md, version: "1.6"}
   - {path: .factory/stories/S-043-scrollback-navigation.md, version: "1.5"}
   - {path: .factory/stories/S-044-appmode-transitions-permission-badge.md, version: "1.1"}

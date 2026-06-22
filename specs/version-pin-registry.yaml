@@ -1069,8 +1069,8 @@ S-039-pty-output-pipeline:
 
 S-041-mouse-forwarding-sgr:
   path: stories/S-041-mouse-forwarding-sgr.md
-  current_version: "1.2"
-  last_bump_commit: "[OBS-001 (S-041 Adv-Pass-1) — EnableMouseCapture enables 1003; Moved IS reachable; inputs pins updated BC-2.09.003→1.6.0 SS-embedded-pty→1.17.0; AC-008/task/arch-rules corrected]"
+  current_version: "1.3"
+  last_bump_commit: "[input-pin cascade: BC-2.09.003 1.6.0→1.6.1 (editorial anchor-hygiene, no behavioral change); story v1.2→v1.3]"
   last_bump_date: "2026-06-22"
 
 S-042-resize-debounce-resizepane:
