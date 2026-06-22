@@ -2661,3 +2661,43 @@ The codification recommendation from the S-043 entry is confirmed applicable bey
 
 **Threshold tracking:** S-043 (1st instance, scrollback_len), S-041 (2nd instance, EnableMouseCapture mode set). Two confirmed instances — codification is warranted. If a 3rd instance occurs, escalate to a mandatory architect pre-commit checklist step: "grep/cargo-doc verify every named library API method AND its documented behavior scope before finalizing BC/SS algorithm text."
 
+---
+
+### PROCESS-GAP-STORYWRITER-VERSION-LITERALS-IN-TRACE: story-writer wrote POL-11-flaggable version cites in Trace/audit prose (S-046 cycle, 2026-06-22) [process-gap]
+
+**Date:** 2026-06-22
+**Severity:** process-gap (LOW recurrence-watch — POL-11 caught it; benign this cycle)
+**Origin:** S-046 inputs-pin refresh. The story-writer (commit bea02a3) wrote version-literal deltas ("BC-2.05.009 v1.5.5→v1.5.11", "SS-session-manager v2.6.1→v2.17.1") directly into the S-046 story Trace row (version history table) and the version-pin-registry.yaml `last_bump_commit` field as changelog prose. POL-11 (`check_version_pins.py`) flagged these as live version-citation violations (exit non-zero), blocking the S-046 stubs step until resolved.
+
+**Root cause:** The story-writer generated a natural-language description of which artifacts changed and by how much, which is useful for human auditing but uses the exact version-literal format that POL-11 treats as a stale-pin candidate. The Trace row and `last_bump_commit` field are prose/audit fields, not live-version declarations, but POL-11 cannot distinguish intent — it flags all matching patterns.
+
+**Resolution this cycle:** The implementer (commit 94035ff) de-versioned both fields to "BC-2.05.009, BC-2.05.011, SS-session-manager bumped to canonical (historical deltas archived in story Trace)" style, removing the literal version pairs. POL-11 returned to exit 0. The fix was correct; state-manager adopted it and pushed to origin.
+
+**Routing note:** The implementer committing to factory-artifacts to fix a POL-11 issue is a secondary process gap (see PROCESS-GAP-IMPLEMENTER-COMMITS-FACTORY-ARTIFACTS below). The correct path would have been to surface the POL-11 failure to the orchestrator, which would have routed it to state-manager or story-writer.
+
+**Recurrence prevention:**
+- story-writer should use version-free phrasing in Trace/`last_bump_commit` changelog prose. Preferred form: "inputs[] pin refresh — BC-2.05.009, BC-2.05.011, SS-session-manager bumped to canonical; body accuracy verified" (no explicit "vX.Y→vX.Y" in these fields).
+- If historical version deltas need to be preserved, they should go in an HTML comment `<!-- version-pin-historical: ... -->` rather than in bare prose where POL-11 scans.
+- Route: devops/story-writer convention. Non-blocking; recurrence-watch.
+
+---
+
+### PROCESS-GAP-IMPLEMENTER-COMMITS-FACTORY-ARTIFACTS: implementer committed to factory-artifacts to fix a POL-11 issue (S-046 cycle, 2026-06-22) [process-gap]
+
+**Date:** 2026-06-22
+**Severity:** process-gap (LOW — routing overstep; content was correct; benign this cycle)
+**Origin:** After the story-writer's bea02a3 commit introduced POL-11-flaggable version literals (see PROCESS-GAP-STORYWRITER-VERSION-LITERALS-IN-TRACE above), the implementer self-diagnosed the failure and committed a fix directly to factory-artifacts (commit 94035ff, "chore(S-046): fix POL-11 stale version cites in Trace/registry audit fields"). The content of 94035ff is correct — the de-versioned text accurately captures the intent without the POL-11 pattern. State-manager verified, adopted, and pushed the commit.
+
+**Why this is a routing issue:** factory-artifacts commits are owned by state-manager, story-writer, architects, and product-owner (depending on content). The implementer's domain is source code implementation under TDD in the story worktree. Committing spec governance artifacts (story files, version-pin-registry.yaml) on factory-artifacts is outside implementer scope, even when the content is correct.
+
+**Why it was benign this cycle:** The fix content was accurate and minimal (2 lines, de-versioning only). No behavioral change to story spec. POL-11 verification confirmed exit 0. State-manager governance-ownership was formally applied by reviewing, adopting, and pushing the commit rather than reverting and re-authoring.
+
+**Correct flow for this class of failure:**
+1. POL-11 exits non-zero during stubs/test-writer dispatch.
+2. Implementer (or dispatching agent) surfaces the POL-11 failure to the orchestrator.
+3. Orchestrator routes to state-manager or story-writer (whichever owns the flagged field).
+4. State-manager/story-writer fixes the prose/audit field in a new factory-artifacts commit.
+5. POL-11 re-checked before proceeding.
+
+**Non-blocking. Human owns process-gap structural fixes per D-348. Recurrence-watch. Route: devops/process.**
+
