@@ -514,6 +514,103 @@ fn test_BC_2_09_003_terminator_m_for_release_only() {
     );
 }
 
+// ---------------------------------------------------------------------------
+// ADV-P1-OBS-002 — Regression guards: Moved/ScrollLeft/ScrollRight + underflow
+// ---------------------------------------------------------------------------
+
+/// BC-2.09.003 PC-2 — Moved encoding (Ps=35, terminator M)
+///
+/// Canonical derivation from PC-2 table:
+///   Moved → base_Ps = 35 (3 + 32 no-button motion bit)
+///   Terminator = M (press family)
+///
+/// Pane at (x=5, y=3, width=40, height=20); event at (column=7, row=5):
+///   Px = 7 - 5 + 1 = 3, Py = 5 - 3 + 1 = 3
+///   → `\x1b[<35;3;3M`
+///
+/// Note: Moved is UNREACHABLE on Unix (crossterm enables mode 1002, not 1003).
+/// This test exercises the arm for Windows correctness and match-exhaustiveness
+/// per BC-2.09.003 Invariant 3 / PC-2 table note.
+#[test]
+fn test_BC_2_09_003_moved_encoding() {
+    let event = mouse_event(PtyMouseEventKind::Moved, 7, 5);
+    let pane_area = pane_at(5, 3, 40, 20);
+    let result = mouse_event_to_pty_bytes(event, pane_area);
+    assert_eq!(
+        result,
+        Some(b"\x1b[<35;3;3M".to_vec()),
+        "Moved at (7,5) in pane@(5,3,40x20) must encode as \\x1b[<35;3;3M (base_Ps=35)"
+    );
+}
+
+/// BC-2.09.003 PC-2 — ScrollLeft encoding (Ps=66, terminator M)
+///
+/// Canonical derivation from PC-2 table:
+///   ScrollLeft → base_Ps = 66
+///   Terminator = M (scroll family)
+///
+/// Pane at origin (x=0, y=0, width=80, height=24); event at (column=10, row=4):
+///   Px = 10 + 1 = 11, Py = 4 + 1 = 5
+///   → `\x1b[<66;11;5M`
+#[test]
+fn test_BC_2_09_003_scroll_left_encoding() {
+    let event = mouse_event(PtyMouseEventKind::ScrollLeft, 10, 4);
+    let pane_area = origin_pane(80, 24);
+    let result = mouse_event_to_pty_bytes(event, pane_area);
+    assert_eq!(
+        result,
+        Some(b"\x1b[<66;11;5M".to_vec()),
+        "ScrollLeft at (10,4) in 80x24 pane@origin must encode as \\x1b[<66;11;5M (base_Ps=66)"
+    );
+}
+
+/// BC-2.09.003 PC-2 — ScrollRight encoding (Ps=67, terminator M)
+///
+/// Canonical derivation from PC-2 table:
+///   ScrollRight → base_Ps = 67
+///   Terminator = M (scroll family)
+///
+/// Pane at origin (x=0, y=0, width=80, height=24); event at (column=10, row=4):
+///   Px = 10 + 1 = 11, Py = 4 + 1 = 5
+///   → `\x1b[<67;11;5M`
+#[test]
+fn test_BC_2_09_003_scroll_right_encoding() {
+    let event = mouse_event(PtyMouseEventKind::ScrollRight, 10, 4);
+    let pane_area = origin_pane(80, 24);
+    let result = mouse_event_to_pty_bytes(event, pane_area);
+    assert_eq!(
+        result,
+        Some(b"\x1b[<67;11;5M".to_vec()),
+        "ScrollRight at (10,4) in 80x24 pane@origin must encode as \\x1b[<67;11;5M (base_Ps=67)"
+    );
+}
+
+/// AC-006 / EC-221 — Column underflow on non-origin pane must return None without panic
+///
+/// Pane at (x=10, y=5, width=40, height=20); event at column=3 (< pane.x=10).
+/// The impl checks `event.column < pane_area.x` before any subtraction, so this
+/// must return None and must NOT cause a u16 underflow panic.
+#[test]
+fn test_BC_2_09_003_out_of_pane_column_underflow_nonzero_pane() {
+    let pane_area = pane_at(10, 5, 40, 20);
+
+    // Column underflow: col=3 < pane.x=10 → None
+    let event_col = mouse_event(PtyMouseEventKind::Down(PtyMouseButton::Left), 3, 7);
+    let result_col = mouse_event_to_pty_bytes(event_col, pane_area);
+    assert_eq!(
+        result_col, None,
+        "column=3 is before pane.x=10 — must return None without underflow panic (AC-006/EC-221)"
+    );
+
+    // Row underflow: row=2 < pane.y=5 → None
+    let event_row = mouse_event(PtyMouseEventKind::Down(PtyMouseButton::Left), 15, 2);
+    let result_row = mouse_event_to_pty_bytes(event_row, pane_area);
+    assert_eq!(
+        result_row, None,
+        "row=2 is before pane.y=5 — must return None without underflow panic (AC-006/EC-221)"
+    );
+}
+
 /// AC-004 / BC-2.09.003 PC-2 — Press, Drag, and Scroll all use uppercase 'M' terminator
 #[test]
 fn test_BC_2_09_003_terminator_M_for_non_release_variants() {
