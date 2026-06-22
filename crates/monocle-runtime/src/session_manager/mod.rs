@@ -1718,6 +1718,10 @@ impl SessionManager {
             let mut pty_broker = crate::pty_broker::PtyBroker::new(
                 session_id.clone(),
                 std::sync::Arc::clone(&self.pty_drop_counter),
+                // Pass the daemon's shared SubscriberList — NOT a cloned snapshot.
+                // Clients connecting after broker construction are visible to the event loop
+                // because the event loop holds an Arc to the live shared list (Q1 ruling).
+                std::sync::Arc::clone(&self.broker),
             );
             // Start the event loop. A hook/control channel is created here; future work
             // (S-047+) will use this channel to signal the broker for hook prioritization
@@ -1732,7 +1736,8 @@ impl SessionManager {
                 entry.pty_broker_input_tx = Some(broker_input_tx);
             }
             // `pty_broker` (and `_hook_tx`) are dropped here; the event loop task holds the
-            // INPUT receiver internally and will run until the INPUT channel closes.
+            // INPUT receiver and the Arc<SubscriberList> reference and will run until the
+            // INPUT channel closes.
         }
 
         tracing::info!(
@@ -3304,6 +3309,7 @@ impl SessionManager {
         let broker = Arc::clone(&self.broker);
         let session_id = session_id.to_string();
         let runtime_dir = self.runtime_dir.clone();
+        let pty_drop_counter = Arc::clone(&self.pty_drop_counter);
         // F-S035-005: clone pid_sigterm_fn seam so attach-timeout SIGTERM routes through
         // the same injection seam as kill_session PidFallback (testability / consistency).
         #[cfg(any(test, feature = "test-utils"))]
@@ -3804,6 +3810,7 @@ impl SessionManager {
                         Arc::clone(&sessions),
                         sidecar_path.clone(),
                         pty_broker_input_tx,
+                        Arc::clone(&pty_drop_counter),
                     );
 
                     // Wrap writer in Arc<Mutex<>> for storage in SessionHostConnection.
@@ -3961,6 +3968,7 @@ impl SessionManager {
         sessions: Arc<tokio::sync::Mutex<HashMap<String, SessionEntry>>>,
         sidecar_path: PathBuf,
         pty_broker_input_tx: Option<tokio::sync::mpsc::Sender<std::sync::Arc<bytes::Bytes>>>,
+        pty_drop_counter: std::sync::Arc<std::sync::atomic::AtomicU64>,
     ) -> JoinHandle<()> {
         use tokio::io::AsyncReadExt;
 
@@ -4025,17 +4033,29 @@ impl SessionManager {
                         // Forward PTY bytes to the PtyBroker INPUT channel via `.send().await`
                         // (backpressure — BC-2.05.009 Invariant 3 / S-046).
                         // The broker event loop fans out to all connected TUI clients.
-                        let _ = &broker; // keep broker alive for future use
                         if let Some(ref tx) = pty_broker_input_tx {
                             let frame = std::sync::Arc::new(bytes::Bytes::from(bytes));
-                            if let Err(e) = tx.send(frame).await {
-                                // INPUT channel closed — OOM-level failure. The broker event
-                                // loop will increment pty_drop_counter and emit PtyReset.
+                            if let Err(_e) = tx.send(frame).await {
+                                // INPUT channel closed while the session is still live —
+                                // OOM-level failure (BC-2.05.009 Invariant 4b / PC-3):
+                                // 1. Increment the daemon-global PTY drop counter.
+                                // 2. Log WARN with the counter value.
+                                // 3. Broadcast PtyReset to all TUI clients.
+                                let n = pty_drop_counter
+                                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+                                    + 1;
                                 tracing::warn!(
                                     session_id = %session_id,
-                                    error = %e,
-                                    "proxy_task: PtyBroker INPUT channel closed (OOM-level failure)"
+                                    drop_n = n,
+                                    "WARN: PTY channel drop #{n} for session {session_id}"
                                 );
+                                crate::ipc_server::broadcast_to_subscribers(
+                                    &broker,
+                                    monocle_ipc::types::ServerToClient::PtyReset {
+                                        session_id: session_id.clone(),
+                                    },
+                                )
+                                .await;
                             }
                         }
                         // else: no broker wired (test or early startup) — bytes consumed silently
