@@ -1346,7 +1346,8 @@ fn scoped_mouse_capture_enter() {
     use std::io::stdout;
 
     // AC-001 / BC-2.09.003 Invariant 1 entry sequence — ORDER IS CRITICAL:
-    // 1. EnableMouseCapture first (enables mode 1002 button-event tracking via crossterm)
+    // 1. EnableMouseCapture first (crossterm enables its standard mode set, including mode 1003
+    //    any-event tracking on Unix — so Moved events ARE delivered in EmbeddedTerminal)
     // 2. SGR 1006h second (enables SGR extended coordinate encoding)
     //
     // This order matches the spec: EnableMouseCapture THEN print!("\x1b[?1006h").
@@ -1380,7 +1381,7 @@ fn scoped_mouse_capture_exit() {
 
     // AC-002 / BC-2.09.003 Invariant 1 exit sequence — ORDER IS CRITICAL:
     // 1. SGR 1006l first (disables SGR extended coordinate encoding)
-    // 2. DisableMouseCapture second (disables mode 1002 button-event tracking)
+    // 2. DisableMouseCapture second (disables crossterm's mouse tracking modes)
     //
     // SGR `l` MUST precede DisableMouseCapture — inverting this order leaves the
     // terminal in a broken state where SGR mode is still active after capture ends.
@@ -1451,7 +1452,7 @@ pub fn handle_pty_scroll_up(app: &mut App) {
     let new_offset = current.saturating_add(1).min(max_available);
     app.pty_scroll_offsets
         .insert(session_id.clone(), new_offset);
-    // SS-embedded-pty.md v1.16.0 §Scrollback offset invariants: sync vt100's internal offset
+    // SS-embedded-pty §Scrollback offset invariants: sync vt100's internal offset
     // to match the monocle-stored value immediately after an explicit scroll action so that
     // the stored offset and vt100's offset agree before the next render pass.
     // Note: the probe above left vt100 at offset 0 (restored via set_scrollback(0)); we now
@@ -1488,7 +1489,7 @@ pub fn handle_pty_scroll_down(app: &mut App) {
     let new_offset = current.saturating_sub(1);
     app.pty_scroll_offsets
         .insert(session_id.clone(), new_offset);
-    // SS-embedded-pty.md v1.16.0 §Scrollback offset invariants: sync vt100's internal offset
+    // SS-embedded-pty §Scrollback offset invariants: sync vt100's internal offset
     // to match the monocle-stored value immediately after an explicit scroll action so that
     // the stored offset and vt100's offset agree before the next render pass.
     if let Some(parser) = app.pty_parsers.get_mut(&session_id) {

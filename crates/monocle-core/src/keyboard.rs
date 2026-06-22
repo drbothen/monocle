@@ -542,8 +542,8 @@ fn pty_key_codepoint(code: &PtyKeyCode) -> u32 {
 /// - `Down(Left)=0`, `Down(Middle)=1`, `Down(Right)=2` (terminator `M`)
 /// - `Up(Left)=0`, `Up(Middle)=1`, `Up(Right)=2` (terminator `m`)
 /// - `Drag(Left)=32`, `Drag(Middle)=33`, `Drag(Right)=34` (terminator `M`)
-/// - `Moved=35` (UNREACHABLE on Unix — crossterm enables mode 1002 button-event tracking,
-///   not mode 1003 any-event tracking; retained for Rust match-exhaustiveness and Windows)
+/// - `Moved=35` (reachable on Unix — crossterm's `EnableMouseCapture` enables mode 1003
+///   any-event tracking; this arm encodes motion-only events correctly)
 /// - `ScrollUp=64`, `ScrollDown=65`, `ScrollLeft=66`, `ScrollRight=67` (terminator `M`)
 ///
 /// Modifier bits are additive: `Ps_final = base_Ps | modifier_bits`.
@@ -622,11 +622,10 @@ pub fn mouse_event_to_pty_bytes(event: PtyMouseEvent, pane_area: PtyRect) -> Opt
             };
             (base, b'M')
         }
-        // UNREACHABLE on Unix: crossterm EnableMouseCapture enables tracking mode 1002
-        // (button-event tracking), NOT mode 1003 (any-event tracking). Under 1002,
-        // motion without a held button is never delivered. This arm is retained for
-        // Rust match-exhaustiveness on the #[non_exhaustive] enum and for correct Windows
-        // behavior where mode 1003 may be active. (BC-2.09.003 Invariant 3 / AC-008)
+        // Moved (Ps=35) is reachable on Unix: crossterm's EnableMouseCapture enables mode 1003
+        // any-event tracking, so motion-only events (no button held) ARE delivered.
+        // monocle relies on crossterm and does not separately suppress mode 1003.
+        // This arm encodes Moved events correctly per BC-2.09.003 Invariant 3 / AC-008.
         PtyMouseEventKind::Moved => (35u32, b'M'),
         PtyMouseEventKind::ScrollUp => (64u32, b'M'),
         PtyMouseEventKind::ScrollDown => (65u32, b'M'),
