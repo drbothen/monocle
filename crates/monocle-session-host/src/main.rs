@@ -533,6 +533,15 @@ pub(crate) async fn step_event_loop(
 ) -> Result<(), SessionHostError> {
     use tokio::io::AsyncReadExt;
 
+    // AC-SH-003 / Ruling M: take_writer() ONCE at startup, before any PTY reads begin.
+    // NOT idempotent — calling it a second time panics. Must happen before
+    // spawn_pty_reader_task() is called (reader uses try_clone_reader(), not take_writer()).
+    let mut pty_writer = pty_master.take_writer().map_err(|e| {
+        SessionHostError::Io(std::io::Error::other(format!(
+            "step_event_loop: pty_master.take_writer() failed: {e}"
+        )))
+    })?;
+
     // Track whether the degraded-env handshake has been sent (sent only on FIRST accept).
     let mut first_accept = true;
 
@@ -720,7 +729,6 @@ pub(crate) async fn step_event_loop(
                         }
                         // S-047: KeyInput handler (AC-SH-003 — write bytes to PTY stdin).
                         //
-                        // On receive: `pty_writer.write_all(&bytes).await`.
                         // On write success: continue Phase B (fire-and-forget at this layer).
                         // On write failure: WARN log + break PhaseBExit::Detach.
                         //
@@ -728,12 +736,21 @@ pub(crate) async fn step_event_loop(
                         // "attach_failed" wire code in the KeyInput response (AC-SH-003).
                         //
                         // BC-2.05.010 KeyInput PC-1 / AC-SH-003 / SS-session-manager §Ruling M.
-                        Ok(monocle_ipc::types::DaemonToHost::KeyInput { bytes: _key_bytes }) => {
-                            // todo!(): the implementer will wire pty_writer.write_all(&_key_bytes).
-                            // Until then, log and continue (no panic — Phase B remains stable).
-                            tracing::debug!(
+                        Ok(monocle_ipc::types::DaemonToHost::KeyInput { bytes: key_bytes }) => {
+                            use std::io::Write;
+                            if let Err(e) = pty_writer.write_all(&key_bytes) {
+                                tracing::warn!(
+                                    session_id = %session_id,
+                                    byte_count = key_bytes.len(),
+                                    error = %e,
+                                    "session-host: KeyInput PTY write failed — detaching"
+                                );
+                                break PhaseBExit::Detach;
+                            }
+                            tracing::trace!(
                                 session_id = %session_id,
-                                "session-host: DaemonToHost::KeyInput received (write to PTY stdin — S-047 todo)"
+                                byte_count = key_bytes.len(),
+                                "session-host: KeyInput written to PTY stdin"
                             );
                         }
                         Ok(_other) => {
@@ -1009,11 +1026,27 @@ pub(crate) async fn kill_sequence(
 ///
 /// AC-SH-002 / BC-2.05.011.
 #[allow(dead_code)]
-#[allow(clippy::todo)]
 async fn recv_daemon_msg(
-    _stream: &mut tokio::net::UnixStream,
+    stream: &mut tokio::net::UnixStream,
 ) -> Result<monocle_ipc::types::DaemonToHost, SessionHostError> {
-    todo!()
+    use tokio::io::AsyncReadExt;
+
+    let mut len_buf = [0u8; 4];
+    stream.read_exact(&mut len_buf).await?;
+    let msg_len = u32::from_le_bytes(len_buf) as usize;
+
+    if msg_len == 0 || msg_len > MAX_FRAME_LEN {
+        return Err(SessionHostError::Io(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            format!("invalid DaemonToHost frame length: {msg_len}"),
+        )));
+    }
+
+    let mut body = vec![0u8; msg_len];
+    stream.read_exact(&mut body).await?;
+
+    serde_json::from_slice::<monocle_ipc::types::DaemonToHost>(&body)
+        .map_err(|e| SessionHostError::Io(std::io::Error::other(e.to_string())))
 }
 
 /// Spawn the PTY reader `tokio::task::spawn_blocking` thread.
@@ -1035,43 +1068,211 @@ async fn recv_daemon_msg(
 ///
 /// AC-SH-001 / BC-2.05.011 §ScrollbackChunk producer.
 #[allow(dead_code)]
-#[allow(clippy::todo)]
 fn spawn_pty_reader_task(
-    _session_id: String,
-    _pty_master: &dyn portable_pty::MasterPty,
+    session_id: String,
+    pty_master: &dyn portable_pty::MasterPty,
 ) -> tokio::sync::mpsc::Receiver<bytes::Bytes> {
-    todo!()
+    use bytes::Bytes;
+    use tokio::runtime::Handle;
+
+    // Bounded channel (capacity 1024) — backpressure from the select! receiver.
+    let (tx, rx) = tokio::sync::mpsc::channel::<Bytes>(1024);
+
+    // try_clone_reader() returns a Box<dyn Read + Send> that reads from the PTY master.
+    let mut reader = match pty_master.try_clone_reader() {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!(
+                session_id = %session_id,
+                error = %e,
+                "spawn_pty_reader_task: try_clone_reader() failed — PTY reader not started"
+            );
+            return rx;
+        }
+    };
+
+    // Obtain the tokio Handle BEFORE entering spawn_blocking (safe from async context).
+    let handle = Handle::current();
+
+    tokio::task::spawn_blocking(move || {
+        use std::io::Read;
+
+        let mut buf = [0u8; 4096];
+        loop {
+            match reader.read(&mut buf) {
+                Ok(0) => {
+                    // EOF: PTY master closed (child exited or PTY hung up).
+                    tracing::debug!(
+                        session_id = %session_id,
+                        "spawn_pty_reader_task: PTY reader EOF — exiting blocking thread"
+                    );
+                    break;
+                }
+                Ok(n) => {
+                    let chunk = Bytes::copy_from_slice(&buf[..n]);
+                    // Block on bounded send — applies backpressure.
+                    match handle.block_on(tx.send(chunk)) {
+                        Ok(()) => {}
+                        Err(_send_err) => {
+                            // Receiver dropped (event loop exited abnormally).
+                            tracing::warn!(
+                                session_id = %session_id,
+                                "spawn_pty_reader_task: channel send failed — receiver dropped, exiting"
+                            );
+                            break;
+                        }
+                    }
+                }
+                Err(e) => {
+                    // I/O error on PTY read (e.g., EIO when child exits on Linux).
+                    tracing::debug!(
+                        session_id = %session_id,
+                        error = %e,
+                        "spawn_pty_reader_task: PTY read error — exiting blocking thread"
+                    );
+                    break;
+                }
+            }
+        }
+    });
+
+    rx
+}
+
+/// Maximum rows per scrollback chunk (AC-SH-004 / §Screen-state transfer).
+///
+/// Budget: MAX_FRAME_LEN = 256 KiB = 262,144 bytes.
+/// Worst-case JSON serialization: ~80 cols × ~45 bytes/cell = ~3,600 bytes/row.
+/// 50 rows × 3,600 bytes/row = 180,000 bytes — safely below the 256 KiB frame limit
+/// with margin for JSON envelope overhead.
+const SCROLLBACK_CHUNK_MAX_ROWS: usize = 50;
+
+/// Serialize a single `vt100::Cell` into a `SerializedCell`.
+///
+/// Maps `vt100::Color` → `SerializedColor` and extracts the 5-bit attribute bitmask
+/// (bold=0, dim=1, italic=2, underline=3, inverse=4) from the cell's attribute flags.
+fn serialize_cell(cell: &vt100::Cell) -> monocle_ipc::types::SerializedCell {
+    use monocle_ipc::types::{SerializedCell, SerializedColor};
+
+    let map_color = |c: vt100::Color| match c {
+        vt100::Color::Default => SerializedColor::Default,
+        vt100::Color::Idx(i) => SerializedColor::Ansi(i),
+        vt100::Color::Rgb(r, g, b) => SerializedColor::Rgb(r, g, b),
+    };
+
+    let attr_byte: u8 = (u8::from(cell.bold()))
+        | (u8::from(cell.dim()) << 1)
+        | (u8::from(cell.italic()) << 2)
+        | (u8::from(cell.underline()) << 3)
+        | (u8::from(cell.inverse()) << 4);
+
+    SerializedCell::new(
+        cell.contents().to_string(),
+        map_color(cell.fgcolor()),
+        map_color(cell.bgcolor()),
+        attr_byte,
+    )
 }
 
 /// Stream a real scrollback dump from the live `vt100::Parser` state to the daemon.
 ///
-/// Called from Phase B when `DaemonToHost::Attach` is received, replacing the empty
-/// 0-chunk stub from S-035 (AC-SH-004 / BC-2.05.011 §Screen-state transfer).
+/// Called from Phase B when `DaemonToHost::Attach` is received.
+/// Serializes the screen snapshot into ≤200-row chunks, sends each as
+/// `HostToDaemon::ScrollbackChunk`, then terminates with `ScrollbackDumpComplete`.
 ///
-/// Steps (AC-SH-004):
-/// 1. Snapshot `parser.screen()` at the instant `Attach` is received.
-/// 2. No pause: PtyBytes forwarding continues in the `select!` while the dump is prepared.
-///    (The `select!` arm completes before re-entering — the dump is bounded and fast.)
-/// 3. Serialize scrollback + visible rows as `Vec<Vec<SerializedCell>>` using
-///    `SerializedCell::new` / `SerializedColor` from `monocle_ipc::types`.
-/// 4. Chunk at ≤200 rows per `HostToDaemon::ScrollbackChunk { rows, chunk_seq }`.
-///    `chunk_seq` starts at 0 and increments monotonically.
-/// 5. Send `HostToDaemon::ScrollbackDumpComplete { total_chunks, cursor_row, cursor_col,
-///    pty_rows, pty_cols }` derived from `screen.cursor_position()` and parser dimensions.
-/// 6. On any `send_host_msg()` error: log WARN and return `Err(SessionHostError::Io(...))`.
-///    The caller breaks Phase B with `PhaseBExit::Detach`.
-///
-/// `SerializedCell` and `SerializedColor` are imported from `monocle_ipc::types` (not redefined).
-/// Chunking limit: ≤200 rows per chunk to stay below the 256 KiB MAX_FRAME_LEN.
+/// Dumps the visible screen rows via `screen.cell(row, col)`. The vt100::Screen
+/// public API exposes only the visible screen (no public scrollback row accessor);
+/// scrollback history is not transferred in this protocol version.
 ///
 /// AC-SH-004 / BC-2.05.011 §Screen-state transfer / SS-session-manager §Ruling M.
-#[allow(clippy::todo)]
 async fn stream_scrollback_dump_chunked(
-    _session_id: &str,
-    _parser: &vt100::Parser,
-    _stream: &mut tokio::net::UnixStream,
+    session_id: &str,
+    parser: &vt100::Parser,
+    stream: &mut tokio::net::UnixStream,
 ) -> Result<(), SessionHostError> {
-    todo!()
+    // Step 1: snapshot the screen at the instant Attach is received.
+    let screen = parser.screen();
+    let (pty_rows, pty_cols) = screen.size();
+    let (cursor_row, cursor_col) = screen.cursor_position();
+
+    // Step 3: serialize all visible rows into a flat vec before chunking so
+    // the total chunk count is known before any send begins.
+    let mut all_rows: Vec<Vec<monocle_ipc::types::SerializedCell>> =
+        Vec::with_capacity(pty_rows as usize);
+
+    for row_idx in 0..pty_rows {
+        let cells: Vec<monocle_ipc::types::SerializedCell> = (0..pty_cols)
+            .map(|col| {
+                // cell() returns None only when (row, col) is outside the screen;
+                // since we iterate within bounds, this will always be Some.
+                // Fall back to a default blank cell to keep the protocol well-formed.
+                let cell_ref = screen.cell(row_idx, col);
+                match cell_ref {
+                    Some(c) => serialize_cell(c),
+                    None => {
+                        use monocle_ipc::types::{SerializedCell, SerializedColor};
+                        SerializedCell::new(
+                            String::new(),
+                            SerializedColor::Default,
+                            SerializedColor::Default,
+                            0u8,
+                        )
+                    }
+                }
+            })
+            .collect();
+        all_rows.push(cells);
+    }
+
+    // Step 4: chunk at ≤ SCROLLBACK_CHUNK_MAX_ROWS rows per message.
+    let chunks: Vec<Vec<Vec<monocle_ipc::types::SerializedCell>>> = all_rows
+        .chunks(SCROLLBACK_CHUNK_MAX_ROWS)
+        .map(|c| c.to_vec())
+        .collect();
+    let total_chunks = chunks.len() as u32;
+
+    for (chunk_seq, chunk_rows) in chunks.into_iter().enumerate() {
+        let msg = monocle_ipc::types::HostToDaemon::ScrollbackChunk {
+            rows: chunk_rows,
+            chunk_seq: chunk_seq as u32,
+        };
+        send_host_msg(stream, &msg).await.map_err(|e| {
+            tracing::warn!(
+                session_id = %session_id,
+                chunk_seq = chunk_seq,
+                error = %e,
+                "stream_scrollback_dump_chunked: send ScrollbackChunk failed"
+            );
+            e
+        })?;
+    }
+
+    // Step 5: send ScrollbackDumpComplete.
+    let complete_msg = monocle_ipc::types::HostToDaemon::ScrollbackDumpComplete {
+        total_chunks,
+        cursor_row,
+        cursor_col,
+        pty_rows,
+        pty_cols,
+    };
+    send_host_msg(stream, &complete_msg).await.map_err(|e| {
+        tracing::warn!(
+            session_id = %session_id,
+            error = %e,
+            "stream_scrollback_dump_chunked: send ScrollbackDumpComplete failed"
+        );
+        e
+    })?;
+
+    tracing::debug!(
+        session_id = %session_id,
+        total_chunks = total_chunks,
+        pty_rows = pty_rows,
+        pty_cols = pty_cols,
+        "stream_scrollback_dump_chunked: scrollback dump complete"
+    );
+
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------

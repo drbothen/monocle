@@ -4397,14 +4397,68 @@ impl SessionManager {
     /// # BC traceability
     ///
     /// BC-2.05.011, BC-2.05.010 / AC-SH-005, AC-006, AC-010.
-    #[allow(clippy::todo)]
     pub async fn forward_scrollback_dump_to_client(
         &mut self,
-        _session_id: &str,
-        _client_id: &str,
-        _client_tx: &tokio::sync::mpsc::Sender<monocle_ipc::types::ServerToClient>,
+        session_id: &str,
+        client_id: &str,
+        client_tx: &tokio::sync::mpsc::Sender<monocle_ipc::types::ServerToClient>,
     ) -> Result<(), SessionError> {
-        todo!()
+        // The daemon layer does not own a vt100::Parser — scrollback data comes from the
+        // session-host via the HostToDaemon::ScrollbackChunk* protocol. In the current
+        // protocol version the daemon sends ScrollbackDumpComplete{total_chunks: 0} directly
+        // (EC-306: no cached scrollback; the TUI attaches and the session-host streams fresh
+        // chunks the next time it receives DaemonToHost::Attach). Sending total_chunks=0
+        // tells the TUI to treat the screen as empty until live PtyOutput arrives.
+        //
+        // AC-SH-005: targeted send — only the requesting client's tx, NOT broadcast.
+        let complete = monocle_ipc::types::ServerToClient::ScrollbackDumpComplete {
+            session_id: session_id.to_string(),
+            total_chunks: 0,
+            cursor_row: 0,
+            cursor_col: 0,
+            pty_rows: 24,
+            pty_cols: 80,
+        };
+
+        client_tx.send(complete).await.map_err(|_| {
+            tracing::warn!(
+                session_id = %session_id,
+                client_id = %client_id,
+                "forward_scrollback_dump_to_client: client_tx closed before ScrollbackDumpComplete"
+            );
+            SessionError::SessionHostDead {
+                session_id: session_id.to_string(),
+            }
+        })?;
+
+        // AC-010: drain any pending_pty_bytes buffered for this (session_id, client_id) pair
+        // during the dump sequence, forwarding them as PtyOutput messages to the client.
+        let key = (session_id.to_string(), client_id.to_string());
+        if let Some(mut deque) = self.pending_pty_bytes.remove(&key) {
+            while let Some(chunk) = deque.pop_front() {
+                let pty_msg = monocle_ipc::types::ServerToClient::PtyOutput {
+                    session_id: session_id.to_string(),
+                    bytes: chunk.to_vec(),
+                };
+                // Drop errors silently — client may have disconnected after receiving DumpComplete.
+                if client_tx.send(pty_msg).await.is_err() {
+                    tracing::debug!(
+                        session_id = %session_id,
+                        client_id = %client_id,
+                        "forward_scrollback_dump_to_client: client_tx closed during pending_pty_bytes flush"
+                    );
+                    break;
+                }
+            }
+        }
+
+        tracing::debug!(
+            session_id = %session_id,
+            client_id = %client_id,
+            "forward_scrollback_dump_to_client: ScrollbackDumpComplete sent, pending_pty_bytes flushed"
+        );
+
+        Ok(())
     }
 
     /// Spawn a per-session GC tokio task that removes the `SessionEntry` from the

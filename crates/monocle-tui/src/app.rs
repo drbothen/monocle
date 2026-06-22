@@ -368,6 +368,23 @@ pub struct App {
     /// arriving after the send (before the first chunk) is buffered correctly.
     pub dump_in_progress: HashMap<String, bool>,
 
+    // -----------------------------------------------------------------------
+    // S-047: Scrollback chunk accumulation buffer (BC-2.05.011 AC-007/AC-008)
+    // -----------------------------------------------------------------------
+    /// Per-session in-flight scrollback chunk buffer.
+    ///
+    /// Accumulates `ServerToClient::ScrollbackChunk` payloads in receipt order while
+    /// `dump_in_progress[session_id] == true`. On `ScrollbackDumpComplete`, if
+    /// `total_chunks == buffer.len()` the TUI replays the buffer into the session's
+    /// `vt100::Parser`. On mismatch or out-of-order chunk_seq, the buffer is discarded
+    /// and `AttachSession` is re-triggered (AC-007 / BC-2.05.011 PC-3).
+    ///
+    /// Key: session UUID string. Value: ordered `Vec` of chunk row vectors (each chunk
+    /// is `Vec<Vec<SerializedCell>>`). Cleared after replay or discard.
+    ///
+    /// S-047 / BC-2.05.011 §ScrollbackChunk producer.
+    pub scrollback_chunk_buffer: HashMap<String, Vec<Vec<Vec<monocle_ipc::types::SerializedCell>>>>,
+
     /// Buffered PTY bytes received while a scrollback dump is in progress (pure core).
     ///
     /// Keyed by session UUID string. Each inner `Vec<u8>` is one `PtyOutput` message's bytes.
@@ -574,6 +591,9 @@ impl App {
             pty_dump_received: HashSet::new(),
             dump_in_progress: HashMap::new(),
             pending_pty_bytes: HashMap::new(),
+            // S-047: scrollback chunk accumulation buffer (BC-2.05.011 AC-007/AC-008).
+            // Populated by on_scrollback_chunk; cleared on DumpComplete or gap discard.
+            scrollback_chunk_buffer: HashMap::new(),
             // AC-008 / BC-2.09.001 Invariant 4: computed above from config.pty_scrollback_rows.
             // None → 1000 (default_scrollback_rows); Some(raw) → clamp_scrollback_rows(raw).
             scrollback_rows,
@@ -1001,38 +1021,140 @@ pub fn on_scrollback_dump_complete(
 /// Accumulate an incoming `ServerToClient::ScrollbackChunk` for later screen reconstruction.
 ///
 /// Validates `chunk_seq` contiguity (AC-007, BC-2.05.011 §ScrollbackChunk PC-3):
-/// - If `chunk_seq == expected_seq` (i.e., `buffered_chunks.len() as u32`): appends to buffer.
-/// - If `chunk_seq` is a gap: clears all buffered chunks for the session and re-triggers
-///   `ClientToServer::AttachSession` to restart the dump. The client MUST NOT attempt to
-///   reconstruct from out-of-order chunks.
+/// - If `chunk_seq == expected_seq` (i.e., `buffered_chunks.len() as u32`): appends to buffer
+///   and sets `dump_in_progress[session_id] = true` (AC-008).
+/// - If `chunk_seq` is a gap: clears all buffered chunks for the session, clears
+///   `dump_in_progress`, and re-triggers `ClientToServer::AttachSession` to restart the dump.
+///   The client MUST NOT attempt to reconstruct from out-of-order chunks.
 ///
 /// Called from `handle_server_message` on receipt of `ServerToClient::ScrollbackChunk`.
 /// Reconstruction from accumulated rows happens in `on_scrollback_dump_complete`.
 ///
-/// BC-2.05.011 §ScrollbackChunk PC-3 / AC-007.
-#[allow(clippy::todo)]
+/// BC-2.05.011 §ScrollbackChunk PC-3 / AC-007 / AC-008.
 pub fn on_scrollback_chunk(
-    _app: &mut App,
-    _session_id: String,
-    _rows: Vec<Vec<monocle_ipc::types::SerializedCell>>,
-    _chunk_seq: u32,
+    app: &mut App,
+    session_id: String,
+    rows: Vec<Vec<monocle_ipc::types::SerializedCell>>,
+    chunk_seq: u32,
 ) {
-    todo!()
+    // Determine expected_seq from how many chunks have already been buffered.
+    let buffer = app
+        .scrollback_chunk_buffer
+        .entry(session_id.clone())
+        .or_default();
+    let expected_seq = buffer.len() as u32;
+
+    if chunk_seq == expected_seq {
+        // Contiguous chunk — buffer it.
+        buffer.push(rows);
+        // AC-008: set dump_in_progress = true while chunks are arriving.
+        app.dump_in_progress.insert(session_id.clone(), true);
+        tracing::trace!(
+            session_id = %session_id,
+            chunk_seq = chunk_seq,
+            buffered = buffer.len(),
+            "on_scrollback_chunk: accepted contiguous chunk"
+        );
+    } else {
+        // Gap detected: discard buffered chunks and re-trigger attach.
+        tracing::warn!(
+            session_id = %session_id,
+            chunk_seq = chunk_seq,
+            expected_seq = expected_seq,
+            "on_scrollback_chunk: chunk_seq gap — discarding buffer and re-triggering AttachSession"
+        );
+        app.scrollback_chunk_buffer.remove(&session_id);
+        app.dump_in_progress.remove(&session_id);
+
+        // Re-trigger AttachSession via ipc_tx (try_send: sync function, bounded channel).
+        if let Some(ref tx) = app.ipc_tx {
+            let msg = ClientToServer::AttachSession {
+                session_id: session_id.clone(),
+            };
+            match tx.try_send(msg) {
+                Ok(()) => {
+                    tracing::debug!(
+                        session_id = %session_id,
+                        "on_scrollback_chunk: re-triggered AttachSession after chunk gap"
+                    );
+                    app.dump_in_progress.insert(session_id, true);
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        session_id = %session_id,
+                        error = %e,
+                        "on_scrollback_chunk: failed to re-trigger AttachSession (channel full or closed)"
+                    );
+                }
+            }
+        } else {
+            tracing::warn!(
+                session_id = %session_id,
+                "on_scrollback_chunk: ipc_tx is None — cannot re-trigger AttachSession after gap"
+            );
+        }
+    }
 }
 
 /// Handle `ServerToClient::PtyReset` — PTY byte stream interrupted (BC-2.05.011 §PtyReset PC-3).
 ///
 /// Steps (AC-009):
 /// 1. Clear all in-flight scrollback chunks for `session_id`.
-/// 2. Clear the local PTY display buffer for `session_id`.
-/// 3. Display status bar message `[PTY reset — <session_id_short>]` for 5 seconds.
-/// 4. Re-trigger `ClientToServer::AttachSession { session_id }` automatically.
+/// 2. Clear `pending_pty_bytes` for `session_id`.
+/// 3. Set `status_message` to `[PTY reset — <session_id_short>]`.
+/// 4. Re-trigger `ClientToServer::AttachSession { session_id }` via `app.ipc_tx`.
 ///
 /// Called from `handle_server_message` for `ServerToClient::PtyReset`.
 /// BC-2.05.011 §PtyReset postcondition 3 / BC-2.05.009 Invariant 4.
-#[allow(clippy::todo)]
-pub fn on_pty_reset(_app: &mut App, _session_id: String) {
-    todo!()
+pub fn on_pty_reset(app: &mut App, session_id: String) {
+    // Step 1: clear in-flight scrollback chunk buffer.
+    app.scrollback_chunk_buffer.remove(&session_id);
+    app.dump_in_progress.remove(&session_id);
+
+    // Step 2: clear pending_pty_bytes for this session.
+    if let Some(deque) = app.pending_pty_bytes.get_mut(&session_id) {
+        deque.clear();
+    }
+
+    // Step 3: set status_message with short session_id (first 8 chars).
+    let short_id = if session_id.len() >= 8 {
+        &session_id[..8]
+    } else {
+        &session_id
+    };
+    app.status_message = Some(format!("[PTY reset — {short_id}]"));
+
+    tracing::debug!(
+        session_id = %session_id,
+        "on_pty_reset: cleared chunk buffer and pending_pty_bytes; re-triggering AttachSession"
+    );
+
+    // Step 4: re-trigger AttachSession (try_send: sync function, bounded channel).
+    if let Some(ref tx) = app.ipc_tx {
+        let msg = ClientToServer::AttachSession {
+            session_id: session_id.clone(),
+        };
+        match tx.try_send(msg) {
+            Ok(()) => {
+                tracing::debug!(
+                    session_id = %session_id,
+                    "on_pty_reset: AttachSession re-triggered successfully"
+                );
+            }
+            Err(e) => {
+                tracing::warn!(
+                    session_id = %session_id,
+                    error = %e,
+                    "on_pty_reset: failed to re-trigger AttachSession (channel full or closed)"
+                );
+            }
+        }
+    } else {
+        tracing::warn!(
+            session_id = %session_id,
+            "on_pty_reset: ipc_tx is None — cannot re-trigger AttachSession"
+        );
+    }
 }
 
 /// Handle `AppEvent::DumpWindowTimeout` — the dump-window timeout elapsed without
