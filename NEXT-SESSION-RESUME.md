@@ -1,4 +1,4 @@
-# monocle — Resume From Here (Wave-9 IN PROGRESS — S-039 merged, DTU deadlock resolved, D-341, 2026-06-20)
+# monocle — Resume From Here (Wave-9 S-042 MERGED, D-345, 2026-06-22)
 
 Read this file first, then CLAUDE.md, then `.factory/STATE.md`.
 
@@ -6,22 +6,23 @@ Read this file first, then CLAUDE.md, then `.factory/STATE.md`.
 
 ## Current Position
 
-- **develop HEAD:** `3eba172` (fix(ci): DTU fidelity path-filter deadlock, PR #48). Last story commit: `a7ad00e` (S-039, PR #47).
-- **factory-artifacts HEAD:** `5b0f748` (state(D-341): PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK RESOLVED — STATE v8.05→v8.06)
-- **STATE.md:** v8.06
-- **Stories:** 39/51 done (238/311 pts); Wave 9: 1/6 done (8/42 pts)
+- **develop HEAD:** `2f01de0` (S-042 PTY Resize Detection + Debounce + ResizePane IPC, PR #51).
+- **factory-artifacts HEAD:** run `git -C .factory log -1 --format='%h %s'`
+- **STATE.md:** v8.10
+- **Stories:** 41/51 done (254/314 pts); Wave 9: 3/6 done (24/45 pts)
 - **10 workspace crates:** monocle-core, monocle-runtime, monocle-proto, monocle-test-harness, monocle (binary), monocle-config, monocle-ipc, xtask, monocle-tui, monocle-session-host
 
 ---
 
 ## What This Session Delivered
 
-**S-039 (PTY output pipeline, 8 pts, EPIC-09, Wave 9, BC-2.09.001) MERGED PR #47 @ a7ad00e (D-340).** 10-pass adversarial convergence (3 consecutive CLEAN: passes 8/9/10). 35 tests. Security review PASS_WITH_NOTES (2 LOW fixed in-scope).
+**S-042 (PTY Resize Detection + 50ms Debounce + ResizePane IPC, 8 pts, EPIC-09, Wave 9, BC-2.09.006) MERGED PR #51 @ 2f01de0 (D-345).** Full end-to-end resize pipeline. 9-pass adversarial convergence (3 consecutive CLEAN: passes 7/8/9). 32 behavioral tests. Security PASS (3 in-scope fixes).
 
 | Story | Pts | PR | SHA | Decision | Notes |
 |-------|-----|----|-----|----------|-------|
-| **S-039** PTY output pipeline | 8 | #47 | a7ad00e | D-340 | IPC PtyOutput → vt100::Parser → tui-term PseudoTerminal render. Auto-attach-on-first-entry buffering/replay. Per-session parser lifecycle (create/GC via shared gc_session_with_mode_exit). Bounded buffer (512KiB / 4096-msg cap, drop-oldest + drop counter) + 10s dump-window timeout force-resolve. Reconnect cleanup. Spec evolution: BC-2.09.001 →1.7.2 (Inv-3/4/5/7/8/9, EC-200..208), BC-2.09.007 →1.3.1, SS-embedded-pty →1.10.0, SS-config →1.4.0, BC-2.07.002 →1.1.0 (pty_scrollback_rows: Option), S-039 story →1.8. |
-| **fix(ci)** DTU deadlock | — | #48 | 3eba172 | D-341 | PROCESS-GAP-DTU-FIDELITY-PATH-FILTER-DEADLOCK RESOLVED: dtu-fidelity.yml no longer path-filters the pull_request trigger; internal pure-bash change-detection gate runs real oracle when DTU-relevant paths change, reports success-skip (exit 0) otherwise. Job name "DTU fidelity oracle (cargo xtask dtu-fidelity)" unchanged (required-context byte-identical). S-039 required a one-time HUMAN-AUTHORIZED admin merge (predated fix); all future TUI-only PRs (S-040/S-042/S-043) now merge with NO admin bypass. |
+| **S-042** PTY Resize Detection + 50ms Debounce + ResizePane IPC | 8 | #51 | 2f01de0 | D-345 | Full end-to-end: TUI detection/debounce (last_pty_pane_area + 50ms deadline + check_resize_debounce), daemon ResizePane routing → resize_session() (zero-dim clamp + WARN-drop carve-out), DaemonToHost::Resize forwarding, session-host pty.resize() + parser.set_size(). 32 tests (13 resize_debounce + 6 run_loop_wiring + 2 poll_timeout_seam + 9 daemon_resize + 2 session-host). 9-pass adversarial (P1 BLOCKER dead-detection→P2 BLOCKER unwired-debounce+daemon-AC violations→P3 HIGH stale-state→P4 MED fire-latency→P5 CLEAN+2-LOW-fixed→P6 spec-residue→P7/P8/P9 CLEAN). Security PASS: SEC-001 CWE-749 #[cfg(test)] gate, SEC-002 CWE-190 checked u32 cast, SEC-003 CWE-532 UUID guard before log (commits 4865ffe+9cf2482). BC-2.09.006 v1.3.0; S-042 story v1.5; SS-session-manager v2.17.1. |
+
+D-344 spec cascade (architect, already committed at factory-artifacts 22b5836+15d567a): BC-2.09.006 v1.3.0, SS-session-manager v2.17.1 (F-S042-ADV-MED-001 ResizePane ownership-drift cleanup), S-042 v1.5, S-047 v1.7, STORY-INDEX <!-- version-pin-historical: v5.62 at D-344 authoring time -->, EVAL-INDEX v1.40, sprint-state <!-- version-pin-historical: v1.55 at D-344 authoring time -->, 16 BC arch-source pin cascades, version-pin-registry.yaml.
 
 ---
 
@@ -35,13 +36,25 @@ Read this file first, then CLAUDE.md, then `.factory/STATE.md`.
 
 ## Next-Action Queue
 
-1. **S-040** (keyboard-forwarding, Wave 9) — **UNBLOCKED** (deps S-021 + S-025 + S-039 all merged). No DTU deadlock risk (RESOLVED D-341). Read the S-040 story + its BCs and confirm scope before dispatching stub-architect. **START HERE.**
+1. **S-043** (scrollback-navigation, Wave 9) — **UNBLOCKED** (deps S-039 + S-042 both merged). BC: BC-2.09.007 v1.3.2. 3 pts. **START HERE** or run S-041 in parallel.
 
-2. **S-042** (resize-debounce) and **S-043** (scrollback-navigation) — Wave 9, depend on S-039 (now merged). S-042 owns embedded-terminal pane sizing / pty_scroll_offsets reset (BC-2.09.006). F-S039-P9-OBS-001 (S-039 render uses sessions-pane placeholder area at 24x80) is parked for the Wave-9 integration gate — S-042 reconciles.
+2. **S-041** (mouse-forwarding-sgr, Wave 9) — **UNBLOCKED** (dep S-040 merged). BC: BC-2.09.003. 5 pts. S-043 and S-041 have no mutual dependency; may be delivered in either order.
 
 3. **SEC-006-CCR-URL-VALIDATION** (CWE-20/93): `ccr_base_url` flows unvalidated from TUI wire to child env. **MUST be addressed before S-045.**
 
 4. S-046 waits on S-032; S-047 needs S-033 + S-034 + S-035 + S-046; S-048 needs S-022 + S-033 + S-047.
+
+---
+
+## New Durable Follow-ups (from S-042 cycle)
+
+| ID | Route | Description |
+|----|-------|-------------|
+| F-S042-OBS-WRITEFRAMED-DOCNAMING | tech-writer/implementer | [LOW, doc-only] resize_session doc-comment + AC-015 cite `write_framed_to_stream`; impl uses byte-identical inline framing. Clarify in future doc pass. Non-blocking. |
+| F-S042-OBS-LASTPANEAREA-DOC | implementer | [LOW, doc-only] `App::last_pty_pane_area` doc claims "None when not EmbeddedTerminal" but field never reset on mode exit (benign — mode guard prevents stale read). Optional. |
+| WG-S042-SESSIONHOST-KEYINPUT | wave-gate/implementer | [wave-gate] session-host has no DaemonToHost::KeyInput arm (S-040 keyboard leg) — confirm KeyInput end-to-end at Wave-9 integration gate. Non-blocking. |
+| F-S039-P9-OBS-001 | wave-gate | EmbeddedTerminal render uses 24x80 placeholder; reconciled by S-042. Verify/close at Wave-9 integration gate. |
+| WAVE-GATE-IPC-WRITER-ERROR-TAXONOMY | SUPERSEDED | ResizePane WARN-drop carve-out implemented in S-042 (D-344 ruling). No remaining action. |
 
 ---
 
@@ -67,13 +80,11 @@ Read this file first, then CLAUDE.md, then `.factory/STATE.md`.
 3. **No version literals in source doc-comments or test prose** — POL-11 will flag them; de-version all citations; historical snapshots use `<!-- version-pin-historical: ... -->` HTML comment
 4. **Registry atomicity** (L-S027-004): any BC/SS spec version bump + `version-pin-registry.yaml` update = **one atomic** `factory-artifacts` commit; cascade STORY-INDEX/EVAL-INDEX/dependency-graph pins in same commit; NEVER commit the spec without updating the registry
 5. **Unique `/tmp` paths** per story dispatch — prevents commit-message mixup across concurrent story agents
-6. **Architect = spec only** — all code changes go to implementer-in-worktree (PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP)
+6. **Architect = spec only** — all code changes (including doc-comments in source files) go to implementer-in-worktree (PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP — THREE recurrences; see lessons.md)
 7. **pr-manager completes all 9 steps** — orchestrator verifies merge via `gh pr view` before declaring done (PROCESS-GAP-PRMANAGER-EARLY-RETURN)
 8. **factory-artifacts push verification** (PROCESS-GAP-FACTORY-ARTIFACTS-NOT-PUSHED, D-337): after every spec-bumping agent dispatch, orchestrator MUST verify `git -C .factory log origin/factory-artifacts..HEAD` is EMPTY and push immediately if not
 
-**DTU deadlock RESOLVED (D-341):** non-DTU-path PRs now report the DTU oracle via the skip-success path; no admin bypass needed. The 11 required develop contexts are unchanged (bare names).
-
-**B002 build-order note:** 2 B002 integration tests (`test_BC_2_08_001_B002_*`) require the `monocle-session-host` binary at `target/debug/deps/`. Run `cargo build --workspace` first; they PASS in CI (which builds the binary). Failing bare `cargo test --workspace` locally without prior build is NOT a regression.
+**Mutating agents MUST be serialized in worktrees** (L-S042-ORCH-PARALLEL-WORKTREE): never dispatch two mutating agents to the same `.worktrees/S-NNN` concurrently — commits can race. Serialize or use isolated worktrees.
 
 ---
 
@@ -96,23 +107,23 @@ PROCESS-GAP-BRANCH-PROTECTION-CHECK-NAME-MISMATCH is RESOLVED (D-335). PROCESS-G
 - **D-326..D-331**: S-033 Rulings A–H; adversarial convergence COMPLETE (7 passes, 3 clean)
 - **D-332**: S-033 MERGED PR #40 @ c7e10f2
 - **D-333**: Wave-8 Tier-2 autonomous delivery authorized; demo WEBM+.tape-no-GIF
-- **D-334**: S-034 MERGED PR #41 @ 4dfe0db. Kill path complete. Rulings H/I/J/K. <!-- version-pin-historical: SS-session-manager v2.11.0, BC-2.08.003 v1.5.0, BC-2.08.008 v1.3.5 at D-334 checkpoint -->
+- **D-334**: S-034 MERGED PR #41 @ 4dfe0db. Kill path complete. <!-- version-pin-historical: SS-session-manager v2.11.0, BC-2.08.003 v1.5.0, BC-2.08.008 v1.3.5 at D-334 checkpoint -->
 - **D-335**: S-037 MERGED PR #42 @ a7e4081. GC + rename_session. SEC-001/002 fixed in-scope. BRANCH-PROTECTION RESOLVED.
 - **D-336**: S-035 MERGED PR #43 @ 270b7d4. attach/detach. Ruling L (proxy_task kill-reader for attached sessions). S-036 UNBLOCKED.
 - **D-337**: PROCESS-GAP-FACTORY-ARTIFACTS-NOT-PUSHED codified (c8ceee1). Always push factory-artifacts after spec-bumping agents.
-- **D-338**: S-038 MERGED PR #44 @ 8d649ea + chore PR #45 @ 7f005af. WAVE-8 TIER-2 COMPLETE. Single-writer mandate (BC-2.08.006 at S-038 delivery; lock.app mandatory). SEC-001 CWE-732 + SEC-002 CWE-532 fixed in-scope (daeb4f2).
-- **D-339**: S-036 MERGED PR #46 @ a7ad00e (setsid persistence; all states handled within 5s; UDS bind blocked). WAVE-8 TIER-3 COMPLETE. <!-- version-pin-historical: BC-2.08.002/BC-2.08.004 at D-339 checkpoint -->
-- **D-340**: S-039 MERGED PR #47 @ a7ad00e. PTY output pipeline. IPC PtyOutput→vt100→tui-term render. Auto-attach buffering/replay. Bounded buffer + dump-window timeout. Security review PASS_WITH_NOTES (2 LOW fixed in-scope). 10-pass adversarial convergence (3 CLEAN).
-- **D-341**: DTU fidelity path-filter deadlock RESOLVED (PR #48 @ 3eba172). dtu-fidelity.yml pure-bash internal gate; required-context name unchanged. Future TUI-only PRs merge with no admin bypass.
+- **D-338**: S-038 MERGED PR #44 @ 8d649ea + chore PR #45 @ 7f005af. WAVE-8 TIER-2 COMPLETE. Single-writer mandate. <!-- version-pin-historical: BC-2.08.006 v1.5.0, SS-session-manager v2.15.0, BC-2.08.007 v1.5.6 at D-338 checkpoint -->
+- **D-339**: S-036 MERGED PR #46 @ d924183. WAVE-8 TIER-3 COMPLETE. <!-- version-pin-historical: BC-2.08.002 v1.2.6, BC-2.08.004 v1.4.0 at D-339 checkpoint -->
+- **D-340**: S-039 MERGED PR #47 @ a7ad00e. PTY output pipeline. 10-pass adversarial (3 CLEAN).
+- **D-341**: DTU fidelity path-filter deadlock RESOLVED (PR #48 @ 3eba172). Future TUI-only PRs merge with no admin bypass.
 - **D-342**: S-040 MERGED PR #50 @ d230a26. Full-Fidelity Keyboard Forwarding. 17-pass adversarial (3 CLEAN). NO admin bypass.
-- **D-343**: Zero-context durability checkpoint. S-042 stubs @ 40dd53a (local worktree). Test-writer next.
-- **D-344**: Human ruling — S-042 expanded to full end-to-end resize pipeline. `ClientToServer` is exhaustive (no `#[non_exhaustive]`, no wildcard arm). S-047 draft/undelivered. S-042 owns: TUI detection/debounce, daemon `ResizePane` routing → `resize_session()`, zero-dim clamp, `DaemonToHost::Resize` forwarding, session-host `pty.resize()` + `parser.set_size()`. BC-2.09.006 v1.3.0, S-042 v1.5 (8 pts), SS-session-manager v2.17.0 at D-344 authoring time (patched to v2.17.1 by F-S042-ADV-MED-001), S-047 v1.7 (ResizePane removed).
+- **D-344**: Human ruling — S-042 expanded to full end-to-end resize pipeline (8 pts). S-047 ResizePane scope removed. Spec cascade committed factory-artifacts 22b5836+15d567a.
+- **D-345**: S-042 MERGED PR #51 @ 2f01de0. Full end-to-end PTY Resize. 8 pts. 9-pass (3 CLEAN). Security PASS. NO admin bypass. Wave 9: 3/6 done. S-043 UNBLOCKED.
 - **Spawn-path Model A**: SpawnOptions on wire; SpawnRecipe daemon-internal
 - **IPC taxonomy**: 12-code wire taxonomy; 9-variant SessionError; schema_version 3
 - **PTY (ADR-0011)**: portable-pty 0.9.0 + vt100 0.16.2 + tui-term =0.3.4; MSRV 1.88
 - **SessionState**: 5 variants (Launching/Running/Detached/Terminating/Terminated) in monocle-ipc
 
-Full history: `.factory/cycles/cycle-001/decisions-archive.md` (D-001..D-341)
+Full history: `.factory/cycles/cycle-001/decisions-archive.md` (D-001..D-345)
 
 ---
 
@@ -120,16 +131,18 @@ Full history: `.factory/cycles/cycle-001/decisions-archive.md` (D-001..D-341)
 
 | ID | Route | Description |
 |----|-------|-------------|
-| F-S039-P9-OBS-001 | wave-gate/S-042 | EmbeddedTerminal render uses sessions-pane placeholder area (24x80); pane sizing/resize reconciliation is S-042/BC-2.09.006. Surface at Wave-9 integration gate. |
+| F-S042-OBS-WRITEFRAMED-DOCNAMING | tech-writer/implementer | [LOW] resize_session doc-comment names `write_framed_to_stream`; impl uses byte-identical inline framing. Future doc pass. Non-blocking. |
+| F-S042-OBS-LASTPANEAREA-DOC | implementer | [LOW] `App::last_pty_pane_area` doc: "None when not EmbeddedTerminal" but field never reset on mode exit (benign; mode guard prevents stale read). Optional. |
+| WG-S042-SESSIONHOST-KEYINPUT | wave-gate/implementer | [wave-gate] session-host has no DaemonToHost::KeyInput arm (S-040 keyboard leg). Verify at Wave-9 gate. |
+| F-S039-P9-OBS-001 | wave-gate | EmbeddedTerminal resize reconciliation — verify/close at Wave-9 gate (S-042 implemented the resize path). |
 | SEC-006-CCR-URL-VALIDATION | implementer/security | `ccr_base_url` unvalidated TUI→child env (CWE-20/93, MEDIUM). MUST fix before S-045. |
-| DEMO-BINARY-ARTIFACTS-DEVELOP | devops/human | 6 stories' WEBM demo binaries now on develop (incl. S-039). Repo-hygiene policy decision pending. |
-| F-S038-EXIT72-ENFORCEMENT | daemon-mode/phase-5 | BC-2.08.006 Inv5/EC-183 mandate daemon exit 72 on hooks-settings write failure; DaemonExit taxonomy missing code-72 variant. Pre-existing; deferred phase-5 or dedicated story. |
+| DEMO-BINARY-ARTIFACTS-DEVELOP | devops/human-decision | 6+ stories' WEBM demo binaries on develop (incl. S-042). Repo-hygiene policy decision pending. |
+| F-S038-EXIT72-ENFORCEMENT | daemon-mode/phase-5 | BC-2.08.006 Inv5/EC-183 daemon exit 72 on hooks-settings write failure; DaemonExit taxonomy missing code-72. Deferred phase-5. |
 | F-S038-INV6-PROD-CANON-TEST | test-writer/follow-up | No integration test for BC-2.08.006 Invariant 6 production canonicalization. Non-blocking. |
 | F-S035-AC005-DAEMON-BROADCAST | S-039/S-047 | daemon-side ScrollbackChunk* forwarding deferred — TODO tracker in session_manager/mod.rs attach Step 7. |
-| F-S035-LAUNCHING-CONN-DETACH-MATRIX | architect | detach-on-Launching-WITH-established-host_conn matrix wording ambiguity. Non-blocking. |
-| PROCESS-GAP-ARCHITECT-NO-COMMIT | devops | Architect agent recurred 2x leaving spec+registry uncommitted (S-034); held stable in S-035 (D-336 positive obs). Codify atomic commit obligation. |
+| PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP | devops | THREE recurrences. Architect must NEVER commit directly to develop. Prompt hardening needed before next story. |
 
-Full register (108+ active tasks): `.factory/cycles/cycle-001/task-register-full.yaml` and `.factory/STATE.md` durable_task_register.
+Full register (111+ active tasks): `.factory/cycles/cycle-001/task-register-full.yaml` and `.factory/STATE.md` durable_task_register.
 
 ---
 
@@ -139,16 +152,16 @@ Canonical source: `.factory/specs/version-pin-registry.yaml` (this table is a sn
 
 | Document | Version |
 |----------|---------|
-| STORY-INDEX | v5.55 |
-| sprint-state.yaml | v1.53 |
+| STORY-INDEX | v5.63 |
+| sprint-state.yaml | v1.56 |
 | wave-schedule.md | v2.1 |
-| dependency-graph-expansion.md | v2.9 |
-| BC-INDEX | v1.43.8 (138 BCs; 25 v1A) |
-| EVAL-INDEX | v1.25 |
+| dependency-graph-expansion.md | v2.10 |
+| BC-INDEX | v1.44.5 (138 BCs; 25 v1A) |
+| EVAL-INDEX | v1.40 |
 | ARCH-INDEX | v1.0.30 |
 | SS-ipc | v1.24.0 |
-| SS-session-manager | v2.15.0 |
-| SS-embedded-pty | v1.10.0 |
+| SS-session-manager | v2.17.1 |
+| SS-embedded-pty | v1.14.0 |
 | SS-engine-module-v2-delta | v1.6.0 |
 | SS-daemon-wiring-v2-delta | v1.12.0 |
 | SS-deps-pin-manifest-v2-delta | v1.0.2 |
@@ -156,14 +169,20 @@ Canonical source: `.factory/specs/version-pin-registry.yaml` (this table is a sn
 | prd | v1.28.3 |
 | product-brief | v2.0.4 |
 | domain-monocle-vision-synthesis | v2.2.3 |
+| BC-2.09.006 | v1.3.0 |
+| BC-2.09.007 | v1.3.2 |
+| BC-2.09.001 | v1.7.3 |
+| BC-2.09.002 | v1.2.2 |
+| BC-2.09.004 | v1.0.11 |
+| BC-2.09.005 | v1.0.7 |
 | BC-2.07.002 | v1.1.0 |
 | BC-2.08.006 | v1.5.0 |
 | BC-2.08.007 | v1.5.6 |
 | BC-2.08.008 | v1.3.7 |
 | BC-2.04.010 | v1.4.0 |
-| BC-2.09.001 | v1.7.2 |
-| BC-2.09.007 | v1.3.1 |
 | S-039 story | v1.8 |
+| S-040 story | v1.8 |
+| S-042 story | v1.5 |
 
 ---
 
