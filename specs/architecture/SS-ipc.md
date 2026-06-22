@@ -3,7 +3,7 @@ document_type: architecture-section
 level: L3
 section: "ipc"
 subsystem: SS-05
-version: "1.24.0"
+version: "1.25.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
@@ -1507,6 +1507,89 @@ Tokio write task and written to the UDS socket via `write_framed`. The write tas
 the write task over the per-client `mpsc::channel(64)`, not raw bytes. This preserves the
 property that `ServerToClient` is the single typed boundary between the broker and each TUI
 client, at both the channel level and the wire-serialization level.
+
+### PtyBroker integration: registry unification (Ruling Q1 — S-046 adversarial adjudication)
+
+**The `PtyBroker` MUST NOT own its own per-client channel registry.** The correct integration
+architecture is:
+
+1. `PtyBroker` owns ONLY the bounded INPUT channel (`Arc<Bytes>`, capacity 1024) between the PTY
+   reader task and the broker event loop. This channel provides `.send().await` backpressure to
+   the PTY reader (BC-2.05.009 Invariant 3).
+
+2. The broker event loop wraps each `Arc<Bytes>` frame as
+   `ServerToClient::PtyOutput { session_id, bytes: frame.to_vec() }` and fans it out to all
+   connected TUI clients via **`broadcast_to_subscribers(&shared_subscriber_list, msg)`** — the
+   same `SubscriberList` used by all other daemon-to-TUI broadcasts.
+
+3. The `SubscriberList` (defined in `monocle_ipc::server`) is the single authoritative registry
+   of connected TUI clients. It is populated by `register_subscriber` on IPC connect and drained
+   by `remove_subscriber` on disconnect. All daemon fan-out — PTY bytes, session state changes,
+   hook events, permission prompts — goes through `broadcast_to_subscribers`.
+
+4. **The `PtyBroker` struct MUST NOT contain `clients: HashMap<...>` or `strike_counters: HashMap<...>`
+   fields.** Those fields constitute a duplicate registry that is never populated in production
+   (only `register_client()` is called in tests) and cannot observe runtime connect/disconnect.
+
+**Slow-client disconnect semantics for PtyOutput fan-out:** `broadcast_to_subscribers` uses
+1-strike disconnect: a single `TrySendError::Full` for a client removes that client immediately
+and fires its `disconnect: Notify`. This is the canonical slow-client isolation model per
+BC-2.05.004 EC-005, and it applies to PtyOutput fan-out identically. The earlier 3-strike
+threshold specified in BC-2.05.009 Invariant 3b was written for the (now-retired) isolated
+per-broker client registry design; it is superseded by this ruling for the unified registry design.
+BC-2.05.009 is updated accordingly.
+
+**Zero-copy scope clarification:** `Arc<Bytes>` zero-copy applies ONLY to the INPUT channel
+(PTY reader → broker task). The broker-to-client fan-out path necessarily does `frame.to_vec()`
+to produce the `bytes: Vec<u8>` field in `ServerToClient::PtyOutput`. There is no zero-copy
+path from broker to TUI client; each JSON-framed message is independently serialized per client.
+Doc-comments claiming zero-copy for the per-client path are incorrect.
+
+### PtyReset emission semantics (Ruling Q4 — S-046 adversarial adjudication)
+
+`ServerToClient::PtyReset { session_id }` is emitted on exactly TWO conditions:
+
+1. **`HostToDaemon::PtyReset` received from session-host** (the session-host's own PTY reader
+   detected a byte drop in its internal ring). The proxy task calls
+   `broadcast_to_subscribers(&broker, PtyReset)` directly. This is the primary production path.
+
+2. **`tx.send(frame).await` returns `Err(_)` in the proxy task** (the broker INPUT channel is
+   closed while the session is still producing bytes — OOM-level failure, extremely rare). The
+   proxy task calls `broadcast_to_subscribers(&broker, PtyReset)` and increments the
+   `pty_drop_counter`.
+
+**MUST NOT emit PtyReset on `input_rx.recv() == None` in the broker event loop.** Input channel
+close means all INPUT channel senders have been dropped — this is the NORMAL session-exit path
+(the proxy task exits, drops its `input_tx`, and the broker's receiver observes channel close).
+Emitting `PtyReset` on graceful session teardown would spuriously corrupt TUI state for every
+normal session exit. The broker event loop MUST simply return when `input_rx.recv()` yields `None`.
+
+### pty_drop_counter semantics (Ruling Q3 — S-046 adversarial adjudication)
+
+The `pty_drop_counter` (`Arc<AtomicU64>`) is incremented ONLY in the proxy task's `PtyBytes`
+handler when `tx.send(frame).await` returns `Err(_)` — meaning the broker INPUT channel's
+receiver has been closed while the session is still live. This is an OOM-level or programming
+error condition; it is unreachable under normal operation.
+
+The counter is NOT incremented when:
+- The INPUT channel is full (backpressure — `.send().await` blocks until space is available).
+- The INPUT channel closes because the session exited (`input_rx.recv() == None` in the broker).
+- A TUI client's per-client channel is full and the client is disconnected.
+
+---
+
+## §Trace v1.25.0
+
+**S-046 adversarial adjudication — registry unification, PtyReset trigger, drop counter (Q1-Q5)** (2026-06-22):
+
+- **Finding:** The implemented `PtyBroker` owns its own `clients: HashMap<String, mpsc::Sender<ServerToClient>>` and `strike_counters` fields that are never populated in production (`register_client()` is only called in unit tests). The `spawn_event_loop` task clones these fields into a `loop_clients` snapshot at spawn time, so even a pre-spawn `register_client()` call would be stale for post-spawn connects. PTY frames are silently discarded for all real sessions in production.
+- **Ruling Q1 — Registry unification (Option A):** `PtyBroker` MUST use `broadcast_to_subscribers` on the shared `SubscriberList` for fan-out. The `clients` and `strike_counters` fields MUST be removed. New section §PtyBroker integration added.
+- **Ruling Q2 — Dynamic clients:** Resolved by Q1. `SubscriberList` is already dynamic.
+- **Ruling Q3 — Drop counter:** Counter incremented ONLY in proxy task on `tx.send(frame).await` error, NOT on `input_rx.recv() == None` (normal session exit). New §pty_drop_counter semantics section added.
+- **Ruling Q4 — PtyReset trigger:** Two canonical triggers: (a) explicit `HostToDaemon::PtyReset` from session-host; (b) proxy task `tx.send` error. Input channel close MUST NOT trigger PtyReset. New §PtyReset emission semantics section added.
+- **Ruling Q5 — Zero-copy scope:** `Vec<u8>` wire type is correct and kept. Zero-copy (`Arc<Bytes>`) applies only to the INPUT channel (PTY reader → broker). Per-client fan-out does `frame.to_vec()` per frame. Misleading zero-copy doc-comments corrected.
+- **Slow-client semantics:** 3-strike rule (BC-2.05.009 Invariant 3b, written for isolated registry) superseded by `broadcast_to_subscribers` 1-strike model. BC-2.05.009 updated.
+- **Semver:** v1.24.0 → v1.25.0 (new normative sections).
 
 ---
 

@@ -106,9 +106,9 @@ SS-forward-compatibility:
 
 SS-ipc:
   path: specs/architecture/SS-ipc.md
-  current_version: "1.24.0"
-  last_bump_commit: "[Phase-2 Pass-1 F-P1-I-005 — §Daemon-Side Per-Client Fan-out Channel added; per-client channel item type canonicalized as ServerToClient (not Arc<Bytes>); broker input channel remains Arc<Bytes> capacity 1024; per-client capacity 64; S-046 must correct HashMap<ClientId,mpsc::Sender<Arc<Bytes>>> → mpsc::Sender<ServerToClient>]"
-  last_bump_date: "2026-06-15"
+  current_version: "1.25.0"
+  last_bump_commit: "[S-046 adversarial adjudication Q1-Q5 — §PtyBroker integration, §PtyReset emission semantics, §pty_drop_counter semantics added; registry unification (Option A); 1-strike harmonization; zero-copy scope clarification]"
+  last_bump_date: "2026-06-22"
 
 SS-permissions-phase1:
   path: specs/architecture/SS-permissions-phase1.md
@@ -731,9 +731,9 @@ BC-2.03.008:
 
 BC-2.05.009:
   path: specs/behavioral-contracts/ss-05/BC-2.05.009.md
-  current_version: "1.5.11"
-  last_bump_commit: "SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup); no behavioral changes"
-  last_bump_date: "2026-06-21"
+  current_version: "1.6.0"
+  last_bump_commit: "[S-046 adversarial adjudication Q1-Q5 — registry unification; PC-1b/PC-2 rewritten; Invariant 3/3b/4/6 updated; 1-strike threshold; EC-272 updated; PtyReset triggers canonicalized; drop counter semantics corrected]"
+  last_bump_date: "2026-06-22"
 
 BC-2.05.010:
   path: specs/behavioral-contracts/ss-05/BC-2.05.010.md
