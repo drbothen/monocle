@@ -689,32 +689,37 @@ pub fn on_pty_output(app: &mut App, session_id: String, bytes: Vec<u8>) {
         .unwrap_or(0);
 
     if current_offset > 0 {
-        // Probe scrollback_len BEFORE process() by set_scrollback sentinel + read-back.
-        // This is the canonical vt100 approach: set_scrollback(usize::MAX) clamps to the
-        // actual scrollback len; parser.screen().scrollback() returns the clamped value.
-        // We restore to 0 immediately so the parser screen is not in a scrolled-back state
-        // during the process() call (process() does not care about the scrollback position,
-        // but we restore for invariant cleanliness).
-        parser.screen_mut().set_scrollback(usize::MAX);
-        let scrollback_before = parser.screen().scrollback();
-        parser.screen_mut().set_scrollback(0);
+        // BC-2.09.007 PC-5 / v1.5.0: vt100-native content-anchoring algorithm.
+        //
+        // vt100 (Grid::scroll_up) auto-advances the scrollback_offset by 1 per row pushed
+        // to history, clamped to history length — natively, without any manual row counting.
+        // This works correctly below cap AND at cap (where the prior delta-probe algorithm
+        // produced delta == 0, causing viewport drift).
+        //
+        // Three-step protocol:
+        //   1. Restore monocle's stored offset into vt100 before process().
+        //   2. process() — vt100 auto-advances the offset natively.
+        //   3. Read back the new vt100 offset and store it.
+        //
+        // Important: do NOT call set_scrollback(MAX) here as a probe — that would clobber
+        // vt100's internal offset before process() runs, suppressing the native advancement.
+        // The set_scrollback(MAX) read-back probe is used ONLY in handle_pty_scroll_up for
+        // the explicit-scroll clamp; it must not appear in this output handler.
 
-        // BC-2.09.001 PC-2: feed bytes to the parser.
+        // Step 1: restore monocle's stored offset into vt100.
+        parser.screen_mut().set_scrollback(current_offset);
+
+        // Step 2: BC-2.09.001 PC-2: feed bytes to the parser.
+        // vt100 auto-advances the offset by rows pushed, clamped to history length.
         parser.process(&bytes);
 
-        // Probe scrollback_len AFTER process().
-        parser.screen_mut().set_scrollback(usize::MAX);
-        let scrollback_after = parser.screen().scrollback();
-        parser.screen_mut().set_scrollback(0);
-
-        // Compute new-row delta and update offset (saturating to prevent overflow).
-        let new_rows = scrollback_after.saturating_sub(scrollback_before);
-        let new_offset = current_offset
-            .saturating_add(new_rows)
-            .min(scrollback_after);
+        // Step 3: read back the vt100-advanced offset and store it.
+        // screen().scrollback() returns the VIEWPORT OFFSET (0 = live tail), not history depth.
+        let new_offset = parser.screen().scrollback();
         app.pty_scroll_offsets.insert(session_id, new_offset);
     } else {
-        // Live tail (offset == 0): process bytes only; no offset adjustment.
+        // Live tail (offset == 0): process bytes only; no offset adjustment needed.
+        // vt100 leaves the offset at 0 naturally after process().
         parser.process(&bytes);
     }
 }
