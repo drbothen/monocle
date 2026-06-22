@@ -2,7 +2,7 @@
 //!
 //! Renders the PTY output captured by `vt100::Parser` into a ratatui `Frame` using
 //! the `tui_term::widget::PseudoTerminal` widget. Supports per-session scrollback
-//! navigation via the tui-term 0.3.4 scrollback API.
+//! navigation via the pinned tui-term scrollback API.
 //!
 //! # Module Purity
 //!
@@ -23,7 +23,7 @@ use tui_term::widget::PseudoTerminal;
 /// Render the embedded PTY terminal widget for `parser` into `frame` at `area`.
 ///
 /// Applies `scroll_offset` rows of scrollback to the parser screen before rendering,
-/// using the canonical tui-term 0.3.4 scrollback call sequence:
+/// using the canonical pinned tui-term scrollback call sequence:
 ///
 /// 1. `parser.screen_mut().set_scrollback(scroll_offset)` — drives which rows the
 ///    screen reports; `0` is live tail, `N` is N rows back into scrollback history.
@@ -62,8 +62,8 @@ pub fn render_embedded_terminal(
     parser.screen_mut().set_scrollback(scroll_offset);
 
     // Step 2: build the PseudoTerminal widget with the now-scrolled screen.
-    // PseudoTerminal in tui-term 0.3.4 takes an immutable screen reference; the
-    // scroll state has already been applied via set_scrollback above.
+    // PseudoTerminal takes an immutable screen reference; the scroll state has
+    // already been applied via set_scrollback above.
     let widget = PseudoTerminal::new(parser.screen());
 
     // Step 3: render into the provided area.
