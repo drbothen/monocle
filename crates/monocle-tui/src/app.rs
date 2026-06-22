@@ -4133,19 +4133,29 @@ pub fn render_frame(
                 }
             };
 
-            // S-043 (BC-2.09.007 Postcondition 4 / AC-007): when the effective scroll
-            // offset is > 0, append "[scrolled back N rows]" to the status bar. This
-            // indicator takes lower precedence than the dump-drop status; when both
-            // are active simultaneously, the dump-drop message is shown instead.
+            // S-043 (BC-2.09.007 Postcondition 4 / AC-007 / PC-4 / EC-245):
+            // The scrollback indicator is PERSISTENT VIEWPORT STATE and must NEVER be
+            // suppressed by any transient diagnostic badge. When both the dump-drop badge
+            // and the scrollback indicator are active, BOTH are rendered concurrently in
+            // the status bar. Suppression would cause a silent correctness failure where
+            // the user believes they are at live tail when they are not.
             let scrollback_indicator: Option<String> = if effective_scroll_offset > 0 {
                 Some(format!("[scrolled back {effective_scroll_offset} rows]"))
             } else {
                 None
             };
 
-            let pty_status_msg = dump_drop_status
+            // Compose the status message: concatenate dump-drop badge + scrollback indicator
+            // when both are active simultaneously (PC-4 concurrent-badge mandate).
+            let pty_status_owned: Option<String> = match (&dump_drop_status, &scrollback_indicator)
+            {
+                (Some(dump), Some(scroll)) => Some(format!("{dump}  {scroll}")),
+                (Some(dump), None) => Some(dump.clone()),
+                (None, Some(scroll)) => Some(scroll.clone()),
+                (None, None) => None,
+            };
+            let pty_status_msg = pty_status_owned
                 .as_deref()
-                .or(scrollback_indicator.as_deref())
                 .or(app.status_message.as_deref());
 
             // Always render the status bar in EmbeddedTerminal mode.
