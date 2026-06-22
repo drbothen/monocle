@@ -1269,6 +1269,103 @@ fn test_BC_2_09_007_concurrent_status_bar_badges() {
 }
 
 // ---------------------------------------------------------------------------
+// ADV Pass-2 F-S043-P2-MED-001: status_message coexists with scrollback indicator
+// BC-2.09.007 Postcondition 4 / PC-4 (concurrent diagnostic badge mandate)
+//
+// Defect: in the EmbeddedTerminal render branch, the status bar is composed as:
+//   pty_status_owned = Some(scrollback_indicator_string)  [when offset > 0]
+//   pty_status_msg = pty_status_owned.as_deref().or(app.status_message.as_deref())
+//
+// The .or() silently drops app.status_message whenever pty_status_owned is Some,
+// which is the case when the scrollback indicator is active (offset > 0). This
+// suppresses transient diagnostic messages set by on_dump_window_timeout (and similar
+// handlers) whenever the user is scrolled back — a silent correctness failure.
+//
+// BC-2.09.007 PC-4 mandates that ALL concurrent diagnostic badges coexist in the
+// status bar. The scrollback indicator being present does NOT excuse dropping
+// app.status_message; both must appear simultaneously.
+// ---------------------------------------------------------------------------
+
+/// test_BC_2_09_007_status_message_coexists_with_scrollback
+///
+/// Exercises BC-2.09.007 Postcondition 4 / PC-4 (ADV Pass-2 F-S043-P2-MED-001):
+///   When the focused session is scrolled back (offset > 0) AND app.status_message
+///   is set to a transient diagnostic warning (e.g., the timeout notification set
+///   by on_dump_window_timeout), BOTH the `[scrolled back N rows]` indicator AND the
+///   status_message warn text must appear in the rendered status bar simultaneously.
+///
+///   The `.or()` pattern in the current implementation drops app.status_message
+///   whenever pty_status_owned is Some (i.e., whenever the scrollback indicator is
+///   active). This test FAILS against that current code, confirming RED gate.
+///
+///   The scenario: on_dump_window_timeout sets app.status_message to
+///   "[warn] scrollback dump timed out for <session_id>", then clears dump_in_progress.
+///   If the user is already scrolled back (offset > 0), the next render will have
+///   pty_status_owned = Some("[scrolled back N rows]") and the .or() will prevent
+///   the warn message from ever reaching the status bar.
+#[test]
+fn test_BC_2_09_007_status_message_coexists_with_scrollback() {
+    // Arrange: App in EmbeddedTerminal with scrolled-back session.
+    let session_id = "s1-status-msg-coexist";
+    let mut app = make_app_in_embedded(session_id);
+
+    // Feed enough content to create a valid scrollback history.
+    feed_lines(&mut app, session_id, 50);
+
+    let max_sb = {
+        let parser = app.pty_parsers.get_mut(session_id).unwrap();
+        effective_scrollback_max(parser)
+    };
+    assert!(
+        max_sb >= 5,
+        "BC-2.09.007 PC-4 precondition: scrollback max must be >= 5; got {}",
+        max_sb
+    );
+
+    // Set scrolled-back offset (offset > 0 causes scrollback_indicator to be Some).
+    let scroll_back: usize = 5;
+    app.pty_scroll_offsets
+        .insert(session_id.to_string(), scroll_back);
+
+    // Simulate the state left by on_dump_window_timeout:
+    //   - dump_in_progress is REMOVED (step 1 of on_dump_window_timeout)
+    //   - app.status_message is set to the canonical warn string (step 7)
+    // dump_in_progress is NOT set → dump_drop_status will be None.
+    // Only the scrollback indicator (pty_status_owned) is Some, so the .or() wins
+    // and drops the status_message under the current (buggy) implementation.
+    let warn_msg = format!("[warn] scrollback dump timed out for {}", session_id);
+    app.status_message = Some(warn_msg.clone());
+
+    // Act: render via render_frame.
+    let terminal = render_app_to_terminal(&mut app);
+    let text = buffer_text(&terminal);
+
+    // Assert 1 (PC-4): scrollback indicator must be present in the rendered status bar.
+    let scrollback_badge = format!("[scrolled back {} rows]", scroll_back);
+    assert!(
+        text.contains(&scrollback_badge),
+        "BC-2.09.007 PC-4 / F-S043-P2-MED-001: rendered status bar must contain '{}' \
+         when scrolled back; rendered buffer (first 400 chars): {:?}",
+        scrollback_badge,
+        &text[..text.len().min(400)]
+    );
+
+    // Assert 2 (PC-4 / F-S043-P2-MED-001): app.status_message warn text must ALSO be
+    // present. The .or() pattern drops it when pty_status_owned is Some — this assert
+    // is the RED gate assertion. It will FAIL against the current implementation.
+    assert!(
+        text.contains(&warn_msg),
+        "BC-2.09.007 PC-4 / F-S043-P2-MED-001: rendered status bar must contain the \
+         app.status_message warn text '{}' even when scrollback indicator is also active; \
+         the .or() pattern silently drops status_message when pty_status_owned is Some — \
+         both must coexist per PC-4 concurrent-badge mandate. \
+         Rendered buffer (first 400 chars): {:?}",
+        warn_msg,
+        &text[..text.len().min(400)]
+    );
+}
+
+// ---------------------------------------------------------------------------
 // AC-002 / AC-006 / PC-3 / BLOCKER-001: Ctrl+Up in EmbeddedTerminal increments
 // pty_scroll_offsets and sends NO IPC — via handle_crossterm_event dispatch path.
 // BC-2.09.007 Postcondition 2a + Postcondition 3
