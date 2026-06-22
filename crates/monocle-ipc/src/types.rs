@@ -653,6 +653,15 @@ pub enum ServerToClient {
     ///    (S-047 scope; the proxy task's responsibility ends at emission).
     PtyReset {
         /// The UUID string of the session whose PTY stream was reset.
+        ///
+        /// # Security invariant
+        ///
+        /// This field **MUST** be the daemon-registry session UUID — it is always sourced
+        /// from the parameter passed to `spawn_pty_proxy_task` at attach time, which was
+        /// validated against `uuid::Uuid::parse_str` at the `attach_session` IPC boundary.
+        /// It **MUST NOT** be derived from any host-supplied (`HostToDaemon`) or
+        /// client-supplied (`ClientToServer`) field.  Callers that construct `PtyReset`
+        /// from any other source introduce a log-injection / spoofing risk (CWE-20).
         session_id: String,
     },
 }
