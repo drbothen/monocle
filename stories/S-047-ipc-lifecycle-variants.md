@@ -3,32 +3,32 @@ document_type: story
 level: L4
 story_id: S-047
 epic_id: EPIC-05
-version: "1.7"
+version: "1.8"
 status: draft
 producer: vsdd-factory:story-writer
-timestamp: 2026-06-16T00:00:00Z
+timestamp: 2026-06-22T00:00:00Z
 phase: 2
-points: 8
+points: 16
 wave: 8
 tdd_mode: strict
 priority: P1
 depends_on: [S-021, S-022, S-023, S-033, S-034, S-035, S-046]
 blocks: [S-048]
 target_module: monocle-ipc
-subsystems: [SS-05]
+subsystems: [SS-05, SS-08]
 behavioral_contracts: [BC-2.05.010, BC-2.05.011]
 verification_properties: []
 estimated_days: 5
 inputs:
-  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.010.md, version: "1.9.8"}
-  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.011.md, version: "1.2.5"}
-  - {path: .factory/specs/architecture/SS-ipc.md, version: "1.24.0"}
-  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.16.0"}
+  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.010.md, version: "1.9.11"}
+  - {path: .factory/specs/behavioral-contracts/ss-05/BC-2.05.011.md, version: "1.2.12"}
+  - {path: .factory/specs/architecture/SS-ipc.md, version: "1.25.0"}
+  - {path: .factory/specs/architecture/SS-session-manager.md, version: "2.18.0"}
   - {path: .factory/specs/architecture/SS-conventions-anti-patterns.md, version: "1.32.6"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest.md, version: "1.2.1"}
   - {path: .factory/specs/architecture/SS-deps-pin-manifest-v2-delta.md, version: "1.0.2"}
 input-hash: "[pending]"
-traces_to: "Implements BC-2.05.010 (KeyInput + RenameSession IPC routing with no-silent-failure invariant) and BC-2.05.011 (ScrollbackChunk*/Complete/PtyReset server-to-client variants + pending_pty_bytes buffer + post-dump replay). NOTE: ResizePane IPC arm and resize_session() moved to S-042 per human ruling 2026-06-21."
+traces_to: "Implements BC-2.05.010 (KeyInput + RenameSession IPC routing with no-silent-failure invariant) and BC-2.05.011 (ScrollbackChunk*/Complete/PtyReset server-to-client variants + pending_pty_bytes buffer + post-dump replay). Expanded per human ruling 2026-06-22: session-host producer legs (PTY read loop, vt100 parser, KeyInput write, real scrollback dump) added to scope. NOTE: ResizePane IPC arm and resize_session() remain S-042 per human ruling 2026-06-21."
 # BC status: BC-2.05.010 and BC-2.05.011 non-empty; status draft pending Phase-2 adversarial convergence gate
 ---
 
@@ -44,6 +44,70 @@ connection supports the full session lifecycle from spawn through detach/reattac
 requiring reconnect or protocol renegotiation.
 
 ## Acceptance Criteria
+
+### AC-SH-001 (traces to BC-2.05.011 §ScrollbackChunk producer — session-host PTY read loop with backpressure)
+
+The session-host binary implements a `tokio::task::spawn_blocking` PTY reader thread:
+- `pty_master.try_clone_reader()` returns `Box<dyn Read + Send>` for blocking PTY reads.
+- Read buffer: 4096 bytes.
+- Each read posts `Bytes` into a bounded `mpsc::channel::<Bytes>(1024)` via
+  `Handle::block_on(tx.send(bytes))` — NOT `try_send`. The blocking thread blocks on the
+  channel if full (natural backpressure from TUI render speed → broker → proxy task).
+- If `tx.send()` fails (receiver dropped, OOM-level condition): the reader thread logs WARN
+  and exits; no silent drop.
+- `pty_writer = pty_master.take_writer()` is called ONCE at startup. `take_writer()` is
+  not idempotent; calling it again panics. The writer is held for the session lifetime.
+
+### AC-SH-002 (traces to BC-2.05.011 I3-003 / ADR-0010 — Phase A and Phase B select! expansion with PTY arm)
+
+The event loop is restructured as a real `tokio::select!` in BOTH phases:
+
+**Phase A** (Detached — waiting for daemon connection) MUST use `tokio::select!` over:
+- `pty_reader_rx.recv()` → `parser.process(&bytes)`; do NOT forward (no active connection).
+- `listener.accept()` → SO_PEERCRED check → transition to Phase B.
+- `child_exit_watch.recv()` → harness child exited while detached → session-host exits.
+
+**Phase B** (Active — one daemon connection) MUST use `tokio::select!` over:
+- `pty_reader_rx.recv()` → `parser.process(&bytes)` + `send_host_msg(HostToDaemon::PtyBytes { bytes })`. On send failure: WARN + break `PhaseBExit::Detach`.
+- `recv_daemon_msg()` → full message dispatch (Kill, Detach, Attach, KeyInput, Resize, EOF).
+- `child_exit_watch.recv()` → `StateChanged{Terminated}` + `Goodbye` + return.
+
+The sequential `stream.read_exact()` Phase B loop from S-034 is replaced by this select!. `recv_daemon_msg()` is an async function wrapping `stream.read_exact()` that returns `Result<DaemonToHost, _>`.
+
+### AC-SH-003 (traces to BC-2.05.010 KeyInput postcondition 1 / Ruling M — session-host writes KeyInput bytes to PTY stdin)
+
+On `DaemonToHost::KeyInput { bytes }` in Phase B:
+- Calls `pty_writer.write_all(&bytes).await`.
+- On write success: continue Phase B (no response to daemon — KeyInput is fire-and-forget at this layer).
+- On write failure: log WARN with error; break `PhaseBExit::Detach`. The daemon proxy task sees EOF on the control connection reader, calls the existing `transition_to_detached_or_terminated` path, and the daemon IPC layer maps the resulting `SessionHostDead` error to `"attach_failed"` wire code in the KeyInput response. No new error codes introduced.
+
+### AC-SH-004 (traces to BC-2.05.011 §Screen-state transfer / Ruling M — session-host real scrollback dump replaces empty stub)
+
+On `DaemonToHost::Attach`, the session-host MUST derive a real scrollback dump from the live `vt100::Parser` state (replacing the 0-chunk empty stub from S-035):
+
+1. **Snapshot:** Capture `let screen = parser.screen()` at the instant Attach is received.
+2. **No pause (I3-003):** PtyBytes forwarding continues uninterrupted in the `select!` while the dump is prepared and sent. The dump is synchronous within the Attach arm (the select! does not re-enter until the arm's async fn completes — this is acceptable as long as the dump is bounded; ≤200 rows/chunk + JSON serialization completes in <1ms per chunk on any reasonable hardware).
+3. **Serialize rows:** For each row of scrollback + visible screen (scrollback rows first):
+   - `screen.cell(row, col)` → `Option<&vt100::Cell>`.
+   - `ch`: `cell.contents()` → `String`.
+   - `fg`/`bg`: `vt100::Color::Default` → `SerializedColor::Default`; `vt100::Color::Idx(n)` → `SerializedColor::Ansi(n)`; `vt100::Color::Rgb(r,g,b)` → `SerializedColor::Rgb(r,g,b)`.
+   - `attrs`: u8 bitmask — bit0=bold, bit1=dim, bit2=italic, bit3=underline, bit4=inverse (5-bit; `vt100::Attrs` verified for vt100 0.16).
+   - `None` cells: `SerializedCell { ch: " ".to_string(), fg: Default, bg: Default, attrs: 0 }`.
+4. **Chunk:** ≤200 rows per `HostToDaemon::ScrollbackChunk { rows, chunk_seq }`. `chunk_seq` starts at 0, monotonically increments.
+5. **Complete:** Send `HostToDaemon::ScrollbackDumpComplete { total_chunks, cursor_row, cursor_col, pty_rows, pty_cols }` where cursor position comes from `screen.cursor_position()` and dimensions from `parser` state.
+6. **On send failure during dump:** WARN log; break `PhaseBExit::Detach`.
+
+`SerializedCell` and `SerializedColor` are already defined in `monocle-ipc/src/types.rs`. No new IPC types added.
+
+### AC-SH-005 (traces to BC-2.05.011 §ScrollbackDumpComplete / Ruling M — daemon broadcasts scrollback dump to attaching TUI client)
+
+After `attach_session()` returns `Ok(())` and the daemon holds `scrollback_chunks: Vec<HostToDaemon>` and `ScrollbackDumpComplete` fields, the daemon MUST broadcast the scrollback dump to the requesting TUI client (the TODO at `session_manager/mod.rs:~3899`):
+
+1. For each chunk (in `chunk_seq` order): send `ServerToClient::ScrollbackChunk { session_id, rows, chunk_seq }` to the attaching client's sender only (NOT `broadcast_to_subscribers` — only the client that sent `ClientToServer::AttachSession`).
+2. Send `ServerToClient::ScrollbackDumpComplete { session_id, total_chunks, cursor_row, cursor_col, pty_rows, pty_cols }` to the same client.
+3. `pending_pty_bytes: VecDeque<Bytes>` (per `(session_id, client_id)` pair) accumulates live `ServerToClient::PtyOutput` messages arriving via the broker DURING this forwarding sequence. After `ScrollbackDumpComplete` is sent, flush `pending_pty_bytes` as live `PtyOutput` messages to the same client.
+
+The proxy task (already running via S-046) continues handling live `PtyBytes → broker` in parallel. The `pending_pty_bytes` buffer prevents live PTY bytes from reaching the TUI before the screen snapshot, while ensuring they are not dropped.
 
 ### AC-001 (traces to BC-2.05.010 postcondition 1 — SpawnSession carries SpawnOptions, daemon builds SpawnRecipe)
 
@@ -188,6 +252,31 @@ from registry) or `"attach_failed"` (session host dead) — NOT a phantom `"pty_
 
 ## Tasks
 
+### Session-Host Producer Legs (monocle-session-host) — NEW (human ruling 2026-06-22)
+
+- [ ] Obtain `pty_writer` via `pty_master.take_writer()` once at startup step 5 (after PTY open).
+      Hold as `pty_writer: Box<dyn Write + Send>` for the session lifetime. MUST call exactly once.
+- [ ] Spawn PTY reader `tokio::task::spawn_blocking` thread: `pty_reader = pty_master.try_clone_reader()`;
+      read buffer 4096 bytes; loop `read()` → `Handle::block_on(tx.send(Bytes::copy_from_slice(&buf[..n])))`.
+      Channel: `mpsc::channel::<Bytes>(1024)`. On `tx.send()` error: log WARN; break reader thread.
+      On channel receiver drop (event loop exited abnormally): thread exits silently.
+- [ ] Expand Phase A `listener.accept().await` → `tokio::select!` with three arms:
+      `pty_reader_rx.recv()` (parse bytes, no forward), `listener.accept()` (SO_PEERCRED, Phase B),
+      `child_exit_watch.recv()` (exit session-host). See AC-SH-002.
+- [ ] Expand Phase B sequential `read_exact()` loop → `tokio::select!` with three arms:
+      `pty_reader_rx.recv()` (parse + `HostToDaemon::PtyBytes` forward via `send_host_msg()`),
+      `recv_daemon_msg()` (full dispatch including KeyInput arm), `child_exit_watch.recv()`
+      (`StateChanged{Terminated}` + `Goodbye` + return). See AC-SH-002.
+- [ ] Add `DaemonToHost::KeyInput { bytes }` arm to Phase B dispatch:
+      `pty_writer.write_all(&bytes).await` → on error: WARN + `break PhaseBExit::Detach`. See AC-SH-003.
+- [ ] Implement `stream_scrollback_dump_chunked(parser, conn_writer)` async fn:
+      snapshot `parser.screen()` → serialize rows (scrollback + visible) to `Vec<Vec<SerializedCell>>`
+      using `SerializedCell`/`SerializedColor` from `monocle-ipc` (no new types). Chunk at ≤200
+      rows per `ScrollbackChunk`. Stream `chunk_seq` 0..N. Send `ScrollbackDumpComplete` with
+      cursor + dimensions from screen. On any `send_host_msg()` error: WARN + return error. See AC-SH-004.
+- [ ] Replace the empty 0-chunk stub in the `DaemonToHost::Attach` arm with a call to
+      `stream_scrollback_dump_chunked()`. Verify the select! arm handles failure (Detach break). See AC-SH-004.
+
 ### IPC Protocol (monocle-ipc)
 - [ ] Verify and/or add 7 `ClientToServer` variants to `crates/monocle-ipc/src/lib.rs`
       (canonical file per S-033/S-039/S-044; NOT `proto.rs`):
@@ -228,17 +317,26 @@ from registry) or `"attach_failed"` (session host dead) — NOT a phantom `"pty_
         When S-047 is dispatched, both will already be implemented by S-042.
       - `RenameSession` → call `session_manager.rename_session(id, new_name)` → update display_name,
         fan-out `SessionListUpdate`.
+- [ ] Implement daemon scrollback forwarding in the `AttachSession` handler
+      (resolves TODO at `session_manager/mod.rs:~3899`): after `attach_session()` returns
+      `Ok(())` with `scrollback_chunks` and `ScrollbackDumpComplete` fields:
+      (a) For each chunk: send `ServerToClient::ScrollbackChunk { session_id, rows, chunk_seq }`
+          directly to the requesting client's channel (NOT `broadcast_to_subscribers`).
+      (b) Send `ServerToClient::ScrollbackDumpComplete { session_id, total_chunks, cursor_row,
+          cursor_col, pty_rows, pty_cols }` to the same client.
+      (c) Flush `pending_pty_bytes` for this `(session_id, client_id)` pair as live `PtyOutput`
+          messages to the same client. See AC-SH-005.
 - [ ] Add `pending_pty_bytes: HashMap<(String, String), VecDeque<Bytes>>` to `DaemonState`
       (or per-session state struct) for in-flight scrollback buffering. Keys are
       `(session_id: String, client_id: String)` — daemon-internal representation, consistent
       with how the broker tracks per-client channels by string key.
-- [ ] Implement scrollback dump task in `monocle-runtime/src/scrollback.rs`:
-      - Read PTY scrollback buffer (existing ring buffer from session state).
-      - Chunk into ≤4 KiB `ScrollbackChunk` frames.
-      - Stream to client via IPC sender; set `chunk_seq` monotonically from 0.
-      - Send `ScrollbackDumpComplete` with final screen cursor/dimensions.
-      - Flush `pending_pty_bytes` on complete.
-      - On session exit during dump → emit `PtyReset` instead of DumpComplete.
+      Live `PtyOutput` from the broker is buffered into this map while `AttachSession` scrollback
+      forwarding is in progress, then flushed after `ScrollbackDumpComplete` is sent.
+- [ ] Remove/repurpose `monocle-runtime/src/scrollback.rs` CREATE task: the scrollback dump
+      is produced by the session-host (not a daemon-side ring buffer). The daemon-side
+      scrollback module (if needed) handles the forwarding logic above, not content production.
+      If `scrollback.rs` was already created by a prior story pass, replace its content with
+      the forwarding helper (or inline the forwarding into `session_manager/mod.rs`).
 
 ### TUI Handling (monocle-tui)
 - [ ] Add client-side handler for `ScrollbackChunk` in `monocle-tui/src/ipc_receiver.rs`:
@@ -253,6 +351,17 @@ from registry) or `"attach_failed"` (session host dead) — NOT a phantom `"pty_
       - Re-trigger `AttachSession`.
 
 ### Tests
+- [ ] Write session-host unit tests in `crates/monocle-session-host/src/main.rs` or a
+      `tests/session_host_*.rs` integration test file:
+      - `test_AC_SH_001_pty_reader_task_sends_bytes_to_channel` (AC-SH-001 — spawn reader, write to PTY slave, assert bytes arrive in channel)
+      - `test_AC_SH_002_phase_a_select_feeds_parser_and_accepts` (AC-SH-002 — Phase A select! feeds vt100 parser AND accepts daemon connection)
+      - `test_AC_SH_002_phase_b_select_forwards_pty_bytes_as_PtyBytes` (AC-SH-002 — Phase B select! produces HostToDaemon::PtyBytes)
+      - `test_AC_SH_003_key_input_writes_to_pty_stdin` (AC-SH-003 — DaemonToHost::KeyInput → pty_writer.write_all)
+      - `test_AC_SH_003_key_input_write_failure_detaches` (AC-SH-003 — write failure → PhaseBExit::Detach)
+      - `test_AC_SH_004_attach_produces_real_scrollback_from_parser` (AC-SH-004 — DaemonToHost::Attach sends ScrollbackChunk* then ScrollbackDumpComplete with real cell content)
+      - `test_AC_SH_004_attach_chunk_seq_is_contiguous` (AC-SH-004 — chunk_seq values are 0,1,2,...)
+      - `test_AC_SH_005_daemon_forwards_scrollback_to_attaching_client` (AC-SH-005 — daemon broadcasts ScrollbackChunk/Complete to attaching client only)
+      - `test_AC_SH_005_pending_pty_bytes_flushed_after_dump_complete` (AC-SH-005 — live PtyOutput buffered during dump, flushed after DumpComplete)
 - [ ] Write integration tests in `monocle-runtime/tests/ipc_lifecycle.rs`:
       - `test_BC_2_05_010_spawn_session_carries_spawn_options_not_recipe` (AC-001)
       - `test_BC_2_05_010_kill_session_allowed_launching_rejected_terminating` (AC-002)
@@ -284,6 +393,15 @@ in S-033. The IPC dispatch loop in S-047 calls into session_manager methods — 
 session state management directly in the handler.
 
 ## Architecture Compliance Rules
+
+From `architecture/SS-session-manager.md §Ruling M`:
+- **Two-parser architecture is canonical.** The session-host owns ONE parser (source of scrollback dump and live render state). The TUI owns ONE parser per session (renderer, fed by `PtyOutput` from the daemon broker). No runtime coupling between them.
+- **`pty_master.take_writer()` is called ONCE at startup.** portable-pty panics if called again. The writer is held for the session lifetime, not acquired per-message.
+- **PTY reader thread uses `.send().await` (block_on variant) — NOT `.try_send()`.** Silent PTY byte drops corrupt the vt100 parser state machine (mid-CSI sequence). `try_send` failure must send `PtyReset`; but the backpressure design makes this unreachable in normal operation.
+- **`stream_scrollback_dump_chunked()` is synchronous within the Phase B select! arm.** The select! arm completes before re-entering the loop. This is correct: the dump is bounded (≤200 rows/chunk) and latency is negligible. Do NOT `tokio::spawn` the dump or split it across multiple select! iterations.
+- **Scrollback dump does NOT pause PtyBytes (I3-003).** The `select!` continues delivering `pty_reader_rx.recv()` bytes to `parser.process()` and `send_host_msg(PtyBytes)` AFTER `DaemonToHost::Attach` is received and while the dump is streaming. The PtyBytes and the dump output interleave on the wire — the daemon handles them in order.
+- **SerializedCell/SerializedColor: import from monocle-ipc, do NOT redefine.** `use monocle_ipc::types::{SerializedCell, SerializedColor};`
+- **Chunking limit: ≤200 rows per ScrollbackChunk.** This keeps each frame comfortably under the 256 KiB MAX_FRAME_LEN with JSON overhead.
 
 From `architecture/SS-ipc.md`:
 - Model A (I27-001): SpawnSession carries `SpawnOptions`; daemon builds `SpawnRecipe` internally.
@@ -324,13 +442,15 @@ is in `monocle-tui`. These boundaries are enforced by the workspace dependency g
 
 | File | Action | Notes |
 |------|--------|-------|
+| `crates/monocle-session-host/src/main.rs` | MODIFY | PTY reader task (spawn_blocking + mpsc::channel::<Bytes>(1024) + 4096-byte read buffer); `pty_writer = pty_master.take_writer()` at startup; Phase A `select!` (pty_reader_rx + listener.accept + child_exit_watch); Phase B `select!` (pty_reader_rx→PtyBytes + recv_daemon_msg→full dispatch + child_exit_watch); `DaemonToHost::KeyInput` arm → `pty_writer.write_all()`; `stream_scrollback_dump_chunked()` replacing empty stub in `DaemonToHost::Attach` arm |
 | `crates/monocle-ipc/src/lib.rs` | MODIFY | Add 7 new `ClientToServer` variants; add `ScrollbackChunk`, `ScrollbackDumpComplete` to `ServerToClient`; verify `SpawnOptions` struct (all wire fields use `String` — no typed newtypes) |
-| `crates/monocle-runtime/src/ipc_server.rs` | MODIFY | Add match arms for `KeyInput` and `RenameSession` (2 arms owned by S-047); `SpawnSession`/`KillSession`/`AttachSession`/`DetachSession`/`ResizePane` arms are authored by S-033/S-034/S-035/S-042 respectively — do NOT duplicate |
-| `crates/monocle-runtime/src/session_manager/mod.rs` | MODIFY | Add `write_pty_bytes()` and `rename_session()` methods. NOTE: `resize_session()` is implemented by S-042 (human ruling 2026-06-21) — when S-047 is dispatched the stub will be replaced; do NOT re-implement or duplicate it. `kill_session()` is authored by S-034. |
-| `crates/monocle-runtime/src/scrollback.rs` | CREATE | Scrollback dump task implementation |
-| `crates/monocle-runtime/src/lib.rs` | MODIFY | Add `pub mod scrollback;` |
+| `crates/monocle-runtime/src/ipc_server.rs` | MODIFY | Add match arms for `KeyInput` and `RenameSession` (2 arms owned by S-047); `SpawnSession`/`KillSession`/`AttachSession`/`DetachSession`/`ResizePane` arms are authored by S-033/S-034/S-035/S-042 respectively — do NOT duplicate; add scrollback forwarding to `AttachSession` arm (resolves mod.rs:~3899 TODO) |
+| `crates/monocle-runtime/src/session_manager/mod.rs` | MODIFY | Add `write_pty_bytes()` (called by KeyInput arm) and `rename_session()` methods; resolve TODO at ~line 3899: forward `scrollback_chunks` as `ServerToClient::ScrollbackChunk*` + `ScrollbackDumpComplete` to attaching client; add `pending_pty_bytes` accumulation and flush. NOTE: `resize_session()` is S-042 scope; `kill_session()` is S-034 scope. |
+| `crates/monocle-runtime/src/scrollback.rs` | CREATE or SKIP | If scrollback forwarding logic is inlined in `session_manager/mod.rs`, this module is not needed. If a separate forwarding helper is useful, create with forwarding logic only (not a content producer — content comes from session-host). |
+| `crates/monocle-runtime/src/lib.rs` | MODIFY | Add `pub mod scrollback;` only if scrollback.rs is created |
 | `crates/monocle-tui/src/ipc_receiver.rs` | MODIFY | Add handlers for ScrollbackChunk, ScrollbackDumpComplete, PtyReset (TUI-side) |
-| `crates/monocle-runtime/tests/ipc_lifecycle.rs` | CREATE | Integration tests for all ACs |
+| `crates/monocle-runtime/tests/ipc_lifecycle.rs` | CREATE | Integration tests for daemon ACs |
+| `crates/monocle-session-host/tests/session_host_pty.rs` | CREATE | Session-host unit/integration tests for AC-SH-001..AC-SH-005 |
 
 ## Edge Cases
 
@@ -356,17 +476,17 @@ is in `monocle-tui`. These boundaries are enforced by the workspace dependency g
 
 | Category | Estimate |
 |----------|----------|
-| Story spec (this file) | ~6 000 tokens |
+| Story spec (this file) | ~9 000 tokens |
 | BC files (2 BCs: BC-2.05.010 + BC-2.05.011) | ~8 000 tokens |
-| Architecture sections (SS-ipc, SS-session-manager, SS-conventions) | ~3 500 tokens |
-| Existing code context (monocle-ipc/src/lib.rs, ipc_handler.rs, session_manager/mod.rs, ipc_receiver.rs) | ~5 000 tokens |
-| Test file to write | ~4 000 tokens |
-| **Total estimated** | **~26 500 tokens** |
+| Architecture sections (SS-ipc, SS-session-manager, SS-conventions) | ~4 000 tokens |
+| Existing code context (monocle-ipc/src/lib.rs, ipc_server.rs, session_manager/mod.rs, session-host/src/main.rs, ipc_receiver.rs) | ~8 000 tokens |
+| Test files to write | ~7 000 tokens |
+| **Total estimated** | **~36 000 tokens** |
 
-Approaches the 30% constraint; story is dense but coherent — all ACs share the IPC handler
-dispatch context. If the implementing agent's context window is <90k tokens, consider splitting
-AC-001..AC-006 (daemon routing) and AC-007..AC-012 (scrollback + no-silent-failure) into two
-passes with the same story file.
+Exceeds comfortable single-pass; recommend splitting delivery into two implementation passes:
+- Pass 1 (session-host producer legs): AC-SH-001 through AC-SH-004 in `monocle-session-host/src/main.rs`.
+- Pass 2 (daemon + TUI): AC-SH-005 + AC-001 through AC-012 in `monocle-runtime` + `monocle-tui`.
+Both passes use the same story file; no story split required.
 
 ## Dependency Justification
 
@@ -419,6 +539,7 @@ extensions — the client/server lifecycle message set — which is the core cap
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 1.8 | 2026-06-22 | vsdd-factory:architect | Human ruling 2026-06-22: S-047 expanded to full session-host producer scope per SS-session-manager.md Ruling M. Added AC-SH-001..AC-SH-005 (session-host PTY read loop, Phase A/B select! expansion, KeyInput write, real scrollback dump, daemon scrollback forwarding). Added session-host producer legs Tasks section. Updated File Structure with monocle-session-host/src/main.rs MODIFY and session_host_pty.rs CREATE rows. Updated daemon routing Tasks with scrollback forwarding obligation (resolves mod.rs:~3899 TODO). Added Architecture Compliance Rules for two-parser design, pty_writer lifecycle, chunking limits. Points bumped 8 → 16. Target subsystems updated SS-05 → [SS-05, SS-08]. Input pins refreshed: BC-2.05.011 → v1.2.12, SS-session-manager → v2.18.0. Token budget updated. |
 | 1.7 | 2026-06-21 | vsdd-factory:architect | Human ruling 2026-06-21: ResizePane IPC arm and resize_session() moved from S-047 → S-042. AC-003 header updated to KeyInput-only; ResizePane NOTE added. IPC Handler Arm Ownership table: ResizePane row changed from S-047 → S-042 with ruling citation. Tasks: ResizePane arm removed from daemon routing task; 3 arms → 2 arms; test `test_BC_2_05_010_resize_pane_zero_clamp_warns_not_errors` renamed to `test_BC_2_05_010_key_input_routes_to_session_host` (resize tests are S-042 scope). File Structure: ipc_server.rs row updated (3 arms → 2 arms); session_manager/mod.rs NOTE added that resize_session() is S-042's. traces_to updated. IPC file reference corrected ipc_handler.rs → ipc_server.rs (canonical file used since S-040). |
 | 1.6 | 2026-06-21 | vsdd-factory:architect | Architect ruling errata: File Structure `resize_pane()` → `resize_session()` (method name must match SS-session-manager.md §Public API; typo never caught in prior story-writer passes). AC-003 body was already correct. Input pins bumped: BC-2.05.010 v1.9.4→v1.9.8 (arch-source cascade, no behavioral change), SS-session-manager v2.6.1→v2.16.0 (Ruling A errata confirms resize daemon leg is S-047 scope). No AC changes. <!-- version-pin-historical: BC-2.05.010 v1.9.4 and SS-session-manager v2.6.1 are historical pre-cascade versions cited in this trace row only --> |
 | 1.5 | 2026-06-16 | vsdd-factory:story-writer | S-047-AC009-PTYRESET-QUALIFIER: AC-009 trace header updated from "postcondition 3" to "§PtyReset postcondition 3" — adding the §PtyReset subsection qualifier to match BC-2.05.011's section structure (symmetric with AC-007 §ScrollbackChunk and AC-008 §ScrollbackDumpComplete corrections in v1.4). AC body unchanged. |

@@ -1,10 +1,10 @@
 ---
 document_type: behavioral-contract
 level: L3
-version: "1.2.11"
+version: "1.2.12"
 status: active
 producer: vsdd-factory:product-owner
-timestamp: 2026-06-03T23:59:00Z
+timestamp: 2026-06-22T00:00:00Z
 phase: v1A-prd-delta
 inputs: [prd.md, architecture/ARCH-INDEX.md, architecture/SS-ipc.md, architecture/SS-session-manager.md, architecture/SS-daemon-wiring-v2-delta.md, architecture/adr/ADR-0010-pty-bytes-over-shared-uds-ipc.md]
 input-hash: "ccb5127"
@@ -167,7 +167,7 @@ the retired single-message `HostToDaemon::ScrollbackDump`.
 | L2 Capability | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability §SS-05 |
 | Capability Anchor Justification | CAP-005 ("Internal TUI-to-daemon transport; UDS framing; session/event/prompt push; permission decision routing; SOQ-3 overlay clear") per ARCH-INDEX §Capability traceability — the three new ServerToClient variants (ScrollbackChunk, ScrollbackDumpComplete, PtyReset) extend the session/event/prompt push capability with the chunked scrollback dump protocol and PTY reset notification, all transported over the existing shared UDS per ADR-0010 |
 | Architecture Module | monocle-ipc (`ServerToClient::ScrollbackChunk`, `ServerToClient::ScrollbackDumpComplete`, `ServerToClient::PtyReset` variants); monocle-runtime (broker fan-out §5b/§5c); monocle-tui (chunk accumulation, parser reset, status bar indicator) per ARCH-INDEX Subsystem Registry SS-05 |
-| Architecture Source | SS-daemon-wiring-v2-delta.md v1.12.0 §5b (ScrollbackChunk/ScrollbackDumpComplete fan-out; I3-003 resume-after-snapshot); §5c (PtyReset fan-out); SS-session-manager.md v2.17.1 §Screen-state transfer on Attach (step 5d-5e: buffer PtyOutput during dump, replay on Complete); SS-ipc.md §`ClientToServer::AttachSession` (I3-004 — TUI sends AttachSession not DaemonToHost::Attach); ADR-0010 v1.6.0 §pty-bytes-over-shared-uds-ipc (shared UDS decision + chunked protocol) |
+| Architecture Source | SS-daemon-wiring-v2-delta.md v1.12.0 §5b (ScrollbackChunk/ScrollbackDumpComplete fan-out; I3-003 resume-after-snapshot); §5c (PtyReset fan-out); SS-session-manager.md v2.18.0 §Screen-state transfer on Attach (step 5d-5e: buffer PtyOutput during dump, replay on Complete); §Ruling M (session-host producer scope: `vt100::Parser` is the content source; `stream_scrollback_dump_chunked()` serializes screen to `Vec<Vec<SerializedCell>>`; ≤200 rows/chunk; two-parser architecture — session-host parser is producer, TUI parser is renderer); SS-ipc.md §`ClientToServer::AttachSession` (I3-004 — TUI sends AttachSession not DaemonToHost::Attach); ADR-0010 v1.6.0 §pty-bytes-over-shared-uds-ipc (shared UDS decision + chunked protocol) |
 | Cross-Ref | BC-2.05.009 (PtyOutput fan-out; per-client buffer; Invariant 3b — same isolation model); BC-2.08.007 (Attach → triggers ScrollbackChunk* + ScrollbackDumpComplete sequence); BC-2.09.001 (PTY output renders after parser reconstruction completes) |
 | Test Name | test_BC_2_05_011_new_server_to_client_scrollback_and_reset_variants |
 
@@ -188,13 +188,22 @@ the retired single-message `HostToDaemon::ScrollbackDump`.
 
 - S-046 — Implement PtyOutput broker fan-out and session-host PTY reader bounded channel
   (owns `ServerToClient::PtyReset` variant definition in monocle-ipc + broker emission in monocle-runtime)
-- S-047 — Implement new ClientToServer IPC variants and daemon routing
-  (owns `ServerToClient::ScrollbackChunk`, `ServerToClient::ScrollbackDumpComplete` variant definition + broker fan-out, TUI receiver/chunk accumulation/parser reset/reconstruction protocol)
+- S-047 — Implement new ClientToServer IPC variants, daemon routing, and session-host producer legs
+  (owns `ServerToClient::ScrollbackChunk`, `ServerToClient::ScrollbackDumpComplete` variant definition + daemon forwarding to attaching client + TUI receiver/chunk accumulation/parser reset/reconstruction protocol; ALSO owns session-host: PTY read loop, `vt100::Parser` feed, real `stream_scrollback_dump_chunked()` replacing S-035 empty stub, `DaemonToHost::KeyInput → pty_writer.write_all()` — per human ruling 2026-06-22 and SS-session-manager.md §Ruling M)
 
 ## VP Anchors
 
 VP-TBD — Scrollback dump integration tests and PtyReset unit tests (filled after VP creation)
 
+
+## §Trace 1.2.12
+
+**Human ruling 2026-06-22: S-047 session-host producer scope expansion; Architecture Source pin cascade** (2026-06-22):
+- Architecture Source pin updated: SS-session-manager.md v2.18.0 → v2.18.0.
+- Story Anchor updated: S-047 line now lists session-host producer legs (PTY read loop, vt100::Parser feed, `stream_scrollback_dump_chunked()` replacing S-035 empty stub, KeyInput → pty_writer.write_all()) per Ruling M.
+- Architecture Source updated to cite SS-session-manager.md §Ruling M: two-parser architecture, session-host as content producer, ≤200 rows/chunk chunking, SerializedCell/SerializedColor mapping.
+- No behavioral content changes to postconditions, invariants, or edge cases.
+- SE-16d monotonicity: 1.2.12 > 1.2.11. PASS.
 
 ## §Trace 1.2.11
 

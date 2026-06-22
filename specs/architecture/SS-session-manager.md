@@ -3,11 +3,11 @@ document_type: architecture-section
 level: L3
 section: "session-manager"
 subsystem: SS-08
-version: "2.17.1"
+version: "2.18.0"
 status: draft
 producer: vsdd-factory:architect
 phase: v1A-architecture-delta
-timestamp: 2026-06-21T00:00:00Z
+timestamp: 2026-06-22T00:00:00Z
 inputs:
   - research/domain-monocle-vision-synthesis.md
   - specs/product-brief.md
@@ -2940,10 +2940,13 @@ control connection).
 
 | Feature | Deferred to | Story anchor |
 |---------|------------|--------------|
-| PTY output streaming to daemon (`HostToDaemon::PtyBytes`) | S-039 / S-040 | PTY output pipeline; IPC dispatch wiring for `PtyOutput` |
-| `vt100::Parser.process()` live byte processing | S-039 | vt100::Parser integration |
-| `DaemonToHost::Attach` scrollback dump (`ScrollbackChunk*` + `ScrollbackDumpComplete`) | S-035 | attach_session; this is the daemon-side `attach_session()` implementation |
-| Keyboard forwarding (`DaemonToHost::KeyInput`) | S-047 | S-047 owns KeyInput / RenameSession IPC arms |
+| PTY output streaming to daemon (`HostToDaemon::PtyBytes`) — session-host side | S-047 | Human ruling 2026-06-22: full session-host producer scope (PTY read loop, parser integration, KeyInput write, real scrollback dump) belongs to S-047. See Ruling M. |
+| `vt100::Parser.process()` live byte processing — session-host side | S-047 | Human ruling 2026-06-22: S-047 feeds the parser in both Phase A and Phase B. See Ruling M. |
+| Session-host `DaemonToHost::KeyInput` write to PTY stdin | S-047 | Human ruling 2026-06-22: S-047 owns KeyInput → pty_writer.write_all() in session-host. See Ruling M. |
+| Real scrollback dump: `DaemonToHost::Attach` → `ScrollbackChunk*` + `ScrollbackDumpComplete` derived from live `vt100::Parser` state | S-047 | Human ruling 2026-06-22: replaces empty 0-chunk stub from S-035. See Ruling M. |
+| Daemon forwarding of `ScrollbackChunk*` / `ScrollbackDumpComplete` to TUI clients (TODO at mod.rs:3899) | S-047 | S-047 owns daemon-side forwarding of scrollback dump to attaching client. See Ruling M. |
+| `DaemonToHost::Attach` scrollback dump — daemon-side `attach_session()` implementation (stub) | S-035 | attach_session(); S-035 delivered the protocol skeleton; S-047 delivers real content |
+| Keyboard forwarding (`DaemonToHost::KeyInput`) — daemon IPC arm + `send_key_input()` | S-047 | S-047 owns KeyInput / RenameSession IPC arms |
 | PTY resize — full end-to-end (`ClientToServer::ResizePane` dispatch arm, `resize_session()`, `DaemonToHost::Resize` forwarding, session-host `DaemonToHost::Resize` handler, `pty.resize()`, `parser.set_size()`) | S-042 | Human ruling 2026-06-21: S-042 owns the complete resize pipeline end-to-end. `ClientToServer` is NOT `#[non_exhaustive]` and has NO wildcard arm — adding the variant without an arm is a compile error; S-047 is draft with undelivered deps; leaving `resize_session()` as `todo!()` ships a live panic path. S-047 keeps KeyInput + RenameSession IPC arms only. |
 | Session re-discovery (`DaemonToHost::Attach` on Detached session) | S-035 | attach_session() daemon side |
 | `ScrollbackChunk*` / `ScrollbackDumpComplete` framing | S-035 | screen-state transfer on Attach |
@@ -3859,6 +3862,143 @@ Add to the S-035 test suite:
 
 ---
 
+### Ruling M — S-047 session-host producer scope: PTY read loop, vt100 parser integration, KeyInput write, real scrollback dump, daemon scrollback forwarding
+
+**Status:** AUTHORITATIVE. Human ruling 2026-06-22. Expands S-047 scope to include all session-host producer legs.
+
+#### Context
+
+S-047 v1.7 (story file) tasked only the daemon IPC arms (KeyInput + RenameSession) and the TUI-side scrollback reception handlers. However, the codebase TODOs in `monocle-session-host/src/main.rs` explicitly attribute the following to "S-047 scope": PTY byte streaming from session-host, vt100 parser feeding, KeyInput write to PTY stdin, and real scrollback dump from live parser state. These TODOs are architecturally correct: without the session-host implementing these producer legs, the daemon's IPC arms (KeyInput dispatch) and TUI's scrollback reception have no real data to process. The human ruling of 2026-06-22 confirms S-047 owns the full producer chain end-to-end.
+
+#### Ruling
+
+S-047 MUST implement ALL of the following in `crates/monocle-session-host/src/main.rs`:
+
+**1. PTY reader task (C3 pattern):**
+A `tokio::task::spawn_blocking` thread drives the blocking `pty_master.try_clone_reader()` `Read` implementation. Read buffer size: 4096 bytes. Posts each read as `Bytes` into a bounded `mpsc::channel::<Bytes>(1024)` via `Handle::block_on(tx.send(bytes))` — NOT `try_send`. The receiver `pty_reader_rx: mpsc::Receiver<Bytes>` is available in the event loop. If `tx.send(bytes)` fails (receiver dropped, OOM-level condition): send `HostToDaemon::PtyReset` if a control connection is active, then exit. This is the no-silent-drop design from §PTY reader thread (C3).
+
+**2. Phase A expansion — select! with PTY arm:**
+The current Phase A `listener.accept().await` MUST become a `tokio::select!`:
+
+```rust
+// Phase A: Detached — feed parser from PTY, accept new daemon connection.
+tokio::select! {
+    Some(bytes) = pty_reader_rx.recv() => {
+        // Feed parser. Do NOT forward (no active connection).
+        parser.process(&bytes);
+    }
+    result = listener.accept() => {
+        // ... SO_PEERCRED check, transition to Phase B.
+    }
+    Some(exit) = child_exit_watch.recv() => {
+        // Harness child exited while detached — exit session-host.
+        break;
+    }
+}
+```
+
+**3. Phase B expansion — select! with PTY and daemon-msg arms:**
+The current Phase B sequential `stream.read_exact()` loop MUST become a `tokio::select!`:
+
+```rust
+// Phase B: Active connection — forward PTY bytes AND handle daemon messages.
+tokio::select! {
+    Some(bytes) = pty_reader_rx.recv() => {
+        parser.process(&bytes);
+        // Forward to daemon as PtyBytes.
+        if let Err(e) = send_host_msg(&mut conn_writer,
+            &HostToDaemon::PtyBytes { bytes: bytes.to_vec() }).await {
+            tracing::warn!("PtyBytes send failed: {e}");
+            break PhaseBExit::Detach;
+        }
+    }
+    msg = recv_daemon_msg(&mut conn_reader) => match msg {
+        Ok(DaemonToHost::Attach) => { stream_scrollback_dump_chunked(...).await; }
+        Ok(DaemonToHost::KeyInput { bytes }) => {
+            if let Err(e) = pty_writer.write_all(&bytes).await {
+                tracing::warn!("KeyInput pty_writer.write_all failed: {e}");
+                break PhaseBExit::Detach;
+            }
+        }
+        Ok(DaemonToHost::Resize { rows, cols }) => {
+            apply_resize_to_pty_and_parser(pty_master.as_ref(), parser, rows, cols)?;
+        }
+        Ok(DaemonToHost::Kill) => { kill_sequence(...).await; break PhaseBExit::Kill; }
+        Ok(DaemonToHost::Detach) => { break PhaseBExit::Detach; }
+        Err(_) => { break PhaseBExit::Detach; } // EOF / parse failure
+        _ => {}  // future variants
+    }
+    Some(exit) = child_exit_watch.recv() => {
+        // Harness child exited while connected.
+        send_state_changed(&mut conn_writer, SessionState::Terminated).await;
+        send_goodbye(&mut conn_writer).await;
+        return Ok(());
+    }
+}
+```
+
+**4. pty_writer ownership:**
+`pty_writer = pty_master.take_writer()` MUST be called once at startup (after PTY open, before the event loop). `take_writer()` is called exactly ONCE — calling it again panics in portable-pty. The writer is held for the session lifetime.
+
+**5. Real scrollback dump (`stream_scrollback_dump_chunked`):**
+The empty 0-chunk stub from S-035 MUST be replaced. On `DaemonToHost::Attach`:
+
+a. **Snapshot parser state:** Capture current `vt100::Screen` via `parser.screen()`.
+b. **Resume PtyBytes immediately (I3-003):** PtyBytes forwarding continues uninterrupted — the `select!` keeps running. The `stream_scrollback_dump_chunked` helper takes a snapshot ref; it does NOT pause the event loop.
+c. **Serialize rows:** For each row in scrollback + visible screen (scrollback rows first):
+   - For each cell: `screen.cell(row, col)` → `Option<&vt100::Cell>`.
+   - `ch`: `cell.contents()` → `String` (the cell's character(s) including combining chars).
+   - `fg`: `cell.fgcolor()` → map `vt100::Color::Default → SerializedColor::Default`, `vt100::Color::Idx(n) → SerializedColor::Ansi(n)`, `vt100::Color::Rgb(r,g,b) → SerializedColor::Rgb(r,g,b)`.
+   - `bg`: same mapping.
+   - `attrs`: pack `vt100::Attrs` into u8 bitmask: `bit0=bold, bit1=dim, bit2=italic, bit3=underline, bit4=inverse` (5-bit; vt100 0.16 attrs verified).
+   - `None` cells (beyond terminal content): `SerializedCell { ch: " ".to_string(), fg: Default, bg: Default, attrs: 0 }`.
+d. **Chunk at ≤200 rows per `ScrollbackChunk`** (stays well within 256 KiB frame limit with JSON overhead). `chunk_seq` starts at 0, increments per chunk.
+e. **Send `ScrollbackDumpComplete`:** `total_chunks`, `cursor_row/cursor_col` from `screen.cursor_position()`, `pty_rows/pty_cols` from current parser dimensions.
+f. **On send failure during dump:** Log WARN; break Phase B with `Detach`.
+
+**6. SerializedCell confirmed — no new IPC types needed:**
+`SerializedCell`, `SerializedColor`, `HostToDaemon::PtyBytes`, `HostToDaemon::ScrollbackChunk`, `HostToDaemon::ScrollbackDumpComplete`, and `DaemonToHost::KeyInput` are ALL already defined in `monocle-ipc/src/types.rs`. S-047 MUST NOT redefine or add new IPC variants.
+
+**7. Daemon scrollback forwarding (TODO at mod.rs:3899):**
+After `attach_session()` returns `Ok(())` and the `scrollback_chunks: Vec<HostToDaemon>` are available, the daemon IPC handler for `AttachSession` MUST broadcast each chunk to the requesting client:
+- For each `HostToDaemon::ScrollbackChunk { rows, chunk_seq }` in order: send `ServerToClient::ScrollbackChunk { session_id: session_id.clone(), rows, chunk_seq }` to the requesting client's sender (NOT broadcast to all subscribers — only the attaching client).
+- Then send `ServerToClient::ScrollbackDumpComplete { session_id, total_chunks, cursor_row, cursor_col, pty_rows, pty_cols }` to the same client.
+The `pending_pty_bytes` buffer (per session-client pair) accumulates live `PtyOutput` from the broker during this forwarding sequence. After `ScrollbackDumpComplete` is sent, flush `pending_pty_bytes` as live `PtyOutput` messages.
+
+**8. Attach-driven proxy start is canonical (WG-S046-SPAWN-PROXY-NOT-STARTED resolved):**
+The proxy task starts only on `ClientToServer::AttachSession`, which calls `attach_session()`, which calls `spawn_pty_proxy_task()`. No auto-start on spawn is needed or correct. The TUI sends `AttachSession` when entering `AppMode::EmbeddedTerminal`. This is the confirmed design; WG-S046-SPAWN-PROXY-NOT-STARTED is NOT a gap.
+
+#### Updated Ruling A scope table
+
+The deferred-feature table in §Ruling A is updated above to reflect this ruling. The following features are confirmed as S-047 scope:
+
+| Feature | S-047 component |
+|---------|----------------|
+| PTY read loop (spawn_blocking + bounded channel + 4096 byte buffer) | session-host |
+| Phase A `select!` with `pty_reader_rx.recv()` + `listener.accept()` | session-host |
+| Phase B `select!` with `pty_reader_rx.recv()` + `recv_daemon_msg()` + `child_exit_watch.recv()` | session-host |
+| `parser.process(&bytes)` in both Phase A and Phase B PTY arms | session-host |
+| `DaemonToHost::KeyInput { bytes }` → `pty_writer.write_all(&bytes)` | session-host |
+| Real `DaemonToHost::Attach` → `stream_scrollback_dump_chunked()` (replaces empty stub) | session-host |
+| `DaemonToHost::KeyInput` daemon arm → `send_key_input()` in `ipc_server.rs` | daemon |
+| `DaemonToHost::RenameSession` daemon arm → `rename_session()` in `ipc_server.rs` | daemon |
+| ScrollbackChunk* / ScrollbackDumpComplete daemon forwarding to attaching client (mod.rs:3899 TODO) | daemon |
+| TUI `ScrollbackChunk` / `ScrollbackDumpComplete` / `PtyReset` reception and pending_pty_bytes replay | monocle-tui |
+
+#### Points re-estimate
+
+Session-host producer legs add material implementation scope. Original story: 8 points (daemon IPC arms + TUI reception). With session-host expansion: **16 points** total. Breakdown:
+- PTY read task + Phase A/B select! expansion: 3 pts
+- KeyInput write path: 1 pt
+- Real scrollback dump (parser snapshot + serialization + chunking): 4 pts
+- Daemon scrollback forwarding + pending_pty_bytes buffering: 3 pts
+- TUI reception handlers (original scope): 3 pts
+- Integration tests covering session-host legs: 2 pts
+
+The story-writer MUST update `points: 8` → `points: 16` and add the new File Structure rows and ACs for the session-host legs per the Story-Expansion Directive below.
+
+---
+
 ## §Trace v2.15.1
 
 **MED-002 RESOLVED for S-036 scope — three-layer safety argument extends to `rediscover_sessions()`; no `SessionEntry.generation` guard required** (2026-06-19):
@@ -4143,6 +4283,19 @@ Add to the S-035 test suite:
   correctly specifies this. Resolves HIGH-001.
 
 - SE-16d monotonicity: v2.7.1 > v2.7.0. PASS.
+
+---
+
+## §Trace v2.18.0
+
+**Human ruling 2026-06-22: S-047 expanded to full session-host producer scope** (Ruling M):
+
+- **Context:** S-047 v1.7 scoped only daemon IPC arms (KeyInput + RenameSession) and TUI scrollback reception. Codebase TODOs in `monocle-session-host/src/main.rs` (lines 287, 442, 450, 546, 676/684/690) explicitly attribute PTY streaming, vt100 parser integration, KeyInput write, and real scrollback dump to "S-047 scope." Human ruling 2026-06-22 formalizes this attribution.
+- **Ruling A deferred-feature table updated:** Replaced single-row "PTY output streaming | S-039/S-040" and "vt100::Parser.process() | S-039" and "KeyInput | S-047" with a comprehensive 5-row expansion covering all S-047 session-host producer legs and the daemon scrollback forwarding TODO.
+- **New Ruling M added:** Authoritative session-host scope boundary: PTY reader task (C3 pattern, spawn_blocking, 4096-byte buffer, bounded channel 1024), Phase A/B `select!` expansion with PTY arm, `pty_writer.take_writer()` lifecycle, `DaemonToHost::KeyInput` → `pty_writer.write_all()` with Detach-break on error, real `stream_scrollback_dump_chunked()` (≤200 rows/chunk, SerializedCell mapping from vt100 screen, I3-003 no-pause), daemon scrollback forwarding to attaching client (mod.rs:3899 TODO resolved), attach-driven proxy start confirmed (WG-S046-SPAWN-PROXY-NOT-STARTED closed as correct design).
+- **Points re-estimate:** 8 pts → 16 pts. Story-writer must update S-047 story file.
+- **Semver: minor bump (v2.17.1 → v2.18.0)** — new Ruling M is additive scope definition; no existing ruling changes.
+- **SE-16d monotonicity: v2.18.0 > v2.17.1. PASS.**
 
 ---
 

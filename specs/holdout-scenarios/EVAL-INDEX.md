@@ -33,7 +33,7 @@ inputs:
   - {path: .factory/stories/S-044-appmode-transitions-permission-badge.md, version: "1.1"}
   - {path: .factory/stories/S-045-claude-code-spawn-recipe.md, version: "1.3"}
   - {path: .factory/stories/S-046-pty-output-fan-out.md, version: "2.0"}
-  - {path: .factory/stories/S-047-ipc-lifecycle-variants.md, version: "1.7"}
+  - {path: .factory/stories/S-047-ipc-lifecycle-variants.md, version: "1.8"}
   - {path: .factory/stories/S-048-sessions-panel-multi-project.md, version: "1.3"}
   - {path: .factory/specs/behavioral-contracts/BC-INDEX.md, version: "1.44.4"}
 traces_to: .factory/stories/STORY-INDEX.md

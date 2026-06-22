@@ -124,9 +124,9 @@ SS-tui:
 
 SS-session-manager:
   path: specs/architecture/SS-session-manager.md
-  current_version: "2.17.1"
-  last_bump_commit: "[F-S042-ADV-MED-001 ownership-drift cleanup: ResizePane struck from KeyInput deferred-feature row and S-035 dependency-analysis ownership statement; D-344 ruling propagation]"
-  last_bump_date: "2026-06-21"
+  current_version: "2.18.0"
+  last_bump_commit: "[Human ruling 2026-06-22: S-047 session-host producer scope expansion — Ruling M added (PTY read loop, Phase A/B select! expansion, KeyInput write, real scrollback dump, daemon forwarding); Ruling A deferred-feature table updated; points re-estimate 8→16]"
+  last_bump_date: "2026-06-22"
 
 SS-embedded-pty:
   path: specs/architecture/SS-embedded-pty.md
@@ -743,9 +743,9 @@ BC-2.05.010:
 
 BC-2.05.011:
   path: specs/behavioral-contracts/ss-05/BC-2.05.011.md
-  current_version: "1.2.11"
-  last_bump_commit: "SS-session-manager arch-source pin cascade v2.17.0→v2.17.1 (F-S042-ADV-MED-001 ownership-drift cleanup); no behavioral changes"
-  last_bump_date: "2026-06-21"
+  current_version: "1.2.12"
+  last_bump_commit: "[Human ruling 2026-06-22: S-047 session-host producer scope expansion; Story Anchor updated with session-host legs; Architecture Source updated with Ruling M citation; SS-session-manager pin cascade to v2.18.0]"
+  last_bump_date: "2026-06-22"
 
 BC-2.06.025:
   path: specs/behavioral-contracts/ss-06/BC-2.06.025.md
@@ -985,9 +985,9 @@ S-046-pty-output-fan-out:
 
 S-047-ipc-lifecycle-variants:
   path: stories/S-047-ipc-lifecycle-variants.md
-  current_version: "1.7"
-  last_bump_commit: "[Human ruling: ResizePane arm + resize_session() moved to S-042; IPC Handler Arm Ownership table updated; AC-003 ResizePane removed; File Structure updated; 3 arms → 2 arms]"
-  last_bump_date: "2026-06-21"
+  current_version: "1.8"
+  last_bump_commit: "[Human ruling 2026-06-22: session-host producer scope expansion — AC-SH-001..AC-SH-005 added; session-host Tasks section added; File Structure + monocle-session-host rows added; points 8→16; subsystems updated; input pins refreshed]"
+  last_bump_date: "2026-06-22"
 
 E-04-daemon-wiring:
   path: stories/epics/E-04-daemon-wiring.md
