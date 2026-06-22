@@ -617,6 +617,32 @@ pub enum ServerToClient {
         /// 0-indexed chunk sequence number.
         chunk_seq: u32,
     },
+
+    // -----------------------------------------------------------------------
+    // S-046: PTY parser-reset notification (BC-2.05.011, BC-2.05.009 Invariant 4)
+    // Owned by S-046 (broker emission in monocle-runtime).
+    // Consumed by S-047 (TUI-side protocol handler: parser reset, re-attach trigger,
+    // 5-second status bar indicator).
+    // -----------------------------------------------------------------------
+    /// Notification that the PTY byte stream for a session was interrupted.
+    ///
+    /// Emitted by the daemon's `PtyBroker` when the PTY writer task for a session is
+    /// dropped (session exit, OOM kill, or other extreme condition). The broker sends
+    /// this to ALL connected TUI clients that were subscribed to the session's PTY output.
+    ///
+    /// On receipt, the TUI client must:
+    /// 1. Reset its `pty_parsers[session_id]` to a fresh `vt100::Parser` state.
+    /// 2. Send `ClientToServer::AttachSession { session_id }` to trigger a fresh
+    ///    `ScrollbackChunk*` + `ScrollbackDumpComplete` sequence (re-attach).
+    /// 3. Display `[PTY reset — <session_id truncated>]` in the status bar for 5 seconds
+    ///    (S-047/S-048 scope; the broker's responsibility ends at emission).
+    ///
+    /// `PtyReset` fires ONLY on an actual PTY byte drop (channel `SendError`, OOM, or
+    /// other extreme condition). Under normal `.send().await` backpressure it never fires.
+    PtyReset {
+        /// The UUID string of the session whose PTY stream was reset.
+        session_id: String,
+    },
 }
 
 /// Messages sent from TUI clients to the daemon.

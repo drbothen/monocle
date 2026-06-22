@@ -90,6 +90,13 @@ pub mod ipc_server;
 /// - [`hooks::SessionState`]: Active / Stopped
 pub mod hooks;
 
+/// PtyOutput fan-out broker — bounded channel, backpressure, and client lifecycle (S-046).
+///
+/// Implements BC-2.05.009: `PtyBroker` struct with INPUT channel `Arc<Bytes>(1024)`,
+/// per-client isolated `mpsc::Sender<ServerToClient>(64)`, 3-strike disconnect, and
+/// `ServerToClient::PtyReset` emission on broker task drop.
+pub mod pty_broker;
+
 /// Session Manager — daemon-side coordinator for session-host processes (S-033).
 ///
 /// Implements BC-2.08.001 (spawn_session), BC-2.08.008 (SessionStateChanged broadcast),

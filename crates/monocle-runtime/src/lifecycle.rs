@@ -776,6 +776,7 @@ pub async fn daemon_start_sequence(
         // Re-discovered sessions are live in this SessionManager and will appear in
         // DaemonState, satisfying AC-015 (sessions visible in InitialState on first TUI connect).
         session_manager: Some(tokio::sync::Mutex::new(session_manager_for_daemon_state)),
+        pty_drop_counter: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0)),
         session_id_gen: std::sync::Arc::new(crate::session_manager::UuidV4Generator),
         hook_decision_override: None,
         hook_delay_ms: None, // Unit-test override only; not set via env var.

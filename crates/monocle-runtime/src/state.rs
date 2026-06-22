@@ -330,6 +330,23 @@ pub struct DaemonState {
     /// async lifecycle methods called from the per-client IPC task.
     pub session_manager: Option<tokio::sync::Mutex<crate::session_manager::SessionManager>>,
 
+    // -------------------------------------------------------------------------
+    // S-046 fields: PTY output fan-out broker + drop counter (BC-2.05.009)
+    // -------------------------------------------------------------------------
+    /// Daemon-global PTY channel drop counter (BC-2.05.009 PC-3).
+    ///
+    /// Incremented ONLY on sender-error / OOM / receiver-gone conditions in the PTY
+    /// broker's INPUT channel. NOT incremented on normal `.send().await` backpressure
+    /// waits, per-client 3-strike disconnects, or graceful session teardown.
+    ///
+    /// When incremented, the PTY broker logs a `WARN`-level structured trace entry to
+    /// the session-host's stderr: `WARN: PTY channel drop #N for session <session_id>`.
+    /// This counter is NOT surfaced over IPC and does NOT appear in any `ServerToClient`
+    /// variant (BC-2.05.009 PC-3).
+    ///
+    /// Shared with the `PtyBroker` instance(s) via `Arc<AtomicU64>`.
+    pub pty_drop_counter: Arc<std::sync::atomic::AtomicU64>,
+
     /// Session ID generator used by the IPC SpawnSession handler (EC-152 seam).
     ///
     /// Production default: `UuidV4Generator` — generates a fresh UUID v4 on every call.
@@ -449,6 +466,7 @@ impl DaemonState {
                     crate::session_manager::HookEndpointConfig::default(),
                 )))
             },
+            pty_drop_counter: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0)),
             session_id_gen: std::sync::Arc::new(crate::session_manager::UuidV4Generator),
             hook_decision_override: None,
             hook_delay_ms: None,

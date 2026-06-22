@@ -1673,6 +1673,21 @@ impl SessionManager {
             });
         }
 
+        // S-046 wiring seam: PtyBroker creation + PTY-reader→broker channel wiring.
+        //
+        // When S-046 is implemented, this is where `PtyBroker::new(session_id, pty_drop_counter)`
+        // is constructed and `PtyBroker::spawn_event_loop()` is called to start the fan-out task.
+        // The broker's `input_tx` sender is passed to the PTY reader task (spawned in the
+        // post-spawn monitor's Launching → Running transition) so that PTY bytes flow through
+        // the broker before being fanned out to TUI clients.
+        //
+        // The broker is stored in the `SessionEntry` (or a parallel per-session map) so that
+        // `register_client` / `unregister_client` can be called from the IPC accept loop.
+        //
+        // S-046 implementer: replace this comment block with real wiring using:
+        //   crate::pty_broker::PtyBroker::new(session_id.clone(), Arc::clone(&pty_drop_counter))
+        // See: crates/monocle-runtime/src/pty_broker.rs for method signatures.
+
         tracing::info!(
             session_id = %session_id,
             pid = pid,
