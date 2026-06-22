@@ -2609,3 +2609,55 @@ The correct approach (set_scrollback(new_cap), process(bytes), read back scrollb
 - Add as an adversarial review axis: "Named library API methods in BC algorithms — do they exist in the pinned crate version?"
 
 **Attachment:** Non-blocking (the defect was caught and corrected in-scope). No deferral story needed. Lesson codification anchored to Phase 1 spec-authoring checklist improvement.
+
+---
+
+### PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP RECURRENCE IN S-041 CYCLE [process-gap] [ESCALATION REQUIRED]
+
+**Date:** 2026-06-22
+**Severity:** process-gap (CRITICAL — this is a recurring recurrence requiring structural fix; human attention flagged)
+**Origin:** S-041 cycle. The architect agent committed `crates/monocle-tui/src/app.rs` (POL-11 version-pin-historical markers) directly to the main-checkout `develop` branch as commit 5c93579 (local-only, unpushed). The orchestrator caught the develop-HEAD divergence, reset develop to `origin/5e6a2e0`, and folded the equivalent fix into the S-041 story worktree PR as implementer commit 4ae0fdf. No content was lost; the change landed correctly via the worktree PR path.
+
+**Recurrence count (cumulative):**
+- First: S-035 cycle — architect left spec+registry uncommitted (PROCESS-GAP-ARCHITECT-NO-COMMIT).
+- Second: S-036 cycle (D-339) — architect committed POL-11 doc-comment change 772cb68 directly to develop.
+- Third: S-042 cycle (D-345) — architect committed resume-doc 4b370cb directly to develop.
+- **Fourth (this entry):** S-041 cycle — architect committed app.rs POL-11 version-pin-historical markers 5c93579 directly to develop.
+
+**Note on previous lessons.md entry:** The entry titled "THIRD RECURRENCE (D-345, S-042 cycle)" in this file records the third confirmed instance. The S-041 cycle incident is the fourth. The orchestrator instructions that triggered this entry counted it as a 3rd recurrence, likely because the S-042 instance was recorded after the fact at D-345 but not reflected in the orchestrator's context at S-041 dispatch time. The count above is the authoritative total: **4 recurrences as of S-041 cycle.**
+
+**Root cause (unchanged):** Architect agents interpret their "production-grade, fix in scope" mandate as permission to write directly to develop. Every instance involves a change to develop-resident files (source code, doc-comments, or prose files) that should have gone via a story worktree + PR.
+
+**3-instance codification threshold CROSSED (at S-042 cycle; this is the 4th):**
+The recommended remediation steps from the S-042 entry remain the required actions:
+1. Add an explicit prohibition in the architect agent prompt: "NEVER commit directly to any branch except factory-artifacts. All changes to develop-resident files must be staged in the story worktree and delivered via PR."
+2. Add a mandatory orchestrator post-dispatch check: `git fetch && git log develop..origin/develop` or `git -C <main> log origin/develop..HEAD` after every architect dispatch; abort and recover if non-empty.
+3. Consider a pre-commit hook or CI gate that flags commits to `develop` by the architect agent identity.
+
+**HUMAN ACTION REQUIRED:** This recurrence pattern is structural. The orchestrator recovery works correctly (catch + reset + fold), but the 4-recurrence pattern demonstrates that behavioral reminders in lessons.md are insufficient. A structural guard (hook, CI check, or prompt prohibition) is needed. Flagged for human review.
+
+**S-7.02 cycle-closing note:** No new tech-debt register entry (pattern is agent behavior, not code debt). Register entry PROCESS-GAP-ARCHITECT-CODE-ON-DEVELOP updated to note 4th recurrence. Escalation noted in STATE.md.
+
+---
+
+### PROCESS-GAP-SPEC-ALGORITHM-NOT-GROUNDED-IN-CRATE-SOURCE: 2nd instance (S-041 cycle, 2026-06-22) [process-gap]
+
+**Date:** 2026-06-22
+**Severity:** process-gap (HIGH — reinforces the codified lesson; two confirmed instances)
+**Origin:** S-041 cycle, adversarial pass 1. The spec (BC-2.09.003 / SS-embedded-pty) stated that `crossterm 0.29 EnableMouseCapture` enables only mouse button events (modes 1000/1006). The adversary found that `EnableMouseCapture` actually enables **five modes** in crossterm 0.29: 1000 (basic), 1002 (button motion), **1003 (any motion / Moved events)**, 1005 (UTF-8 encoding), and 1006 (SGR). The spec's claim that `Moved` events were unreachable on Unix was therefore a spec error — `Moved` IS reachable and the SGR encoder must handle it.
+
+**Impact:** One extra adversarial BLOCKER pass (P1) + spec correction cascade (BC-2.09.003 v1.5.2→v1.6.1, SS-embedded-pty v1.16.0→v1.17.0) + POL-11 cascade.
+
+**Pattern comparison with 1st instance (S-043 cycle):**
+- S-043: `vt100::Screen::scrollback_len()` — method did not exist in the pinned crate version.
+- S-041: `crossterm::EnableMouseCapture` — enables MORE modes than the spec claimed; the spec was wrong about the API's behavior.
+
+Both share the same root cause: spec authors did not consult/verify the pinned crate source before writing algorithm-level claims about library API behavior.
+
+**2nd instance — codification reinforced:**
+The codification recommendation from the S-043 entry is confirmed applicable beyond "method existence" to "method behavior scope":
+- Verify not just that a library API method/type exists, but that the spec's behavioral claim about it (what modes it enables, what it returns, what invariants it upholds) matches the pinned crate source.
+- The adversary axis "Named library API methods in BC algorithms — do they exist and behave as claimed in the pinned crate version?" is validated by two instances.
+
+**Threshold tracking:** S-043 (1st instance, scrollback_len), S-041 (2nd instance, EnableMouseCapture mode set). Two confirmed instances — codification is warranted. If a 3rd instance occurs, escalate to a mandatory architect pre-commit checklist step: "grep/cargo-doc verify every named library API method AND its documented behavior scope before finalizing BC/SS algorithm text."
+

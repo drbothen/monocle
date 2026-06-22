@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.57"
+version: "1.58"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-22T00:00:00Z
@@ -557,12 +557,12 @@ stories:
     epic: EPIC-09
     wave: 9
     points: 5
-    status: draft
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 9. Depends on S-040. Blocks S-044. BC: BC-2.09.003."
+    completed_at: "2026-06-22"
+    pr_url: "https://github.com/jmagady/monocle/pull/54"
+    notes: "Wave 9. PR #54 @ 58fbd617 (squash-merge 2026-06-22). D-347. Mouse Forwarding — pure mouse_event_to_pty_bytes SGR 1006 encoder (full Ps table, modifier bits, 1-indexed pane-relative coords, out-of-pane→None), Event::Mouse dispatch→KeyInput IPC, scoped EnableMouseCapture/SGR-1006 enter+exit lifecycle (capture active IFF EmbeddedTerminal). 14-pass adversarial convergence (3 consecutive CLEAN: passes 12/13/14). Security PASS (0 crit/high; 1 MED non-blocking, 4 LOW). BC-2.09.003 v1.6.1; SS-embedded-pty v1.17.0; S-041 story v1.3; EVAL-INDEX v1.42; BC-2.09.007 v1.5.1. Depends on S-040. Blocks S-044. BCs: BC-2.09.003. S-044 UNBLOCKED."
 
   - id: S-042
     title: "PTY Resize Detection, 50ms Debounce, ResizePane IPC, and Full Daemon Resize Pipeline"
@@ -653,12 +653,12 @@ summary:
   not_started: 0
   in_progress: 0
   review: 0
-  done: 42
+  done: 43
   ready: 0
   blocked: 1
-  draft: 8
+  draft: 7
   total_points: 314
-  points_complete: 257
+  points_complete: 262
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
@@ -688,6 +688,13 @@ summary:
   # total_stories note: 51 = 33 Phase-3 stories (including S-PHASE-3-PREP and S-DTU-001) + 2 Wave-8
   #   pre-existing (S-032, S-DAEMON-WIRE-FIX-001) + 16 new v1A (S-033..S-048). Blocked count (1) is
   #   S-PHASE-3-PREP (blocked on vsdd-factory spec-kit-mcp rc.19+).
+  # v1.58 updates (2026-06-22):
+  # - D-347: S-041 MERGED to develop via PR #54 @ 58fbd617 (squash-merge 2026-06-22).
+  #   S-041 status: draft → done. completed_at: "2026-06-22". pr_url set.
+  #   done: 42 → 43; draft: 8 → 7; points_complete: 257 → 262.
+  #   Mouse Forwarding — mouse_event_to_pty_bytes, SGR 1006 encoder, scoped capture lifecycle. 5 pts.
+  #   14-pass adversarial (3 CLEAN: passes 12/13/14). Security PASS. BC-2.09.003 v1.6.1.
+  #   Wave 9: 5/6 done (32/45 pts). 43/51 stories done (262/314 pts). S-044 UNBLOCKED.
   # v1.57 updates (2026-06-22):
   # - D-346: S-043 MERGED to develop via PR #53 @ 5e6a2e0 (squash-merge 2026-06-22).
   #   S-043 status: draft → done. completed_at: "2026-06-22". pr_url set.

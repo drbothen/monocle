@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.64"
+version: "5.65"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-22T00:00:00Z
@@ -91,7 +91,7 @@ traces_to: .factory/specs/prd.md
 | S-038 | SessionManager Hook Auto-Injection — hooks-settings.json Writer + SpawnOptions.hooks_settings_path Population | EPIC-08 | 3 | 8 | done | — |
 | S-039 | PTY Output Pipeline — vt100::Parser, PseudoTerminal Render, PtyOutput IPC Handler, Auto-Attach on First Entry | EPIC-09 | 8 | 9 | done | S-040, S-042, S-043 |
 | S-040 | Full-Fidelity Keyboard Forwarding — key_event_to_pty_bytes, Kitty Protocol CSI u, and Bracketed Paste | EPIC-09 | 8 | 9 | done | S-041, S-044 |
-| S-041 | Mouse Forwarding — mouse_event_to_pty_bytes, SGR 1006 Scoped Entry/Exit, Out-of-Pane Clip | EPIC-09 | 5 | 9 | draft | S-044 |
+| S-041 | Mouse Forwarding — mouse_event_to_pty_bytes, SGR 1006 Scoped Entry/Exit, Out-of-Pane Clip | EPIC-09 | 5 | 9 | done | S-044 |
 | S-042 | PTY Resize Detection, 50ms Debounce, ResizePane IPC, and Full Daemon Resize Pipeline | EPIC-09 | 8 | 9 | done | S-043 |
 | S-043 | Scrollback Navigation — PtyScrollUp/Down, Per-Session Offsets, Configurable Capacity | EPIC-09 | 3 | 9 | done | — |
 | S-044 | EmbeddedTerminal + SessionCreation AppMode Transitions, SessionCreation Wizard, SpawnAck, and Permission Badge+Bell | EPIC-09 | 13 | 9 | draft | — |
@@ -1251,6 +1251,16 @@ SE-16d monotonicity: v5.30 timestamp 2026-06-03 >= v5.29 timestamp 2026-06-03. P
 - No wave/points/BC coverage changes — story remains Wave 3, 8 pts, BC-2.03.001..004.
 - SE-22 v2 sibling-sweep: sprint-state.yaml v1.16→v1.17 (done 14→15, not_started 2→1, points_complete 67→75); STATE.md v6.05→v6.06.
 - STORY-INDEX version bumped v2.8→v2.9.
+
+## §Trace v5.65 — S-041 MERGED PR #54 @ 58fbd617 (D-347, 2026-06-22)
+
+- S-041 Story Registry row: `draft` → `done`. PR #54 @ 58fbd617 (squash-merge 2026-06-22).
+- Mouse Forwarding — pure mouse_event_to_pty_bytes SGR 1006 encoder, scoped EnableMouseCapture lifecycle (capture active IFF EmbeddedTerminal), Event::Mouse dispatch→KeyInput IPC. 5 pts.
+- 14-pass adversarial convergence (3 consecutive CLEAN: passes 12/13/14). Security PASS (0 crit/high; 1 MED non-blocking, 4 LOW).
+- BC-2.09.003 v1.6.1; SS-embedded-pty v1.17.0; S-041 story v1.3; EVAL-INDEX v1.42; BC-2.09.007 v1.5.1.
+- S-044 UNBLOCKED (all deps S-033+S-035+S-040+S-041 now done).
+- Wave 9: 5/6 done (32/45 pts). 43/51 stories done (262/314 pts).
+- STORY-INDEX version bumped v5.64 → v5.65.
 
 ## §Trace v5.64 — S-043 MERGED PR #53 @ 5e6a2e0 (D-346, 2026-06-22)
 
