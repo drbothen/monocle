@@ -3,7 +3,7 @@ document_type: lessons-learned
 level: ops
 project: monocle
 cycle: cycle-001
-version: "1.8"
+version: "1.9"
 producer: state-manager
 timestamp: 2026-06-22T00:00:00Z
 input-hash: "[live-state]"
@@ -2564,3 +2564,48 @@ The root cause is unchanged: architect agents interpret their "fix in scope" man
 3. **Adversary axis (codify):** Adversary should include a "doc-comment accuracy" axis in every pass — verify that named types, variants, and event paths referenced in doc-comments actually exist in the current implementation. A named-but-removed item in a doc-comment is a MEDIUM finding (misleads future maintainers).
 
 **S-7.02 cycle-closing note:** The register entry PROCESS-GAP-STUB-PHASE-DOCCOMMENTS (codification-pending) should be promoted to codified once the SS-conventions-anti-patterns.md §Anti-Patterns update (recommended above) lands. No new deferral story needed — this is an agent-behavior and adversary-axis fix.
+
+---
+
+## PROCESS-GAP-STUB-PHASE-DOCCOMMENTS 2nd recurrence (S-043 cycle, 2026-06-22) [process-gap]
+
+**Date:** 2026-06-22
+**Severity:** process-gap (MEDIUM — second story-level recurrence of the same pattern)
+**Origin:** S-043 cycle. Two adversarial finds:
+- Pass 1 HIGH-004: a stub-phase doc-comment described behavior that was removed or never implemented (stale scrollback-architecture-related doc-comment on a helper function).
+- Pass 5 HIGH-001: a stale delta-probe algorithm doc-comment described a history-depth-delta approach that no longer matched the vt100-native content-anchoring implementation. The doc-comment referenced the pre-correction algorithm that was grounded out in P4's spec correction cycle.
+
+**Recurrence count:** S-040 (first story): 5 separate stale doc-comment finds across passes 10/12/13/14/17. S-043 (second story): 2 finds across passes 1 and 5.
+
+**Pattern update:** The S-043 P5 case is a new sub-variant — the stale doc-comment was not a stub-phase artifact but a *spec-correction propagation gap*: the spec (SS-embedded-pty / BC-2.09.007) was corrected mid-story (P4) to use vt100-native content-anchoring, but the associated doc-comment in the source was not updated to match the new algorithm. This is a distinct failure mode from the stub-architect case:
+- **Stub-architect variant:** stub-phase language ("todo!", "tests MUST fail") persists into production doc-comments because implementer doesn't refresh them.
+- **Spec-correction variant:** doc-comments are written against an earlier spec version and are not updated when the spec is corrected mid-story.
+
+**Codification update:** The PROCESS-GAP-STUB-PHASE-DOCCOMMENTS register entry (codification-pending) now has two confirmed stories. If a third story exhibits this pattern, promote to a mandatory self-audit step in the implementer agent prompt.
+
+**Threshold tracking:** S-040 (1st), S-043 (2nd). Next story with this finding triggers escalation to mandatory implementer self-audit step codification.
+
+---
+
+## PROCESS-GAP-SPEC-ALGORITHM-NOT-GROUNDED-IN-CRATE-SOURCE (S-043 cycle, 2026-06-22) [process-gap]
+
+**Date:** 2026-06-22
+**Severity:** process-gap (HIGH — spec algorithm was functionally wrong; required in-scope correction at adversarial pass 4)
+**Origin:** S-043 cycle, adversarial pass 4. The content-anchored scrollback algorithm specified in BC-2.09.007 and SS-embedded-pty referenced:
+1. A history-depth-delta approach that saturated at the scrollback cap (algorithm was logically incorrect — it could not distinguish "scroll because new content arrived" from "scroll because we're still near cap").
+2. A nonexistent vt100 0.16.2 API: `screen.scrollback_len()` — this method does not exist in the crate.
+
+The correct approach (set_scrollback(new_cap), process(bytes), read back scrollback len) was available in the vt100 crate's documented API surface but was not consulted during spec authoring. The fix required bumping SS-embedded-pty from v1.14.0 to v1.16.0 and BC-2.09.007 from v1.3.2 to v1.5.0 mid-story convergence.
+
+**Root cause:** Spec algorithms that reference library APIs were not validated against the vendored crate source during spec authoring (Phase 1) or story authoring (Phase 2). The error was only caught at Phase 3 adversarial review (pass 4).
+
+**Cost:** One extra adversarial BLOCKER pass (P4) + spec correction cascade (SS-embedded-pty + BC + story + EVAL-INDEX) + POL-11 cascade (BC-2.09.002/004 arch-source pin historical-qualification).
+
+**Lesson:** Any spec algorithm that references a library API method (e.g., `crate::screen::set_scrollback`, `vt100::Screen::scrollback_len`) MUST be validated against the vendored crate source (`cargo doc` or direct source read) at spec-authoring time. A named method that does not appear in the crate's public API is a fabrication and will be caught by the adversary — the spec author should catch it first.
+
+**Codify recommendation:**
+- During Phase 1 spec crystallization and Phase 2 story authoring: when a BC or SS document specifies an algorithm that names a library API method, the spec author (product-owner or story-writer working with architect) must grep/cargo-doc verify the method exists in the pinned crate version before committing the spec.
+- Add to the architect's spec self-audit checklist: "For every library API method named in a BC/SS algorithm: verify it exists in the vendored/pinned crate source."
+- Add as an adversarial review axis: "Named library API methods in BC algorithms — do they exist in the pinned crate version?"
+
+**Attachment:** Non-blocking (the defect was caught and corrected in-scope). No deferral story needed. Lesson codification anchored to Phase 1 spec-authoring checklist improvement.

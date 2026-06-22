@@ -2,18 +2,18 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "8.10"
+version: "8.11"
 status: active
 producer: state-manager
 timestamp: 2026-06-22T00:00:00Z
 phase: phase-3-v1A-wave-9
-current_step: "D-345 (2026-06-22): S-042 MERGED to develop via PR #51 @ 2f01de0 (squash-merge). Full end-to-end PTY Resize Detection + 50ms Debounce + ResizePane IPC. 8 pts, EPIC-09, Wave 9. 9-pass adversarial (3 CLEAN: passes 7/8/9). Security PASS (3 in-scope fixes). Wave 9: 3/6 done (24/45 pts). 41/51 stories done (254/314 pts). develop HEAD: 2f01de0. S-043 UNBLOCKED. STATE v8.09→v8.10."
-prior_step: "D-343 (2026-06-21): Zero-context durability checkpoint. S-042 stubs committed @ 40dd53a (local worktree .worktrees/S-042, branch story/S-042-resize-debounce, NOT pushed to origin). Test-writer next. Wave 9: 2/6 done (16/45 pts). 40/51 stories done (246/314 pts). develop HEAD: d230a26. STATE v8.08→v8.09."
+current_step: "D-346 (2026-06-22): S-043 MERGED to develop via PR #53 @ 5e6a2e0 (squash-merge). Scrollback Navigation — PtyScrollUp/Down, per-session offsets, configurable capacity. 3 pts, EPIC-09, Wave 9. 8-pass adversarial (3 CLEAN: passes 6/7/8). Security PASS (2 LOW pre-existing). Wave 9: 4/6 done (27/45 pts). 42/51 stories done (257/314 pts). develop HEAD: 5e6a2e0. STATE v8.10→v8.11."
+prior_step: "D-345 (2026-06-22): S-042 MERGED to develop via PR #51 @ 2f01de0 (squash-merge). Full end-to-end PTY Resize Detection + 50ms Debounce + ResizePane IPC. 8 pts, EPIC-09, Wave 9. 9-pass adversarial (3 CLEAN: passes 7/8/9). Security PASS (3 in-scope fixes). Wave 9: 3/6 done (24/45 pts). 41/51 stories done (254/314 pts). develop HEAD: 2f01de0. S-043 UNBLOCKED. STATE v8.09→v8.10."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "D-001..D-241 at cycles/cycle-001/decisions-archive.md. D-242..D-338 appended at cycles/cycle-001/decisions-archive.md §Phase-1d+Phase-2+Phase-3. Full durable_task_register YAML (127+ entries) at cycles/cycle-001/task-register-full.yaml."
-awaiting: "S-042 MERGED (D-345). Next: S-043 (scrollback, Wave 9, UNBLOCKED by S-042); S-041 (mouse-forwarding, UNBLOCKED by S-040). SEC-006-CCR-URL-VALIDATION MUST be fixed before S-045. S-046 waits on S-032; S-047 waits on S-033+S-034+S-035+S-046; S-048 waits on S-022+S-033+S-047. F-W8INT-001/002/003 parked for Wave-8 integration gate. WG-S036-001/002 parked for Wave-8/9 integration gate."
+awaiting: "S-043 MERGED (D-346). Next: S-041 (mouse-forwarding, Wave 9, UNBLOCKED by S-040). SEC-006-CCR-URL-VALIDATION MUST be fixed before S-045. S-046 waits on S-032; S-047 waits on S-033+S-034+S-035+S-046; S-048 waits on S-022+S-033+S-047. F-W8INT-001/002/003 parked for Wave-8 integration gate. WG-S036-001/002 parked for Wave-8/9 integration gate. WG-S043-PERMISSION-BADGE-COEXIST parked for Wave-9 gate (BC-2.09.009)."
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: 2026-06-03
@@ -21,20 +21,17 @@ dtu_services: [hook-endpoints-x5]
 current_cycle: cycle-001
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v8.10 — 2026-06-22
-  PHASE-3 v1A ACTIVE — WAVE 9 — S-042 DONE, NEXT: S-043 (UNBLOCKED) / S-041 (UNBLOCKED)
+  ZERO-CONTEXT RESUME CHECKPOINT v8.11 — 2026-06-22
+  PHASE-3 v1A ACTIVE — WAVE 9 — S-043 DONE, NEXT: S-041 (UNBLOCKED)
   ============================================================================
   POSITION: Phase-3 TDD implementation, v1A control-center scope, Wave 9.
-  STATUS: S-042 MERGED PR #51 @ 2f01de0 (D-345). develop @ 2f01de0.
-  41/51 stories done (254/314 pts). Wave 9: 3/6 done (24/45 pts).
+  STATUS: S-043 MERGED PR #53 @ 5e6a2e0 (D-346). develop @ 5e6a2e0.
+  42/51 stories done (257/314 pts). Wave 9: 4/6 done (27/45 pts).
   10 workspace crates.
 
-  NEXT STEP = S-043 (scrollback-navigation) or S-041 (mouse-forwarding) — BOTH UNBLOCKED.
-  S-043 (Scrollback Navigation — PtyScrollUp/Down, Per-Session Offsets, Configurable Capacity,
-         3 pts, EPIC-09, Wave 9). BC: BC-2.09.007 v1.3.2. Deps: S-039 + S-042 — BOTH DONE.
+  NEXT STEP = S-041 (mouse-forwarding) — UNBLOCKED (dep S-040 done).
   S-041 (Mouse Forwarding — mouse_event_to_pty_bytes, SGR 1006 Scoped Entry/Exit, Out-of-Pane Clip,
          5 pts, EPIC-09, Wave 9). BC: BC-2.09.003. Dep: S-040 — DONE.
-  S-043 and S-041 are independent (no dep between them); can be delivered in parallel or serial.
   Per-story flow: stub-architect → test-writer (Red Gate) → implementer (TDD) → adversarial
   (3 consecutive CLEAN) → demo-recorder (WEBM+.tape, NO GIF) → pr-manager (9 steps) →
   state-manager checkpoint.
@@ -49,36 +46,36 @@ next_session_resume_protocol: |
   2. /Users/jmagady/Dev/monocle/CLAUDE.md               <- production-grade + routing
   3. This STATE.md (task register table below)          <- task register + history pointers
 
-  CORPUS FACTS (post-S-042-merge, checkpoint D-345):
-  Stories: 51 total / 314 pts (41 done; 9 draft v1A Waves 8-9; 1 blocked)
+  CORPUS FACTS (post-S-043-merge, checkpoint D-346):
+  Stories: 51 total / 314 pts (42 done; 8 draft v1A Waves 8-9; 1 blocked)
   New v1A: S-033..S-048 (16 stories); EPIC-08 Session Manager; EPIC-09 Embedded PTY
-  Waves: 8 (6/12 done, 38/74 pts); 9 (3/6 done, 24/45 pts)
+  Waves: 8 (6/12 done, 38/74 pts); 9 (4/6 done, 27/45 pts)
 
   KEY VERSION PINS (canonical source: .factory/specs/version-pin-registry.yaml):
   STORY-INDEX v5.63 | sprint-state v1.56 | wave-schedule v2.1
-  dependency-graph-expansion v2.10 | BC-INDEX v1.44.5 | EVAL-INDEX v1.41
+  dependency-graph-expansion v2.10 | BC-INDEX v1.44.5 | EVAL-INDEX v1.42
   ARCH-INDEX v1.0.30 | SS-ipc v1.24.0 | SS-session-manager v2.17.1
-  SS-embedded-pty v1.14.0 | SS-config v1.4.0 | SS-engine-module-v2-delta v1.6.0
+  SS-embedded-pty v1.16.0 | SS-config v1.4.0 | SS-engine-module-v2-delta v1.6.0
   SS-daemon-wiring-v2-delta v1.12.0 | SS-deps-pin-manifest-v2-delta v1.0.2
   prd v1.28.3 | product-brief v2.0.4 | domain-monocle-vision-synthesis v2.2.3
   BC-2.09.001 v1.7.3 | BC-2.09.002 v1.2.2 | BC-2.09.004 v1.0.11 | BC-2.09.005 v1.0.7
-  BC-2.09.006 v1.3.0 | BC-2.09.007 v1.3.2 | BC-2.07.002 v1.1.0 | S-039 v1.8 | S-040 v1.8
+  BC-2.09.006 v1.3.0 | BC-2.09.007 v1.5.0 | BC-2.07.002 v1.1.0 | S-039 v1.8 | S-040 v1.8
   BC-2.08.002 v1.2.6 | BC-2.08.004 v1.4.0 | BC-2.08.006 v1.5.0 | S-042 story v1.5
+  S-043 story v1.5
   (Pull the rest from .factory/specs/version-pin-registry.yaml)
 
   NEXT-ACTION QUEUE:
-  1. S-043 (scrollback, Wave 9) — UNBLOCKED (deps S-039 + S-042 both done). BC: BC-2.09.007.
-  2. S-041 (mouse-forwarding, Wave 9) — UNBLOCKED by S-040. BC: BC-2.09.003.
-  3. PREREQUISITE GATE: SEC-006-CCR-URL-VALIDATION (CWE-20/93) MUST be fixed
+  1. S-041 (mouse-forwarding, 5 pts, EPIC-09, Wave 9) — UNBLOCKED by S-040. BC: BC-2.09.003.
+  2. PREREQUISITE GATE: SEC-006-CCR-URL-VALIDATION (CWE-20/93) MUST be fixed
      before S-045 (ClaudeCodeModule::spawn_recipe CCR URL injection).
-  4. S-046 waits on S-032; S-047 needs S-033+S-034+S-035+S-046;
+  3. S-046 waits on S-032; S-047 needs S-033+S-034+S-035+S-046;
      S-048 needs S-022+S-033+S-047.
-  5. F-W8INT-001/002/003 parked for Wave-8 integration gate; do NOT re-raise
+  4. F-W8INT-001/002/003 parked for Wave-8 integration gate; do NOT re-raise
      as in-scope findings during per-story delivery.
-  6. New follow-ups from S-042: F-S042-OBS-WRITEFRAMED-DOCNAMING,
-     F-S042-OBS-LASTPANEAREA-DOC, WG-S042-SESSIONHOST-KEYINPUT,
+  5. New follow-ups from S-043: F-S043-SEC-DUMPTIMEOUT-UUID-VALIDATE (LOW),
+     F-S043-PRREV-SUGGESTIONS (LOW), F-S043-RENDER-OFFSET-WRITEBACK (LOW/benign),
+     WG-S043-PERMISSION-BADGE-COEXIST (Wave-9 gate / BC-2.09.009).
      F-S039-P9-OBS-001 (verify/close at Wave-9 gate).
-     WAVE-GATE-IPC-WRITER-ERROR-TAXONOMY: SUPERSEDED/RESOLVED by D-344 (S-042 WARN-drop carve-out implemented).
 
   PER-STORY FLOW (verbatim — follow exactly):
   stub-architect → test-writer (Red Gate, all fail) → implementer (TDD green) →
@@ -133,31 +130,37 @@ next_session_resume_protocol: |
   - D-345: S-042 MERGED PR #51 @ 2f01de0. Full end-to-end PTY Resize. 8 pts. 9-pass (3 CLEAN).
            Security PASS (3 in-scope: SEC-001 CWE-749, SEC-002 CWE-190, SEC-003 CWE-532).
            NO admin bypass. Wave 9: 3/6 done (24/45 pts). 41/51 done (254/314 pts).
-           develop HEAD: 2f01de0. S-043 UNBLOCKED. STATE v8.09→v8.10.
+           develop HEAD: 2f01de0. STATE v8.09→v8.10.
+  - D-346: S-043 MERGED PR #53 @ 5e6a2e0. Scrollback Navigation. 3 pts. 8-pass (3 CLEAN: 6/7/8).
+           Security PASS (2 LOW pre-existing, not introduced by S-043). NO admin bypass.
+           Wave 9: 4/6 done (27/45 pts). 42/51 done (257/314 pts). develop HEAD: 5e6a2e0.
+           Spec: BC-2.09.007 v1.5.0, SS-embedded-pty v1.16.0, S-043 v1.5, EVAL-INDEX v1.42.
+           STATE v8.10→v8.11.
   - Spawn-path Model A: SpawnOptions on wire; SpawnRecipe daemon-internal
   - IPC: 12-code wire taxonomy; 9-variant SessionError; schema_version 3
   - PTY (ADR-0011): portable-pty 0.9.0 + vt100 0.16.2 + tui-term =0.3.4; MSRV 1.88
   - SessionState: 5 variants (Launching/Running/Detached/Terminating/Terminated)
-  - Full history: cycles/cycle-001/decisions-archive.md (D-001..D-343)
+  - Full history: cycles/cycle-001/decisions-archive.md (D-001..D-345)
 
   OPEN NON-BLOCKING DURABLE FOLLOW-UPS (pointer — full register in STATE.md
   durable_task_register + cycles/cycle-001/task-register-full.yaml):
   SEC-001-S040-LOG-BEFORE-VALIDATE (CWE-20 LOW, maintenance sweep);
   SEC-003-S040-OVERSIZE-PASTE-UX (CWE-400 LOW, UX follow-up);
-  F-S040-KEYINPUT-DOC-EMPTYBYTES (LOW nit); F-S039-P9-OBS-001 (Wave-9 gate/S-042);
+  F-S040-KEYINPUT-DOC-EMPTYBYTES (LOW nit); F-S039-P9-OBS-001 (Wave-9 gate);
   SEC-006-CCR-URL-VALIDATION (before S-045); F-S038-EXIT72-ENFORCEMENT;
   F-S038-INV6-PROD-CANON-TEST; F-S038-TRACING-TEST-DOC-DEVERSION;
   F-S035-AC005-DAEMON-BROADCAST (S-039/S-047); F-S035-LAUNCHING-CONN-DETACH-MATRIX;
   DEMO-BINARY-ARTIFACTS-DEVELOP (6+ stories' WEBM — repo-hygiene pending);
-  F-W8INT-001/002/003 (Wave-8 gate); PROCESS-GAP-STUB-PHASE-DOCCOMMENTS (lessons.md).
-  WAVE-GATE-IPC-WRITER-ERROR-TAXONOMY (Wave-9 gate; S-042 stub phase finding).
+  F-W8INT-001/002/003 (Wave-8 gate); PROCESS-GAP-STUB-PHASE-DOCCOMMENTS (lessons.md);
+  F-S043-SEC-DUMPTIMEOUT-UUID-VALIDATE (LOW); F-S043-PRREV-SUGGESTIONS (LOW);
+  F-S043-RENDER-OFFSET-WRITEBACK (LOW/benign); WG-S043-PERMISSION-BADGE-COEXIST (Wave-9 gate).
 
   KNOWN-FLAKY TESTS (do NOT flag as new findings):
   cli_daemon_stop, factory_self_referential, test_BC_2_07_006,
   wit-bindgen unmatched-skip, PATH isolation flake.
 
   factory-artifacts HEAD: run `git -C .factory log -1 --format='%h %s'`
-  develop HEAD: 2f01de0 (S-042 PR #51; d230a26 = S-040 PR #50; a852934 = docs PR #49)
+  develop HEAD: 5e6a2e0 (S-043 PR #53; 2f01de0 = S-042 PR #51; d230a26 = S-040 PR #50)
   ============================================================================
 ---
 
@@ -171,7 +174,7 @@ next_session_resume_protocol: |
 | 0.5-0.9 Brief + market intel | DONE 2026-05-14 | brief v2.0.4; validate-brief VALID |
 | 1 Spec Crystallization | DONE D-170 APPROVED | 57-pass Phase-1d adversarial. 113 Phase-1 BCs (138 total incl Phase-2 v1A). <!-- version-pin-historical: BC-INDEX v1.43.7 at Phase-1d close --> |
 | 2 Story Decomp v1A | PASSED/APPROVED D-325 | 26 passes (3/3 clean). 51 stories/311 pts. Gate APPROVED Joshua Magady 2026-06-16. |
-| 3 TDD v1A Waves 8-9 | IN PROGRESS — Wave 9 | S-033..S-036+S-038 MERGED (Wave 8: 6/12 done, 38/74 pts). S-039 MERGED PR #47 @ a7ad00e (D-340). S-040 MERGED PR #50 @ d230a26 (D-342). S-042 MERGED PR #51 @ 2f01de0 (D-345). Wave 9: 3/6 done (24/45 pts). 41/51 stories done (254/314 pts). S-043 UNBLOCKED (deps S-039+S-042 done). S-041 UNBLOCKED (dep S-040 done). |
+| 3 TDD v1A Waves 8-9 | IN PROGRESS — Wave 9 | S-033..S-036+S-038 MERGED (Wave 8: 6/12 done, 38/74 pts). S-039 MERGED PR #47 @ a7ad00e (D-340). S-040 MERGED PR #50 @ d230a26 (D-342). S-042 MERGED PR #51 @ 2f01de0 (D-345). S-043 MERGED PR #53 @ 5e6a2e0 (D-346). Wave 9: 4/6 done (27/45 pts). 42/51 stories done (257/314 pts). S-041 UNBLOCKED (dep S-040 done). |
 | 3 TDD Waves 1-7 (pre-pivot) | COMPLETE D-232 | 32/33 done (192/195 pts). 1514 tests. develop @ 6811103 |
 | 4-7 | PENDING after Phase-3 v1A | Old observe-only scope superseded by v1A control-center |
 
@@ -181,7 +184,7 @@ None. All durable task register items are non-blocking.
 
 ## Durable Task Register
 
-111 active tasks. Full YAML detail (all 142+ entries including 31 resolved/closed): `cycles/cycle-001/task-register-full.yaml`.
+112 active tasks. Full YAML detail (all 149+ entries including 37 resolved/closed): `cycles/cycle-001/task-register-full.yaml`.
 
 | ID | Status | Route | Block? | Subject (truncated) |
 |----|--------|-------|--------|---------------------|
@@ -285,9 +288,13 @@ None. All durable task register items are non-blocking.
 | F-S038-TRACING-TEST-DOC-DEVERSION | pending | implementer | n | [LOW] doc-comment at session_manager/mod.rs ~line 11621 embeds tracing-test version literal as prose. De-version in future pass. |
 | BURST-GAP-001-S038-HOOK-SCHEMA | CLOSED D-338 | story-writer | n | S-038 hook schema gap — RESOLVED in F-S038-AC004-SCHEMA burst (AC-004 schema array-of-hook-objects fix, S-038 v1.5) |
 | BURST-GAP-002-S033-SESSIONNOTREADY-VARIANT | pending | story-writer | n | S-033 SessionNotReady variant gap |
-| BURST-GAP-003-S043-TUITERM-SCROLLBACK-API | pending | story-writer | n | S-043 tui-term scrollback API gap |
-| BURST-GAP-004-S043-S042-CROSSSTORY-RESET | pending | story-writer | n | S-043/S-042 cross-story reset gap |
-| BURST-GAP-005-S039-S043-CROSSSTORY-CONFIG | pending | story-writer | n | S-039/S-043 cross-story config gap |
+| BURST-GAP-003-S043-TUITERM-SCROLLBACK-API | CLOSED D-346 | story-writer | n | S-043 tui-term scrollback API gap — RESOLVED (S-043 v1.1+ pinned the verified set_scrollback API; implemented & merged) |
+| BURST-GAP-004-S043-S042-CROSSSTORY-RESET | CLOSED D-346 | story-writer | n | S-043/S-042 cross-story reset gap — RESOLVED (S-043 spec made S-042 ownership explicit; AC-009 asserted & verified in merge) |
+| BURST-GAP-005-S039-S043-CROSSSTORY-CONFIG | CLOSED D-346 | story-writer | n | S-039/S-043 cross-story config gap — RESOLVED (S-043 spec made S-039 ownership explicit; verified) |
+| F-S043-SEC-DUMPTIMEOUT-UUID-VALIDATE | pending | implementer/maintenance | n | [LOW, non-blocking] on_dump_window_timeout uses session_id in format!/tracing::warn! without Uuid::parse_str re-validation (pre-existing, S-039-owned). Add guard matching on_pty_output/on_scrollback_dump_complete pattern. Anchor: maintenance-sweep wave. |
+| F-S043-PRREV-SUGGESTIONS | pending | implementer | n | [LOW, non-blocking] 3 pr-reviewer suggestions from S-043: (a) trace log when max_available==0; (b) defensive dispatch-arm documentation; (c) render_embedded_terminal mutation note. Bundle for hardening pass. |
+| F-S043-RENDER-OFFSET-WRITEBACK | pending | implementer | n | [LOW/benign, OBS-P7-001] render reads pty_scroll_offsets and clamps via set_scrollback but does not write clamped value back; benign (badge uses effective offset; divergence only via S-039 parser-reset paths). Non-blocking. |
+| WG-S043-PERMISSION-BADGE-COEXIST | pending | wave-gate/architect | n | [wave-gate, cross-story] AC-007 lists [N pending permission(s)] as a must-coexist badge, but that badge is owned by BC-2.09.009 (unimplemented project-wide). Verify scrollback indicator coexists with permission badge once BC-2.09.009 ships. Anchor: Wave-9 integration gate / BC-2.09.009. |
 | F-P1-S-005 | pending | story-writer | n | Phase-2 Pass-1 story S-005 finding |
 | F-P2-S03 | pending | architect | n | Phase-2 Pass-2 S03 finding |
 | F-P14-SUG-001 | deferred-post-phase-2 | story-writer | n | Phase-2 Pass-14 Suggestion #1 (deferred post-Phase-2) |
@@ -321,7 +328,7 @@ None. All durable task register items are non-blocking.
 
 ## Resolved/Closed Tasks (archived)
 
-51 entries. Full detail at `cycles/cycle-001/task-register-full.yaml`:
+54 entries. Full detail at `cycles/cycle-001/task-register-full.yaml`:
 POL-14-PARENTHETICAL-ANCHOR-PIN, POL-11-MIRROR-TABLE-BLIND-SPOT, TD-MULTI-CLIENT-ATTACH-STORM-001,
 DTU-CLONE-STORY, ADV-W5GATE-HIGH-001, F-DW-HIGH-001, BC-HOOK-034-typo, S-005-main-wiring,
 ADV-W3GATE-MED-002, ADV-W3GATE-MED-004, ADV-W4GATE-MED-002, S-029-PROCESS-GAP-PC-LABEL-DRIFT,
@@ -348,13 +355,17 @@ SEC-001-S042-CWE-749 (RESOLVED D-345 2026-06-22 — #[cfg(test)] gate on handle_
 SEC-002-S042-CWE-190 (RESOLVED D-345 2026-06-22 — checked u32 cast; fixed in-scope S-042 commits 4865ffe + 9cf2482).
 SEC-003-S042-CWE-532 (RESOLVED D-345 2026-06-22 — UUID guard before log emit; fixed in-scope S-042 commits 4865ffe + 9cf2482).
 WAVE-GATE-IPC-WRITER-ERROR-TAXONOMY (SUPERSEDED D-344/D-345 — ResizePane WARN-drop carve-out implemented; no remaining action).
+BURST-GAP-003-S043-TUITERM-SCROLLBACK-API (RESOLVED D-346 2026-06-22 — S-043 v1.1+ pinned the verified set_scrollback API; implemented & merged).
+BURST-GAP-004-S043-S042-CROSSSTORY-RESET (RESOLVED D-346 2026-06-22 — S-043 spec made S-042 ownership explicit; AC-009 asserted & verified in merge).
+BURST-GAP-005-S039-S043-CROSSSTORY-CONFIG (RESOLVED D-346 2026-06-22 — S-043 spec made S-039 ownership explicit; verified).
 
 ## Decision History
 
 Full decisions archive: `cycles/cycle-001/decisions-archive.md`
-D-001..D-241: early phases; D-242..D-345: Phase-1d + Phase-2 + Phase-3 (appended 2026-06-16/17/18/19/20/21/22)
+D-001..D-241: early phases; D-242..D-346: Phase-1d + Phase-2 + Phase-3 (appended 2026-06-16/17/18/19/20/21/22)
 
 Key decisions last session:
+- D-346 (2026-06-22): S-043 MERGED to develop via PR #53 @ 5e6a2e0 (squash-merge). Scrollback Navigation — PtyScrollUp/Down actions, per-session HashMap<String,usize> offsets, configurable capacity (default 1000, clamp 1..10000), [scrolled back N rows] status indicator, content-anchored preservation via vt100-native mechanism. 3 pts, EPIC-09, Wave 9, P1. 8-pass adversarial convergence (3 consecutive CLEAN: passes 6/7/8). Trajectory: P1 BLOCKER (scroll actions unreachable from keyboard — dead trigger; KeyEventKind dispatch fix)→P2 MED (status_message suppressed by .or())→P3 BLOCKER (Kitty Release double-scroll — KeyEventKind::Press/Repeat guard)→P4 2×BLOCKER (content-anchor drift at scrollback cap + missing cap test) + HIGH (tautological test)→P5 HIGH (stale delta-probe doc-comment)→P6/P7/P8 CLEAN. All fixed in-scope. Spec corrections: SS-embedded-pty v1.14.0→v1.16.0 (vt100-native content-anchoring; corrected history-depth-delta algorithm), BC-2.09.007 v1.3.2→v1.5.0 (PC-4 concurrent-badge mandate, PC-5 content-anchored via vt100-native), S-043 story v1.1→v1.5. EVAL-INDEX v1.41→v1.42 (S-043 pin). BC-2.09.002/004 arch-source pins historical-qualified (POL-11 cascade). Security PASS (2 LOW pre-existing in on_dump_window_timeout; not introduced by S-043). pr-reviewer APPROVE. 11/11 CI green, NO admin bypass. Demo evidence docs/demo-evidence/S-043/ (WEBM + .tape). Closed: BURST-GAP-003/004/005. New follow-ups: F-S043-SEC-DUMPTIMEOUT-UUID-VALIDATE, F-S043-PRREV-SUGGESTIONS, F-S043-RENDER-OFFSET-WRITEBACK, WG-S043-PERMISSION-BADGE-COEXIST. PROCESS-GAP-STUB-PHASE-DOCCOMMENTS 2nd recurrence (S-043 P1 HIGH-004 + P5 HIGH-001); lessons.md updated. NEW LESSON: PROCESS-GAP-SPEC-ALGORITHM-NOT-GROUNDED-IN-CRATE-SOURCE recorded in lessons.md. Wave 9: 4/6 done (27/45 pts). 42/51 done (257/314 pts). develop HEAD: 5e6a2e0. STATE v8.10→v8.11.
 - D-345 (2026-06-22): S-042 MERGED to develop via PR #51 @ 2f01de0 (squash-merge). Full end-to-end PTY Resize Detection + 50ms Debounce + ResizePane IPC. 8 pts, EPIC-09, Wave 9, P0. 9-pass adversarial convergence (3 consecutive CLEAN: passes 7/8/9). Trajectory: P1 BLOCKER (dead detection code)→P2 BLOCKER (unwired debounce fire) + daemon AC-013/014/016 violations + false-green daemon tests→P3 HIGH (stale resize-state on EmbeddedTerminal→Overlay)→P4 MED (fire latency vs PC-8 100ms tick)→P5 CLEAN(+2 LOW OBS fixed)→P6 spec residue (SS-session-manager stale ResizePane ownership)→P7/P8/P9 CLEAN. Security PASS (3 in-scope fixes: SEC-001 CWE-749 #[cfg(test)] gate, SEC-002 CWE-190 checked u32 cast, SEC-003 CWE-532 UUID guard before log; commits 4865ffe+9cf2482). pr-reviewer APPROVE. 11/11 CI green, NO admin bypass. Spec: BC-2.09.006 v1.3.0, S-042 story v1.5, SS-session-manager v2.17.1 (spec cascade already committed D-344). New follow-ups: F-S042-OBS-WRITEFRAMED-DOCNAMING, F-S042-OBS-LASTPANEAREA-DOC, WG-S042-SESSIONHOST-KEYINPUT. Wave 9: 3/6 done (24/45 pts). 41/51 stories done (254/314 pts). develop HEAD: 2f01de0. STATE v8.09→v8.10.
 - D-343 (2026-06-21): Zero-context durability checkpoint. S-042 stubs committed @ 40dd53a on story/S-042-resize-debounce (local worktree, not pushed). ResizePane wire variant + ipc_server stub + App fields + todo!() methods. Red Gate enforceable. Test-writer next. New follow-up: WAVE-GATE-IPC-WRITER-ERROR-TAXONOMY (Wave-9 gate). STATE v8.08→v8.09.
 - D-342 (2026-06-21): S-040 MERGED to develop via PR #50 @ d230a26 (squash-merge). Full-Fidelity Keyboard Forwarding, 8 pts, EPIC-09, Wave 9, P0. 17-pass adversarial convergence (3 consecutive CLEAN: passes 15/16/17). Trajectory: P1 BLOCKER (unwired dispatch)→P2 BLOCKER (Kitty dead-code)→P3 BLOCKER (CSI?u keystroke-theft)→P4 2×HIGH→P5 BLOCKER (paste guard size)→P6 MED→P7-P14 polish→P15/16/17 CLEAN. 65 behavioral tests green. Security PASS_WITH_NOTES (0 crit/high, 2 LOW non-blocking). pr-reviewer APPROVE. 11/11 CI green, NO admin bypass. Spec: SS-embedded-pty v1.14.0, BC-2.09.002 v1.2.2, BC-2.09.004 v1.0.11, BC-2.09.005 v1.0.7, S-040 v1.8, BC-INDEX v1.44.5, EVAL-INDEX v1.38. New follow-ups: SEC-001-S040-LOG-BEFORE-VALIDATE, SEC-003-S040-OVERSIZE-PASTE-UX, F-S040-KEYINPUT-DOC-EMPTYBYTES, PROCESS-GAP-STUB-PHASE-DOCCOMMENTS. Wave 9: 2/6 done (16/42 pts). 40/51 stories done (246/311 pts). STATE v8.07→v8.08.

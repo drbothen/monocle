@@ -1,6 +1,6 @@
 ---
 document_type: sprint-state
-version: "1.56"
+version: "1.57"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-22T00:00:00Z
@@ -581,12 +581,12 @@ stories:
     epic: EPIC-09
     wave: 9
     points: 3
-    status: draft
+    status: done
     assigned_to: null
     started_at: null
-    completed_at: null
-    pr_url: null
-    notes: "Wave 9. Depends on S-039, S-042 (S-042's ResizePane handler owns the pty_scroll_offsets reset). BC: BC-2.09.007."
+    completed_at: "2026-06-22"
+    pr_url: "https://github.com/jmagady/monocle/pull/53"
+    notes: "Wave 9. PR #53 @ 5e6a2e0 (squash-merge 2026-06-22). D-346. Scrollback Navigation — PtyScrollUp/Down, per-session HashMap offsets, configurable capacity (default 1000, clamp 1..10000), vt100-native content-anchoring. 8-pass adversarial convergence (3 consecutive CLEAN: passes 6/7/8). Security PASS (2 LOW pre-existing). BC-2.09.007 v1.5.0; SS-embedded-pty v1.16.0; S-043 story v1.5; EVAL-INDEX v1.42. BURST-GAP-003/004/005 CLOSED. Depends on S-039, S-042."
 
   - id: S-044
     title: "EmbeddedTerminal + SessionCreation AppMode Transitions, SessionCreation Wizard, SpawnAck, and Permission Badge+Bell"
@@ -653,12 +653,12 @@ summary:
   not_started: 0
   in_progress: 0
   review: 0
-  done: 41
+  done: 42
   ready: 0
   blocked: 1
-  draft: 9
+  draft: 8
   total_points: 314
-  points_complete: 254
+  points_complete: 257
   wave_0_points: 3
   wave_1_points: 8
   wave_2_points: 41
@@ -688,6 +688,14 @@ summary:
   # total_stories note: 51 = 33 Phase-3 stories (including S-PHASE-3-PREP and S-DTU-001) + 2 Wave-8
   #   pre-existing (S-032, S-DAEMON-WIRE-FIX-001) + 16 new v1A (S-033..S-048). Blocked count (1) is
   #   S-PHASE-3-PREP (blocked on vsdd-factory spec-kit-mcp rc.19+).
+  # v1.57 updates (2026-06-22):
+  # - D-346: S-043 MERGED to develop via PR #53 @ 5e6a2e0 (squash-merge 2026-06-22).
+  #   S-043 status: draft → done. completed_at: "2026-06-22". pr_url set.
+  #   done: 41 → 42; draft: 9 → 8; points_complete: 254 → 257.
+  #   Scrollback Navigation — PtyScrollUp/Down, per-session offsets, configurable capacity. 3 pts.
+  #   8-pass adversarial (3 CLEAN: passes 6/7/8). Security PASS (2 LOW pre-existing).
+  #   BC-2.09.007 v1.5.0; SS-embedded-pty v1.16.0; S-043 story v1.5; EVAL-INDEX v1.42.
+  #   Wave 9: 4/6 done (27/45 pts). 42/51 stories done (257/314 pts).
   # v1.56 updates (2026-06-22):
   # - D-345: S-042 MERGED to develop via PR #51 @ 2f01de0 (squash-merge 2026-06-22).
   #   S-042 status: draft → done. completed_at: "2026-06-22". pr_url set.

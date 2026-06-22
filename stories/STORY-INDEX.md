@@ -1,7 +1,7 @@
 ---
 document_type: story-index
 level: L4
-version: "5.63"
+version: "5.64"
 status: active
 producer: vsdd-factory:state-manager
 timestamp: 2026-06-22T00:00:00Z
@@ -93,7 +93,7 @@ traces_to: .factory/specs/prd.md
 | S-040 | Full-Fidelity Keyboard Forwarding — key_event_to_pty_bytes, Kitty Protocol CSI u, and Bracketed Paste | EPIC-09 | 8 | 9 | done | S-041, S-044 |
 | S-041 | Mouse Forwarding — mouse_event_to_pty_bytes, SGR 1006 Scoped Entry/Exit, Out-of-Pane Clip | EPIC-09 | 5 | 9 | draft | S-044 |
 | S-042 | PTY Resize Detection, 50ms Debounce, ResizePane IPC, and Full Daemon Resize Pipeline | EPIC-09 | 8 | 9 | done | S-043 |
-| S-043 | Scrollback Navigation — PtyScrollUp/Down, Per-Session Offsets, Configurable Capacity | EPIC-09 | 3 | 9 | draft | — |
+| S-043 | Scrollback Navigation — PtyScrollUp/Down, Per-Session Offsets, Configurable Capacity | EPIC-09 | 3 | 9 | done | — |
 | S-044 | EmbeddedTerminal + SessionCreation AppMode Transitions, SessionCreation Wizard, SpawnAck, and Permission Badge+Bell | EPIC-09 | 13 | 9 | draft | — |
 | S-045 | ClaudeCodeModule::spawn_recipe() — Happy Path, CCR Injection, and Error Cases (Concrete Override Only; Default Trait Impl is S-033) | EPIC-03 | 5 | 8 | draft | — |
 | S-046 | PtyOutput Fan-out Broker — Bounded Channel, Backpressure, and Client Lifecycle | EPIC-05 | 5 | 8 | draft | S-047 |
@@ -1251,6 +1251,15 @@ SE-16d monotonicity: v5.30 timestamp 2026-06-03 >= v5.29 timestamp 2026-06-03. P
 - No wave/points/BC coverage changes — story remains Wave 3, 8 pts, BC-2.03.001..004.
 - SE-22 v2 sibling-sweep: sprint-state.yaml v1.16→v1.17 (done 14→15, not_started 2→1, points_complete 67→75); STATE.md v6.05→v6.06.
 - STORY-INDEX version bumped v2.8→v2.9.
+
+## §Trace v5.64 — S-043 MERGED PR #53 @ 5e6a2e0 (D-346, 2026-06-22)
+
+- S-043 Story Registry row: `draft` → `done`. PR #53 @ 5e6a2e0 (squash-merge 2026-06-22).
+- Scrollback Navigation — PtyScrollUp/Down, per-session HashMap offsets, configurable capacity (default 1000, clamp 1..10000), vt100-native content-anchoring. 3 pts.
+- 8-pass adversarial convergence (3 consecutive CLEAN: passes 6/7/8). Security PASS (2 LOW pre-existing).
+- BC-2.09.007 v1.5.0; SS-embedded-pty v1.16.0; S-043 story v1.5; EVAL-INDEX v1.42. BURST-GAP-003/004/005 CLOSED.
+- Wave 9: 4/6 done (27/45 pts). 42/51 stories done (257/314 pts).
+- STORY-INDEX version bumped v5.63 → v5.64.
 
 ## §Trace v5.63 — S-042 MERGED PR #51 @ 2f01de0 (D-345, 2026-06-22)
 
