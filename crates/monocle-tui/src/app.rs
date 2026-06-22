@@ -486,6 +486,28 @@ pub struct App {
     /// `None` on construction and when not in `EmbeddedTerminal` mode. The resize
     /// detection path reads this to compare against the parser's current size.
     pub last_pty_pane_area: Option<ratatui::layout::Rect>,
+
+    // -----------------------------------------------------------------------
+    // S-041 / F-S041-P7-HIGH-001: scoped mouse capture observable flag
+    // (BC-2.09.003 Invariant 1)
+    // -----------------------------------------------------------------------
+    /// Whether scoped mouse capture (EnableMouseCapture + SGR 1006) is currently active.
+    ///
+    /// Set `true` by `enter_embedded_terminal` after `scoped_mouse_capture_enter()`.
+    /// Set `false` by every path that departs `AppMode::EmbeddedTerminal` before
+    /// `scoped_mouse_capture_exit()` is called.
+    ///
+    /// This flag serves two purposes:
+    /// 1. Makes `scoped_mouse_capture_exit` idempotent: the exit function no-ops when
+    ///    `mouse_capture_active == false`, preventing spurious `DisableMouseCapture`
+    ///    writes on paths where capture was already torn down.
+    /// 2. Provides a testable observable for the BC-2.09.003 Invariant 1 requirement
+    ///    that mouse capture is SCOPED to `AppMode::EmbeddedTerminal` — tests can
+    ///    assert this field is `false` after any non-EmbeddedTerminal mode is active.
+    ///
+    /// Initialized `false` (capture is NOT active at startup — CC-GLOBAL-MOUSE-CAPTURE
+    /// constraint). Only `enter_embedded_terminal` may set it `true`.
+    pub mouse_capture_active: bool,
 }
 
 impl App {
@@ -580,6 +602,10 @@ impl App {
             // S-042: last rendered PTY pane area — None until the first EmbeddedTerminal render.
             // Captured by render_frame on each EmbeddedTerminal tick; read by resize detection.
             last_pty_pane_area: None,
+
+            // S-041 / F-S041-P7-HIGH-001: mouse capture is NOT active at startup.
+            // Only enter_embedded_terminal sets this true (CC-GLOBAL-MOUSE-CAPTURE constraint).
+            mouse_capture_active: false,
         }
     }
 }
@@ -844,6 +870,9 @@ pub async fn enter_embedded_terminal(app: &mut App, session_id: String) {
     // EnableMouseCapture is NOT called at TUI startup — it is SCOPED to EmbeddedTerminal
     // entry. ANY change to global mouse capture requires CC-GLOBAL-MOUSE-CAPTURE sign-off.
     scoped_mouse_capture_enter();
+    // F-S041-P7-HIGH-001: set observable flag AFTER the capture is armed so that
+    // any departure from EmbeddedTerminal can consult it for idempotent teardown.
+    app.mouse_capture_active = true;
 
     // Transition to EmbeddedTerminal mode.
     app.mode = AppMode::EmbeddedTerminal { session_id, prior };
@@ -871,7 +900,15 @@ pub fn exit_embedded_terminal(app: &mut App, session_id: &str) {
     // 2. crossterm::execute!(stdout(), DisableMouseCapture)
     // Ordering is critical: SGR `l` MUST precede DisableMouseCapture (inverting leaves
     // the terminal in a broken state).
-    scoped_mouse_capture_exit();
+    //
+    // F-S041-P7-HIGH-001: idempotency guard — only call scoped_mouse_capture_exit and
+    // clear the flag if capture is actually active.  This prevents spurious
+    // DisableMouseCapture writes when exit_embedded_terminal is called on a path that
+    // already tore down capture (e.g., the EmbeddedTerminal→Overlay→Dashboard chain).
+    if app.mouse_capture_active {
+        scoped_mouse_capture_exit();
+        app.mouse_capture_active = false;
+    }
 
     // Restore prior AppMode (Dashboard with prior focus).
     let prior = match &app.mode {
@@ -1837,6 +1874,14 @@ pub fn on_initial_state(
     if !app.overlay_stack.is_empty() {
         // F-S025-ADV2-HIGH-003: AppMode::Overlay no longer stores the stack.
         // App::overlay_stack IS the stack. Mode variant signals "in overlay mode".
+        // F-S041-P7-HIGH-001 / BC-2.09.003 Invariant 1: if InitialState arrives while in
+        // EmbeddedTerminal (possible on reconnect when the prior session is still live),
+        // tear down scoped mouse capture before transitioning to Overlay. The mode
+        // transition does not go through exit_embedded_terminal in this code path.
+        if app.mouse_capture_active {
+            scoped_mouse_capture_exit();
+            app.mouse_capture_active = false;
+        }
         app.mode = AppMode::Overlay {
             prior: FocusSnapshot::Sessions,
         };
@@ -1900,6 +1945,15 @@ pub fn on_permission_prompt_queued(app: &mut App, payload: PermissionPromptPaylo
         // state would suppress the first ResizePane on re-entry (Invariant 2 dedup) or fire
         // the armed debounce for the wrong session after mode transition.
         clear_resize_debounce_state(app);
+        // F-S041-P7-HIGH-001 / BC-2.09.003 Invariant 1: tear down scoped mouse capture on
+        // EmbeddedTerminal→Overlay transition. This path does NOT go through
+        // exit_embedded_terminal, so capture must be torn down explicitly here.
+        // scoped_mouse_capture_exit is idempotent (guarded by mouse_capture_active) so
+        // calling it here is safe even if called a second time from a later teardown path.
+        if app.mouse_capture_active {
+            scoped_mouse_capture_exit();
+            app.mouse_capture_active = false;
+        }
     }
 }
 
