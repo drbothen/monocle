@@ -659,6 +659,18 @@ async fn handle_resize_pane(
     _client_tx: &tokio::sync::mpsc::Sender<ServerToClient>,
     state: &DaemonState,
 ) {
+    // Validate session_id is UUID format before any log emission (CWE-532 mitigation).
+    // Rejects client-supplied strings that are not valid UUIDs before they can appear in
+    // any structured log field. Matches the uuid::Uuid::parse_str pattern used throughout
+    // session_manager (see resize_session, kill_session, etc.).
+    if uuid::Uuid::parse_str(&session_id).is_err() {
+        tracing::warn!(
+            session_id_len = session_id.len(),
+            "ResizePane: invalid session_id (not UUID format) — dropped"
+        );
+        return;
+    }
+
     // HIGH-003 / AC-014 / EC-239 / BC-2.05.010 Inv-5: zero-dimension clamp.
     // Clamp rows and cols to minimum 1 BEFORE calling resize_session.
     // Pre-clamp zeros must never reach the session-host PTY.
@@ -738,6 +750,12 @@ async fn handle_resize_pane(
 /// AC-013 / AC-014 / AC-016 (BC-2.09.006): the WARN-drop policy is implemented in
 /// `handle_resize_pane`, not in `resize_session`. Tests that want to verify zero-dim
 /// clamping or WARN-drop semantics at the handler boundary MUST go through this seam.
+///
+/// Available under both `cfg(test)` (unit tests) and `feature = "test-utils"`
+/// (integration tests linked via dev-dependency with test-utils feature).
+///
+/// NEVER call this from production code. The cfg guard enforces that.
+#[cfg(any(test, feature = "test-utils"))]
 pub async fn handle_resize_pane_pub(
     session_id: String,
     rows: u16,

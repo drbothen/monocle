@@ -4476,9 +4476,18 @@ impl SessionManager {
                 // can exceed 256 KiB in pathological paste operations. Only variable-payload
                 // messages require the guard; fixed-schema messages with bounded field types
                 // are exempt. This exemption is intentional and documented here.
-                let len = (resize_msg.len() as u32).to_le_bytes();
+                // CWE-190 mitigation: checked conversion from usize to u32.
+                // DaemonToHost::Resize carries only two u16 fields; the maximum
+                // JSON encoding is ~40 bytes — this try_from() is infallible in
+                // practice. The error arm handles the impossible overflow case
+                // by returning SessionError::Io rather than panicking.
+                let len_u32 = u32::try_from(resize_msg.len()).map_err(|_| {
+                    SessionError::Io(std::io::Error::other(
+                        "resize_msg length exceeds u32::MAX — invariant violation",
+                    ))
+                })?;
                 let mut w = writer.lock().await;
-                let r1 = w.write_all(&len).await;
+                let r1 = w.write_all(&len_u32.to_le_bytes()).await;
                 let r2 = if r1.is_ok() {
                     w.write_all(&resize_msg).await
                 } else {

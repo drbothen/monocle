@@ -104,6 +104,9 @@ PROCESS-GAP-BRANCH-PROTECTION-CHECK-NAME-MISMATCH is RESOLVED (D-335). PROCESS-G
 - **D-339**: S-036 MERGED PR #46 @ a7ad00e (setsid persistence; all states handled within 5s; UDS bind blocked). WAVE-8 TIER-3 COMPLETE. <!-- version-pin-historical: BC-2.08.002/BC-2.08.004 at D-339 checkpoint -->
 - **D-340**: S-039 MERGED PR #47 @ a7ad00e. PTY output pipeline. IPC PtyOutput→vt100→tui-term render. Auto-attach buffering/replay. Bounded buffer + dump-window timeout. Security review PASS_WITH_NOTES (2 LOW fixed in-scope). 10-pass adversarial convergence (3 CLEAN).
 - **D-341**: DTU fidelity path-filter deadlock RESOLVED (PR #48 @ 3eba172). dtu-fidelity.yml pure-bash internal gate; required-context name unchanged. Future TUI-only PRs merge with no admin bypass.
+- **D-342**: S-040 MERGED PR #50 @ d230a26. Full-Fidelity Keyboard Forwarding. 17-pass adversarial (3 CLEAN). NO admin bypass.
+- **D-343**: Zero-context durability checkpoint. S-042 stubs @ 40dd53a (local worktree). Test-writer next.
+- **D-344**: Human ruling — S-042 expanded to full end-to-end resize pipeline. `ClientToServer` is exhaustive (no `#[non_exhaustive]`, no wildcard arm). S-047 draft/undelivered. S-042 owns: TUI detection/debounce, daemon `ResizePane` routing → `resize_session()`, zero-dim clamp, `DaemonToHost::Resize` forwarding, session-host `pty.resize()` + `parser.set_size()`. BC-2.09.006 v1.3.0, S-042 v1.5 (8 pts), SS-session-manager v2.17.0 at D-344 authoring time (patched to v2.17.1 by F-S042-ADV-MED-001), S-047 v1.7 (ResizePane removed).
 - **Spawn-path Model A**: SpawnOptions on wire; SpawnRecipe daemon-internal
 - **IPC taxonomy**: 12-code wire taxonomy; 9-variant SessionError; schema_version 3
 - **PTY (ADR-0011)**: portable-pty 0.9.0 + vt100 0.16.2 + tui-term =0.3.4; MSRV 1.88
