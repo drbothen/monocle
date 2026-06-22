@@ -674,12 +674,8 @@ pub fn on_pty_output(app: &mut App, session_id: String, bytes: Vec<u8>) {
     // same content rows as new output arrives. vt100::set_scrollback(N) is bottom-relative,
     // so a static numeric N causes the viewport to drift toward newer content as lines arrive.
     //
-    // Algorithm (AC-008):
-    //   1. Read scrollback_len BEFORE processing (probe via set_scrollback(MAX) read-back).
-    //   2. Process the bytes.
-    //   3. Read scrollback_len AFTER processing.
-    //   4. new_rows = after - before (saturating_sub for safety).
-    //   5. new_offset = (current_offset + new_rows).min(new_scrollback_len).
+    // Algorithm (AC-008): vt100-native three-step — see comment block in the `if current_offset > 0`
+    // branch below for the authoritative description.
     //
     // When offset == 0 (live tail): no adjustment — live tail is never disturbed (AC-008).
     let current_offset = app
@@ -1367,7 +1363,14 @@ pub fn handle_pty_scroll_up(app: &mut App) {
 
     // Increment by one scroll step, clamped to max_available (EC-240).
     let new_offset = current.saturating_add(1).min(max_available);
-    app.pty_scroll_offsets.insert(session_id, new_offset);
+    app.pty_scroll_offsets
+        .insert(session_id.clone(), new_offset);
+    // SS-embedded-pty.md v1.16.0 §Scrollback offset invariants: sync vt100's internal offset
+    // to match the monocle-stored value immediately after an explicit scroll action so that
+    // the stored offset and vt100's offset agree before the next render pass.
+    // Note: the probe above left vt100 at offset 0 (restored via set_scrollback(0)); we now
+    // set the final offset here so vt100 is consistent with pty_scroll_offsets.
+    parser.screen_mut().set_scrollback(new_offset);
 }
 
 /// Handle `Action::PtyScrollDown` in `AppMode::EmbeddedTerminal`.
@@ -1397,7 +1400,14 @@ pub fn handle_pty_scroll_down(app: &mut App) {
 
     // Decrement by one scroll step; floor is 0 (live tail).
     let new_offset = current.saturating_sub(1);
-    app.pty_scroll_offsets.insert(session_id, new_offset);
+    app.pty_scroll_offsets
+        .insert(session_id.clone(), new_offset);
+    // SS-embedded-pty.md v1.16.0 §Scrollback offset invariants: sync vt100's internal offset
+    // to match the monocle-stored value immediately after an explicit scroll action so that
+    // the stored offset and vt100's offset agree before the next render pass.
+    if let Some(parser) = app.pty_parsers.get_mut(&session_id) {
+        parser.screen_mut().set_scrollback(new_offset);
+    }
 }
 
 /// Compute the run-loop poll timeout, shrunk to the resize debounce deadline when one is armed.
@@ -3916,7 +3926,8 @@ pub fn dispatch_key_event(
         // S-043 (BC-2.09.007 Postcondition 2a / AC-002): PtyScrollUp fires only in
         // AppMode::EmbeddedTerminal via the per-context PerContext layer binding.
         // Delegates to handle_pty_scroll_up() which increments pty_scroll_offsets
-        // for the focused session and clamps at scrollback_len(). No IPC sent.
+        // for the focused session and clamps at the effective scrollback maximum
+        // (via the set_scrollback read-back probe). No IPC sent.
         //
         // NOTE (OBS-002): These arms are defensive/fallback — the live path for
         // EmbeddedTerminal scroll keys is the intercept in handle_crossterm_event
@@ -4218,9 +4229,10 @@ pub fn render_frame(
             }
 
             // F-PASS4-MED-001: if a dump is in progress AND bytes were dropped due to
-            // the cap, render "[dump: N drops]" in the status bar (overrides status_message
-            // for this frame while the condition holds — transient, never persisted to
-            // app.status_message).
+            // the cap, render "[dump: N drops]" in the status bar. This badge is transient
+            // (never persisted to app.status_message) and is rendered CONCURRENTLY with
+            // the scrollback indicator and app.status_message — it does NOT override or
+            // suppress any other badge. All active badges are composed below.
             let dump_drop_status: Option<String> = {
                 let in_progress = app
                     .dump_in_progress
