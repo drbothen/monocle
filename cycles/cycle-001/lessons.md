@@ -2701,3 +2701,17 @@ The codification recommendation from the S-043 entry is confirmed applicable bey
 
 **Non-blocking. Human owns process-gap structural fixes per D-348. Recurrence-watch. Route: devops/process.**
 
+---
+
+### CIRCULAR-HASH-CASCADE-HOUSEKEEPING: SS-ipc citation cascade (41 cites) permanently broken by de-versioning
+
+**Lesson class:** CIRCULAR-HASH-CASCADE-HOUSEKEEPING
+
+SS-ipc gained a new section (PtyBroker integration). This triggered a minor version bump, which made 41 prose citations across 23 artifacts stale under POL-11. Each future SS-ipc bump would have re-triggered the same 41-file cascade.
+
+**Systemic fix applied:** All 41 Architecture-Source/inline prose citations were converted from versioned form (e.g., "SS-ipc.md §Section") to version-free stable-anchor form ("SS-ipc.md §Section") per ADR-0007 option 2. Version-free anchors are permanently exempt from POL-11 — they cite the living document by section, not by snapshot. No semantic content changed; no file versions were bumped; no secondary cascade was triggered.
+
+**Rule:** Prose citations of evolving architecture documents in Architecture Source tables, inline BCs, and story compliance blocks SHOULD use version-free stable-section anchors. Version literals in prose belong only in changelog/trace rows (historical, immutable) and inputs[] frontmatter (legitimate traceability pins). Do not introduce "vX.Y.Z" into new prose architecture-source citations — use "SS-doc.md §Section" instead.
+
+**Route: state-manager/housekeeping. Non-blocking.**
+
