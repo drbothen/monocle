@@ -3305,6 +3305,7 @@ pub async fn handle_crossterm_event(
                     //   (Ctrl+Down, EmbeddedTerminal) → PtyScrollDown
                     // so no hardcoded key check is required — the binding remains configurable.
                     {
+                        use crossterm::event::KeyEventKind;
                         use monocle_core::tui::binding::resolve_binding;
                         use monocle_core::tui::state::Action;
                         let core_key = crossterm_key_to_core(&ct_key);
@@ -3312,12 +3313,23 @@ pub async fn handle_crossterm_event(
                             resolve_binding(&core_key, &app.mode, binding_layers)
                         {
                             match action {
+                                // BC-2.09.007 PC-3 / F-S043-P3-BLOCKER-001: KeyEventKind guard.
+                                // crossterm_key_to_core discards kind, so we check it here
+                                // before acting. Press and Repeat both scroll (hold-to-scroll
+                                // semantics). Release is swallowed — no scroll, no IPC, no
+                                // fall-through to the PTY forwarder. This prevents double-scroll
+                                // when REPORT_EVENT_TYPES is active (Kitty emits Press+Release
+                                // for every physical keypress).
                                 Action::PtyScrollUp => {
-                                    handle_pty_scroll_up(app);
+                                    if ct_key.kind != KeyEventKind::Release {
+                                        handle_pty_scroll_up(app);
+                                    }
                                     return Ok(());
                                 }
                                 Action::PtyScrollDown => {
-                                    handle_pty_scroll_down(app);
+                                    if ct_key.kind != KeyEventKind::Release {
+                                        handle_pty_scroll_down(app);
+                                    }
                                     return Ok(());
                                 }
                                 _ => {}
