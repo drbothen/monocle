@@ -1069,9 +1069,9 @@ S-039-pty-output-pipeline:
 
 S-041-mouse-forwarding-sgr:
   path: stories/S-041-mouse-forwarding-sgr.md
-  current_version: "1.0"
-  last_bump_commit: "[Wave-9 story authoring — mouse forwarding SGR mode, BC-2.09.001]"
-  last_bump_date: "2026-06-16"
+  current_version: "1.1"
+  last_bump_commit: "[S-041 pin refresh — BC-2.09.003 1.5.2→1.5.4; SS-embedded-pty 1.7.0→1.16.0; body refs verified accurate against v1.16.0 (scrollback-focused bump; mouse sections unchanged)]"
+  last_bump_date: "2026-06-22"
 
 S-042-resize-debounce-resizepane:
   path: stories/S-042-resize-debounce-resizepane.md
