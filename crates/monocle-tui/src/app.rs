@@ -1341,9 +1341,27 @@ pub fn clear_resize_debounce_state(app: &mut App) {
 /// from monocle's sessions panel and other panels).
 ///
 /// Called from `enter_embedded_terminal()`.
-#[allow(clippy::todo)]
 fn scoped_mouse_capture_enter() {
-    todo!()
+    use crossterm::event::EnableMouseCapture;
+    use std::io::stdout;
+
+    // AC-001 / BC-2.09.003 Invariant 1 entry sequence — ORDER IS CRITICAL:
+    // 1. EnableMouseCapture first (enables mode 1002 button-event tracking via crossterm)
+    // 2. SGR 1006h second (enables SGR extended coordinate encoding)
+    //
+    // This order matches the spec: EnableMouseCapture THEN print!("\x1b[?1006h").
+    if let Err(e) = crossterm::execute!(stdout(), EnableMouseCapture) {
+        tracing::warn!("scoped_mouse_capture_enter: EnableMouseCapture failed: {e}");
+    }
+    // SGR extended mouse mode on: enables 1006 extended coordinate encoding for mouse events.
+    // Must be written AFTER EnableMouseCapture so the terminal processes the escape sequences
+    // in the correct order.
+    print!("\x1b[?1006h");
+    // Flush stdout to ensure the SGR sequence reaches the terminal before any mouse events arrive.
+    use std::io::Write;
+    if let Err(e) = stdout().flush() {
+        tracing::warn!("scoped_mouse_capture_enter: stdout flush failed: {e}");
+    }
 }
 
 /// Disable scoped mouse capture and SGR 1006 extended mouse mode on `EmbeddedTerminal` exit.
@@ -1356,9 +1374,27 @@ fn scoped_mouse_capture_enter() {
 /// leaves the terminal in a broken state (BC-2.09.003 AC-002 / Invariant 1).
 ///
 /// Called from `exit_embedded_terminal()`.
-#[allow(clippy::todo)]
 fn scoped_mouse_capture_exit() {
-    todo!()
+    use crossterm::event::DisableMouseCapture;
+    use std::io::stdout;
+
+    // AC-002 / BC-2.09.003 Invariant 1 exit sequence — ORDER IS CRITICAL:
+    // 1. SGR 1006l first (disables SGR extended coordinate encoding)
+    // 2. DisableMouseCapture second (disables mode 1002 button-event tracking)
+    //
+    // SGR `l` MUST precede DisableMouseCapture — inverting this order leaves the
+    // terminal in a broken state where SGR mode is still active after capture ends.
+    print!("\x1b[?1006l");
+    // Flush stdout to ensure the SGR-off sequence reaches the terminal before DisableMouseCapture.
+    use std::io::Write;
+    if let Err(e) = stdout().flush() {
+        tracing::warn!(
+            "scoped_mouse_capture_exit: stdout flush before DisableMouseCapture failed: {e}"
+        );
+    }
+    if let Err(e) = crossterm::execute!(stdout(), DisableMouseCapture) {
+        tracing::warn!("scoped_mouse_capture_exit: DisableMouseCapture failed: {e}");
+    }
 }
 
 // ---------------------------------------------------------------------------

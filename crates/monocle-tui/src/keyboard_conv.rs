@@ -100,9 +100,13 @@ fn crossterm_kind_to_pty(k: KeyEventKind) -> PtyKeyEventKind {
 ///
 /// This function is the purity boundary crossing for mouse events: crossterm types
 /// remain in `monocle-tui`; `monocle-core` functions see only `PtyMouseEvent`.
-#[allow(clippy::todo)]
-pub fn crossterm_mouse_to_pty(_e: crossterm::event::MouseEvent) -> PtyMouseEvent {
-    todo!()
+pub fn crossterm_mouse_to_pty(e: crossterm::event::MouseEvent) -> PtyMouseEvent {
+    PtyMouseEvent {
+        kind: crossterm_mouse_kind_to_pty(e.kind),
+        column: e.column,
+        row: e.row,
+        modifiers: crossterm_mouse_mods_to_pty(e.modifiers),
+    }
 }
 
 /// Convert a `ratatui::layout::Rect` to a `monocle_core::keyboard::PtyRect`.
@@ -113,19 +117,59 @@ pub fn crossterm_mouse_to_pty(_e: crossterm::event::MouseEvent) -> PtyMouseEvent
 ///
 /// `ratatui::layout::Rect` and `PtyRect` have identical field types (`u16`), so
 /// this is a zero-cost structural copy at the purity seam.
-#[allow(clippy::todo)]
-pub fn ratatui_rect_to_pty(_r: ratatui::layout::Rect) -> PtyRect {
-    todo!()
+pub fn ratatui_rect_to_pty(r: ratatui::layout::Rect) -> PtyRect {
+    PtyRect {
+        x: r.x,
+        y: r.y,
+        width: r.width,
+        height: r.height,
+    }
 }
 
 // Private helpers for crossterm_mouse_to_pty — kept private to enforce the single-seam
 // invariant (crossterm mouse types confined to this file).
-#[allow(dead_code, clippy::todo)]
-fn crossterm_mouse_button_to_pty(_b: crossterm::event::MouseButton) -> PtyMouseButton {
-    todo!()
+fn crossterm_mouse_button_to_pty(b: crossterm::event::MouseButton) -> PtyMouseButton {
+    match b {
+        crossterm::event::MouseButton::Left => PtyMouseButton::Left,
+        crossterm::event::MouseButton::Middle => PtyMouseButton::Middle,
+        crossterm::event::MouseButton::Right => PtyMouseButton::Right,
+    }
 }
 
-#[allow(dead_code, clippy::todo)]
-fn crossterm_mouse_kind_to_pty(_k: crossterm::event::MouseEventKind) -> PtyMouseEventKind {
-    todo!()
+fn crossterm_mouse_kind_to_pty(k: crossterm::event::MouseEventKind) -> PtyMouseEventKind {
+    match k {
+        crossterm::event::MouseEventKind::Down(btn) => {
+            PtyMouseEventKind::Down(crossterm_mouse_button_to_pty(btn))
+        }
+        crossterm::event::MouseEventKind::Up(btn) => {
+            PtyMouseEventKind::Up(crossterm_mouse_button_to_pty(btn))
+        }
+        crossterm::event::MouseEventKind::Drag(btn) => {
+            PtyMouseEventKind::Drag(crossterm_mouse_button_to_pty(btn))
+        }
+        crossterm::event::MouseEventKind::Moved => PtyMouseEventKind::Moved,
+        crossterm::event::MouseEventKind::ScrollUp => PtyMouseEventKind::ScrollUp,
+        crossterm::event::MouseEventKind::ScrollDown => PtyMouseEventKind::ScrollDown,
+        crossterm::event::MouseEventKind::ScrollLeft => PtyMouseEventKind::ScrollLeft,
+        crossterm::event::MouseEventKind::ScrollRight => PtyMouseEventKind::ScrollRight,
+    }
+}
+
+/// Convert crossterm `KeyModifiers` (from a `MouseEvent`) to `PtyKeyModifiers`.
+///
+/// Mouse events carry the same `KeyModifiers` type as keyboard events in crossterm.
+/// The bit remapping is identical to `crossterm_mods_to_pty` for keyboard events.
+fn crossterm_mouse_mods_to_pty(m: crossterm::event::KeyModifiers) -> PtyKeyModifiers {
+    use crossterm::event::KeyModifiers;
+    let mut bits = 0u8;
+    if m.contains(KeyModifiers::SHIFT) {
+        bits |= PtyKeyModifiers::SHIFT.0;
+    }
+    if m.contains(KeyModifiers::CONTROL) {
+        bits |= PtyKeyModifiers::CONTROL.0;
+    }
+    if m.contains(KeyModifiers::ALT) {
+        bits |= PtyKeyModifiers::ALT.0;
+    }
+    PtyKeyModifiers(bits)
 }

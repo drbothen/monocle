@@ -563,9 +563,98 @@ fn pty_key_codepoint(code: &PtyKeyCode) -> u32 {
 ///   before calling this function. See SS-embedded-pty.md §Dependency Boundary (F-P2-I06).
 /// - `pane_area`: The PTY widget's screen area as a `PtyRect`. Events outside this area
 ///   return `None` (BC-2.09.003 Postcondition 5 / EC-221).
-#[allow(clippy::todo)]
-pub fn mouse_event_to_pty_bytes(_event: PtyMouseEvent, _pane_area: PtyRect) -> Option<Vec<u8>> {
-    todo!()
+pub fn mouse_event_to_pty_bytes(event: PtyMouseEvent, pane_area: PtyRect) -> Option<Vec<u8>> {
+    // BC-2.09.003 Postcondition 5 / EC-221: out-of-pane events return None.
+    // Valid column range: [pane_area.x, pane_area.x + pane_area.width)
+    // Valid row range:    [pane_area.y, pane_area.y + pane_area.height)
+    // Using saturating arithmetic avoids overflow on degenerate zero-size panes.
+    let right_edge = pane_area.x.saturating_add(pane_area.width);
+    let bottom_edge = pane_area.y.saturating_add(pane_area.height);
+    if event.column < pane_area.x
+        || event.column >= right_edge
+        || event.row < pane_area.y
+        || event.row >= bottom_edge
+    {
+        return None;
+    }
+
+    // Compute 1-indexed pane-relative coordinates.
+    // Both subtractions are safe: we verified col >= pane_area.x and row >= pane_area.y above.
+    let px = u32::from(event.column - pane_area.x) + 1;
+    let py = u32::from(event.row - pane_area.y) + 1;
+
+    // Determine base Ps and terminator from event kind.
+    // BC-2.09.003 PC-2 table — complete enumeration.
+    // Allow unreachable_patterns: PtyMouseEventKind is #[non_exhaustive]; the wildcard arm
+    // handles unknown future event variants added by upstream crossterm versions.
+    #[allow(unreachable_patterns)]
+    let (base_ps, terminator) = match &event.kind {
+        PtyMouseEventKind::Down(btn) => {
+            // Allow unreachable_patterns: PtyMouseButton is #[non_exhaustive]; the wildcard
+            // arm handles unknown future button variants added by upstream crossterm versions.
+            #[allow(unreachable_patterns)]
+            let base = match btn {
+                PtyMouseButton::Left => 0u32,
+                PtyMouseButton::Middle => 1,
+                PtyMouseButton::Right => 2,
+                _ => return None,
+            };
+            (base, b'M')
+        }
+        PtyMouseEventKind::Up(btn) => {
+            #[allow(unreachable_patterns)]
+            let base = match btn {
+                PtyMouseButton::Left => 0u32,
+                PtyMouseButton::Middle => 1,
+                PtyMouseButton::Right => 2,
+                _ => return None,
+            };
+            (base, b'm')
+        }
+        PtyMouseEventKind::Drag(btn) => {
+            // Motion-bit addition: Ps = button_base + 32 (BC-2.09.003 PC-2 table).
+            #[allow(unreachable_patterns)]
+            let base = match btn {
+                PtyMouseButton::Left => 32u32,
+                PtyMouseButton::Middle => 33,
+                PtyMouseButton::Right => 34,
+                _ => return None,
+            };
+            (base, b'M')
+        }
+        // UNREACHABLE on Unix: crossterm EnableMouseCapture enables tracking mode 1002
+        // (button-event tracking), NOT mode 1003 (any-event tracking). Under 1002,
+        // motion without a held button is never delivered. This arm is retained for
+        // Rust match-exhaustiveness on the #[non_exhaustive] enum and for correct Windows
+        // behavior where mode 1003 may be active. (BC-2.09.003 Invariant 3 / AC-008)
+        PtyMouseEventKind::Moved => (35u32, b'M'),
+        PtyMouseEventKind::ScrollUp => (64u32, b'M'),
+        PtyMouseEventKind::ScrollDown => (65u32, b'M'),
+        PtyMouseEventKind::ScrollLeft => (66u32, b'M'),
+        PtyMouseEventKind::ScrollRight => (67u32, b'M'),
+        // Non-exhaustive enum: unknown future kinds have no defined SGR encoding.
+        _ => return None,
+    };
+
+    // Modifier-bit additive rule: Ps_final = base_Ps | modifier_bits.
+    // Shift |= 4, Alt |= 8, Ctrl |= 16. (BC-2.09.003 PC-2 / Invariant 4)
+    let mut modifier_bits: u32 = 0;
+    if event.modifiers.contains(PtyKeyModifiers::SHIFT) {
+        modifier_bits |= 4;
+    }
+    if event.modifiers.contains(PtyKeyModifiers::ALT) {
+        modifier_bits |= 8;
+    }
+    if event.modifiers.contains(PtyKeyModifiers::CONTROL) {
+        modifier_bits |= 16;
+    }
+    let ps_final = base_ps | modifier_bits;
+
+    // Format: ESC [ < Ps_final ; Px ; Py <terminator>
+    // CSI = ESC [ (0x1b 0x5b); SGR mouse format adds '<' before Ps.
+    let mut seq = format!("\x1b[<{};{};{}", ps_final, px, py).into_bytes();
+    seq.push(terminator);
+    Some(seq)
 }
 
 /// Return the PTY byte sequence for function key F(n), n ∈ 1..=12.
