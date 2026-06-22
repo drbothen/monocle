@@ -3284,7 +3284,42 @@ pub async fn handle_crossterm_event(
             let session_id = session_id.clone();
             match event {
                 Event::Key(ct_key) => {
-                    // Gate: IPC channel must be wired before dispatching.
+                    // BC-2.09.007 / SS-embedded-pty.md §"intercept before keybinding lookup":
+                    // Scroll actions (PtyScrollUp / PtyScrollDown) are TUI-local viewport
+                    // operations — they MUST be intercepted BEFORE the PTY forwarder
+                    // (dispatch_embedded_terminal_key) and MUST NOT send any IPC message.
+                    //
+                    // The intercept runs BEFORE the ipc_tx gate because scroll is IPC-free;
+                    // it fires even when the daemon is offline/reconnecting.
+                    //
+                    // Resolution: convert the crossterm key to the pure-core type, then
+                    // consult the per-context binding layer for AppModeTag::EmbeddedTerminal.
+                    // build_builtin_binding_layers already registers:
+                    //   (Ctrl+Up, EmbeddedTerminal) → PtyScrollUp
+                    //   (Ctrl+Down, EmbeddedTerminal) → PtyScrollDown
+                    // so no hardcoded key check is required — the binding remains configurable.
+                    {
+                        use monocle_core::tui::binding::resolve_binding;
+                        use monocle_core::tui::state::Action;
+                        let core_key = crossterm_key_to_core(&ct_key);
+                        if let Some((action, _)) =
+                            resolve_binding(&core_key, &app.mode, binding_layers)
+                        {
+                            match action {
+                                Action::PtyScrollUp => {
+                                    handle_pty_scroll_up(app);
+                                    return Ok(());
+                                }
+                                Action::PtyScrollDown => {
+                                    handle_pty_scroll_down(app);
+                                    return Ok(());
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+
+                    // Gate: IPC channel must be wired before dispatching to the PTY.
                     // If the channel is offline (daemon disconnected), log and ignore —
                     // the reconnect loop will re-wire app.ipc_tx.
                     let Some(ipc_tx) = app.ipc_tx.clone() else {
@@ -3295,10 +3330,11 @@ pub async fn handle_crossterm_event(
                         return Ok(());
                     };
 
-                    // ADV-HIGH-002 (SSOT dispatch): ALL key dispatch logic lives in
+                    // ADV-HIGH-002 (SSOT dispatch): ALL PTY key dispatch logic lives in
                     // dispatch_embedded_terminal_key — including Esc intercept, conversion,
-                    // key_event_to_pty_bytes call, and KeyInput send. There is NO inline
-                    // duplicate logic here (previous inline duplicate has been removed).
+                    // key_event_to_pty_bytes call, and KeyInput send. Scroll intercept
+                    // (above) is the only inline handling added here, and it returns early
+                    // before reaching this point.
                     //
                     // BC-2.09.002 Invariant 2: Esc interception is inside the helper,
                     // BEFORE key_event_to_pty_bytes (ordering is non-negotiable).
