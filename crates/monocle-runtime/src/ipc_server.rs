@@ -561,7 +561,25 @@ async fn handle_attach_session(
     match attach_result {
         Ok(()) => {
             // attach_session() emitted SessionStateChanged{Running} + SessionListUpdate to all
-            // clients (BC-2.08.008 Invariant 4). No additional response to requesting client.
+            // clients (BC-2.08.008 Invariant 4).
+            //
+            // AC-SH-005 / Ruling M §7: forward the collected scrollback dump to this client only
+            // (NOT broadcast). Uses the raw pointer of client_tx as a daemon-internal client_id
+            // — stable for the lifetime of this connection, unique per connected TUI client.
+            let client_id = format!("{:p}", client_tx as *const _);
+            if let Err(e) = sm
+                .lock()
+                .await
+                .forward_scrollback_dump_to_client(&session_id, &client_id, client_tx)
+                .await
+            {
+                tracing::warn!(
+                    session_id = %session_id,
+                    error = %e,
+                    "handle_attach_session: forward_scrollback_dump_to_client failed \
+                     (client disconnected after attach?)"
+                );
+            }
         }
         Err(e) => {
             let _ = client_tx

@@ -684,6 +684,46 @@ struct SessionHostConnection {
 }
 
 // ---------------------------------------------------------------------------
+// ScrollbackDumpPending — temporary per-session scrollback buffer
+// ---------------------------------------------------------------------------
+
+/// Scrollback dump data collected by `attach_session()` from the session-host,
+/// pending forwarding to the requesting TUI client.
+///
+/// Stored in `SessionManager::pending_scrollback_dump` between `attach_session()`
+/// returning `Ok(())` and `forward_scrollback_dump_to_client()` being called by
+/// the `AttachSession` IPC handler.
+///
+/// # Lifecycle
+///
+/// 1. `attach_session()` receives `ScrollbackChunk*` + `ScrollbackDumpComplete`
+///    from the session-host over the UDS control connection.
+/// 2. `attach_session()` stores these as a `ScrollbackDumpPending` in
+///    `pending_scrollback_dump[session_id]` before returning `Ok(())`.
+/// 3. The `AttachSession` IPC handler calls `forward_scrollback_dump_to_client()`,
+///    which reads the pending entry, sends each chunk + the complete sentinel to
+///    the requesting client, and removes the entry from the map.
+///
+/// Keyed by `session_id` (String). A concurrent second `AttachSession` for the
+/// same session replaces the pending entry (AC-SH-005, EC-308).
+///
+/// BC traceability: BC-2.05.011 §ScrollbackDumpComplete / Ruling M §7 / AC-SH-005.
+struct ScrollbackDumpPending {
+    /// Chunks received from the session-host (in `chunk_seq` order).
+    chunks: Vec<monocle_ipc::types::HostToDaemon>,
+    /// Total chunk count as reported by `HostToDaemon::ScrollbackDumpComplete`.
+    total_chunks: u32,
+    /// Cursor row at snapshot time.
+    cursor_row: u16,
+    /// Cursor column at snapshot time.
+    cursor_col: u16,
+    /// PTY rows at snapshot time.
+    pty_rows: u16,
+    /// PTY columns at snapshot time.
+    pty_cols: u16,
+}
+
+// ---------------------------------------------------------------------------
 // SessionEntry
 // ---------------------------------------------------------------------------
 
@@ -909,6 +949,22 @@ pub struct SessionManager {
     /// forwarding path and cleared once the dump completes.
     pending_pty_bytes:
         std::collections::HashMap<(String, String), std::collections::VecDeque<bytes::Bytes>>,
+    /// Per-session scrollback dump pending forwarding to the attaching TUI client.
+    ///
+    /// Populated by `attach_session()` after collecting `ScrollbackChunk*` +
+    /// `ScrollbackDumpComplete` from the session-host. Consumed (and removed) by
+    /// `forward_scrollback_dump_to_client()` called from the `AttachSession` IPC handler.
+    ///
+    /// Keyed by `session_id` (String). A concurrent second `AttachSession` for the same
+    /// session replaces the pending entry (normal — each fresh attach gets fresh data).
+    ///
+    /// Wrapped in `Arc<tokio::sync::Mutex<>>` so the `attach_session()` async future
+    /// (which is `'static` — clones Arcs from self rather than borrowing) can insert
+    /// the collected dump without needing a `&mut self` borrow in the async block.
+    ///
+    /// BC traceability: BC-2.05.011 / Ruling M §7 / AC-SH-005.
+    pending_scrollback_dump:
+        Arc<tokio::sync::Mutex<std::collections::HashMap<String, ScrollbackDumpPending>>>,
     /// Failure-injection seam for the PidFallback SIGTERM call (ADV-S034-IMPORTANT-001).
     ///
     /// `None` in production (cfg gate ensures it is always `None` in non-test builds).
@@ -981,6 +1037,9 @@ impl SessionManager {
             hook_endpoint_config,
             pty_drop_counter: std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0)),
             pending_pty_bytes: std::collections::HashMap::new(),
+            pending_scrollback_dump: Arc::new(tokio::sync::Mutex::new(
+                std::collections::HashMap::new(),
+            )),
             #[cfg(any(test, feature = "test-utils"))]
             pid_sigterm_fn: None,
             #[cfg(any(test, feature = "test-utils"))]
@@ -3324,6 +3383,9 @@ impl SessionManager {
         let session_id = session_id.to_string();
         let runtime_dir = self.runtime_dir.clone();
         let pty_drop_counter = Arc::clone(&self.pty_drop_counter);
+        // Clone the pending_scrollback_dump Arc so the 'static async block can insert
+        // the collected dump after the Running transition (AC-SH-005 / Ruling M §7).
+        let pending_scrollback_dump = Arc::clone(&self.pending_scrollback_dump);
         // F-S035-005: clone pid_sigterm_fn seam so attach-timeout SIGTERM routes through
         // the same injection seam as kill_session PidFallback (testability / consistency).
         #[cfg(any(test, feature = "test-utils"))]
@@ -3901,20 +3963,14 @@ impl SessionManager {
                         // sessions lock released here — both try_send calls completed atomically.
                     }
 
-                    // Step 7 (AC-005): forward scrollback chunks to TUI clients via broker.
-                    // This is fire-and-forget forwarding; TUI stores them for screen reconstruction
-                    // (SS-09 scope). The chunks are forwarded AFTER the Running transition so that
-                    // TUI clients receive the state transition before the scrollback data.
+                    // Step 7 (AC-SH-005 / Ruling M §7): store the scrollback dump in
+                    // `pending_scrollback_dump` so that `forward_scrollback_dump_to_client()`
+                    // (called by the AttachSession IPC handler immediately after this function
+                    // returns) can forward the real chunks to the requesting TUI client.
                     //
-                    // Note: ServerToClient::ScrollbackChunk/ScrollbackDumpComplete are SS-09 scope;
-                    // for S-035 we log the chunk count but do not broadcast (variants not yet defined
-                    // in ServerToClient). The proxy task has been started and will stream live PtyBytes.
+                    // The dump is forwarded AFTER the Running transition (above) so that TUI
+                    // clients receive SessionStateChanged{Running} before the scrollback data.
                     //
-                    // TODO(S-039/S-047): forward received ScrollbackChunk*/ScrollbackDumpComplete to
-                    // TUI clients as ServerToClient::ScrollbackChunk once the session-host PTY→vt100
-                    // screen-content source exists (currently empty dump; AC-005 daemon-forwarding
-                    // obligation). Owning stories: S-039 (PTY output pipeline) / S-047 (live parser).
-
                     // F-S035-003: validate chunk count (BC-2.08.007 §Screen-state transfer step 5a).
                     // Daemon stays a forwarding pipe but MUST NOT silently drop a truncated dump.
                     let received_chunks = scrollback_chunks.len() as u32;
@@ -3939,7 +3995,24 @@ impl SessionManager {
                         cursor_col = cursor_col,
                         pty_rows = pty_rows,
                         pty_cols = pty_cols,
-                        "attach_session: scrollback dump received (forwarding to broker is SS-09 scope)"
+                        "attach_session: scrollback dump collected; storing for forwarding to attaching client"
+                    );
+
+                    // Store pending dump for `forward_scrollback_dump_to_client()`.
+                    // A second concurrent AttachSession replaces the previous entry (EC-308:
+                    // each client gets its own independent sequence — the replaced entry was
+                    // for a prior client that also called AttachSession and will receive the
+                    // new data on its own forward_scrollback_dump_to_client call).
+                    pending_scrollback_dump.lock().await.insert(
+                        session_id.to_string(),
+                        ScrollbackDumpPending {
+                            chunks: scrollback_chunks,
+                            total_chunks,
+                            cursor_row,
+                            cursor_col,
+                            pty_rows,
+                            pty_cols,
+                        },
                     );
 
                     tracing::info!(
@@ -4403,21 +4476,76 @@ impl SessionManager {
         client_id: &str,
         client_tx: &tokio::sync::mpsc::Sender<monocle_ipc::types::ServerToClient>,
     ) -> Result<(), SessionError> {
-        // The daemon layer does not own a vt100::Parser — scrollback data comes from the
-        // session-host via the HostToDaemon::ScrollbackChunk* protocol. In the current
-        // protocol version the daemon sends ScrollbackDumpComplete{total_chunks: 0} directly
-        // (EC-306: no cached scrollback; the TUI attaches and the session-host streams fresh
-        // chunks the next time it receives DaemonToHost::Attach). Sending total_chunks=0
-        // tells the TUI to treat the screen as empty until live PtyOutput arrives.
-        //
+        // Ruling M §7 / AC-SH-005: retrieve the pending scrollback dump collected by
+        // `attach_session()`. If no dump is present (race: client disconnected between
+        // attach_session() and this call), fall back to an empty dump (total_chunks=0)
+        // so the TUI knows to treat the screen as blank until live PtyOutput arrives.
+        let pending = self.pending_scrollback_dump.lock().await.remove(session_id);
+
+        let (chunks, total_chunks, cursor_row, cursor_col, pty_rows, pty_cols) = match pending {
+            Some(p) => (
+                p.chunks,
+                p.total_chunks,
+                p.cursor_row,
+                p.cursor_col,
+                p.pty_rows,
+                p.pty_cols,
+            ),
+            None => {
+                tracing::warn!(
+                    session_id = %session_id,
+                    client_id = %client_id,
+                    "forward_scrollback_dump_to_client: no pending dump found; \
+                     sending empty ScrollbackDumpComplete (EC-306 fallback)"
+                );
+                (Vec::new(), 0, 0, 0, 24, 80)
+            }
+        };
+
         // AC-SH-005: targeted send — only the requesting client's tx, NOT broadcast.
+        // Step 1: send each ScrollbackChunk in chunk_seq order.
+        for msg in chunks {
+            match msg {
+                monocle_ipc::types::HostToDaemon::ScrollbackChunk { rows, chunk_seq } => {
+                    let chunk_msg = monocle_ipc::types::ServerToClient::ScrollbackChunk {
+                        session_id: session_id.to_string(),
+                        rows,
+                        chunk_seq,
+                    };
+                    if client_tx.send(chunk_msg).await.is_err() {
+                        tracing::warn!(
+                            session_id = %session_id,
+                            client_id = %client_id,
+                            chunk_seq = chunk_seq,
+                            "forward_scrollback_dump_to_client: client_tx closed during ScrollbackChunk send"
+                        );
+                        // Client disconnected mid-dump; clean up pending_pty_bytes and return.
+                        self.pending_pty_bytes
+                            .remove(&(session_id.to_string(), client_id.to_string()));
+                        return Err(SessionError::SessionHostDead {
+                            session_id: session_id.to_string(),
+                        });
+                    }
+                }
+                other => {
+                    // Should never happen — attach_session() only pushes ScrollbackChunk variants.
+                    tracing::warn!(
+                        session_id = %session_id,
+                        msg_type = ?std::mem::discriminant(&other),
+                        "forward_scrollback_dump_to_client: unexpected HostToDaemon variant in pending chunks; skipping"
+                    );
+                }
+            }
+        }
+
+        // Step 2: send ScrollbackDumpComplete sentinel.
         let complete = monocle_ipc::types::ServerToClient::ScrollbackDumpComplete {
             session_id: session_id.to_string(),
-            total_chunks: 0,
-            cursor_row: 0,
-            cursor_col: 0,
-            pty_rows: 24,
-            pty_cols: 80,
+            total_chunks,
+            cursor_row,
+            cursor_col,
+            pty_rows,
+            pty_cols,
         };
 
         client_tx.send(complete).await.map_err(|_| {
@@ -4455,6 +4583,7 @@ impl SessionManager {
         tracing::debug!(
             session_id = %session_id,
             client_id = %client_id,
+            total_chunks = total_chunks,
             "forward_scrollback_dump_to_client: ScrollbackDumpComplete sent, pending_pty_bytes flushed"
         );
 
