@@ -2,18 +2,18 @@
 document_type: pipeline-state
 level: ops
 project: monocle
-version: "8.16"
+version: "8.17"
 status: active
 producer: state-manager
-timestamp: 2026-06-22T20:00:00Z
+timestamp: 2026-06-23T00:00:00Z
 phase: phase-3-v1A-wave-9
-current_step: "D-350 (2026-06-22): ZERO-CONTEXT DURABILITY CHECKPOINT — S-047 MID-IMPLEMENTATION (NOT merged). S-047 EXPANDED 8 pts→16 pts per human ruling 2026-06-22 (full producer scope: BC-2.05.010/011, SS-05/SS-08, story v1.8). Architect design: SS-session-manager v2.18.0 §Ruling M (commit 43c89d7). Story integrated by story-writer (commit 6d9d2e7). Worktree story/S-047-ipc-lifecycle-variants @ .worktrees/S-047, based develop @ 45343ca. Commits: stub 6631aa2, tests da18a3e (22 tests: 14 RED→now green, 8 pre-existing-GREEN), impl (14/14 green). BLOCKER F-S047-DAEMON-RELAY-INERT: daemon does NOT relay real ScrollbackChunk frames to TUI client — total_chunks:0 UNCONDITIONAL stub in forward_scrollback_dump_to_client (mod.rs:4400) + proxy-task TODO at mod.rs:3914 discards HostToDaemon::ScrollbackChunk. Adversarial NOT started. 44/51 done (267/322 pts after S-047 expansion). develop HEAD: 45343ca. STATE v8.14→v8.15. — POST-D-350 HOUSEKEEPING (2026-06-22): PR #56 (docs-resume D-350 + RUSTSEC-2026-0185 quinn-proto bumped per advisory) merged to develop @ a533ffd; NEXT-SESSION-RESUME.md refreshed to D-350. F-RUSTSEC-2026-0185 RESOLVED (cargo audit/deny green in PR #56 CI). develop HEAD updated a533ffd. STATE v8.15→v8.16."
-prior_step: "D-349 (2026-06-22): S-046 MERGED to develop via PR #55 @ 45343ca (squash-merge). PtyOutput Fan-out Broker — bounded INPUT channel(1024), broadcast_to_subscribers (Option A), 1-strike disconnect, pty_drop_counter, ServerToClient::PtyReset. 5 pts, EPIC-05, Wave 8. 8-pass adversarial (3 CLEAN: passes 6/7/8). Security PASS (0 crit/high). SS-ipc v1.25.0; BC-2.05.009 v1.6.0; S-046 v2.0. Wave 8: 7/12 done (43/74 pts). 44/51 stories done (267/314 pts). S-047 UNBLOCKED. develop HEAD: 45343ca. STATE v8.13→v8.14."
+current_step: "D-351 (2026-06-23): ZERO-CONTEXT DURABILITY CHECKPOINT — S-047-NEXT-1 COMPLETE. Implementer wired daemon scrollback relay per SS-session-manager v2.18.0 §Ruling M §7 + AC-SH-005 without needing architect routing escalation. Commit 846ffba 'wip(S-047): F-S047-DAEMON-RELAY-INERT relay path implemented' on branch story/S-047-ipc-lifecycle-variants, worktree .worktrees/S-047. Branch PUSHED to origin @ 846ffba (durability backup; NOT on develop, NO PR yet). CI-parity: clippy/fmt/build/14 tests green; POL-11/POL-12 PASS. F-S047-DAEMON-RELAY-INERT status: relay-wired-pending-integration-verification (NOT cleared for adversarial — 14 green tests cover isolated producer + EC-306 path only; no test drives real N>0 relay; same S-046-inert-broker trap). S-047-NEXT-2 (test-writer, real-relay integration test) is NOW THE CRITICAL PATH / blocker-clearing step. Rustdoc nit: 2 intra-doc-link warnings in 846ffba doc-comments (cargo doc only, not CI-blocking); fold into S-047-NEXT-3. 44/51 done (267/322 pts; S-047 still in progress). develop HEAD: a533ffd. STATE v8.16→v8.17."
+prior_step: "D-350 (2026-06-22): ZERO-CONTEXT DURABILITY CHECKPOINT — S-047 MID-IMPLEMENTATION (NOT merged). S-047 EXPANDED 8 pts→16 pts per human ruling 2026-06-22 (full producer scope: BC-2.05.010/011, SS-05/SS-08, story v1.8). Architect design: SS-session-manager v2.18.0 §Ruling M (commit 43c89d7). Story integrated by story-writer (commit 6d9d2e7). Worktree story/S-047-ipc-lifecycle-variants @ .worktrees/S-047, based develop @ 45343ca. Commits: stub 6631aa2, tests da18a3e (22 tests: 14 RED→now green, 8 pre-existing-GREEN), impl (14/14 green). BLOCKER F-S047-DAEMON-RELAY-INERT confirmed. POST-D-350 HOUSEKEEPING: PR #56 merged @ a533ffd; F-RUSTSEC-2026-0185 RESOLVED. develop HEAD: a533ffd. STATE v8.15→v8.16."
 mode: greenfield-with-reference-ingest
 input-hash: "[live-state]"
 inputs: []
 traces_to: "D-001..D-241 at cycles/cycle-001/decisions-archive.md. D-242..D-350 appended at cycles/cycle-001/decisions-archive.md §Phase-1d+Phase-2+Phase-3. Full durable_task_register YAML (127+ entries) at cycles/cycle-001/task-register-full.yaml."
-awaiting: "D-350 S-047 IN PROGRESS (mid-implementation, worktree .worktrees/S-047, NOT merged). BLOCKER F-S047-DAEMON-RELAY-INERT must be fixed BEFORE adversarial convergence. Resume: S-047-NEXT-1 (wire daemon relay), S-047-NEXT-2 (real-relay integration test), S-047-NEXT-3 (chunk-rows alignment), then adversarial→demo→PR→checkpoint (S-047-NEXT-4). Then S-044 (13 pts, EPIC-09) after S-047. Wave-9 contract-green gate after S-044. EPIC-09 end-to-end integration gate after S-047+S-044. SEC-006-CCR-URL-VALIDATION MUST be fixed before S-045. S-048 waits on S-022+S-033+S-047. F-W8INT-001/002/003 parked for Wave-8 gate."
+awaiting: "D-351 S-047 IN PROGRESS (relay wired, worktree .worktrees/S-047 @ 846ffba pushed to origin, NOT merged). F-S047-DAEMON-RELAY-INERT: relay WIRED but NOT verified by integration test — blocker NOT cleared for adversarial yet. CRITICAL PATH: S-047-NEXT-2 (test-writer, real-relay integration test that proves N>0 relay end-to-end). Then S-047-NEXT-3 (chunk-rows + rustdoc nits), then adversarial→demo→PR→checkpoint (S-047-NEXT-4). Then S-044 (13 pts, EPIC-09) after S-047. Wave-9 contract-green gate after S-044. EPIC-09 end-to-end integration gate after S-047+S-044. SEC-006-CCR-URL-VALIDATION MUST be fixed before S-045. S-048 waits on S-022+S-033+S-047. F-W8INT-001/002/003 parked for Wave-8 gate."
 dtu_required: true
 dtu_assessment: 2026-05-12
 dtu_clones_built: 2026-06-03
@@ -21,74 +21,84 @@ dtu_services: [hook-endpoints-x5]
 current_cycle: cycle-001
 next_session_resume_protocol: |
   ============================================================================
-  ZERO-CONTEXT RESUME CHECKPOINT v8.15 — 2026-06-22 (D-350)
-  PHASE-3 v1A ACTIVE — WAVES 8+9 — S-047 IN PROGRESS (mid-impl, NOT merged)
+  ZERO-CONTEXT RESUME CHECKPOINT v8.17 — 2026-06-23 (D-351)
+  PHASE-3 v1A ACTIVE — WAVES 8+9 — S-047 IN PROGRESS (relay wired, NOT merged)
   D-348: Wave-9 RE-SEQUENCED — PRODUCER (S-046→S-047) before CONSUMER (S-044)
   ============================================================================
   POSITION: Phase-3 TDD implementation, v1A control-center scope, Waves 8+9.
-  STATUS: S-046 MERGED PR #55 @ 45343ca (D-349). PR #56 (docs+RUSTSEC-2026-0185 quinn-proto security fix) merged @ a533ffd. develop @ a533ffd.
+  STATUS: S-046 MERGED PR #55 @ 45343ca (D-349). PR #56 (docs+RUSTSEC-2026-0185
+  quinn-proto security fix) merged @ a533ffd. develop @ a533ffd.
   44/51 stories done (267/322 pts — S-047 expanded 8→16 pts, total 314→322).
   Wave 8: 7/12 done (43/74 pts). Wave 9: 5/6 done (32/45 pts). 10 workspace crates.
 
-  D-350 CHECKPOINT (2026-06-22):
-  S-047 MID-IMPLEMENTATION — NOT merged. Expanded 8 pts→16 pts (human ruling
-  2026-06-22; full producer scope: session-host producer + daemon relay + TUI
-  consumers; BC-2.05.010/011; subsystems SS-05/SS-08; story v1.8).
-  Architect design: SS-session-manager v2.18.0 §Ruling M (commit 43c89d7 on
-  factory-artifacts). Story-writer integrated scope (commit 6d9d2e7).
+  D-351 CHECKPOINT (2026-06-23):
+  S-047-NEXT-1 COMPLETE — relay path wired (846ffba). Implementer wired daemon
+  scrollback relay per SS-session-manager v2.18.0 §Ruling M §7 + AC-SH-005 without
+  needing architect escalation.
+  Commit: 846ffba "wip(S-047): F-S047-DAEMON-RELAY-INERT relay path implemented"
+  Branch: story/S-047-ipc-lifecycle-variants
   Worktree: /Users/jmagady/Dev/monocle/.worktrees/S-047
-  Branch: story/S-047-ipc-lifecycle-variants (based develop @ 45343ca)
-  Commits in worktree (NOT pushed to origin):
-    stub 6631aa2, tests da18a3e (22 tests: 14 RED→green, 8 pre-existing-GREEN),
-    implementation (14/14 target tests green). build/clippy/fmt/POL-11/POL-12 clean.
+  origin/story/S-047-ipc-lifecycle-variants @ 846ffba (PUSHED — durability backup)
+  NOT on develop. NO PR opened yet (expected; PR happens at NEXT-4).
+  CI-parity in worktree: clippy/fmt/build clean; 14 monocle-runtime tests passed.
+  POL-11 PASS (291 active pins current). POL-12 PASS (10 active claims match).
 
-  CONFIRMED PRE-ADVERSARIAL DEFECT — MUST FIX BEFORE CONVERGENCE:
-  F-S047-DAEMON-RELAY-INERT (BLOCKER): daemon does NOT relay real ScrollbackChunk
-  frames to TUI client. forward_scrollback_dump_to_client (mod.rs:4400) sends
-  ServerToClient::ScrollbackDumpComplete{total_chunks:0} UNCONDITIONALLY.
-  Proxy task receives HostToDaemon::ScrollbackChunk (mod.rs:3585) but TODO at
-  mod.rs:3914 discards chunks. Session-host correctly produces real chunks but
-  daemon→client relay is UNWIRED. AC-006 + AC-SH-005 not delivered end-to-end.
-  The 14 green tests cover isolated host producer + EC-306 empty-dump path only —
-  no test exercises real relay. Same class as S-046-inert-broker gap.
+  WHAT 846ffba DID:
+  Added ScrollbackDumpPending struct + pending_scrollback_dump field on SessionManager.
+  attach_session() stores real chunks/metadata from AttachOutcome::Success into pending map.
+  forward_scrollback_dump_to_client() reads pending entry and sends real ScrollbackChunk
+  frames followed by ScrollbackDumpComplete{total_chunks:N} — TARGETED to attaching client
+  (NOT broadcast). handle_attach_session() in ipc_server.rs calls it on Ok(()).
+  total_chunks:0 stub and mod.rs discard-TODO are GONE. EC-306 race falls back to empty dump.
 
-  D-349 DECISION (2026-06-22):
-  S-046 (PtyOutput Fan-out Broker) MERGED. Key architectural detail (Option A):
-  broker owns INPUT channel(1024) + Arc<SubscriberList> only; fans out via
-  broadcast_to_subscribers (shared SubscriberList — NOT a broker-owned client
-  registry). 1-strike disconnect. pty_drop_counter (proxy-task OOM-only). biased
-  select! hook priority. ServerToClient::PtyReset variant added. 8-pass adversarial
-  (3 CLEAN: passes 6/7/8). CRITICAL LESSON (LESSON-S046-INERT-BROKER-UNIT-TEST-TAUTOLOGY):
-  P1 found the broker was INERT in production (own client registry never populated
-  → PTY bytes silently discarded). Unit tests passed against a parallel UNWIRED code
-  path. Architect RE-ARCHITECTED to Option A. Codified in lessons.md.
+  IMPORTANT NUANCE — F-S047-DAEMON-RELAY-INERT IS NOT YET CLEARED:
+  Relay code is WIRED but NOT verified by an integration test that drives the real
+  host→daemon→client path. The 14 green tests cover only isolated producer + EC-306
+  empty-dump path — none drives a real N>0 relay. This is the exact S-046-inert-broker
+  unit-test-tautology trap. Status: relay-wired-pending-integration-verification.
+  Blocker NOT cleared for adversarial until S-047-NEXT-2 lands a failing real-relay
+  integration test that proves the wired path end-to-end.
+
+  RUSTDOC NIT (non-blocking):
+  2 rustdoc intra-doc-link warnings ("expected a function, found a macro") in 846ffba
+  doc-comments — surface only under `cargo doc`, do NOT fail clippy/CI. Fold cleanup
+  into S-047-NEXT-3.
+
+  D-350 CHECKPOINT (2026-06-22) — summary for context:
+  S-047 expanded 8→16 pts (human ruling). Architect design Ruling M (43c89d7).
+  Story-writer integrated (6d9d2e7). BLOCKER F-S047-DAEMON-RELAY-INERT confirmed.
+  POST-D-350 HOUSEKEEPING: PR #56 merged @ a533ffd; F-RUSTSEC-2026-0185 RESOLVED.
+
+  D-349 DECISION (2026-06-22 — still governs):
+  S-046 (PtyOutput Fan-out Broker) MERGED. Option A: broker INPUT channel(1024) +
+  Arc<SubscriberList>; broadcast_to_subscribers; 1-strike disconnect; pty_drop_counter;
+  ServerToClient::PtyReset. 8-pass adversarial (3 CLEAN: passes 6/7/8).
+  CRITICAL LESSON (LESSON-S046-INERT-BROKER-UNIT-TEST-TAUTOLOGY):
+  P1 found broker INERT in production — unit tests passed against parallel UNWIRED
+  code path. Architect RE-ARCHITECTED to Option A. Codified in lessons.md.
 
   D-348 RULING (2026-06-22, Joshua Magady — still governs):
   - DELIVER PRODUCER FIRST: S-046 DONE → S-047 → S-044. S-044 remains after S-047.
   - Wave-9 gate = CONTRACT-GREEN (BCs green + 3 clean adversarial per story).
-  - EPIC-09 end-to-end gate = SEPARATE milestone after S-047+S-044 (live vertical
-    slice: enter→live PtyOutput→keyboard/mouse forwarding→exit).
+  - EPIC-09 end-to-end gate = SEPARATE milestone after S-047+S-044.
   - WG-S042-SESSIONHOST-KEYINPUT CARRY-FORWARD (severity UPGRADED): main.rs:731-737
     DROPS KeyInput in catch-all. Keyboard+mouse live forwarding blocked until S-047.
   - F-S039-P9-OBS-001: MARK FOR CLOSE-AT-GATE (S-042 resize landed).
 
-  NEXT-ACTION QUEUE — S-047 RESUME (D-350 order):
-  1. S-047-NEXT-1 (implementer, BLOCKER): wire daemon scrollback relay per architect
-     Ruling M — forward session-host's real ScrollbackChunk + ScrollbackDumpComplete
-     frames to the REQUESTING client. Replace total_chunks:0 stub in
-     forward_scrollback_dump_to_client (mod.rs:4400) AND/OR implement proxy-task
-     TODO at mod.rs:3914. If proxy-task↔forward coordination is ambiguous vs
-     Ruling M, route to architect first.
-  2. S-047-NEXT-2 (test-writer): add real-relay integration test (session-host
-     produces N>0 chunks → daemon forwards → client receives N ScrollbackChunk +
-     ScrollbackDumpComplete{total_chunks:N}) that FAILS against current empty-dump
-     stub. Closes coverage gap that masked F-S047-DAEMON-RELAY-INERT.
-  3. S-047-NEXT-3: resolve F-S047-CHUNK-ROWS-50-VS-200 — align to ≤200 rows/chunk
-     per Ruling M / story AC-SH-004, or confirm 50 is intentional.
-  4. S-047-NEXT-4: adversarial convergence (3 consecutive CLEAN, fresh-context,
-     whole-system trace; specifically verify daemon relay reaches real clients, like
-     S-046 inert-broker check) → demo (WEBM+.tape) → pr-manager (9 steps) →
-     devops cleanup + reconcile → state-manager checkpoint.
+  NEXT-ACTION QUEUE — S-047 RESUME (D-351 order):
+  1. S-047-NEXT-2 (test-writer — NOW CRITICAL PATH / blocker-clearing): add
+     real-relay integration test: session-host produces N>0 chunks → daemon forwards →
+     client receives N ScrollbackChunk + ScrollbackDumpComplete{total_chunks:N}.
+     Must FAIL against pre-846ffba empty-dump stub. Clears F-S047-DAEMON-RELAY-INERT
+     once green.
+  2. S-047-NEXT-3 (implementer): resolve F-S047-CHUNK-ROWS-50-VS-200 — align
+     SCROLLBACK_CHUNK_MAX_ROWS to ≤200 per Ruling M / AC-SH-004 or confirm 50
+     intentional + update spec. Also clean the 2 rustdoc nits from 846ffba.
+  3. S-047-NEXT-4 (orchestrator): adversarial convergence (3 consecutive CLEAN,
+     fresh-context, whole-system trace — specifically re-verify daemon relay reaches
+     real clients) → demo-recorder (WEBM+.tape, NO GIF) → pr-manager (9 steps) →
+     orchestrator verifies merge via gh pr view → devops worktree cleanup + reconcile
+     develop → state-manager checkpoint.
 
   POST-S-047 QUEUE:
   5. S-044 (EmbeddedTerminal+SessionCreation entry trigger + wizard + SpawnAck +
@@ -237,7 +247,7 @@ next_session_resume_protocol: |
 | 0.5-0.9 Brief + market intel | DONE 2026-05-14 | brief v2.0.4; validate-brief VALID |
 | 1 Spec Crystallization | DONE D-170 APPROVED | 57-pass Phase-1d adversarial. 113 Phase-1 BCs (138 total incl Phase-2 v1A). <!-- version-pin-historical: BC-INDEX v1.43.7 at Phase-1d close --> |
 | 2 Story Decomp v1A | PASSED/APPROVED D-325 | 26 passes (3/3 clean). 51 stories/311 pts. Gate APPROVED Joshua Magady 2026-06-16. |
-| 3 TDD v1A Waves 8-9 | IN PROGRESS — Waves 8+9 | S-033..S-036+S-038 MERGED. S-046 MERGED PR #55 @ 45343ca (D-349, Wave 8: 7/12 done, 43/74 pts). S-039 MERGED PR #47 (D-340). S-040 MERGED PR #50 (D-342). S-041 MERGED PR #54 (D-347). S-042 MERGED PR #51 (D-345). S-043 MERGED PR #53 (D-346). Wave 9: 5/6 done (32/45 pts). 44/51 done (267/322 pts — S-047 expanded 8→16 pts). **S-047 IN PROGRESS** (D-350, mid-impl; BLOCKER F-S047-DAEMON-RELAY-INERT; adversarial NOT started). |
+| 3 TDD v1A Waves 8-9 | IN PROGRESS — Waves 8+9 | S-033..S-036+S-038 MERGED. S-046 MERGED PR #55 @ 45343ca (D-349, Wave 8: 7/12 done, 43/74 pts). S-039 MERGED PR #47 (D-340). S-040 MERGED PR #50 (D-342). S-041 MERGED PR #54 (D-347). S-042 MERGED PR #51 (D-345). S-043 MERGED PR #53 (D-346). Wave 9: 5/6 done (32/45 pts). 44/51 done (267/322 pts — S-047 expanded 8→16 pts). **S-047 IN PROGRESS** (D-351, relay wired 846ffba pushed; F-S047-DAEMON-RELAY-INERT relay-wired-pending-integration-verification; S-047-NEXT-2 critical-path; adversarial NOT started). |
 | 3 TDD Waves 1-7 (pre-pivot) | COMPLETE D-232 | 32/33 done (192/195 pts). 1514 tests. develop @ 6811103 |
 | 4-7 | PENDING after Phase-3 v1A | Old observe-only scope superseded by v1A control-center |
 
@@ -375,12 +385,13 @@ Active tasks only. Full YAML detail (all 149+ entries including resolved/closed)
 | F-S046-PRREV-SUGGESTIONS | pending | implementer | n | [S-046, LOW, non-blocking] 3 non-blocking pr-reviewer suggestions from PR #55. Bundle for a future hardening pass. Anchor: hardening sweep. |
 | F-S046-SEC-PREEXISTING | pending | security/maintenance | n | [S-046, pre-existing] SEC-001/SEC-003 + remaining MEDIUM security findings from PR #55 review are pre-existing in unchanged code (not introduced by S-046). Record for a maintenance/security sweep. Reference: PR #55 security review. Anchor: maintenance-sweep wave. |
 | WG-S046-SERVERTOCLIENT-NONEXHAUSTIVE | pending | prod-owner/wave-gate | n | [S-046, cross-story, wave-gate] ServerToClient is not #[non_exhaustive] vs BC-2.05.011 Invariant 1 — pre-existing enum decision. Reconcile at Wave-9 gate (PO). Anchor: Wave-9 gate / BC-2.05.011. Non-blocking. |
-| F-S047-DAEMON-RELAY-INERT | pending-BLOCKER | implementer (S-047-NEXT-1) | n | **[S-047, BLOCKER, pre-adversarial]** daemon does NOT relay real ScrollbackChunk frames to TUI client. forward_scrollback_dump_to_client (crates/monocle-runtime/src/session_manager/mod.rs:4400) sends ServerToClient::ScrollbackDumpComplete{total_chunks:0} UNCONDITIONALLY (empty dump). Proxy task receives HostToDaemon::ScrollbackChunk (mod.rs:3585) but TODO at mod.rs:3914 discards them — host chunks DISCARDED. Session-host correctly PRODUCES real chunks (stream_scrollback_dump_chunked) but daemon→client relay is UNWIRED → AC-006 (AttachSession scrollback sequence) and AC-SH-005 (daemon forwards host chunks to attaching client) NOT delivered end-to-end. 14 green tests cover isolated host producer + EC-306 empty-dump path only — NO test exercises real relay. Same class as S-046-inert-broker integration gap. MUST be fixed before adversarial convergence. Anchor: S-047-NEXT-1 (implementer) + S-047-NEXT-2 (test-writer). |
+| F-S047-DAEMON-RELAY-INERT | relay-wired-pending-integration-verification | test-writer (S-047-NEXT-2) | n | **[S-047, pre-adversarial]** Relay code WIRED (846ffba, D-351) but NOT verified by integration test driving real host→daemon→client path. 14 green tests cover isolated producer + EC-306 empty-dump path only — none drives N>0 real relay. Blocker NOT cleared for adversarial until S-047-NEXT-2 lands a failing real-relay integration test proving the wired path end-to-end. Same S-046-inert-broker tautology pattern. Anchor: S-047-NEXT-2 (test-writer). |
 | F-S047-CHUNK-ROWS-50-VS-200 | pending-LOW | implementer (S-047-NEXT-3) | n | [S-047, LOW] implementer used SCROLLBACK_CHUNK_MAX_ROWS=50; architect Ruling M / story AC-SH-004 specify ≤200 rows/chunk. Value is within spec but deviates from stated maximum — verify intent or align. Anchor: S-047-NEXT-3. |
-| S-047-NEXT-1 | pending | implementer | n | [S-047 resume step 1, BLOCKER] Wire daemon scrollback relay per architect Ruling M: forward session-host's real ScrollbackChunk + ScrollbackDumpComplete frames to the REQUESTING client. Replace total_chunks:0 stub in forward_scrollback_dump_to_client (mod.rs:4400) AND/OR implement proxy-task TODO at mod.rs:3914. Coordinate forward_scrollback_dump_to_client with proxy task that reads HostToDaemon::ScrollbackChunk (mod.rs:3585). If proxy-task↔forward coordination is ambiguous vs Ruling M, route to architect first. Precondition for adversarial. |
-| S-047-NEXT-2 | pending | test-writer | n | [S-047 resume step 2] Add real-relay integration test: session-host produces N>0 chunks → daemon forwards → client receives N ScrollbackChunk + ScrollbackDumpComplete{total_chunks:N}. Test MUST FAIL against current empty-dump stub (Red Gate discipline). Closes coverage gap that masked F-S047-DAEMON-RELAY-INERT. Run after S-047-NEXT-1. |
-| S-047-NEXT-3 | pending | implementer | n | [S-047 resume step 3] Resolve F-S047-CHUNK-ROWS-50-VS-200: align SCROLLBACK_CHUNK_MAX_ROWS to ≤200 per Ruling M / AC-SH-004, or confirm 50 is intentional and update spec/story. |
-| S-047-NEXT-4 | pending | orchestrator | n | [S-047 resume step 4] After NEXT-1/2/3 complete: adversarial convergence (3 consecutive CLEAN, fresh-context, whole-system trace — specifically verify daemon relay reaches real clients) → demo-recorder (WEBM+.tape) → pr-manager (9 steps) → devops worktree cleanup + reconcile → state-manager checkpoint. |
+| F-S047-RUSTDOC-NITS | pending-LOW | implementer (S-047-NEXT-3) | n | [S-047, LOW, non-blocking] 2 rustdoc intra-doc-link warnings ("expected a function, found a macro") in 846ffba doc-comments — surface only under `cargo doc`, do NOT fail clippy/CI. Fold cleanup into S-047-NEXT-3. |
+| S-047-NEXT-1 | done | implementer | n | [S-047 resume step 1, DONE D-351] Daemon scrollback relay wired per Ruling M. Commit 846ffba on branch story/S-047-ipc-lifecycle-variants (pushed to origin). ScrollbackDumpPending struct; pending_scrollback_dump map; forward_scrollback_dump_to_client sends real ScrollbackChunk + ScrollbackDumpComplete{total_chunks:N} targeted to attaching client. total_chunks:0 stub removed. CI-parity green (clippy/fmt/14 tests/POL-11/POL-12). |
+| S-047-NEXT-2 | pending-CRITICAL-PATH | test-writer | n | [S-047 resume step 2, NOW CRITICAL PATH / blocker-clearing] Add real-relay integration test: session-host produces N>0 chunks → daemon forwards → client receives N ScrollbackChunk + ScrollbackDumpComplete{total_chunks:N}. Test MUST demonstrate it would FAIL against pre-846ffba empty-dump stub. Clears F-S047-DAEMON-RELAY-INERT once green. Blocker-clearing prerequisite for adversarial convergence. |
+| S-047-NEXT-3 | pending | implementer | n | [S-047 resume step 3] Resolve F-S047-CHUNK-ROWS-50-VS-200: align SCROLLBACK_CHUNK_MAX_ROWS to ≤200 per Ruling M / AC-SH-004, or confirm 50 is intentional and update spec/story. Also clean the 2 rustdoc nits from 846ffba (F-S047-RUSTDOC-NITS). |
+| S-047-NEXT-4 | pending | orchestrator | n | [S-047 resume step 4] After NEXT-2/3 complete: adversarial convergence (3 consecutive CLEAN, fresh-context, whole-system trace — specifically re-verify daemon relay reaches real clients) → demo-recorder (WEBM+.tape) → pr-manager (9 steps) → orchestrator verifies merge via gh pr view → devops worktree cleanup + reconcile → state-manager checkpoint. |
 
 ## Resolved/Closed Tasks (archived)
 
@@ -395,10 +406,10 @@ BURST-GAP-003/004/005-S043 (D-346); F-S028-NIT-001/002 (prior sessions).
 
 ## Decision History
 
-Full archive: `cycles/cycle-001/decisions-archive.md` (D-001..D-350).
+Full archive: `cycles/cycle-001/decisions-archive.md` (D-001..D-351).
 
-Key decisions last session (D-348..D-350) + housekeeping:
-- D-350 (2026-06-22): ZERO-CONTEXT DURABILITY CHECKPOINT — S-047 MID-IMPLEMENTATION. S-047 expanded 8→16 pts (human ruling). Architect design Ruling M. Worktree .worktrees/S-047, stub+tests+impl committed. BLOCKER F-S047-DAEMON-RELAY-INERT confirmed. Resume steps S-047-NEXT-1..4 registered.
-- POST-D-350 HOUSEKEEPING (2026-06-22): PR #56 merged (docs-resume + RUSTSEC-2026-0185 quinn-proto security fix). develop HEAD updated 45343ca→a533ffd. F-RUSTSEC-2026-0185 RESOLVED. STATE v8.16.
+Key decisions last session (D-348..D-351):
+- D-351 (2026-06-23): ZERO-CONTEXT DURABILITY CHECKPOINT — S-047-NEXT-1 COMPLETE. Implementer wired daemon scrollback relay (846ffba, pushed to origin). CI-parity green. F-S047-DAEMON-RELAY-INERT status: relay-wired-pending-integration-verification (NOT cleared for adversarial). S-047-NEXT-2 (test-writer, real-relay integration test) is now CRITICAL PATH / blocker-clearing. Rustdoc nit (2 intra-doc-link warnings, cargo doc only) registered; fold into NEXT-3. STATE v8.16→v8.17.
+- D-350 (2026-06-22): ZERO-CONTEXT DURABILITY CHECKPOINT — S-047 MID-IMPLEMENTATION. S-047 expanded 8→16 pts (human ruling). Architect design Ruling M. Worktree .worktrees/S-047, stub+tests+impl committed. BLOCKER F-S047-DAEMON-RELAY-INERT confirmed. Resume steps S-047-NEXT-1..4 registered. POST-D-350 HOUSEKEEPING: PR #56 merged @ a533ffd; F-RUSTSEC-2026-0185 RESOLVED. STATE v8.15→v8.16.
 - D-349 (2026-06-22): S-046 MERGED PR #55 @ 45343ca. PtyOutput Fan-out Broker (Option A). 5 pts. 8-pass adversarial (3 CLEAN). LESSON-S046-INERT-BROKER-UNIT-TEST-TAUTOLOGY recorded.
 - D-348 (2026-06-22): Wave-9 RE-SEQUENCED by Joshua Magady. S-046→S-047→S-044. Wave-9 gate = CONTRACT-GREEN. EPIC-09 end-to-end gate = SEPARATE. WG-S042-SESSIONHOST-KEYINPUT UPGRADED.
